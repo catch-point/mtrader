@@ -40,11 +40,13 @@ var program = require('commander').version('0.0.1')
     .description("Produces data for trading securities in CSV format")
     .command('config <name> [value]', "View or change stored options")
     .command('fetch <interval> <symbol> [exchange]', "Historic information of a security")
+    .command('quote <interval> <symbol> [exchange]', "Historic information of a security")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-s, --silent', "Include less information about what the system is doing")
     .option('--debug', "Include details about what the system is working on")
     .option('--config <file>', "JSON file containing configuration settings")
-    .option('--prefix <dirname>', "Path where the program files are stored");
+    .option('--prefix <dirname>', "Path where the program files are stored")
+    .option('--workers [numOfWorkers]', 'Number of workers to spawn');
 
 if (process.argv.length > 2) {
     // don't call an executable if no command given
@@ -69,6 +71,7 @@ if (_.isEmpty(program.args)) {
     });
     config.shell(app);
     require('./ptrading-fetch.js').shell(app);
+    require('./ptrading-quote.js').shell(app);
 }
 
 function parseKnownOptions(program, argv) {
