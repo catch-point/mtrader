@@ -62,7 +62,7 @@ module.exports = function(data) {
             writer.end();
         } else {
             var writer = csv.createWriteStream({
-                headers: true,
+                headers: _.union(_.keys(_.first(data)), _.keys(_.last(data))),
                 rowDelimiter: '\r\n',
                 includeEndRowDelimiter: true
             });
