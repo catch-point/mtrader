@@ -40,7 +40,9 @@ const commander_emit = commander.Command.prototype.emit.bind(commander);
 var session = {};
 var listeners = [];
 var defaults = _.extend({
-    prefix: path.resolve(process.argv[1], '../..')
+    prefix: _.contains(process.argv, '--prefix') ?
+        process.argv[process.argv.indexOf('--prefix')+1] :
+        path.resolve(process.argv[1], '../..')
 }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
 var stored = _.extend({}, defaults, loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json')));
 

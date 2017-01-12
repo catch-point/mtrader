@@ -109,10 +109,10 @@ if (require.main === module) {
 }
 
 function fork(program) {
-    var options = _.omit(_.omit(_.extend(
-        _.pick(config(), program.options.map(option => option.name())),
-        {config: config.configFilename()}
-    ), 'version'), _.isUndefined);
+    var options = _.omit(_.omit(_.extend(_.pick(config(), program.options.map(option => option.name())), {
+        prefix: config('prefix'),
+        config: config.configFilename()
+    }), 'version'), _.isUndefined);
     var args = _.flatten(_.zip(
         _.keys(options).map(option => '--' + option.replace('_', '-')),
         _.values(options)

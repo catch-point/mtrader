@@ -54,7 +54,11 @@ if (process.argv.length > 2) {
     program.addImplicitHelpCommand();
     program.executeSubCommand = _.wrap(program.executeSubCommand, (fn, argv, args, unknown) => {
         // include known options in sub-command
-        var arg = [].concat(args, parseKnownOptions(program, argv));
+        var arg = [].concat(
+            args,
+            ['--prefix', config('prefix'), '--config', config.configFilename()],
+            parseKnownOptions(program, argv)
+        );
         return fn.call(program, argv, arg, unknown);
     });
     program.parse(process.argv);
