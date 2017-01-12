@@ -167,24 +167,25 @@ function fundamental(datasources, options) {
 }
 
 function interday(datasources, options) {
-    if (!options.begin) throw Error("Need to set begin option first");
     expect(options).to.be.like({
         interval: /^\S+$/,
         symbol: /^\S+$/,
         exchange: ex => expect(ex).to.be.oneOf(_.keys(config('exchanges'))),
-        begin: Boolean,
         tz: _.isString
     });
-    var now = moment();
-    var sources = getDatasources(datasources, options.exchange, options.interval);
-    if (_.isEmpty(sources)) throw Error("No datasources available for " + options.interval);
+    var now = moment().tz(options.tz);
+    var opts = options.begin ? options : _.defaults({
+        begin: moment(now).startOf('month').subtract(1, 'month').format()
+    }, options);
+    var sources = getDatasources(datasources, opts.exchange, opts.interval);
+    if (_.isEmpty(sources)) throw Error("No datasources available for " + opts.interval);
     return _.reduce(sources, (promise, source, id) => promise.catch(err => {
-        return datasources[id].interday(_.defaults({}, source, options)).then(result => {
-            if (err) logger.warn("Fetch", options.interval, "failed", err);
+        return datasources[id].interday(_.defaults({}, source, opts)).then(result => {
+            if (err) logger.warn("Fetch", opts.interval, "failed", err);
             return result;
         }, err2 => {
             if (!err) throw err2;
-            logger.warn("Fetch", options.interval, "failed", err2);
+            logger.warn("Fetch", opts.interval, "failed", err2);
             throw err;
         });
     }), Promise.reject()).then(results => {
@@ -204,17 +205,19 @@ function intraday(datasources, options) {
         interval: /^m\d+$/,
         symbol: /^\S+$/,
         exchange: ex => expect(ex).to.be.oneOf(_.keys(config('exchanges'))),
-        begin: Boolean,
         tz: _.isString
     });
-    var now = moment();
-    var minutes = +options.interval.substring(1);
-    var sources = getDatasources(datasources, options.exchange, options.interval);
-    if (_.isEmpty(sources)) throw Error("No datasources available for " + options.interval);
+    var now = moment().tz(options.tz);
+    var opts = options.begin ? options : _.defaults({
+        begin: moment(now).startOf('day').format()
+    }, options);
+    var minutes = +opts.interval.substring(1);
+    var sources = getDatasources(datasources, opts.exchange, opts.interval);
+    if (_.isEmpty(sources)) throw Error("No datasources available for " + opts.interval);
     return _.reduce(sources, (promise, source, id) => promise.catch(err => {
         return datasources[id].intraday(_.defaults({
             minutes: minutes
-        }, source, options)).then(result => {
+        }, source, opts)).then(result => {
             if (err) logger.warn("Fetch", minutes, "minutes failed", err);
             return result;
         }, err2 => {
@@ -236,7 +239,7 @@ function intraday(datasources, options) {
 
 function getDatasources(datasources, exchange, interval) {
     return _.mapObject(_.pick(config(['exchanges', exchange, 'datasources']), (source, id) => {
-        return _.contains(source.fetch, interval) && config([id, 'enabled']) && _.has(datasources, id);
+        return _.contains(source.fetch, interval) && _.has(datasources, id);
     }), source => _.omit(source, 'fetch'));
 }
 
