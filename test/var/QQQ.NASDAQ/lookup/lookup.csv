@@ -1,0 +1,4 @@
+symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
+QQQ,QQQ,NASDAQ,PowerShares QQQ ETF,NGM,E,NASDAQ,ETF
+SQQQ,SQQQ,NASDAQ,ProShares UltraPro Short QQQ,NGM,S,NASDAQ,Equity
+TQQQ,TQQQ,NASDAQ,ProShares UltraPro QQQ,NGM,S,NASDAQ,Equity

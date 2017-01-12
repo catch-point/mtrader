@@ -1,0 +1,1 @@
+{"properties":{},"tables":[{"id":"lookup","size":1,"head":[{"symbol":"USD","iqfeed_symbol":"USDCAD.FXCM","exchange":"CAD","listed_market":74,"securityTypeID":16,"name":"FXCM USD CAD Spot"}],"tail":[{"symbol":"USD","iqfeed_symbol":"USDCAD.FXCM","exchange":"CAD","listed_market":74,"securityTypeID":16,"name":"FXCM USD CAD Spot"}]}]}
