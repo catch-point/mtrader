@@ -63,7 +63,6 @@ describe("fetch", function() {
             exchange: 'NYSE'
         }).then(_.first).should.eventually.be.like({
             symbol: 'IBM',
-            iqfeed_symbol: 'IBM',
             yahoo_symbol: 'IBM',
             name: "International Business Machines Corporation"
         });
@@ -75,9 +74,7 @@ describe("fetch", function() {
             exchange: 'CAD'
         }).should.eventually.be.like([{
             symbol: 'USD',
-            iqfeed_symbol: 'USDCAD.FXCM',
-            yahoo_symbol: 'USDCAD=X',
-            name: /USD.*CAD/
+            yahoo_symbol: 'USDCAD=X'
         }]);
     });
     it("should return daily", function() {
@@ -168,7 +165,6 @@ describe("fetch", function() {
             exchange: 'NYSE'
         }).should.eventually.be.like(results => _.some(results, like({
             symbol: /^BRK.A/,
-            iqfeed_symbol: /^BRK.A/,
             yahoo_symbol: /^BRK.A/,
             name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0
         })));

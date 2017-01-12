@@ -6,9 +6,6 @@
   "yahoo": {
     "enabled": true
   },
-  "iqfeed": {
-    "enabled": true
-  },
   "exchanges": {
     "ARCA": {
       "label": "Archipelago Electronic Communications Network",
