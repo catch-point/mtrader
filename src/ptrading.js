@@ -44,7 +44,6 @@ var program = require('commander').version('0.0.1')
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-s, --silent', "Include less information about what the system is doing")
     .option('--debug', "Include details about what the system is working on")
-    .option('--config <file>', "JSON file containing configuration settings")
     .option('--prefix <dirname>', "Path where the program files are stored")
     .option('--workers [numOfWorkers]', 'Number of workers to spawn');
 
@@ -56,7 +55,7 @@ if (process.argv.length > 2) {
         // include known options in sub-command
         var arg = [].concat(
             args,
-            ['--prefix', config('prefix'), '--config', config.configFilename()],
+            ['--prefix', config('prefix')],
             parseKnownOptions(program, argv)
         );
         return fn.call(program, argv, arg, unknown);

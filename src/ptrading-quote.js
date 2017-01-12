@@ -32,7 +32,6 @@
  */
 
 var os = require('os');
-const child_process = require('child_process');
 const _ = require('underscore');
 const commander = require('commander');
 const logger = require('./logger.js');
@@ -49,7 +48,6 @@ function usage(command) {
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
-        .option('--config <file>', "JSON file containing configuration settings")
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('--end <dateTime>', "ISO dateTime of the ending point")
@@ -78,7 +76,7 @@ if (require.main === module) {
     } else if (process.send) {
         var parent = replyTo(process).handle('quote', payload => {
             return quote(_.defaults({}, payload, config.session()));
-        }).handle('config', payload => config(payload.name, payload.value));
+        });
         var quote = Quote(function(options) {
             return parent.request('fetch', options);
         });
@@ -90,10 +88,12 @@ if (require.main === module) {
     var fetch = require('./ptrading-fetch.js');
     var program = usage(new commander.Command());
     var workers = commander.workers || os.cpus().length;
-    var children = _.range(workers).map(() => fork(program).handle('fetch', payload => {
-        var options = _.defaults({}, payload, config.session());
-        return fetch(options);
-    }));
+    var children = _.range(workers).map(() => {
+        return replyTo(config.fork(module.filename, program)).handle('fetch', payload => {
+            var options = _.defaults({}, payload, config.session());
+            return fetch(options);
+        });
+    });
     module.exports = function(interval, symbol, exchange, options) {
         return chooseWorker(childern, symbol).request('quote', _.defaults({
             interval: interval,
@@ -106,20 +106,6 @@ if (require.main === module) {
         fetch.close();
     };
     module.exports.shell = shell.bind(this, program.description(), children);
-}
-
-function fork(program) {
-    var options = _.omit(_.omit(_.extend(_.pick(config(), program.options.map(option => option.name())), {
-        prefix: config('prefix'),
-        config: config.configFilename()
-    }), 'version'), _.isUndefined);
-    var args = _.flatten(_.zip(
-        _.keys(options).map(option => '--' + option.replace('_', '-')),
-        _.values(options)
-    ));
-    var child = replyTo(child_process.fork(module.filename, args));
-    config.addListener((name, value) => child.send('config', {name: name, value: value}));
-    return child;
 }
 
 function chooseWorker(workers, string) {

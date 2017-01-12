@@ -33,6 +33,8 @@ const _ = require('underscore');
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
+const child_process = require('child_process');
+const replyTo = require('./ipc-promise-reply.js');
 const commander = require('commander');
 const options = commander.options;
 const commander_emit = commander.Command.prototype.emit.bind(commander);
@@ -58,8 +60,34 @@ var config = module.exports = function(name, value) {
     }
 };
 
+if (process.send) {
+    process.on('message', msg => {
+        if (msg.cmd == 'config') {
+            config(msg.payload.name, msg.payload.value);
+        }
+    });
+}
+
+config.fork = function(modulePath, program) {
+    var pairs = program.options.filter(o => o.required || o.optional).map(o => o.name().replace('-', '_'));
+    var bools = _.reject(program.options, o => o.required || o.optional).map(o => o.name().replace('-', '_'));
+    var cfg = _.omit(config(), _.isUndefined);
+    var cfg_pairs = _.pick(cfg, pairs);
+    var cfg_bools = _.without(_.intersection(bools, _.keys(cfg)), 'version');
+    var args = _.flatten(_.zip(
+        _.keys(cfg_pairs).map(option => '--' + option.replace('_', '-')),
+        _.values(cfg_pairs)
+    )).concat(cfg_bools.map(option => '--' + option.replace('_', '-')));
+    var child = child_process.fork(modulePath, args);
+    config.addListener((name, value) => child.send({
+        cmd: 'config',
+        payload: {name: name, value: value}
+    }));
+    return child;
+};
+
 config.configFilename = function() {
-    return config('config') || path.resolve(config('prefix'), 'etc/ptrading.json');
+    return path.resolve(config('prefix'), 'etc/ptrading.json');
 };
 
 config.opts = function() {

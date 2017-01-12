@@ -31,7 +31,6 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const child_process = require('child_process');
 const _ = require('underscore');
 const commander = require('commander');
 const logger = require('./logger.js');
@@ -47,7 +46,6 @@ function usage(command) {
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
-        .option('--config <file>', "JSON file containing configuration settings")
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('--end <dateTime>', "ISO dateTime of the ending point")
@@ -72,14 +70,14 @@ if (require.main === module) {
     } else if (process.send) {
         replyTo(process).handle('fetch', payload => {
             return fetch(_.defaults({}, payload, config.session()));
-        }).handle('config', payload => config(payload.name, payload.value));
+        });
         process.on('disconnect', () => fetch.close());
     } else {
         program.help();
     }
 } else {
     var program = usage(new commander.Command());
-    var child = fork(program);
+    var child = replyTo(config.fork(module.filename, program));
     module.exports = function(options) {
         return child.request('fetch', options);
     };
@@ -88,20 +86,6 @@ if (require.main === module) {
         child.disconnect();
     };
     module.exports.shell = shell.bind(this, program.description(), child);
-}
-
-function fork(program) {
-    var options = _.omit(_.omit(_.extend(_.pick(config(), program.options.map(option => option.name())), {
-        prefix: config('prefix'),
-        config: config.configFilename()
-    }), 'version'), _.isUndefined);
-    var args = _.flatten(_.zip(
-        _.keys(options).map(option => '--' + option.replace('_', '-')),
-        _.values(options)
-    ));
-    var child = replyTo(child_process.fork(module.filename, args));
-    config.addListener((name, value) => child.send('config', {name: name, value: value}));
-    return child;
 }
 
 function shell(desc, child, app) {

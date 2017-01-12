@@ -42,7 +42,6 @@ if (require.main === module) {
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
-        .option('--config <file>', "JSON file containing configuration settings")
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--output <file>', "JSON file to write the setting value into")
         .parse(process.argv);
