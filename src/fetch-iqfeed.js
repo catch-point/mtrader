@@ -152,7 +152,7 @@ function year(iqclient, symbol, options) {
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).year()))
       .then(years => _.map(years, bars => bars.reduce((year, month) => {
         return _.defaults({
-            ending: month.ending,
+            ending: endOf('year', month.ending, options),
             open: year.open,
             high: Math.max(year.high, month.high),
             low: month.low && month.low < year.low ? month.low : year.low,
@@ -160,7 +160,7 @@ function year(iqclient, symbol, options) {
             volume: year.volume + month.volume,
             adj_close: month.adj_close
         }, month, year);
-      })));
+      }, _.first(bars))));
 }
 
 function quarter(iqclient, symbol, options) {
@@ -170,7 +170,7 @@ function quarter(iqclient, symbol, options) {
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-Q')))
       .then(quarters => _.map(quarters, bars => bars.reduce((quarter, month) => {
         return _.defaults({
-            ending: month.ending,
+            ending: endOf('quarter', month.ending, options),
             open: quarter.open,
             high: Math.max(quarter.high, month.high),
             low: month.low && month.low < quarter.low ? month.low : quarter.low,
@@ -178,7 +178,7 @@ function quarter(iqclient, symbol, options) {
             volume: quarter.volume + month.volume,
             adj_close: month.adj_close
         }, month, quarter);
-      })));
+      }, _.first(bars))));
 }
 
 function month(iqclient, symbol, options) {
@@ -187,7 +187,7 @@ function month(iqclient, symbol, options) {
         options.begin, options.end,
         options.marketClosesAt, options.tz
     ).then(data => data.reverse().map(datum => ({
-        ending: endOf('month', datum.Date_Stamp, options.marketClosesAt, options.tz),
+        ending: endOf('month', datum.Date_Stamp, options),
         open: parseFloat(datum.Open),
         high: parseFloat(datum.High),
         low: parseFloat(datum.Low),
@@ -203,7 +203,7 @@ function week(iqclient, symbol, options) {
         options.begin, options.end,
         options.marketClosesAt, options.tz
     ).then(data => data.reverse().map(datum => ({
-        ending: endOf('week', datum.Date_Stamp, options.marketClosesAt, options.tz),
+        ending: endOf('week', datum.Date_Stamp, options),
         open: parseFloat(datum.Open),
         high: parseFloat(datum.High),
         low: parseFloat(datum.Low),
@@ -219,7 +219,7 @@ function day(iqclient, symbol, options) {
         options.begin, options.end,
         options.marketClosesAt, options.tz
     ).then(data => data.reverse().map(datum => ({
-        ending: endOf('day', datum.Date_Stamp, options.marketClosesAt, options.tz),
+        ending: endOf('day', datum.Date_Stamp, options),
         open: parseFloat(datum.Open),
         high: parseFloat(datum.High),
         low: parseFloat(datum.Low),
@@ -246,7 +246,6 @@ function intraday(iqclient, symbol, options) {
 
 function includeIntraday(iqclient, bars, interval, now, symbol, options) {
     if (now.days() === 6 || !bars.length) return bars;
-    var marketClosesAt = options.marketClosesAt;
     var tz = options.tz;
     var opensAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketOpensAt, tz);
     if (options.end && moment.tz(options.end, tz).isBefore(opensAt)) return bars;
@@ -261,7 +260,7 @@ function includeIntraday(iqclient, bars, interval, now, symbol, options) {
         if (_.isEmpty(intraday)) return bars;
         var merging = _.last(bars).ending >= _.last(intraday).ending;
         var today = intraday.reduce((today, bar) => _.extend(today, {
-            ending: today.ending || endOf(interval, _.last(intraday).ending, marketClosesAt, tz),
+            ending: today.ending || endOf(interval, _.last(intraday).ending, options),
             open: today.open || bar.open,
             high: Math.max(today.high || 0, bar.high),
             low: today.low && today.low < bar.low ? today.low : bar.low,
@@ -275,12 +274,12 @@ function includeIntraday(iqclient, bars, interval, now, symbol, options) {
     });
 }
 
-function endOf(unit, date, marketClosesAt, tz) {
-    var ending = moment.tz(date, tz).endOf(unit);
+function endOf(unit, date, options) {
+    var ending = moment.tz(date, options.tz).endOf(unit);
     if (!ending.isValid()) throw Error("Invalid date " + date);
     if (ending.days() === 0) ending.subtract(2, 'days');
     else if (ending.days() == 6) ending.subtract(1, 'days');
-    var closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + marketClosesAt, tz);
-    if (!closes.isValid()) throw Error("Invalid marketClosesAt " + marketClosesAt);
+    var closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
+    if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
     return closes.format();
 }

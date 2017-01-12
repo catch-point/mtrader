@@ -147,7 +147,7 @@ function year(yahoo, symbol, options) {
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).year()))
       .then(years => _.map(years, bars => bars.reduce((year, month) => {
         return _.defaults({
-            ending: month.ending,
+            ending: endOf('year', month.ending, options),
             open: year.open,
             high: Math.max(year.high, month.high),
             low: month.low && month.low < year.low ? month.low : year.low,
@@ -155,7 +155,7 @@ function year(yahoo, symbol, options) {
             volume: year.volume + month.volume,
             adj_close: month.adj_close
         }, month, year);
-      })));
+      }, _.first(bars))));
 }
 
 function quarter(yahoo, symbol, options) {
@@ -166,7 +166,7 @@ function quarter(yahoo, symbol, options) {
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-Q')))
       .then(quarters => _.map(quarters, bars => bars.reduce((quarter, month) => {
         return _.defaults({
-            ending: month.ending,
+            ending: endOf('quarter', month.ending, options),
             open: quarter.open,
             high: Math.max(quarter.high, month.high),
             low: month.low && month.low < quarter.low ? month.low : quarter.low,
@@ -174,7 +174,7 @@ function quarter(yahoo, symbol, options) {
             volume: quarter.volume + month.volume,
             adj_close: month.adj_close
         }, month, quarter);
-      })));
+      }, _.first(bars))));
 }
 
 function month(yahoo, symbol, options) {
@@ -183,7 +183,7 @@ function month(yahoo, symbol, options) {
         options.begin, options.end,
         options.marketClosesAt, options.tz
     ).then(data => data.reverse().map(datum => ({
-        ending: endOf('month', datum.Date, options.marketClosesAt, options.tz),
+        ending: endOf('month', datum.Date, options),
         open: parseCurrency(datum.Open),
         high: parseCurrency(datum.High),
         low: parseCurrency(datum.Low),
@@ -199,7 +199,7 @@ function week(yahoo, symbol, options) {
         options.begin, options.end,
         options.marketClosesAt, options.tz
     ).then(data => data.reverse().map(datum => ({
-        ending: endOf('week', datum.Date, options.marketClosesAt, options.tz),
+        ending: endOf('week', datum.Date, options),
         open: parseCurrency(datum.Open),
         high: parseCurrency(datum.High),
         low: parseCurrency(datum.Low),
@@ -215,7 +215,7 @@ function day(yahoo, symbol, options) {
         options.begin, options.end,
         options.marketClosesAt, options.tz
     ).then(data => data.reverse().map(datum => ({
-        ending: endOf('day', datum.Date, options.marketClosesAt, options.tz),
+        ending: endOf('day', datum.Date, options),
         open: parseCurrency(datum.Open),
         high: parseCurrency(datum.High),
         low: parseCurrency(datum.Low),
@@ -281,13 +281,13 @@ function includeIntraday(yahoo, bars, now, symbol, options) {
     });
 }
 
-function endOf(unit, begin, marketClosesAt, tz) {
-    var ending = moment.tz(begin, tz).endOf(unit);
+function endOf(unit, begin, options) {
+    var ending = moment.tz(begin, options.tz).endOf(unit);
     if (!ending.isValid()) throw Error("Invalid date " + begin);
     if (ending.days() === 0) ending.subtract(2, 'days');
     else if (ending.days() == 6) ending.subtract(1, 'days');
-    var closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + marketClosesAt, tz);
-    if (!closes.isValid()) throw Error("Invalid marketClosesAt " + marketClosesAt);
+    var closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
+    if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
     return closes.format();
 }
 

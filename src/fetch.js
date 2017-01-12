@@ -192,7 +192,7 @@ function interday(datasources, options) {
         var aWeek = 5 * 24 * 60 * 60 * 1000;
         var latest = _.last(results);
         if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {
-            // first line might yet be incomplete (or not yet finalized/adjusted)
+            // latest line might yet be incomplete (or not yet finalized/adjusted)
             latest.asof = now.format();
             latest.incomplete = true;
         }
