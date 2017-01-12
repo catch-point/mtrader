@@ -1,13 +1,13 @@
 {
-  "description": "Configuration file for ptrading",
   "files": {
-    "enabled": true
+    "enabled": true,
+    "fallback": ["yahoo", "iqfeed"]
   },
   "yahoo": {
     "enabled": true
   },
   "iqfeed": {
-    "enabled": false
+    "enabled": true
   },
   "exchanges": {
     "ARCA": {
@@ -20,6 +20,9 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
+        "files": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
         "yahoo": {
           "exchs": ["PCX"],
           "marketLang": "en-US",
@@ -41,6 +44,9 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
+        "files": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
         "yahoo": {
           "exchs": ["NAS", "NCM", "NGM", "NMS"],
           "marketLang": "en-US",
@@ -62,6 +68,9 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
+        "files": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
         "yahoo": {
           "exchs": ["NYQ"],
           "marketLang": "en-US",
@@ -83,6 +92,9 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
+        "files": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
         "yahoo": {
           "exchs": ["ASE"],
           "marketLang": "en-US",
@@ -104,6 +116,9 @@
       "currency": "CAD",
       "tz": "America/Toronto",
       "datasources": {
+        "files": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
         "yahoo": {
           "exchs": ["TOR", "YHD"],
           "marketLang": "en-CA",
@@ -127,6 +142,9 @@
       "currency": "CAD",
       "tz": "America/Toronto",
       "datasources": {
+        "files": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
         "yahoo": {
           "exchs": ["TOR"],
           "marketLang": "en-CA",
@@ -149,6 +167,9 @@
       "currency": "CAD",
       "tz": "America/New_York",
       "datasources": {
+        "files": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
         "yahoo": {
           "exchs": ["CCY"],
           "marketLang": "en-US",
@@ -172,6 +193,9 @@
       "currency": "GBP",
       "tz": "Europe/London",
       "datasources": {
+        "files": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
         "yahoo": {
           "exchs": ["LSE"],
           "marketLang": "en-GB",

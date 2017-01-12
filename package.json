@@ -6,6 +6,8 @@
   "dependencies": {
     "commander": "^2.9.0",
     "diff": "^3.1.0",
+    "fast-csv": "^2.3.0",
+    "moment-timezone": "^0.5.9",
     "shell": "^0.3.2",
     "underscore": "^1.8.3"
   },
@@ -34,6 +36,7 @@
   "homepage": "https://github.com/ptrading/ptrading#readme",
   "bin": {
     "ptrading": "src/ptrading.js",
-    "ptrading-config": "src/ptrading-config.js"
+    "ptrading-config": "src/ptrading-config.js",
+    "ptrading-fetch": "src/ptrading-fetch.js"
   }
 }

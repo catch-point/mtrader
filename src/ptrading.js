@@ -39,6 +39,7 @@ const shellError = require('./shell-error.js');
 var program = require('commander').version('0.0.1')
     .description("Produces data for trading securities in CSV format")
     .command('config <name> [value]', "View or change stored options")
+    .command('fetch <interval> <symbol> [exchange]', "Historic information of a security")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-s, --silent', "Include less information about what the system is doing")
     .option('--debug', "Include details about what the system is working on")
@@ -67,6 +68,7 @@ if (_.isEmpty(program.args)) {
         app.use(shellError({shell: app}));
     });
     config.shell(app);
+    require('./ptrading-fetch.js').shell(app);
 }
 
 function parseKnownOptions(program, argv) {
