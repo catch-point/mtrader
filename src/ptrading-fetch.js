@@ -89,55 +89,113 @@ if (require.main === module) {
 }
 
 function shell(desc, child, app) {
+    app.on('quit', () => child.disconnect());
+    app.on('exit', () => child.disconnect());
+    // lookup
     app.cmd('lookup :symbol', "List securities with similar symbols", (cmd, sh, cb) => {
         child.request('fetch', _.defaults({
             interval: 'lookup',
             symbol: cmd.params.symbol
         }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    app.cmd('fundamental :symbol :exchange', desc, (cmd, sh, cb) => {
+    // fundamental
+    app.cmd('fundamental :symbol :exchange', "List fundamental information about security", (cmd, sh, cb) => {
         child.request('fetch', _.defaults({
             interval: 'fundamental',
             symbol: cmd.params.symbol,
             exchange: cmd.params.exchange
         }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    app.cmd('fetch :interval :symbol :exchange', "List fundamental information about security", (cmd, sh, cb) => {
+    // fetch
+    app.cmd('fetch :interval :symbol :exchange', desc, (cmd, sh, cb) => {
         child.request('fetch', _.defaults({
             interval: cmd.params.interval,
             symbol: cmd.params.symbol,
             exchange: cmd.params.exchange
         }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    app.cmd('help :cmd', (cmd, sh, cb) => {
-        if (cmd.params.cmd != 'fetch') return cb();
-        help(desc, sh);
-        sh.prompt();
-    });
-    app.on('quit', () => child.disconnect());
-    app.on('exit', () => child.disconnect());
+// help
+help(app, 'lookup', `
+  Usage: lookup :symbol
+
+  List securities and their exchange that have similar symbols
+`);
+help(app, 'fundamental', `
+  Usage: fundamental :symbol :exchange
+
+  List fundamental information about security
+
+    :symbol
+      The ticker symbol used by the exchange
+    :exchange
+      Must be one of the following exchange acronyms:
+${listExchanges()}
+  See also:
+    help transpose  
+`);
+help(app, 'fetch', `
+  Usage: fetch :interval :symbol :exchange
+
+  ${desc}
+
+    :interval
+      One of the following bar lengths:
+      year        List yearly quotes for security
+      quarter     List quarterly quotes for security
+      month       List monthly quotes for security
+      week        List weekly quotes for security
+      day         List daily quotes for security
+      mX          List intraday quotes for security by X minutes
+
+    :symbol
+      The ticker symbol used by the exchange
+    :exchange
+      Must be one of the following exchange acronyms:
+${listExchanges()}
+  See also:
+    help begin  
+    help end  
+    help output  
+    help reverse  
+`);
+help(app, 'begin', `
+  Usage: set begin YYYY-MM-DD  
+
+  Sets the earliest date (or dateTime) to retrieve
+`);
+help(app, 'end', `
+  Usage: set end YYYY-MM-DD HH:MM:SS  
+
+  Sets the latest dateTime to retrieve
+`);
+help(app, 'output', `
+  Usage: set output :filename
+
+  When set the CSV output is saved to a file instead of stdout
+`);
+help(app, 'reverse', `
+  Usage: set reverse true  
+
+  When set to true the output is reverse chronological order
+`);
+help(app, 'transpose', `
+  Usage: set transpose true  
+
+  The rows become columns and the columns the rows in the output
+`);
 }
 
-function help(desc, sh) {
-    sh.ln().white("  ").white(desc).ln();
-    sh.ln().cyan("    ").cyan(":interval").ln();
-    sh.white("      ").white("One of the following bar lengths:").ln();
-    sh.cyan("      ").cyan("year        ").white("List yearly quotes for security").ln();
-    sh.cyan("      ").cyan("quarter     ").white("List quarterly quotes for security").ln();
-    sh.cyan("      ").cyan("month       ").white("List monthly quotes for security").ln();
-    sh.cyan("      ").cyan("week        ").white("List weekly quotes for security").ln();
-    sh.cyan("      ").cyan("day         ").white("List daily quotes for security").ln();
-    sh.cyan("      ").cyan("mX          ").white("List intraday quotes for security by X minutes").ln();
-    sh.ln().cyan("    ").cyan(":symbol").ln();
-    sh.white("      ").white("The ticker symbol used by the exchange").ln();
-    sh.ln().cyan("    ").cyan(":exchange").ln();
-    sh.white("      ").white("If provided, one of the following exchange acronyms:").ln();
+function listExchanges() {
+    var buf = [];
     var exchanges = config('exchanges');
     _.keys(exchanges).forEach(exchange => {
         var desc = exchanges[exchange].description;
-        sh.cyan("      ").cyan(exchange).cyan("        ".substring(Math.min(exchange.length,7)));
+        buf.push("      ");
+        buf.push(exchange);
+        buf.push("        ".substring(Math.min(exchange.length,7)));
         if (desc && desc.length < 80 - 14) {
-            sh.white(desc).ln();
+            buf.push(desc);
+            buf.push('\n');
         } else if (desc) {
             var width = 80 - 14;
             var remain = desc.trim();
@@ -145,15 +203,28 @@ function help(desc, sh) {
                 var idx = remain.lastIndexOf(' ', width);
                 if (idx <= 0) idx = remain.indexOf(' ', width);
                 if (idx <= 0 || remain.length < width) idx = remain.length;
-                sh.white(remain.substring(0, idx)).ln();
+                buf.push(remain.substring(0, idx));
+                buf.push('\n');
                 remain = remain.substring(idx +1);
-                if (remain) sh.white(_.range(14).map(i => " ").join(''));
+                if (remain) buf.push(_.range(14).map(i => " ").join(''));
             }
         }
-        sh.ln();
+        buf.push('\n');
     });
-    sh.white("  ").white("Command uses the following settings:").ln();
-    sh.cyan("    ").cyan("begin   ").white("Date or DateTime of the earlier historic quote to fetch").ln();
-    sh.cyan("    ").cyan("end     ").white("Date or DateTime of the latest historic quote to fetch").ln();
-    sh.cyan("    ").cyan("output  ").white("CSV filename to store the result of the command").ln();
+    return buf.join('');
+}
+
+function help(app, cmd, usage) {
+    app.cmd('help ' + cmd, (cmd, sh, cb) => {
+        usage.split('\n').forEach(line => {
+            if (~line.indexOf(' :')) {
+                sh.cyan(line).ln();
+            } else if (~line.indexOf(' ')) {
+                sh.cyan(line.substring(0, line.lastIndexOf('  '))).white(line.substring(line.lastIndexOf('  '))).ln();
+            } else {
+                sh.white(line).ln();
+            }
+        });
+        sh.prompt();
+    });
 }

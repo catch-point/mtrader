@@ -40,6 +40,9 @@ const Quote = require('./quote.js');
 const replyTo = require('./ipc-promise-reply.js');
 const config = require('./ptrading-config.js');
 const expect = require('chai').expect;
+const common = require('./common-functions.js');
+const lookback = require('./lookback-functions.js');
+const indicator = require('./indicator-functions.js');
 
 function usage(command) {
     return command.version('0.0.1')
@@ -126,52 +129,221 @@ function hashCode(str){
 }
 
 function shell(desc, children, app) {
+    app.on('quit', () => children.forEach(child => child.disconnect()));
+    app.on('exit', () => children.forEach(child => child.disconnect()));
     app.cmd('quote :symbol :exchange?', desc, (cmd, sh, cb) => {
         chooseWorker(children, cmd.params.symbol).request('quote', _.defaults({
             symbol: cmd.params.symbol,
             exchange: cmd.params.exchange
         }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    app.cmd('help :cmd', (cmd, sh, cb) => {
-        if (cmd.params.cmd != 'quote') return cb();
-        help(desc, sh);
-        sh.prompt();
+    _.forEach(common, (fn, name) => {
+        help(app, name, functionHelp(name, fn));
     });
-    app.on('quit', () => children.forEach(child => child.disconnect()));
-    app.on('exit', () => children.forEach(child => child.disconnect()));
+    _.forEach(lookback, (fn, name) => {
+        help(app, name, functionHelp(name, fn));
+    });
+    _.forEach(indicator, (fn, name) => {
+        help(app, name, functionHelp(name, fn));
+    });
+// help
+help(app, 'quote', `
+  Usage: quote :symbol[ :exchange]
+
+  ${desc}
+
+    :symbol
+      The ticker symbol used by the exchange
+    :exchange
+      If provided, one of the following exchange acronyms:
+${listExchanges()}
+  See also:
+    help begin  
+    help end  
+    help pad_begin  
+    help pad_end  
+    help columns  
+    help criteria  
+    help output  
+    help reverse  
+`);
+help(app, 'pad_begin', `
+  Usage: set pad_begin 0  
+
+  Sets the number of additional rows to include before the begin date (might be less)
+`);
+help(app, 'pad_end', `
+  Usage: set pad_end 0  
+
+  Sets the number of additional rows to include after the end date (might be less)
+`);
+help(app, 'columns', `
+  Usage: set columns [:expression[ AS ":label"],..]  
+
+  Comma separated list of expressions and their labels
+
+    :label
+      The quoted string used as the output column name
+
+    ${listExpressions()}
+
+  See also:
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+`);
+help(app, 'criteria', `
+  Usage: set criteria :expression
+
+  An expression that must evaluate to a non-zero value for an interval bar to be
+  included in the output.
+
+    ${listExpressions()}
+
+  See also:
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+`);
+help(app, 'common-functions', `
+  Common functions have no restrictions on what expressions they can be used in.
+
+  ${listFunctions(common)}
+`);
+help(app, 'lookback-functions', `
+  Lookback functions may read data is the past to determine the current value.
+
+  ${listFunctions(lookback)}
+`);
+help(app, 'indicator-functions', `
+  Indicator functions must be prefixed by an interval and a dot and take numbers
+  as paratemeters.
+
+  ${listFunctions(indicator)}
+`);
 }
 
-function help(desc, sh) {
-    sh.ln().white("  ").white(desc).ln();
-    sh.ln().cyan("    ").cyan(":symbol").ln();
-    sh.white("      ").white("The ticker symbol used by the exchange").ln();
-    sh.ln().cyan("    ").cyan(":exchange").ln();
-    sh.white("      ").white("If provided, one of the following exchange acronyms:").ln();
+function functionHelp(name, fn) {
+    var args = fn.args || _.property(1)(fn.toString().match(/^[^(]*\(\s*\w+\s*,\s*([^)]*)\)/)) || '';
+    var usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
+    var source = fn.toString().replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
+    var desc = fn.description ? '\n  ' + wrap(fn.description, 2, 80) + '\n' : source;
+    var seeAlso = fn.seeAlso ? '\n  See also:\n' + fn.seeAlso.map(name => {
+        return '    help ' + name + '  ';
+    }).join('\n') + '\n' : '';
+    return usage + desc + seeAlso;
+}
+
+function listExchanges() {
+    var buf = [];
     var exchanges = config('exchanges');
     _.keys(exchanges).forEach(exchange => {
         var desc = exchanges[exchange].description;
-        sh.cyan("      ").cyan(exchange).cyan("        ".substring(Math.min(exchange.length,7)));
-        if (desc && desc.length < 80 - 14) {
-            sh.white(desc).ln();
-        } else if (desc) {
-            var width = 80 - 14;
-            var remain = desc.trim();
-            while (remain) {
-                var idx = remain.lastIndexOf(' ', width);
-                if (idx <= 0) idx = remain.indexOf(' ', width);
-                if (idx <= 0 || remain.length < width) idx = remain.length;
-                sh.white(remain.substring(0, idx)).ln();
-                remain = remain.substring(idx +1);
-                if (remain) sh.white(_.range(14).map(i => " ").join(''));
-            }
-        }
-        sh.ln();
+        buf.push("      ");
+        buf.push(exchange);
+        buf.push("        ".substring(Math.min(exchange.length,7)));
+        buf.push(wrap(desc, 14, 80));
+        buf.push('\n');
     });
-    sh.white("  ").white("Some commands use the following settings:").ln();
-    sh.cyan("    ").cyan("begin       ").white("Date or DateTime of the earlier historic quote to include").ln();
-    sh.cyan("    ").cyan("end         ").white("Date or DateTime of the latest historic quote to include").ln();
-    sh.cyan("    ").cyan("pad_begin   ").white("Additional rows to include before the begin date (might be less)").ln();
-    sh.cyan("    ").cyan("pad_end     ").white("Additional rows to include after the end date (might be less)").ln();
-    sh.cyan("    ").cyan("columns     ").white("Comma separated list of columns/functions").ln();
-    sh.cyan("    ").cyan("output      ").white("CSV filename to store the result of the command").ln();
+    return buf.join('');
+}
+
+function listExpressions() {
+    return `:expression
+      An expression is any combination of field, constants, and function calls
+      connected by an operator or operators.
+
+      A constant can be a number or a quoted string.
+
+      A function call has a name followed parentheses enclosed comma separated
+      list of expressions.
+
+      A field can be one of the following without a prefix:
+      symbol    Represents the symbol used by the exchange
+      exchange  Represents the exchange acronym
+      ending    Represents the dateTime of when an interval ended
+
+      A field can also be one of the following prefixed by an interval:
+      <interval>.ending  The dateTime when the interval ends (interval prefix is optional)
+      <interval>.open    The price when the interval began
+      <interval>.high    The highest price during the interval
+      <interval>.low     The lowest price during the interval
+      <interval>.close   The price when the interval ended
+      <interval>.volume  The volume during the interval
+
+      An <interval> can be one of the following:
+      year        List yearly quotes for security
+      quarter     List quarterly quotes for security
+      month       List monthly quotes for security
+      week        List weekly quotes for security
+      day         List daily quotes for security
+      mX          List intraday quotes for security by X minutes
+
+      Operators include the following:
+      OR   0 if both expressions are 0.
+      AND  0 if either expression is 0.
+      =    0 if both expressions have the same value.
+      !=   0 if either expression has a different value.
+      <>   0 if either expression has a different value.
+      <=   0 if the left expression is larger than the right.
+      >=   0 if the right expression is larger than the left.
+      <    0 if the left expression is larger than or equal to the right.
+      >    0 if the right expression is larger than or equal to the left.
+      +    Adds both values together.
+      -    Subtracts the right value from the left value.
+      *    Multiples the values together.
+      /    Divides the right values into the left value.
+      %    Returns the integer remainder of a division
+      !    0 if the expression was not zero
+      ()   Groups expressions together to possibly change their precedence.`;
+}
+
+function listFunctions(functions) {
+    var buf = ['The following functions are available:\n'];
+    var indent = _.reduce(functions, (max, fn, name) => Math.max(max, name.length), 0) + 8;
+    var pad = _.range(indent - 6).map(i => " ").join('');
+    _.forEach(functions, (fn, name) => {
+        buf.push("      ");
+        buf.push(name);
+        buf.push(pad.substring(Math.min(name.length,indent - 5)));
+        var args = fn.args || _.property(1)(fn.toString().match(/^[^(]*\(\s*\w+\s*,\s*([^)]*)\)/)) || '';
+        var desc = fn.description || name + '(' + args + ')';
+        buf.push(wrap(desc, indent, 80));
+        buf.push('\n');
+    });
+    return buf.join('');
+}
+
+function wrap(desc, indent, len) {
+    var buf = [];
+    if (desc && desc.length < len - indent) {
+        buf.push(desc);
+    } else if (desc) {
+        var width = len - indent;
+        var remain = desc.trim();
+        while (remain) {
+            var idx = remain.lastIndexOf(' ', width);
+            if (idx <= 0) idx = remain.indexOf(' ', width);
+            if (idx <= 0 || remain.length < width) idx = remain.length;
+            buf.push(remain.substring(0, idx));
+            remain = remain.substring(idx +1);
+            if (remain) buf.push('\n' + _.range(indent).map(i => " ").join(''));
+        }
+    }
+    return buf.join('');
+}
+
+function help(app, cmd, usage) {
+    app.cmd('help ' + cmd, (cmd, sh, cb) => {
+        usage.split('\n').forEach(line => {
+            if (~line.indexOf(' :')) {
+                sh.cyan(line).ln();
+            } else if (~line.indexOf(' ')) {
+                sh.cyan(line.substring(0, line.lastIndexOf('  '))).white(line.substring(line.lastIndexOf('  '))).ln();
+            } else {
+                sh.white(line).ln();
+            }
+        });
+        sh.prompt();
+    });
 }

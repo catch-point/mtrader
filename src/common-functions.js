@@ -34,7 +34,7 @@ const moment = require('moment-timezone');
 
 module.exports = {
     /* The number of workdays (Mon-Fri) since 1970-01-01 */
-    WORKDAY(opts, ending) {
+    WORKDAY: _.extend((opts, ending) => {
         return context => {
             var start = moment(ending(context)).tz(opts.tz);
             if (!start.isValid()) throw Error("Invalid date: " + ending(context));
@@ -46,39 +46,53 @@ module.exports = {
             var hours = (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
             return weeks*5 + days + hours/24;
         };
-    },
+    }, {
+        description: "The number of workdays (Mon-Fri) since 1970-01-01"
+    }),
     /* Y-MM-DD date format */
-    DATE(opts, ending) {
+    DATE: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
             return date.format('Y-MM-DD');
         };
-    },
+    }, {
+        description: "Y-MM-DD date format",
+        seeAlso: ['YEAR', 'MONTH', 'DAY', 'TIME']
+    }),
     /* HH:mm:ss time 24hr format */
-    TIME(opts, ending) {
+    TIME: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
             return date.format('HH:mm:ss');
         };
-    },
+    }, {
+        description: "HH:mm:ss time 24hr format",
+        seeAlso: ['DATE']
+    }),
     /* Date of Month (1-31) */
-    DAY(opts, ending) {
+    DAY: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
             return date.date();
         };
-    },
+    }, {
+        description: "Date of Month (1-31)",
+        seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
+    }),
     /* Month of Year (1-12) */
-    MONTH(opts, ending) {
+    MONTH: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
             return date.month() + 1;
         };
-    },
+    }, {
+        description: "Month of Year (1-12)",
+        seeAlso: ['YEAR', 'MONTH', 'DAY', 'DATE', 'TIME']
+    }),
     /* Year */
     YEAR(opts, ending) {
         return context => {
@@ -88,7 +102,7 @@ module.exports = {
         };
     },
     /* Hour of day (0-23.999999722) */
-    HOUR(opts, ending) {
+    HOUR: _.extend((opts, ending) => {
         return context => {
             // pivot around noon as leap seconds/hours occur at night
             var start = moment(ending(context)).tz(opts.tz);
@@ -96,26 +110,28 @@ module.exports = {
             var noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
             return (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
         };
-    },
+    }, {
+        description: "Hour of day (0-23.999999722)"
+    }),
     /* Absolute value */
-    ABS(opts, calc) {
+    ABS(opts, expression) {
         return context => {
-            return Math.abs(calc(context));
+            return Math.abs(expression(context));
         };
     },
-    CEIL(opts, calc) {
+    CEIL(opts, expression) {
         return context => {
-            return Math.ceil(calc(context));
+            return Math.ceil(expression(context));
         };
     },
-    FLOOR(opts, calc) {
+    FLOOR(opts, expression) {
         return context => {
-            return Math.floor(calc(context));
+            return Math.floor(expression(context));
         };
     },
-    TRUNC(opts, calc) {
+    TRUNC(opts, expression) {
         return context => {
-            return Math.trunc(calc(context));
+            return Math.trunc(expression(context));
         };
     },
     RANDOM(opts) {
@@ -129,21 +145,23 @@ module.exports = {
             return _.max(numbers.map(num => num(context)));
         };
     },
-    MIN(opts, calc) {
+    MIN(opts, expression) {
         var numbers = _.rest(arguments);
         return context => {
             return _.min(numbers.map(num => num(context)));
         };
     },
     /* Returns the sign of a number. Returns 1 if the number is positive, -1 if negative and 0 if zero. */
-    SIGN(opts, calc) {
+    SIGN: _.extend((opts, expression) => {
         return context => {
-            var value = calc(context);
+            var value = expression(context);
             if (value > 0) return 1;
             if (value < 0) return -1;
             else return value;
         };
-    },
+    }, {
+        description: "Returns the sign of a number. Returns 1 if the number is positive, -1 if negative and 0 if zero."
+    }),
     /* Equals */
     EQUALS(opts, lhs, rhs) {
         return context => {
@@ -219,30 +237,32 @@ module.exports = {
         };
     },
     /* Negative */
-    NEGATIVE(opts, num) {
+    NEGATIVE(opts, number) {
         return context => {
-            return num(context) * -1;
+            return number(context) * -1;
         };
     },
     /* Addition */
-    ADD(opts, n, d) {
+    ADD(opts, a, b) {
         return context => {
-            return n(context) + d(context);
+            return a(context) + b(context);
         };
     },
     /* Subtraction */
-    SUBTRACT(opts, n, d) {
+    SUBTRACT(opts, a, b) {
         return context => {
-            return n(context) - d(context);
+            return a(context) - b(context);
         };
     },
     /* Multiplication */
-    PRODUCT(opts) {
+    PRODUCT: _.extend((opts) => {
         var numbers = _.rest(arguments);
         return context => numbers.reduce((product, num) => {
             return product * num(context);
         }, 1);
-    },
+    }, {
+        args: "numbers..."
+    }),
     /* Divide */
     DIVIDE(opts, n, d) {
         return context => {

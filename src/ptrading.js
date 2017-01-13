@@ -45,7 +45,7 @@ var program = require('commander').version('0.0.1')
     .option('-s, --silent', "Include less information about what the system is doing")
     .option('--debug', "Include details about what the system is working on")
     .option('--prefix <dirname>', "Path where the program files are stored")
-    .option('--workers [numOfWorkers]', 'Number of workers to spawn');
+    .option('--workers <numOfWorkers>', 'Number of workers to spawn');
 
 if (process.argv.length > 2) {
     // don't call an executable if no command given

@@ -88,29 +88,6 @@ module.exports.shell = function(app) {
             cb(err);
         }
     });
-    app.cmd('help :cmd', (cmd, sh, cb) => {
-        if (cmd.params.cmd != 'set') return cb();
-        sh.ln().cyan("  Usage: set :option :value").ln();
-        sh.ln().white("  Changes the given option value for this session").ln();
-        sh.ln().prompt();
-    });
-    app.cmd('unset :option',
-            "Resets the given option value persistently", (cmd, sh, cb) => {
-        try {
-            config.unset(cmd.params.option);
-            var value = config(cmd.params.option);
-            sh.white(JSON.stringify(value)).ln();
-            sh.prompt();
-        } catch(err) {
-            cb(err);
-        }
-    });
-    app.cmd('help :cmd', (cmd, sh, cb) => {
-        if (cmd.params.cmd != 'unset') return cb();
-        sh.ln().cyan("  Usage: unset :option").ln();
-        sh.ln().white("  Resets the given option value persistently").ln();
-        sh.ln().prompt();
-    });
     app.cmd('config :option :value([\\S\\s]+)',
             "Changes the given option value persistently", (cmd, sh, cb) => {
         try {
@@ -125,12 +102,48 @@ module.exports.shell = function(app) {
             cb(err);
         }
     });
-    app.cmd('help :cmd', (cmd, sh, cb) => {
-        if (cmd.params.cmd != 'config') return cb();
-        sh.ln().cyan("  Usage: config :option").ln();
-        sh.ln().white("  Show the active option value for this session").ln();
-        sh.ln().cyan("  Usage: config :option :value").ln();
-        sh.ln().white("  Changes the given option value persistently in " + config.configFilename()).ln();
-        sh.ln().prompt();
+    app.cmd('unset :option',
+            "Resets the given option value persistently", (cmd, sh, cb) => {
+        try {
+            config.unset(cmd.params.option);
+            var value = config(cmd.params.option);
+            sh.white(JSON.stringify(value)).ln();
+            sh.prompt();
+        } catch(err) {
+            cb(err);
+        }
     });
+help(app, 'set', `
+  Usage: set :option :value
+  Changes the given option value for this session
+`);
+help(app, 'unset', `
+  Usage: unset :option
+  Resets the given option value persistently
+`);
+help(app, 'config', `
+  Usage: config :option
+
+  Show the active option value for this session
+
+  Usage: config :option :value
+
+  Changes the given option value persistently
+  in ${config.configFilename()}
+`);
 };
+
+function help(app, cmd, usage) {
+    app.cmd('help ' + cmd, (cmd, sh, cb) => {
+        usage.split('\n').forEach(line => {
+            if (~line.indexOf(' :')) {
+                sh.cyan(line).ln();
+            } else if (~line.indexOf(' ')) {
+                sh.cyan(line.substring(0, line.lastIndexOf('  '))).white(line.substring(line.lastIndexOf('  '))).ln();
+            } else {
+                sh.white(line).ln();
+            }
+        });
+        sh.prompt();
+    });
+}

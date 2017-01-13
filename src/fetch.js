@@ -47,8 +47,7 @@ module.exports = function() {
     );
     var self = function(options) {
         expect(options).to.be.like({
-            interval: /^\S+$/,
-            symbol: /^\S+$/
+            interval: /^\S+$/
         });
         var exchange = options.exchange;
         var exchanges = config('exchanges');
