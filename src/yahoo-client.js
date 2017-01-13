@@ -130,7 +130,7 @@ function loadQuotes(rates, queue) {
             "&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys"
         ].join('');
         return promise.then(function(hash){
-            return promiseText(url).then(parseJSON).then(function(result){
+            return promiseText(url).then(json => JSON.parse(json)).then(function(result){
                 if (result.query.results)
                     return result.query.results.quote;
                 return [];
