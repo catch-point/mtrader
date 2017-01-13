@@ -255,7 +255,7 @@ module.exports = {
         };
     },
     /* Multiplication */
-    PRODUCT: _.extend((opts) => {
+    PRODUCT: _.extend(function(opts) {
         var numbers = _.rest(arguments);
         return context => numbers.reduce((product, num) => {
             return product * num(context);
