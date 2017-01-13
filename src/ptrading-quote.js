@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // ptrading-quote.js
 /* 
- *  Copyright (c) 2016 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
  * 
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -97,12 +97,8 @@ if (require.main === module) {
             return fetch(options);
         });
     });
-    module.exports = function(interval, symbol, exchange, options) {
-        return chooseWorker(childern, symbol).request('quote', _.defaults({
-            interval: interval,
-            symbol: symbol,
-            exchange: exchange
-        }, options));
+    module.exports = function(options) {
+        return chooseWorker(children, options.symbol).request('quote', options);
     };
     module.exports.close = function() {
         children.forEach(child => child.disconnect());
