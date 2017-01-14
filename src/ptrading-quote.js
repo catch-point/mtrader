@@ -78,12 +78,12 @@ if (require.main === module) {
             .then(() => fetch.close());
     } else if (process.send) {
         var parent = replyTo(process).handle('quote', payload => {
-            return quote(_.defaults({}, payload, config.session()));
+            return quote()(_.defaults({}, payload, config.session()));
         });
-        var quote = Quote(function(options) {
+        var quote = _.once(() => Quote(function(options) {
             return parent.request('fetch', options);
-        });
-        process.on('disconnect', () => quote.close());
+        }));
+        process.on('disconnect', () => quote().close());
     } else {
         program.help();
     }
