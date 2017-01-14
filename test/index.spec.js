@@ -47,23 +47,24 @@ describe("index", function() {
         return ptrading.quote({
           symbol: 'YHOO',
           exchange: 'NASDAQ',
+          begin: "2017-01-13",
           pad_begin: 9,
+          end: "2017-01-14",
           columns: [
               'DATE(ending) AS "Date"',
               'day.close AS "Close"',
               '(day.close - OFFSET(1, day.close))*100/OFFSET(1,day.close) AS "Change"'
-          ].join(',')
+          ].join(','),
+          criteria: 'day.close > OFFSET(1, day.close)'
         }).should.eventually.be.like([
-            {Date:"2016-12-29",Close:38.64,Change:-0.23237800154917715},
             {Date:"2016-12-30",Close:38.67,Change:0.07763975155279797},
-            {Date:"2017-01-03",Close:38.9,Change:0.5947763123868551},
+            {Date:"2017-01-03",Close:38.90,Change:0.5947763123868551},
             {Date:"2017-01-04",Close:40.06,Change:2.9820051413881843},
             {Date:"2017-01-05",Close:41.34,Change:3.195207189216178},
-            {Date:"2017-01-06",Close:41.23,Change:-0.2660861151427347},
             {Date:"2017-01-09",Close:41.34,Change:0.266796022313865},
-            {Date:"2017-01-10",Close:42.3,Change:2.3222060957909862},
+            {Date:"2017-01-10",Close:42.30,Change:2.3222060957909862},
             {Date:"2017-01-11",Close:42.59,Change:0.685579196217509},
-            {Date:"2017-01-12",Close:42.11,Change:-1.1270251232683821}
+            {Date:"2017-01-13",Close:42.27,Change:0.3799572548088428}
         ]);
     });
 });
