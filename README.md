@@ -76,7 +76,7 @@ A field can also be one of the following prefixed by an interval:
       <interval>.close   The price when the interval ended
       <interval>.volume  The volume during the interval
 ```
-An <interval> can be one of the following:
+An `<interval>` can be one of the following:
 
 ```
       year        List yearly quotes for security
