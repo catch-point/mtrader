@@ -24,8 +24,7 @@ ptrading.lookup({symbol: 'YHOO'}).then(suggestions => {
 ptrading.fetch({
   interval: 'day',
   symbol: 'YHOO',
-  exchange: 'NASDAQ',
-  reverse: true
+  exchange: 'NASDAQ'
 }).then(bars => {
   bars.forEach(bar => {
     console.log(bar.ending, bar.open, bar.high, bar.low, bar.close, bar.volume);
