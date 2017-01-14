@@ -115,9 +115,22 @@ function openCollection(dirname, name) {
             var entry = metadata.tables[idx];
             return entry && entry.id == id;
         },
-        filenameOf(name) {
+        remove(name) {
             var id = safe(name);
             var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            var entry = metadata.tables[idx];
+            if (!entry || entry.id != id) return Promise.resolve(false);
+            metadata.tables.splice(idx, 1);
+            var filename = path.resolve(collpath, id + '.csv');
+            return Promise.all([new Promise((cb, error) => {
+                fs.unlink(filename, err => {
+                    if (err) error(err);
+                    else cb();
+                });
+            }), debouncedWriteMetadata(collpath, metadata)]).then(() => true);
+        },
+        filenameOf(name) {
+            var id = safe(name);
             return path.resolve(collpath, id + '.csv');
         },
         sizeOf(name) {
@@ -168,13 +181,16 @@ function openCollection(dirname, name) {
                     id: id,
                     size: records.length,
                     head: records.slice(0, 2),
-                    tail: records.slice(-2)
+                    tail: records.slice(-2),
+                    updatedAt: new Date().toISOString()
                 };
                 var idx = _.sortedIndex(metadata.tables, entry, 'id');
-                if (metadata.tables[idx] && metadata.tables[idx].id == id)
-                    metadata.tables[idx] = entry;
-                else
+                if (metadata.tables[idx] && metadata.tables[idx].id == id) {
+                    metadata.tables[idx] = _.extend(metadata.tables[idx], entry);
+                } else {
+                    entry.createdAt = entry.updatedAt;
                     metadata.tables.splice(idx, 0, entry);
+                }
                 return debouncedWriteMetadata(collpath, metadata);
             });
         }

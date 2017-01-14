@@ -371,7 +371,7 @@ function fetchBlocks(fetch, options, collection, stop, blocks) {
 function fetchCompleteBlock(fetch, options, collection, block, last) {
     return fetch(blockOptions(block, options)).then(records => {
         if (last && _.isEmpty(records)) return records; // don't write incomplete empty blocks
-        else return collection.writeTo(records, block);
+        return collection.remove(block).then(() => collection.writeTo(records, block));
     });
 }
 
