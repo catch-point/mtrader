@@ -1,4 +1,4 @@
-// index.spec.js
+// ptrading.spec.js
 /* 
  *  Copyright (c) 2017 James Leigh, Some Rights Reserved
  * 
@@ -29,11 +29,11 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const ptrading = require('../index.js');
+const ptrading = require('../src/ptrading.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
-describe("index", function() {
+describe("ptrading", function() {
     ptrading.config('prefix', createTempDir('ptrading'));
     it("lookup", function() {
         return ptrading.lookup({symbol: 'YHOO'}).then(suggestions => {

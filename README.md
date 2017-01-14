@@ -51,6 +51,9 @@ ptrading.quote({
     console.log(bar.Date, bar.Close, bar.Change);
   });
 });
+
+// close down help threads
+ptrading.close();
 ```
 
 ## Expressions ##

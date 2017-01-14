@@ -47,34 +47,67 @@ var program = require('commander').version('0.0.1')
     .option('--prefix <dirname>', "Path where the program files are stored")
     .option('--workers <numOfWorkers>', 'Number of workers to spawn');
 
-if (process.argv.length > 2) {
-    // don't call an executable if no command given
-    program.executables = false;
-    program.addImplicitHelpCommand();
-    program.executeSubCommand = _.wrap(program.executeSubCommand, (fn, argv, args, unknown) => {
-        // include known options in sub-command
-        var arg = [].concat(
-            args,
-            ['--prefix', config('prefix')],
-            parseKnownOptions(program, argv)
-        );
-        return fn.call(program, argv, arg, unknown);
-    });
-    program.parse(process.argv);
-}
-
-if (_.isEmpty(program.args)) {
-    var app = new shell({isShell: true});
-    app.configure(function(){
-        app.use(shell.history({shell: app}));
-        app.use(shell.completer({shell: app}));
-        app.use(shell.router({shell: app}));
-        app.use(shell.help({shell: app, introduction: true}));
-        app.use(shellError({shell: app}));
-    });
-    config.shell(app);
-    require('./ptrading-fetch.js').shell(app);
-    require('./ptrading-quote.js').shell(app);
+if (require.main === module) {
+    if (process.argv.length > 2) {
+        // don't call an executable if no command given
+        program.executables = false;
+        program.addImplicitHelpCommand();
+        program.executeSubCommand = _.wrap(program.executeSubCommand, (fn, argv, args, unknown) => {
+            // include known options in sub-command
+            var arg = [].concat(
+                args,
+                ['--prefix', config('prefix')],
+                parseKnownOptions(program, argv)
+            );
+            return fn.call(program, argv, arg, unknown);
+        });
+        program.parse(process.argv);
+    }
+    if (_.isEmpty(program.args)) {
+        var app = new shell({isShell: true});
+        app.configure(function(){
+            app.use(shell.history({shell: app}));
+            app.use(shell.completer({shell: app}));
+            app.use(shell.router({shell: app}));
+            app.use(shell.help({shell: app, introduction: true}));
+            app.use(shellError({shell: app}));
+        });
+        config.shell(app);
+        require('./ptrading-fetch.js').shell(app);
+        require('./ptrading-quote.js').shell(app);
+    }
+} else {
+    var fetch = require('./ptrading-fetch.js');
+    var quote = require('./ptrading-quote.js');
+    module.exports = {
+        config: config,
+        store(name, value) {
+            return config.store(name, value);
+        },
+        unset(name) {
+            return config.unset(name);
+        },
+        lookup(options) {
+            return fetch(_.defaults({
+                interval: 'lookup'
+            }, options));
+        },
+        fundamental(options) {
+            return fetch(_.defaults({
+                interval: 'lookup'
+            }, options));
+        },
+        fetch: fetch,
+        quote: quote,
+        close() {
+            return quote.close();
+        },
+        shell(app) {
+            config.shell(app);
+            fetch.shell(app);
+            quote.shell(app);
+        }
+    };
 }
 
 function parseKnownOptions(program, argv) {

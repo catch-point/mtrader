@@ -2,7 +2,7 @@
   "name": "ptrading",
   "version": "0.0.0",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
-  "main": "index.js",
+  "main": "src/ptrading.js",
   "dependencies": {
     "chai": "^3.5.0",
     "commander": "^2.9.0",
