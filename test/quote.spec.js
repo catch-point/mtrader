@@ -293,6 +293,80 @@ describe("quote", function() {
 
         ]);
     });
+    it("should fix incompatible partial blocks", function() {
+        config('files.dirname', path.resolve(__dirname, 'partial'));
+        return quote({
+            columns: [
+                'DATE(day.ending) AS "Date"',
+                'day.close AS "Close"',
+                '(day.close - OFFSET(1, day.close)) *100 / day.close AS "Change"'
+            ].join(','),
+            symbol: 'DIS',
+            exchange: 'NYSE',
+            begin: moment.tz('2016-11-01', tz),
+            end: moment.tz('2016-12-01', tz)
+        }).then(wrong => {
+            _.first(wrong).should.be.like(
+                {Date:"2016-11-01",Close:57.19,Change:-2.3955236929533217}
+            );
+        }).then(() => {
+            config('files.dirname', path.resolve(__dirname, 'var'));
+            return quote({
+                columns: [
+                    'DATE(day.ending) AS "Date"',
+                    'day.close AS "Close"',
+                    '(day.close - OFFSET(1, day.close)) *100 / OFFSET(1, day.close) AS "Change"'
+                ].join(','),
+                symbol: 'DIS',
+                exchange: 'NYSE',
+                begin: moment.tz('2016-11-01', tz),
+                end: moment.tz('2016-12-31', tz),
+            });
+        }).should.eventually.be.like([
+            {Date:"2016-11-01",Close:92.39,Change:-0.3236595101952715},
+            {Date:"2016-11-02",Close:91.91,Change:-0.51953674640113},
+            {Date:"2016-11-03",Close:93.37,Change:1.5885104994015973},
+            {Date:"2016-11-04",Close:92.45,Change:-0.9853271928885099},
+            {Date:"2016-11-07",Close:94.43,Change:2.1416982152514916},
+            {Date:"2016-11-08",Close:94.38,Change:-0.05294927459495009},
+            {Date:"2016-11-09",Close:94.64,Change:0.2754820936639173},
+            {Date:"2016-11-10",Close:94.96,Change:0.33812341504648474},
+            {Date:"2016-11-11",Close:97.68,Change:2.864363942712735},
+            {Date:"2016-11-14",Close:97.92,Change:0.24570024570024043},
+            {Date:"2016-11-15",Close:97.7,Change:-0.22467320261437793},
+            {Date:"2016-11-16",Close:99.12,Change:1.4534288638689885},
+            {Date:"2016-11-17",Close:99.37,Change:0.2522195318805488},
+            {Date:"2016-11-18",Close:98.24,Change:-1.1371641340444898},
+            {Date:"2016-11-21",Close:97.63,Change:-0.6209283387622144},
+            {Date:"2016-11-22",Close:97.71,Change:0.08194202601659152},
+            {Date:"2016-11-23",Close:98.26,Change:0.5628901852420545},
+            {Date:"2016-11-25",Close:98.82,Change:0.5699165479340403},
+            {Date:"2016-11-28",Close:98.97,Change:0.15179113539769853},
+            {Date:"2016-11-29",Close:99.67,Change:0.7072850358694582},
+            {Date:"2016-11-30",Close:99.12,Change:-0.5518210093307887},
+            {Date:"2016-12-01",Close:98.94,Change:-0.18159806295400202},
+            {Date:"2016-12-02",Close:98.5,Change:-0.4447139680614491},
+            {Date:"2016-12-05",Close:99.96,Change:1.4822335025380646},
+            {Date:"2016-12-06",Close:100.66,Change:0.7002801120448208},
+            {Date:"2016-12-07",Close:101.99,Change:1.3212795549374114},
+            {Date:"2016-12-08",Close:103.38,Change:1.3628787135993732},
+            {Date:"2016-12-09",Close:104.86,Change:1.4316115302766532},
+            {Date:"2016-12-12",Close:104.06,Change:-0.7629219912263944},
+            {Date:"2016-12-13",Close:103.85,Change:-0.20180665000961748},
+            {Date:"2016-12-14",Close:104.05,Change:0.19258545979778802},
+            {Date:"2016-12-15",Close:104.39,Change:0.326765977895246},
+            {Date:"2016-12-16",Close:103.91,Change:-0.45981415844429924},
+            {Date:"2016-12-19",Close:105.3,Change:1.3376960831488793},
+            {Date:"2016-12-20",Close:105.46,Change:0.15194681861348205},
+            {Date:"2016-12-21",Close:105.56,Change:0.09482268158544332},
+            {Date:"2016-12-22",Close:105.42,Change:-0.13262599469496075},
+            {Date:"2016-12-23",Close:105.15,Change:-0.25611838360841965},
+            {Date:"2016-12-27",Close:105.17,Change:0.019020446980500257},
+            {Date:"2016-12-28",Close:104.3,Change:-0.8272321004088662},
+            {Date:"2016-12-29",Close:104.56,Change:0.24928092042186492},
+            {Date:"2016-12-30",Close:104.22,Change:-0.3251721499617477}
+        ]);
+    });
     it("should load the last 100 days", function() {
         return quote({
             symbol: 'IBM',

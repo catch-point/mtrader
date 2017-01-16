@@ -81,6 +81,9 @@ function openCollection(dirname, name) {
                 cachedTables.close()
             ]);
         },
+        listNames() {
+            return metadata.tables.map(entry => entry.name || entry.id);
+        },
         lockWith(names, cb) {
             var expired;
             var promise = new Promise(aquired => _.defer(() => {
@@ -179,6 +182,7 @@ function openCollection(dirname, name) {
                 cachedTables.replaceEntry(filename, Promise.resolve(records));
                 var entry = {
                     id: id,
+                    name: name,
                     size: records.length,
                     head: records.slice(0, 2),
                     tail: records.slice(-2),

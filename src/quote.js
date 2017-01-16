@@ -356,7 +356,7 @@ function fetchBlocks(fetch, options, collection, stop, blocks) {
     var fetchPartial = fetchPartialBlock.bind(this, fetch, options, collection);
     return Promise.all(blocks.map((block, i, blocks) => {
         var last = i == blocks.length -1;
-        if (!collection.exists(block))
+        if (!collection.exists(block) || _.contains(collection.property('incompatible'), block))
             return fetchComplete(block, last);
         var tail = collection.tailOf(block);
         if (_.isEmpty(tail) || !_.last(tail).incomplete)
@@ -365,13 +365,25 @@ function fetchBlocks(fetch, options, collection, stop, blocks) {
             return fetchComplete(block, last);
         if (i < blocks.length -1 || stop && _.first(tail).ending < stop.format())
             return fetchPartial(block, _.first(tail).ending, blocks[i-1]);
-    })).then(() => blocks);
+    })).then(results => {
+        if (!_.contains(results, 'incompatible')) return blocks;
+        collection.property('incompatible', _.compact(_.union(
+            collection.property('incompatible'),
+            collection.listNames(),
+            blocks
+        )));
+        return fetchBlocks(fetch, options, collection, stop, blocks);
+    });
 }
 
 function fetchCompleteBlock(fetch, options, collection, block, last) {
     return fetch(blockOptions(block, options)).then(records => {
         if (last && _.isEmpty(records)) return records; // don't write incomplete empty blocks
         return collection.remove(block).then(() => collection.writeTo(records, block));
+    }).then(() => {
+        var incompatible = collection.property('incompatible');
+        if (_.contains(incompatible, block))
+            collection.property('incompatible', _.without(incompatible, block));
     });
 }
 
@@ -381,10 +393,8 @@ function fetchPartialBlock(fetch, options, collection, block, begin, priorBlock)
     }, blockOptions(block, options))).then(List.from.bind(List)).then(records => {
         if (records.isEmpty()) return; // nothing newer
         return collection.readFrom(block).then(List.from.bind(List)).then(partial => {
-            if (partial.last().incomplete) partial.pop();
-            var idx = records.sortedIndexOf(partial.last(), 'ending');
-            if (records.item(idx).ending == partial.last().ending) idx++;
-            records.splice(0, idx);
+            partial.pop(); // incomplete
+            if (!_.isMatch(partial.last(), records.shift())) return 'incompatible';
             var warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
                 var keys = _.intersection(collection.columnsOf(priorBlock), collection.columnsOf(block));
