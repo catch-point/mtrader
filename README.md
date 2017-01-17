@@ -42,9 +42,9 @@ ptrading.quote({
   columns: [
       'DATE(ending) AS "Date"',
       'day.close AS "Close"',
-      '(day.close - OFFSET(1, day.close))*100/OFFSET(1,day.close) AS "Change"'
+      '(day.adj_close - OFFSET(1, day.adj_close))*100/OFFSET(1,day.adj_close) AS "Change"'
   ].join(','),
-  criteria: 'day.close > OFFSET(1, day.close)'
+  criteria: 'day.adj_close > OFFSET(1, day.adj_close)'
 }).then(bars => {
   bars.forEach(bar => {
     console.log(bar.Date, bar.Close, bar.Change);
@@ -72,12 +72,13 @@ A field can be one of the following without a prefix:
 A field can also be one of the following prefixed by an interval:
 
 ```
-      <interval>.ending  The dateTime when the interval ends (interval prefix is optional)
-      <interval>.open    The price when the interval began
-      <interval>.high    The highest price during the interval
-      <interval>.low     The lowest price during the interval
-      <interval>.close   The price when the interval ended
-      <interval>.volume  The volume during the interval
+      <interval>.ending     The dateTime when the interval ends (interval prefix is optional)
+      <interval>.open       The price when the interval began
+      <interval>.high       The highest price during the interval
+      <interval>.low        The lowest price during the interval
+      <interval>.close      The price when the interval ended
+      <interval>.volume     The volume during the interval
+      <interval>.adj_close  Close price adjusted for dividends and splits
 ```
 An `<interval>` can be one of the following:
 
