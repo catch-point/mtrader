@@ -24,8 +24,7 @@ ptrading.lookup({symbol: 'YHOO'}).then(suggestions => {
 ptrading.fetch({
   interval: 'day',
   symbol: 'YHOO',
-  exchange: 'NASDAQ',
-  reverse: true
+  exchange: 'NASDAQ'
 }).then(bars => {
   bars.forEach(bar => {
     console.log(bar.ending, bar.open, bar.high, bar.low, bar.close, bar.volume);
@@ -80,7 +79,7 @@ A field can also be one of the following prefixed by an interval:
       <interval>.close   The price when the interval ended
       <interval>.volume  The volume during the interval
 ```
-An <interval> can be one of the following:
+An `<interval>` can be one of the following:
 
 ```
       year        List yearly quotes for security
