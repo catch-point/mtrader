@@ -334,14 +334,3 @@ function rows2objects(rows) {
         return points;
     }, []);
 }
-
-function titleOf(html, status) {
-    var lower = html.toLowerCase();
-    var start = lower.indexOf('<title');
-    var end = lower.indexOf('</title>');
-    if (start < 0 || end < 0) return status;
-    var text = html.substring(html.indexOf('>', start) + 1, end);
-    var decoded = text.replace('&lt;','<').replace('&gt;', '>').replace('&amp;', '&');
-    if (decoded.indexOf(status) >= 0) return decoded;
-    else return decoded + ' ' + status;
-}

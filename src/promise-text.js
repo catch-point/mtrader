@@ -43,7 +43,9 @@ module.exports = function(url) {
             }).on('end', () => {
                 var code = res.statusCode;
                 var body = buffer.join('');
-                if (code != 200 && code != 203) {
+                if (code == 404 || code == 410) {
+                    resolve();
+                } else if (code != 200 && code != 203) {
                     logger.warn(res.statusMessage, code, url);
                     reject(Error(titleOf(body, res.statusMessage)));
                 } else {
@@ -52,4 +54,15 @@ module.exports = function(url) {
             });
         }).on('error', reject);
     });
+}
+
+function titleOf(html, status) {
+    var lower = html.toLowerCase();
+    var start = lower.indexOf('<title');
+    var end = lower.indexOf('</title>');
+    if (start < 0 || end < 0) return status;
+    var text = html.substring(html.indexOf('>', start) + 1, end);
+    var decoded = text.replace('&lt;','<').replace('&gt;', '>').replace('&amp;', '&');
+    if (decoded.indexOf(status) >= 0) return decoded;
+    else return decoded + ' ' + status;
 }
