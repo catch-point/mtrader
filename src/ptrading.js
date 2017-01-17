@@ -93,9 +93,9 @@ if (require.main === module) {
             }, options));
         },
         fundamental(options) {
-            return fetch(_.defaults({
+            return _.first(fetch(_.defaults({
                 interval: 'lookup'
-            }, options));
+            }, options)));
         },
         fetch: fetch,
         quote: quote,
