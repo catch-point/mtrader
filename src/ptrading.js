@@ -36,8 +36,8 @@ const shell = require('shell');
 const config = require('./ptrading-config.js');
 const shellError = require('./shell-error.js');
 
-var program = require('commander').version('0.0.1')
-    .description("Produces data for trading securities in CSV format")
+var program = require('commander').version(require('../package.json').version)
+    .description(require('../package.json').description)
     .command('config <name> [value]', "View or change stored options")
     .command('fetch <interval> <symbol> [exchange]', "Historic information of a security")
     .command('quote <interval> <symbol> [exchange]', "Historic information of a security")

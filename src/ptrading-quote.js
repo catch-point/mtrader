@@ -45,7 +45,7 @@ const lookback = require('./lookback-functions.js');
 const indicator = require('./indicator-functions.js');
 
 function usage(command) {
-    return command.version('0.0.1')
+    return command.version(require('../package.json').version)
         .description("Quotes historical data for the given symbol")
         .usage('<symbol> [exchange] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")

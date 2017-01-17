@@ -29,11 +29,13 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+const _ = require('underscore');
 const ptrading = require('../src/ptrading.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
 describe("ptrading", function() {
+    this.timeout(10000);
     ptrading.config('prefix', createTempDir('ptrading'));
     var about = expected => actual => actual.should.be.closeTo(expected,0.0001);
     it("lookup", function() {
@@ -42,6 +44,29 @@ describe("ptrading", function() {
             suggestion.symbol.should.eql('YHOO');
             suggestion.exchange.should.eql('NASDAQ');
           });
+        });
+    });
+    it("fundamental", function() {
+        return ptrading.fundamental({
+          symbol: 'YHOO',
+          exchange: 'NASDAQ'
+        }).should.eventually.be.like({
+            name: 'Yahoo! Inc.',
+            EarningsShare: _.isFinite
+        });
+    });
+    it("fetch", function() {
+        return ptrading.fetch({
+          interval: 'day',
+          symbol: 'YHOO',
+          exchange: 'NASDAQ'
+        }).then(_.first).should.eventually.be.like({
+            ending: _.isString,
+            open: _.isFinite,
+            high: _.isFinite,
+            low: _.isFinite,
+            close: _.isFinite,
+            volume: _.isFinite,
         });
     });
     it("quote", function() {

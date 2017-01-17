@@ -40,7 +40,7 @@ const replyTo = require('./ipc-promise-reply.js');
 const config = require('./ptrading-config.js');
 
 function usage(command) {
-    return command.version('0.0.1')
+    return command.version(require('../package.json').version)
         .description("Fetches remote data for the given symbol")
         .usage('<interval> <symbol> [exchange] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
