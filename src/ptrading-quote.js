@@ -207,13 +207,21 @@ help(app, 'common-functions', `
   ${listFunctions(common)}
 `);
 help(app, 'lookback-functions', `
-  Lookback functions may read data is the past to determine the current value.
+  Lookback functions may read data in the past to determine the current value.
 
   ${listFunctions(lookback)}
 `);
 help(app, 'indicator-functions', `
   Indicator functions must be prefixed by an interval and a dot and take numbers
   as paratemeters.
+
+  An interval can be one of the following:
+      year        Yearly quotes for security
+      quarter     Quarterly quotes for security
+      month       Monthly quotes for security
+      week        Weekly quotes for security
+      day         Daily quotes for security
+      mX          Intraday quotes for security by X minutes
 
   ${listFunctions(indicator)}
 `);
