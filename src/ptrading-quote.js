@@ -260,20 +260,21 @@ function listExpressions() {
       ending    Represents the dateTime of when an interval ended
 
       A field can also be one of the following prefixed by an interval:
-      <interval>.ending  The dateTime when the interval ends (interval prefix is optional)
-      <interval>.open    The price when the interval began
-      <interval>.high    The highest price during the interval
-      <interval>.low     The lowest price during the interval
-      <interval>.close   The price when the interval ended
-      <interval>.volume  The volume during the interval
+      <interval>.ending     DateTime when the interval ends (interval prefix is optional)
+      <interval>.open       Price when the interval began
+      <interval>.high       highest price during the interval
+      <interval>.low        Lowest price during the interval
+      <interval>.close      Price when the interval ended
+      <interval>.volume     Volume during the interval
+      <interval>.adj_close  Close price adjusted for dividends and splits
 
       An <interval> can be one of the following:
-      year        List yearly quotes for security
-      quarter     List quarterly quotes for security
-      month       List monthly quotes for security
-      week        List weekly quotes for security
-      day         List daily quotes for security
-      mX          List intraday quotes for security by X minutes
+      year        Yearly quotes for security
+      quarter     Quarterly quotes for security
+      month       Monthly quotes for security
+      week        Weekly quotes for security
+      day         Daily quotes for security
+      mX          Intraday quotes for security by X minutes
 
       Operators include the following:
       OR   0 if both expressions are 0.

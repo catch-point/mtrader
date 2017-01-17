@@ -35,6 +35,7 @@ const createTempDir = require('./create-temp-dir.js');
 
 describe("ptrading", function() {
     ptrading.config('prefix', createTempDir('ptrading'));
+    var about = expected => actual => actual.should.be.closeTo(expected,0.0001);
     it("lookup", function() {
         return ptrading.lookup({symbol: 'YHOO'}).then(suggestions => {
           suggestions.forEach(suggestion => {
@@ -53,18 +54,18 @@ describe("ptrading", function() {
           columns: [
               'DATE(ending) AS "Date"',
               'day.close AS "Close"',
-              '(day.close - OFFSET(1, day.close))*100/OFFSET(1,day.close) AS "Change"'
+              '(day.adj_close - OFFSET(1, day.adj_close))*100/OFFSET(1,day.adj_close) AS "Change"'
           ].join(','),
-          criteria: 'day.close > OFFSET(1, day.close)'
+          criteria: 'day.adj_close > OFFSET(1, day.adj_close)'
         }).should.eventually.be.like([
-            {Date:"2016-12-30",Close:38.67,Change:0.07763975155279797},
-            {Date:"2017-01-03",Close:38.90,Change:0.5947763123868551},
-            {Date:"2017-01-04",Close:40.06,Change:2.9820051413881843},
-            {Date:"2017-01-05",Close:41.34,Change:3.195207189216178},
-            {Date:"2017-01-09",Close:41.34,Change:0.266796022313865},
-            {Date:"2017-01-10",Close:42.30,Change:2.3222060957909862},
-            {Date:"2017-01-11",Close:42.59,Change:0.685579196217509},
-            {Date:"2017-01-13",Close:42.27,Change:0.3799572548088428}
+            {Date:"2016-12-30",Close:38.67,Change:about(0.0776)},
+            {Date:"2017-01-03",Close:38.90,Change:about(0.5947)},
+            {Date:"2017-01-04",Close:40.06,Change:about(2.9820)},
+            {Date:"2017-01-05",Close:41.34,Change:about(3.1952)},
+            {Date:"2017-01-09",Close:41.34,Change:about(0.2667)},
+            {Date:"2017-01-10",Close:42.30,Change:about(2.3222)},
+            {Date:"2017-01-11",Close:42.59,Change:about(0.6855)},
+            {Date:"2017-01-13",Close:42.27,Change:about(0.3799)}
         ]);
     });
 });
