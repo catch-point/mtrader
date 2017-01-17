@@ -16,8 +16,16 @@ const ptrading = require('ptrading');
 // lookup exchange for a symbol and search for similar symbols
 ptrading.lookup({symbol: 'YHOO'}).then(suggestions => {
   suggestions.forEach(suggestion => {
-    console.log(suggestion.symbol, suggestion.exchange); // YHOO NASDAQ
+    console.log(suggestion.symbol, suggestion.exchange, suggestion.name); // YHOO NASDAQ Yahoo! Inc.
   });
+});
+
+// fundamental
+ptrading.fundamental({
+  symbol: 'YHOO',
+  exchange: 'NASDAQ'
+}).then(security => {
+  console.log(security.name, security.EarningsShare); // Yahoo! Inc. -5.08
 });
 
 // fetch day, week, month, quarter, or year historic data about a symbol
@@ -30,6 +38,17 @@ ptrading.fetch({
     console.log(bar.ending, bar.open, bar.high, bar.low, bar.close, bar.volume);
   });
 });
+/*
+2017-01-03T16:00:00-05:00 39.11 39.18 38.64 38.9 6082600
+2017-01-04T16:00:00-05:00 39 40.25 38.92 40.06 11724500
+2017-01-05T16:00:00-05:00 40.31 41.37 40.24 41.34 13118500
+2017-01-06T16:00:00-05:00 41.25 41.34 40.85 41.23 6085800
+2017-01-09T16:00:00-05:00 41.17 41.66 41.13 41.34 7796300
+2017-01-10T16:00:00-05:00 41.89 42.37 41.54 42.3 8110900
+2017-01-11T16:00:00-05:00 42.27 42.59 42.07 42.59 6943900
+2017-01-12T16:00:00-05:00 42.34 42.46 41.7 42.11 6023700
+2017-01-13T16:00:00-05:00 42.11 42.46 42.02 42.27 4132100
+*/
 
 // set storage location for computations
 ptrading.config('prefix', '/tmp/ptrading');
@@ -42,14 +61,24 @@ ptrading.quote({
   columns: [
       'DATE(ending) AS "Date"',
       'day.close AS "Close"',
-      '(day.close - OFFSET(1, day.close))*100/OFFSET(1,day.close) AS "Change"'
+      '(day.adj_close - OFFSET(1, day.adj_close))*100/OFFSET(1,day.adj_close) AS "Change"'
   ].join(','),
-  criteria: 'day.close > OFFSET(1, day.close)'
+  criteria: 'day.adj_close > OFFSET(1, day.adj_close)'
 }).then(bars => {
   bars.forEach(bar => {
     console.log(bar.Date, bar.Close, bar.Change);
   });
 });
+/*
+2016-12-30 38.67 0.0776371655703111
+2017-01-03 38.9 0.5947866870849101
+2017-01-04 40.06 2.9820024173777653
+2017-01-05 41.34 3.1952046132000937
+2017-01-09 41.34 0.266796022313865
+2017-01-10 42.3 2.3222036768263092
+2017-01-11 42.59 0.685581576491299
+2017-01-13 42.27 0.3799548710530931
+*/
 
 // close down help threads
 ptrading.close();
@@ -72,22 +101,23 @@ A field can be one of the following without a prefix:
 A field can also be one of the following prefixed by an interval:
 
 ```
-      <interval>.ending  The dateTime when the interval ends (interval prefix is optional)
-      <interval>.open    The price when the interval began
-      <interval>.high    The highest price during the interval
-      <interval>.low     The lowest price during the interval
-      <interval>.close   The price when the interval ended
-      <interval>.volume  The volume during the interval
+      <interval>.ending     DateTime when the interval ends (interval prefix is optional)
+      <interval>.open       Price when the interval began
+      <interval>.high       highest price during the interval
+      <interval>.low        Lowest price during the interval
+      <interval>.close      Price when the interval ended
+      <interval>.volume     Volume during the interval
+      <interval>.adj_close  Close price adjusted for dividends and splits
 ```
 An `<interval>` can be one of the following:
 
 ```
-      year        List yearly quotes for security
-      quarter     List quarterly quotes for security
-      month       List monthly quotes for security
-      week        List weekly quotes for security
-      day         List daily quotes for security
-      mX          List intraday quotes for security by X minutes
+      year        Yearly quotes for security
+      quarter     Quarterly quotes for security
+      month       Monthly quotes for security
+      week        Weekly quotes for security
+      day         Daily quotes for security
+      mX          Intraday quotes for security by X minutes
 ```
 Operators include the following:
 
