@@ -83,12 +83,9 @@ module.exports = function() {
                 marketClosesAt: _.isString,
                 tz: _.isString
             });
-            return yahoo.fundamental(symbol(options)).then(security => [{
-                symbol: options.symbol,
-                yahoo_symbol: security.symbol,
-                name: security.name,
-                exch: security.exch
-            }]);
+            return yahoo.fundamental(symbol(options)).then(security => [_.defaults({
+                yahoo_symbol: security.symbol
+            }, _.omit(security, value => value == 'N/A'))]);
         },
         interday(options) {
             expect(options).to.be.like({
@@ -227,7 +224,7 @@ function day(yahoo, symbol, options) {
 
 function includeIntraday(yahoo, bars, now, symbol, options) {
     if (options.end || now.days() === 6 || !bars.length) return bars;
-    else return yahoo.fundamental(symbol).then(security => {
+    else return yahoo.intraday(symbol).then(security => {
         var dateTime = security.date + ' ' + security.time;
         var m = dateTime.match(/(\d+)\/(\d+)\/(\d+) (\d+):(\d+)(am|pm)/);
         if (!m) return {};
@@ -244,39 +241,28 @@ function includeIntraday(yahoo, bars, now, symbol, options) {
             high: _.isFinite(high) ? +high : undefined,
             low: _.isFinite(low) ? +low : undefined,
             close: _.isFinite(security.close) ? +security.close : undefined,
+            prior_close: _.isFinite(security.prior_close) ? +security.prior_close : undefined,
             volume: _.isFinite(security.volume) ? +security.volume : undefined,
-            adj_close: +security.close,
             lastTrade: moment.tz(lastTrade, tz).format()
         };
     }).then(quote => {
         if (!_.isFinite(quote.close)) return bars;
-        var latest = _.last(bars);
-        if (latest.ending >= quote.ending) {
-            // merge today with latest week/month
-            bars[bars.length -1] = _.extend(latest, {
-                high: Math.max(latest.high, quote.high),
-                low: latest.low && latest.low < quote.low ? latest.low : quote.low,
-                close: quote.close,
-                volume: latest.volume + quote.volume,
-                adj_close: quote.adj_close,
-                lastTrade: quote.lastTrade,
-                asof: now.format(),
-                incomplete: true
-            });
-        } else {
-            bars.push({
-                ending: quote.ending,
-                open: quote.open,
-                high: quote.high,
-                low: quote.low,
-                close: quote.close,
-                volume: quote.volume,
-                adj_close: quote.adj_close,
-                lastTrade: quote.lastTrade,
-                asof: now.format(),
-                incomplete: true
-            });
-        }
+        var merge = _.last(bars).ending >= quote.ending;
+        var latest = merge ? bars.pop() : {};
+        var prior_close = latest.adj_close || _.last(bars).adj_close || quote.prior_close;
+        var intraday = _.defaults({
+            ending: latest.ending || quote.ending,
+            open: latest.open || quote.open,
+            high: Math.max(latest.high || 0, quote.high),
+            low: latest.low && latest.low < quote.low ? latest.low : quote.low,
+            close: quote.close,
+            adj_close: quote.close * prior_close / quote.prior_close,
+            volume: quote.volume + (latest.volume || 0),
+            lastTrade: quote.lastTrade,
+            asof: now.format(),
+            incomplete: true
+        }, latest);
+        bars.push(intraday);
         return bars;
     });
 }

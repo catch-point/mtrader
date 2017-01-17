@@ -41,6 +41,7 @@ module.exports = function() {
         close() {},
         lookup: lookupSymbol.bind(this, _.memoize(throttlePromise(listSymbols, 2))),
         fundamental: queue(loadSecurity, 32),
+        intraday: queue(loadIntradayQuote, 32),
         month: loadPriceTable.bind(this, throttlePromise(loadCSV, 2), 'm'),
         week: loadPriceTable.bind(this, throttlePromise(loadCSV, 2), 'w'),
         day: loadDailyPrice.bind(this,
@@ -246,10 +247,24 @@ function parseJSON(text) {
 }
 
 function loadSecurity(symbols) {
-    var url = "http://download.finance.yahoo.com/d/quotes.csv?f=snxd1t1ol1mv&s="
+    var url = "http://download.finance.yahoo.com/d/quotes.csv?f=sj1nxa2ee7e8e9b4j4p5p6rr5r6r7s7&s="
         + symbols.map(encodeURIComponent).join(',');
     return promiseText(url).then(parseCSV).then(rows => rows.map(row => _.object(
-        ["symbol", "name", "exch", "date", "time", "open", "close", "range", "volume"],
+        ['symbol', 'MarketCapitalization', 'name', 'exch', 'AverageDailyVolume', 'EarningsShare', 'EPSEstimateCurrentYear', 'EPSEstimateNextYear', 'EPSEstimateNextQuarter', 'BookValue', 'EBITDA', 'PriceSales', 'PriceBook', 'PERatio', 'PEGRatio', 'PriceEPSEstimateCurrentYear', 'PriceEPSEstimateNextYear', 'ShortRatio'],
+        row
+    ))).then(function(list){
+        return list.reduce(function(hash, security){
+            hash[security.symbol] = security;
+            return hash;
+        }, {});
+    }).then(hash => symbols.map(symbol => hash[symbol]));
+}
+
+function loadIntradayQuote(symbols) {
+    var url = "http://download.finance.yahoo.com/d/quotes.csv?f=sd1t1ol1mvp&s="
+        + symbols.map(encodeURIComponent).join(',');
+    return promiseText(url).then(parseCSV).then(rows => rows.map(row => _.object(
+        ["symbol", "date", "time", "open", "close", "range", "volume", "prior_close"],
         row
     ))).then(function(list){
         return list.reduce(function(hash, security){

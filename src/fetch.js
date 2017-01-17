@@ -160,8 +160,12 @@ function fundamental(datasources, options) {
         else if (error) logger.warn("Fetch fundamental failed", error);
         return result;
     }).then(result => {
-        result.asof = now.format();
-        return [result];
+        return [_.defaults({
+            symbol: options.symbol,
+            exchange: options.exchange,
+            name: result.name,
+            asof: now.format()
+        }, result)];
     });
 }
 

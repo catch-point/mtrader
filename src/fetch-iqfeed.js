@@ -85,7 +85,6 @@ module.exports = function() {
                 options.marketClosesAt, options.tz
             ).then(fundamental => {
                 return [_.defaults({
-                    symbol: options.symbol,
                     iqfeed_symbol: fundamental.symbol,
                     name: fundamental.company_name
                 }, fundamental)];
