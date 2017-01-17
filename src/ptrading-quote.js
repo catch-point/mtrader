@@ -57,6 +57,7 @@ function usage(command) {
         .option('--pad-begin <number>', "Number of bars before begin dateTime")
         .option('--pad-end <number>', "Number of bars after end dateTime")
         .option('--columns <list>', "Comma separated list of columns (such as day.close)")
+        .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
         .option('--output <file>', "CSV file to write the result into")
         .option('--reverse', "Reverse the order of the rows")
         .option('--transpose', "Swap the columns and rows");
