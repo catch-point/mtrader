@@ -223,7 +223,7 @@ function day(yahoo, symbol, options) {
 }
 
 function includeIntraday(yahoo, bars, now, symbol, options) {
-    if (options.end || now.days() === 6 || !bars.length) return bars;
+    if (now.days() === 6 || !bars.length || now.diff(options.end, 'days') >= 1) return bars;
     else return yahoo.intraday(symbol).then(security => {
         var dateTime = security.date + ' ' + security.time;
         var m = dateTime.match(/(\d+)\/(\d+)\/(\d+) (\d+):(\d+)(am|pm)/);
