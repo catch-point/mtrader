@@ -99,11 +99,12 @@ if (require.main === module) {
         });
     });
     module.exports = function(options) {
+        expect(options).to.have.property('symbol');
         return chooseWorker(children, options.symbol).request('quote', options);
     };
     module.exports.close = function() {
         children.forEach(child => child.disconnect());
-        fetch.close();
+        return fetch.close();
     };
     module.exports.shell = shell.bind(this, program.description(), children);
 }
