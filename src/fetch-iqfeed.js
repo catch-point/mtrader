@@ -46,9 +46,6 @@ module.exports = function() {
         close() {
             iqclient.close();
         },
-        columns() {
-            return ['ending', 'open', 'high', 'low', 'close', 'volume', 'total_volume', 'open_interest', 'asof', 'incomplete'];
-        },
         lookup(options) {
             var exchanges = config('exchanges');
             return iqclient.lookup(symbol(options), options.listed_market).then(rows => rows.map(row => {

@@ -135,13 +135,13 @@ function shell(desc, children, app) {
             exchange: cmd.params.exchange
         }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    _.forEach(common, (fn, name) => {
+    _.forEach(common.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));
     });
-    _.forEach(lookback, (fn, name) => {
+    _.forEach(lookback.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));
     });
-    _.forEach(indicator, (fn, name) => {
+    _.forEach(indicator.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));
     });
 // help
@@ -206,12 +206,12 @@ help(app, 'criteria', `
 help(app, 'common-functions', `
   Common functions have no restrictions on what expressions they can be used in.
 
-  ${listFunctions(common)}
+  ${listFunctions(common.functions)}
 `);
 help(app, 'lookback-functions', `
   Lookback functions may read data in the past to determine the current value.
 
-  ${listFunctions(lookback)}
+  ${listFunctions(lookback.functions)}
 `);
 help(app, 'indicator-functions', `
   Indicator functions must be prefixed by an interval and a dot and take numbers
@@ -225,15 +225,17 @@ help(app, 'indicator-functions', `
       day         Daily quotes for security
       mX          Intraday quotes for security by X minutes
 
-  ${listFunctions(indicator)}
+  ${listFunctions(indicator.functions)}
 `);
 }
 
 function functionHelp(name, fn) {
-    var args = fn.args || _.property(1)(fn.toString().match(/^[^(]*\(\s*\w+\s*,\s*([^)]*)\)/)) || '';
+    var source = fn.toString();
+    var m = source.match(/^[^(]*\(([^)]*)\)/);
+    var args = fn.args || _.property(1)(m) || '';
     var usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
-    var source = fn.toString().replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
-    var desc = fn.description ? '\n  ' + wrap(fn.description, 2, 80) + '\n' : source;
+    var body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
+    var desc = fn.description ? '\n  ' + wrap(fn.description, 2, 80) + '\n' : body;
     var seeAlso = fn.seeAlso ? '\n  See also:\n' + fn.seeAlso.map(name => {
         return '    help ' + name + '  ';
     }).join('\n') + '\n' : '';
@@ -313,7 +315,10 @@ function listFunctions(functions) {
         buf.push("      ");
         buf.push(name);
         buf.push(pad.substring(Math.min(name.length,indent - 5)));
-        var args = fn.args || _.property(1)(fn.toString().match(/^[^(]*\(\s*\w+\s*,\s*([^)]*)\)/)) || '';
+        var source = fn.toString();
+        var m = source.match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/) ||
+            source.match(/^[^(]*\(([^)]*)\)/);
+        var args = fn.args || _.property(1)(m) || '';
         var desc = fn.description || name + '(' + args + ')';
         buf.push(wrap(desc, indent, 80));
         buf.push('\n');

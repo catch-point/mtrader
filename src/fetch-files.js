@@ -61,11 +61,6 @@ module.exports = function() {
             return Promise.all(_.map(fallbacks, fb => fb.close()))
                 .then(() => store).then(store => store.close());
         },
-        columns(options) {
-            return Promise.all(_.map(fallbacks, (fb, source) => {
-                return fb.columns(options)
-            })).then(columns => _.union.apply(_, columns));
-        },
         lookup: readOrWriteResult.bind(this, fallbacks, open, 'lookup'),
         fundamental: readOrWriteResult.bind(this, fallbacks, open, 'fundamental'),
         interday: readOrWriteResult.bind(this, fallbacks, open, 'interday'),

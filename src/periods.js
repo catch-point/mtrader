@@ -55,6 +55,8 @@ module.exports = function(options) {
 };
 
 module.exports.sort = periods => _.sortBy(periods, period => {
+    if (_.isString(period) && !intervals[period])
+        throw Error("Unknown interval: " + period + " must be one of " + _.keys(intervals).join(', '));
     return _.isString(period) ? intervals[period].millis : period.millis;
 });
 

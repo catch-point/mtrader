@@ -30,205 +30,226 @@
  */
 
 const _ = require('underscore');
-const expressions = require('../src/expressions.js');
+const common = require('../src/common-functions.js');
+const Parser = require('../src/parser.js');
 const expect = require('chai').expect;
 
 describe("expressions", function(){
-    var fields = {day:[]};
     describe("parser", function() {
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args);
+            }
+        });
         it("ADD", function() {
-            expect(expressions.parse('1 + 1', fields)()).to.equal(2);
+            expect(parser.parse('1 + 1')()).to.equal(2);
         });
         it("SUBTRACT", function() {
-            expect(expressions.parse('2 - 1 - 1', fields)()).to.equal(0);
+            expect(parser.parse('2 - 1 - 1')()).to.equal(0);
         });
         it("PRODUCT", function() {
-            expect(expressions.parse('-4.2 * (2 + 3.5)', fields)()).to.equal(-23.1);
+            expect(parser.parse('-4.2 * (2 + 3.5)')()).to.equal(-23.1);
         });
         it("DIVIDE", function() {
-            expect(expressions.parse('5 × 5 / (2 + 3) / 5', fields)()).to.equal(1);
+            expect(parser.parse('5 × 5 / (2 + 3) / 5')()).to.equal(1);
         });
         it("MOD", function() {
-            expect(expressions.parse('6 % 5', fields)()).to.equal(1);
+            expect(parser.parse('6 % 5')()).to.equal(1);
         });
         it("NEGATIVE", function() {
-            expect(expressions.parse('5 × -(2 + 3)', fields)()).to.equal(-25);
+            expect(parser.parse('5 × -(2 + 3)')()).to.equal(-25);
         });
         it("ABS", function() {
-            expect(expressions.parse('ABS(5 × -(2 + 3))', fields)()).to.equal(25);
+            expect(parser.parse('ABS(5 × -(2 + 3))')()).to.equal(25);
         });
         it("EQUALS", function() {
-            expect(expressions.parse('2 = 2', fields)()).to.equal(1);
+            expect(parser.parse('2 = 2')()).to.equal(1);
         });
         it("NOT_EQUALS", function() {
-            expect(expressions.parse('2 != 2', fields)()).to.equal(0);
+            expect(parser.parse('2 != 2')()).to.equal(0);
         });
         it("NOT", function() {
-            expect(expressions.parse('!(2 = 2)', fields)()).to.equal(0);
+            expect(parser.parse('!(2 = 2)')()).to.equal(0);
         });
         it("NOT_EQUALS", function() {
-            expect(expressions.parse('2 <> 2', fields)()).to.equal(0);
+            expect(parser.parse('2 <> 2')()).to.equal(0);
         });
         it("LESS_THAN", function() {
-            expect(expressions.parse('1 < 2', fields)()).to.equal(1);
+            expect(parser.parse('1 < 2')()).to.equal(1);
         });
         it("GREATER_THAN", function() {
-            expect(expressions.parse('1 > 2', fields)()).to.equal(0);
+            expect(parser.parse('1 > 2')()).to.equal(0);
         });
         it("NOT_LESS_THAN", function() {
-            expect(expressions.parse('1 >= 2', fields)()).to.equal(0);
+            expect(parser.parse('1 >= 2')()).to.equal(0);
         });
         it("NOT_GREATER_THAN", function() {
-            expect(expressions.parse('1 <= 2', fields)()).to.equal(1);
+            expect(parser.parse('1 <= 2')()).to.equal(1);
         });
         it("SIGN0", function() {
-            expect(expressions.parse('SIGN(5)', fields)()).to.equal(1);
+            expect(parser.parse('SIGN(5)')()).to.equal(1);
         });
         it("SIGN1", function() {
-            expect(expressions.parse('SIGN(0)', fields)()).to.equal(0);
+            expect(parser.parse('SIGN(0)')()).to.equal(0);
         });
         it("SIGN2", function() {
-            expect(expressions.parse('SIGN(-5)', fields)()).to.equal(-1);
+            expect(parser.parse('SIGN(-5)')()).to.equal(-1);
         });
         it("AND0", function() {
-            expect(expressions.parse('1 and 1 and 0', fields)()).to.equal(0);
+            expect(parser.parse('1 and 1 and 0')()).to.equal(0);
         });
         it("AND1", function() {
-            expect(expressions.parse('AND(1, 1, 0)', fields)()).to.equal(0);
+            expect(parser.parse('AND(1, 1, 0)')()).to.equal(0);
         });
         it("OR0", function() {
-            expect(expressions.parse('1 or 1 or 0', fields)()).to.equal(1);
+            expect(parser.parse('1 or 1 or 0')()).to.equal(1);
         });
         it("OR1", function() {
-            expect(expressions.parse('OR(1, 1, 0)', fields)()).to.equal(1);
+            expect(parser.parse('OR(1, 1, 0)')()).to.equal(1);
         });
         it("XOR0", function() {
-            expect(expressions.parse('XOR(1, 1, 0)', fields)()).to.equal(0);
+            expect(parser.parse('XOR(1, 1, 0)')()).to.equal(0);
         });
         it("XOR1", function() {
-            expect(expressions.parse('XOR(1, 1, 0, 1)', fields)()).to.equal(1);
+            expect(parser.parse('XOR(1, 1, 0, 1)')()).to.equal(1);
         });
     });
     describe("DATE", function(){
-        var day = {interval:'day', tz: 'America/New_York'};
-        var DAY = expressions.parse('DAY(day.ending)', {day:['ending']}, day);
-        var MONTH = expressions.parse('MONTH(day.ending)', {day:['ending']}, day);
-        var YEAR = expressions.parse('YEAR(day.ending)', {day:['ending']}, day);
-        var WORKDAY = expressions.parse('WORKDAY(day.ending)', {day:['ending']}, day);
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, {tz: 'America/New_York'});
+            }
+        });
+        var DAY = parser.parse('DAY(day.ending)');
+        var MONTH = parser.parse('MONTH(day.ending)');
+        var YEAR = parser.parse('YEAR(day.ending)');
+        var WORKDAY = parser.parse('WORKDAY(day.ending)');
         it("DAY0", function(){
             expect(
-                DAY([{day:{ending:"2015-07-18T00:00:00-04:00"}}])
+                DAY({"day.ending":"2015-07-18T00:00:00-04:00"})
             ).to.equal(18);
         });
         it("MONTH0", function(){
             expect(
-                MONTH([{day:{ending:"2015-07-18T00:00:00-04:00"}}])
+                MONTH({"day.ending":"2015-07-18T00:00:00-04:00"})
             ).to.equal(7);
         });
         it("YEAR", function(){
             expect(
-                YEAR([{day:{ending:"2015-07-18T00:00:00-04:00"}}])
+                YEAR({"day.ending":"2015-07-18T00:00:00-04:00"})
             ).to.equal(2015);
         });
         it("WORKDAY0", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-18T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-18T00:00:00-04:00"})
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-19T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-19T00:00:00-04:00"})
             );
             expect(
-                WORKDAY([{day:{ending:"2015-07-19T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-19T00:00:00-04:00"})
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-20T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-20T00:00:00-04:00"})
             );
             expect(
-                WORKDAY([{day:{ending:"2015-07-18T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-18T00:00:00-04:00"})
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-20T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-20T00:00:00-04:00"})
             );
         });
         it("WORKDAY1", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) + 1
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) + 1
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-17T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-17T00:00:00-04:00"})
             );
         });
         it("WORKDAY-1", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) - 1
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) - 1
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-15T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-15T00:00:00-04:00"})
             );
         });
         it("WORKDAY1.5", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) + 1.5
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) + 1.5
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-17T12:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-17T12:00:00-04:00"})
             );
         });
         it("WORKDAY-1.5", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) - 1.5
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) - 1.5
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-14T12:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-14T12:00:00-04:00"})
             );
         });
         it("WORKDAY2", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) + 2
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) + 2
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-20T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-20T00:00:00-04:00"})
             );
         });
         it("WORKDAY-2", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) - 2
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) - 2
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-14T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-14T00:00:00-04:00"})
             );
         });
         it("WORKDAY2.5", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) + 2.5
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) + 2.5
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-20T12:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-20T12:00:00-04:00"})
             );
         });
         it("WORKDAY-2.5", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) - 2.5
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) - 2.5
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-13T12:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-13T12:00:00-04:00"})
             );
         });
         it("WORKDAY4", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) + 4
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) + 4
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-22T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-22T00:00:00-04:00"})
             );
         });
         it("WORKDAY-4", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) - 4
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) - 4
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-10T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-10T00:00:00-04:00"})
             );
         });
         it("WORKDAY5", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) + 5
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) + 5
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-23T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-23T00:00:00-04:00"})
             );
         });
         it("WORKDAY-5", function(){
             expect(
-                WORKDAY([{day:{ending:"2015-07-16T00:00:00-04:00"}}]) - 5
+                WORKDAY({"day.ending":"2015-07-16T00:00:00-04:00"}) - 5
             ).to.equal(
-                WORKDAY([{day:{ending:"2015-07-09T00:00:00-04:00"}}])
+                WORKDAY({"day.ending":"2015-07-09T00:00:00-04:00"})
             );
         });
     });

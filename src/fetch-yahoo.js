@@ -42,9 +42,6 @@ module.exports = function() {
         close() {
             yahoo.close();
         },
-        columns() {
-            return ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close', 'lastTrade', 'asof', 'incomplete'];
-        },
         lookup(options) {
             var exchanges = config('exchanges');
             var langs = options.marketLang ? [options.marketLang] :

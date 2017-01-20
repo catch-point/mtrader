@@ -32,9 +32,32 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 
-module.exports = {
+module.exports = function(name, args) {
+    if (name.indexOf('.') <= 0) return;
+    var interval = name.substring(0, name.indexOf('.'));
+    var lname = name.substring(name.indexOf('.')+1);
+    if (!functions[lname]) return;
+    var largs = args.map(fn => {
+        try {
+            return fn();
+        } catch(e) {
+            throw Error("The function " + lname + " can only be used with numbers (not fields)");
+        }
+    });
+    var fn = functions[lname].apply(this, largs);
+    var n = fn.warmUpLength +1;
+    return _.extend(bars => {
+        var data = bars.length > n ? bars.slice(bars.length - n) : bars;
+        return fn(_.pluck(data, interval));
+    }, {
+        intervals: [interval],
+        warmUpLength: fn.warmUpLength
+    });
+};
+
+var functions = module.exports.functions = {
     /* Weighted On Blanance Volume */
-    OBV(opts, n) {
+    OBV(n) {
         return _.extend(bars => {
             var numerator = bars.reduce(function(p, bar, i, bars){
                 if (i === 0) return 0;
@@ -52,7 +75,7 @@ module.exports = {
         });
     },
     /* Average True Range */
-    ATR(opts, n) {
+    ATR(n) {
         return _.extend(bars => {
             var ranges = bars.map(function(bar,i,bars) {
                 var previous = bars[i-1];
@@ -73,7 +96,7 @@ module.exports = {
         });
     },
     /* Parabolic SAR */
-    PSAR(opts, factor, limit, n) {
+    PSAR(factor, limit, n) {
         if (!_.isNumber(factor) || factor <= 0)
             throw Error("Must be a positive number: " + factor);
         if (!_.isNumber(limit) || limit <= 0)
@@ -127,7 +150,7 @@ module.exports = {
         });
     },
     /* Stop And Buy */
-    SAB(opts, factor, limit, n) {
+    SAB(factor, limit, n) {
         if (!_.isNumber(factor) || factor <= 0)
             throw Error("Must be a positive number: " + factor);
         if (!_.isNumber(limit) || limit <= 0)
@@ -164,7 +187,7 @@ module.exports = {
         });
     },
     /* Stop And Sell */
-    SAS(opts, factor, limit, n) {
+    SAS(factor, limit, n) {
         if (!_.isNumber(factor) || factor <= 0)
             throw Error("Must be a positive number: " + factor);
         if (!_.isNumber(limit) || limit <= 0)
@@ -201,7 +224,7 @@ module.exports = {
         });
     },
     /* Price of Percent of Volume */
-    POPV(opts, n, p) {
+    POPV(n, p) {
         return _.extend(bars => {
             var prices = getPrices(bars);
             if (p <= 0) return _.first(prices);
@@ -223,7 +246,7 @@ module.exports = {
         });
     },
     /* Percent of Volume Below */
-    POVB(opts, n) {
+    POVB(n) {
         return _.extend(bars => {
             var target = _.last(bars).close;
             var prices = getPrices(bars);
@@ -242,7 +265,7 @@ module.exports = {
         });
     },
     /* Time Price Opportunity Count percentage */
-    TPOC(opts, n) {
+    TPOC(n) {
         return _.extend(bars => {
             var tpos = getTPOCount(bars);
             var target = _.last(bars).close;
@@ -269,7 +292,7 @@ module.exports = {
         });
     },
     /* Rotation Factor */
-    ROF(opts, n) {
+    ROF(n) {
         return _.extend(bars => {
             return bars.reduce(function(factor, bar, i, bars) {
                 if (i < 1) return factor;
@@ -288,7 +311,7 @@ module.exports = {
         });
     },
     /* Point Of Control */
-    POC(opts, n) {
+    POC(n) {
         return _.extend(bars => {
             return getPointOfControl(getTPOCount(bars));
         }, {

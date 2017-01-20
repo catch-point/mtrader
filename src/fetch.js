@@ -58,7 +58,6 @@ module.exports = function() {
         ) : options;
         var interval = options.interval;
         switch(interval) {
-            case 'columns': return columns(datasources, opt);
             case 'lookup': return lookup(datasources, opt);
             case 'fundamental': return fundamental(datasources, opt);
             case 'year': return interday(datasources, opt);
@@ -79,11 +78,6 @@ module.exports = function() {
 
 function close(datasources) {
     return Promise.all(_.map(datasources, datasource => datasource.close()));
-}
-
-function columns(datasources, options) {
-    return Promise.all(_.map(datasources, source => source.columns(options)))
-        .then(columns => _.union.apply(_, columns));
 }
 
 function lookup(datasources, options) {

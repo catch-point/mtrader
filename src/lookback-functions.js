@@ -35,7 +35,33 @@ const periods = require('./periods.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
-module.exports = {
+module.exports = function(name, args, options) {
+    if (!functions[name]) return;
+    var intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
+    if (intervals.length > 1 && _.isFinite(functions[name].warmUpLength))
+        throw Error("The function " + name + " can only be used with a single interval, not " + intervals.join(' and '));
+    if (intervals.length < 1)
+        throw Error("The function " + name + " must be used with fields");
+    var interval = intervals.length == 1 ? _.first(intervals) : undefined;
+    var wargs = args.map(fn => {
+        if (_.has(fn, 'warmUpLength')) return fn;
+        else return _.extend(fn, {warmUpLength: 0});
+    });
+    var fn = functions[name].apply(this, [_.defaults({
+        interval: interval
+    }, options)].concat(wargs));
+    var len = _.max([fn.warmUpLength].concat(_.pluck(wargs, 'warmUpLength')));
+    var n = len +1;
+    return _.extend(bars => {
+        if (bars.length <= n) return fn(bars);
+        else return fn(bars.slice(bars.length - n));
+    }, {
+        intervals: intervals,
+        warmUpLength: len
+    });
+};
+
+var functions = module.exports.functions = {
     /* Offset value N periods ago */
     OFFSET(opts, n_periods, calc) {
         var n = asPositiveInteger(n_periods, "OFFSET");
@@ -197,20 +223,15 @@ module.exports = {
     PRIOR(opts, days, field) {
         var d = asPositiveInteger(days, "PRIOR");
         var dayLength = getDayLength(opts);
-        var interval = opts.interval;
         var n = Math.ceil((d + 1) * dayLength * 2); // extra for after hours activity
         return _.extend(bars => {
             var day = periods(_.defaults({interval:'day'}, opts));
-            var ending = day.dec(_.last(bars)[interval].ending, d);
-            if (!ending.isValid()) throw Error("Invalid date: " + _.last(bars)[interval].ending);
+            var ending = day.dec(_.last(bars).ending, d);
+            if (!ending.isValid()) throw Error("Invalid date: " + _.last(bars).ending);
             var closes = ending.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt;
             var prior = moment.tz(closes, opts.tz).format();
-            var end = _.sortedIndex(bars, {
-                [interval]: {
-                    ending: prior
-                }
-            }, bar => bar[interval].ending);
-            if (bars[end] && bars[end][interval].ending == prior) end++;
+            var end = _.sortedIndex(bars, {ending: prior}, 'ending');
+            if (bars[end] && bars[end].ending == prior) end++;
             var start = Math.max(end - field.warmUpLength -1, 0);
             return field(bars.slice(start, end));
         }, {
@@ -222,19 +243,14 @@ module.exports = {
     SINCE(opts, days, calc) {
         var d = asPositiveInteger(days, "SINCE");
         var dayLength = getDayLength(opts);
-        var interval = opts.interval;
         var n = Math.ceil((d + 1) * dayLength * 2); // extra for after hours activity
         return _.extend(bars => {
             if (_.isEmpty(bars)) return calc(bars);
-            var ending = moment(_.last(bars)[interval].ending).tz(opts.tz);
+            var ending = moment(_.last(bars).ending).tz(opts.tz);
             var day = periods(_.defaults({interval:'day'}, opts));
             var since = day.dec(ending, d-1).format();
-            var start = _.sortedIndex(bars, {
-                [interval]: {
-                    ending: since
-               }
-            }, bar => bar[interval].ending);
-            if (bars[start] && bars[start][interval].ending == since) start++;
+            var start = _.sortedIndex(bars, {ending: since}, 'ending');
+            if (bars[start] && bars[start].ending == since) start++;
             if (start >= bars.length) return calc([]);
             var end = Math.min(start + calc.warmUpLength +1, bars.length);
             return calc(bars.slice(start, end));
@@ -247,21 +263,16 @@ module.exports = {
     PAST(opts, days, calc) {
         var d = asPositiveInteger(days, "PAST");
         var dayLength = getDayLength(opts);
-        var interval = opts.interval;
         var n = Math.ceil((d + 1) * dayLength * 2); // extra for after hours activity
         return _.extend(bars => {
             if (_.isEmpty(bars)) return calc(bars);
-            var ending = moment(_.last(bars)[interval].ending).tz(opts.tz);
+            var ending = moment(_.last(bars).ending).tz(opts.tz);
             var day = periods(_.defaults({interval:'day'}, opts));
             var diff = ending.diff(day.dec(ending, d), 'days');
             var days = ending.isoWeekday() == 7 ? diff + 1 : diff;
             var since = ending.subtract(days, 'days').format();
-            var start = _.sortedIndex(bars, {
-                [interval]: {
-                    ending: since
-               }
-            }, bar => bar[interval].ending);
-            if (bars[start] && bars[start][interval].ending == since) start++;
+            var start = _.sortedIndex(bars, {ending: since}, 'ending');
+            if (bars[start] && bars[start].ending == since) start++;
             if (start >= bars.length) return calc([]);
             var end = Math.min(start + calc.warmUpLength +1, bars.length);
             return calc(bars.slice(start, end));
@@ -273,14 +284,13 @@ module.exports = {
     /* Normal Market Hour Session */
     SESSION(opts, calc) {
         var dayLength = getDayLength(opts);
-        var interval = opts.interval;
         var n = Math.ceil(dayLength * 2); // extra for after hours activity
         return _.extend(bars => {
             if (_.isEmpty(bars))
                 return calc(bars);
             var start = "2000-01-01T".length;
-            var first = moment(_.first(bars)[interval].ending).tz(opts.tz);
-            var last = moment(_.last(bars)[interval].ending).tz(opts.tz);
+            var first = moment(_.first(bars).ending).tz(opts.tz);
+            var last = moment(_.last(bars).ending).tz(opts.tz);
             var opens = moment.tz(first.format('YYYY-MM-DD') + 'T' + opts.marketOpensAt, opts.tz);
             var closes = moment.tz(last.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt, opts.tz);
             var ohms = opens.hour() *60 *60 + opens.minute() *60 + opens.seconds();
@@ -292,15 +302,15 @@ module.exports = {
                 var after = opens.format().substring(start);
                 var before = closes.format().substring(start);
                 return calc(bars.filter(after < before ? function(bar) {
-                    var time = bar[interval].ending.substring(start);
+                    var time = bar.ending.substring(start);
                     return after < time && time <= before;
                 } : function(bar) {
-                    var time = bar[interval].ending.substring(start);
+                    var time = bar.ending.substring(start);
                     return after < time || time <= before;
                 }));
             } else {
                 return calc(bars.filter(function(bar){
-                    var ending = moment(bar[interval].ending).tz(opts.tz);
+                    var ending = moment(bar.ending).tz(opts.tz);
                     var hms = ending.hour() *60 *60 + ending.minute() *60 + ending.seconds();
                     return ohms < hms && hms <= chms;
                 }));
@@ -313,23 +323,22 @@ module.exports = {
     /* use only this Time Of Day */
     TOD(opts, calc) {
         var dayLength = getDayLength(opts);
-        var interval = opts.interval;
         return _.extend(bars => {
             if (_.isEmpty(bars))
                 return calc(bars);
             var start = "2000-01-01T".length;
-            var first = moment(_.first(bars)[interval].ending).tz(opts.tz);
-            var last = moment(_.last(bars)[interval].ending).tz(opts.tz);
+            var first = moment(_.first(bars).ending).tz(opts.tz);
+            var last = moment(_.last(bars).ending).tz(opts.tz);
             if (first.isDST() == last.isDST() && last.diff(first, 'months') < 2) {
                 // Use string comparison for faster filter
                 var time = last.format().substring(start);
                 return calc(bars.filter(function(bar){
-                    return bar[interval].ending.substring(start) == time;
+                    return bar.ending.substring(start) == time;
                 }));
             } else {
                 var hms = last.hour() *60 *60 + last.minute() *60 + last.seconds();
                 return calc(bars.filter(function(bar){
-                    var ending = moment(bar[interval].ending).tz(opts.tz);
+                    var ending = moment(bar.ending).tz(opts.tz);
                     var ahms = ending.hour() *60 *60 + ending.minute() *60 + ending.seconds();
                     return ahms == hms;
                 }));
@@ -349,6 +358,10 @@ module.exports = {
         });
     }
 };
+
+_.forEach(functions, fn => {
+    fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/);
+});
 
 function asPositiveInteger(calc, msg) {
     try {

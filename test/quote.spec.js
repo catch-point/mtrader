@@ -56,6 +56,9 @@ describe("quote", function() {
     });
     after(function() {
         config.unset('prefix');
+        config.unset(['iqfeed','enabled']);
+        config.unset(['yahoo','enabled']);
+        config.unset(['files','enabled']);
         return Promise.all([
             quote.close(),
             fetch.close()
@@ -63,7 +66,7 @@ describe("quote", function() {
     });
     it("should return daily", function() {
         return quote({
-            columns: 'day.ending',
+            columns: 'day.ending AS "ending"',
             symbol: 'YHOO',
             exchange: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
@@ -94,7 +97,7 @@ describe("quote", function() {
     });
     it("should return weekly", function() {
         return quote({
-            columns: 'week.ending',
+            columns: 'week.ending AS "ending"',
             symbol: 'YHOO',
             exchange: 'NASDAQ',
             begin: moment.tz('2014-01-06', tz),
@@ -108,7 +111,7 @@ describe("quote", function() {
     });
     it("should return monthly", function() {
         return quote({
-            columns: 'month.ending',
+            columns: 'month.ending AS "ending"',
             symbol: 'YHOO',
             exchange: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
@@ -122,7 +125,7 @@ describe("quote", function() {
     });
     it("should return 30 minute intervals", function() {
         return quote({
-            columns: 'ending,m30.open,m30.high,m30.low,m30.close',
+            interval: 'm30',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),

@@ -35,12 +35,18 @@ const moment = require('moment-timezone');
 const storage = require('./storage.js');
 const periods = require('./periods.js');
 const List = require('./list.js');
-const expressions = require('./expressions.js');
+const Parser = require('./parser.js');
+const common = require('../src/common-functions.js');
+const lookback = require('../src/lookback-functions.js');
+const indicator = require('../src/indicator-functions.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
+/**
+ * @returns a function that returns array of row objects based on given options
+ */
 module.exports = function(fetch) {
     var store = storage(path.resolve(config('prefix'), 'var/quotes/'));
     var fetchOptions = fetchOptionsFactory(fetch);
@@ -51,6 +57,9 @@ module.exports = function(fetch) {
     return self;
 };
 
+/**
+ * Converts begin/end to moments and includes some additional options like yahoo_symbol.
+ */
 function fetchOptionsFactory(fetch) {
     var memoizeFirstLookup = _.memoize((symbol, exchange) => {
         return fetch({
@@ -110,46 +119,126 @@ function fetchOptionsFactory(fetch) {
     };
 }
 
+/**
+ * Given begin/end range, columns, and criteria returns an array of row objects
+ * that each pass the given criteria and are within the begin/end range.
+ */
 function quote(fetch, store, options) {
-    return getPossibleFields(fetch, options).then(fields => {
-        var exprMap = getExpressionsMap(fields, options);
-        var exprFields = _.mapObject(exprMap, (exprs, interval) => {
-            return _.keys(exprs).concat(fields[interval]);
-        });
-        var criteria = expressions.parseCriteriaMap(options.criteria, exprFields, options);
-        var name = options.exchange ?
-            options.symbol + '.' + options.exchange : options.symbol;
-        var intervals = _.keys(exprMap);
-        expect(intervals).not.to.be.empty;
-        var interval = intervals[0];
-        intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
-        return store.open(name, (err, db) => {
-            if (err) throw err;
-            var quoteBars = fetchBars.bind(this, fetch, db);
-            return inlinePadBegin(quoteBars, interval, options)
-              .then(options => inlinePadEnd(quoteBars, interval, options))
-              .then(options => mergeBars(quoteBars, exprMap, criteria, options));
-        });
+    var exprMap = parseWarmUpMap(options);
+    var cached = _.mapObject(exprMap, _.keys);
+    var criteria = parseCriteriaMap(options.criteria, cached, options);
+    var name = options.exchange ?
+        options.symbol + '.' + options.exchange : options.symbol;
+    var intervals = periods.sort(_.keys(exprMap));
+    expect(intervals).not.to.be.empty;
+    var interval = intervals[0];
+    intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
+    return store.open(name, (err, db) => {
+        if (err) throw err;
+        var quoteBars = fetchBars.bind(this, fetch, db);
+        return inlinePadBegin(quoteBars, interval, options)
+          .then(options => inlinePadEnd(quoteBars, interval, options))
+          .then(options => mergeBars(quoteBars, exprMap, criteria, options));
     }).then(points => formatColumns(points, options));
 }
 
-function getPossibleFields(fetch, options) {
-    return fetch(_.defaults({interval: 'columns'}, options)).then(fields => {
-        return _.object(periods.values, periods.values.map(interval => fields));
-    }).then(fields => _.defaults({
-        "": ['symbol', 'exchange', 'ending']
-    }, fields));
-}
-
-function getExpressionsMap(fields, options) {
+/**
+ * Finds out what intervals are used in columns and criteria and put together a
+ * list of what expressions should be computed and stored for further reference.
+ */
+function parseWarmUpMap(options) {
     if (!options.columns && !options.criteria && !options.interval) return {day:{}};
     else if (!options.columns && !options.criteria) return {[options.interval]:{}};
-    else return expressions.parseWarmUpMap(
-        _.compact([options.columns, options.criteria]).join(','),
-        fields, options
-    );
+    var exprs = _.compact([options.columns, options.criteria]).join(',');
+    var p = createParser({}, options);
+    var values = _.values(Parser({
+        constant(value) {
+            return {};
+        },
+        variable(name) {
+            if (!~name.indexOf('.')) return {};
+            else return {[name.substring(0, name.indexOf('.'))]: {}};
+        },
+        expression(expr, name, args) {
+            var fn = p.parse(expr);
+            var interval =_.first(fn.intervals);
+            if (fn.intervals && fn.intervals.length == 1 && fn.warmUpLength && _.isFinite(fn.warmUpLength))
+                return {[interval]: {[expr]: fn}};
+            var intervals = periods.sort(_.uniq(_.flatten(args.map(_.keys), true).concat(fn.intervals || [])));
+            return _.object(intervals, intervals.map(interval => {
+                return _.extend.apply(_, _.compact(_.pluck(args, interval)));
+            }));
+        }
+    }).parseColumnsMap(exprs));
+    var intervals = periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
+    return _.object(intervals, intervals.map(interval => {
+        return _.extend.apply(_, _.compact(_.pluck(values, interval)));
+    }));
 }
 
+/**
+ * Create a function for each interval that should be evaluated to include in result.
+ */
+function parseCriteriaMap(criteria, cached, options) {
+    var list = createParser(cached, options).parseCriteriaList(criteria);
+    var intervals = list.reduce((intervals, fn) => {
+        var diff = _.without(fn.intervals || [], intervals);
+        if (_.isEmpty(diff)) return intervals;
+        else return periods.sort(diff.concat(intervals));
+    }, []);
+    var group = list.reduce((m, fn) => {
+        var interval = _.first(fn.intervals);
+        if (m[interval]) return m[interval].concat([fn]);
+        else return _.extend(m, {
+            [interval]: [fn]
+        });
+    }, {});
+    _.reduceRight(intervals, (ar, interval) => {
+        if (!group[interval]) return ar;
+        return group[interval] = group[interval].concat(ar);
+    }, []);
+    return _.mapObject(group, (list, interval) => {
+        return bars => _.every(list, fn => fn(bars));
+    });
+}
+
+/**
+ * Creates a parser that can parse expressions into functions
+ */
+function createParser(cached, options) {
+    return Parser({
+        constant(value) {
+            return () => value;
+        },
+        variable(name) {
+            if (_.contains(['symbol', 'exchange', 'ending'], name))
+                return _.compose(_.property(name), _.last);
+            else if (!~name.indexOf('.'))
+                throw Error("Fields need to be prefixed by an interval");
+            var interval = name.substring(0, name.indexOf('.'));
+            expect(interval).to.be.oneOf(periods.values);
+            var lname = name.substring(name.indexOf('.')+1);
+            return _.extend(_.compose(_.property(lname), _.property(interval), _.last), {
+                intervals: [interval]
+            });
+        },
+        expression(expr, name, args) {
+            var fn = common(name, args, options) ||
+                lookback(name, args, options) ||
+                indicator(name, args, options);
+            if (!fn) throw Error("Unknown function: " + name);
+            var interval =_.first(fn.intervals);
+            if (!_.contains(cached[interval], expr)) return fn;
+            else return _.extend(_.compose(_.property(expr), _.property(interval), _.last), {
+                intervals: fn.intervals
+            });
+        }
+    });
+}
+
+/**
+ * Changes pad_begin to zero and adjusts begin by reading the bars from a block
+ */
 function inlinePadBegin(quoteBars, interval, options) {
     if (!options.pad_begin) return Promise.resolve(options);
     else return quoteBars({}, _.defaults({
@@ -165,6 +254,9 @@ function inlinePadBegin(quoteBars, interval, options) {
     });
 }
 
+/**
+ * Changes pad_end to zero and adjusts end by reading the bars from a block
+ */
 function inlinePadEnd(quoteBars, interval, options) {
     if (!options.pad_end) return Promise.resolve(options);
     else return quoteBars({}, _.defaults({
@@ -180,6 +272,10 @@ function inlinePadEnd(quoteBars, interval, options) {
     });
 }
 
+/**
+ * For each expression interval it reads the bars and evaluates the criteria.
+ * @returns the combined bars as an array of points
+ */
 function mergeBars(quoteBars, exprMap, criteria, options) {
     var intervals = _.keys(exprMap);
     return intervals.reduceRight((promise, interval) => {
@@ -218,6 +314,9 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
     });
 }
 
+/**
+ * Identifies the entry and exit points and returns an array of these signals
+ */
 function readSignals(points, interval, entry, exit, criteria) {
     if (!points.length) return [];
     var start = points.sortedIndexOf(entry, 'ending');
@@ -252,6 +351,11 @@ function readSignals(points, interval, entry, exit, criteria) {
     return signals;
 }
 
+/**
+ * Given a date range and a set of expressions, this reads the bars from blocks
+ * and stores the expressions results.
+ * @returns the bars of the blocks
+ */
 function fetchBars(fetch, db, expressions, options) {
     var name = getCollectionName(options);
     return db.collection(name).then(collection => {
@@ -261,6 +365,9 @@ function fetchBars(fetch, db, expressions, options) {
     });
 }
 
+/**
+ * The storage location used for this interval.
+ */
 function getCollectionName(options) {
     var m = options.interval.match(/^m(\d+)$/);
     if (m && +m[1] < 30) return options.begin.year() + options.interval;
@@ -268,6 +375,9 @@ function getCollectionName(options) {
     else return 'interday';
 }
 
+/**
+ * Determines the blocks that will be needed for this begin/end range.
+ */
 function fetchNeededBlocks(fetch, collection, options) {
     var period = periods(options);
     var begin = options.begin;
@@ -278,6 +388,9 @@ function fetchNeededBlocks(fetch, collection, options) {
     return collection.lockWith(blocks, blocks => fetchBlocks(fetch, options, collection, stop, blocks));
 }
 
+/**
+ * If any of the blocks are missing some expressions, evaluate them and store them.
+ */
 function evalBlocks(collection, blocks, expressions, options) {
     if (_.isEmpty(expressions)) return blocks;
     return collection.lockWith(blocks, blocks => blocks.reduce((promise, block, i, blocks) => {
@@ -305,6 +418,9 @@ function evalBlocks(collection, blocks, expressions, options) {
     }, Promise.resolve(_.object(blocks, [])))).then(() => blocks.slice(1));
 }
 
+/**
+ * Convert a bar into a point (a point contains bars from multilpe intervals).
+ */
 function createPoint(bar, options) {
     return {
         ending: bar.ending,
@@ -314,6 +430,9 @@ function createPoint(bar, options) {
     };
 }
 
+/**
+ * Reads the blocks and trims the result to be within the begin/end range
+ */
 function readBlocks(collection, blocks, options) {
     return Promise.all(blocks.map(block => collection.readFrom(block)))
       .then(tables => List.flatten(tables, true))
@@ -335,22 +454,33 @@ function readBlocks(collection, blocks, options) {
     });
 }
 
+/**
+ * Converts array of points into array of rows keyed by column names
+ */
 function formatColumns(points, options) {
     if (!points.length) return [];
-    var fields = _.extend({
-        "": _.keys(_.pick(points.first(), _.isString))
-    }, _.mapObject(_.pick(points.first(), _.isObject), _.keys));
-    var columns = options.columns ||
-        _.flatten(_.map(fields, (keys, interval) => keys.map(field => {
-            return interval ? interval + '.' + field : field;
-        })), true).filter(field => field.match(/^\w+\.\w+$/)).join(',');
-    var map = expressions.parseColumnsMap(columns, fields, options);
+    var fields = _.mapObject(_.pick(points.first(), _.isObject), _.keys);
+    var columns = options.columns ? options.columns :
+        _.size(fields) == 1 ? _.first(_.map(fields, (keys, interval) => {
+            return keys.filter(field => field.match(/^\w+$/)).map(field => {
+                return interval + '.' + field + ' AS "' + field + '"';
+            });
+        })).join(',') :
+        _.flatten(_.map(fields, (keys, interval) => {
+            return keys.filter(field => field.match(/^\w+$/)).map(field => {
+                return interval + '.' + field;
+            });
+        }), true).join(',');
+    var map = createParser(fields, options).parseColumnsMap(columns);
     var depth = 0;
     return points.map((bar, i, points) => _.mapObject(map, expr => {
         return expr(points.slice(0, i+1).toArray());
     })).toArray();
 }
 
+/**
+ * Checks if any of the blocks need to be updated
+ */
 function fetchBlocks(fetch, options, collection, stop, blocks) {
     var fetchComplete = fetchCompleteBlock.bind(this, fetch, options, collection);
     var fetchPartial = fetchPartialBlock.bind(this, fetch, options, collection);
@@ -376,6 +506,9 @@ function fetchBlocks(fetch, options, collection, stop, blocks) {
     });
 }
 
+/**
+ * Attempts to load a complete block
+ */
 function fetchCompleteBlock(fetch, options, collection, block, last) {
     return fetch(blockOptions(block, options)).then(records => {
         if (last && _.isEmpty(records)) return records; // don't write incomplete empty blocks
@@ -387,6 +520,9 @@ function fetchCompleteBlock(fetch, options, collection, block, last) {
     });
 }
 
+/**
+ * Attempts to add additional bars to a block
+ */
 function fetchPartialBlock(fetch, options, collection, block, begin, priorBlock) {
     return fetch(_.defaults({
         begin: begin
@@ -397,9 +533,7 @@ function fetchPartialBlock(fetch, options, collection, block, begin, priorBlock)
             if (!_.isMatch(partial.last(), records.shift())) return 'incompatible';
             var warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
-                var keys = _.intersection(collection.columnsOf(priorBlock), collection.columnsOf(block));
-                var fields = {[options.interval]: keys.filter(col => col.match(/^\w+$/))};
-                var exprs = _.object(warmUps, warmUps.map(expr => expressions.parse(expr, fields, options)));
+                var exprs = _.object(warmUps, warmUps.map(expr => createParser({}, options).parse(expr)));
                 return collection.readFrom(priorBlock).then(prior => {
                     var data = new List().concat(prior, partial, records)
                         .map(bar => ({[options.interval]: bar}));
@@ -470,6 +604,9 @@ function getBlocks(interval, begin, end, options) {
     return blocks;
 }
 
+/**
+ * Determines the begin/end range to load a complete block
+ */
 function blockOptions(block, options) {
     var m = options.interval.match(/^m(\d+)$/);
     if (block == options.interval) {

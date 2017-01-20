@@ -31,8 +31,20 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const periods = require('./periods.js');
 
-module.exports = {
+module.exports = function(name, args, options) {
+    if (!functions[name]) return;
+    var intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
+    var fn = functions[name].apply(this, [options].concat(args));
+    var len = Math.max.apply(Math, [0].concat(_.compact(_.pluck(args, 'warmUpLength'))));
+    return _.extend(bars => fn(bars), {
+        intervals: intervals,
+        warmUpLength: len
+    });
+};
+
+var functions = module.exports.functions = {
     /* The number of workdays (Mon-Fri) since 1970-01-01 */
     WORKDAY: _.extend((opts, ending) => {
         return context => {
@@ -48,6 +60,17 @@ module.exports = {
         };
     }, {
         description: "The number of workdays (Mon-Fri) since 1970-01-01"
+    }),
+    /* Converts dateTime to simplified extended ISO format (ISO 8601) format in UTC */
+    DATETIME: _.extend((opts, ending) => {
+        return context => {
+            var date = moment(ending(context));
+            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            return date.toISOString();
+        };
+    }, {
+        description: "Simplified extended ISO format (ISO 8601) format in UTC",
+        seeAlso: ['DATE', 'TIME']
     }),
     /* Y-MM-DD date format */
     DATE: _.extend((opts, ending) => {
@@ -284,3 +307,7 @@ module.exports = {
         };
     }
 };
+
+_.forEach(functions, fn => {
+    fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/);
+});

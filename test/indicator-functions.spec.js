@@ -31,7 +31,8 @@
 
 const path = require('path');
 const _ = require('underscore');
-const expressions = require('../src/expressions.js');
+const indicator = require('../src/indicator-functions.js');
+const Parser = require('../src/parser.js');
 const expect = require('chai').expect;
 const moment = require('moment-timezone');
 const like = require('./should-be-like.js');
@@ -144,7 +145,18 @@ describe("expressions", function(){
                 [48.66,47.9,48.62,1.3362193662],
                 [48.79,47.7301,47.85,1.3164822686]
             ];
-            var ATR = expressions.parse('day.ATR(14)', {day:['high', 'low', 'close']});
+            var parser = Parser({
+                constant(value) {
+                    return () => value;
+                },
+                variable(name) {
+                    return _.compose(_.property(name), _.last);
+                },
+                expression(expr, name, args) {
+                    return indicator(name, args);
+                }
+            });
+            var ATR = parser.parse('day.ATR(14)');
             data.forEach((datum,i,data) => {
                 var atr = datum[3];
                 var points = data.slice(0, i+1).map(datum => {
