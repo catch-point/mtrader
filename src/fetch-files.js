@@ -79,7 +79,7 @@ function readOrWriteResult(fallbacks, open, cmd, options) {
             else if (_.isEmpty(fallbacks)) throw Error("Data file not found " + coll.filenameOf(name));
             else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
                 var datasource = config(['exchanges', options.exchange, 'datasources', source]);
-                if (!_.contains(datasource.fetch, options.interval)) throw err;
+                if (!datasource || !_.contains(datasource.fetch, options.interval)) throw err;
                 var opt = _.defaults({}, options, _.omit(datasource, 'fetch'));
                 return fb[cmd](opt).then(result => {
                     return coll.writeTo(result, name).then(() => result);
