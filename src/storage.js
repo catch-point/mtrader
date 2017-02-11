@@ -112,6 +112,16 @@ function openCollection(dirname, name) {
             else
                 metadata.properties[name] = value;
         },
+        propertyOf(block, name, value) {
+            var id = safe(block);
+            var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            var entry = metadata.tables[idx];
+            if (!entry || entry.id != id) throw Error("Unknown table " + block);
+            if (arguments.length == 2)
+                return entry.properties[name];
+            else
+                entry.properties[name] = value;
+        },
         exists(name) {
             var id = safe(name);
             var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
@@ -186,7 +196,8 @@ function openCollection(dirname, name) {
                     size: records.length,
                     head: records.slice(0, 2),
                     tail: records.slice(-2),
-                    updatedAt: new Date().toISOString()
+                    updatedAt: new Date().toISOString(),
+                    properties: {}
                 };
                 var idx = _.sortedIndex(metadata.tables, entry, 'id');
                 if (metadata.tables[idx] && metadata.tables[idx].id == id) {
