@@ -105,7 +105,7 @@ function createCalculation(expr, handlers) {
     if (_.isArray(expr)) {
         var args = _.rest(expr).map(expr => createCalculation(expr, handlers));
         var fn = dhandlers.expression(serialize(expr), _.first(expr), args);
-        if (fn) return fn;
+        if (!_.isUndefined(fn)) return fn;
         else throw Error("Unknown function: " + _.first(expr));
     } else if (_.isString(expr) && expr.charAt(0) == '"') {
         return dhandlers.constant(JSON.parse(expr));
