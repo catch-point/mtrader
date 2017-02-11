@@ -103,18 +103,16 @@ function fetchOptionsFactory(fetch) {
             var pad_begin = options.pad_begin ? options.pad_begin :
                     options.begin ? 0 : 99;
             var pad_end = end && options.pad_end || 0;
+            if (!begin.isValid())
+                throw Error("Begin date is not valid " + options.begin);
+            if (end && !end.isValid())
+                throw Error("End date is not valid " + options.end);
             return _.defaults({
-                begin: begin,
+                begin: begin.format(),
                 pad_begin: pad_begin,
-                end: end,
+                end: end && end.format(),
                 pad_end: pad_end
             }, options);
-        }).then(opt => {
-            if (!opt.begin.isValid())
-                throw Error("Begin date is not valid " + options.begin);
-            if (opt.end && !opt.end.isValid())
-                throw Error("End date is not valid " + options.end);
-            return opt;
         });
     };
 }
@@ -249,7 +247,7 @@ function inlinePadBegin(quoteBars, interval, options) {
         if (!bars.length) return options;
         return _.defaults({
             pad_begin: 0,
-            begin: moment.tz(bars.first().ending, options.tz)
+            begin: bars.first().ending
         }, options);
     });
 }
@@ -267,7 +265,7 @@ function inlinePadEnd(quoteBars, interval, options) {
         if (!bars.length) return options;
         return _.defaults({
             pad_end: 0,
-            end: moment.tz(bars.last().ending, options.tz)
+            end: bars.last().ending
         }, options);
     });
 }
@@ -280,13 +278,12 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
     var intervals = _.keys(exprMap);
     return intervals.reduceRight((promise, interval) => {
         return promise.then(signals => Promise.all(signals.map(signal => {
-            var entry = signal.points ? signal.points.first() : {ending: options.begin.format()};
-            var begin = moment.tz(entry.ending, options.tz);
-            var end = signal.exit ? moment.tz(signal.exit.ending, options.tz) : options.end;
+            var entry = signal.points ? signal.points.first() : {ending: options.begin};
+            var end = signal.exit ? signal.exit.ending : options.end;
             var opts = _.defaults({
                 interval: interval,
-                begin: options.begin.isBefore(begin) ? begin : options.begin,
-                end: options.end && options.end.isBefore(end) ? options.end : end
+                begin: options.begin < entry.ending ? entry.ending : options.begin,
+                end: options.end && options.end < end ? options.end : end && end
             }, options);
             return quoteBars(exprMap[interval], opts)
               .then(bars => bars.map(bar => createPoint(bar, opts)))
@@ -305,7 +302,7 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
         }))).then(signalsMap => _.flatten(signalsMap, true));
     }, Promise.resolve([{}])).then(signals => {
         return signals.reduce((points, signal, i) => {
-            if (i === 0 && options.begin.isAfter(signal.points.first().ending))
+            if (i === 0 && options.begin > signal.points.first().ending)
                 return points.concat(signal.points.slice(1));
             else
                 return points.concat(signal.points);
@@ -357,10 +354,11 @@ function readSignals(points, interval, entry, exit, criteria) {
  * @returns the bars of the blocks
  */
 function fetchBars(fetch, db, expressions, options) {
+    var warmUpLength = _.max(_.pluck(_.values(expressions), 'warmUpLength').concat([0]));
     var name = getCollectionName(options);
     return db.collection(name).then(collection => {
-        return fetchNeededBlocks(fetch, collection, options)
-          .then(blocks => evalBlocks(collection, blocks, expressions, options))
+        return fetchNeededBlocks(fetch, collection, warmUpLength, options)
+          .then(blocks => evalBlocks(collection, warmUpLength, blocks, expressions, options))
           .then(blocks => readBlocks(collection, blocks, options));
     });
 }
@@ -370,7 +368,7 @@ function fetchBars(fetch, db, expressions, options) {
  */
 function getCollectionName(options) {
     var m = options.interval.match(/^m(\d+)$/);
-    if (m && +m[1] < 30) return options.begin.year() + options.interval;
+    if (m && +m[1] < 30) return options.begin.substring(0,4) + options.interval;
     else if (m) return options.interval;
     else return 'interday';
 }
@@ -378,12 +376,13 @@ function getCollectionName(options) {
 /**
  * Determines the blocks that will be needed for this begin/end range.
  */
-function fetchNeededBlocks(fetch, collection, options) {
+function fetchNeededBlocks(fetch, collection, warmUpLength, options) {
     var period = periods(options);
     var begin = options.begin;
-    var start = options.pad_begin ? period.dec(begin, options.pad_begin) : period.floor(begin);
-    var end = options.end || moment(options.now).tz(options.begin.tz());
-    var stop = options.pad_end ? period.inc(end, options.pad_end) : end;
+    var pad_begin = options.pad_begin + warmUpLength;
+    var start = pad_begin ? period.dec(begin, pad_begin) : period.floor(begin);
+    var end = options.end || moment(options.now).tz(options.tz);
+    var stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
     var blocks = getBlocks(options.interval, start, stop, options);
     return collection.lockWith(blocks, blocks => fetchBlocks(fetch, options, collection, stop, blocks));
 }
@@ -391,28 +390,37 @@ function fetchNeededBlocks(fetch, collection, options) {
 /**
  * If any of the blocks are missing some expressions, evaluate them and store them.
  */
-function evalBlocks(collection, blocks, expressions, options) {
+function evalBlocks(collection, warmUpLength, blocks, expressions, options) {
     if (_.isEmpty(expressions)) return blocks;
     return collection.lockWith(blocks, blocks => blocks.reduce((promise, block, i, blocks) => {
-        if (i == 0) return promise; // warmUp block is not evaluated
+        var last = _.last(collection.tailOf(block));
+        if (options.begin > last.ending) return promise; // warmUp blocks are not evaluated
         var missing = _.difference(_.keys(expressions), collection.columnsOf(block));
         if (!missing.length) return promise;
         return promise.then(dataBlocks => {
-            if (!dataBlocks[blocks[i-1]])
-                dataBlocks[blocks[i-1]] = collection.readFrom(blocks[i-1]);
+            var warmUpBlocks = blocks.slice(0, i);
+            warmUpBlocks.forEach(block => {
+                if (!dataBlocks[block])
+                    dataBlocks[block] = collection.readFrom(block);
+            });
             if (!dataBlocks[block])
                 dataBlocks[block] = collection.readFrom(block);
-            return Promise.all([dataBlocks[blocks[i-1]], dataBlocks[block]])
+            return Promise.all(blocks.slice(0, i+1).map(block => dataBlocks[block]))
               .then(results => {
                 var data = List.flatten(results, true).map(bar => createPoint(bar, options));
+                var warmUpRecords = data.length - _.last(results).length;
                 var bars = _.last(results).map((bar, i, bars) => {
                     return _.extend(bar, _.object(missing, missing.map(expr => {
-                        var end = results[0].length + i;
+                        var end = warmUpRecords + i;
                         var start = Math.max(end - expressions[expr].warmUpLength, 0);
                         return expressions[expr](data.slice(start, end+1).toArray());
                     })));
                 });
                 return collection.writeTo(bars, block);
+            }).then(() => {
+                var value = collection.propertyOf(block, 'warmUpBlocks') || [];
+                var blocks = _.union(value, warmUpBlocks).sort();
+                collection.propertyOf(block, 'warmUpBlocks', blocks);
             }).then(() => dataBlocks);
         });
     }, Promise.resolve(_.object(blocks, [])))).then(() => blocks.slice(1));
@@ -438,7 +446,7 @@ function readBlocks(collection, blocks, options) {
       .then(tables => List.flatten(tables, true))
       .then(bars => {
         if (!bars.length) return bars;
-        var format = options.begin.format();
+        var format = options.begin;
         var from = bars.sortedIndexOf({ending: format}, 'ending');
         if (from == bars.length || from > 0 && format < bars.item(from).ending)
             from--; // include prior value for criteria
@@ -446,7 +454,7 @@ function readBlocks(collection, blocks, options) {
         return bars.slice(start);
     }).then(bars => {
         if (!bars.length || !options.end) return bars;
-        var format = options.end.format();
+        var format = options.end;
         var to = bars.sortedIndexOf({ending: format}, 'ending');
         if (to < bars.length && format != bars.item(to).ending) to--;
         var stop = Math.min(Math.max(to + options.pad_end, 0), bars.length -1);
@@ -491,10 +499,10 @@ function fetchBlocks(fetch, options, collection, stop, blocks) {
         var tail = collection.tailOf(block);
         if (_.isEmpty(tail) || !_.last(tail).incomplete)
             return; // empty blocks are complete
-        if (i == 0 || _.first(tail).incomplete)
+        if (_.first(tail).incomplete)
             return fetchComplete(block, last);
         if (i < blocks.length -1 || stop && _.first(tail).ending < stop.format())
-            return fetchPartial(block, _.first(tail).ending, blocks[i-1]);
+            return fetchPartial(block, _.first(tail).ending);
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
         collection.property('incompatible', _.compact(_.union(
@@ -523,7 +531,7 @@ function fetchCompleteBlock(fetch, options, collection, block, last) {
 /**
  * Attempts to add additional bars to a block
  */
-function fetchPartialBlock(fetch, options, collection, block, begin, priorBlock) {
+function fetchPartialBlock(fetch, options, collection, block, begin) {
     return fetch(_.defaults({
         begin: begin
     }, blockOptions(block, options))).then(List.from.bind(List)).then(records => {
@@ -534,8 +542,11 @@ function fetchPartialBlock(fetch, options, collection, block, begin, priorBlock)
             var warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
                 var exprs = _.object(warmUps, warmUps.map(expr => createParser({}, options).parse(expr)));
-                return collection.readFrom(priorBlock).then(prior => {
-                    var data = new List().concat(prior, partial, records)
+                var warmUpBlocks = collection.propertyOf(block, 'warmUpBlocks') || [];
+                return Promise.all(warmUpBlocks.map(block => collection.readFrom(block)))
+                  .then(results => List.flatten(results, true))
+                  .then(prior => {
+                    var data = prior.concat(partial, records)
                         .map(bar => ({[options.interval]: bar}));
                     var bars = records.map((bar, i, bars) => {
                         var end = prior.length + partial.length + i;
@@ -610,20 +621,24 @@ function getBlocks(interval, begin, end, options) {
 function blockOptions(block, options) {
     var m = options.interval.match(/^m(\d+)$/);
     if (block == options.interval) {
+        var begin = moment.tz(0, options.tz);
         return _.defaults({
-            begin: moment.tz(0, options.tz),
+            begin: begin.format(),
             end: null
         }, options);
     } else if ('day' == options.interval) {
+        var begin = moment.tz(block + '-01-01', options.tz);
+        var end = moment.tz((10+block) + '-01-01', options.tz);
         return _.defaults({
-            begin: moment.tz(block + '-01-01', options.tz),
-            end: moment.tz((10+block) + '-01-01', options.tz)
+            begin: begin.format(),
+            end: end.format()
         }, options);
     } else if (+m[1] >= 30) {
         var begin = moment.tz(block + '-01', options.tz);
+        var end = moment(begin).add(1, 'months');
         return _.defaults({
-            begin: begin,
-            end: moment(begin).add(1, 'months')
+            begin: begin.format(),
+            end: end.format()
         }, options);
     } else if (+m[1] >= 5) {
         var split = block.split('-');
@@ -632,15 +647,15 @@ function blockOptions(block, options) {
         var begin = moment.tz(year + '-01-01', options.tz).week(week).startOf('week');
         var end = moment(begin).add(1, 'week');
         return _.defaults({
-            begin: begin,
-            end: end
+            begin: begin.format(),
+            end: end.format()
         }, options);
     } else {
         var begin = moment.tz(block, options.tz);
         var end = moment(begin).add(1, 'day');
         return _.defaults({
-            begin: begin,
-            end: end
+            begin: begin.format(),
+            end: end.format()
         }, options);
     }
 }

@@ -42,6 +42,7 @@ var about = expected => actual => actual.should.be.closeTo(expected,0.000000001)
 
 describe("quote", function() {
     this.timeout(30000);
+    var closeTo = expected => actual => actual.should.be.closeTo(expected,0.0001);
     var tz = 'America/New_York';
     var fetch, quote;
     before(function() {
@@ -213,12 +214,16 @@ describe("quote", function() {
             columns: [
                 'DATE(day.ending) AS "Date"',
                 'day.close AS "Close"',
-                '(day.close - OFFSET(1, day.close)) *100 / day.close AS "Change"'
+                '(day.close - OFFSET(1, day.close)) *100 / day.close AS "Change"',
+                'day.incomplete AS "incomplete"'
             ].join(','),
             symbol: 'IBM',
             exchange: 'NYSE',
             begin: moment.tz('2009-12-01', tz),
             end: moment.tz('2010-02-01', tz)
+        }).then(partial => {
+            _.first(partial).should.have.property('incomplete').that.is.not.ok;
+            _.last(partial).should.have.property('incomplete').that.is.ok;
         }).then(() => {
             config('files.dirname', path.resolve(__dirname, 'var'));
             return quote({
@@ -628,6 +633,83 @@ describe("quote", function() {
             {Date:"2014-11-03",Time:"12:30:00",Price:1.13363},
             {Date:"2014-11-03",Time:"13:00:00",Price:1.13378},
             {Date:"2014-11-03",Time:"13:30:00",Price:1.13521}
+        ]);
+    });
+    it("should lookback to multiple blocks", function() {
+        return quote({
+            columns: [
+                'DATE(m240.ending) AS "Date"',
+                'TIME(m240.ending) AS "Time"',
+                'm240.close AS "Price"',
+                'OFFSET(120, m240.close) AS "M1"',
+                'OFFSET(240, m240.close) AS "M2"'
+            ].join(','),
+            symbol: 'USD',
+            exchange: 'CAD',
+            begin: '2016-01-15',
+            end: '2016-01-16'
+        }).should.eventually.be.like([
+            {Date:"2016-01-15",Time:"00:00:00",Price:closeTo(1.4389),M1:closeTo(1.3769),M2:closeTo(1.3248)},
+            {Date:"2016-01-15",Time:"04:00:00",Price:closeTo(1.4508),M1:closeTo(1.3805),M2:closeTo(1.3282)},
+            {Date:"2016-01-15",Time:"08:00:00",Price:closeTo(1.4497),M1:closeTo(1.3783),M2:closeTo(1.3266)},
+            {Date:"2016-01-15",Time:"12:00:00",Price:closeTo(1.4529),M1:closeTo(1.3791),M2:closeTo(1.3297)},
+            {Date:"2016-01-15",Time:"16:00:00",Price:closeTo(1.4528),M1:closeTo(1.3793),M2:closeTo(1.3304)},
+            {Date:"2016-01-15",Time:"20:00:00",Price:closeTo(1.4534),M1:closeTo(1.3813),M2:closeTo(1.3293)}
+        ]);
+    });
+    it("should lookback to multiple partial blocks", function() {
+        config('files.dirname', path.resolve(__dirname, 'partial'));
+        return quote({ // loads partial month and evals
+            columns: [
+                'DATE(m240.ending) AS "Date"',
+                'TIME(m240.ending) AS "Time"',
+                'm240.close AS "Price"',
+                'OFFSET(120, m240.close) AS "M1"',
+                'OFFSET(240, m240.close) AS "M2"',
+                'm240.incomplete AS "incomplete"'
+            ].join(','),
+            symbol: 'USD',
+            exchange: 'CAD',
+            begin: '2016-02-15',
+            end: '2016-02-16'
+        }).then(partial => {
+            _.first(partial).should.have.property('incomplete').that.is.not.ok;
+            _.last(partial).should.have.property('incomplete').that.is.ok;
+        }).then(partial => {
+            config('files.dirname', path.resolve(__dirname, 'var'));
+            return quote({ // loads rest of the month and computes prior expressions
+                columns: [
+                    'DATE(m240.ending) AS "Date"',
+                    'TIME(m240.ending) AS "Time"',
+                    'm240.close AS "Price"'
+                ].join(','),
+                symbol: 'USD',
+                exchange: 'CAD',
+                begin: '2016-02-16',
+                end: '2016-02-17'
+            });
+        }).then(complete => {
+            return quote({ // should already have computed prior expressions in month
+                columns: [
+                    'DATE(m240.ending) AS "Date"',
+                    'TIME(m240.ending) AS "Time"',
+                    'm240.close AS "Price"',
+                    'OFFSET(120, m240.close) AS "M1"',
+                    'OFFSET(240, m240.close) AS "M2"'
+                ].join(','),
+                symbol: 'USD',
+                exchange: 'CAD',
+                begin: '2016-02-16',
+                end: '2016-02-17'
+            });
+        }).should.eventually.be.like([
+            {Date:"2016-02-16",Time:"00:00:00",Price:closeTo(1.3755),M1:closeTo(1.4577),M2:closeTo(1.3925)},
+            {Date:"2016-02-16",Time:"04:00:00",Price:closeTo(1.3723),M1:closeTo(1.4624),M2:closeTo(1.3964)},
+            {Date:"2016-02-16",Time:"08:00:00",Price:closeTo(1.378),M1:closeTo(1.4684),M2:closeTo(1.3989)},
+            {Date:"2016-02-16",Time:"12:00:00",Price:closeTo(1.3859),M1:closeTo(1.4641),M2:closeTo(1.3964)},
+            {Date:"2016-02-16",Time:"16:00:00",Price:closeTo(1.3882),M1:closeTo(1.4592),M2:closeTo(1.3958)},
+            {Date:"2016-02-16",Time:"20:00:00",Price:closeTo(1.3871),M1:closeTo(1.4489),M2:closeTo(1.3934)},
+            {Date:"2016-02-17",Time:"00:00:00",Price:closeTo(1.3872),M1:closeTo(1.4459),M2:closeTo(1.3937)}
         ]);
     });
 });
