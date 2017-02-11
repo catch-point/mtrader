@@ -42,7 +42,7 @@ const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
 
-describe("expressions", function(){
+describe("lookback-functions", function(){
     var about = 0.01;
     var closeTo = expected => actual => actual.should.be.closeTo(expected, about);
     var options = {
@@ -938,6 +938,76 @@ describe("expressions", function(){
             {Date:"2016-01-27",Close:188.13,Change:closeTo(1.33),Slope:closeTo(0.23)},
             {Date:"2016-01-28",Close:189.11,Change:closeTo(1.29),Slope:closeTo(-0.37)},
             {Date:"2016-01-29",Close:193.72,Change:closeTo(1.67),Slope:closeTo(0.47)}
+        ]);
+    });
+    it("VAR", function() {
+        var closeTo = expected => actual => actual.should.be.closeTo(expected, 0.0001);
+        return quote({
+            columns: [
+                'DATE(day.ending) AS "Date"',
+                'day.close AS "Close"',
+                'CHANGE(day.adj_close, OFFSET(5, day.adj_close)) AS "Change"',
+                'VAR(5, 260, day.adj_close) AS "VaR"'
+            ].join(','),
+            symbol: 'SPY',
+            exchange: 'ARCA',
+            begin: moment('2016-01-01'),
+            end: moment('2016-02-01')
+        }).should.eventually.be.like([
+            {Date:"2016-01-04",Close:201.02,Change:closeTo(-2.2656),VaR:closeTo(0.0158)},
+            {Date:"2016-01-05",Close:201.36,Change:closeTo(-1.8761),VaR:closeTo(0.0158)},
+            {Date:"2016-01-06",Close:198.82,Change:closeTo(-4.1369),VaR:closeTo(0.0158)},
+            {Date:"2016-01-07",Close:194.05,Change:closeTo(-5.7689),VaR:closeTo(0.0159)},
+            {Date:"2016-01-08",Close:191.92,Change:closeTo(-5.8615),VaR:closeTo(0.0159)},
+            {Date:"2016-01-11",Close:192.11,Change:closeTo(-4.4323),VaR:closeTo(0.0159)},
+            {Date:"2016-01-12",Close:193.66,Change:closeTo(-3.8239),VaR:closeTo(0.0159)},
+            {Date:"2016-01-13",Close:188.83,Change:closeTo(-5.0246),VaR:closeTo(0.0161)},
+            {Date:"2016-01-14",Close:191.93,Change:closeTo(-1.0925),VaR:closeTo(0.0162)},
+            {Date:"2016-01-15",Close:187.81,Change:closeTo(-2.1415),VaR:closeTo(0.0162)},
+            {Date:"2016-01-19",Close:188.06,Change:closeTo(-2.1081),VaR:closeTo(0.0161)},
+            {Date:"2016-01-20",Close:185.65,Change:closeTo(-4.1361),VaR:closeTo(0.0160)},
+            {Date:"2016-01-21",Close:186.69,Change:closeTo(-1.1332),VaR:closeTo(0.0160)},
+            {Date:"2016-01-22",Close:190.52,Change:closeTo(-0.7346),VaR:closeTo(0.0162)},
+            {Date:"2016-01-25",Close:187.64,Change:closeTo(-0.0905),VaR:closeTo(0.0163)},
+            {Date:"2016-01-26",Close:190.2,Change:closeTo(1.1379),VaR:closeTo(0.0164)},
+            {Date:"2016-01-27",Close:188.13,Change:closeTo(1.3358),VaR:closeTo(0.0164)},
+            {Date:"2016-01-28",Close:189.11,Change:closeTo(1.2962),VaR:closeTo(0.0163)},
+            {Date:"2016-01-29",Close:193.72,Change:closeTo(1.6796),VaR:closeTo(0.0166)}
+        ]);
+    });
+    it("CVAR", function() {
+        var closeTo = expected => actual => actual.should.be.closeTo(expected, 0.0001);
+        return quote({
+            columns: [
+                'DATE(day.ending) AS "Date"',
+                'day.close AS "Close"',
+                'CHANGE(day.adj_close, OFFSET(5, day.adj_close)) AS "Change"',
+                'CVAR(5, 260, day.adj_close) AS "Shortfall"'
+            ].join(','),
+            symbol: 'SPY',
+            exchange: 'ARCA',
+            begin: moment('2016-01-01'),
+            end: moment('2016-02-01')
+        }).should.eventually.be.like([
+            {Date:"2016-01-04",Close:201.02,Change:closeTo(-2.2656),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-05",Close:201.36,Change:closeTo(-1.8761),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-06",Close:198.82,Change:closeTo(-4.1369),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-07",Close:194.05,Change:closeTo(-5.7689),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-08",Close:191.92,Change:closeTo(-5.8615),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-11",Close:192.11,Change:closeTo(-4.4323),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-12",Close:193.66,Change:closeTo(-3.8239),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-13",Close:188.83,Change:closeTo(-5.0246),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-14",Close:191.93,Change:closeTo(-1.0925),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-15",Close:187.81,Change:closeTo(-2.1415),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-19",Close:188.06,Change:closeTo(-2.1081),Shortfall:closeTo(0.0214)},
+            {Date:"2016-01-20",Close:185.65,Change:closeTo(-4.1361),Shortfall:closeTo(0.0213)},
+            {Date:"2016-01-21",Close:186.69,Change:closeTo(-1.1332),Shortfall:closeTo(0.0213)},
+            {Date:"2016-01-22",Close:190.52,Change:closeTo(-0.7346),Shortfall:closeTo(0.0217)},
+            {Date:"2016-01-25",Close:187.64,Change:closeTo(-0.0905),Shortfall:closeTo(0.0217)},
+            {Date:"2016-01-26",Close:190.2,Change:closeTo(1.1379),Shortfall:closeTo(0.0217)},
+            {Date:"2016-01-27",Close:188.13,Change:closeTo(1.3358),Shortfall:closeTo(0.0217)},
+            {Date:"2016-01-28",Close:189.11,Change:closeTo(1.2962),Shortfall:closeTo(0.0217)},
+            {Date:"2016-01-29",Close:193.72,Change:closeTo(1.6796),Shortfall:closeTo(0.0225)}
         ]);
     });
 });

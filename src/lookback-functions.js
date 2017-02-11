@@ -31,6 +31,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const statkit = require("statkit");
 const periods = require('./periods.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
@@ -223,7 +224,7 @@ var functions = module.exports.functions = {
     PRIOR(opts, days, field) {
         var d = asPositiveInteger(days, "PRIOR");
         var dayLength = getDayLength(opts);
-        var n = Math.ceil((d + 1) * dayLength * 2); // extra for after hours activity
+        var n = Math.ceil((d + 1) * dayLength);
         return _.extend(bars => {
             var day = periods(_.defaults({interval:'day'}, opts));
             var ending = day.dec(_.last(bars).ending, d);
@@ -243,7 +244,7 @@ var functions = module.exports.functions = {
     SINCE(opts, days, calc) {
         var d = asPositiveInteger(days, "SINCE");
         var dayLength = getDayLength(opts);
-        var n = Math.ceil((d + 1) * dayLength * 2); // extra for after hours activity
+        var n = Math.ceil((d + 1) * dayLength);
         return _.extend(bars => {
             if (_.isEmpty(bars)) return calc(bars);
             var ending = moment(_.last(bars).ending).tz(opts.tz);
@@ -263,7 +264,7 @@ var functions = module.exports.functions = {
     PAST(opts, days, calc) {
         var d = asPositiveInteger(days, "PAST");
         var dayLength = getDayLength(opts);
-        var n = Math.ceil((d + 1) * dayLength * 2); // extra for after hours activity
+        var n = Math.ceil((d + 1) * dayLength);
         return _.extend(bars => {
             if (_.isEmpty(bars)) return calc(bars);
             var ending = moment(_.last(bars).ending).tz(opts.tz);
@@ -284,7 +285,7 @@ var functions = module.exports.functions = {
     /* Normal Market Hour Session */
     SESSION(opts, calc) {
         var dayLength = getDayLength(opts);
-        var n = Math.ceil(dayLength * 2); // extra for after hours activity
+        var n = Math.ceil(dayLength);
         return _.extend(bars => {
             if (_.isEmpty(bars))
                 return calc(bars);
@@ -345,7 +346,40 @@ var functions = module.exports.functions = {
             }
         }, {
             fields: ['ending'],
-            warmUpLength: (calc.warmUpLength +1) * dayLength *2 // extra for after hours activity
+            warmUpLength: (calc.warmUpLength +1) * dayLength
+        });
+    },
+    VAR(opts, chance, duration, calc) {
+        var pct = asPositiveInteger(chance, "VAR")/100;
+        var n = asPositiveInteger(duration, "VAR");
+        return _.extend(bars => {
+            var prices = getValues(n, calc, bars);
+            var change = _.initial(prices).map((price, i) => {
+                return (price - prices[i+1]) / prices[i+1];
+            });
+            var avg = change.reduce((a, b) => a + b, 0) / change.length;
+            var stdev = statkit.std(change);
+            return -(statkit.norminv(pct) * stdev + avg);
+        }, {
+            warmUpLength: n + calc.warmUpLength -1
+        });
+    },
+    CVAR(opts, chance, duration, calc) {
+        var pct = asPositiveInteger(chance, "CVAR")/100;
+        var n = asPositiveInteger(duration, "CVAR");
+        return _.extend(bars => {
+            var prices = getValues(n, calc, bars);
+            var change = _.initial(prices).map((price, i) => {
+                return (price - prices[i+1]) / prices[i+1];
+            });
+            var avg = change.reduce((a, b) => a + b, 0) / change.length;
+            var stdev = statkit.std(change);
+            var risk = statkit.norminv(pct) * stdev + avg;
+            var shortfall = change.filter(chg => chg < risk);
+            if (!shortfall.length) return -risk;
+            else return -shortfall.reduce((a, b) => a + b, 0) / shortfall.length;
+        }, {
+            warmUpLength: n + calc.warmUpLength -1
         });
     },
     /* Entry point */
@@ -384,7 +418,7 @@ function getDayLength(opts) {
         throw Error("Invalid premarketOpensAt: " + opts.premarketOpensAt);
     if (!closes.isValid())
         throw Error("Invalid afterHoursClosesAt: " + opts.afterHoursClosesAt);
-    return periods(opts).diff(closes, opens);
+    return periods(opts).diff(closes, opens) * 2; // extra for after hours activity
 }
 
 function getValues(size, calc, bars) {

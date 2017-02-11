@@ -34,7 +34,7 @@ const common = require('../src/common-functions.js');
 const Parser = require('../src/parser.js');
 const expect = require('chai').expect;
 
-describe("expressions", function(){
+describe("common-functions", function(){
     describe("parser", function() {
         var parser = Parser({
             constant(value) {

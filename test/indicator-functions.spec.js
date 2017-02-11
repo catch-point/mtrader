@@ -41,7 +41,7 @@ const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
 
-describe("expressions", function(){
+describe("indicator-functions", function(){
     this.timeout(10000);
     var about = 0.01;
     var fetch, quote;
