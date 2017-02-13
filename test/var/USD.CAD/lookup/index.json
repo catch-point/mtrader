@@ -1,1 +1,33 @@
-{"properties":{},"tables":[{"id":"lookup","name":"lookup","size":1,"head":[{"symbol":"USD","iqfeed_symbol":"USDCAD.FXCM","exchange":"CAD","listed_market":74,"securityTypeID":16,"name":"FXCM USD CAD Spot"}],"tail":[{"symbol":"USD","iqfeed_symbol":"USDCAD.FXCM","exchange":"CAD","listed_market":74,"securityTypeID":16,"name":"FXCM USD CAD Spot"}],"updatedAt":"2017-02-11T16:52:22.065Z","properties":{},"createdAt":"2017-02-11T16:52:22.065Z"}]}
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "USD",
+     "iqfeed_symbol": "USDCAD.FXCM",
+     "exchange": "CAD",
+     "listed_market": 74,
+     "securityTypeID": 16,
+     "name": "FXCM USD CAD Spot"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "USD",
+     "iqfeed_symbol": "USDCAD.FXCM",
+     "exchange": "CAD",
+     "listed_market": 74,
+     "securityTypeID": 16,
+     "name": "FXCM USD CAD Spot"
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:14.543Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:14.543Z"
+  }
+ ]
+}

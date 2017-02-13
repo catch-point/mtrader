@@ -1,1 +1,267 @@
-{"properties":{},"tables":[{"id":"day.1990_01_01T00_00_00_05_00.2000_01_01T00_00_00_05_00","name":"day.1990_01_01T00_00_00_05_00.2000_01_01T00_00_00_05_00","size":2528,"head":[{"ending":"1990-01-02T16:00:00-05:00","open":94.75,"high":98.13,"low":94.5,"close":98,"volume":7041600,"adj_close":14.610478},{"ending":"1990-01-03T16:00:00-05:00","open":98.75,"high":99.5,"low":98.38,"close":98.88,"volume":9464000,"adj_close":14.740928}],"tail":[{"ending":"1999-12-30T16:00:00-05:00","open":109.69,"high":110.5,"low":108.56,"close":108.75,"volume":3435100,"adj_close":82.276065},{"ending":"1999-12-31T16:00:00-05:00","open":109.19,"high":109.5,"low":106.63,"close":107.88,"volume":2870300,"adj_close":81.614074}],"updatedAt":"2017-02-11T16:52:45.049Z","properties":{},"createdAt":"2017-02-11T16:52:45.049Z"},{"id":"day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00","name":"day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00","size":2515,"head":[{"ending":"2000-01-03T16:00:00-05:00","open":112.44,"high":116,"low":111.88,"close":116,"volume":10347700,"adj_close":87.761136,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":7.526881720430112},{"ending":"2000-01-04T16:00:00-05:00","open":114,"high":114.5,"low":110.88,"close":112.06,"volume":8227800,"adj_close":84.782175,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":-3.3965517241379293}],"tail":[{"ending":"2009-12-30T16:00:00-05:00","open":131.23,"high":132.68,"low":130.68,"close":132.57,"volume":3867000,"adj_close":111.505942,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":0.5460750853242312},{"ending":"2009-12-31T16:00:00-05:00","open":132.41,"high":132.85,"low":130.75,"close":130.9,"volume":4223400,"adj_close":110.101277,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":-1.2597118503432054}],"updatedAt":"2017-02-11T16:52:45.941Z","properties":{},"createdAt":"2017-02-11T16:52:45.941Z"},{"id":"day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00","name":"day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00","size":1790,"head":[{"ending":"2010-01-04T16:00:00-05:00","open":131.18,"high":132.97,"low":130.85,"close":132.45,"volume":6155300,"adj_close":111.405,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":1.1841100076394062},{"ending":"2010-01-05T16:00:00-05:00","open":131.68,"high":131.85,"low":130.1,"close":130.85,"volume":6841400,"adj_close":110.059232,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":-1.2080030200075458}],"tail":[{"ending":"2017-02-09T16:00:00-05:00","open":176.17,"high":177.8,"low":175.91,"close":177.21,"volume":3090700,"adj_close":177.210007,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":0.5903388772208779},{"ending":"2017-02-10T16:00:00-05:00","open":177.37,"high":178.87,"low":176.76,"close":178.68,"volume":2924300,"adj_close":178.679993,"asof":"2017-02-11T11:52:44-05:00","incomplete":true,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":0.8295242932114434}],"updatedAt":"2017-02-11T16:52:46.327Z","properties":{},"createdAt":"2017-02-11T16:52:46.327Z"},{"id":"day.2010_01_28T16_00_00_05_00.2020_01_01T00_00_00_05_00","name":"day.2010_01_28T16_00_00_05_00.2020_01_01T00_00_00_05_00","size":1773,"head":[{"ending":"2010-01-28T16:00:00-05:00","open":127.03,"high":127.04,"low":123.05,"close":123.75,"volume":9622200,"adj_close":104.087347},{"ending":"2010-01-29T16:00:00-05:00","open":124.32,"high":125,"low":121.9,"close":122.39,"volume":11571200,"adj_close":102.943437}],"tail":[{"ending":"2017-02-09T16:00:00-05:00","open":176.17,"high":177.8,"low":175.91,"close":177.21,"volume":3090700,"adj_close":177.210007},{"ending":"2017-02-10T16:00:00-05:00","open":177.37,"high":178.87,"low":176.76,"close":178.68,"volume":2924300,"adj_close":178.679993,"asof":"2017-02-11T11:52:44-05:00","incomplete":true}],"updatedAt":"2017-02-11T16:52:44.569Z","properties":{},"createdAt":"2017-02-11T16:52:44.569Z"},{"id":"day.2017_02_09T16_00_00_05_00.2020_01_01T00_00_00_05_00","name":"day.2017_02_09T16_00_00_05_00.2020_01_01T00_00_00_05_00","size":2,"head":[{"ending":"2017-02-09T16:00:00-05:00","open":176.17,"high":177.8,"low":175.91,"close":177.21,"volume":3090700,"adj_close":177.210007},{"ending":"2017-02-10T16:00:00-05:00","open":177.37,"high":178.87,"low":176.76,"close":178.68,"volume":2924300,"adj_close":178.679993,"asof":"2017-02-11T11:52:47-05:00","incomplete":true,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":0.8295242932114434}],"tail":[{"ending":"2017-02-09T16:00:00-05:00","open":176.17,"high":177.8,"low":175.91,"close":177.21,"volume":3090700,"adj_close":177.210007},{"ending":"2017-02-10T16:00:00-05:00","open":177.37,"high":178.87,"low":176.76,"close":178.68,"volume":2924300,"adj_close":178.679993,"asof":"2017-02-11T11:52:47-05:00","incomplete":true,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":0.8295242932114434}],"updatedAt":"2017-02-11T16:52:47.739Z","properties":{},"createdAt":"2017-02-11T16:52:47.739Z"}]}
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "day.1990_01_01T00_00_00_05_00.2000_01_01T00_00_00_05_00",
+   "name": "day.1990_01_01T00_00_00_05_00.2000_01_01T00_00_00_05_00",
+   "size": 2528,
+   "head": [
+    {
+     "ending": "1990-01-02T16:00:00-05:00",
+     "open": 94.75,
+     "high": 98.13,
+     "low": 94.5,
+     "close": 98,
+     "volume": 7041600,
+     "adj_close": 14.610478
+    },
+    {
+     "ending": "1990-01-03T16:00:00-05:00",
+     "open": 98.75,
+     "high": 99.5,
+     "low": 98.38,
+     "close": 98.88,
+     "volume": 9464000,
+     "adj_close": 14.740928
+    }
+   ],
+   "tail": [
+    {
+     "ending": "1999-12-30T16:00:00-05:00",
+     "open": 109.69,
+     "high": 110.5,
+     "low": 108.56,
+     "close": 108.75,
+     "volume": 3435100,
+     "adj_close": 82.276065
+    },
+    {
+     "ending": "1999-12-31T16:00:00-05:00",
+     "open": 109.19,
+     "high": 109.5,
+     "low": 106.63,
+     "close": 107.88,
+     "volume": 2870300,
+     "adj_close": 81.614074
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:37.188Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:37.188Z"
+  },
+  {
+   "id": "day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00",
+   "name": "day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00",
+   "size": 2515,
+   "head": [
+    {
+     "ending": "2000-01-03T16:00:00-05:00",
+     "open": 112.44,
+     "high": 116,
+     "low": 111.88,
+     "close": 116,
+     "volume": 10347700,
+     "adj_close": 87.761136,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 7.526881720430112
+    },
+    {
+     "ending": "2000-01-04T16:00:00-05:00",
+     "open": 114,
+     "high": 114.5,
+     "low": 110.88,
+     "close": 112.06,
+     "volume": 8227800,
+     "adj_close": 84.782175,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": -3.3965517241379293
+    }
+   ],
+   "tail": [
+    {
+     "ending": "2009-12-30T16:00:00-05:00",
+     "open": 131.23,
+     "high": 132.68,
+     "low": 130.68,
+     "close": 132.57,
+     "volume": 3867000,
+     "adj_close": 111.505942,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.5460750853242312
+    },
+    {
+     "ending": "2009-12-31T16:00:00-05:00",
+     "open": 132.41,
+     "high": 132.85,
+     "low": 130.75,
+     "close": 130.9,
+     "volume": 4223400,
+     "adj_close": 110.101277,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": -1.2597118503432054
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:37.697Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:37.697Z"
+  },
+  {
+   "id": "day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "name": "day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "size": 1790,
+   "head": [
+    {
+     "ending": "2010-01-04T16:00:00-05:00",
+     "open": 131.18,
+     "high": 132.97,
+     "low": 130.85,
+     "close": 132.45,
+     "volume": 6155300,
+     "adj_close": 111.405,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 1.1841100076394062
+    },
+    {
+     "ending": "2010-01-05T16:00:00-05:00",
+     "open": 131.68,
+     "high": 131.85,
+     "low": 130.1,
+     "close": 130.85,
+     "volume": 6841400,
+     "adj_close": 110.059232,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": -1.2080030200075458
+    }
+   ],
+   "tail": [
+    {
+     "ending": "2017-02-09T16:00:00-05:00",
+     "open": 176.17,
+     "high": 177.8,
+     "low": 175.91,
+     "close": 177.21,
+     "volume": 3090700,
+     "adj_close": 177.210007,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.5903388772208779
+    },
+    {
+     "ending": "2017-02-10T16:00:00-05:00",
+     "open": 177.37,
+     "high": 178.87,
+     "low": 176.76,
+     "close": 178.68,
+     "adj_close": 180.1621869490435,
+     "volume": 5857248,
+     "lastTrade": "2017-02-10T16:01:00-05:00",
+     "asof": "2017-02-13T08:22:36-05:00",
+     "incomplete": true,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.8295242932114434
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:38.166Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:38.166Z"
+  },
+  {
+   "id": "day.2010_01_28T16_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "name": "day.2010_01_28T16_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "size": 1773,
+   "head": [
+    {
+     "ending": "2010-01-28T16:00:00-05:00",
+     "open": 127.03,
+     "high": 127.04,
+     "low": 123.05,
+     "close": 123.75,
+     "volume": 9622200,
+     "adj_close": 104.087347
+    },
+    {
+     "ending": "2010-01-29T16:00:00-05:00",
+     "open": 124.32,
+     "high": 125,
+     "low": 121.9,
+     "close": 122.39,
+     "volume": 11571200,
+     "adj_close": 102.943437
+    }
+   ],
+   "tail": [
+    {
+     "ending": "2017-02-09T16:00:00-05:00",
+     "open": 176.17,
+     "high": 177.8,
+     "low": 175.91,
+     "close": 177.21,
+     "volume": 3090700,
+     "adj_close": 177.210007
+    },
+    {
+     "ending": "2017-02-10T16:00:00-05:00",
+     "open": 177.37,
+     "high": 178.87,
+     "low": 176.76,
+     "close": 178.68,
+     "adj_close": 180.1621869490435,
+     "volume": 5857248,
+     "lastTrade": "2017-02-10T16:01:00-05:00",
+     "asof": "2017-02-13T08:22:36-05:00",
+     "incomplete": true
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:36.668Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:36.668Z"
+  },
+  {
+   "id": "day.2017_02_09T16_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "name": "day.2017_02_09T16_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "size": 2,
+   "head": [
+    {
+     "ending": "2017-02-09T16:00:00-05:00",
+     "open": 176.17,
+     "high": 177.8,
+     "low": 175.91,
+     "close": 177.21,
+     "volume": 3090700,
+     "adj_close": 177.210007
+    },
+    {
+     "ending": "2017-02-10T16:00:00-05:00",
+     "open": 177.37,
+     "high": 178.87,
+     "low": 176.76,
+     "close": 178.68,
+     "adj_close": 180.1621869490435,
+     "volume": 5857248,
+     "lastTrade": "2017-02-10T16:01:00-05:00",
+     "asof": "2017-02-13T08:22:39-05:00",
+     "incomplete": true,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.8295242932114434
+    }
+   ],
+   "tail": [
+    {
+     "ending": "2017-02-09T16:00:00-05:00",
+     "open": 176.17,
+     "high": 177.8,
+     "low": 175.91,
+     "close": 177.21,
+     "volume": 3090700,
+     "adj_close": 177.210007
+    },
+    {
+     "ending": "2017-02-10T16:00:00-05:00",
+     "open": 177.37,
+     "high": 178.87,
+     "low": 176.76,
+     "close": 178.68,
+     "adj_close": 180.1621869490435,
+     "volume": 5857248,
+     "lastTrade": "2017-02-10T16:01:00-05:00",
+     "asof": "2017-02-13T08:22:39-05:00",
+     "incomplete": true,
+     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.8295242932114434
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:39.838Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:39.838Z"
+  }
+ ]
+}

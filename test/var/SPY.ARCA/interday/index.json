@@ -1,1 +1,132 @@
-{"properties":{},"tables":[{"id":"day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00","name":"day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00","size":2515,"head":[{"ending":"2000-01-03T16:00:00-05:00","open":148.25,"high":148.25,"low":143.88,"close":145.44,"volume":8164300,"adj_close":105.825332},{"ending":"2000-01-04T16:00:00-05:00","open":143.53,"high":144.06,"low":139.64,"close":139.75,"volume":8089800,"adj_close":101.686912}],"tail":[{"ending":"2009-12-30T16:00:00-05:00","open":112.23,"high":112.65,"low":112.17,"close":112.52,"volume":73138400,"adj_close":97.512402},{"ending":"2009-12-31T16:00:00-05:00","open":112.77,"high":112.8,"low":111.39,"close":111.44,"volume":90637900,"adj_close":96.576454}],"updatedAt":"2017-02-11T16:52:28.611Z","properties":{},"createdAt":"2017-02-11T16:52:28.611Z"},{"id":"day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00","name":"day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00","size":1790,"head":[{"ending":"2010-01-04T16:00:00-05:00","open":112.37,"high":113.39,"low":111.51,"close":113.33,"volume":118944600,"adj_close":98.214371,"CHANGE(day.close,OFFSET(10,day.close))":2.8589580686149856,"PF(10,day.close)":3.460937499999991,"CHANGE(day.close,OFFSET(5,day.close))":0.7556899004267374,"SLOPE(5,day.close)":0.05365037126087578,"CHANGE(day.adj_close,OFFSET(5,day.adj_close))":0.7556884036594856,"VAR(5,260,day.adj_close)":0.028366708552817987,"CVAR(5,260,day.adj_close)":0.038224195868219596},{"ending":"2010-01-05T16:00:00-05:00","open":113.26,"high":113.68,"low":112.85,"close":113.63,"volume":111579900,"adj_close":98.474354,"CHANGE(day.close,OFFSET(10,day.close))":3.103166681789313,"PF(10,day.close)":3.671874999999999,"CHANGE(day.close,OFFSET(5,day.close))":0.8073101490418707,"SLOPE(5,day.close)":1.0167785697569005,"CHANGE(day.adj_close,OFFSET(5,day.adj_close))":0.807307269956419,"VAR(5,260,day.adj_close)":0.028392701749813825,"CVAR(5,260,day.adj_close)":0.038224195868219596}],"tail":[{"ending":"2017-02-09T16:00:00-05:00","open":229.24,"high":230.95,"low":229.24,"close":230.6,"volume":63353200,"adj_close":230.600006,"CHANGE(day.close,OFFSET(10,day.close))":0.5537871189988147,"PF(10,day.close)":1.5746606334841526,"CHANGE(day.close,OFFSET(5,day.close))":1.2424814505861106,"SLOPE(5,day.close)":1.4885335577083345,"CHANGE(day.adj_close,OFFSET(5,day.adj_close))":1.242482306844938,"VAR(5,260,day.adj_close)":0.01246503119774709,"CVAR(5,260,day.adj_close)":0.01619152244662683},{"ending":"2017-02-10T16:00:00-05:00","open":231,"high":231.77,"low":230.62,"close":231.51,"volume":63630300,"adj_close":231.509995,"asof":"2017-02-11T11:52:28-05:00","incomplete":true,"CHANGE(day.close,OFFSET(10,day.close))":1.1093156308686694,"PF(10,day.close)":2.3729729729729727,"CHANGE(day.close,OFFSET(5,day.close))":0.9461934246097442,"SLOPE(5,day.close)":1.2713159798156959,"CHANGE(day.adj_close,OFFSET(5,day.adj_close))":0.9461930050787957,"VAR(5,260,day.adj_close)":0.012390964828911779,"CVAR(5,260,day.adj_close)":0.01619152244662683}],"updatedAt":"2017-02-11T16:52:28.980Z","properties":{},"createdAt":"2017-02-11T16:52:28.980Z"}]}
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00",
+   "name": "day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00",
+   "size": 2515,
+   "head": [
+    {
+     "ending": "2000-01-03T16:00:00-05:00",
+     "open": 148.25,
+     "high": 148.25,
+     "low": 143.88,
+     "close": 145.44,
+     "volume": 8164300,
+     "adj_close": 105.825332
+    },
+    {
+     "ending": "2000-01-04T16:00:00-05:00",
+     "open": 143.53,
+     "high": 144.06,
+     "low": 139.64,
+     "close": 139.75,
+     "volume": 8089800,
+     "adj_close": 101.686912
+    }
+   ],
+   "tail": [
+    {
+     "ending": "2009-12-30T16:00:00-05:00",
+     "open": 112.23,
+     "high": 112.65,
+     "low": 112.17,
+     "close": 112.52,
+     "volume": 73138400,
+     "adj_close": 97.512402
+    },
+    {
+     "ending": "2009-12-31T16:00:00-05:00",
+     "open": 112.77,
+     "high": 112.8,
+     "low": 111.39,
+     "close": 111.44,
+     "volume": 90637900,
+     "adj_close": 96.576454
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:21.105Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:21.105Z"
+  },
+  {
+   "id": "day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "name": "day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "size": 1790,
+   "head": [
+    {
+     "ending": "2010-01-04T16:00:00-05:00",
+     "open": 112.37,
+     "high": 113.39,
+     "low": 111.51,
+     "close": 113.33,
+     "volume": 118944600,
+     "adj_close": 98.214371,
+     "CHANGE(day.close,OFFSET(10,day.close))": 2.8589580686149856,
+     "PF(10,day.close)": 3.460937499999991,
+     "CHANGE(day.close,OFFSET(5,day.close))": 0.7556899004267374,
+     "SLOPE(5,day.close)": 0.05365037126087578,
+     "CHANGE(day.adj_close,OFFSET(5,day.adj_close))": 0.7556884036594856,
+     "VAR(5,260,day.adj_close)": 0.028366708552817987,
+     "CVAR(5,260,day.adj_close)": 0.038224195868219596
+    },
+    {
+     "ending": "2010-01-05T16:00:00-05:00",
+     "open": 113.26,
+     "high": 113.68,
+     "low": 112.85,
+     "close": 113.63,
+     "volume": 111579900,
+     "adj_close": 98.474354,
+     "CHANGE(day.close,OFFSET(10,day.close))": 3.103166681789313,
+     "PF(10,day.close)": 3.671874999999999,
+     "CHANGE(day.close,OFFSET(5,day.close))": 0.8073101490418707,
+     "SLOPE(5,day.close)": 1.0167785697569005,
+     "CHANGE(day.adj_close,OFFSET(5,day.adj_close))": 0.807307269956419,
+     "VAR(5,260,day.adj_close)": 0.028392701749813825,
+     "CVAR(5,260,day.adj_close)": 0.038224195868219596
+    }
+   ],
+   "tail": [
+    {
+     "ending": "2017-02-09T16:00:00-05:00",
+     "open": 229.24,
+     "high": 230.95,
+     "low": 229.24,
+     "close": 230.6,
+     "volume": 63353200,
+     "adj_close": 230.600006,
+     "CHANGE(day.close,OFFSET(10,day.close))": 0.5537871189988147,
+     "PF(10,day.close)": 1.5746606334841526,
+     "CHANGE(day.close,OFFSET(5,day.close))": 1.2424814505861106,
+     "SLOPE(5,day.close)": 1.4885335577083345,
+     "CHANGE(day.adj_close,OFFSET(5,day.adj_close))": 1.242482306844938,
+     "VAR(5,260,day.adj_close)": 0.01246503119774709,
+     "CVAR(5,260,day.adj_close)": 0.01619152244662683
+    },
+    {
+     "ending": "2017-02-10T16:00:00-05:00",
+     "open": 231,
+     "high": 231.77,
+     "low": 230.62,
+     "close": 231.51,
+     "adj_close": 232.42358604705117,
+     "volume": 129800349,
+     "lastTrade": "2017-02-10T16:00:00-05:00",
+     "asof": "2017-02-13T08:22:20-05:00",
+     "incomplete": true,
+     "CHANGE(day.close,OFFSET(10,day.close))": 1.1093156308686694,
+     "PF(10,day.close)": 2.3729729729729727,
+     "CHANGE(day.close,OFFSET(5,day.close))": 0.9461934246097442,
+     "SLOPE(5,day.close)": 1.2713159798156959,
+     "CHANGE(day.adj_close,OFFSET(5,day.adj_close))": 1.344549621013842,
+     "VAR(5,260,day.adj_close)": 0.012424031570758356,
+     "CVAR(5,260,day.adj_close)": 0.01619152244662683
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:21.544Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:21.544Z"
+  }
+ ]
+}

@@ -1,1 +1,37 @@
-{"properties":{},"tables":[{"id":"lookup","name":"lookup","size":1,"head":[{"symbol":"WMT","yahoo_symbol":"WMT","exchange":"NYSE","name":"Wal-Mart Stores, Inc.","exch":"NYQ","type":"S","exchDisp":"NYSE","typeDisp":"Equity"}],"tail":[{"symbol":"WMT","yahoo_symbol":"WMT","exchange":"NYSE","name":"Wal-Mart Stores, Inc.","exch":"NYQ","type":"S","exchDisp":"NYSE","typeDisp":"Equity"}],"updatedAt":"2017-02-11T16:52:19.813Z","properties":{},"createdAt":"2017-02-11T16:52:19.813Z"}]}
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "WMT",
+     "yahoo_symbol": "WMT",
+     "exchange": "NYSE",
+     "name": "Wal-Mart Stores, Inc.",
+     "exch": "NYQ",
+     "type": "S",
+     "exchDisp": "NYSE",
+     "typeDisp": "Equity"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "WMT",
+     "yahoo_symbol": "WMT",
+     "exchange": "NYSE",
+     "name": "Wal-Mart Stores, Inc.",
+     "exch": "NYQ",
+     "type": "S",
+     "exchDisp": "NYSE",
+     "typeDisp": "Equity"
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:12.002Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:12.002Z"
+  }
+ ]
+}

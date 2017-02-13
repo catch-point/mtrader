@@ -1,1 +1,35 @@
-{"properties":{},"tables":[{"id":"fundamental","name":"fundamental","size":1,"head":[{"yahoo_symbol":"USDCAD=X","symbol":"USDCAD=X","name":"USD/CAD","exch":"CCY","EPSEstimateNextQuarter":"0.0000","BookValue":"0.0000","PEGRatio":"0.0000"}],"tail":[{"yahoo_symbol":"USDCAD=X","symbol":"USDCAD=X","name":"USD/CAD","exch":"CCY","EPSEstimateNextQuarter":"0.0000","BookValue":"0.0000","PEGRatio":"0.0000"}],"updatedAt":"2017-02-11T16:52:17.946Z","properties":{},"createdAt":"2017-02-11T16:52:17.946Z"}]}
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "fundamental",
+   "name": "fundamental",
+   "size": 1,
+   "head": [
+    {
+     "yahoo_symbol": "USDCAD=X",
+     "symbol": "USDCAD=X",
+     "name": "USD/CAD",
+     "exch": "CCY",
+     "EPSEstimateNextQuarter": "0.0000",
+     "BookValue": "0.0000",
+     "PEGRatio": "0.0000"
+    }
+   ],
+   "tail": [
+    {
+     "yahoo_symbol": "USDCAD=X",
+     "symbol": "USDCAD=X",
+     "name": "USD/CAD",
+     "exch": "CCY",
+     "EPSEstimateNextQuarter": "0.0000",
+     "BookValue": "0.0000",
+     "PEGRatio": "0.0000"
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:09.841Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:09.841Z"
+  }
+ ]
+}

@@ -1,1 +1,37 @@
-{"properties":{},"tables":[{"id":"lookup","name":"lookup","size":1,"head":[{"symbol":"YHOO","yahoo_symbol":"YHOO","exchange":"NASDAQ","name":"Yahoo! Inc.","exch":"NMS","type":"S","exchDisp":"NASDAQ","typeDisp":"Equity"}],"tail":[{"symbol":"YHOO","yahoo_symbol":"YHOO","exchange":"NASDAQ","name":"Yahoo! Inc.","exch":"NMS","type":"S","exchDisp":"NASDAQ","typeDisp":"Equity"}],"updatedAt":"2017-02-11T16:52:40.102Z","properties":{},"createdAt":"2017-02-11T16:52:40.102Z"}]}
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "YHOO",
+     "yahoo_symbol": "YHOO",
+     "exchange": "NASDAQ",
+     "name": "Yahoo! Inc.",
+     "exch": "NMS",
+     "type": "S",
+     "exchDisp": "NASDAQ",
+     "typeDisp": "Equity"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "YHOO",
+     "yahoo_symbol": "YHOO",
+     "exchange": "NASDAQ",
+     "name": "Yahoo! Inc.",
+     "exch": "NMS",
+     "type": "S",
+     "exchDisp": "NASDAQ",
+     "typeDisp": "Equity"
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:32.374Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:32.374Z"
+  }
+ ]
+}

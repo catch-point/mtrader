@@ -1,1 +1,37 @@
-{"properties":{},"tables":[{"id":"lookup","name":"lookup","size":1,"head":[{"symbol":"SPY","yahoo_symbol":"SPY","exchange":"ARCA","name":"SPDR S&P 500 ETF","exch":"PCX","type":"E","exchDisp":"NYSEArca","typeDisp":"ETF"}],"tail":[{"symbol":"SPY","yahoo_symbol":"SPY","exchange":"ARCA","name":"SPDR S&P 500 ETF","exch":"PCX","type":"E","exchDisp":"NYSEArca","typeDisp":"ETF"}],"updatedAt":"2017-02-11T16:52:28.065Z","properties":{},"createdAt":"2017-02-11T16:52:28.065Z"}]}
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "SPY",
+     "yahoo_symbol": "SPY",
+     "exchange": "ARCA",
+     "name": "SPDR S&P 500 ETF",
+     "exch": "PCX",
+     "type": "E",
+     "exchDisp": "NYSEArca",
+     "typeDisp": "ETF"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "SPY",
+     "yahoo_symbol": "SPY",
+     "exchange": "ARCA",
+     "name": "SPDR S&P 500 ETF",
+     "exch": "PCX",
+     "type": "E",
+     "exchDisp": "NYSEArca",
+     "typeDisp": "ETF"
+    }
+   ],
+   "updatedAt": "2017-02-13T13:22:20.560Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:22:20.560Z"
+  }
+ ]
+}
