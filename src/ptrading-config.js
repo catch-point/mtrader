@@ -88,6 +88,28 @@ module.exports.shell = function(app) {
             cb(err);
         }
     });
+    app.cmd("save :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)",
+            "Saves this session values to a file for later use", (cmd, sh, cb) => {
+        try {
+            var name = cmd.params.name;
+            var filename = 'ptrading-' + name + '.json';
+            config.save(filename);
+            sh.prompt();
+        } catch(err) {
+            cb(err);
+        }
+    });
+    app.cmd("load :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)",
+            "Loads the stored session, resetting any temporary session values", (cmd, sh, cb) => {
+        try {
+            var name = cmd.params.name;
+            var filename = 'ptrading-' + name + '.json';
+            config.load(filename);
+            sh.prompt();
+        } catch(err) {
+            cb(err);
+        }
+    });
     app.cmd('config :option :value([\\S\\s]+)',
             "Changes the given option value persistently", (cmd, sh, cb) => {
         try {
@@ -120,6 +142,14 @@ help(app, 'set', `
 help(app, 'unset', `
   Usage: unset :option
   Resets the given option value persistently
+`);
+help(app, 'save', `
+  Usage: save :name
+  Saves this session values to a file for later use
+`);
+help(app, 'load', `
+  Usage: load :name
+  Loads the stored session, resetting any temporary session values
 `);
 help(app, 'config', `
   Usage: config :option

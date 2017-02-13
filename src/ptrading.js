@@ -87,6 +87,12 @@ if (require.main === module) {
         unset(name) {
             return config.unset(name);
         },
+        save(filename) {
+            return config.save(filename);
+        },
+        load(filename) {
+            return config.load(filename);
+        },
         lookup(options) {
             return fetch(_.defaults({
                 interval: 'lookup'

@@ -111,6 +111,16 @@ config.session = function(name, value) {
     }
 };
 
+config.save = function(filename) {
+    var file = path.resolve(config('prefix'), 'etc', filename);
+    writeConfigFile(file, session);
+};
+
+config.load = function(filename) {
+    var file = path.resolve(config('prefix'), 'etc', filename);
+    session = JSON.parse(fs.readFileSync(file, 'utf-8'));
+};
+
 config.store = function(name, value) {
     var jpath = _.isArray(name) ? name : name.split('.');
     if (assign(session, jpath, _.isUndefined(value) ? null : value)) {
