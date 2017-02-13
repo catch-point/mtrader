@@ -41,6 +41,7 @@ var program = require('commander').version(require('../package.json').version)
     .command('config <name> [value]', "View or change stored options")
     .command('fetch <interval> <symbol> [exchange]', "Historic information of a security")
     .command('quote <interval> <symbol> [exchange]', "Historic information of a security")
+    .command('collect <retain> BY <precedence>', "Finds matching symbols from historic data")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-s, --silent', "Include less information about what the system is doing")
     .option('--debug', "Include details about what the system is working on")
@@ -75,10 +76,12 @@ if (require.main === module) {
         config.shell(app);
         require('./ptrading-fetch.js').shell(app);
         require('./ptrading-quote.js').shell(app);
+        require('./ptrading-collect.js').shell(app);
     }
 } else {
     var fetch = require('./ptrading-fetch.js');
     var quote = require('./ptrading-quote.js');
+    var collect = require('./ptrading-collect.js');
     module.exports = {
         config: config,
         store(name, value) {
@@ -105,13 +108,15 @@ if (require.main === module) {
         },
         fetch: fetch,
         quote: quote,
+        collect: collect,
         close() {
-            return quote.close();
+            return collect.close();
         },
         shell(app) {
             config.shell(app);
             fetch.shell(app);
             quote.shell(app);
+            collect.shell(app);
         }
     };
 }
