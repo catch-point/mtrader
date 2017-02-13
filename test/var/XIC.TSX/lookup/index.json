@@ -1,0 +1,37 @@
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "XIC",
+     "yahoo_symbol": "XIC.TO",
+     "exchange": "TSX",
+     "name": "iShares Core S&P/TSX Capped Composite Index ETF",
+     "exch": "TOR",
+     "type": "E",
+     "exchDisp": "Toronto",
+     "typeDisp": "ETF"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "XIC",
+     "yahoo_symbol": "XIC.TO",
+     "exchange": "TSX",
+     "name": "iShares Core S&P/TSX Capped Composite Index ETF",
+     "exch": "TOR",
+     "type": "E",
+     "exchDisp": "Toronto",
+     "typeDisp": "ETF"
+    }
+   ],
+   "updatedAt": "2017-02-13T13:26:31.917Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:26:31.917Z"
+  }
+ ]
+}

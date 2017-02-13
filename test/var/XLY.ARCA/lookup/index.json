@@ -1,0 +1,37 @@
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "XLY",
+     "yahoo_symbol": "XLY",
+     "exchange": "ARCA",
+     "name": "Consumer Discret Sel Sect SPDR ETF",
+     "exch": "PCX",
+     "type": "E",
+     "exchDisp": "NYSEArca",
+     "typeDisp": "ETF"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "XLY",
+     "yahoo_symbol": "XLY",
+     "exchange": "ARCA",
+     "name": "Consumer Discret Sel Sect SPDR ETF",
+     "exch": "PCX",
+     "type": "E",
+     "exchDisp": "NYSEArca",
+     "typeDisp": "ETF"
+    }
+   ],
+   "updatedAt": "2017-02-13T13:26:19.735Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:26:19.735Z"
+  }
+ ]
+}

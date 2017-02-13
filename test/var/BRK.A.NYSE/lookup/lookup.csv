@@ -1,0 +1,5 @@
+symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
+BRK-A,BRK-A,NYSE,Berkshire Hathaway Inc.,NYQ,S,NYSE,Equity
+BRK-B,BRK-B,NYSE,Berkshire Hathaway Inc.,NYQ,S,NYSE,Equity
+BRKA,BRKA,NYSE,Berkshire Hathaway Inc.,NYQ,S,NYSE,Equity
+BRKB,BRKB,NYSE,Berkshire Hathaway Inc.,NYQ,S,NYSE,Equity

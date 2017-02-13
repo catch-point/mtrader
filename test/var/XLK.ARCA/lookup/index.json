@@ -1,0 +1,37 @@
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "XLK",
+     "yahoo_symbol": "XLK",
+     "exchange": "ARCA",
+     "name": "Technology Select Sector SPDR ETF",
+     "exch": "PCX",
+     "type": "E",
+     "exchDisp": "NYSEArca",
+     "typeDisp": "ETF"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "XLK",
+     "yahoo_symbol": "XLK",
+     "exchange": "ARCA",
+     "name": "Technology Select Sector SPDR ETF",
+     "exch": "PCX",
+     "type": "E",
+     "exchDisp": "NYSEArca",
+     "typeDisp": "ETF"
+    }
+   ],
+   "updatedAt": "2017-02-13T13:26:19.012Z",
+   "properties": {},
+   "createdAt": "2017-02-13T13:26:19.012Z"
+  }
+ ]
+}
