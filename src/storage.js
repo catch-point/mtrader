@@ -196,13 +196,13 @@ function openCollection(dirname, name) {
                     size: records.length,
                     head: records.slice(0, 2),
                     tail: records.slice(-2),
-                    updatedAt: new Date().toISOString(),
-                    properties: {}
+                    updatedAt: new Date().toISOString()
                 };
                 var idx = _.sortedIndex(metadata.tables, entry, 'id');
                 if (metadata.tables[idx] && metadata.tables[idx].id == id) {
                     metadata.tables[idx] = _.extend(metadata.tables[idx], entry);
                 } else {
+                    entry.properties = {};
                     entry.createdAt = entry.updatedAt;
                     metadata.tables.splice(idx, 0, entry);
                 }
@@ -240,7 +240,7 @@ function writeMetadata(dirname, metadata) {
     var part = partFor(filename);
     return mkdirp(dirname).then(() => {
         return new Promise((ready, error) => {
-            fs.writeFile(part, JSON.stringify(metadata), err => {
+            fs.writeFile(part, JSON.stringify(metadata, null, ' '), err => {
                 if (err) error(err);
                 else ready();
             });
