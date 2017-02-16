@@ -39,7 +39,7 @@ const expect = require('chai').use(like).expect;
 module.exports = function(name, args, options) {
     if (!functions[name]) return;
     var intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
-    if (intervals.length > 1 && _.isFinite(functions[name].warmUpLength))
+    if (intervals.length > 1)
         throw Error("The function " + name + " can only be used with a single interval, not " + intervals.join(' and '));
     if (intervals.length < 1)
         throw Error("The function " + name + " must be used with fields");
@@ -380,15 +380,6 @@ var functions = module.exports.functions = {
             else return -shortfall.reduce((a, b) => a + b, 0) / shortfall.length;
         }, {
             warmUpLength: n + calc.warmUpLength -1
-        });
-    },
-    /* Entry point */
-    OPENING(opts, calc) {
-        return _.extend(points => {
-            return calc(points.slice(0, 1));
-        }, {
-            fields: calc.fields,
-            warmUpLength: Infinity
         });
     }
 };

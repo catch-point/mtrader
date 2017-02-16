@@ -202,6 +202,13 @@ help(app, 'criteria', `
     help common-functions  
     help lookback-functions  
     help indicator-functions  
+    help LEADING  
+`);
+help(app, 'LEADING', `
+  Usage: LEADING(expression)  
+
+  Evaluates expression as of the last point the criteria went from false to true
+  or as of the current point if the previous criteria was false.
 `);
 help(app, 'common-functions', `
   Common functions have no restrictions on what expressions they can be used in.

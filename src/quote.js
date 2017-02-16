@@ -223,7 +223,8 @@ function createParser(cached, options) {
         expression(expr, name, args) {
             var fn = common(name, args, options) ||
                 lookback(name, args, options) ||
-                indicator(name, args, options);
+                indicator(name, args, options) ||
+                name == 'LEADING' && leading(_.first(args));
             if (!fn) throw Error("Unknown function: " + name);
             var interval =_.first(fn.intervals);
             if (!_.contains(cached[interval], expr)) return fn;
@@ -231,6 +232,15 @@ function createParser(cached, options) {
                 intervals: fn.intervals
             });
         }
+    });
+}
+
+function leading(arg) {
+    return _.extend(points => {
+        return arg(points.slice(0, 1));
+    }, {
+        intervals: arg.intervals,
+        warmUpLength: Infinity
     });
 }
 

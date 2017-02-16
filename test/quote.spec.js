@@ -593,7 +593,7 @@ describe("quote", function() {
             {Date: "2014-12-01", Time: "12:00:00", Price: 1.13436}
         ]);
     });
-    it("should filter out most results using opening criteria", function() {
+    it("should filter out most results using leading criteria", function() {
         return quote({
             columns: [
                 'DATE(m30.ending) AS "Date"',
@@ -602,7 +602,7 @@ describe("quote", function() {
             ].join(','),
             criteria: [
                 'WORKDAY(month.ending) = WORKDAY(day.ending)',
-                'OPENING(HOUR(m60.ending)) = 12',
+                'LEADING(HOUR(m60.ending)) = 12',
                 'm30.close >= OFFSET(1,m30.close)'
             ].join(' and '),
             symbol: 'USD',
