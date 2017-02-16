@@ -30,13 +30,7 @@
  */
 
 const _ = require('underscore');
-const moment = require('moment-timezone');
-const periods = require('./periods.js');
-const common = require('./common-functions.js');
-const lookback = require('./lookback-functions.js');
-const indicators = require('./indicator-functions.js');
-const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const expect = require('chai').expect;
 
 /**
  * Given a hash of methods: constant(value), variable(name), and
