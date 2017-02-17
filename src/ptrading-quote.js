@@ -178,10 +178,12 @@ help(app, 'pad_end', `
 help(app, 'columns', `
   Usage: set columns [:expression[ AS ":label"],..]  
 
-  Comma separated list of expressions and their labels
+  Comma separated list of expressions and their labels. If a word is used instead
+  of a quoted label, the word can be used in other columns or expressions to refer
+  back to the expression of the column.
 
     :label
-      The quoted string used as the output column name
+      The quoted string used as the output column name or a variable name
 
     ${listExpressions()}
 

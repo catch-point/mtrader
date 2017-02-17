@@ -149,7 +149,8 @@ function parseWarmUpMap(options) {
     else if (!options.columns && !options.criteria) return {[options.interval]:{}};
     var exprs = _.compact([options.columns, options.criteria]).join(',');
     var p = createParser({}, options);
-    var values = _.values(Parser({
+    var parser = Parser({
+        substitutions: options.columns,
         constant(value) {
             return {};
         },
@@ -167,7 +168,8 @@ function parseWarmUpMap(options) {
                 return _.extend.apply(_, _.compact(_.pluck(args, interval)));
             }));
         }
-    }).parseColumnsMap(exprs));
+    });
+    var values = _.values(parser.parseColumnsMap(exprs));
     var intervals = periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
     return _.object(intervals, intervals.map(interval => {
         return _.extend.apply(_, _.compact(_.pluck(values, interval)));
@@ -205,6 +207,7 @@ function parseCriteriaMap(criteria, cached, options) {
  */
 function createParser(cached, options) {
     return Parser({
+        substitutions: options.columns,
         constant(value) {
             return () => value;
         },

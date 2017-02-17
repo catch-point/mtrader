@@ -33,23 +33,39 @@ const _ = require('underscore');
 const expect = require('chai').expect;
 
 /**
- * Given a hash of methods: constant(value), variable(name), and
- * expression(expr, name, args). That are expected to return functions, but they
+ * Given a hash of methods: constant(value), variable(name),
+ * expression(expr, name, args) and a substitutions string expression to pre-bind
+ * variables with another expression. The methods are expected to return functions, but they
  * can return anything. The parameter args is an array of functions returned by
  * previous calls to one of the given methods.
  */
 module.exports = function(handlers) {
+    var substitutions = parseVariables(handlers && handlers.substitutions);
+    var _handlers = {
+        constant(value) {
+            if (!handlers || !handlers.constant) return value;
+            else return handlers.constant(value);
+        },
+        variable(name) {
+            if (!handlers || !handlers.variable) return name;
+            else return handlers.variable(name);
+        },
+        expression(expr, name, args) {
+            if (!handlers || !handlers.expression) return expr;
+            else return handlers.expression(expr, name, args);
+        }
+    };
     return {
         /**
          * @returns function of expr
          */
         parse(expr) {
-            if (_.isNumber(expr)) return handlers.constant(expr);
+            if (_.isNumber(expr)) return _handlers.constant(expr);
             expect(expr).to.be.ok.and.a('string');
-            var list = parseExpressions(expr);
+            var list = parseExpressions(expr, substitutions);
             if (!list.length) throw Error("No input: " + expr);
             if (list.length > 1) throw Error("Did not expect multiple expressions: " + expr);
-            return createCalculation(_.first(list), handlers);
+            return invokeHandler(_.first(list), _handlers);
         },
         /**
          * Produces Array of functions that must each resolve to truthy for the
@@ -58,7 +74,7 @@ module.exports = function(handlers) {
         parseCriteriaList(exprs) {
             if (!exprs) return [];
             expect(exprs).to.be.a('string');
-            var list = parseExpressions(exprs);
+            var list = parseExpressions(exprs, substitutions);
             var i=0;
             while (i<list.length) {
                 var expr = list[i];
@@ -66,47 +82,97 @@ module.exports = function(handlers) {
                 else list.splice(i, 1, expr[1], expr[2]);
             }
             return list.map(expr => {
-                return createCalculation(expr, handlers);
+                return invokeHandler(expr, _handlers);
             });
         },
         /**
+         * @param exprs a comma separated list of expressions that might use
+         * the AS operation to assign a column name.
          * @returns Object, keyed by column names, of functions
          */
         parseColumnsMap(exprs) {
             expect(exprs).to.be.ok.and.a('string');
             var list = parseAsExpressions(exprs);
             return list.reduce((map, expr) => {
+                var value = inline(_.first(expr) == 'AS' ?
+                    expr[1] : expr, substitutions)
                 var name = _.first(expr) == 'AS' ?
-                    JSON.parse(_.last(expr)) : serialize(expr);
-                var value = _.first(expr) == 'AS' ? expr[1] : expr;
-                return _.extend(map, {[name]: createCalculation(value, handlers)});
+                    JSON.parse(_.last(expr)) : serialize(value);
+                return _.extend(map, {[name]: invokeHandler(value, _handlers)});
             }, {});
         }
     };
 };
 
-function parseExpressions(str) {
-    var list = parseAsExpressions(str);
-    return list.map(expr => _.first(expr) == 'AS' ? expr[1] : expr);
+/**
+ * Indexes the expressions by their variable names, if they have one
+ */
+function parseVariables(exprs) {
+    if (!exprs) return {};
+    var list = parseAsExpressions(exprs);
+    var variables = list.reduce((map, expr) => {
+        if (_.first(expr) != 'AS') return map;
+        var name = JSON.parse(_.last(expr));
+        if (!name.match(/^[_a-zA-Z][_\w]*$/)) return map;
+        return _.extend(map, {[name]: expr[1]});
+    }, {});
+    var handlers = {
+        constant(value) {
+            return [];
+        },
+        variable(name) {
+            if (variables[name]) return [name];
+            else return [];
+        },
+        expression(expr, name, args) {
+            return _.uniq(_.flatten(args, true));
+        }
+    };
+    var references = _.mapObject(variables, (expr, name) => {
+        var reference = invokeHandler(expr, handlers);
+        if (!_.contains(reference, name)) return reference;
+        else throw Error("Expression cannot reference itself: " + name);
+    });
+    while (_.reduce(references, (more, reference, name) => {
+        if (!reference.length) return more;
+        var second = _.uniq(_.flatten(reference.map(ref => references[ref]), true));
+        if (_.contains(second, name)) throw Error("Circular Reference " + name);
+        variables[name] = inline(variables[name], variables);
+        references[name] = second;
+        return more || second.length;
+    }, false));
+    return variables;
 }
 
-function createCalculation(expr, handlers) {
-    var dhandlers = _.extend({
-        constant: _.identity,
-        variable: _.identity,
-        expression: _.identity
-    }, handlers);
+function parseExpressions(str, substitutions) {
+    var list = parseAsExpressions(str);
+    var expressions = list.map(expr => _.first(expr) == 'AS' ? expr[1] : expr);
+    if (_.isEmpty(substitutions)) return expressions;
+    else return expressions.map(expr => inline(expr, substitutions));
+}
+
+function inline(expr, substitutions) {
     if (_.isArray(expr)) {
-        var args = _.rest(expr).map(expr => createCalculation(expr, handlers));
-        var fn = dhandlers.expression(serialize(expr), _.first(expr), args);
+        return expr.map((expr, i) => i === 0 ? expr : inline(expr, substitutions));
+    } else if (_.isString(expr) && substitutions[expr]) {
+        return substitutions[expr];
+    } else {
+        return expr;
+    }
+}
+
+function invokeHandler(expr, handlers) {
+    if (_.isArray(expr)) {
+        var args = _.rest(expr).map(expr => invokeHandler(expr, handlers));
+        var fn = handlers.expression(serialize(expr), _.first(expr), args);
         if (!_.isUndefined(fn)) return fn;
         else throw Error("Unknown function: " + _.first(expr));
     } else if (_.isString(expr) && expr.charAt(0) == '"') {
-        return dhandlers.constant(JSON.parse(expr));
+        return handlers.constant(JSON.parse(expr));
     } else if (_.isNumber(expr) && _.isFinite(expr)) {
-        return dhandlers.constant(+expr);
+        return handlers.constant(+expr);
     } else {
-        return dhandlers.variable(expr);
+        return handlers.variable(expr);
     }
 }
 

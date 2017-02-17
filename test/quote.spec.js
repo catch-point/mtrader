@@ -544,6 +544,22 @@ describe("quote", function() {
 
         ]);
     });
+    it("should detect circular reference", function() {
+        return quote({
+            columns: [
+                'DATE(m30.ending) AS Date',
+                'TIME(m30.ending) AS Time',
+                'm30.close AS Price',
+                'CHANGE(Price, Another) AS Change',
+                'day.close * (1 + Change) AS Another'
+            ].join(','),
+            criteria: 'Price > OFFSET(1, Price)',
+            symbol: 'USD',
+            exchange: 'CAD',
+            begin: moment('2014-03-03T08:30:00-0500'),
+            end: moment('2014-03-03T17:00:00-0500')
+        }).should.be.rejected;
+    });
     it("should filter out results", function() {
         return quote({
             columns: [
@@ -553,6 +569,28 @@ describe("quote", function() {
                 '(m30.close - day.close)*100/day.close AS "Change"'
             ].join(','),
             criteria: 'm30.close > OFFSET(1, m30.close)',
+            symbol: 'USD',
+            exchange: 'CAD',
+            begin: moment('2014-03-03T08:30:00-0500'),
+            end: moment('2014-03-03T17:00:00-0500')
+        }).should.eventually.be.like([
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:about(0.3289949385)},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:about(0.2575921909)},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:about(0.1916124367)},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:about(0.2349963847)},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:about(0.3172451193)},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:about(0.1726319595)}
+        ]);
+    });
+    it("should filter out results using variables", function() {
+        return quote({
+            columns: [
+                'DATE(m30.ending) AS Date',
+                'TIME(m30.ending) AS Time',
+                'm30.close AS Price',
+                'CHANGE(Price, day.close) AS Change'
+            ].join(','),
+            criteria: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),

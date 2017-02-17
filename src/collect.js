@@ -48,8 +48,8 @@ module.exports = function(quote) {
         var portfolio = getPortfolio(options);
         var columns = options.columns || 'symbol';
         var names = getColumnNames(columns);
-        var retainColumns = getNeededColumns(exchanges, options.retain);
-        var precedenceColumns = getNeededColumns(exchanges, options.precedence);
+        var retainColumns = getNeededColumns(exchanges, options.retain, options);
+        var precedenceColumns = getNeededColumns(exchanges, options.precedence, options);
         var allColumns = _.uniq(_.compact(_.flatten([
             columns,
             'symbol',
@@ -59,7 +59,7 @@ module.exports = function(quote) {
             retainColumns,
             precedenceColumns
         ], true))).join(',');
-        var precedence = getPrecedence(options.precedence, precedenceColumns);
+        var precedence = getPrecedence(options.precedence, precedenceColumns, options);
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
                 columns: allColumns
@@ -89,9 +89,10 @@ function getColumnNames(columns) {
     return _.keys(Parser().parseColumnsMap(columns));
 }
 
-function getNeededColumns(exchanges, expr) {
+function getNeededColumns(exchanges, expr, options) {
     if (!expr) return [];
     return _.uniq(_.flatten(_.values(Parser({
+        substitutions: options.columns,
         constant(value) {
             return null;
         },
@@ -110,9 +111,10 @@ function getNeededColumns(exchanges, expr) {
     }).parseColumnsMap(expr)), true));
 }
 
-function getPrecedence(expr, cached) {
+function getPrecedence(expr, cached, options) {
     if (!expr) return [];
     else return _.values(Parser({
+        substitutions: options.columns,
         constant(value) {
             return {};
         },
@@ -149,10 +151,11 @@ function collectDataset(dataset, temporal, columns, retain, precedence) {
 
 function promiseRetain(exchanges, quote, dataset, temporal, options) {
     var expr = options.retain;
-    var cached = getNeededColumns(exchanges, expr);
+    var cached = getNeededColumns(exchanges, expr, options);
     var external = promiseExternal.bind(this, quote, dataset, temporal);
     if (!expr) return Promise.resolve(_.constant(true));
     else return Promise.resolve(Parser({
+        substitutions: options.columns,
         constant(value) {
             return _.extend(positions => value, {
                 expression: value
