@@ -884,29 +884,28 @@ describe("lookback-functions", function(){
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
-            {Date:"2016-01-04",Close:201.02,Change:closeTo(-1.87),PF:closeTo(0.68)},
-            {Date:"2016-01-05",Close:201.36,Change:closeTo(0.66),PF:closeTo(1.18)},
-            {Date:"2016-01-06",Close:198.82,Change:closeTo(-1.41),PF:closeTo(0.70)},
-            {Date:"2016-01-07",Close:194.05,Change:closeTo(-4.64),PF:closeTo(0.34)},
-            {Date:"2016-01-08",Close:191.92,Change:closeTo(-6.84),PF:closeTo(0.15)},
-            {Date:"2016-01-11",Close:192.11,Change:closeTo(-6.59),PF:closeTo(0.16)},
-            {Date:"2016-01-12",Close:193.66,Change:closeTo(-5.62),PF:closeTo(0.26)},
-            {Date:"2016-01-13",Close:188.83,Change:closeTo(-8.95),PF:closeTo(0.10)},
-            {Date:"2016-01-14",Close:191.93,Change:closeTo(-6.79),PF:closeTo(0.27)},
-            {Date:"2016-01-15",Close:187.81,Change:closeTo(-7.87),PF:closeTo(0.24)},
-            {Date:"2016-01-19",Close:188.06,Change:closeTo(-6.44),PF:closeTo(0.29)},
-            {Date:"2016-01-20",Close:185.65,Change:closeTo(-7.80),PF:closeTo(0.24)},
-            {Date:"2016-01-21",Close:186.69,Change:closeTo(-6.10),PF:closeTo(0.33)},
-            {Date:"2016-01-22",Close:190.52,Change:closeTo(-1.81),PF:closeTo(0.73)},
-            {Date:"2016-01-25",Close:187.64,Change:closeTo(-2.23),PF:closeTo(0.69)},
-            {Date:"2016-01-26",Close:190.2,Change:closeTo(-0.99),PF:closeTo(0.86)},
-            {Date:"2016-01-27",Close:188.13,Change:closeTo(-2.85),PF:closeTo(0.66)},
-            {Date:"2016-01-28",Close:189.11,Change:closeTo(0.14),PF:closeTo(1.02)},
-            {Date:"2016-01-29",Close:193.72,Change:closeTo(0.93),PF:closeTo(1.15)}
+            {Date:"2016-01-04",Close:201.02,Change:-1.87,PF:0.68},
+            {Date:"2016-01-05",Close:201.36,Change:0.66,PF:1.18},
+            {Date:"2016-01-06",Close:198.82,Change:-1.41,PF:0.70},
+            {Date:"2016-01-07",Close:194.05,Change:-4.64,PF:0.34},
+            {Date:"2016-01-08",Close:191.92,Change:-6.84,PF:0.15},
+            {Date:"2016-01-11",Close:192.11,Change:-6.59,PF:0.16},
+            {Date:"2016-01-12",Close:193.66,Change:-5.62,PF:0.26},
+            {Date:"2016-01-13",Close:188.83,Change:-8.95,PF:0.10},
+            {Date:"2016-01-14",Close:191.93,Change:-6.79,PF:0.27},
+            {Date:"2016-01-15",Close:187.81,Change:-7.87,PF:0.24},
+            {Date:"2016-01-19",Close:188.06,Change:-6.44,PF:0.29},
+            {Date:"2016-01-20",Close:185.65,Change:-7.80,PF:0.24},
+            {Date:"2016-01-21",Close:186.69,Change:-6.10,PF:0.33},
+            {Date:"2016-01-22",Close:190.52,Change:-1.81,PF:0.73},
+            {Date:"2016-01-25",Close:187.64,Change:-2.23,PF:0.69},
+            {Date:"2016-01-26",Close:190.2,Change:-0.99,PF:0.86},
+            {Date:"2016-01-27",Close:188.13,Change:-2.85,PF:0.66},
+            {Date:"2016-01-28",Close:189.11,Change:0.14,PF:1.02},
+            {Date:"2016-01-29",Close:193.72,Change:0.93,PF:1.15}
         ]);
     });
     it("SLOPE", function() {
-        var CloseTo = closeTo;
         return quote({
             columns: [
                 'DATE(day.ending) AS "Date"',
@@ -919,29 +918,28 @@ describe("lookback-functions", function(){
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
-            {Date:"2016-01-04",Close:201.02,Change:closeTo(-2.26),Slope:closeTo(-0.51)},
-            {Date:"2016-01-05",Close:201.36,Change:closeTo(-1.87),Slope:closeTo(-0.54)},
-            {Date:"2016-01-06",Close:198.82,Change:closeTo(-4.13),Slope:closeTo(-0.55)},
-            {Date:"2016-01-07",Close:194.05,Change:closeTo(-5.76),Slope:closeTo(-0.40)},
-            {Date:"2016-01-08",Close:191.92,Change:closeTo(-5.86),Slope:closeTo(-0.35)},
-            {Date:"2016-01-11",Close:192.11,Change:closeTo(-4.43),Slope:closeTo(-0.35)},
-            {Date:"2016-01-12",Close:193.66,Change:closeTo(-3.82),Slope:closeTo(-0.39)},
-            {Date:"2016-01-13",Close:188.83,Change:closeTo(-5.02),Slope:closeTo(-0.51)},
-            {Date:"2016-01-14",Close:191.93,Change:closeTo(-1.09),Slope:closeTo(-0.26)},
-            {Date:"2016-01-15",Close:187.81,Change:closeTo(-2.14),Slope:closeTo(-0.43)},
-            {Date:"2016-01-19",Close:188.06,Change:closeTo(-2.10),Slope:closeTo(-0.45)},
-            {Date:"2016-01-20",Close:185.65,Change:closeTo(-4.13),Slope:closeTo(-0.49)},
-            {Date:"2016-01-21",Close:186.69,Change:closeTo(-1.13),Slope:closeTo(-0.55)},
-            {Date:"2016-01-22",Close:190.52,Change:closeTo(-0.73),Slope:closeTo(0.30)},
-            {Date:"2016-01-25",Close:187.64,Change:closeTo(-0.09),Slope:closeTo(0.30)},
-            {Date:"2016-01-26",Close:190.2,Change:closeTo(1.13),Slope:closeTo(0.54)},
-            {Date:"2016-01-27",Close:188.13,Change:closeTo(1.33),Slope:closeTo(0.23)},
-            {Date:"2016-01-28",Close:189.11,Change:closeTo(1.29),Slope:closeTo(-0.37)},
-            {Date:"2016-01-29",Close:193.72,Change:closeTo(1.67),Slope:closeTo(0.47)}
+            {Date:"2016-01-04",Close:201.02,Change:-2.26,Slope:-0.51},
+            {Date:"2016-01-05",Close:201.36,Change:-1.87,Slope:-0.54},
+            {Date:"2016-01-06",Close:198.82,Change:-4.13,Slope:-0.55},
+            {Date:"2016-01-07",Close:194.05,Change:-5.76,Slope:-0.40},
+            {Date:"2016-01-08",Close:191.92,Change:-5.86,Slope:-0.35},
+            {Date:"2016-01-11",Close:192.11,Change:-4.43,Slope:-0.35},
+            {Date:"2016-01-12",Close:193.66,Change:-3.82,Slope:-0.39},
+            {Date:"2016-01-13",Close:188.83,Change:-5.02,Slope:-0.51},
+            {Date:"2016-01-14",Close:191.93,Change:-1.09,Slope:-0.26},
+            {Date:"2016-01-15",Close:187.81,Change:-2.14,Slope:-0.43},
+            {Date:"2016-01-19",Close:188.06,Change:-2.10,Slope:-0.45},
+            {Date:"2016-01-20",Close:185.65,Change:-4.13,Slope:-0.49},
+            {Date:"2016-01-21",Close:186.69,Change:-1.13,Slope:-0.55},
+            {Date:"2016-01-22",Close:190.52,Change:-0.73,Slope:0.30},
+            {Date:"2016-01-25",Close:187.64,Change:-0.09,Slope:0.30},
+            {Date:"2016-01-26",Close:190.2,Change:1.13,Slope:0.54},
+            {Date:"2016-01-27",Close:188.13,Change:1.33,Slope:0.23},
+            {Date:"2016-01-28",Close:189.11,Change:1.29,Slope:-0.37},
+            {Date:"2016-01-29",Close:193.72,Change:1.67,Slope:0.47}
         ]);
     });
     it("VAR", function() {
-        var closeTo = expected => actual => actual.should.be.closeTo(expected, 0.0001);
         return quote({
             columns: [
                 'DATE(day.ending) AS "Date"',
@@ -954,29 +952,28 @@ describe("lookback-functions", function(){
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
-            {Date:"2016-01-04",Close:201.02,Change:closeTo(-2.2656),VaR:closeTo(0.0158)},
-            {Date:"2016-01-05",Close:201.36,Change:closeTo(-1.8761),VaR:closeTo(0.0158)},
-            {Date:"2016-01-06",Close:198.82,Change:closeTo(-4.1369),VaR:closeTo(0.0158)},
-            {Date:"2016-01-07",Close:194.05,Change:closeTo(-5.7689),VaR:closeTo(0.0159)},
-            {Date:"2016-01-08",Close:191.92,Change:closeTo(-5.8615),VaR:closeTo(0.0159)},
-            {Date:"2016-01-11",Close:192.11,Change:closeTo(-4.4323),VaR:closeTo(0.0159)},
-            {Date:"2016-01-12",Close:193.66,Change:closeTo(-3.8239),VaR:closeTo(0.0159)},
-            {Date:"2016-01-13",Close:188.83,Change:closeTo(-5.0246),VaR:closeTo(0.0161)},
-            {Date:"2016-01-14",Close:191.93,Change:closeTo(-1.0925),VaR:closeTo(0.0162)},
-            {Date:"2016-01-15",Close:187.81,Change:closeTo(-2.1415),VaR:closeTo(0.0162)},
-            {Date:"2016-01-19",Close:188.06,Change:closeTo(-2.1081),VaR:closeTo(0.0161)},
-            {Date:"2016-01-20",Close:185.65,Change:closeTo(-4.1361),VaR:closeTo(0.0160)},
-            {Date:"2016-01-21",Close:186.69,Change:closeTo(-1.1332),VaR:closeTo(0.0160)},
-            {Date:"2016-01-22",Close:190.52,Change:closeTo(-0.7346),VaR:closeTo(0.0162)},
-            {Date:"2016-01-25",Close:187.64,Change:closeTo(-0.0905),VaR:closeTo(0.0163)},
-            {Date:"2016-01-26",Close:190.2,Change:closeTo(1.1379),VaR:closeTo(0.0164)},
-            {Date:"2016-01-27",Close:188.13,Change:closeTo(1.3358),VaR:closeTo(0.0164)},
-            {Date:"2016-01-28",Close:189.11,Change:closeTo(1.2962),VaR:closeTo(0.0163)},
-            {Date:"2016-01-29",Close:193.72,Change:closeTo(1.6796),VaR:closeTo(0.0166)}
+            {Date:"2016-01-04",Close:201.02,Change:-2.2656,VaR:0.0158},
+            {Date:"2016-01-05",Close:201.36,Change:-1.8761,VaR:0.0158},
+            {Date:"2016-01-06",Close:198.82,Change:-4.1369,VaR:0.0158},
+            {Date:"2016-01-07",Close:194.05,Change:-5.7689,VaR:0.0159},
+            {Date:"2016-01-08",Close:191.92,Change:-5.8615,VaR:0.0159},
+            {Date:"2016-01-11",Close:192.11,Change:-4.4323,VaR:0.0159},
+            {Date:"2016-01-12",Close:193.66,Change:-3.8239,VaR:0.0159},
+            {Date:"2016-01-13",Close:188.83,Change:-5.0246,VaR:0.0161},
+            {Date:"2016-01-14",Close:191.93,Change:-1.0925,VaR:0.0162},
+            {Date:"2016-01-15",Close:187.81,Change:-2.1415,VaR:0.0162},
+            {Date:"2016-01-19",Close:188.06,Change:-2.1081,VaR:0.0161},
+            {Date:"2016-01-20",Close:185.65,Change:-4.1361,VaR:0.0160},
+            {Date:"2016-01-21",Close:186.69,Change:-1.1332,VaR:0.0160},
+            {Date:"2016-01-22",Close:190.52,Change:-0.7346,VaR:0.0162},
+            {Date:"2016-01-25",Close:187.64,Change:-0.0905,VaR:0.0163},
+            {Date:"2016-01-26",Close:190.2,Change:1.1379,VaR:0.0164},
+            {Date:"2016-01-27",Close:188.13,Change:1.3358,VaR:0.0164},
+            {Date:"2016-01-28",Close:189.11,Change:1.2962,VaR:0.0163},
+            {Date:"2016-01-29",Close:193.72,Change:1.6796,VaR:0.0166}
         ]);
     });
     it("CVAR", function() {
-        var closeTo = expected => actual => actual.should.be.closeTo(expected, 0.0001);
         return quote({
             columns: [
                 'DATE(day.ending) AS "Date"',
@@ -989,25 +986,25 @@ describe("lookback-functions", function(){
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
-            {Date:"2016-01-04",Close:201.02,Change:closeTo(-2.2656),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-05",Close:201.36,Change:closeTo(-1.8761),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-06",Close:198.82,Change:closeTo(-4.1369),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-07",Close:194.05,Change:closeTo(-5.7689),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-08",Close:191.92,Change:closeTo(-5.8615),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-11",Close:192.11,Change:closeTo(-4.4323),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-12",Close:193.66,Change:closeTo(-3.8239),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-13",Close:188.83,Change:closeTo(-5.0246),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-14",Close:191.93,Change:closeTo(-1.0925),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-15",Close:187.81,Change:closeTo(-2.1415),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-19",Close:188.06,Change:closeTo(-2.1081),Shortfall:closeTo(0.0214)},
-            {Date:"2016-01-20",Close:185.65,Change:closeTo(-4.1361),Shortfall:closeTo(0.0213)},
-            {Date:"2016-01-21",Close:186.69,Change:closeTo(-1.1332),Shortfall:closeTo(0.0213)},
-            {Date:"2016-01-22",Close:190.52,Change:closeTo(-0.7346),Shortfall:closeTo(0.0217)},
-            {Date:"2016-01-25",Close:187.64,Change:closeTo(-0.0905),Shortfall:closeTo(0.0217)},
-            {Date:"2016-01-26",Close:190.2,Change:closeTo(1.1379),Shortfall:closeTo(0.0217)},
-            {Date:"2016-01-27",Close:188.13,Change:closeTo(1.3358),Shortfall:closeTo(0.0217)},
-            {Date:"2016-01-28",Close:189.11,Change:closeTo(1.2962),Shortfall:closeTo(0.0217)},
-            {Date:"2016-01-29",Close:193.72,Change:closeTo(1.6796),Shortfall:closeTo(0.0225)}
+            {Date:"2016-01-04",Close:201.02,Change:-2.2656,Shortfall:0.0214},
+            {Date:"2016-01-05",Close:201.36,Change:-1.8761,Shortfall:0.0214},
+            {Date:"2016-01-06",Close:198.82,Change:-4.1369,Shortfall:0.0214},
+            {Date:"2016-01-07",Close:194.05,Change:-5.7689,Shortfall:0.0214},
+            {Date:"2016-01-08",Close:191.92,Change:-5.8615,Shortfall:0.0214},
+            {Date:"2016-01-11",Close:192.11,Change:-4.4323,Shortfall:0.0214},
+            {Date:"2016-01-12",Close:193.66,Change:-3.8239,Shortfall:0.0214},
+            {Date:"2016-01-13",Close:188.83,Change:-5.0246,Shortfall:0.0214},
+            {Date:"2016-01-14",Close:191.93,Change:-1.0925,Shortfall:0.0214},
+            {Date:"2016-01-15",Close:187.81,Change:-2.1415,Shortfall:0.0214},
+            {Date:"2016-01-19",Close:188.06,Change:-2.1081,Shortfall:0.0214},
+            {Date:"2016-01-20",Close:185.65,Change:-4.1361,Shortfall:0.0213},
+            {Date:"2016-01-21",Close:186.69,Change:-1.1332,Shortfall:0.0213},
+            {Date:"2016-01-22",Close:190.52,Change:-0.7346,Shortfall:0.0217},
+            {Date:"2016-01-25",Close:187.64,Change:-0.0905,Shortfall:0.0217},
+            {Date:"2016-01-26",Close:190.2,Change:1.1379,Shortfall:0.0217},
+            {Date:"2016-01-27",Close:188.13,Change:1.3358,Shortfall:0.0217},
+            {Date:"2016-01-28",Close:189.11,Change:1.2962,Shortfall:0.0217},
+            {Date:"2016-01-29",Close:193.72,Change:1.6796,Shortfall:0.0225}
         ]);
     });
 });

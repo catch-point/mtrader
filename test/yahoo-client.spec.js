@@ -41,7 +41,6 @@ describe("yahoo-client", function() {
     after(function() {
         return client.close();
     });
-    var about = expected => actual => (+actual).should.be.closeTo(expected,0.01);
     it("should find YHOO", function() {
         return client.lookup('YHOO', 'en-US').should.eventually.be.like(results => _.some(results, like({
             symbol: 'YHOO',
@@ -73,27 +72,27 @@ describe("yahoo-client", function() {
             moment.tz('2014-01-01', tz), moment.tz('2014-02-01', tz),
             '16:00:00', tz
         ).should.eventually.be.like([
-            {Date:'2014-01-31',Open:about(34.69),High:about(36.33),Low:about(34.55),Close:about(36.01)},
-            {Date:'2014-01-30',Open:about(34.89),High:about(35.81),Low:about(34.45),Close:about(35.31)},
-            {Date:'2014-01-29',Open:about(35.77),High:about(36.31),Low:about(34.82),Close:about(34.89)},
-            {Date:'2014-01-28',Open:about(36.83),High:about(38.32),Low:about(36.52),Close:about(38.22)},
-            {Date:'2014-01-27',Open:about(37.60),High:about(37.94),Low:about(36.62),Close:about(36.65)},
-            {Date:'2014-01-24',Open:about(38.67),High:about(38.98),Low:about(37.62),Close:about(37.91)},
-            {Date:'2014-01-23',Open:about(39.31),High:about(39.77),Low:about(39.14),Close:about(39.39)},
-            {Date:'2014-01-22',Open:about(39.66),High:about(40.40),Low:about(39.32),Close:about(40.18)},
-            {Date:'2014-01-21',Open:about(39.98),High:about(40.05),Low:about(38.86),Close:about(39.52)},
-            {Date:'2014-01-17',Open:about(40.12),High:about(40.44),Low:about(39.47),Close:about(40.01)},
-            {Date:'2014-01-16',Open:about(40.43),High:about(40.75),Low:about(40.11),Close:about(40.34)},
-            {Date:'2014-01-15',Open:about(41.06),High:about(41.31),Low:about(40.76),Close:about(41.07)},
-            {Date:'2014-01-14',Open:about(40.21),High:about(41.14),Low:about(40.04),Close:about(41.14)},
-            {Date:'2014-01-13',Open:about(41.16),High:about(41.22),Low:about(39.80),Close:about(39.99)},
-            {Date:'2014-01-10',Open:about(40.95),High:about(41.35),Low:about(40.82),Close:about(41.23)},
-            {Date:'2014-01-09',Open:about(41.33),High:about(41.35),Low:about(40.61),Close:about(40.92)},
-            {Date:'2014-01-08',Open:about(41.29),High:about(41.72),Low:about(41.02),Close:about(41.02)},
-            {Date:'2014-01-07',Open:about(40.08),High:about(41.20),Low:about(40.08),Close:about(40.92)},
-            {Date:'2014-01-06',Open:about(40.05),High:about(40.32),Low:about(39.75),Close:about(39.93)},
-            {Date:'2014-01-03',Open:about(40.16),High:about(40.44),Low:about(39.82),Close:about(40.12)},
-            {Date:'2014-01-02',Open:about(40.37),High:about(40.49),Low:about(39.31),Close:about(39.59)}
+            {Date:'2014-01-31',Open:34.69,High:36.33,Low:34.55,Close:36.01},
+            {Date:'2014-01-30',Open:34.89,High:35.81,Low:34.45,Close:35.31},
+            {Date:'2014-01-29',Open:35.77,High:36.31,Low:34.82,Close:34.89},
+            {Date:'2014-01-28',Open:36.83,High:38.32,Low:36.52,Close:38.22},
+            {Date:'2014-01-27',Open:37.60,High:37.94,Low:36.62,Close:36.65},
+            {Date:'2014-01-24',Open:38.67,High:38.98,Low:37.62,Close:37.91},
+            {Date:'2014-01-23',Open:39.31,High:39.77,Low:39.14,Close:39.39},
+            {Date:'2014-01-22',Open:39.66,High:40.40,Low:39.32,Close:40.18},
+            {Date:'2014-01-21',Open:39.98,High:40.05,Low:38.86,Close:39.52},
+            {Date:'2014-01-17',Open:40.12,High:40.44,Low:39.47,Close:40.01},
+            {Date:'2014-01-16',Open:40.43,High:40.75,Low:40.11,Close:40.34},
+            {Date:'2014-01-15',Open:41.06,High:41.31,Low:40.76,Close:41.07},
+            {Date:'2014-01-14',Open:40.21,High:41.14,Low:40.04,Close:41.14},
+            {Date:'2014-01-13',Open:41.16,High:41.22,Low:39.80,Close:39.99},
+            {Date:'2014-01-10',Open:40.95,High:41.35,Low:40.82,Close:41.23},
+            {Date:'2014-01-09',Open:41.33,High:41.35,Low:40.61,Close:40.92},
+            {Date:'2014-01-08',Open:41.29,High:41.72,Low:41.02,Close:41.02},
+            {Date:'2014-01-07',Open:40.08,High:41.20,Low:40.08,Close:40.92},
+            {Date:'2014-01-06',Open:40.05,High:40.32,Low:39.75,Close:39.93},
+            {Date:'2014-01-03',Open:40.16,High:40.44,Low:39.82,Close:40.12},
+            {Date:'2014-01-02',Open:40.37,High:40.49,Low:39.31,Close:39.59}
         ]);
     });
     it("should return weekly", function() {
@@ -102,10 +101,10 @@ describe("yahoo-client", function() {
             moment.tz('2014-01-06', tz), moment.tz('2014-02-01', tz),
             '16:00:00', tz
         ).should.eventually.be.like([
-            {Date:'2014-01-27',Open:about(37.60),High:about(38.32),Low:about(34.45),Close:about(36.01)},
-            {Date:'2014-01-21',Open:about(39.98),High:about(40.40),Low:about(37.62),Close:about(37.91)},
-            {Date:'2014-01-13',Open:about(41.16),High:about(41.31),Low:about(39.47),Close:about(40.01)},
-            {Date:'2014-01-06',Open:about(40.05),High:about(41.72),Low:about(39.75),Close:about(41.23)}
+            {Date:'2014-01-27',Open:37.60,High:38.32,Low:34.45,Close:36.01},
+            {Date:'2014-01-21',Open:39.98,High:40.40,Low:37.62,Close:37.91},
+            {Date:'2014-01-13',Open:41.16,High:41.31,Low:39.47,Close:40.01},
+            {Date:'2014-01-06',Open:40.05,High:41.72,Low:39.75,Close:41.23}
         ]);
     });
     it("should return monthly", function() {
@@ -114,10 +113,10 @@ describe("yahoo-client", function() {
             moment.tz('2013-10-01', tz), moment.tz('2014-02-01', tz),
             '16:00:00', tz
         ).should.eventually.be.like([
-            {Date:'2014-01-02',Open:about(40.37),High:about(41.72),Low:about(34.45),Close:about(36.01)},
-            {Date:'2013-12-02',Open:about(37.04),High:about(41.05),Low:about(36.25),Close:about(40.44)},
-            {Date:'2013-11-01',Open:about(33.15),High:about(37.35),Low:about(32.06),Close:about(36.98)},
-            {Date:'2013-10-01',Open:about(33.36),High:about(35.06),Low:about(31.70),Close:about(32.94)}
+            {Date:'2014-01-02',Open:40.37,High:41.72,Low:34.45,Close:36.01},
+            {Date:'2013-12-02',Open:37.04,High:41.05,Low:36.25,Close:40.44},
+            {Date:'2013-11-01',Open:33.15,High:37.35,Low:32.06,Close:36.98},
+            {Date:'2013-10-01',Open:33.36,High:35.06,Low:31.70,Close:32.94}
         ]);
     });
     it("should find BRK/A symbol", function() {

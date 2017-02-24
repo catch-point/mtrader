@@ -37,7 +37,6 @@ const createTempDir = require('./create-temp-dir.js');
 describe("ptrading", function() {
     this.timeout(60000);
     ptrading.config('prefix', createTempDir('ptrading'));
-    var closeTo = expected => actual => actual.should.be.closeTo(expected,0.0001);
     it("lookup", function() {
         return ptrading.lookup({symbol: 'YHOO'}).then(suggestions => {
           suggestions.forEach(suggestion => {
@@ -83,14 +82,14 @@ describe("ptrading", function() {
           ].join(','),
           criteria: 'day.adj_close > OFFSET(1, day.adj_close)'
         }).should.eventually.be.like([
-            {Date:"2016-12-30",Close:38.67,Change:closeTo(0.0776)},
-            {Date:"2017-01-03",Close:38.90,Change:closeTo(0.5947)},
-            {Date:"2017-01-04",Close:40.06,Change:closeTo(2.9820)},
-            {Date:"2017-01-05",Close:41.34,Change:closeTo(3.1952)},
-            {Date:"2017-01-09",Close:41.34,Change:closeTo(0.2667)},
-            {Date:"2017-01-10",Close:42.30,Change:closeTo(2.3222)},
-            {Date:"2017-01-11",Close:42.59,Change:closeTo(0.6855)},
-            {Date:"2017-01-13",Close:42.27,Change:closeTo(0.3799)}
+            {Date:"2016-12-30",Close:38.67,Change:0.0776},
+            {Date:"2017-01-03",Close:38.90,Change:0.5947},
+            {Date:"2017-01-04",Close:40.06,Change:2.9820},
+            {Date:"2017-01-05",Close:41.34,Change:3.1952},
+            {Date:"2017-01-09",Close:41.34,Change:0.2667},
+            {Date:"2017-01-10",Close:42.30,Change:2.3222},
+            {Date:"2017-01-11",Close:42.59,Change:0.6855},
+            {Date:"2017-01-13",Close:42.27,Change:0.3799}
         ]);
     });
     it("collect", function() {
@@ -109,17 +108,39 @@ describe("ptrading", function() {
           retain: 'COUNT(symbol)<=1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
-            {symbol:'IBM',date:"2016-12-29",close:166.6,change:closeTo(0.2467)},
-            {symbol:'YHOO',date:"2016-12-30",close:38.67,change:closeTo(0.0776)},
-            {symbol:'IBM',date:"2017-01-03",close:167.19,change:closeTo(0.7229)},
-            {symbol:'IBM',date:"2017-01-04",close:169.26,change:closeTo(1.2381)},
-            {symbol:'YHOO',date:"2017-01-05",close:41.34,change:closeTo(3.1952)},
-            {symbol:'IBM',date:"2017-01-06",close:169.53,change:closeTo(0.4919)},
-            {symbol:'YHOO',date:"2017-01-09",close:41.34,change:closeTo(0.2667)},
-            {symbol:'YHOO',date:"2017-01-10",close:42.3,change:closeTo(2.3222)},
-            {symbol:'IBM',date:"2017-01-11",close:167.75,change:closeTo(1.3472)},
-            {symbol:'IBM',date:"2017-01-12",close:167.95,change:closeTo(0.1192)},
-            {symbol:'YHOO',date:"2017-01-13",close:42.27,change:closeTo(0.3799)}
+            {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.2467},
+            {symbol:'YHOO',date:"2016-12-30",close:38.67,change:0.0776},
+            {symbol:'IBM',date:"2017-01-03",close:167.19,change:0.7229},
+            {symbol:'IBM',date:"2017-01-04",close:169.26,change:1.2381},
+            {symbol:'YHOO',date:"2017-01-05",close:41.34,change:3.1952},
+            {symbol:'IBM',date:"2017-01-06",close:169.53,change:0.4919},
+            {symbol:'YHOO',date:"2017-01-09",close:41.34,change:0.2667},
+            {symbol:'YHOO',date:"2017-01-10",close:42.3,change:2.3222},
+            {symbol:'IBM',date:"2017-01-11",close:167.75,change:1.3472},
+            {symbol:'IBM',date:"2017-01-12",close:167.95,change:0.1192},
+            {symbol:'YHOO',date:"2017-01-13",close:42.27,change:0.3799}
+        ]);
+    });
+    it.skip("allocate", function() {
+        return ptrading.allocate({
+          portfolio: 'YHOO.NASDAQ,IBM.NYSE',
+          pad_begin: 9,
+          begin: "2017-01-13",
+          end: "2017-01-14",
+          precedence: 'DESC(PF(120,day.adj_close))',
+          columns: [
+              'symbol',
+              'DATE(ending) AS date',
+              'COLLECT(2,SUM(IF(COUNT(symbol)<=1,FLOOR(100000/(day.close)),0)))/2 AS target', // fade-in/out over two days
+              'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0)) AS shares',
+              'PREV("position",0) + shares AS position',
+              'day.close - 0.02 * IF(shares>0 AND position>0,1,-1) AS price', // includes slippage
+              'shares * price AS proceeds',
+              'IF(shares=0,0, MAX(shares * IF(exchange="TSX", 0.01, 0.005), 1.00)) AS commission',
+              'PREV("basis",0) + price * shares / position AS basis',
+              'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission AS profit'
+          ].join(',')
+        }).should.eventually.be.like([
         ]);
     });
 });

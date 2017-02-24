@@ -40,7 +40,6 @@ const createTempDir = require('./create-temp-dir.js');
 
 describe("collect", function() {
     this.timeout(60000);
-    var closeTo = expected => actual => actual.should.be.closeTo(expected,0.0001);
     var fetch, quote, collect;
     before(function() {
         config('config', path.resolve(__dirname, 'etc/ptrading.json'));
@@ -80,17 +79,17 @@ describe("collect", function() {
           retain: 'COUNT(symbol)<=1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
-            {symbol:'IBM',date:"2016-12-29",close:166.6,change:closeTo(0.2467)},
-            {symbol:'YHOO',date:"2016-12-30",close:38.67,change:closeTo(0.0776)},
-            {symbol:'IBM',date:"2017-01-03",close:167.19,change:closeTo(0.7229)},
-            {symbol:'IBM',date:"2017-01-04",close:169.26,change:closeTo(1.2381)},
-            {symbol:'YHOO',date:"2017-01-05",close:41.34,change:closeTo(3.1952)},
-            {symbol:'IBM',date:"2017-01-06",close:169.53,change:closeTo(0.4919)},
-            {symbol:'YHOO',date:"2017-01-09",close:41.34,change:closeTo(0.2667)},
-            {symbol:'YHOO',date:"2017-01-10",close:42.3,change:closeTo(2.3222)},
-            {symbol:'IBM',date:"2017-01-11",close:167.75,change:closeTo(1.3472)},
-            {symbol:'IBM',date:"2017-01-12",close:167.95,change:closeTo(0.1192)},
-            {symbol:'YHOO',date:"2017-01-13",close:42.27,change:closeTo(0.3799)}
+            {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.2467},
+            {symbol:'YHOO',date:"2016-12-30",close:38.67,change:0.0776},
+            {symbol:'IBM',date:"2017-01-03",close:167.19,change:0.7229},
+            {symbol:'IBM',date:"2017-01-04",close:169.26,change:1.2381},
+            {symbol:'YHOO',date:"2017-01-05",close:41.34,change:3.1952},
+            {symbol:'IBM',date:"2017-01-06",close:169.53,change:0.4919},
+            {symbol:'YHOO',date:"2017-01-09",close:41.34,change:0.2667},
+            {symbol:'YHOO',date:"2017-01-10",close:42.3,change:2.3222},
+            {symbol:'IBM',date:"2017-01-11",close:167.75,change:1.3472},
+            {symbol:'IBM',date:"2017-01-12",close:167.95,change:0.1192},
+            {symbol:'YHOO',date:"2017-01-13",close:42.27,change:0.3799}
         ]);
     });
     it("sum", function() {
@@ -107,10 +106,10 @@ describe("collect", function() {
           retain: 'SUM(MIN(0.5/CVAR(5, 60, day.adj_close), 100)) <= 100',
           precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
         }).should.eventually.be.like([
-            {symbol:"XLF",date:"2016-12-01",Price:22.9,Weight:closeTo(9.9549)},
-            {symbol:"XLE",date:"2016-12-01",Price:74.61,Weight:closeTo(12.7971)},
-            {symbol:"XLK",date:"2016-12-01",Price:46.52,Weight:closeTo(27.8882)},
-            {symbol:"XLY",date:"2016-12-01",Price:81.89,Weight:closeTo(27.4883)}
+            {symbol:"XLF",date:"2016-12-01",Price:22.9,Weight:9.9549},
+            {symbol:"XLE",date:"2016-12-01",Price:74.61,Weight:12.7971},
+            {symbol:"XLK",date:"2016-12-01",Price:46.52,Weight:27.8882},
+            {symbol:"XLY",date:"2016-12-01",Price:81.89,Weight:27.4883}
         ]);
     });
     it("max correl", function() {
@@ -130,55 +129,55 @@ describe("collect", function() {
           ].join(' AND '),
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))'
         }).should.eventually.be.like([
-            {symbol:"XLF",date:"2016-11-14",Price:22.20,Weight:closeTo(10.0710)},
-            {symbol:"XLI",date:"2016-11-14",Price:61.31,Weight:closeTo(21.6351)},
-            {symbol:"XLE",date:"2016-11-14",Price:69.85,Weight:closeTo(17.6174)},
-            {symbol:"XLK",date:"2016-11-14",Price:46.02,Weight:closeTo(27.8882)},
-            {symbol:"XLF",date:"2016-11-15",Price:22.18,Weight:closeTo(10.0792)},
-            {symbol:"XLE",date:"2016-11-15",Price:71.82,Weight:closeTo(16.3964)},
-            {symbol:"XLK",date:"2016-11-15",Price:46.67,Weight:closeTo(29.5361)},
-            {symbol:"XLY",date:"2016-11-15",Price:80.04,Weight:closeTo(27.4883)},
-            {symbol:"XLI",date:"2016-11-16",Price:61.19,Weight:closeTo(21.6351)},
-            {symbol:"XLK",date:"2016-11-16",Price:47.10,Weight:closeTo(29.5361)},
-            {symbol:"XLE",date:"2016-11-16",Price:71.32,Weight:closeTo(16.3964)},
-            {symbol:"XLY",date:"2016-11-16",Price:80.48,Weight:closeTo(27.4883)},
-            {symbol:"XLF",date:"2016-11-17",Price:22.16,Weight:closeTo(10.0535)},
-            {symbol:"XLK",date:"2016-11-17",Price:47.40,Weight:closeTo(29.5361)},
-            {symbol:"XLE",date:"2016-11-17",Price:70.84,Weight:closeTo(16.3964)},
-            {symbol:"XLY",date:"2016-11-17",Price:81.45,Weight:closeTo(27.4883)},
-            {symbol:"XLF",date:"2016-11-18",Price:22.16,Weight:closeTo(10.0583)},
-            {symbol:"XLK",date:"2016-11-18",Price:47.36,Weight:closeTo(29.5361)},
-            {symbol:"XLY",date:"2016-11-18",Price:81.20,Weight:closeTo(27.4883)},
-            {symbol:"XLE",date:"2016-11-18",Price:71.13,Weight:closeTo(16.3964)},
-            {symbol:"XLF",date:"2016-11-21",Price:22.24,Weight:closeTo(10.0831)},
-            {symbol:"XLK",date:"2016-11-21",Price:47.84,Weight:closeTo(29.5361)},
-            {symbol:"XLY",date:"2016-11-21",Price:81.73,Weight:closeTo(27.4883)},
-            {symbol:"XLE",date:"2016-11-21",Price:72.82,Weight:closeTo(17.4381)},
-            {symbol:"XLF",date:"2016-11-22",Price:22.25,Weight:closeTo(10.1231)},
-            {symbol:"XLK",date:"2016-11-22",Price:47.99,Weight:closeTo(27.8882)},
-            {symbol:"XLY",date:"2016-11-22",Price:82.70,Weight:closeTo(27.4883)},
-            {symbol:"XLE",date:"2016-11-22",Price:72.78,Weight:closeTo(17.4381)},
-            {symbol:"XLF",date:"2016-11-23",Price:22.38,Weight:closeTo(10.1009)},
-            {symbol:"XLK",date:"2016-11-23",Price:47.80,Weight:closeTo(27.8882)},
-            {symbol:"XLY",date:"2016-11-23",Price:82.78,Weight:closeTo(27.4883)},
-            {symbol:"XLE",date:"2016-11-23",Price:73.08,Weight:closeTo(17.4381)},
-            {symbol:"XLF",date:"2016-11-25",Price:22.41,Weight:closeTo(10.0815)},
-            {symbol:"XLK",date:"2016-11-25",Price:48.00,Weight:closeTo(27.8882)},
-            {symbol:"XLY",date:"2016-11-25",Price:82.98,Weight:closeTo(27.4883)},
-            {symbol:"XLE",date:"2016-11-25",Price:72.72,Weight:closeTo(17.4381)},
-            {symbol:"XLF",date:"2016-11-28",Price:22.15,Weight:closeTo(10.1329)},
-            {symbol:"XLK",date:"2016-11-28",Price:48.04,Weight:closeTo(29.5361)},
-            {symbol:"XLY",date:"2016-11-28",Price:82.32,Weight:closeTo(27.4883)},
-            {symbol:"XLE",date:"2016-11-28",Price:71.71,Weight:closeTo(17.4381)},
-            {symbol:"XLF",date:"2016-11-29",Price:22.21,Weight:closeTo(10.1157)},
-            {symbol:"XLK",date:"2016-11-29",Price:48.07,Weight:closeTo(29.5361)},
-            {symbol:"XLY",date:"2016-11-29",Price:82.54,Weight:closeTo(27.4883)},
-            {symbol:"XLE",date:"2016-11-29",Price:70.83,Weight:closeTo(17.4381)},
-            {symbol:"XLF",date:"2016-11-30",Price:22.51,Weight:closeTo(10.0471)},
-            {symbol:"XLK",date:"2016-11-30",Price:47.50,Weight:closeTo(29.5361)},
-            {symbol:"XLE",date:"2016-11-30",Price:74.43,Weight:closeTo(12.7971)},
-            {symbol:"XLV",date:"2016-11-30",Price:68.75,Weight:closeTo(16.9539)},
-            {symbol:"XLU",date:"2016-11-30",Price:46.75,Weight:closeTo(24.7222)}
+            {symbol:"XLF",date:"2016-11-14",Price:22.20,Weight:10.0710},
+            {symbol:"XLI",date:"2016-11-14",Price:61.31,Weight:21.6351},
+            {symbol:"XLE",date:"2016-11-14",Price:69.85,Weight:17.6174},
+            {symbol:"XLK",date:"2016-11-14",Price:46.02,Weight:27.8882},
+            {symbol:"XLF",date:"2016-11-15",Price:22.18,Weight:10.0792},
+            {symbol:"XLE",date:"2016-11-15",Price:71.82,Weight:16.3964},
+            {symbol:"XLK",date:"2016-11-15",Price:46.67,Weight:29.5361},
+            {symbol:"XLY",date:"2016-11-15",Price:80.04,Weight:27.4883},
+            {symbol:"XLI",date:"2016-11-16",Price:61.19,Weight:21.6351},
+            {symbol:"XLK",date:"2016-11-16",Price:47.10,Weight:29.5361},
+            {symbol:"XLE",date:"2016-11-16",Price:71.32,Weight:16.3964},
+            {symbol:"XLY",date:"2016-11-16",Price:80.48,Weight:27.4883},
+            {symbol:"XLF",date:"2016-11-17",Price:22.16,Weight:10.0535},
+            {symbol:"XLK",date:"2016-11-17",Price:47.40,Weight:29.5361},
+            {symbol:"XLE",date:"2016-11-17",Price:70.84,Weight:16.3964},
+            {symbol:"XLY",date:"2016-11-17",Price:81.45,Weight:27.4883},
+            {symbol:"XLF",date:"2016-11-18",Price:22.16,Weight:10.0583},
+            {symbol:"XLK",date:"2016-11-18",Price:47.36,Weight:29.5361},
+            {symbol:"XLY",date:"2016-11-18",Price:81.20,Weight:27.4883},
+            {symbol:"XLE",date:"2016-11-18",Price:71.13,Weight:16.3964},
+            {symbol:"XLF",date:"2016-11-21",Price:22.24,Weight:10.0831},
+            {symbol:"XLK",date:"2016-11-21",Price:47.84,Weight:29.5361},
+            {symbol:"XLY",date:"2016-11-21",Price:81.73,Weight:27.4883},
+            {symbol:"XLE",date:"2016-11-21",Price:72.82,Weight:17.4381},
+            {symbol:"XLF",date:"2016-11-22",Price:22.25,Weight:10.1231},
+            {symbol:"XLK",date:"2016-11-22",Price:47.99,Weight:27.8882},
+            {symbol:"XLY",date:"2016-11-22",Price:82.70,Weight:27.4883},
+            {symbol:"XLE",date:"2016-11-22",Price:72.78,Weight:17.4381},
+            {symbol:"XLF",date:"2016-11-23",Price:22.38,Weight:10.1009},
+            {symbol:"XLK",date:"2016-11-23",Price:47.80,Weight:27.8882},
+            {symbol:"XLY",date:"2016-11-23",Price:82.78,Weight:27.4883},
+            {symbol:"XLE",date:"2016-11-23",Price:73.08,Weight:17.4381},
+            {symbol:"XLF",date:"2016-11-25",Price:22.41,Weight:10.0815},
+            {symbol:"XLK",date:"2016-11-25",Price:48.00,Weight:27.8882},
+            {symbol:"XLY",date:"2016-11-25",Price:82.98,Weight:27.4883},
+            {symbol:"XLE",date:"2016-11-25",Price:72.72,Weight:17.4381},
+            {symbol:"XLF",date:"2016-11-28",Price:22.15,Weight:10.1329},
+            {symbol:"XLK",date:"2016-11-28",Price:48.04,Weight:29.5361},
+            {symbol:"XLY",date:"2016-11-28",Price:82.32,Weight:27.4883},
+            {symbol:"XLE",date:"2016-11-28",Price:71.71,Weight:17.4381},
+            {symbol:"XLF",date:"2016-11-29",Price:22.21,Weight:10.1157},
+            {symbol:"XLK",date:"2016-11-29",Price:48.07,Weight:29.5361},
+            {symbol:"XLY",date:"2016-11-29",Price:82.54,Weight:27.4883},
+            {symbol:"XLE",date:"2016-11-29",Price:70.83,Weight:17.4381},
+            {symbol:"XLF",date:"2016-11-30",Price:22.51,Weight:10.0471},
+            {symbol:"XLK",date:"2016-11-30",Price:47.50,Weight:29.5361},
+            {symbol:"XLE",date:"2016-11-30",Price:74.43,Weight:12.7971},
+            {symbol:"XLV",date:"2016-11-30",Price:68.75,Weight:16.9539},
+            {symbol:"XLU",date:"2016-11-30",Price:46.75,Weight:24.7222}
         ]);
     });
     it("external instrument", function() {

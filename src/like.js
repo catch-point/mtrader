@@ -34,13 +34,21 @@ const _ = require('underscore');
 module.exports = function() {
     if (arguments[0].Assertion) return register.apply(this, arguments);
     else return like.apply(this, arguments);
-}
+};
 
 function like(expected) {
-    if (_.isFunction(expected))
+    if (_.isFunction(expected)) {
         return expected;
-    else if (_.isFunction(expected.test)) // like RegEx
+    } else if (_.isFunction(expected.test)) { // like RegEx
         return expected.test.bind(expected);
+    } else if (_.isNumber(expected)) {
+        var str = expected.toFixed(20);
+        if (!~str.indexOf('.')) return _.isEqual.bind(_, expected);
+        var precision = 1;
+        while (expected != expected.toFixed(precision) && precision < 20) precision++;
+        var delta = Math.pow(10, -precision);
+        return actual => Math.abs(actual - expected) <= delta;
+    }
     var m = _.isArray(expected) ? _.map(expected, like) :
         _.isObject(expected) ? _.mapObject(expected, like) : undefined;
     if (!m) return _.isEqual.bind(_, expected);

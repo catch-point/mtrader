@@ -38,11 +38,8 @@ const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
 
-var about = expected => actual => actual.should.be.closeTo(expected,0.000000001);
-
 describe("quote", function() {
     this.timeout(30000);
-    var closeTo = expected => actual => actual.should.be.closeTo(expected,0.0001);
     var tz = 'America/New_York';
     var fetch, quote;
     before(function() {
@@ -238,66 +235,66 @@ describe("quote", function() {
                 end: moment.tz('2010-03-01', tz),
             });
         }).should.eventually.be.like([
-            {Date:'2009-12-01',Close:127.94,Change:about(1.2584091808)},
-            {Date:'2009-12-02',Close:127.21,Change:about(-0.5705799594)},
-            {Date:'2009-12-03',Close:127.55,Change:about(0.2672745853)},
-            {Date:'2009-12-04',Close:127.25,Change:about(-0.2352018816)},
-            {Date:'2009-12-07',Close:127.04,Change:about(-0.1650294695)},
-            {Date:'2009-12-08',Close:126.80,Change:about(-0.1889168766)},
-            {Date:'2009-12-09',Close:128.39,Change:about(1.2539432177)},
-            {Date:'2009-12-10',Close:129.34,Change:about(0.7399330166)},
-            {Date:'2009-12-11',Close:129.68,Change:about(0.2628730478)},
-            {Date:'2009-12-14',Close:129.93,Change:about(0.1927822332)},
-            {Date:'2009-12-15',Close:128.49,Change:about(-1.1082890787)},
-            {Date:'2009-12-16',Close:128.71,Change:about(0.1712195502)},
-            {Date:'2009-12-17',Close:127.40,Change:about(-1.0177919354)},
-            {Date:'2009-12-18',Close:127.91,Change:about(0.4003139717)},
-            {Date:'2009-12-21',Close:128.65,Change:about(0.5785317802)},
-            {Date:'2009-12-22',Close:129.93,Change:about(0.9949475321)},
-            {Date:'2009-12-23',Close:130.00,Change:about(0.0538751635)},
-            {Date:'2009-12-24',Close:130.57,Change:about(0.4384615385)},
-            {Date:'2009-12-28',Close:132.31,Change:about(1.3326185188)},
-            {Date:'2009-12-29',Close:131.85,Change:about(-0.3476683546)},
-            {Date:'2009-12-30',Close:132.57,Change:about(0.5460750853)},
-            {Date:'2009-12-31',Close:130.90,Change:about(-1.2597118503)},
-            {Date:'2010-01-04',Close:132.45,Change:about(1.1841100076)},
-            {Date:'2010-01-05',Close:130.85,Change:about(-1.20800302)},
-            {Date:'2010-01-06',Close:130.00,Change:about(-0.6495987772)},
-            {Date:'2010-01-07',Close:129.55,Change:about(-0.3461538462)},
-            {Date:'2010-01-08',Close:130.85,Change:about(1.0034735623)},
-            {Date:'2010-01-11',Close:129.48,Change:about(-1.0470003821)},
-            {Date:'2010-01-12',Close:130.51,Change:about(0.7954896509)},
-            {Date:'2010-01-13',Close:130.23,Change:about(-0.2145429469)},
-            {Date:'2010-01-14',Close:132.31,Change:about(1.5971742302)},
-            {Date:'2010-01-15',Close:131.78,Change:about(-0.4005744086)},
-            {Date:'2010-01-19',Close:134.14,Change:about(1.7908635605)},
-            {Date:'2010-01-20',Close:130.25,Change:about(-2.8999552706)},
-            {Date:'2010-01-21',Close:129.00,Change:about(-0.9596928983)},
-            {Date:'2010-01-22',Close:125.50,Change:about(-2.7131782946)},
-            {Date:'2010-01-25',Close:126.12,Change:about(0.4940239044)},
-            {Date:'2010-01-26',Close:125.75,Change:about(-0.2933713923)},
-            {Date:'2010-01-27',Close:126.33,Change:about(0.4612326044)},
-            {Date:'2010-01-28',Close:123.75,Change:about(-2.0422702446)},
-            {Date:'2010-01-29',Close:122.39,Change:about(-1.098989899)},
-            {Date:'2010-02-01',Close:124.67,Change:about(1.8628972955)},
-            {Date:'2010-02-02',Close:125.53,Change:about(0.6898211278)},
-            {Date:'2010-02-03',Close:125.66,Change:about(0.1035609018)},
-            {Date:'2010-02-04',Close:123.00,Change:about(-2.1168231736)},
-            {Date:'2010-02-05',Close:123.52,Change:about(0.4227642276)},
-            {Date:'2010-02-08',Close:121.88,Change:about(-1.3277202073)},
-            {Date:'2010-02-09',Close:123.21,Change:about(1.0912372826)},
-            {Date:'2010-02-10',Close:122.81,Change:about(-0.3246489733)},
-            {Date:'2010-02-11',Close:123.73,Change:about(0.7491246641)},
-            {Date:'2010-02-12',Close:124.00,Change:about(0.2182170856)},
-            {Date:'2010-02-16',Close:125.23,Change:about(0.9919354839)},
-            {Date:'2010-02-17',Close:126.33,Change:about(0.8783837739)},
-            {Date:'2010-02-18',Close:127.81,Change:about(1.171534869)},
-            {Date:'2010-02-19',Close:127.19,Change:about(-0.485095063)},
-            {Date:'2010-02-22',Close:126.85,Change:about(-0.2673166129)},
-            {Date:'2010-02-23',Close:126.46,Change:about(-0.3074497438)},
-            {Date:'2010-02-24',Close:127.59,Change:about(0.893563182)},
-            {Date:'2010-02-25',Close:127.07,Change:about(-0.4075554511)},
-            {Date:'2010-02-26',Close:127.16,Change:about(0.0708271032)}
+            {Date:'2009-12-01',Close:127.94,Change:1.2584},
+            {Date:'2009-12-02',Close:127.21,Change:-0.5705},
+            {Date:'2009-12-03',Close:127.55,Change:0.2672},
+            {Date:'2009-12-04',Close:127.25,Change:-0.2352},
+            {Date:'2009-12-07',Close:127.04,Change:-0.1650},
+            {Date:'2009-12-08',Close:126.80,Change:-0.1889},
+            {Date:'2009-12-09',Close:128.39,Change:1.2539},
+            {Date:'2009-12-10',Close:129.34,Change:0.7399},
+            {Date:'2009-12-11',Close:129.68,Change:0.2628},
+            {Date:'2009-12-14',Close:129.93,Change:0.1927},
+            {Date:'2009-12-15',Close:128.49,Change:-1.1082},
+            {Date:'2009-12-16',Close:128.71,Change:0.1712},
+            {Date:'2009-12-17',Close:127.40,Change:-1.0177},
+            {Date:'2009-12-18',Close:127.91,Change:0.4003},
+            {Date:'2009-12-21',Close:128.65,Change:0.5785},
+            {Date:'2009-12-22',Close:129.93,Change:0.9949},
+            {Date:'2009-12-23',Close:130.00,Change:0.0538},
+            {Date:'2009-12-24',Close:130.57,Change:0.4384},
+            {Date:'2009-12-28',Close:132.31,Change:1.3326},
+            {Date:'2009-12-29',Close:131.85,Change:-0.3476},
+            {Date:'2009-12-30',Close:132.57,Change:0.5460},
+            {Date:'2009-12-31',Close:130.90,Change:-1.2597},
+            {Date:'2010-01-04',Close:132.45,Change:1.1841},
+            {Date:'2010-01-05',Close:130.85,Change:-1.2080},
+            {Date:'2010-01-06',Close:130.00,Change:-0.6495},
+            {Date:'2010-01-07',Close:129.55,Change:-0.3461},
+            {Date:'2010-01-08',Close:130.85,Change:1.0034},
+            {Date:'2010-01-11',Close:129.48,Change:-1.0470},
+            {Date:'2010-01-12',Close:130.51,Change:0.7954},
+            {Date:'2010-01-13',Close:130.23,Change:-0.2145},
+            {Date:'2010-01-14',Close:132.31,Change:1.5971},
+            {Date:'2010-01-15',Close:131.78,Change:-0.4005},
+            {Date:'2010-01-19',Close:134.14,Change:1.7908},
+            {Date:'2010-01-20',Close:130.25,Change:-2.8999},
+            {Date:'2010-01-21',Close:129.00,Change:-0.9596},
+            {Date:'2010-01-22',Close:125.50,Change:-2.7131},
+            {Date:'2010-01-25',Close:126.12,Change:0.4940},
+            {Date:'2010-01-26',Close:125.75,Change:-0.2933},
+            {Date:'2010-01-27',Close:126.33,Change:0.4612},
+            {Date:'2010-01-28',Close:123.75,Change:-2.0422},
+            {Date:'2010-01-29',Close:122.39,Change:-1.0989},
+            {Date:'2010-02-01',Close:124.67,Change:1.8628},
+            {Date:'2010-02-02',Close:125.53,Change:0.6898},
+            {Date:'2010-02-03',Close:125.66,Change:0.1035},
+            {Date:'2010-02-04',Close:123.00,Change:-2.1168},
+            {Date:'2010-02-05',Close:123.52,Change:0.4227},
+            {Date:'2010-02-08',Close:121.88,Change:-1.3277},
+            {Date:'2010-02-09',Close:123.21,Change:1.0912},
+            {Date:'2010-02-10',Close:122.81,Change:-0.3246},
+            {Date:'2010-02-11',Close:123.73,Change:0.7491},
+            {Date:'2010-02-12',Close:124.00,Change:0.2182},
+            {Date:'2010-02-16',Close:125.23,Change:0.9919},
+            {Date:'2010-02-17',Close:126.33,Change:0.8783},
+            {Date:'2010-02-18',Close:127.81,Change:1.1715},
+            {Date:'2010-02-19',Close:127.19,Change:-0.4850},
+            {Date:'2010-02-22',Close:126.85,Change:-0.2673},
+            {Date:'2010-02-23',Close:126.46,Change:-0.3074},
+            {Date:'2010-02-24',Close:127.59,Change:0.8935},
+            {Date:'2010-02-25',Close:127.07,Change:-0.4075},
+            {Date:'2010-02-26',Close:127.16,Change:0.0708}
 
         ]);
     });
@@ -315,7 +312,7 @@ describe("quote", function() {
             end: moment.tz('2016-12-01', tz)
         }).then(wrong => {
             _.first(wrong).should.be.like(
-                {Date:"2016-11-01",Close:57.19,Change:-2.3955236929533217}
+                {Date:"2016-11-01",Close:57.19,Change:-2.3955}
             );
         }).then(() => {
             config('files.dirname', path.resolve(__dirname, 'var'));
@@ -331,48 +328,48 @@ describe("quote", function() {
                 end: moment.tz('2016-12-31', tz),
             });
         }).should.eventually.be.like([
-            {Date:"2016-11-01",Close:92.39,Change:-0.3236595101952715},
-            {Date:"2016-11-02",Close:91.91,Change:-0.51953674640113},
-            {Date:"2016-11-03",Close:93.37,Change:1.5885104994015973},
-            {Date:"2016-11-04",Close:92.45,Change:-0.9853271928885099},
-            {Date:"2016-11-07",Close:94.43,Change:2.1416982152514916},
-            {Date:"2016-11-08",Close:94.38,Change:-0.05294927459495009},
-            {Date:"2016-11-09",Close:94.64,Change:0.2754820936639173},
-            {Date:"2016-11-10",Close:94.96,Change:0.33812341504648474},
-            {Date:"2016-11-11",Close:97.68,Change:2.864363942712735},
-            {Date:"2016-11-14",Close:97.92,Change:0.24570024570024043},
-            {Date:"2016-11-15",Close:97.7,Change:-0.22467320261437793},
-            {Date:"2016-11-16",Close:99.12,Change:1.4534288638689885},
-            {Date:"2016-11-17",Close:99.37,Change:0.2522195318805488},
-            {Date:"2016-11-18",Close:98.24,Change:-1.1371641340444898},
-            {Date:"2016-11-21",Close:97.63,Change:-0.6209283387622144},
-            {Date:"2016-11-22",Close:97.71,Change:0.08194202601659152},
-            {Date:"2016-11-23",Close:98.26,Change:0.5628901852420545},
-            {Date:"2016-11-25",Close:98.82,Change:0.5699165479340403},
-            {Date:"2016-11-28",Close:98.97,Change:0.15179113539769853},
-            {Date:"2016-11-29",Close:99.67,Change:0.7072850358694582},
-            {Date:"2016-11-30",Close:99.12,Change:-0.5518210093307887},
-            {Date:"2016-12-01",Close:98.94,Change:-0.18159806295400202},
-            {Date:"2016-12-02",Close:98.5,Change:-0.4447139680614491},
-            {Date:"2016-12-05",Close:99.96,Change:1.4822335025380646},
-            {Date:"2016-12-06",Close:100.66,Change:0.7002801120448208},
-            {Date:"2016-12-07",Close:101.99,Change:1.3212795549374114},
-            {Date:"2016-12-08",Close:103.38,Change:1.3628787135993732},
-            {Date:"2016-12-09",Close:104.86,Change:1.4316115302766532},
-            {Date:"2016-12-12",Close:104.06,Change:-0.7629219912263944},
-            {Date:"2016-12-13",Close:103.85,Change:-0.20180665000961748},
-            {Date:"2016-12-14",Close:104.05,Change:0.19258545979778802},
-            {Date:"2016-12-15",Close:104.39,Change:0.326765977895246},
-            {Date:"2016-12-16",Close:103.91,Change:-0.45981415844429924},
-            {Date:"2016-12-19",Close:105.3,Change:1.3376960831488793},
-            {Date:"2016-12-20",Close:105.46,Change:0.15194681861348205},
-            {Date:"2016-12-21",Close:105.56,Change:0.09482268158544332},
-            {Date:"2016-12-22",Close:105.42,Change:-0.13262599469496075},
-            {Date:"2016-12-23",Close:105.15,Change:-0.25611838360841965},
-            {Date:"2016-12-27",Close:105.17,Change:0.019020446980500257},
-            {Date:"2016-12-28",Close:104.3,Change:-0.8272321004088662},
-            {Date:"2016-12-29",Close:104.56,Change:0.24928092042186492},
-            {Date:"2016-12-30",Close:104.22,Change:-0.3251721499617477}
+            {Date:"2016-11-01",Close:92.39,Change:-0.3236},
+            {Date:"2016-11-02",Close:91.91,Change:-0.5195},
+            {Date:"2016-11-03",Close:93.37,Change:1.5885},
+            {Date:"2016-11-04",Close:92.45,Change:-0.9853},
+            {Date:"2016-11-07",Close:94.43,Change:2.1416},
+            {Date:"2016-11-08",Close:94.38,Change:-0.0529},
+            {Date:"2016-11-09",Close:94.64,Change:0.2754},
+            {Date:"2016-11-10",Close:94.96,Change:0.3381},
+            {Date:"2016-11-11",Close:97.68,Change:2.8643},
+            {Date:"2016-11-14",Close:97.92,Change:0.2457},
+            {Date:"2016-11-15",Close:97.7,Change:-0.2246},
+            {Date:"2016-11-16",Close:99.12,Change:1.4534},
+            {Date:"2016-11-17",Close:99.37,Change:0.2522},
+            {Date:"2016-11-18",Close:98.24,Change:-1.1371},
+            {Date:"2016-11-21",Close:97.63,Change:-0.6209},
+            {Date:"2016-11-22",Close:97.71,Change:0.0819},
+            {Date:"2016-11-23",Close:98.26,Change:0.5628},
+            {Date:"2016-11-25",Close:98.82,Change:0.5699},
+            {Date:"2016-11-28",Close:98.97,Change:0.1517},
+            {Date:"2016-11-29",Close:99.67,Change:0.7072},
+            {Date:"2016-11-30",Close:99.12,Change:-0.5518},
+            {Date:"2016-12-01",Close:98.94,Change:-0.1815},
+            {Date:"2016-12-02",Close:98.5,Change:-0.4447},
+            {Date:"2016-12-05",Close:99.96,Change:1.4822},
+            {Date:"2016-12-06",Close:100.66,Change:0.7002},
+            {Date:"2016-12-07",Close:101.99,Change:1.3212},
+            {Date:"2016-12-08",Close:103.38,Change:1.3628},
+            {Date:"2016-12-09",Close:104.86,Change:1.4316},
+            {Date:"2016-12-12",Close:104.06,Change:-0.7629},
+            {Date:"2016-12-13",Close:103.85,Change:-0.2018},
+            {Date:"2016-12-14",Close:104.05,Change:0.1925},
+            {Date:"2016-12-15",Close:104.39,Change:0.3267},
+            {Date:"2016-12-16",Close:103.91,Change:-0.4598},
+            {Date:"2016-12-19",Close:105.3,Change:1.3376},
+            {Date:"2016-12-20",Close:105.46,Change:0.1519},
+            {Date:"2016-12-21",Close:105.56,Change:0.0948},
+            {Date:"2016-12-22",Close:105.42,Change:-0.1326},
+            {Date:"2016-12-23",Close:105.15,Change:-0.2561},
+            {Date:"2016-12-27",Close:105.17,Change:0.0190},
+            {Date:"2016-12-28",Close:104.3,Change:-0.8272},
+            {Date:"2016-12-29",Close:104.56,Change:0.2492},
+            {Date:"2016-12-30",Close:104.22,Change:-0.3251}
         ]);
     });
     it("should load the last 100 days", function() {
@@ -421,25 +418,25 @@ describe("quote", function() {
             end: moment.tz('2010-01-30', tz),
             columns: 'symbol, exchange, DATE(ending) AS "Date",day.close AS "Close",(day.close - OFFSET(1, day.close))*100/OFFSET(1,day.close) AS "Change"'
         }).should.eventually.be.like([
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-04',Close:132.45,Change:about(1.184110008)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-05',Close:130.85,Change:about(-1.20800302)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-06',Close:130,Change:about(-0.6495987772)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-07',Close:129.55,Change:about(-0.3461538462)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-08',Close:130.85,Change:about(1.0034735623)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-11',Close:129.48,Change:about(-1.0470003821)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-12',Close:130.51,Change:about(0.7954896509)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-13',Close:130.23,Change:about(-0.2145429469)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-14',Close:132.31,Change:about(1.5971742302)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-15',Close:131.78,Change:about(-0.4005744086)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-19',Close:134.14,Change:about(1.7908635605)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-20',Close:130.25,Change:about(-2.8999552706)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-21',Close:129,Change:about(-0.9596928983)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-22',Close:125.5,Change:about(-2.7131782946)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-25',Close:126.12,Change:about(0.4940239044)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-26',Close:125.75,Change:about(-0.2933713923)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-27',Close:126.33,Change:about(0.4612326044)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-28',Close:123.75,Change:about(-2.0422702446)},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-29',Close:122.39,Change:about(-1.098989899)}
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-04',Close:132.45,Change:1.1841},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-05',Close:130.85,Change:-1.2080},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-06',Close:130,Change:-0.6495},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-07',Close:129.55,Change:-0.3461},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-08',Close:130.85,Change:1.0034},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-11',Close:129.48,Change:-1.0470},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-12',Close:130.51,Change:0.7954},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-13',Close:130.23,Change:-0.2145},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-14',Close:132.31,Change:1.5971},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-15',Close:131.78,Change:-0.4005},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-19',Close:134.14,Change:1.7908},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-20',Close:130.25,Change:-2.8999},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-21',Close:129,Change:-0.9596},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-22',Close:125.5,Change:-2.7131},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-25',Close:126.12,Change:0.4940},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-26',Close:125.75,Change:-0.2933},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-27',Close:126.33,Change:0.4612},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-28',Close:123.75,Change:-2.0422},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-29',Close:122.39,Change:-1.0989}
         ]);
     });
     it("should combine intervals", function() {
@@ -455,25 +452,25 @@ describe("quote", function() {
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:30:00-0500')
         }).should.eventually.be.like([
-            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:about(0.3289949385)},
-            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,Change:about(0.2160159074)},
-            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,Change:about(0.1663051338)},
-            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:about(0.2575921909)},
-            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,Change:about(0.1617859725)},
-            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,Change:about(0.1346710051)},
-            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:about(0.1916124367)},
-            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:about(0.2349963847)},
-            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,Change:about(0.181670282)},
-            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:about(0.3172451193)},
-            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,Change:about(0.2946493131)},
-            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:about(0.2792841649)},
-            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,Change:about(0.1861894432)},
-            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,Change:about(0.174439624)},
-            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,Change:about(0.1382863341)},
-            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:about(0.1726319595)},
-            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:about(0.1093637021)},
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.3289},
+            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,Change:0.2160},
+            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,Change:0.1663},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.2575},
+            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,Change:0.1617},
+            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,Change:0.1346},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.1916},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.2349},
+            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,Change:0.1816},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.3172},
+            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,Change:0.2946},
+            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:0.2792},
+            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,Change:0.1861},
+            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,Change:0.1744},
+            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,Change:0.1382},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726},
+            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:0.1093},
             {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,Change:0},
-            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:about((1.10758-1.10749)*100/1.10749)}
+            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:(1.10758-1.10749)*100/1.10749}
         ]);
     });
     it("should combine intervals conditionally", function() {
@@ -489,25 +486,25 @@ describe("quote", function() {
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:30:00-0500')
         }).should.eventually.be.like([
-            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:about(0.3289949385)},
-            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,Change:about(0.2160159074)},
-            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,Change:about(0.1663051338)},
-            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:about(0.2575921909)},
-            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,Change:about(0.1617859725)},
-            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,Change:about(0.1346710051)},
-            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:about(0.1916124367)},
-            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:about(0.2349963847)},
-            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,Change:about(0.181670282)},
-            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:about(0.3172451193)},
-            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,Change:about(0.2946493131)},
-            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:about(0.2792841649)},
-            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,Change:about(0.1861894432)},
-            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,Change:about(0.174439624)},
-            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,Change:about(0.1382863341)},
-            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:about(0.1726319595)},
-            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:about(0.1093637021)},
-            {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,Change:about((1.10749-1.1064)*100/1.1064)},
-            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:about((1.10758-1.10749)*100/1.10749)}
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.3289},
+            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,Change:0.2160},
+            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,Change:0.1663},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.2575},
+            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,Change:0.1617},
+            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,Change:0.1346},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.1916},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.2349},
+            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,Change:0.1816},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.3172},
+            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,Change:0.2946},
+            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:0.2792},
+            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,Change:0.1861},
+            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,Change:0.1744},
+            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,Change:0.1382},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726},
+            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:0.1093},
+            {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,Change:(1.10749-1.1064)*100/1.1064},
+            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:(1.10758-1.10749)*100/1.10749}
         ]);
     });
     it("should compute YTD", function() {
@@ -523,24 +520,24 @@ describe("quote", function() {
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
-            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,YTD:about(4.3820055668)},
-            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,YTD:about(4.2644624991)},
-            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,YTD:about(4.2127435492)},
-            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,YTD:about(4.3077183480)},
-            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,YTD:about(4.2080418265)},
-            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,YTD:about(4.1798314903)},
-            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,YTD:about(4.2390731964)},
-            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,YTD:about(4.2842097344)},
-            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,YTD:about(4.2287294065)},
-            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,YTD:about(4.3697810878)},
-            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,YTD:about(4.3462724742)},
-            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,YTD:about(4.3302866170)},
-            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,YTD:about(4.2334311292)},
-            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,YTD:about(4.2212066501)},
-            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,YTD:about(4.1835928684)},
-            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,YTD:about(4.2193259610)},
-            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,YTD:about(4.1535018431)},
-            {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,YTD:about(4.1422177086)}
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,YTD:4.3820055668},
+            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,YTD:4.2644624991},
+            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,YTD:4.2127435492},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,YTD:4.3077183480},
+            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,YTD:4.2080418265},
+            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,YTD:4.1798314903},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,YTD:4.2390731964},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,YTD:4.2842097344},
+            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,YTD:4.2287294065},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,YTD:4.3697810878},
+            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,YTD:4.3462724742},
+            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,YTD:4.3302866170},
+            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,YTD:4.2334311292},
+            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,YTD:4.2212066501},
+            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,YTD:4.1835928684},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,YTD:4.2193259610},
+            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,YTD:4.1535018431},
+            {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,YTD:4.1422177086}
 
         ]);
     });
@@ -574,12 +571,12 @@ describe("quote", function() {
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
-            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:about(0.3289949385)},
-            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:about(0.2575921909)},
-            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:about(0.1916124367)},
-            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:about(0.2349963847)},
-            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:about(0.3172451193)},
-            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:about(0.1726319595)}
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.3289},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.2575},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.1916},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.2349},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.3172},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726}
         ]);
     });
     it("should filter out results using variables", function() {
@@ -596,12 +593,12 @@ describe("quote", function() {
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
-            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:about(0.3289949385)},
-            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:about(0.2575921909)},
-            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:about(0.1916124367)},
-            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:about(0.2349963847)},
-            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:about(0.3172451193)},
-            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:about(0.1726319595)}
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.3289},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.2575},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.1916},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.2349},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.3172},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726}
         ]);
     });
     it("should filter out most results", function() {
@@ -687,12 +684,12 @@ describe("quote", function() {
             begin: '2016-01-15',
             end: '2016-01-16'
         }).should.eventually.be.like([
-            {Date:"2016-01-15",Time:"00:00:00",Price:closeTo(1.4389),M1:closeTo(1.3769),M2:closeTo(1.3248)},
-            {Date:"2016-01-15",Time:"04:00:00",Price:closeTo(1.4508),M1:closeTo(1.3805),M2:closeTo(1.3282)},
-            {Date:"2016-01-15",Time:"08:00:00",Price:closeTo(1.4497),M1:closeTo(1.3783),M2:closeTo(1.3266)},
-            {Date:"2016-01-15",Time:"12:00:00",Price:closeTo(1.4529),M1:closeTo(1.3791),M2:closeTo(1.3297)},
-            {Date:"2016-01-15",Time:"16:00:00",Price:closeTo(1.4528),M1:closeTo(1.3793),M2:closeTo(1.3304)},
-            {Date:"2016-01-15",Time:"20:00:00",Price:closeTo(1.4534),M1:closeTo(1.3813),M2:closeTo(1.3293)}
+            {Date:"2016-01-15",Time:"00:00:00",Price:1.4389,M1:1.3769,M2:1.3248},
+            {Date:"2016-01-15",Time:"04:00:00",Price:1.4508,M1:1.3805,M2:1.3282},
+            {Date:"2016-01-15",Time:"08:00:00",Price:1.4497,M1:1.3783,M2:1.3266},
+            {Date:"2016-01-15",Time:"12:00:00",Price:1.4529,M1:1.3791,M2:1.3297},
+            {Date:"2016-01-15",Time:"16:00:00",Price:1.4528,M1:1.3793,M2:1.3304},
+            {Date:"2016-01-15",Time:"20:00:00",Price:1.4534,M1:1.3813,M2:1.3293}
         ]);
     });
     it("should lookback to multiple partial blocks", function() {
@@ -741,13 +738,13 @@ describe("quote", function() {
                 end: '2016-02-17'
             });
         }).should.eventually.be.like([
-            {Date:"2016-02-16",Time:"00:00:00",Price:closeTo(1.3755),M1:closeTo(1.4577),M2:closeTo(1.3925)},
-            {Date:"2016-02-16",Time:"04:00:00",Price:closeTo(1.3723),M1:closeTo(1.4624),M2:closeTo(1.3964)},
-            {Date:"2016-02-16",Time:"08:00:00",Price:closeTo(1.378),M1:closeTo(1.4684),M2:closeTo(1.3989)},
-            {Date:"2016-02-16",Time:"12:00:00",Price:closeTo(1.3859),M1:closeTo(1.4641),M2:closeTo(1.3964)},
-            {Date:"2016-02-16",Time:"16:00:00",Price:closeTo(1.3882),M1:closeTo(1.4592),M2:closeTo(1.3958)},
-            {Date:"2016-02-16",Time:"20:00:00",Price:closeTo(1.3871),M1:closeTo(1.4489),M2:closeTo(1.3934)},
-            {Date:"2016-02-17",Time:"00:00:00",Price:closeTo(1.3872),M1:closeTo(1.4459),M2:closeTo(1.3937)}
+            {Date:"2016-02-16",Time:"00:00:00",Price:1.3755,M1:1.4577,M2:1.3925},
+            {Date:"2016-02-16",Time:"04:00:00",Price:1.3723,M1:1.4624,M2:1.3964},
+            {Date:"2016-02-16",Time:"08:00:00",Price:1.378,M1:1.4684,M2:1.3989},
+            {Date:"2016-02-16",Time:"12:00:00",Price:1.3859,M1:1.4641,M2:1.3964},
+            {Date:"2016-02-16",Time:"16:00:00",Price:1.3882,M1:1.4592,M2:1.3958},
+            {Date:"2016-02-16",Time:"20:00:00",Price:1.3871,M1:1.4489,M2:1.3934},
+            {Date:"2016-02-17",Time:"00:00:00",Price:1.3872,M1:1.4459,M2:1.3937}
         ]);
     });
 });
