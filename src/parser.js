@@ -178,8 +178,7 @@ function invokeHandler(expr, handlers) {
 
 function serialize(expr) {
     if (_.isArray(expr)) return _.first(expr) + '(' + _.rest(expr).map(serialize).join(',') + ')';
-    else if (_.isString(expr) && expr.charAt(0) == '"') return JSON.stringify(expr); // string literal
-    else if (_.isString(expr) || _.isFinite(expr)) return expr; // number or field
+    else if (_.isString(expr) || _.isFinite(expr)) return expr; // string literal, number or field
     else throw Error("Unknown expression: " + expr);
 }
 

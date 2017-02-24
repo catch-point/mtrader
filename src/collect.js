@@ -46,28 +46,25 @@ module.exports = function(quote) {
     return _.extend(function(options) {
         expect(options).to.have.property('portfolio');
         var portfolio = getPortfolio(options);
-        var columns = options.columns || 'symbol';
-        var names = getColumnNames(columns);
+        var formatColumns = getNeededColumns(exchanges, options.columns, options);
         var retainColumns = getNeededColumns(exchanges, options.retain, options);
         var precedenceColumns = getNeededColumns(exchanges, options.precedence, options);
         var allColumns = _.uniq(_.compact(_.flatten([
-            columns,
             'symbol',
             'exchange',
             'ending',
             temporal,
+            formatColumns,
             retainColumns,
             precedenceColumns
-        ], true))).join(',');
-        var precedence = getPrecedence(options.precedence, precedenceColumns, options);
+        ], true)));
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
-                columns: allColumns
+                columns: allColumns.join(',')
             }, security, options));
         })).then(dataset => {
-            return promiseRetain(exchanges, quote, dataset, temporal, options).then(retain => {
-                return collectDataset(dataset, temporal, names, retain, precedence);
-            });
+            var parser = createParser(exchanges, temporal, quote, dataset, allColumns, options);
+            return collectDataset(exchanges, dataset, temporal, parser, options);
         });
     }, {
         close() {}
@@ -83,10 +80,6 @@ function getPortfolio(options) {
             exchange: m[2]
         };
     });
-}
-
-function getColumnNames(columns) {
-    return _.keys(Parser().parseColumnsMap(columns));
 }
 
 function getNeededColumns(exchanges, expr, options) {
@@ -131,57 +124,73 @@ function getPrecedence(expr, cached, options) {
     }).parseColumnsMap(expr));
 }
 
-function collectDataset(dataset, temporal, columns, retain, precedence) {
-    return reduceInterval(dataset, temporal, (result, points) => {
-        var positions = precedence.reduceRight((points, o) => {
-            var positions = o.by ? _.sortBy(points, o.by) : points;
-            if (o.desc) positions.reverse();
-            return positions;
-        }, points);
-        var accepted = positions.reduce((accepted, point) => {
-            var pending = accepted.concat([point]);
-            if (retain && retain(pending)) return pending;
-            else return accepted;
-        }, []);
-        return result.concat(accepted);
-    }, []).map(row => {
-        return _.object(columns, columns.map(name => row[name]));
-    });
+function promiseColumns(parser, options) {
+    var columns = options.columns || 'symbol';
+    var map = parser.parseColumnsMap(columns);
+    return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
 }
 
-function promiseRetain(exchanges, quote, dataset, temporal, options) {
+function promiseRetain(parser, options) {
     var expr = options.retain;
-    var cached = getNeededColumns(exchanges, expr, options);
-    var external = promiseExternal.bind(this, quote, dataset, temporal);
     if (!expr) return Promise.resolve(_.constant(true));
-    else return Promise.resolve(Parser({
+    return Promise.resolve(parser.parse(expr));
+}
+
+function createParser(exchanges, temporal, quote, dataset, cached, options) {
+    var external = _.memoize(expr => {
+        var m = expr.match(/^([^(]+)\((.*)\)$/);
+        if (!m) throw Error("Unrecongized call to external security: " + expr);
+        var name = m[1];
+        var expression = m[2];
+        return promiseExternal(temporal, quote, dataset, name, expression);
+    });
+    return Parser({
         substitutions: options.columns,
         constant(value) {
-            return _.extend(positions => value, {
-                expression: value
-            });
+            return positions => value;
         },
         variable(name) {
-            return _.extend(_.compose(_.property(name), _.last), {
-                expression: name
-            });
+            return _.compose(_.property(name), _.last);
         },
         expression(expr, name, args) {
-            if (_.contains(cached, expr)) return _.extend(_.compose(_.property(expr), _.last), {
-                expression: expr
-            });
+            if (_.contains(cached, expr)) return _.compose(_.property(expr), _.last);
             return Promise.all(args).then(args => {
                 var fn = common(name, args, options) ||
-                    aggregate(name, args, quote, dataset, options);
+                    aggregate(expr, name, args, quote, dataset, options);
                 var instrument = isInstrument(exchanges, name);
                 if (fn) return fn;
-                else if (instrument) return external(name, _.first(args).expression);
+                else if (instrument) return external(expr);
                 else return () => {
                     throw Error("Only common and aggregate functions can be used here: " + expr);
                 };
-            }).then(fn => _.extend(fn, {expression: expr}));
+            });
         }
-    }).parse(expr));
+    });
+}
+
+function collectDataset(exchanges, dataset, temporal, parser, options) {
+    var precedenceColumns = getNeededColumns(exchanges, options.precedence, options);
+    var precedence = getPrecedence(options.precedence, precedenceColumns, options);
+    return promiseColumns(parser, options)
+      .then(columns => promiseRetain(parser, options)
+      .then(retain => {
+        return reduceInterval(dataset, temporal, (result, points) => {
+            var positions = precedence.reduceRight((points, o) => {
+                var positions = o.by ? _.sortBy(points, o.by) : points;
+                if (o.desc) positions.reverse();
+                return positions;
+            }, points);
+            var accepted = positions.reduce((accepted, point) => {
+                var pending = accepted.concat([point]);
+                if (retain && retain(pending)) return pending;
+                else return accepted;
+            }, []);
+            var formatted = accepted.map((row, i, rows) => {
+                return _.mapObject(columns, column => column(rows.slice(0, i+1)));
+            });
+            return result.concat(formatted);
+        }, []);
+    }));
 }
 
 function isInstrument(exchanges, name) {
@@ -201,7 +210,7 @@ function reduceInterval(data, temporal, cb, memo) {
     return memo;
 }
 
-function promiseExternal(quote, dataset, temporal, name, expr) {
+function promiseExternal(temporal, quote, dataset, name, expr) {
     expect(name).to.match(/^\S+\.\w+$/);
     var begin = _.first(_.pluck(_.map(dataset, _.first), temporal).sort());
     var end = _.last(_.pluck(_.map(dataset, _.last), temporal).sort());

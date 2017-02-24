@@ -31,17 +31,18 @@
 
 const _ = require('underscore');
 const statkit = require("statkit");
+const Parser = require('./parser.js');
 
 /**
  * These functions operate of an array of securities at the same point in time.
  */
-module.exports = function(name, args, quote, dataset, options) {
+module.exports = function(expr, name, args, quote, dataset, options) {
     if (functions[name])
-        return functions[name].apply(this, [quote, dataset, options].concat(args));
+        return functions[name].apply(this, [quote, dataset, options, expr].concat(args));
 };
 
 var functions = module.exports.functions = {
-    COUNT: _.extend((quote, dataset, options, expression) => {
+    COUNT: _.extend((quote, dataset, options, expr, expression) => {
         return positions => {
             return positions.map(position => expression([position])).filter(val => val != null).length;
         };
@@ -49,7 +50,7 @@ var functions = module.exports.functions = {
         args: "expression",
         description: "Counts the number of positions that evaluate expression to a value"
     }),
-    SUM: _.extend((quote, dataset, options, expression) => {
+    SUM: _.extend((quote, dataset, options, expr, expression) => {
         return positions => {
             return positions.map(position => expression([position]))
                 .filter(_.isFinite).reduce((a, b) => a + b);
@@ -58,10 +59,20 @@ var functions = module.exports.functions = {
         args: "expression",
         description: "Returns the sum of all numeric values"
     }),
-    MAXCORREL: _.extend((quote, dataset, options, duration, expression) => {
+    MAXCORREL: _.extend((quote, dataset, options, expr, duration, expression) => {
         var n = asPositiveInteger(duration, "MAXCORREL");
-        if (!_.has(expression, 'expression')) throw Error("Cannot nest aggregate functions in MAXCORREL");
-        var expr = expression.expression;
+        var arg = Parser({
+            constant(value) {
+                return [value];
+            },
+            variable(name) {
+                return [name];
+            },
+            expression(expr, name, args) {
+                return [expr].concat(args.map(_.first));
+            }
+        }).parse(expr)[2];
+        if (!arg) throw Error("Unrecongized call to MAXCORREL: " + expr);
         var filtered = dataset.filter(data => !_.isEmpty(data));
         if (filtered.length < 2) return positions => 0;
         var optionset = filtered.map(data => {
@@ -70,7 +81,7 @@ var functions = module.exports.functions = {
             return _.defaults({
                 symbol: first.symbol,
                 exchange: first.exchange,
-                columns: 'ending,' + expr,
+                columns: 'ending,' + arg,
                 pad_begin: n,
                 begin: first.ending,
                 end: last.ending,
@@ -87,7 +98,7 @@ var functions = module.exports.functions = {
                     var data = dataset[i];
                     var end = _.sortedIndex(data, position, 'ending');
                     if (data[end] && data[end].ending == position.ending) end++;
-                    return _.pluck(data.slice(Math.max(end - n, 0), end), expr);
+                    return _.pluck(data.slice(Math.max(end - n, 0), end), arg);
                 });
                 var correlations = _.initial(positions).map((position, i) => {
                     return statkit.corr(matrix[i], _.last(matrix));

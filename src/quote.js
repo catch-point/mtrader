@@ -215,7 +215,7 @@ function createParser(cached, options) {
             if (_.contains(['symbol', 'exchange', 'ending'], name))
                 return _.compose(_.property(name), _.last);
             else if (!~name.indexOf('.'))
-                throw Error("Fields need to be prefixed by an interval");
+                throw Error("Unknown field: " + name);
             var interval = name.substring(0, name.indexOf('.'));
             expect(interval).to.be.oneOf(periods.values);
             var lname = name.substring(name.indexOf('.')+1);

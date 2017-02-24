@@ -180,6 +180,63 @@ describe("collect", function() {
             {symbol:"XLU",date:"2016-11-30",Price:46.75,Weight:24.7222}
         ]);
     });
+    it("max correl trades", function() {
+        return collect({
+          portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLP.ARCA,XLU.ARCA,XLV.ARCA,XLY.ARCA',
+          begin: "2016-11-14",
+          end: "2016-11-19",
+          columns: [
+              'symbol',
+              'DATE(ending) AS date',
+              'day.close AS price',
+              'MAXCORREL(60,day.adj_close) AS correl',
+              'CVAR(5, 60, day.adj_close) AS risk',
+              'IF(correl<0.75 AND SUM(MIN(0.5/risk,100))<=100, MIN(0.5/risk,100), 0) AS weight'
+          ].join(','),
+          precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))'
+        }).should.eventually.be.like([
+            {symbol:"XLF",date:"2016-11-14",price:22.2,correl:0,risk:0.0312,weight:16.0234},
+            {symbol:"XLI",date:"2016-11-14",price:61.31,correl:0.7395,risk:0.0231,weight:21.6351},
+            {symbol:"XLE",date:"2016-11-14",price:69.85,correl:0.3137,risk:0.0283,weight:17.6174},
+            {symbol:"XLK",date:"2016-11-14",price:46.02,correl:0.3469,risk:0.0179,weight:27.8882},
+            {symbol:"XLY",date:"2016-11-14",price:79.73,correl:0.6013,risk:0.0181,weight:0},
+            {symbol:"XLV",date:"2016-11-14",price:70.27,correl:0.7825,risk:0.0294,weight:0},
+            {symbol:"XLU",date:"2016-11-14",price:46,correl:0.3992,risk:0.0197,weight:0},
+            {symbol:"XLP",date:"2016-11-14",price:50.45,correl:0.7251,risk:0.0175,weight:0},
+            {symbol:"XLF",date:"2016-11-15",price:22.18,correl:0,risk:0.0312,weight:16.0234},
+            {symbol:"XLI",date:"2016-11-15",price:61.54,correl:0.7996,risk:0.0231,weight:0},
+            {symbol:"XLE",date:"2016-11-15",price:71.82,correl:0.3873,risk:0.0304,weight:16.3964},
+            {symbol:"XLK",date:"2016-11-15",price:46.67,correl:0.2927,risk:0.0169,weight:29.5361},
+            {symbol:"XLY",date:"2016-11-15",price:80.04,correl:0.5781,risk:0.0181,weight:0},
+            {symbol:"XLV",date:"2016-11-15",price:70.47,correl:0.7651,risk:0.0294,weight:0},
+            {symbol:"XLU",date:"2016-11-15",price:46.74,correl:0.3784,risk:0.0197,weight:0},
+            {symbol:"XLP",date:"2016-11-15",price:50.76,correl:0.7323,risk:0.0175,weight:0},
+            {symbol:"XLI",date:"2016-11-16",price:61.19,correl:0,risk:0.0231,weight:21.6351},
+            {symbol:"XLF",date:"2016-11-16",price:21.86,correl:0.8353,risk:0.0312,weight:0},
+            {symbol:"XLK",date:"2016-11-16",price:47.1,correl:-0.1787,risk:0.0169,weight:29.5361},
+            {symbol:"XLE",date:"2016-11-16",price:71.32,correl:0.4249,risk:0.0304,weight:16.3964},
+            {symbol:"XLY",date:"2016-11-16",price:80.48,correl:0.5876,risk:0.0181,weight:0},
+            {symbol:"XLV",date:"2016-11-16",price:70.17,correl:0.7328,risk:0.0294,weight:0},
+            {symbol:"XLP",date:"2016-11-16",price:50.77,correl:0.4967,risk:0.0175,weight:0},
+            {symbol:"XLU",date:"2016-11-16",price:46.42,correl:0.7445,risk:0.0197,weight:0},
+            {symbol:"XLF",date:"2016-11-17",price:22.16,correl:0,risk:0.0312,weight:16.0234},
+            {symbol:"XLI",date:"2016-11-17",price:61.32,correl:0.8624,risk:0.0231,weight:0},
+            {symbol:"XLK",date:"2016-11-17",price:47.4,correl:-0.1452,risk:0.0169,weight:29.5361},
+            {symbol:"XLE",date:"2016-11-17",price:70.84,correl:0.4462,risk:0.0304,weight:16.3964},
+            {symbol:"XLY",date:"2016-11-17",price:81.45,correl:0.6268,risk:0.0181,weight:0},
+            {symbol:"XLV",date:"2016-11-17",price:70.45,correl:0.6891,risk:0.0294,weight:0},
+            {symbol:"XLP",date:"2016-11-17",price:50.68,correl:0.4694,risk:0.0175,weight:0},
+            {symbol:"XLU",date:"2016-11-17",price:46.43,correl:0.7549,risk:0.0197,weight:0},
+            {symbol:"XLF",date:"2016-11-18",price:22.16,correl:0,risk:0.0312,weight:16.0234},
+            {symbol:"XLI",date:"2016-11-18",price:61.3,correl:0.8826,risk:0.0231,weight:0},
+            {symbol:"XLK",date:"2016-11-18",price:47.36,correl:-0.1218,risk:0.0169,weight:29.5361},
+            {symbol:"XLY",date:"2016-11-18",price:81.2,correl:0.6552,risk:0.0181,weight:27.4884},
+            {symbol:"XLE",date:"2016-11-18",price:71.13,correl:0.4732,risk:0.0304,weight:0},
+            {symbol:"XLV",date:"2016-11-18",price:69.7,correl:0.6431,risk:0.0294,weight:0},
+            {symbol:"XLP",date:"2016-11-18",price:50.5,correl:0.4608,risk:0.0175,weight:0},
+            {symbol:"XLU",date:"2016-11-18",price:46.29,correl:0.7643,risk:0.0197,weight:0}
+        ]);
+    });
     it("external instrument", function() {
         return collect({
           portfolio: 'SPY.ARCA,XIC.TSX',
