@@ -44,20 +44,62 @@ module.exports = function(expr, name, args, quote, dataset, options) {
 var functions = module.exports.functions = {
     COUNT: _.extend((quote, dataset, options, expr, expression) => {
         return positions => {
-            return positions.map(position => expression([position])).filter(val => val != null).length;
+            var context = _.initial(positions);
+            var row = context.length;
+            var currently = _.last(positions);
+            var keys = _.keys(currently);
+            var inputs = keys.map((key, i, keys) => _.pick(currently, keys.slice(0, i+1)));
+            return inputs.map(input => {
+                context[row] = input;
+                return expression(context);
+            }).filter(val => val != null).length;
         };
     }, {
         args: "expression",
-        description: "Counts the number of positions that evaluate expression to a value"
+        description: "Counts the number of retained securities that evaluate expression to a value"
     }),
     SUM: _.extend((quote, dataset, options, expr, expression) => {
         return positions => {
-            return positions.map(position => expression([position]))
-                .filter(_.isFinite).reduce((a, b) => a + b);
+            var context = _.initial(positions);
+            var row = context.length;
+            var currently = _.last(positions);
+            var keys = _.keys(currently);
+            var inputs = keys.map((key, i, keys) => _.pick(currently, keys.slice(0, i+1)));
+            return inputs.map(input => {
+                context[row] = input;
+                return expression(context);
+            }).filter(_.isFinite).reduce((a, b) => a + b);
         };
     }, {
         args: "expression",
-        description: "Returns the sum of all numeric values"
+        description: "Returns the sum of all numeric values of retained securities"
+    }),
+    PREV: _.extend((quote, dataset, options, expr, columnName, defaultValue) => {
+        return positions => {
+            var name = columnName(positions);
+            var key = _.last(_.keys(_.last(positions)));
+            var previously = positions[positions.length -2];
+            if (_.has(previously, key)) return previously[key][name];
+            else if (defaultValue) return defaultValue(positions);
+            else return null;
+        };
+    }, {
+        args: "columnName, defaultValue",
+        description: "Returns the value of columnName from the previous retained value for this security"
+    }),
+    SUMPREV: _.extend((quote, dataset, options, expr, numberOfValues, columnName) => {
+        return positions => {
+            if (positions.length < 2) return 0;
+            var name = columnName(positions);
+            var num = numberOfValues(positions);
+            var key = _.last(_.keys(_.last(positions)));
+            var len = positions.length -1;
+            var values = _.pluck(_.pluck(positions.slice(Math.max(len - num, 0), len), key), name);
+            return values.reduce((a, b) => (a || 0) + (b || 0), 0);
+        };
+    }, {
+        args: "numberOfValues, columnName",
+        description: "Returns the sum of columnName values from the previous numberOfValues retained"
     }),
     MAXCORREL: _.extend((quote, dataset, options, expr, duration, expression) => {
         var n = asPositiveInteger(duration, "MAXCORREL");
@@ -90,20 +132,29 @@ var functions = module.exports.functions = {
             }, options);
         });
         return Promise.all(optionset.map(options => quote(options))).then(dataset => {
-            return positions => {
-                if (positions.length < 2) return 0;
-                var matrix = positions.map(position => {
-                    var i =_.findIndex(optionset, _.matcher(_.pick(position, 'symbol', 'exchange')));
-                    if (i < 0) return [];
-                    var data = dataset[i];
+            return dataset.reduce((hash, data, i) => {
+                var key = optionset[i].symbol + '.' + optionset[i].exchange;
+                hash[key] = data;
+                return hash;
+            }, {});
+        }).then(dataset => {
+            return historic => {
+                var positions = _.last(historic);
+                if (_.size(positions) < 2) return 0;
+                var matrix = _.keys(positions).map((symbol, i, keys) => {
+                    var position = positions[symbol];
+                    var data = dataset[symbol];
+                    if (!data) throw Error("Could not find dataset: " + symbol);
                     var end = _.sortedIndex(data, position, 'ending');
                     if (data[end] && data[end].ending == position.ending) end++;
                     return _.pluck(data.slice(Math.max(end - n, 0), end), arg);
                 });
-                var correlations = _.initial(positions).map((position, i) => {
-                    return statkit.corr(matrix[i], _.last(matrix));
+                var last = matrix.pop();
+                var correlations = _.compact(matrix).map(m => {
+                    return statkit.corr(m, last);
                 });
-                return _.max(correlations);
+                if (!correlations.length) return 0;
+                else return _.max(correlations);
             };
         });
     }, {

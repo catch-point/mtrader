@@ -65,7 +65,10 @@ module.exports = function(quote) {
         })).then(dataset => {
             var parser = createParser(exchanges, temporal, quote, dataset, allColumns, options);
             return collectDataset(exchanges, dataset, temporal, parser, options);
-        });
+        }).then(collection => collection.reduce((result, points) => {
+            result.push.apply(result, _.values(points));
+            return result;
+        }, []));
     }, {
         close() {}
     });
@@ -150,10 +153,11 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
             return positions => value;
         },
         variable(name) {
-            return _.compose(_.property(name), _.last);
+            // [{"USD.CAD": {"close": 1.00}}]
+            return _.compose(_.property(name), _.last, _.values, _.last);
         },
         expression(expr, name, args) {
-            if (_.contains(cached, expr)) return _.compose(_.property(expr), _.last);
+            if (_.contains(cached, expr)) return _.compose(_.property(expr), _.last, _.values, _.last);
             return Promise.all(args).then(args => {
                 var fn = common(name, args, options) ||
                     aggregate(expr, name, args, quote, dataset, options);
@@ -180,15 +184,22 @@ function collectDataset(exchanges, dataset, temporal, parser, options) {
                 if (o.desc) positions.reverse();
                 return positions;
             }, points);
+            var row = result.length;
             var accepted = positions.reduce((accepted, point) => {
-                var pending = accepted.concat([point]);
-                if (retain && retain(pending)) return pending;
+                var pending = _.extend({}, accepted, {
+                    [point.symbol + '.' + point.exchange]: point
+                });
+                result[row] = pending;
+                if (retain && retain(result)) return pending;
                 else return accepted;
-            }, []);
-            var formatted = accepted.map((row, i, rows) => {
-                return _.mapObject(columns, column => column(rows.slice(0, i+1)));
+            }, {});
+            var formatted = _.keys(accepted).map((key, i, keys) => {
+                var pending = _.pick(accepted, keys.slice(0, i+1));
+                result[row] = pending;
+                return _.mapObject(columns, column => column(result));
             });
-            return result.concat(formatted);
+            result[row] = _.object(_.keys(accepted), formatted);
+            return result;
         }, []);
     }));
 }
@@ -216,6 +227,7 @@ function promiseExternal(temporal, quote, dataset, name, expr) {
     var end = _.last(_.pluck(_.map(dataset, _.last), temporal).sort());
     var symbol = name.substring(0, name.lastIndexOf('.'));
     var exchange = name.substring(name.lastIndexOf('.')+1);
+    var last = _.compose(_.last, _.values, _.last)
     return quote({
         symbol: symbol,
         exchange: exchange,
@@ -224,8 +236,8 @@ function promiseExternal(temporal, quote, dataset, name, expr) {
         begin: begin,
         end: end
     }).then(data => positions => {
-        var idx = _.sortedIndex(data, _.last(positions), temporal);
-        if (idx >= data.length || idx && data[idx][temporal] > _.last(positions)[temporal]) idx--;
+        var idx = _.sortedIndex(data, last(positions), temporal);
+        if (idx >= data.length || idx && data[idx][temporal] > last(positions)[temporal]) idx--;
         return data[idx][expr];
     });
 }

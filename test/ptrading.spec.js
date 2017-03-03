@@ -92,7 +92,7 @@ describe("ptrading", function() {
             {Date:"2017-01-13",Close:42.27,Change:0.3799}
         ]);
     });
-    it("collect", function() {
+    it("collect change", function() {
         return ptrading.collect({
           portfolio: 'YHOO.NASDAQ,IBM.NYSE',
           pad_begin: 9,
@@ -121,26 +121,42 @@ describe("ptrading", function() {
             {symbol:'YHOO',date:"2017-01-13",close:42.27,change:0.3799}
         ]);
     });
-    it.skip("allocate", function() {
-        return ptrading.allocate({
+    it("collect profit", function() {
+        return ptrading.collect({
           portfolio: 'YHOO.NASDAQ,IBM.NYSE',
-          pad_begin: 9,
-          begin: "2017-01-13",
+          begin: "2017-01-09",
           end: "2017-01-14",
-          precedence: 'DESC(PF(120,day.adj_close))',
+          precedence: 'PF(120,day.adj_close)',
           columns: [
               'symbol',
               'DATE(ending) AS date',
-              'COLLECT(2,SUM(IF(COUNT(symbol)<=1,FLOOR(100000/(day.close)),0)))/2 AS target', // fade-in/out over two days
+              'IF(COUNT(symbol)<=1,FLOOR(10000/(day.close)),0) AS target',
               'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0)) AS shares',
               'PREV("position",0) + shares AS position',
-              'day.close - 0.02 * IF(shares>0 AND position>0,1,-1) AS price', // includes slippage
-              'shares * price AS proceeds',
-              'IF(shares=0,0, MAX(shares * IF(exchange="TSX", 0.01, 0.005), 1.00)) AS commission',
-              'PREV("basis",0) + price * shares / position AS basis',
+              'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
+              '-shares * price AS proceeds',
+              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission',
+              'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position) AS basis',
               'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission AS profit'
-          ].join(',')
+          ].join(','),
+          retain: 'position OR shares'
         }).should.eventually.be.like([
+            {symbol:"YHOO",date:"2017-01-09",target:241,shares:241,position:241,price:41.36,
+                proceeds:-9967.76,commission:1.20,basis:41.36,profit:-1.20},
+            {symbol:"IBM",date:"2017-01-10",target:60,shares:60,position:60,price:165.54,
+                proceeds:-9932.40,commission:1,basis:165.54,profit:-1},
+            {symbol:"YHOO",date:"2017-01-10",target:0,shares:-241,position:0,price:42.27,
+                proceeds:10189.47,commission:1,basis:41.36,profit:219.51},
+            {symbol:"YHOO",date:"2017-01-11",target:234,shares:234,position:234,price:42.61,
+                proceeds:-9970.74,commission:1.17,basis:42.61,profit:218.34},
+            {symbol:"IBM",date:"2017-01-11",target:0,shares:-60,position:0,price:167.73,
+                proceeds:10063.8,commission:1,basis:165.54,profit:129.39},
+            {symbol:"YHOO",date:"2017-01-12",target:237,shares:0,position:234,price:42.08,
+                proceeds:0,commission:0,basis:42.61,profit:96.66},
+            {symbol:"IBM",date:"2017-01-13",target:59,shares:59,position:59,price:167.36,
+                proceeds:-9874.24,commission:1,basis:167.36,profit:-1},
+            {symbol:"YHOO",date:"2017-01-13",target:0,shares:-234,position:0,price:42.25,
+                proceeds:9886.5,commission:1,basis:42.61,profit:133.10}
         ]);
     });
 });
