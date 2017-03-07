@@ -185,9 +185,8 @@ help(app, 'columns', `
     :label
       The quoted string used as the output column name or a variable name
 
-    ${listExpressions()}
-
   See also:
+    help expression  
     help common-functions  
     help lookback-functions  
     help indicator-functions  
@@ -198,13 +197,65 @@ help(app, 'criteria', `
   An expression that must evaluate to a non-zero value for an interval bar to be
   included in the output.
 
-    ${listExpressions()}
-
   See also:
+    help expression  
     help common-functions  
     help lookback-functions  
     help indicator-functions  
     help LEADING  
+`);
+help(app, 'expression', `
+  :expression
+    An expression is any combination of field, constants, and function calls
+    connected by an operator or operators.
+
+    A constant can be a number or a quoted string.
+
+    A function call has a name followed parentheses enclosed comma separated
+    list of expressions.
+
+    A field can be one of the following without a prefix:
+    symbol    Represents the symbol used by the exchange
+    exchange  Represents the exchange acronym
+    ending    Represents the dateTime of when an interval ended
+
+    A field can also be one of the following prefixed by an interval:
+    <interval>.ending     DateTime when the interval ends (interval prefix is optional)
+    <interval>.open       Price when the interval began
+    <interval>.high       highest price during the interval
+    <interval>.low        Lowest price during the interval
+    <interval>.close      Price when the interval ended
+    <interval>.volume     Volume during the interval
+    <interval>.adj_close  Close price adjusted for dividends and splits
+
+    An <interval> can be one of the following:
+    year        Yearly quotes for security
+    quarter     Quarterly quotes for security
+    month       Monthly quotes for security
+    week        Weekly quotes for security
+    day         Daily quotes for security
+    mX          Intraday quotes for security by X minutes
+
+    Operators include the following:
+    OR   0 if both expressions are 0.
+    AND  0 if either expression is 0.
+    =    0 if both expressions have the same value.
+    !=   0 if either expression has a different value.
+    <>   0 if either expression has a different value.
+    <=   0 if the left expression is larger than the right.
+    >=   0 if the right expression is larger than the left.
+    <    0 if the left expression is larger than or equal to the right.
+    >    0 if the right expression is larger than or equal to the left.
+    +    Adds both values together.
+    -    Subtracts the right value from the left value.
+    *    Multiples the values together.
+    /    Divides the right values into the left value.
+    %    Returns the integer remainder of a division
+    !    0 if the expression was not zero
+    ()   Groups expressions together to possibly change their precedence.
+
+  See also:
+    help common-functions  
 `);
 help(app, 'LEADING', `
   Usage: LEADING(expression)  
@@ -263,57 +314,6 @@ function listExchanges() {
         buf.push('\n');
     });
     return buf.join('');
-}
-
-function listExpressions() {
-    return `:expression
-      An expression is any combination of field, constants, and function calls
-      connected by an operator or operators.
-
-      A constant can be a number or a quoted string.
-
-      A function call has a name followed parentheses enclosed comma separated
-      list of expressions.
-
-      A field can be one of the following without a prefix:
-      symbol    Represents the symbol used by the exchange
-      exchange  Represents the exchange acronym
-      ending    Represents the dateTime of when an interval ended
-
-      A field can also be one of the following prefixed by an interval:
-      <interval>.ending     DateTime when the interval ends (interval prefix is optional)
-      <interval>.open       Price when the interval began
-      <interval>.high       highest price during the interval
-      <interval>.low        Lowest price during the interval
-      <interval>.close      Price when the interval ended
-      <interval>.volume     Volume during the interval
-      <interval>.adj_close  Close price adjusted for dividends and splits
-
-      An <interval> can be one of the following:
-      year        Yearly quotes for security
-      quarter     Quarterly quotes for security
-      month       Monthly quotes for security
-      week        Weekly quotes for security
-      day         Daily quotes for security
-      mX          Intraday quotes for security by X minutes
-
-      Operators include the following:
-      OR   0 if both expressions are 0.
-      AND  0 if either expression is 0.
-      =    0 if both expressions have the same value.
-      !=   0 if either expression has a different value.
-      <>   0 if either expression has a different value.
-      <=   0 if the left expression is larger than the right.
-      >=   0 if the right expression is larger than the left.
-      <    0 if the left expression is larger than or equal to the right.
-      >    0 if the right expression is larger than or equal to the left.
-      +    Adds both values together.
-      -    Subtracts the right value from the left value.
-      *    Multiples the values together.
-      /    Divides the right values into the left value.
-      %    Returns the integer remainder of a division
-      !    0 if the expression was not zero
-      ()   Groups expressions together to possibly change their precedence.`;
 }
 
 function listFunctions(functions) {

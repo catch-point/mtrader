@@ -175,7 +175,8 @@ function interday(datasources, options) {
         begin: moment(now).startOf('month').subtract(1, 'month').format()
     }, options);
     var sources = getDatasources(datasources, opts.exchange, opts.interval);
-    if (_.isEmpty(sources)) throw Error("No datasources available for " + opts.interval);
+    if (_.isEmpty(sources)) throw Error("No datasources available for " + opts.interval
+        + " using " + _.keys(getDatasources(datasources, opts.exchange)).join(', '));
     return _.reduce(sources, (promise, source, id) => promise.catch(err => {
         return datasources[id].interday(_.defaults({}, source, opts)).then(result => {
             if (err) logger.warn("Fetch", opts.interval, "failed", err);
@@ -210,7 +211,8 @@ function intraday(datasources, options) {
     }, options);
     var minutes = +opts.interval.substring(1);
     var sources = getDatasources(datasources, opts.exchange, opts.interval);
-    if (_.isEmpty(sources)) throw Error("No datasources available for " + opts.interval);
+    if (_.isEmpty(sources)) throw Error("No datasources available for " + opts.interval
+        + " using " + _.keys(getDatasources(datasources, opts.exchange)).join(', '));
     return _.reduce(sources, (promise, source, id) => promise.catch(err => {
         return datasources[id].intraday(_.defaults({
             minutes: minutes
@@ -236,7 +238,7 @@ function intraday(datasources, options) {
 
 function getDatasources(datasources, exchange, interval) {
     return _.mapObject(_.pick(config(['exchanges', exchange, 'datasources']), (source, id) => {
-        return _.contains(source.fetch, interval) && _.has(datasources, id);
+        return _.has(datasources, id) && (!interval || _.contains(source.fetch, interval))
     }), source => _.omit(source, 'fetch'));
 }
 

@@ -45,6 +45,7 @@ module.exports = function(quote) {
     var exchanges = _.keys(config('exchanges'));
     return _.extend(function(options) {
         expect(options).to.have.property('portfolio');
+        expect(options).to.have.property('columns');
         var portfolio = getPortfolio(options);
         var formatColumns = getNeededColumns(exchanges, options.columns, options);
         var retainColumns = getNeededColumns(exchanges, options.retain, options);

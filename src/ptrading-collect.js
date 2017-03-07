@@ -33,6 +33,7 @@
 
 var os = require('os');
 const _ = require('underscore');
+const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
@@ -46,7 +47,7 @@ const aggregate = require('./aggregate-functions.js');
 function usage(command) {
     return command.version(require('../package.json').version)
         .description("Finds matching symbols from historic data")
-        .usage('<expression> BY <expressions> [options]')
+        .usage('[date] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
@@ -58,6 +59,8 @@ function usage(command) {
         .option('--portfolio <list>', "Comma separated list of <symbol>.<exchange> to search")
         .option('--columns <list>', "Comma separated list of columns (such as day.close)")
         .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
+        .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero for a security to be retained in the result")
+        .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('--output <file>', "CSV file to write the result into")
         .option('--reverse', "Reverse the order of the rows")
         .option('--transpose', "Swap the columns and rows");
@@ -67,13 +70,7 @@ if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
         Promise.resolve(program.args).then(args => {
-            var by = ~args.indexOf('BY') || ~args.indexOf('by');
-            var retain = args.slice(0, ~by).join(' ');
-            var precedence = args.slice(~by +1).join(' ');
-            return collect(_.defaults({
-                retain: retain,
-                precedence: precedence
-            }, config.opts()));
+            return collect(readBegin(args.join(' '), config.opts()));
         }).then(result => tabular(result))
           .catch(err => logger.error(err, err.stack))
           .then(() => quote.close());
@@ -90,28 +87,21 @@ if (require.main === module) {
 }
 
 function shell(desc, app) {
-    app.cmd('collect :retain([\\S\\s]+)? BY :precedence', desc, (cmd, sh, cb) => {
-        collect(_.defaults({
-            retain: cmd.params.retain,
-            precedence: cmd.params.precedence
-        }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
+    app.cmd('collect :begin([\\d\\-:+.WTZ]+)?', desc, (cmd, sh, cb) => {
+        var options = readBegin(cmd.params.begin, config.session());
+        collect(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     _.forEach(aggregate.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));
     });
 // help
 help(app, 'collect', `
-  Usage: collect :retain BY :precedence
+  Usage: collect :begin
 
   ${desc}
 
-    :retain
-      An expression (possibly of an aggregate function) of each included
-      security that must be true to be included in the result
-    :precedence
-      The order that securities should be checked for inclusion in the result.
-      A comma separated list of expressions can be provided and each may be
-      wrapped in a DESC function to indicate the order should be reversed.
+    :begin
+      Indicates the year, month, week, or start date that should be collected. 
 
   See also:
     help begin  
@@ -120,17 +110,44 @@ help(app, 'collect', `
     help pad_end  
     help columns  
     help criteria  
+    help retain  
+    help precedence  
     help output  
     help reverse  
+`);
+help(app, 'retain', `
+  Usage: set retain :expression
+
+  An expression (possibly of an aggregate function) of each included
+  security that must be true to be included in the result
+
+  See also:
+    help expression  
     help common-functions  
     help lookback-functions  
     help indicator-functions  
     help aggregate-functions  
+    help LEADING  
+`);
+help(app, 'precedence', `
+  Usage: set precedence :expression
+
+  The order that securities should be checked for inclusion in the result.
+  A comma separated list of expressions can be provided and each may be
+  wrapped in a DESC function to indicate the order should be reversed.
+
+  See also:
+    help expression  
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+    help aggregate-functions  
+    help LEADING  
     help DESC  
     help ASC  
 `);
 help(app, 'aggregate-functions', `
-  Aggregate functions may read already accepted securities and the proposed security values.
+  Aggregate functions may read already retained securities and the proposed security values.
 
   ${listFunctions(aggregate.functions)}
 `);
@@ -144,6 +161,29 @@ help(app, 'ASC', `
 
   Indicates the expression order should not be reversed
 `);
+}
+
+function readBegin(begin, options) {
+    if (!begin) return options;
+    if (begin.match(/^\d\d\d\d$/)) return _.defaults({
+        begin: begin + '-01-01',
+        end: (1 + begin) + '-01-01'
+    }, options);
+    if (begin.match(/^\d\d\d\d-\d\d$/)) return _.defaults({
+        begin: begin + '-01',
+        end: moment(begin + '-01').add(1, 'month').format('YYYY-MM-DD')
+    }, options);
+    if (begin.match(/^\d\d\d\d-?W\d\d(-?\d)?$/)) return _.defaults({
+        begin: begin,
+        end: moment(begin).add(1, 'week').format('YYYY-MM-DD')
+    }, options);
+    if (options.pad_end) return _.defaults({
+        begin: begin,
+        end: begin
+    }, options);
+    else return _.defaults({
+        begin: begin,
+    }, options);
 }
 
 function functionHelp(name, fn) {
