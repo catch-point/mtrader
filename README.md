@@ -80,7 +80,42 @@ ptrading.quote({
 2017-01-13 42.27 0.3799548710530931
 */
 
-// close down help threads
+// calculate hypothetical trades for a portfolio
+ptrading.collect({
+  portfolio: 'YHOO.NASDAQ,IBM.NYSE',
+  begin: "2017-01-09",
+  end: "2017-01-14",
+  precedence: 'PF(120,day.adj_close)',
+  columns: [
+      'symbol',
+      'DATE(ending) AS date',
+      'IF(COUNT(symbol)<=1,FLOOR(10000/(day.close)),0) AS target',
+      'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0)) AS shares',
+      'PREV("position",0) + shares AS position',
+      'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
+      '-shares * price AS proceeds',
+      'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission',
+      'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position) AS basis',
+      'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission AS profit'
+  ].join(','),
+  retain: 'position OR shares'
+}).then(trades => {
+  trades.forEach(trade => {
+    console.log(trade.symbol, trade.date, trade.shares, trade.price, trade.proceeds, trade.commission);
+  });
+});
+/*
+YHOO 2017-01-09  241  41.36 -9967.76 1.20
+IBM  2017-01-10   60 165.54 -9932.40 1
+YHOO 2017-01-10 -241  42.27 10189.47 1
+YHOO 2017-01-11  234  42.61 -9970.74 1.17
+IBM  2017-01-11  -60 167.73 10063.8  1
+YHOO 2017-01-12    0  42.08       0  0
+IBM  2017-01-13   59 167.36 -9874.24 1
+YHOO 2017-01-13 -234  42.25  9886.5  1
+*/
+
+// close down helper threads
 ptrading.close();
 ```
 
@@ -143,5 +178,6 @@ See the following help commands for function descriptions:
 ```
     help common-functions  
     help lookback-functions  
-    help indicator-functions 
+    help indicator-functions  
+    help aggregate-functions  
 ```
