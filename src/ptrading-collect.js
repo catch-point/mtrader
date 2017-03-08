@@ -46,7 +46,7 @@ const aggregate = require('./aggregate-functions.js');
 
 function usage(command) {
     return command.version(require('../package.json').version)
-        .description("Finds matching symbols from historic data")
+        .description("Collects historic portfolio data")
         .usage('[date] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
