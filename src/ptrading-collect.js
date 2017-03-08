@@ -71,7 +71,7 @@ if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
         Promise.resolve(program.args).then(args => {
-            return collect(readBegin(args.join(' '), config.opts()));
+            return collect(readBegin(args.join(' '), config.options()));
         }).then(result => tabular(result))
           .catch(err => logger.error(err, err.stack))
           .then(() => quote.close());
@@ -89,7 +89,7 @@ if (require.main === module) {
 
 function shell(desc, app) {
     app.cmd('collect :begin([\\d\\-:+.WTZ]+)?', desc, (cmd, sh, cb) => {
-        var options = readBegin(cmd.params.begin, config.session());
+        var options = readBegin(cmd.params.begin, config.options());
         collect(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     _.forEach(aggregate.functions, (fn, name) => {

@@ -88,14 +88,17 @@ if (require.main === module) {
         store(name, value) {
             return config.store(name, value);
         },
+        options(name, value) {
+            return config.options(name, value);
+        },
         unset(name) {
             return config.unset(name);
         },
-        save(filename) {
-            return config.save(filename);
+        save(name) {
+            return config.save(name);
         },
-        load(filename) {
-            return config.load(filename);
+        load(name) {
+            return config.load(name);
         },
         lookup(options) {
             return fetch(_.defaults({
