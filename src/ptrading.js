@@ -46,6 +46,7 @@ var program = require('commander').version(require('../package.json').version)
     .option('-s, --silent', "Include less information about what the system is doing")
     .option('--debug', "Include details about what the system is working on")
     .option('--prefix <dirname>', "Path where the program files are stored")
+    .option('--load <identifier>', "Read the given session settings")
     .option('--workers <numOfWorkers>', 'Number of workers to spawn');
 
 if (require.main === module) {

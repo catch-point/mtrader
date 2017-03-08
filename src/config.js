@@ -39,7 +39,6 @@ const commander = require('commander');
 const options = commander.options;
 const commander_emit = commander.Command.prototype.emit.bind(commander);
 
-var session = {};
 var listeners = [];
 var defaults = _.extend({
     prefix: _.contains(process.argv, '--prefix') ?
@@ -47,6 +46,8 @@ var defaults = _.extend({
         process.argv[1] ? path.resolve(process.argv[1], '../..') : ''
 }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
 var stored = _.extend({}, defaults, loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json')));
+var session = _.contains(process.argv, '--load') ?
+    loadConfigFile(path.resolve(defaults.prefix, 'etc', process.argv[process.argv.indexOf('--load')+1] + '.json')) : {};
 
 var config = module.exports = function(name, value) {
     if (_.isUndefined(value)) {
@@ -112,13 +113,19 @@ config.session = function(name, value) {
 };
 
 config.save = function(filename) {
-    var file = path.resolve(config('prefix'), 'etc', filename);
+    var file = path.resolve(config('prefix'), 'etc', filename + '.json');
     writeConfigFile(file, session);
 };
 
 config.load = function(filename) {
-    var file = path.resolve(config('prefix'), 'etc', filename);
-    session = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    var file = path.resolve(config('prefix'), 'etc', filename + '.json');
+    try {
+        fs.accessSync(file, fs.R_OK);
+        session = JSON.parse(fs.readFileSync(file, 'utf-8'));
+        return true;
+    } catch(e) {
+        return false;
+    }
 };
 
 config.store = function(name, value) {

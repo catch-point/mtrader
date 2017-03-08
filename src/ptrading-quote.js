@@ -52,6 +52,7 @@ function usage(command) {
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
         .option('--prefix <dirname>', "Path where the program files are stored")
+        .option('--load <identifier>', "Read the given session settings")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('--end <dateTime>', "ISO dateTime of the ending point")
         .option('--pad-begin <number>', "Number of bars before begin dateTime")

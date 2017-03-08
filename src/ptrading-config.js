@@ -43,14 +43,21 @@ if (require.main === module) {
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
         .option('--prefix <dirname>', "Path where the program files are stored")
-        .option('--output <file>', "JSON file to write the setting value into")
+        .option('--load <identifier>', "Read the given session settings")
+        .option('--save <identifier>', "Modify the settings in the given stored session")
         .parse(process.argv);
     if (program.args.length) {
         try {
-            if (program.args.length > 1) {
-                config.store(program.args[0], program.args[1]);
+            var name = _.first(program.args);
+            var value = _.rest(program.args).join(' ');
+            if (program.save && program.args.length > 1) {
+                config.load(program.save);
+                config.session(name, value);
+                config.save(program.save);
+            } else if (program.args.length > 1) {
+                config.store(name, value);
             } else {
-                console.log(JSON.stringify(config(program.args[0])));
+                console.log(JSON.stringify(config(name)));
             }
         } catch(err) {
             logger.error(err, err.stack);
@@ -92,8 +99,7 @@ module.exports.shell = function(app) {
             "Saves this session values to a file for later use", (cmd, sh, cb) => {
         try {
             var name = cmd.params.name;
-            var filename = 'ptrading-' + name + '.json';
-            config.save(filename);
+            config.save(name);
             sh.prompt();
         } catch(err) {
             cb(err);
@@ -103,8 +109,7 @@ module.exports.shell = function(app) {
             "Loads the stored session, resetting any temporary session values", (cmd, sh, cb) => {
         try {
             var name = cmd.params.name;
-            var filename = 'ptrading-' + name + '.json';
-            config.load(filename);
+            if (!config.load(name)) throw Error("Could not load: " + name);
             sh.prompt();
         } catch(err) {
             cb(err);
