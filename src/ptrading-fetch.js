@@ -70,7 +70,7 @@ if (require.main === module) {
             .then(() => fetch.close());
     } else if (process.send) {
         replyTo(process).handle('fetch', payload => {
-            return fetch(_.defaults({}, payload, config.session()));
+            return fetch(_.defaults({}, payload, config.options()));
         });
         process.on('disconnect', () => fetch.close());
     } else {
@@ -97,7 +97,7 @@ function shell(desc, child, app) {
         child.request('fetch', _.defaults({
             interval: 'lookup',
             symbol: cmd.params.symbol
-        }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     // fundamental
     app.cmd('fundamental :symbol :exchange', "List fundamental information about security", (cmd, sh, cb) => {
@@ -105,7 +105,7 @@ function shell(desc, child, app) {
             interval: 'fundamental',
             symbol: cmd.params.symbol,
             exchange: cmd.params.exchange
-        }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     // fetch
     app.cmd('fetch :interval :symbol :exchange', desc, (cmd, sh, cb) => {
@@ -113,7 +113,7 @@ function shell(desc, child, app) {
             interval: cmd.params.interval,
             symbol: cmd.params.symbol,
             exchange: cmd.params.exchange
-        }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
 // help
 help(app, 'lookup', `

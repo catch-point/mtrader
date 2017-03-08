@@ -52,7 +52,7 @@ if (require.main === module) {
             var value = _.rest(program.args).join(' ');
             if (program.save && program.args.length > 1) {
                 config.load(program.save);
-                config.session(name, value);
+                config.options(name, value);
                 config.save(program.save);
             } else if (program.args.length > 1) {
                 config.store(name, value);

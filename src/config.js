@@ -57,7 +57,7 @@ var config = module.exports = function(name, value) {
             stored
         ), jpath);
     } else {
-        config.session(name, value);
+        config.options(name, value);
     }
 };
 
@@ -103,10 +103,10 @@ config.opts = function() {
     }, {});
 }
 
-config.session = function(name, value) {
+config.options = function(name, value) {
     var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
     if (_.isUndefined(value)) {
-        return get(session, jpath);
+        return get(merge({}, session, config.opts()), jpath);
     } else if (assign(session, jpath, value)) {
         listeners.forEach(listener => listener(name, value));
     }
@@ -114,7 +114,7 @@ config.session = function(name, value) {
 
 config.save = function(filename) {
     var file = path.resolve(config('prefix'), 'etc', filename + '.json');
-    writeConfigFile(file, session);
+    writeConfigFile(file, _.omit(session, _.isNull));
 };
 
 config.load = function(filename) {

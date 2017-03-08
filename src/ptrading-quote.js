@@ -80,7 +80,7 @@ if (require.main === module) {
             .then(() => fetch.close());
     } else if (process.send) {
         var parent = replyTo(process).handle('quote', payload => {
-            return quote()(_.defaults({}, payload, config.session()));
+            return quote()(_.defaults({}, payload, config.options()));
         });
         var quote = _.once(() => Quote(function(options) {
             return parent.request('fetch', options);
@@ -95,7 +95,7 @@ if (require.main === module) {
     var workers = commander.workers || os.cpus().length;
     var children = _.range(workers).map(() => {
         return replyTo(config.fork(module.filename, program)).handle('fetch', payload => {
-            var options = _.defaults({}, payload, config.session());
+            var options = _.defaults({}, payload, config.options());
             return fetch(options);
         });
     });
@@ -134,7 +134,7 @@ function shell(desc, children, app) {
         chooseWorker(children, cmd.params.symbol).request('quote', _.defaults({
             symbol: cmd.params.symbol,
             exchange: cmd.params.exchange
-        }, config.session())).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     _.forEach(common.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));
