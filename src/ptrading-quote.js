@@ -47,7 +47,7 @@ const indicator = require('./indicator-functions.js');
 function usage(command) {
     return command.version(require('../package.json').version)
         .description("Quotes historical data for the given symbol")
-        .usage('<symbol> [exchange] [options]')
+        .usage('<symbol.exchange> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
@@ -69,15 +69,20 @@ if (require.main === module) {
     if (program.args.length) {
         var fetch = require('./ptrading-fetch.js');
         var quote = Quote(fetch);
-        Promise.resolve(program.args)
-            .then(args => quote(_.defaults({
-                symbol: args[0],
-                exchange: args[1]
-            }, config.opts())))
-            .then(result => tabular(result))
-            .catch(err => logger.error(err, err.stack))
-            .then(() => quote.close())
-            .then(() => fetch.close());
+        var symbol = program.args[0];
+        var exchange = program.args[1];
+        if (!exchange && ~symbol.indexOf('.')) {
+            exchange = symbol.substring(symbol.lastIndexOf('.')+1);
+            symbol = symbol.substring(0, symbol.lastIndexOf('.'));
+        }
+        Promise.resolve().then(() => quote(_.defaults({
+            symbol: symbol,
+            exchange: exchange
+        }, config.opts())))
+        .then(result => tabular(result))
+        .catch(err => logger.error(err, err.stack))
+        .then(() => quote.close())
+        .then(() => fetch.close());
     } else if (process.send) {
         var parent = replyTo(process).handle('quote', payload => {
             return quote()(_.defaults({}, payload, config.options()));
@@ -130,10 +135,13 @@ function hashCode(str){
 function shell(desc, children, app) {
     app.on('quit', () => children.forEach(child => child.disconnect()));
     app.on('exit', () => children.forEach(child => child.disconnect()));
-    app.cmd('quote :symbol :exchange?', desc, (cmd, sh, cb) => {
+    app.cmd('quote :symbol', desc, (cmd, sh, cb) => {
+        var s = cmd.params.symbol;
+        var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
+        var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         chooseWorker(children, cmd.params.symbol).request('quote', _.defaults({
-            symbol: cmd.params.symbol,
-            exchange: cmd.params.exchange
+            symbol: symbol,
+            exchange: exchange
         }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     _.forEach(common.functions, (fn, name) => {
@@ -147,14 +155,12 @@ function shell(desc, children, app) {
     });
 // help
 help(app, 'quote', `
-  Usage: quote :symbol[ :exchange]
+  Usage: quote :symbol.exchange
 
   ${desc}
 
-    :symbol
-      The ticker symbol used by the exchange
-    :exchange
-      If provided, one of the following exchange acronyms:
+    :symbol.exchange
+      The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
 ${listExchanges()}
   See also:
     help begin  

@@ -42,7 +42,7 @@ const config = require('./ptrading-config.js');
 function usage(command) {
     return command.version(require('../package.json').version)
         .description("Fetches remote data for the given symbol")
-        .usage('<interval> <symbol> [exchange] [options]')
+        .usage('<interval> <symbol.exchange> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
@@ -59,15 +59,21 @@ if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     var fetch = Fetch();
     if (program.args.length) {
-        Promise.resolve(program.args)
-            .then(args => fetch(_.defaults({
-                interval: args[0],
-                symbol: args[1],
-                exchange: args[2]
-            }, config.opts())))
-            .then(result => tabular(result))
-            .catch(err => logger.error(err, err.stack))
-            .then(() => fetch.close());
+        var interval = program.args[0];
+        var symbol = program.args[1];
+        var exchange = program.args[2];
+        if (!exchange && symbol && ~symbol.indexOf('.')) {
+            exchange = symbol.substring(symbol.lastIndexOf('.')+1);
+            symbol = symbol.substring(0, symbol.lastIndexOf('.'));
+        }
+        Promise.resolve().then(() => fetch(_.defaults({
+            interval: interval,
+            symbol: symbol,
+            exchange: exchange
+        }, config.opts())))
+        .then(result => tabular(result))
+        .catch(err => logger.error(err, err.stack))
+        .then(() => fetch.close());
     } else if (process.send) {
         replyTo(process).handle('fetch', payload => {
             return fetch(_.defaults({}, payload, config.options()));
@@ -94,25 +100,35 @@ function shell(desc, child, app) {
     app.on('exit', () => child.disconnect());
     // lookup
     app.cmd('lookup :symbol', "List securities with similar symbols", (cmd, sh, cb) => {
+        var s = cmd.params.symbol;
+        var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
+        var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         child.request('fetch', _.defaults({
             interval: 'lookup',
-            symbol: cmd.params.symbol
+            symbol: symbol,
+            exchange: exchange
         }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     // fundamental
-    app.cmd('fundamental :symbol :exchange', "List fundamental information about security", (cmd, sh, cb) => {
+    app.cmd('fundamental :symbol', "List fundamental information about security", (cmd, sh, cb) => {
+        var s = cmd.params.symbol;
+        var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
+        var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         child.request('fetch', _.defaults({
             interval: 'fundamental',
-            symbol: cmd.params.symbol,
-            exchange: cmd.params.exchange
+            symbol: symbol,
+            exchange: exchange
         }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     // fetch
-    app.cmd('fetch :interval :symbol :exchange', desc, (cmd, sh, cb) => {
+    app.cmd('fetch :interval :symbol', desc, (cmd, sh, cb) => {
+        var s = cmd.params.symbol;
+        var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
+        var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         child.request('fetch', _.defaults({
             interval: cmd.params.interval,
-            symbol: cmd.params.symbol,
-            exchange: cmd.params.exchange
+            symbol: symbol,
+            exchange: exchange
         }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
 // help
@@ -122,20 +138,18 @@ help(app, 'lookup', `
   List securities and their exchange that have similar symbols
 `);
 help(app, 'fundamental', `
-  Usage: fundamental :symbol :exchange
+  Usage: fundamental :symbol.exchange
 
   List fundamental information about security
 
-    :symbol
-      The ticker symbol used by the exchange
-    :exchange
-      Must be one of the following exchange acronyms:
+    :symbol.exchange
+      The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
 ${listExchanges()}
   See also:
     help transpose  
 `);
 help(app, 'fetch', `
-  Usage: fetch :interval :symbol :exchange
+  Usage: fetch :interval :symbol.exchange
 
   ${desc}
 
@@ -148,10 +162,8 @@ help(app, 'fetch', `
       day         List daily quotes for security
       mX          List intraday quotes for security by X minutes
 
-    :symbol
-      The ticker symbol used by the exchange
-    :exchange
-      Must be one of the following exchange acronyms:
+    :symbol.exchange
+      The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
 ${listExchanges()}
   See also:
     help begin  
