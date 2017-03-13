@@ -121,11 +121,11 @@ config.load = function(filename) {
     var file = path.resolve(config('prefix'), 'etc', filename + '.json');
     try {
         fs.accessSync(file, fs.R_OK);
-        session = JSON.parse(fs.readFileSync(file, 'utf-8'));
-        return true;
     } catch(e) {
         return false;
     }
+    session = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    return true;
 };
 
 config.store = function(name, value) {
