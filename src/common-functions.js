@@ -94,26 +94,30 @@ var functions = module.exports.functions = {
         description: "HH:mm:ss time 24hr format",
         seeAlso: ['DATE']
     }),
-    /* Date of Month (1-31) */
+    /* Date of Month as a string ('01'-'31') */
     DAY: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
-            return date.date();
+            var number = date.date();
+            if (number < 10) return '0' + number;
+            else return '' + number;
         };
     }, {
-        description: "Date of Month (1-31)",
+        description: "Date of Month as a string ('01'-'31')",
         seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
     }),
-    /* Month of Year (1-12) */
+    /* Month of Year as a string ('01'-'12') */
     MONTH: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
-            return date.month() + 1;
+            var number = date.month() + 1;
+            if (number < 10) return '0' + number;
+            else return '' + number;
         };
     }, {
-        description: "Month of Year (1-12)",
+        description: "Month of Year as a string ('01'-'12')",
         seeAlso: ['YEAR', 'MONTH', 'DAY', 'DATE', 'TIME']
     }),
     /* Year */
