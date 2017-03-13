@@ -47,7 +47,7 @@ module.exports = function(quote) {
         expect(options).to.have.property('portfolio');
         expect(options).to.have.property('columns');
         var portfolio = getPortfolio(options);
-        var formatColumns = getNeededColumns(exchanges, options.columns, options);
+        var formatColumns = getNeededColumns(exchanges, _.flatten([options.columns]).join(','), options);
         var retainColumns = getNeededColumns(exchanges, options.retain, options);
         var precedenceColumns = getNeededColumns(exchanges, options.precedence, options);
         var allColumns = _.uniq(_.compact(_.flatten([
@@ -58,10 +58,10 @@ module.exports = function(quote) {
             formatColumns,
             retainColumns,
             precedenceColumns
-        ], true)));
+        ])));
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
-                columns: allColumns.join(',')
+                columns: allColumns
             }, security, options));
         })).then(dataset => {
             var parser = createParser(exchanges, temporal, quote, dataset, allColumns, options);
@@ -89,7 +89,7 @@ function getPortfolio(options) {
 function getNeededColumns(exchanges, expr, options) {
     if (!expr) return [];
     return _.uniq(_.flatten(_.values(Parser({
-        substitutions: options.columns,
+        substitutions: _.flatten([options.columns]).join(','),
         constant(value) {
             return null;
         },
@@ -111,7 +111,7 @@ function getNeededColumns(exchanges, expr, options) {
 function getPrecedence(expr, cached, options) {
     if (!expr) return [];
     else return _.values(Parser({
-        substitutions: options.columns,
+        substitutions: _.flatten([options.columns]).join(','),
         constant(value) {
             return {};
         },
@@ -129,7 +129,7 @@ function getPrecedence(expr, cached, options) {
 }
 
 function promiseColumns(parser, options) {
-    var columns = options.columns || 'symbol';
+    var columns = _.flatten([options.columns || 'symbol']).join(',');
     var map = parser.parseColumnsMap(columns);
     return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
 }
@@ -149,7 +149,7 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
         return promiseExternal(temporal, quote, dataset, name, expression);
     });
     return Parser({
-        substitutions: options.columns,
+        substitutions: _.flatten([options.columns]).join(','),
         constant(value) {
             return positions => value;
         },

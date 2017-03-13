@@ -213,7 +213,7 @@ describe("quote", function() {
                 'day.close AS "Close"',
                 '(day.close - OFFSET(1, day.close)) *100 / day.close AS "Change"',
                 'day.incomplete AS "incomplete"'
-            ].join(','),
+            ],
             symbol: 'IBM',
             exchange: 'NYSE',
             begin: moment.tz('2009-12-01', tz),
@@ -228,7 +228,7 @@ describe("quote", function() {
                     'DATE(day.ending) AS "Date"',
                     'day.close AS "Close"',
                     '(day.close - OFFSET(1, day.close)) *100 / OFFSET(1, day.close) AS "Change"'
-                ].join(','),
+                ],
                 symbol: 'IBM',
                 exchange: 'NYSE',
                 begin: moment.tz('2009-12-01', tz),
@@ -305,7 +305,7 @@ describe("quote", function() {
                 'DATE(day.ending) AS "Date"',
                 'day.close AS "Close"',
                 '(day.close - OFFSET(1, day.close)) *100 / day.close AS "Change"'
-            ].join(','),
+            ],
             symbol: 'DIS',
             exchange: 'NYSE',
             begin: moment.tz('2016-11-01', tz),
@@ -321,7 +321,7 @@ describe("quote", function() {
                     'DATE(day.ending) AS "Date"',
                     'day.close AS "Close"',
                     '(day.close - OFFSET(1, day.close)) *100 / OFFSET(1, day.close) AS "Change"'
-                ].join(','),
+                ],
                 symbol: 'DIS',
                 exchange: 'NYSE',
                 begin: moment.tz('2016-11-01', tz),
@@ -446,7 +446,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"',
                 '(m30.close - day.close)*100/day.close AS "Change"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -480,7 +480,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"',
                 'CHANGE(m30.close, IF(TIME(day.ending)=TIME(m30.ending),OFFSET(1,day.close),day.close)) AS "Change"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -514,7 +514,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"',
                 '(m30.close - year.close)*100/year.close AS "YTD"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -549,7 +549,7 @@ describe("quote", function() {
                 'm30.close AS Price',
                 'CHANGE(Price, Another) AS Change',
                 'day.close * (1 + Change) AS Another'
-            ].join(','),
+            ],
             criteria: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
@@ -564,7 +564,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"',
                 '(m30.close - day.close)*100/day.close AS "Change"'
-            ].join(','),
+            ],
             criteria: 'm30.close > OFFSET(1, m30.close)',
             symbol: 'USD',
             exchange: 'CAD',
@@ -586,7 +586,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS Time',
                 'm30.close AS Price',
                 'CHANGE(Price, day.close) AS Change'
-            ].join(','),
+            ],
             criteria: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
@@ -607,7 +607,7 @@ describe("quote", function() {
                 'DATE(m30.ending) AS "Date"',
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"'
-            ].join(','),
+            ],
             criteria: 'WORKDAY(month.ending) = WORKDAY(day.ending) and HOUR(m30.ending) = 12',
             symbol: 'USD',
             exchange: 'CAD',
@@ -634,7 +634,7 @@ describe("quote", function() {
                 'DATE(m30.ending) AS "Date"',
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"'
-            ].join(','),
+            ],
             criteria: [
                 'WORKDAY(month.ending) = WORKDAY(day.ending)',
                 'LEADING(HOUR(m60.ending)) = 12',
@@ -678,7 +678,7 @@ describe("quote", function() {
                 'm240.close AS "Price"',
                 'OFFSET(120, m240.close) AS "M1"',
                 'OFFSET(240, m240.close) AS "M2"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: '2016-01-15',
@@ -702,7 +702,7 @@ describe("quote", function() {
                 'OFFSET(120, m240.close) AS "M1"',
                 'OFFSET(240, m240.close) AS "M2"',
                 'm240.incomplete AS "incomplete"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: '2016-02-15',
@@ -717,7 +717,7 @@ describe("quote", function() {
                     'DATE(m240.ending) AS "Date"',
                     'TIME(m240.ending) AS "Time"',
                     'm240.close AS "Price"'
-                ].join(','),
+                ],
                 symbol: 'USD',
                 exchange: 'CAD',
                 begin: '2016-02-16',
@@ -731,7 +731,7 @@ describe("quote", function() {
                     'm240.close AS "Price"',
                     'OFFSET(120, m240.close) AS "M1"',
                     'OFFSET(240, m240.close) AS "M2"'
-                ].join(','),
+                ],
                 symbol: 'USD',
                 exchange: 'CAD',
                 begin: '2016-02-16',

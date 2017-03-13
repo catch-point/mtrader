@@ -147,10 +147,10 @@ function quote(fetch, store, options) {
 function parseWarmUpMap(options) {
     if (!options.columns && !options.criteria && !options.interval) return {day:{}};
     else if (!options.columns && !options.criteria) return {[options.interval]:{}};
-    var exprs = _.compact([options.columns, options.criteria]).join(',');
+    var exprs = _.compact(_.flatten([options.columns, options.criteria])).join(',');
     var p = createParser({}, options);
     var parser = Parser({
-        substitutions: options.columns,
+        substitutions: _.flatten([options.columns]).join(','),
         constant(value) {
             return {};
         },
@@ -207,7 +207,7 @@ function parseCriteriaMap(criteria, cached, options) {
  */
 function createParser(cached, options) {
     return Parser({
-        substitutions: options.columns,
+        substitutions: _.flatten([options.columns]).join(','),
         constant(value) {
             return () => value;
         },
@@ -481,18 +481,18 @@ function readBlocks(collection, blocks, options) {
 function formatColumns(points, options) {
     if (!points.length) return [];
     var fields = _.mapObject(_.pick(points.first(), _.isObject), _.keys);
-    var columns = options.columns ? options.columns :
+    var columns = options.columns ? _.flatten([options.columns]) :
         _.size(fields) == 1 ? _.first(_.map(fields, (keys, interval) => {
             return keys.filter(field => field.match(/^\w+$/)).map(field => {
                 return interval + '.' + field + ' AS "' + field + '"';
             });
-        })).join(',') :
+        })) :
         _.flatten(_.map(fields, (keys, interval) => {
             return keys.filter(field => field.match(/^\w+$/)).map(field => {
                 return interval + '.' + field;
             });
-        }), true).join(',');
-    var map = createParser(fields, options).parseColumnsMap(columns);
+        }), true);
+    var map = createParser(fields, options).parseColumnsMap(columns.join(','));
     var depth = 0;
     return points.map((bar, i, points) => _.mapObject(map, expr => {
         return expr(points.slice(0, i+1).toArray());

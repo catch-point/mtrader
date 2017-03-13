@@ -74,7 +74,7 @@ describe("collect", function() {
               'DATE(ending) AS "date"',
               'day.close AS "close"',
               'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "change"'
-          ].join(','),
+          ],
           criteria: 'day.adj_close > OFFSET(1, day.adj_close)',
           retain: 'COUNT(symbol)<=1',
           precedence: 'DESC(PF(120,day.adj_close))'
@@ -102,7 +102,7 @@ describe("collect", function() {
               'DATE(ending) AS "date"',
               'day.close AS "Price"',
               'MIN(0.5/CVAR(5, 60, day.close), 100) AS "Weight"'
-          ].join(','),
+          ],
           retain: 'SUM(MIN(0.5/CVAR(5, 60, day.adj_close), 100)) <= 100',
           precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
         }).should.eventually.be.like([
@@ -122,7 +122,7 @@ describe("collect", function() {
               'DATE(ending) AS "date"',
               'day.close AS "Price"',
               'MIN(0.5/CVAR(5, 60, day.close), 100) AS "Weight"'
-          ].join(','),
+          ],
           retain: [
             'MAXCORREL(60,day.adj_close)<0.75',
             'SUM(MIN(0.5/CVAR(5,60,day.adj_close), 100))<=100'
@@ -193,7 +193,7 @@ describe("collect", function() {
               'CVAR(5, 60, day.adj_close) AS risk',
               'IF(cor<0.75 AND SUM(IF(cor<0.75,MIN(0.5/risk,100),0))<=100, MIN(0.5/risk,100), 0) AS target',
               '(target + SUMPREV(2,"target"))/3 AS weight'
-          ].join(','),
+          ],
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'weight OR PREV("weight")'
         }).should.eventually.be.like([
@@ -247,7 +247,7 @@ describe("collect", function() {
               'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission',
               'IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position) AS basis',
               'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission AS profit'
-          ].join(','),
+          ],
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
         }).then(data=>_.values(_.groupBy(data, 'symbol')).map(_.last))
@@ -269,7 +269,7 @@ describe("collect", function() {
               'symbol',
               'DATE(ending) AS "date"',
               'day.close AS "Price"'
-          ].join(','),
+          ],
           // USD.CAD day.ending is an hour after SPY.ARCA day.ending, so
           // the previous USD.CAD day.close is used
           retain: 'exchange=IF(USD.CAD(CVAR(5,60,day.close))<0.01,"ARCA","TSX")'
@@ -307,7 +307,7 @@ describe("collect", function() {
               'symbol',
               'DATE(ending) AS "date"',
               'day.close AS "Price"'
-          ].join(','),
+          ],
           retain: 'exchange=IF(USD.CAD(TOD(CVAR(5,60,m60.close)))<0.01,"ARCA","TSX")'
         }).should.eventually.be.like([
             {symbol:"XIC",date:"2015-10-01",Price:20.95},
