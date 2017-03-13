@@ -118,13 +118,13 @@ function fetchOptionsFactory(fetch) {
 }
 
 /**
- * Given begin/end range, columns, and criteria returns an array of row objects
+ * Given begin/end range, columns, and retain returns an array of row objects
  * that each pass the given criteria and are within the begin/end range.
  */
 function quote(fetch, store, options) {
     var exprMap = parseWarmUpMap(options);
     var cached = _.mapObject(exprMap, _.keys);
-    var criteria = parseCriteriaMap(options.criteria, cached, options);
+    var retain = parseCriteriaMap(options.retain, cached, options);
     var name = options.exchange ?
         options.symbol + '.' + options.exchange : options.symbol;
     var intervals = periods.sort(_.keys(exprMap));
@@ -136,18 +136,18 @@ function quote(fetch, store, options) {
         var quoteBars = fetchBars.bind(this, fetch, db);
         return inlinePadBegin(quoteBars, interval, options)
           .then(options => inlinePadEnd(quoteBars, interval, options))
-          .then(options => mergeBars(quoteBars, exprMap, criteria, options));
+          .then(options => mergeBars(quoteBars, exprMap, retain, options));
     }).then(points => formatColumns(points, options));
 }
 
 /**
- * Finds out what intervals are used in columns and criteria and put together a
+ * Finds out what intervals are used in columns and retain and put together a
  * list of what expressions should be computed and stored for further reference.
  */
 function parseWarmUpMap(options) {
-    if (!options.columns && !options.criteria && !options.interval) return {day:{}};
-    else if (!options.columns && !options.criteria) return {[options.interval]:{}};
-    var exprs = _.compact(_.flatten([options.columns, options.criteria])).join(',');
+    if (!options.columns && !options.retain && !options.interval) return {day:{}};
+    else if (!options.columns && !options.retain) return {[options.interval]:{}};
+    var exprs = _.compact(_.flatten([options.columns, options.retain])).join(',');
     var p = createParser({}, options);
     var parser = Parser({
         substitutions: _.flatten([options.columns]).join(','),
@@ -179,8 +179,8 @@ function parseWarmUpMap(options) {
 /**
  * Create a function for each interval that should be evaluated to include in result.
  */
-function parseCriteriaMap(criteria, cached, options) {
-    var list = createParser(cached, options).parseCriteriaList(criteria);
+function parseCriteriaMap(retain, cached, options) {
+    var list = createParser(cached, options).parseCriteriaList(retain);
     var intervals = list.reduce((intervals, fn) => {
         var diff = _.without(fn.intervals || [], intervals);
         if (_.isEmpty(diff)) return intervals;
@@ -284,10 +284,10 @@ function inlinePadEnd(quoteBars, interval, options) {
 }
 
 /**
- * For each expression interval it reads the bars and evaluates the criteria.
+ * For each expression interval it reads the bars and evaluates the retain.
  * @returns the combined bars as an array of points
  */
-function mergeBars(quoteBars, exprMap, criteria, options) {
+function mergeBars(quoteBars, exprMap, retain, options) {
     var intervals = _.keys(exprMap);
     return intervals.reduceRight((promise, interval) => {
         return promise.then(signals => Promise.all(signals.map(signal => {
@@ -311,7 +311,7 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
                     return start;
                 }, intraday.length);
                 return intraday;
-            }).then(points => readSignals(points, interval, entry, signal.exit, criteria));
+            }).then(points => readSignals(points, interval, entry, signal.exit, retain));
         }))).then(signalsMap => _.flatten(signalsMap, true));
     }, Promise.resolve([{}])).then(signals => {
         return signals.reduce((points, signal, i) => {
@@ -327,12 +327,12 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
 /**
  * Identifies the entry and exit points and returns an array of these signals
  */
-function readSignals(points, interval, entry, exit, criteria) {
+function readSignals(points, interval, entry, exit, retain) {
     if (!points.length) return [];
     var start = points.sortedIndexOf(entry, 'ending');
     if (start > 0 && (start == points.length || entry.ending < points.item(start).ending))
         start--;
-    var expr = criteria[interval];
+    var expr = retain[interval];
     if (!expr && exit) return [{
         points: points.slice(start, points.length -1),
         exit: points.last()
@@ -462,7 +462,7 @@ function readBlocks(collection, blocks, options) {
         var format = options.begin;
         var from = bars.sortedIndexOf({ending: format}, 'ending');
         if (from == bars.length || from > 0 && format < bars.item(from).ending)
-            from--; // include prior value for criteria
+            from--; // include prior value for retain
         var start = Math.min(Math.max(from - options.pad_begin, 0), bars.length -1);
         return bars.slice(start);
     }).then(bars => {

@@ -128,7 +128,7 @@ var functions = module.exports.functions = {
                 begin: first.ending,
                 end: last.ending,
                 pad_end: 0,
-                criteria: null
+                retain: null
             }, options);
         });
         return Promise.all(optionset.map(options => quote(options))).then(dataset => {

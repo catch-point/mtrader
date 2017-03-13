@@ -75,8 +75,7 @@ describe("collect", function() {
               'day.close AS "close"',
               'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "change"'
           ],
-          criteria: 'day.adj_close > OFFSET(1, day.adj_close)',
-          retain: 'COUNT(symbol)<=1',
+          retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNT(symbol)<=1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.2467},

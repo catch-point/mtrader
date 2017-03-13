@@ -59,9 +59,11 @@ module.exports = function(quote) {
             retainColumns,
             precedenceColumns
         ])));
+        var criteria = getQuoteCriteria(exchanges, options.retain, options).join(' AND ');
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
-                columns: allColumns
+                columns: allColumns,
+                retain: criteria
             }, security, options));
         })).then(dataset => {
             var parser = createParser(exchanges, temporal, quote, dataset, allColumns, options);
@@ -106,6 +108,27 @@ function getNeededColumns(exchanges, expr, options) {
             else return _.flatten(_.compact(args), true);
         }
     }).parseColumnsMap(expr)), true));
+}
+
+function getQuoteCriteria(exchanges, expr, options) {
+    if (!expr) return [];
+    return _.compact(Parser({
+        substitutions: _.flatten([options.columns]).join(','),
+        constant(value) {
+            return _.isString(value) ? JSON.stringify(value) : value;
+        },
+        variable(name) {
+            return name;
+        },
+        expression(expr, name, args) {
+            var external = isInstrument(exchanges, name);
+            var order = name == 'DESC' || name == 'ASC';
+            var fn = aggregate.functions[name];
+            var agg = _.some(args, _.isNull);
+            if (external || order || fn || agg) return null;
+            else return expr;
+        }
+    }).parseCriteriaList(expr));
 }
 
 function getPrecedence(expr, cached, options) {

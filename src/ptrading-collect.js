@@ -59,8 +59,7 @@ function usage(command) {
         .option('--pad-end <number>', "Number of bars after end dateTime")
         .option('--portfolio <list>', "Comma separated list of <symbol>.<exchange> to search")
         .option('--columns <list>', "Comma separated list of columns (such as day.close)")
-        .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
-        .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero for a security to be retained in the result")
+        .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('--output <file>', "CSV file to write the result into")
         .option('--reverse', "Reverse the order of the rows")
@@ -110,25 +109,10 @@ help(app, 'collect', `
     help pad_begin  
     help pad_end  
     help columns  
-    help criteria  
     help retain  
     help precedence  
     help output  
     help reverse  
-`);
-help(app, 'retain', `
-  Usage: set retain :expression
-
-  An expression (possibly of an aggregate function) of each included
-  security that must be true to be included in the result
-
-  See also:
-    help expression  
-    help common-functions  
-    help lookback-functions  
-    help indicator-functions  
-    help aggregate-functions  
-    help LEADING  
 `);
 help(app, 'precedence', `
   Usage: set precedence :expression
@@ -168,7 +152,7 @@ function readBegin(begin, options) {
     if (!begin) return options;
     if (begin.match(/^\d\d\d\d$/)) return _.defaults({
         begin: begin + '-01-01',
-        end: (1 + begin) + '-01-01'
+        end: (1 + +begin) + '-01-01'
     }, options);
     if (begin.match(/^\d\d\d\d-\d\d$/)) return _.defaults({
         begin: begin + '-01',

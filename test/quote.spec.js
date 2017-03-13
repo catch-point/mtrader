@@ -550,7 +550,7 @@ describe("quote", function() {
                 'CHANGE(Price, Another) AS Change',
                 'day.close * (1 + Change) AS Another'
             ],
-            criteria: 'Price > OFFSET(1, Price)',
+            retain: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -565,7 +565,7 @@ describe("quote", function() {
                 'm30.close AS "Price"',
                 '(m30.close - day.close)*100/day.close AS "Change"'
             ],
-            criteria: 'm30.close > OFFSET(1, m30.close)',
+            retain: 'm30.close > OFFSET(1, m30.close)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -587,7 +587,7 @@ describe("quote", function() {
                 'm30.close AS Price',
                 'CHANGE(Price, day.close) AS Change'
             ],
-            criteria: 'Price > OFFSET(1, Price)',
+            retain: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -608,7 +608,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"'
             ],
-            criteria: 'WORKDAY(month.ending) = WORKDAY(day.ending) and HOUR(m30.ending) = 12',
+            retain: 'WORKDAY(month.ending) = WORKDAY(day.ending) and HOUR(m30.ending) = 12',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-01-01T08:30:00-0500'),
@@ -635,7 +635,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"'
             ],
-            criteria: [
+            retain: [
                 'WORKDAY(month.ending) = WORKDAY(day.ending)',
                 'LEADING(HOUR(m60.ending)) = 12',
                 'm30.close >= OFFSET(1,m30.close)'
