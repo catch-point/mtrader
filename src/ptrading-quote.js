@@ -100,8 +100,7 @@ if (require.main === module) {
     var workers = commander.workers || os.cpus().length;
     var children = _.range(workers).map(() => {
         return replyTo(config.fork(module.filename, program)).handle('fetch', payload => {
-            var options = _.defaults({}, payload, config.options());
-            return fetch(options);
+            return fetch(_.defaults({}, payload, config.options()));
         });
     });
     module.exports = function(options) {
@@ -112,7 +111,7 @@ if (require.main === module) {
         children.forEach(child => child.disconnect());
         return fetch.close();
     };
-    module.exports.shell = shell.bind(this, program.description(), children);
+    module.exports.shell = shell.bind(this, program.description(), module.exports);
 }
 
 function chooseWorker(workers, string) {
@@ -132,14 +131,14 @@ function hashCode(str){
     return hash;
 }
 
-function shell(desc, children, app) {
-    app.on('quit', () => children.forEach(child => child.disconnect()));
-    app.on('exit', () => children.forEach(child => child.disconnect()));
+function shell(desc, quote, app) {
+    app.on('quit', () => quote.close());
+    app.on('exit', () => quote.close());
     app.cmd('quote :symbol', desc, (cmd, sh, cb) => {
         var s = cmd.params.symbol;
         var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
-        chooseWorker(children, cmd.params.symbol).request('quote', _.defaults({
+        quote(_.defaults({
             symbol: symbol,
             exchange: exchange
         }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);

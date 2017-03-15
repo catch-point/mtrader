@@ -40,6 +40,11 @@ const logger = require('./logger.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
+/**
+ * Delegates most computations to quote.js and add some functions that can compare
+ * securities and read previous retained values.
+ * @returns a function that returns array of row objects based on given options.
+ */
 module.exports = function(quote) {
     var temporal = 'DATETIME(ending)';
     var exchanges = _.keys(config('exchanges'));
@@ -63,13 +68,20 @@ module.exports = function(quote) {
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
                 columns: allColumns,
-                retain: criteria
+                retain: criteria,
+                pad_leading: 0,
+                pad_begin: (options.pad_begin || 0) + (options.pad_leading || 0)
             }, security, options));
         })).then(dataset => {
             var parser = createParser(exchanges, temporal, quote, dataset, allColumns, options);
             return collectDataset(exchanges, dataset, temporal, parser, options);
+        }).then(collection => {
+            var begin = moment(options.begin || moment(options.now).endOf('day')).toISOString();
+            var start = _.sortedIndex(collection, {[temporal]: begin}, temporal) - (options.pad_begin || 0);
+            if (start <= 0) return collection;
+            else return collection.slice(start);
         }).then(collection => collection.reduce((result, points) => {
-            result.push.apply(result, _.values(points));
+            result.push.apply(result, _.values(points).filter(_.isObject));
             return result;
         }, []));
     }, {
@@ -77,6 +89,9 @@ module.exports = function(quote) {
     });
 };
 
+/**
+ * Parses a comma separated list into symbol/exchange pairs.
+ */
 function getPortfolio(options) {
     return options.portfolio.split(/\s*,\s*/).map(symbolExchange => {
         var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
@@ -88,6 +103,9 @@ function getPortfolio(options) {
     });
 }
 
+/**
+ * Returns the expressions that should be delegated to quote.js
+ */
 function getNeededColumns(exchanges, expr, options) {
     if (!expr) return [];
     return _.uniq(_.flatten(_.values(Parser({
@@ -110,6 +128,9 @@ function getNeededColumns(exchanges, expr, options) {
     }).parseColumnsMap(expr)), true));
 }
 
+/**
+ * Returns the retain expression that should be delegated to quote.js
+ */
 function getQuoteCriteria(exchanges, expr, options) {
     if (!expr) return [];
     return _.compact(Parser({
@@ -131,38 +152,9 @@ function getQuoteCriteria(exchanges, expr, options) {
     }).parseCriteriaList(expr));
 }
 
-function getPrecedence(expr, cached, options) {
-    if (!expr) return [];
-    else return _.values(Parser({
-        substitutions: _.flatten([options.columns]).join(','),
-        constant(value) {
-            return {};
-        },
-        variable(name) {
-            return {by: name};
-        },
-        expression(expr, name, args) {
-            if (name == 'DESC') return {desc: true, by: _.first(args).by};
-            else if (name == 'ASC') return {desc: false, by:  _.first(args).by};
-            else if (_.contains(cached, expr)) return {by: expr};
-            else if (!aggregate.functions[name]) return {};
-            else throw Error("Aggregate functions cannot be used here: " + expr);
-        }
-    }).parseColumnsMap(expr));
-}
-
-function promiseColumns(parser, options) {
-    var columns = _.flatten([options.columns || 'symbol']).join(',');
-    var map = parser.parseColumnsMap(columns);
-    return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
-}
-
-function promiseRetain(parser, options) {
-    var expr = options.retain;
-    if (!expr) return Promise.resolve(_.constant(true));
-    return Promise.resolve(parser.parse(expr));
-}
-
+/**
+ * Creates an expression parser that recognizes the aggregate functions.
+ */
 function createParser(exchanges, temporal, quote, dataset, cached, options) {
     var external = _.memoize(expr => {
         var m = expr.match(/^([^(]+)\((.*)\)$/);
@@ -196,6 +188,9 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
     });
 }
 
+/**
+ * Combines the quote.js results into a single array containing retained securities.
+ */
 function collectDataset(exchanges, dataset, temporal, parser, options) {
     var precedenceColumns = getNeededColumns(exchanges, options.precedence, options);
     var precedence = getPrecedence(options.precedence, precedenceColumns, options);
@@ -222,17 +217,66 @@ function collectDataset(exchanges, dataset, temporal, parser, options) {
                 result[row] = pending;
                 return _.mapObject(columns, column => column(result));
             });
-            result[row] = _.object(_.keys(accepted), formatted);
+            result[row] = _.extend(_.object(_.keys(accepted), formatted), {
+                [temporal]: points[0][temporal]
+            });
             return result;
         }, []);
     }));
 }
 
+/**
+ * Create a function and direction that securities should be sorted with.
+ */
+function getPrecedence(expr, cached, options) {
+    if (!expr) return [];
+    else return _.values(Parser({
+        substitutions: _.flatten([options.columns]).join(','),
+        constant(value) {
+            return {};
+        },
+        variable(name) {
+            return {by: name};
+        },
+        expression(expr, name, args) {
+            if (name == 'DESC') return {desc: true, by: _.first(args).by};
+            else if (name == 'ASC') return {desc: false, by:  _.first(args).by};
+            else if (_.contains(cached, expr)) return {by: expr};
+            else if (!aggregate.functions[name]) return {};
+            else throw Error("Aggregate functions cannot be used here: " + expr);
+        }
+    }).parseColumnsMap(expr));
+}
+
+/**
+ * @returns a map of functions that can compute the column values for a given row.
+ */
+function promiseColumns(parser, options) {
+    var columns = _.flatten([options.columns || 'symbol']).join(',');
+    var map = parser.parseColumnsMap(columns);
+    return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
+}
+
+/**
+ * Returns a function that can determine if the security should be retained
+ */
+function promiseRetain(parser, options) {
+    var expr = options.retain;
+    if (!expr) return Promise.resolve(_.constant(true));
+    return Promise.resolve(parser.parse(expr));
+}
+
+/**
+ * Determines if a function name is referring to an external security.
+ */
 function isInstrument(exchanges, name) {
     if (!name || !~name.indexOf('.')) return false;
     else return _.contains(exchanges, name.substring(name.indexOf('.')+1));
 }
 
+/**
+ * Takes the quote.js results as an array and matches the results by temporal date calling cb.
+ */
 function reduceInterval(data, temporal, cb, memo) {
     var lists = data.map(ar => List.from(ar));
     while (lists.some(list => list.length)) {
@@ -245,6 +289,9 @@ function reduceInterval(data, temporal, cb, memo) {
     return memo;
 }
 
+/**
+ * Retrieves external security data that is used in an expression.
+ */
 function promiseExternal(temporal, quote, dataset, name, expr) {
     expect(name).to.match(/^\S+\.\w+$/);
     var begin = _.first(_.pluck(_.map(dataset, _.first), temporal).sort());

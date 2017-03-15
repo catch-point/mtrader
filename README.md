@@ -81,9 +81,8 @@ ptrading.quote({
 */
 
 // calculate hypothetical trades for a portfolio
-ptrading.collect({
+ptrading.collect(["2017-01-09"], {
   portfolio: 'YHOO.NASDAQ,IBM.NYSE',
-  begin: "2017-01-09",
   end: "2017-01-14",
   precedence: 'PF(120,day.adj_close)',
   columns: [

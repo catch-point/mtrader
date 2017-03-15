@@ -101,7 +101,7 @@ function fetchOptionsFactory(fetch) {
             var oend = options.end && moment.tz(options.end, options.tz);
             var end = oend && eod.isBefore(oend) ? eod : oend; // limit end to end of today
             var pad_begin = options.pad_begin ? options.pad_begin :
-                    options.begin ? 0 : 99;
+                    options.begin ? 0 : 100;
             var pad_end = end && options.pad_end || 0;
             if (!begin.isValid())
                 throw Error("Begin date is not valid " + options.begin);
@@ -258,9 +258,11 @@ function inlinePadBegin(quoteBars, interval, options) {
         pad_end: 0
     }, options)).then(bars => {
         if (!bars.length) return options;
+        var start = bars.sortedIndexOf({ending: options.begin}, 'ending');
+        var i = Math.max(start - options.pad_begin, 0);
         return _.defaults({
             pad_begin: 0,
-            begin: bars.first().ending
+            begin: bars.item(i).ending
         }, options);
     });
 }

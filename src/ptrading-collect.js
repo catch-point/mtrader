@@ -39,8 +39,7 @@ const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const replyTo = require('./ipc-promise-reply.js');
 const config = require('./ptrading-config.js');
-const quote = require('./ptrading-quote.js');
-const collect = require('./collect.js')(quote);
+const Collect = require('./collect.js');
 const expect = require('chai').expect;
 const aggregate = require('./aggregate-functions.js');
 
@@ -66,53 +65,118 @@ function usage(command) {
         .option('--transpose', "Swap the columns and rows");
 }
 
-if (require.main === module) {
-    var program = usage(commander).parse(process.argv);
-    if (program.args.length) {
-        Promise.resolve(program.args).then(args => {
-            return collect(readBegin(args.join(' '), config.options()));
-        }).then(result => tabular(result))
-          .catch(err => logger.error(err, err.stack))
-          .then(() => quote.close());
-    } else {
-        program.help();
-    }
+if (process.send) {
+    var parent = replyTo(process).handle('collect', payload => {
+        return collect()(_.defaults({}, payload, config.options()));
+    });
+    var collect = _.once(() => Collect(function(options) {
+        return parent.request('quote', options);
+    }));
+    process.on('disconnect', () => collect().close());
 } else {
-    var program = usage(new commander.Command());
-    module.exports = collect;
+    var quote = require('./ptrading-quote.js');
+    var collect = Collect(quote);
+    var program = require.main === module ?
+        usage(commander).parse(process.argv) : usage(new commander.Command());
+    var workers = commander.workers || os.cpus().length;
+    var children = _.range(workers).map(() => {
+        return replyTo(config.fork(module.filename, program)).handle('quote', payload => {
+            return quote(_.defaults({}, payload, config.options()));
+        });
+    });
+    var seq = 0;
+    module.exports = function(segments, options) {
+        if (!options) options = segments;
+        if (!_.isArray(segments) && !_.isString(segments)) segments = options.begin;
+        if (!segments) throw Error("Collect needs a begin date to start from");
+        if (!_.isArray(segments)) segments = [segments];
+        var ranges = segments.map(segment => readRange(segment)).map((range, i, ranges) => {
+            if (range.end || i == ranges.length -1) return range;
+            else return _.extend(range, {end: ranges[i+1].begin});
+        });
+        return Promise.all(ranges.map((range, i, ranges) => {
+            var opts = i > 0 && i < ranges.length -1 ? {pad_begin: 0, pad_end: 0} :
+                i > 0 ? {pad_begin: 0} : i < ranges.length -1 ? {pad_end: 0} : {};
+            return children[seq++ % workers].request('collect', _.defaults(opts, range, options));
+        })).then(dataset => {
+            return _.flatten(dataset, true);
+        });
+    };
     module.exports.close = function() {
+        children.forEach(child => child.disconnect());
         return quote.close();
     };
-    module.exports.shell = shell.bind(this, program.description());
+    module.exports.shell = shell.bind(this, program.description(), module.exports);
+    if (require.main === module && program.args.length) {
+        Promise.resolve(program.args).then(args => {
+            return module.exports(args, config.options());
+        }).then(result => tabular(result))
+          .catch(err => logger.error(err, err.stack))
+          .then(() => module.exports.close());
+    } else if (require.main === module) {
+        program.help();
+    }
 }
 
-function shell(desc, app) {
-    app.cmd('collect :begin([\\d\\-:+.WTZ]+)?', desc, (cmd, sh, cb) => {
-        var options = readBegin(cmd.params.begin, config.options());
+function readRange(begin) {
+    if (!begin) return {};
+    else if (begin.match(/^\d\d\d\d$/)) return {
+        begin: begin + '-01-01',
+        end: (1 + +begin) + '-01-01'
+    };
+    else if (begin.match(/^\d\d\d\d-\d\d$/)) return {
+        begin: begin + '-01',
+        end: moment(begin + '-01').add(1, 'month').format('YYYY-MM-DD')
+    };
+    else if (begin.match(/^\d\d\d\d-?W\d\d(-?\d)?$/)) return {
+        begin: begin,
+        end: moment(begin).add(1, 'week').format('YYYY-MM-DD')
+    };
+    else return {
+        begin: begin,
+    };
+}
+
+function shell(desc, collect, app) {
+    app.on('quit', () => collect.close());
+    app.on('exit', () => collect.close());
+    app.cmd('collect', desc, (cmd, sh, cb) => {
         collect(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
+    });
+    app.cmd('collect :begin([\\d\\-:+.WTZ ]+)', desc, (cmd, sh, cb) => {
+        collect(cmd.params.begin.split(' '), config.options())
+            .then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     _.forEach(aggregate.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));
     });
 // help
 help(app, 'collect', `
-  Usage: collect :begin
+  Usage: collect :begins...
 
   ${desc}
 
-    :begin
-      Indicates the year, month, week, or start date that should be collected. 
+    :begins..
+      List of ranges: year, month, week, or start date that should be collected.
+      These will then be appended together. Use pad_leading to run up PREV values
+      between ranges.
 
   See also:
     help begin  
     help end  
     help pad_begin  
     help pad_end  
+    help pad_leading  
     help columns  
     help retain  
     help precedence  
     help output  
     help reverse  
+`);
+help(app, 'pad_leading', `
+  Usage: set pad_leading 0  
+
+  Sets the number of additional rows to to compute as a warmup, but not included in the result
 `);
 help(app, 'precedence', `
   Usage: set precedence :expression
@@ -146,29 +210,6 @@ help(app, 'ASC', `
 
   Indicates the expression order should not be reversed
 `);
-}
-
-function readBegin(begin, options) {
-    if (!begin) return options;
-    if (begin.match(/^\d\d\d\d$/)) return _.defaults({
-        begin: begin + '-01-01',
-        end: (1 + +begin) + '-01-01'
-    }, options);
-    if (begin.match(/^\d\d\d\d-\d\d$/)) return _.defaults({
-        begin: begin + '-01',
-        end: moment(begin + '-01').add(1, 'month').format('YYYY-MM-DD')
-    }, options);
-    if (begin.match(/^\d\d\d\d-?W\d\d(-?\d)?$/)) return _.defaults({
-        begin: begin,
-        end: moment(begin).add(1, 'week').format('YYYY-MM-DD')
-    }, options);
-    if (options.pad_end) return _.defaults({
-        begin: begin,
-        end: begin
-    }, options);
-    else return _.defaults({
-        begin: begin,
-    }, options);
 }
 
 function functionHelp(name, fn) {

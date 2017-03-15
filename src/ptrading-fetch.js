@@ -57,7 +57,6 @@ function usage(command) {
 
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
-    var fetch = Fetch();
     if (program.args.length) {
         var interval = program.args[0];
         var symbol = program.args[1];
@@ -66,6 +65,7 @@ if (require.main === module) {
             exchange = symbol.substring(symbol.lastIndexOf('.')+1);
             symbol = symbol.substring(0, symbol.lastIndexOf('.'));
         }
+        var fetch = Fetch();
         Promise.resolve().then(() => fetch(_.defaults({
             interval: interval,
             symbol: symbol,
@@ -76,9 +76,10 @@ if (require.main === module) {
         .then(() => fetch.close());
     } else if (process.send) {
         replyTo(process).handle('fetch', payload => {
-            return fetch(_.defaults({}, payload, config.options()));
+            return fetch()(_.defaults({}, payload, config.options()));
         });
-        process.on('disconnect', () => fetch.close());
+        var fetch = _.once(() => Fetch());
+        process.on('disconnect', () => fetch().close());
     } else {
         program.help();
     }
