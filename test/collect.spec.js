@@ -66,7 +66,7 @@ describe("collect", function() {
     it("count", function() {
         return collect({
           portfolio: 'YHOO.NASDAQ,IBM.NYSE',
-          pad_begin: 9,
+          pad_begin: 10,
           begin: "2017-01-13",
           end: "2017-01-14",
           columns: [
@@ -230,7 +230,8 @@ describe("collect", function() {
     it("max correl trades", function() {
         return collect({
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
-          begin: "2016-11-14",
+          pad_leading: 11,
+          begin: "2016-11-30",
           end: "2016-12-01",
           columns: [
               'symbol',
@@ -249,13 +250,11 @@ describe("collect", function() {
           ],
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
-        }).then(data=>_.values(_.groupBy(data, 'symbol')).map(_.last))
-          .then(data=>data.map(trans=>_.omit(trans,'cor','risk','weight','target','proceeds','commission')))
+        }).then(data=>data.map(o=>_.omit(o,'cor','risk','weight','target','proceeds','commission')))
           .should.eventually.be.like([
             {symbol:"XLF",date:"2016-11-30",shares:0,position:720,price:22.49,basis:22.22,profit:186.06},
-            {symbol:"XLI",date:"2016-11-21",shares:-117,position:0,price:61.61,basis:61.23,profit:39.37},
-            {symbol:"XLE",date:"2016-11-30",shares:-33,position:213,price:74.41,basis:70.43,profit:842.59},
             {symbol:"XLK",date:"2016-11-30",shares:18,position:621,price:47.52,basis:46.62,profit:545.81},
+            {symbol:"XLE",date:"2016-11-30",shares:-33,position:213,price:74.41,basis:70.43,profit:842.59},
             {symbol:"XLY",date:"2016-11-30",shares:-114,position:223,price:81.83,basis:80.07,profit:387.66}
         ]);
     });

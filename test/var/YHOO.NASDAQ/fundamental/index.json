@@ -1,0 +1,57 @@
+{
+ "properties": {},
+ "tables": [
+  {
+   "id": "fundamental",
+   "name": "fundamental",
+   "size": 1,
+   "head": [
+    {
+     "yahoo_symbol": "YHOO",
+     "symbol": "YHOO",
+     "MarketCapitalization": "43.96B",
+     "name": "Yahoo! Inc.",
+     "exch": "NMS",
+     "AverageDailyVolume": "8383310",
+     "EarningsShare": "-4.756",
+     "EPSEstimateCurrentYear": "0.680",
+     "EPSEstimateNextYear": "0.710",
+     "EPSEstimateNextQuarter": "0.150",
+     "BookValue": "32.502",
+     "EBITDA": "226.80M",
+     "PriceSales": "8.580",
+     "PriceBook": "1.427",
+     "PEGRatio": "17.570",
+     "PriceEPSEstimateCurrentYear": "67.581",
+     "PriceEPSEstimateNextYear": "64.725",
+     "ShortRatio": "7.490"
+    }
+   ],
+   "tail": [
+    {
+     "yahoo_symbol": "YHOO",
+     "symbol": "YHOO",
+     "MarketCapitalization": "43.96B",
+     "name": "Yahoo! Inc.",
+     "exch": "NMS",
+     "AverageDailyVolume": "8383310",
+     "EarningsShare": "-4.756",
+     "EPSEstimateCurrentYear": "0.680",
+     "EPSEstimateNextYear": "0.710",
+     "EPSEstimateNextQuarter": "0.150",
+     "BookValue": "32.502",
+     "EBITDA": "226.80M",
+     "PriceSales": "8.580",
+     "PriceBook": "1.427",
+     "PEGRatio": "17.570",
+     "PriceEPSEstimateCurrentYear": "67.581",
+     "PriceEPSEstimateNextYear": "64.725",
+     "ShortRatio": "7.490"
+    }
+   ],
+   "updatedAt": "2017-03-15T15:58:33.327Z",
+   "properties": {},
+   "createdAt": "2017-03-15T15:58:33.327Z"
+  }
+ ]
+}
