@@ -438,7 +438,7 @@ function evalBlocks(collection, warmUpLength, blocks, expressions, options) {
                 collection.propertyOf(block, 'warmUpBlocks', blocks);
             }).then(() => dataBlocks);
         });
-    }, Promise.resolve(_.object(blocks, [])))).then(() => blocks.slice(1));
+    }, Promise.resolve(_.object(blocks, [])))).then(() => blocks);
 }
 
 /**
