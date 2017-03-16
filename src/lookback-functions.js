@@ -353,33 +353,33 @@ var functions = module.exports.functions = {
         var pct = asPositiveInteger(chance, "VAR")/100;
         var n = asPositiveInteger(duration, "VAR");
         return _.extend(bars => {
-            var prices = getValues(n, calc, bars);
-            var change = _.initial(prices).map((price, i) => {
-                return (price - prices[i+1]) / prices[i+1];
+            var prices = getValues(n+1, calc, bars);
+            var change = _.rest(prices).map((price, i) => {
+                return (price - prices[i]) / prices[i];
             });
-            var avg = change.reduce((a, b) => a + b, 0) / change.length;
+            var avg = change.reduce((a, b) => a + b) / change.length;
             var stdev = statkit.std(change);
             return -(statkit.norminv(pct) * stdev + avg);
         }, {
-            warmUpLength: n + calc.warmUpLength -1
+            warmUpLength: n + calc.warmUpLength
         });
     },
     CVAR(opts, chance, duration, calc) {
         var pct = asPositiveInteger(chance, "CVAR")/100;
         var n = asPositiveInteger(duration, "CVAR");
         return _.extend(bars => {
-            var prices = getValues(n, calc, bars);
-            var change = _.initial(prices).map((price, i) => {
-                return (price - prices[i+1]) / prices[i+1];
+            var prices = getValues(n+1, calc, bars);
+            var change = _.rest(prices).map((price, i) => {
+                return (price - prices[i]) / prices[i];
             });
-            var avg = change.reduce((a, b) => a + b, 0) / change.length;
+            var avg = change.reduce((a, b) => a + b) / change.length;
             var stdev = statkit.std(change);
             var risk = statkit.norminv(pct) * stdev + avg;
             var shortfall = change.filter(chg => chg < risk);
             if (!shortfall.length) return -risk;
-            else return -shortfall.reduce((a, b) => a + b, 0) / shortfall.length;
+            else return -shortfall.reduce((a, b) => a + b) / shortfall.length;
         }, {
-            warmUpLength: n + calc.warmUpLength -1
+            warmUpLength: n + calc.warmUpLength
         });
     }
 };
