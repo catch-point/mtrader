@@ -152,24 +152,25 @@ function parseWarmUpMap(options) {
     var parser = Parser({
         substitutions: _.flatten([options.columns]).join(','),
         constant(value) {
-            return {};
+            return {warmUpLength: 0};
         },
         variable(name) {
-            if (!~name.indexOf('.')) return {};
-            else return {[name.substring(0, name.indexOf('.'))]: {}};
+            if (!~name.indexOf('.')) return {warmUpLength: 0};
+            else return {[name.substring(0, name.indexOf('.'))]: {}, warmUpLength: 0};
         },
         expression(expr, name, args) {
             var fn = p.parse(expr);
-            var interval =_.first(fn.intervals);
-            if (fn.intervals && fn.intervals.length == 1 && fn.warmUpLength && _.isFinite(fn.warmUpLength))
-                return {[interval]: {[expr]: fn}};
-            var intervals = periods.sort(_.uniq(_.flatten(args.map(_.keys), true).concat(fn.intervals || [])));
-            return _.object(intervals, intervals.map(interval => {
+            var args_inters = _.without(_.flatten(args.map(_.keys), true), 'warmUpLength');
+            var inters = periods.sort(_.uniq(args_inters.concat(fn.intervals || [])));
+            var map = _.object(inters, inters.map(interval => {
                 return _.extend.apply(_, _.compact(_.pluck(args, interval)));
             }));
+            map.warmUpLength = _.max(_.pluck(args, 'warmUpLength'));
+            if (_.size(fn.intervals) != 1 || fn.warmUpLength == map.warmUpLength) return map;
+            else return {[_.first(fn.intervals)]: {[expr]: fn}, warmUpLength: fn.warmUpLength};
         }
     });
-    var values = _.values(parser.parseColumnsMap(exprs));
+    var values = _.values(_.mapObject(parser.parseColumnsMap(exprs), o => _.omit(o, 'warmUpLength')));
     var intervals = periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
     return _.object(intervals, intervals.map(interval => {
         return _.extend.apply(_, _.compact(_.pluck(values, interval)));
