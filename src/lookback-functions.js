@@ -63,6 +63,19 @@ module.exports = function(name, args, options) {
 };
 
 var functions = module.exports.functions = {
+    /* Percent change ratio */
+    CHANGE(opts, target, reference, denominator) {
+        var ref = reference || _.extend(bars => target(bars.slice(0, bars.length -1)), {
+            warmUpLength: target.warmUpLength +1
+        });
+        var den = denominator || ref;
+        return _.extend(bars => {
+            var numerator = target(bars) - ref(bars);
+            return numerator * 100 / den(bars);
+        }, {
+            warmUpLength: _.max(_.pluck([target, ref, den], 'warmUpLength'))
+        });
+    },
     /* Offset value N periods ago */
     OFFSET(opts, n_periods, calc) {
         var n = asPositiveInteger(n_periods, "OFFSET");
@@ -385,7 +398,7 @@ var functions = module.exports.functions = {
 };
 
 _.forEach(functions, fn => {
-    fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/);
+    fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,?\s*([^)]*)\)/)[1];
 });
 
 function asPositiveInteger(calc, msg) {

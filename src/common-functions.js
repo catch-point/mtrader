@@ -151,6 +151,11 @@ var functions = module.exports.functions = {
             return Math.ceil(expression(context));
         };
     },
+    ROUND(opts, expression) {
+        return context => {
+            return Math.round(expression(context));
+        };
+    },
     FLOOR(opts, expression) {
         return context => {
             return Math.floor(expression(context));
@@ -301,17 +306,9 @@ var functions = module.exports.functions = {
         return context => {
             return number(context) % divisor(context);
         };
-    },
-    /* Percent change ratio */
-    CHANGE(opts, target, reference, denominator) {
-        var den = denominator ? denominator : reference;
-        return context => {
-            var numerator = target(context) - reference(context);
-            return numerator * 100 / den(context);
-        };
     }
 };
 
 _.forEach(functions, fn => {
-    fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/);
+    fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,?\s*([^)]*)\)/)[1];
 });

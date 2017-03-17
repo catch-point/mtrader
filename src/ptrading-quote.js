@@ -299,7 +299,7 @@ help(app, 'indicator-functions', `
 function functionHelp(name, fn) {
     var source = fn.toString();
     var m = source.match(/^[^(]*\(([^)]*)\)/);
-    var args = fn.args || _.property(1)(m) || '';
+    var args = _.isString(fn.args) ? fn.args : _.property(1)(m) || '';
     var usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
     var body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
     var desc = fn.description ? '\n  ' + wrap(fn.description, 2, 80) + '\n' : body;
