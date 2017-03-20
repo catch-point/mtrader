@@ -196,6 +196,8 @@ help(app, 'columns', `
     help common-functions  
     help lookback-functions  
     help indicator-functions  
+    help rolling-functions  
+    help LEADING  
 `);
 help(app, 'retain', `
   Usage: set retain :expression

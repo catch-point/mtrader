@@ -63,7 +63,7 @@ describe("ptrading-collect", function() {
               'day.close AS "close"',
               'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "change"'
           ].join(','),
-          retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNT(symbol)<=1',
+          retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0,"symbol")<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
@@ -88,7 +88,7 @@ describe("ptrading-collect", function() {
           columns: [
               'symbol',
               'DATE(ending) AS date',
-              'IF(COUNT(symbol)<=1,FLOOR(10000/(day.close)),0) AS target',
+              'IF(COUNTPREC(0,"symbol")<1,FLOOR(10000/(day.close)),0) AS target',
               'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0)) AS shares',
               'PREV("position",0) + shares AS position',
               'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
@@ -128,7 +128,7 @@ describe("ptrading-collect", function() {
               'DATE(ending) AS date',
               'MAXCORREL(60,day.adj_close) AS cor',
               'CVAR(5, 60, day.adj_close) AS risk',
-              'IF(cor<0.75 AND SUM(IF(cor<0.75,MIN(0.5/risk,100),0))<=100, MIN(0.5/risk,100), 0) AS weight',
+              'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
               'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
               'target-PREV("position",0) AS shares',
               'PREV("position",0) + shares AS position',
@@ -150,7 +150,7 @@ describe("ptrading-collect", function() {
               'DATE(ending) AS date',
               'MAXCORREL(60,day.adj_close) AS cor',
               'CVAR(5, 60, day.adj_close) AS risk',
-              'IF(cor<0.75 AND SUM(IF(cor<0.75,MIN(0.5/risk,100),0))<=100, MIN(0.5/risk,100), 0) AS weight',
+              'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
               'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
               'target-PREV("position",0) AS shares',
               'PREV("position",0) + shares AS position',

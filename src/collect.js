@@ -163,8 +163,8 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
         var expression = m[2];
         return promiseExternal(temporal, quote, dataset, name, expression);
     });
-    var roll = _.memoize((expr, name, args, quote, dataset, options) => {
-        return rolling(expr, name, args, quote, dataset, options);
+    var roll = _.memoize((expr, name, args) => {
+        return rolling(expr, name, args, temporal, quote, dataset, options);
     });
     return Parser({
         substitutions: _.flatten([options.columns]).join(','),
@@ -179,7 +179,7 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
             if (_.contains(cached, expr)) return _.compose(_.property(expr), _.last, _.values, _.last);
             return Promise.all(args).then(args => {
                 var fn = common(name, args, options) ||
-                    roll(expr, name, args, quote, dataset, options);
+                    roll(expr, name, args);
                 var instrument = isInstrument(exchanges, name);
                 if (fn) return fn;
                 else if (instrument) return external(expr);
@@ -207,22 +207,17 @@ function collectDataset(exchanges, dataset, temporal, parser, options) {
                 return positions;
             }, points);
             var row = result.length;
-            var accepted = positions.reduce((accepted, point) => {
-                var pending = _.extend({}, accepted, {
-                    [point.symbol + '.' + point.exchange]: point
+            result[row] = positions.reduce((retained, point) => {
+                var key = point.symbol + '.' + point.exchange;
+                var pending = _.extend({}, retained, {
+                    [key]: point
                 });
                 result[row] = pending;
-                if (retain && retain(result)) return pending;
-                else return accepted;
-            }, {});
-            var formatted = _.keys(accepted).map((key, i, keys) => {
-                var pending = _.pick(accepted, keys.slice(0, i+1));
-                result[row] = pending;
-                return _.mapObject(columns, column => column(result));
-            });
-            result[row] = _.extend(_.object(_.keys(accepted), formatted), {
-                [temporal]: points[0][temporal]
-            });
+                if (retain && !retain(result)) return retained;
+                else return _.extend(pending, {
+                    [key]: _.mapObject(columns, column => column(result))
+                });
+            }, {[temporal]: points[0][temporal]});
             return result;
         }, []);
     }));

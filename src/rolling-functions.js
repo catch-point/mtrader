@@ -36,45 +36,59 @@ const Parser = require('./parser.js');
 /**
  * These functions operate of an array of securities at the same point in time.
  */
-module.exports = function(expr, name, args, quote, dataset, options) {
+module.exports = function(expr, name, args, temporal, quote, dataset, options) {
     if (functions[name])
-        return functions[name].apply(this, [quote, dataset, options, expr].concat(args));
+        return functions[name].apply(this, [temporal, quote, dataset, options, expr].concat(args));
 };
 
 var functions = module.exports.functions = {
-    COUNT: _.extend((quote, dataset, options, expr, expression) => {
+    PREC: _.extend((temporal, quote, dataset, options, expr, columnName, defaultValue) => {
         return positions => {
-            var context = _.initial(positions);
-            var row = context.length;
-            var currently = _.last(positions);
-            var keys = _.keys(currently);
-            var inputs = keys.map((key, i, keys) => _.pick(currently, keys.slice(0, i+1)));
-            return inputs.map(input => {
-                context[row] = input;
-                return expression(context);
-            }).filter(val => val != null).length;
+            var name = columnName(positions);
+            var keys = _.keys(_.pick(_.last(positions), _.isObject));
+            var previously = positions[positions.length -2];
+            if (keys.length > 1)
+                return _.last(positions)[keys[keys.length-2]][name];
+            else if (previously)
+                return previously[_.last(_.keys(_.pick(previously, _.isObject)))][name];
+            else if (defaultValue)
+                return defaultValue(positions);
+            else
+                return null;
         };
     }, {
-        args: "expression",
-        description: "Counts the number of retained securities that evaluate expression to a value"
+        args: "columnName, defaultValue",
+        description: "Returns the value of columnName from the preceeding retained value"
     }),
-    SUM: _.extend((quote, dataset, options, expr, expression) => {
+    COUNTPREC: _.extend((temporal, quote, dataset, options, expr, numberOfIntervals, columnName) => {
         return positions => {
-            var context = _.initial(positions);
-            var row = context.length;
-            var currently = _.last(positions);
-            var keys = _.keys(currently);
-            var inputs = keys.map((key, i, keys) => _.pick(currently, keys.slice(0, i+1)));
-            return inputs.map(input => {
-                context[row] = input;
-                return expression(context);
-            }).filter(_.isFinite).reduce((a, b) => a + b);
+            var name = columnName(positions);
+            var num = numberOfIntervals(positions);
+            var len = positions.length -1;
+            var values = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+                return _.pluck(_.values(positions).filter(_.isObject), name);
+            }), true);
+            return _.filter(_.initial(values), val => val === 0 || val).length;
         };
     }, {
-        args: "expression",
-        description: "Returns the sum of all numeric values of retained securities"
+        args: "numberOfIntervals, columnName",
+        description: "Counts the number of retained values that preceed this value"
     }),
-    PREV: _.extend((quote, dataset, options, expr, columnName, defaultValue) => {
+    SUMPREC: _.extend((temporal, quote, dataset, options, expr, numberOfIntervals, columnName) => {
+        return positions => {
+            var name = columnName(positions);
+            var num = numberOfIntervals(positions);
+            var len = positions.length -1;
+            var values = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+                return _.pluck(_.values(positions).filter(_.isObject), name);
+            }), true);
+            return _.initial(values).filter(_.isFinite).reduce((a, b) => a + b, 0);
+        };
+    }, {
+        args: "numberOfIntervals, columnName",
+        description: "Returns the sum of all numeric values that preceed this"
+    }),
+    PREV: _.extend((temporal, quote, dataset, options, expr, columnName, defaultValue) => {
         return positions => {
             var name = columnName(positions);
             var key = _.last(_.keys(_.last(positions)));
@@ -87,7 +101,21 @@ var functions = module.exports.functions = {
         args: "columnName, defaultValue",
         description: "Returns the value of columnName from the previous retained value for this security"
     }),
-    SUMPREV: _.extend((quote, dataset, options, expr, numberOfValues, columnName) => {
+    COUNTPREV: _.extend((temporal, quote, dataset, options, expr, numberOfValues, columnName) => {
+        return positions => {
+            if (positions.length < 2) return 0;
+            var name = columnName(positions);
+            var num = numberOfValues(positions);
+            var key = _.last(_.keys(_.last(positions)));
+            var len = positions.length -1;
+            var values = _.pluck(_.pluck(positions.slice(Math.max(len - num, 0), len), key), name);
+            return _.filter(values, val => val === 0 || val).length;
+        };
+    }, {
+        args: "numberOfValues, columnName",
+        description: "Returns the sum of columnName values from the previous numberOfValues retained"
+    }),
+    SUMPREV: _.extend((temporal, quote, dataset, options, expr, numberOfValues, columnName) => {
         return positions => {
             if (positions.length < 2) return 0;
             var name = columnName(positions);
@@ -101,7 +129,7 @@ var functions = module.exports.functions = {
         args: "numberOfValues, columnName",
         description: "Returns the sum of columnName values from the previous numberOfValues retained"
     }),
-    MAXCORREL: _.extend((quote, dataset, options, expr, duration, expression) => {
+    MAXCORREL: _.extend((temporal, quote, dataset, options, expr, duration, expression) => {
         var n = asPositiveInteger(duration, "MAXCORREL");
         var arg = Parser({
             constant(value) {
@@ -123,7 +151,7 @@ var functions = module.exports.functions = {
             return _.defaults({
                 symbol: first.symbol,
                 exchange: first.exchange,
-                columns: 'ending,' + arg,
+                columns: temporal + ',' + arg,
                 pad_begin: n,
                 begin: first.ending,
                 end: last.ending,
@@ -141,12 +169,12 @@ var functions = module.exports.functions = {
             return historic => {
                 var positions = _.last(historic);
                 if (_.size(positions) < 2) return 0;
-                var matrix = _.keys(positions).map((symbol, i, keys) => {
+                var matrix = _.keys(_.pick(positions, _.isObject)).map((symbol, i, keys) => {
                     var position = positions[symbol];
                     var data = dataset[symbol];
                     if (!data) throw Error("Could not find dataset: " + symbol);
-                    var end = _.sortedIndex(data, position, 'ending');
-                    if (data[end] && data[end].ending == position.ending) end++;
+                    var end = _.sortedIndex(data, positions, temporal);
+                    if (data[end] && data[end][temporal] == positions[temporal]) end++;
                     return _.pluck(data.slice(Math.max(end - n, 0), end), arg);
                 });
                 var last = matrix.pop();
