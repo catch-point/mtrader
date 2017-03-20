@@ -31,7 +31,6 @@
 
 const _ = require('underscore');
 const AssertionError = require('chai').AssertionError;
-const logger = require('./logger.js');
 
 module.exports = function(process) {
     var seq = 0;
@@ -129,7 +128,7 @@ function serializeError(err) {
         if (err && _.isFunction(err.toJSON))
             return err.toJSON();
     } catch (e) {
-        logger.error(e, e.stack);
+        console.error(e, e.stack);
     }
     if (err && err.stack)
         return err.stack;

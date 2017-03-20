@@ -34,7 +34,7 @@ const moment = require('moment-timezone');
 const List = require('./list.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
-const aggregate = require('./aggregate-functions.js');
+const rolling = require('./rolling-functions.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const like = require('./like.js');
@@ -119,10 +119,10 @@ function getNeededColumns(exchanges, expr, options) {
         expression(expr, name, args) {
             var external = isInstrument(exchanges, name);
             var order = name == 'DESC' || name == 'ASC';
-            var fn = aggregate.functions[name];
-            var agg = _.some(args, _.isArray);
+            var fn = rolling.functions[name];
+            var roll = _.some(args, _.isArray);
             if (external) return [];
-            else if (!order && !fn && !agg) return expr;
+            else if (!order && !fn && !roll) return expr;
             else return _.flatten(_.compact(args), true);
         }
     }).parseColumnsMap(expr)), true));
@@ -144,16 +144,16 @@ function getQuoteCriteria(exchanges, expr, options) {
         expression(expr, name, args) {
             var external = isInstrument(exchanges, name);
             var order = name == 'DESC' || name == 'ASC';
-            var fn = aggregate.functions[name];
-            var agg = _.some(args, _.isNull);
-            if (external || order || fn || agg) return null;
+            var fn = rolling.functions[name];
+            var roll = _.some(args, _.isNull);
+            if (external || order || fn || roll) return null;
             else return expr;
         }
     }).parseCriteriaList(expr));
 }
 
 /**
- * Creates an expression parser that recognizes the aggregate functions.
+ * Creates an expression parser that recognizes the rolling functions.
  */
 function createParser(exchanges, temporal, quote, dataset, cached, options) {
     var external = _.memoize(expr => {
@@ -163,8 +163,8 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
         var expression = m[2];
         return promiseExternal(temporal, quote, dataset, name, expression);
     });
-    var agg = _.memoize((expr, name, args, quote, dataset, options) => {
-        return aggregate(expr, name, args, quote, dataset, options);
+    var roll = _.memoize((expr, name, args, quote, dataset, options) => {
+        return rolling(expr, name, args, quote, dataset, options);
     });
     return Parser({
         substitutions: _.flatten([options.columns]).join(','),
@@ -179,12 +179,12 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
             if (_.contains(cached, expr)) return _.compose(_.property(expr), _.last, _.values, _.last);
             return Promise.all(args).then(args => {
                 var fn = common(name, args, options) ||
-                    agg(expr, name, args, quote, dataset, options);
+                    roll(expr, name, args, quote, dataset, options);
                 var instrument = isInstrument(exchanges, name);
                 if (fn) return fn;
                 else if (instrument) return external(expr);
                 else return () => {
-                    throw Error("Only common and aggregate functions can be used here: " + expr);
+                    throw Error("Only common and rolling functions can be used here: " + expr);
                 };
             });
         }
@@ -245,7 +245,7 @@ function getPrecedence(expr, cached, options) {
             if (name == 'DESC') return {desc: true, by: _.first(args).by};
             else if (name == 'ASC') return {desc: false, by:  _.first(args).by};
             else if (_.contains(cached, expr)) return {by: expr};
-            else if (!aggregate.functions[name]) return {};
+            else if (!rolling.functions[name]) return {};
             else throw Error("Aggregate functions cannot be used here: " + expr);
         }
     }).parseColumnsMap(expr));

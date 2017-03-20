@@ -319,6 +319,14 @@ var functions = module.exports.functions = {
         return context => {
             return number(context) % divisor(context);
         };
+    },
+    /* Percent change ratio */
+    CHANGE(opts, target, reference, denominator) {
+        var den = denominator || reference;
+        return bars => {
+            var numerator = target(bars) - reference(bars);
+            return Math.round(numerator * 10000/ den(bars)) /100;
+        };
     }
 };
 

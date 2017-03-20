@@ -486,25 +486,25 @@ describe("quote", function() {
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:30:00-0500')
         }).should.eventually.be.like([
-            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.3289},
-            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,Change:0.2160},
-            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,Change:0.1663},
-            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.2575},
-            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,Change:0.1617},
-            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,Change:0.1346},
-            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.1916},
-            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.2349},
-            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,Change:0.1816},
-            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.3172},
-            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,Change:0.2946},
-            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:0.2792},
-            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,Change:0.1861},
-            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,Change:0.1744},
-            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,Change:0.1382},
-            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726},
-            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:0.1093},
-            {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,Change:(1.10749-1.1064)*100/1.1064},
-            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:(1.10758-1.10749)*100/1.10749}
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.33},
+            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,Change:0.22},
+            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,Change:0.17},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.26},
+            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,Change:0.16},
+            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,Change:0.13},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.19},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.23},
+            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,Change:0.18},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.32},
+            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,Change:0.29},
+            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:0.28},
+            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,Change:0.19},
+            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,Change:0.17},
+            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,Change:0.14},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.17},
+            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:0.11},
+            {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,Change:0.10},
+            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:0.01}
         ]);
     });
     it("should compute YTD", function() {
@@ -593,12 +593,12 @@ describe("quote", function() {
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
-            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.3289},
-            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.2575},
-            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.1916},
-            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.2349},
-            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.3172},
-            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726}
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.33},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.26},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.19},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.23},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.32},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.17}
         ]);
     });
     it("should filter out most results", function() {

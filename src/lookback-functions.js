@@ -63,19 +63,6 @@ module.exports = function(name, args, options) {
 };
 
 var functions = module.exports.functions = {
-    /* Percent change ratio */
-    CHANGE(opts, target, reference, denominator) {
-        var ref = reference || _.extend(bars => target(bars.slice(0, bars.length -1)), {
-            warmUpLength: target.warmUpLength +1
-        });
-        var den = denominator || ref;
-        return _.extend(bars => {
-            var numerator = target(bars) - ref(bars);
-            return Math.round(numerator * 10000/ den(bars)) /100;
-        }, {
-            warmUpLength: _.max(_.pluck([target, ref, den], 'warmUpLength'))
-        });
-    },
     /* Offset value N periods ago */
     OFFSET(opts, n_periods, calc) {
         var n = asPositiveInteger(n_periods, "OFFSET");

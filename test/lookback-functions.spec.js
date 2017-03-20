@@ -885,7 +885,7 @@ describe("lookback-functions", function(){
             end: moment('2016-02-01')
         }).should.eventually.be.like([
             {Date:"2016-01-04",Close:201.02,Change:-1.87,PF:0.68},
-            {Date:"2016-01-05",Close:201.36,Change:0.66,PF:1.18},
+            {Date:"2016-01-05",Close:201.36,Change:0.67,PF:1.18},
             {Date:"2016-01-06",Close:198.82,Change:-1.41,PF:0.70},
             {Date:"2016-01-07",Close:194.05,Change:-4.64,PF:0.34},
             {Date:"2016-01-08",Close:191.92,Change:-6.84,PF:0.15},
@@ -897,7 +897,7 @@ describe("lookback-functions", function(){
             {Date:"2016-01-19",Close:188.06,Change:-6.44,PF:0.29},
             {Date:"2016-01-20",Close:185.65,Change:-7.80,PF:0.24},
             {Date:"2016-01-21",Close:186.69,Change:-6.10,PF:0.33},
-            {Date:"2016-01-22",Close:190.52,Change:-1.81,PF:0.73},
+            {Date:"2016-01-22",Close:190.52,Change:-1.82,PF:0.73},
             {Date:"2016-01-25",Close:187.64,Change:-2.23,PF:0.69},
             {Date:"2016-01-26",Close:190.2,Change:-0.99,PF:0.86},
             {Date:"2016-01-27",Close:188.13,Change:-2.85,PF:0.66},
@@ -918,9 +918,9 @@ describe("lookback-functions", function(){
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
-            {Date:"2016-01-04",Close:201.02,Change:-2.26,Slope:-0.51},
+            {Date:"2016-01-04",Close:201.02,Change:-2.27,Slope:-0.51},
             {Date:"2016-01-05",Close:201.36,Change:-1.87,Slope:-0.54},
-            {Date:"2016-01-06",Close:198.82,Change:-4.13,Slope:-0.55},
+            {Date:"2016-01-06",Close:198.82,Change:-4.14,Slope:-0.55},
             {Date:"2016-01-07",Close:194.05,Change:-5.76,Slope:-0.40},
             {Date:"2016-01-08",Close:191.92,Change:-5.86,Slope:-0.35},
             {Date:"2016-01-11",Close:192.11,Change:-4.43,Slope:-0.35},
@@ -933,10 +933,10 @@ describe("lookback-functions", function(){
             {Date:"2016-01-21",Close:186.69,Change:-1.13,Slope:-0.55},
             {Date:"2016-01-22",Close:190.52,Change:-0.73,Slope:0.30},
             {Date:"2016-01-25",Close:187.64,Change:-0.09,Slope:0.30},
-            {Date:"2016-01-26",Close:190.2,Change:1.13,Slope:0.54},
-            {Date:"2016-01-27",Close:188.13,Change:1.33,Slope:0.23},
-            {Date:"2016-01-28",Close:189.11,Change:1.29,Slope:-0.37},
-            {Date:"2016-01-29",Close:193.72,Change:1.67,Slope:0.47}
+            {Date:"2016-01-26",Close:190.2,Change:1.14,Slope:0.54},
+            {Date:"2016-01-27",Close:188.13,Change:1.34,Slope:0.23},
+            {Date:"2016-01-28",Close:189.11,Change:1.30,Slope:-0.37},
+            {Date:"2016-01-29",Close:193.72,Change:1.68,Slope:0.47}
         ]);
     });
     it("VAR", function() {
@@ -952,25 +952,25 @@ describe("lookback-functions", function(){
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
-            {Date:"2016-01-04",Close:201.02,Change:-2.2656,VaR:0.0158},
-            {Date:"2016-01-05",Close:201.36,Change:-1.8761,VaR:0.0158},
-            {Date:"2016-01-06",Close:198.82,Change:-4.1369,VaR:0.0159},
-            {Date:"2016-01-07",Close:194.05,Change:-5.7689,VaR:0.0162},
-            {Date:"2016-01-08",Close:191.92,Change:-5.8615,VaR:0.0163},
-            {Date:"2016-01-11",Close:192.11,Change:-4.4323,VaR:0.0163},
-            {Date:"2016-01-12",Close:193.66,Change:-3.8239,VaR:0.0162},
-            {Date:"2016-01-13",Close:188.83,Change:-5.0246,VaR:0.0165},
-            {Date:"2016-01-14",Close:191.93,Change:-1.0925,VaR:0.0165},
-            {Date:"2016-01-15",Close:187.81,Change:-2.1415,VaR:0.0165},
-            {Date:"2016-01-19",Close:188.06,Change:-2.1081,VaR:0.0165},
-            {Date:"2016-01-20",Close:185.65,Change:-4.1361,VaR:0.0166},
-            {Date:"2016-01-21",Close:186.69,Change:-1.1332,VaR:0.0165},
-            {Date:"2016-01-22",Close:190.52,Change:-0.7346,VaR:0.0165},
-            {Date:"2016-01-25",Close:187.64,Change:-0.0905,VaR:0.0166},
-            {Date:"2016-01-26",Close:190.2,Change:1.1379,VaR:0.0166},
-            {Date:"2016-01-27",Close:188.13,Change:1.3358,VaR:0.0166},
-            {Date:"2016-01-28",Close:189.11,Change:1.2962,VaR:0.0166},
-            {Date:"2016-01-29",Close:193.72,Change:1.6796,VaR:0.0167}
+            {Date:"2016-01-04",Close:201.02,Change:-2.27,VaR:0.0158},
+            {Date:"2016-01-05",Close:201.36,Change:-1.88,VaR:0.0158},
+            {Date:"2016-01-06",Close:198.82,Change:-4.14,VaR:0.0159},
+            {Date:"2016-01-07",Close:194.05,Change:-5.77,VaR:0.0162},
+            {Date:"2016-01-08",Close:191.92,Change:-5.86,VaR:0.0163},
+            {Date:"2016-01-11",Close:192.11,Change:-4.43,VaR:0.0163},
+            {Date:"2016-01-12",Close:193.66,Change:-3.82,VaR:0.0162},
+            {Date:"2016-01-13",Close:188.83,Change:-5.02,VaR:0.0165},
+            {Date:"2016-01-14",Close:191.93,Change:-1.09,VaR:0.0165},
+            {Date:"2016-01-15",Close:187.81,Change:-2.14,VaR:0.0165},
+            {Date:"2016-01-19",Close:188.06,Change:-2.11,VaR:0.0165},
+            {Date:"2016-01-20",Close:185.65,Change:-4.14,VaR:0.0166},
+            {Date:"2016-01-21",Close:186.69,Change:-1.13,VaR:0.0165},
+            {Date:"2016-01-22",Close:190.52,Change:-0.73,VaR:0.0165},
+            {Date:"2016-01-25",Close:187.64,Change:-0.09,VaR:0.0166},
+            {Date:"2016-01-26",Close:190.20,Change:1.14,VaR:0.0166},
+            {Date:"2016-01-27",Close:188.13,Change:1.34,VaR:0.0166},
+            {Date:"2016-01-28",Close:189.11,Change:1.30,VaR:0.0166},
+            {Date:"2016-01-29",Close:193.72,Change:1.68,VaR:0.0167}
         ]);
     });
     it("CVAR", function() {
@@ -986,25 +986,25 @@ describe("lookback-functions", function(){
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
-            {Date:"2016-01-04",Close:201.02,Change:-2.2656,Shortfall:0.0228},
-            {Date:"2016-01-05",Close:201.36,Change:-1.8761,Shortfall:0.0228},
-            {Date:"2016-01-06",Close:198.82,Change:-4.1369,Shortfall:0.0228},
-            {Date:"2016-01-07",Close:194.05,Change:-5.7689,Shortfall:0.0234},
-            {Date:"2016-01-08",Close:191.92,Change:-5.8615,Shortfall:0.0234},
-            {Date:"2016-01-11",Close:192.11,Change:-4.4323,Shortfall:0.0234},
-            {Date:"2016-01-12",Close:193.66,Change:-3.8239,Shortfall:0.0234},
-            {Date:"2016-01-13",Close:188.83,Change:-5.0246,Shortfall:0.0241},
-            {Date:"2016-01-14",Close:191.93,Change:-1.0925,Shortfall:0.0241},
-            {Date:"2016-01-15",Close:187.81,Change:-2.1415,Shortfall:0.0244},
-            {Date:"2016-01-19",Close:188.06,Change:-2.1081,Shortfall:0.0244},
-            {Date:"2016-01-20",Close:185.65,Change:-4.1361,Shortfall:0.0244},
-            {Date:"2016-01-21",Close:186.69,Change:-1.1332,Shortfall:0.0244},
-            {Date:"2016-01-22",Close:190.52,Change:-0.7346,Shortfall:0.0244},
-            {Date:"2016-01-25",Close:187.64,Change:-0.0905,Shortfall:0.0244},
-            {Date:"2016-01-26",Close:190.2,Change:1.1379,Shortfall:0.0244},
-            {Date:"2016-01-27",Close:188.13,Change:1.3358,Shortfall:0.0244},
-            {Date:"2016-01-28",Close:189.11,Change:1.2962,Shortfall:0.0244},
-            {Date:"2016-01-29",Close:193.72,Change:1.6796,Shortfall:0.0244}
+            {Date:"2016-01-04",Close:201.02,Change:-2.27,Shortfall:0.0228},
+            {Date:"2016-01-05",Close:201.36,Change:-1.88,Shortfall:0.0228},
+            {Date:"2016-01-06",Close:198.82,Change:-4.14,Shortfall:0.0228},
+            {Date:"2016-01-07",Close:194.05,Change:-5.77,Shortfall:0.0234},
+            {Date:"2016-01-08",Close:191.92,Change:-5.86,Shortfall:0.0234},
+            {Date:"2016-01-11",Close:192.11,Change:-4.43,Shortfall:0.0234},
+            {Date:"2016-01-12",Close:193.66,Change:-3.82,Shortfall:0.0234},
+            {Date:"2016-01-13",Close:188.83,Change:-5.02,Shortfall:0.0241},
+            {Date:"2016-01-14",Close:191.93,Change:-1.09,Shortfall:0.0241},
+            {Date:"2016-01-15",Close:187.81,Change:-2.14,Shortfall:0.0244},
+            {Date:"2016-01-19",Close:188.06,Change:-2.11,Shortfall:0.0244},
+            {Date:"2016-01-20",Close:185.65,Change:-4.14,Shortfall:0.0244},
+            {Date:"2016-01-21",Close:186.69,Change:-1.13,Shortfall:0.0244},
+            {Date:"2016-01-22",Close:190.52,Change:-0.73,Shortfall:0.0244},
+            {Date:"2016-01-25",Close:187.64,Change:-0.09,Shortfall:0.0244},
+            {Date:"2016-01-26",Close:190.20,Change:1.14,Shortfall:0.0244},
+            {Date:"2016-01-27",Close:188.13,Change:1.34,Shortfall:0.0244},
+            {Date:"2016-01-28",Close:189.11,Change:1.30,Shortfall:0.0244},
+            {Date:"2016-01-29",Close:193.72,Change:1.68,Shortfall:0.0244}
         ]);
     });
 });

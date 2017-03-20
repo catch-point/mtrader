@@ -1,4 +1,4 @@
-// aggregate-functions.js
+// rolling-functions.js
 /*
  *  Copyright (c) 2017 James Leigh, Some Rights Reserved
  *

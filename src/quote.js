@@ -166,7 +166,7 @@ function parseWarmUpMap(options) {
                 return _.extend.apply(_, _.compact(_.pluck(args, interval)));
             }));
             map.warmUpLength = _.max(_.pluck(args, 'warmUpLength'));
-            if (_.size(fn.intervals) != 1 || fn.warmUpLength == map.warmUpLength) return map;
+            if (_.size(fn.intervals) != 1 || fn.warmUpLength == map.warmUpLength || !_.isFinite(fn.warmUpLength)) return map;
             else return {[_.first(fn.intervals)]: {[expr]: fn}, warmUpLength: fn.warmUpLength};
         }
     });

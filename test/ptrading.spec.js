@@ -106,17 +106,17 @@ describe("ptrading", function() {
           retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNT(symbol)<=1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
-            {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.2467},
-            {symbol:'YHOO',date:"2016-12-30",close:38.67,change:0.0776},
-            {symbol:'IBM',date:"2017-01-03",close:167.19,change:0.7229},
-            {symbol:'IBM',date:"2017-01-04",close:169.26,change:1.2381},
-            {symbol:'YHOO',date:"2017-01-05",close:41.34,change:3.1952},
-            {symbol:'IBM',date:"2017-01-06",close:169.53,change:0.4919},
-            {symbol:'YHOO',date:"2017-01-09",close:41.34,change:0.2667},
-            {symbol:'YHOO',date:"2017-01-10",close:42.3,change:2.3222},
-            {symbol:'IBM',date:"2017-01-11",close:167.75,change:1.3472},
-            {symbol:'IBM',date:"2017-01-12",close:167.95,change:0.1192},
-            {symbol:'YHOO',date:"2017-01-13",close:42.27,change:0.3799}
+            {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
+            {symbol:'YHOO',date:"2016-12-30",close:38.67,change:0.08},
+            {symbol:'IBM',date:"2017-01-03",close:167.19,change:0.72},
+            {symbol:'IBM',date:"2017-01-04",close:169.26,change:1.24},
+            {symbol:'YHOO',date:"2017-01-05",close:41.34,change:3.20},
+            {symbol:'IBM',date:"2017-01-06",close:169.53,change:0.49},
+            {symbol:'YHOO',date:"2017-01-09",close:41.34,change:0.27},
+            {symbol:'YHOO',date:"2017-01-10",close:42.3,change:2.32},
+            {symbol:'IBM',date:"2017-01-11",close:167.75,change:1.35},
+            {symbol:'IBM',date:"2017-01-12",close:167.95,change:0.12},
+            {symbol:'YHOO',date:"2017-01-13",close:42.27,change:0.38}
         ]);
     });
 });

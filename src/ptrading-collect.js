@@ -41,7 +41,7 @@ const replyTo = require('./ipc-promise-reply.js');
 const config = require('./ptrading-config.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
-const aggregate = require('./aggregate-functions.js');
+const rolling = require('./rolling-functions.js');
 
 function usage(command) {
     return command.version(require('../package.json').version)
@@ -147,7 +147,7 @@ function shell(desc, collect, app) {
         collect(cmd.params.begin.split(' '), config.options())
             .then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    _.forEach(aggregate.functions, (fn, name) => {
+    _.forEach(rolling.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));
     });
 // help
@@ -190,15 +190,15 @@ help(app, 'precedence', `
     help common-functions  
     help lookback-functions  
     help indicator-functions  
-    help aggregate-functions  
+    help rolling-functions  
     help LEADING  
     help DESC  
     help ASC  
 `);
-help(app, 'aggregate-functions', `
+help(app, 'rolling-functions', `
   Aggregate functions may read already retained securities and the proposed security values.
 
-  ${listFunctions(aggregate.functions)}
+  ${listFunctions(rolling.functions)}
 `);
 help(app, 'DESC', `
   Usage: DESC(expression)  

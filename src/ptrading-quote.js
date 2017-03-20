@@ -200,7 +200,7 @@ help(app, 'columns', `
 help(app, 'retain', `
   Usage: set retain :expression
 
-  An expression (possibly of an aggregate function) of each included
+  An expression (possibly of an rolling function) of each included
   security bar that must be true to be included in the result
 
   See also:
@@ -208,7 +208,7 @@ help(app, 'retain', `
     help common-functions  
     help lookback-functions  
     help indicator-functions  
-    help aggregate-functions  
+    help rolling-functions  
     help LEADING  
 `);
 help(app, 'expression', `
