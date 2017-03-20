@@ -107,6 +107,19 @@ var functions = module.exports.functions = {
         description: "Date of Month as a string ('01'-'31')",
         seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
     }),
+    /* Week of Year as a string ('01'-'52') */
+    WEEK: _.extend((opts, ending) => {
+        return context => {
+            var date = moment(ending(context)).tz(opts.tz);
+            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            var number = date.week();
+            if (number < 10) return '0' + number;
+            else return '' + number;
+        };
+    }, {
+        description: "Date of Month as a string ('01'-'31')",
+        seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
+    }),
     /* Month of Year as a string ('01'-'12') */
     MONTH: _.extend((opts, ending) => {
         return context => {
