@@ -72,7 +72,7 @@ if (process.send) {
 config.fork = function(modulePath, program) {
     var pairs = program.options.filter(o => o.required || o.optional).map(o => o.name().replace('-', '_'));
     var bools = _.reject(program.options, o => o.required || o.optional).map(o => o.name().replace('-', '_'));
-    var cfg = _.omit(config(), _.isUndefined);
+    var cfg = _.omit(config(), value => typeof value == 'object' || value === undefined);
     var cfg_pairs = _.pick(cfg, pairs);
     var cfg_bools = _.without(_.intersection(bools, _.keys(cfg)), 'version');
     var args = _.flatten(_.zip(
