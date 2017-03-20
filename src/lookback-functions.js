@@ -71,7 +71,7 @@ var functions = module.exports.functions = {
         var den = denominator || ref;
         return _.extend(bars => {
             var numerator = target(bars) - ref(bars);
-            return numerator * 100 / den(bars);
+            return Math.round(numerator * 10000/ den(bars)) /100;
         }, {
             warmUpLength: _.max(_.pluck([target, ref, den], 'warmUpLength'))
         });
@@ -370,6 +370,7 @@ var functions = module.exports.functions = {
             var change = _.rest(prices).map((price, i) => {
                 return (price - prices[i]) / prices[i];
             });
+            if (!change.length) return 0;
             var avg = change.reduce((a, b) => a + b) / change.length;
             var stdev = statkit.std(change);
             return -(statkit.norminv(pct) * stdev + avg);
@@ -385,6 +386,7 @@ var functions = module.exports.functions = {
             var change = _.rest(prices).map((price, i) => {
                 return (price - prices[i]) / prices[i];
             });
+            if (!change.length) return 0;
             var avg = change.reduce((a, b) => a + b) / change.length;
             var stdev = statkit.std(change);
             var risk = statkit.norminv(pct) * stdev + avg;
