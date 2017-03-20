@@ -163,6 +163,9 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
         var expression = m[2];
         return promiseExternal(temporal, quote, dataset, name, expression);
     });
+    var agg = _.memoize((expr, name, args, quote, dataset, options) => {
+        return aggregate(expr, name, args, quote, dataset, options);
+    });
     return Parser({
         substitutions: _.flatten([options.columns]).join(','),
         constant(value) {
@@ -176,7 +179,7 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
             if (_.contains(cached, expr)) return _.compose(_.property(expr), _.last, _.values, _.last);
             return Promise.all(args).then(args => {
                 var fn = common(name, args, options) ||
-                    aggregate(expr, name, args, quote, dataset, options);
+                    agg(expr, name, args, quote, dataset, options);
                 var instrument = isInstrument(exchanges, name);
                 if (fn) return fn;
                 else if (instrument) return external(expr);
@@ -298,7 +301,7 @@ function promiseExternal(temporal, quote, dataset, name, expr) {
     var end = _.last(_.pluck(_.map(dataset, _.last), temporal).sort());
     var symbol = name.substring(0, name.lastIndexOf('.'));
     var exchange = name.substring(name.lastIndexOf('.')+1);
-    var last = _.compose(_.last, _.values, _.last)
+    var last = _.compose(_.last, _.values, _.last);
     return quote({
         symbol: symbol,
         exchange: exchange,
