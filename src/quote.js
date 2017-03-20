@@ -410,7 +410,7 @@ function evalBlocks(collection, warmUpLength, blocks, expressions, options) {
     if (_.isEmpty(expressions)) return blocks;
     return collection.lockWith(blocks, blocks => blocks.reduce((promise, block, i, blocks) => {
         var last = _.last(collection.tailOf(block));
-        if (options.begin > last.ending) return promise; // warmUp blocks are not evaluated
+        if (!last || options.begin > last.ending) return promise; // warmUp blocks are not evaluated
         var missing = _.difference(_.keys(expressions), collection.columnsOf(block));
         if (!missing.length) return promise;
         return promise.then(dataBlocks => {
