@@ -215,6 +215,8 @@ function createParser(cached, options) {
         variable(name) {
             if (_.contains(['symbol', 'exchange', 'ending'], name))
                 return _.compose(_.property(name), _.last);
+            else if (_.has(options, name) && !_.isObject(options[name]) && name.match(/^\w+$/))
+                return _.constant(options[name]);
             else if (!~name.indexOf('.'))
                 throw Error("Unknown field: " + name);
             var interval = name.substring(0, name.indexOf('.'));
