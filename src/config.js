@@ -106,19 +106,41 @@ config.opts = function() {
 config.options = function(name, value) {
     var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
     if (_.isUndefined(value)) {
-        return get(merge({}, session, config.opts()), jpath);
+        return get(session, jpath);
     } else if (assign(session, jpath, value)) {
         listeners.forEach(listener => listener(name, value));
     }
 };
 
-config.save = function(filename) {
-    var file = path.resolve(config('prefix'), 'etc', filename + '.json');
+config.list = function() {
+    var dir = path.resolve(config('prefix'), 'etc');
+    try {
+        fs.accessSync(dir, fs.R_OK);
+    } catch(e) {
+        return [];
+    }
+    return fs.readdirSync(dir)
+        .filter(name => name != 'ptrading.json' && name.indexOf('.json') == name.length - '.json'.length)
+        .map(name => name.substring(0, name.length - '.json'.length));
+};
+
+config.save = function(name) {
+    var file = path.resolve(config('prefix'), 'etc', name + '.json');
     writeConfigFile(file, _.omit(session, _.isNull));
 };
 
-config.load = function(filename) {
-    var file = path.resolve(config('prefix'), 'etc', filename + '.json');
+config.read = function(name) {
+    var file = path.resolve(config('prefix'), 'etc', name + '.json');
+    try {
+        fs.accessSync(file, fs.R_OK);
+    } catch(e) {
+        return false;
+    }
+    return JSON.parse(fs.readFileSync(file, 'utf-8'));
+};
+
+config.load = function(name) {
+    var file = path.resolve(config('prefix'), 'etc', name + '.json');
     try {
         fs.accessSync(file, fs.R_OK);
     } catch(e) {

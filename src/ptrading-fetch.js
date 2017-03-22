@@ -70,13 +70,13 @@ if (require.main === module) {
             interval: interval,
             symbol: symbol,
             exchange: exchange
-        }, config.opts())))
+        }, config.opts(), config.options())))
         .then(result => tabular(result))
         .catch(err => logger.error(err, err.stack))
         .then(() => fetch.close());
     } else if (process.send) {
         replyTo(process).handle('fetch', payload => {
-            return fetch()(_.defaults({}, payload, config.options()));
+            return fetch()(payload);
         });
         var fetch = _.once(() => Fetch());
         process.on('disconnect', () => fetch().close());

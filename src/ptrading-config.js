@@ -95,6 +95,27 @@ module.exports.shell = function(app) {
             cb(err);
         }
     });
+    app.cmd("list",
+            "List previous saved sessions that can be used with load", (cmd, sh, cb) => {
+        try {
+            var list = config.list();
+            if (list.length) {
+                var width = Math.floor(80/Math.floor(80/Math.min(_.max(_.pluck(list, 'length')) +1,80)));
+                var columns = Math.floor(Math.min(80/width, Math.sqrt(list.length)));
+                var rows = Math.ceil(list.length / columns);
+                _.range(rows).forEach(r => {
+                    _.range(columns).forEach(c => {
+                        var text = list[r*columns+c] || '';
+                        sh.white(text).white(_.range(width - text.length).fill(' ').join(''));
+                    });
+                    sh.ln();
+                });
+            }
+            sh.prompt();
+        } catch(err) {
+            cb(err);
+        }
+    });
     app.cmd("save :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)",
             "Saves this session values to a file for later use", (cmd, sh, cb) => {
         try {
@@ -147,6 +168,10 @@ help(app, 'set', `
 help(app, 'unset', `
   Usage: unset :option
   Resets the given option value persistently
+`);
+help(app, 'list', `
+  Usage: list  
+  List previous saved sessions that can be used with load
 `);
 help(app, 'save', `
   Usage: save :name

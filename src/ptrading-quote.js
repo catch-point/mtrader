@@ -78,14 +78,14 @@ if (require.main === module) {
         Promise.resolve().then(() => quote(_.defaults({
             symbol: symbol,
             exchange: exchange
-        }, config.opts())))
+        }, config.opts(), config.options())))
         .then(result => tabular(result))
         .catch(err => logger.error(err, err.stack))
         .then(() => quote.close())
         .then(() => fetch.close());
     } else if (process.send) {
         var parent = replyTo(process).handle('quote', payload => {
-            return quote()(_.defaults({}, payload, config.options()));
+            return quote()(payload);
         });
         var quote = _.once(() => Quote(function(options) {
             return parent.request('fetch', options);
@@ -100,7 +100,7 @@ if (require.main === module) {
     var workers = commander.workers || os.cpus().length;
     var children = _.range(workers).map(() => {
         return replyTo(config.fork(module.filename, program)).handle('fetch', payload => {
-            return fetch(_.defaults({}, payload, config.options()));
+            return fetch(payload);
         });
     });
     module.exports = function(options) {
