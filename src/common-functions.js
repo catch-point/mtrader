@@ -322,6 +322,7 @@ var functions = module.exports.functions = {
     },
     /* Percent change ratio */
     CHANGE(opts, target, reference, denominator) {
+        if (!target || !reference) throw Error("CHANGE requires two or three arguments");
         var den = denominator || reference;
         return bars => {
             var numerator = target(bars) - reference(bars);
