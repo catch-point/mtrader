@@ -46,7 +46,7 @@ const rolling = require('./rolling-functions.js');
 function usage(command) {
     return command.version(require('../package.json').version)
         .description("Collects historic portfolio data")
-        .usage('[date] [options]')
+        .usage('[identifier] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
@@ -67,7 +67,7 @@ function usage(command) {
 
 if (process.send) {
     var parent = replyTo(process).handle('collect', payload => {
-        return collect()(_.defaults({}, payload, config.options()));
+        return collect()(payload);
     });
     var collect = _.once(() => Collect(function(options) {
         return parent.request('quote', options);
@@ -81,24 +81,48 @@ if (process.send) {
     var workers = commander.workers || os.cpus().length;
     var children = _.range(workers).map(() => {
         return replyTo(config.fork(module.filename, program)).handle('quote', payload => {
-            return quote(_.defaults({}, payload, config.options()));
+            return quote(payload);
         });
     });
     var seq = 0;
-    module.exports = function(segments, options) {
-        if (!options) options = segments;
-        if (!_.isArray(segments) && !_.isString(segments)) segments = options.begin;
-        if (!segments) throw Error("Collect needs a begin date to start from");
-        if (!_.isArray(segments)) segments = [segments];
-        var ranges = segments.map(segment => readRange(segment)).map((range, i, ranges) => {
-            if (range.end || i == ranges.length -1) return range;
-            else return _.extend(range, {end: ranges[i+1].begin});
+    module.exports = function(options) {
+        var duration = options.duration && moment.duration(options.duration);
+        var begin = moment(options.begin);
+        var end = moment(options.end);
+        if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.duration);
+        if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
+        if (!end.isValid()) throw Error("Invalid end date: " + options.end);
+        var segments = [options.begin];
+        if (duration) {
+            begin.add(duration);
+            while (begin.isBefore(end)) {
+                segments.push(begin.format());
+                begin.add(duration);
+            }
+        }
+        var optionset = segments.map((segment, i, segments) => {
+            if (i === 0 && i == segments.length -1) return options;
+            else if (i === 0) return _.defaults({
+                begin: options.begin, end: segments[i+1],
+                pad_begin: options.pad_begin, pad_end: 0
+            }, options);
+            else if (i < segments.length -1) return _.defaults({
+                begin: segment, end: segments[i+1],
+                pad_begin: 0, pad_end: 0
+            }, options);
+            else return _.defaults({
+                begin: segment, end: options.end,
+                pad_begin: 0, pad_end: options.pad_end
+            }, options);
         });
-        return Promise.all(ranges.map((range, i, ranges) => {
-            var opts = i > 0 && i < ranges.length -1 ? {pad_begin: 0, pad_end: 0} :
-                i > 0 ? {pad_begin: 0} : i < ranges.length -1 ? {pad_end: 0} : {};
-            return children[seq++ % workers].request('collect', _.defaults(opts, range, options));
-        })).then(dataset => {
+        var promises = optionset.reduce((promises, options, i) => {
+            var wait = i < workers ? Promise.resolve() : promises[i - workers];
+            promises.push(wait.then(() => {
+                return children[seq++ % workers].request('collect', options);
+            }));
+            return promises;
+        }, []);
+        return Promise.all(promises).then(dataset => {
             return _.flatten(dataset, true);
         });
     };
@@ -107,14 +131,13 @@ if (process.send) {
         return quote.close();
     };
     module.exports.shell = shell.bind(this, program.description(), module.exports);
-    if (require.main === module && program.args.length) {
-        Promise.resolve(program.args).then(args => {
-            return module.exports(args, config.options());
-        }).then(result => tabular(result))
+    if (require.main === module) {
+        var name = program.args.join(' ');
+        var read = name ? config.read(name) : {};
+        var options = _.defaults(read, config.opts(), config.options());
+        module.exports(options).then(result => tabular(result))
           .catch(err => logger.error(err, err.stack))
           .then(() => module.exports.close());
-    } else if (require.main === module) {
-        program.help();
     }
 }
 
@@ -141,10 +164,10 @@ function shell(desc, collect, app) {
     app.on('quit', () => collect.close());
     app.on('exit', () => collect.close());
     app.cmd('collect', desc, (cmd, sh, cb) => {
-        collect(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        collect(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    app.cmd('collect :begin([\\d\\-:+.WTZ ]+)', desc, (cmd, sh, cb) => {
-        collect(cmd.params.begin.split(' '), config.options())
+    app.cmd("collect :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
+        collect(_.defaults(config.read(cmd.params.name), config.options()))
             .then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     _.forEach(rolling.functions, (fn, name) => {
@@ -152,14 +175,13 @@ function shell(desc, collect, app) {
     });
 // help
 help(app, 'collect', `
-  Usage: collect :begins...
+  Usage: collect :name
 
   ${desc}
 
-    :begins..
-      List of ranges: year, month, week, or start date that should be collected.
-      These will then be appended together. Use pad_leading to run up PREV values
-      between ranges.
+    :name
+      Uses the values from the named stored session to override the values of
+      the current session.
 
   See also:
     help begin  
@@ -167,6 +189,7 @@ help(app, 'collect', `
     help pad_begin  
     help pad_end  
     help pad_leading  
+    help duration  
     help columns  
     help retain  
     help precedence  
@@ -177,6 +200,11 @@ help(app, 'pad_leading', `
   Usage: set pad_leading 0  
 
   Sets the number of additional rows to to compute as a warmup, but not included in the result
+`);
+help(app, 'duration', `
+  Usage: set duration P1Y  
+
+  Sets the duration that collect should run before resetting any preceeding values
 `);
 help(app, 'precedence', `
   Usage: set precedence :expression

@@ -93,9 +93,10 @@ describe("ptrading", function() {
         ]);
     });
     it("collect change", function() {
-        return ptrading.collect(["2017-01-13"], {
+        return ptrading.collect({
           portfolio: 'YHOO.NASDAQ,IBM.NYSE',
           pad_begin: 10,
+          begin: "2017-01-13",
           end: "2017-01-14",
           columns: [
               'symbol',

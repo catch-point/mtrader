@@ -138,13 +138,12 @@ describe("ptrading-collect", function() {
           ],
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
-        }).then(expected => ptrading.collect([
-            '2016-10-30', '2016-11-06', '2016-11-13', '2016-11-20', '2016-11-27'
-        ], {
+        }).then(expected => ptrading.collect({
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
           pad_leading: 3,
-          begin: "2016-11-01",
+          begin: "2016-10-30",
           end: "2016-12-03",
+          duration: 'P7D',
           columns: [
               'symbol',
               'DATE(ending) AS date',
