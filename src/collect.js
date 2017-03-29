@@ -51,7 +51,7 @@ module.exports = function(quote) {
     return _.extend(function(options) {
         expect(options).to.have.property('portfolio');
         expect(options).to.have.property('columns');
-        var portfolio = getPortfolio(options);
+        var portfolio = getPortfolio(options.portfolio);
         var formatColumns = getNeededColumns(exchanges, _.flatten([options.columns]).join(','), options);
         var retainColumns = getNeededColumns(exchanges, options.retain, options);
         var precedenceColumns = getNeededColumns(exchanges, options.precedence, options);
@@ -92,8 +92,9 @@ module.exports = function(quote) {
 /**
  * Parses a comma separated list into symbol/exchange pairs.
  */
-function getPortfolio(options) {
-    return options.portfolio.split(/\s*,\s*/).map(symbolExchange => {
+function getPortfolio(portfolio) {
+    var array = _.isArray(portfolio) ? portfolio : portfolio.split(/\s*,\s*/);
+    return array.map(symbolExchange => {
         var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
         if (!m) throw Error("Unexpected symbol/exchange: " + symbolExchange);
         return {
