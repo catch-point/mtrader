@@ -32,6 +32,7 @@
 const _ = require('underscore');
 const statkit = require("statkit");
 const Parser = require('./parser.js');
+const common = require('./common-functions.js');
 
 /**
  * These functions operate of an array of securities at the same point in time.
@@ -60,76 +61,84 @@ var functions = module.exports.functions = {
         args: "columnName, defaultValue",
         description: "Returns the value of columnName from the preceeding retained value"
     }),
-    COUNTPREC: _.extend((temporal, quote, dataset, options, expr, numberOfIntervals, columnName) => {
+    COUNTPREC: _.extend((temporal, quote, dataset, options, expr, numberOfIntervals, columnName, criteria) => {
+        var name = columnName();
+        var condition = parseCriteria(name, criteria, options);
         return positions => {
-            var name = columnName(positions);
             var num = numberOfIntervals(positions);
             var len = positions.length -1;
             var values = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
-                return _.pluck(_.values(positions).filter(_.isObject), name);
+                return _.pluck(_.values(positions).filter(ctx => _.isObject(ctx) && condition(ctx)), name);
             }), true);
             return _.filter(_.initial(values), val => val === 0 || val).length;
         };
     }, {
-        args: "numberOfIntervals, columnName",
+        args: "numberOfIntervals, columnName, [criteria]",
         description: "Counts the number of retained values that preceed this value"
     }),
-    SUMPREC: _.extend((temporal, quote, dataset, options, expr, numberOfIntervals, columnName) => {
+    SUMPREC: _.extend((temporal, quote, dataset, options, expr, numberOfIntervals, columnName, criteria) => {
+        var name = columnName();
+        var condition = parseCriteria(name, criteria, options);
         return positions => {
-            var name = columnName(positions);
             var num = numberOfIntervals(positions);
             var len = positions.length -1;
             var values = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
-                return _.pluck(_.values(positions).filter(_.isObject), name);
+                return _.pluck(_.values(positions).filter(ctx => _.isObject(ctx) && condition(ctx)), name);
             }), true);
             return _.initial(values).filter(_.isFinite).reduce((a, b) => a + b, 0);
         };
     }, {
-        args: "numberOfIntervals, columnName",
+        args: "numberOfIntervals, columnName, [criteria]",
         description: "Returns the sum of all numeric values that preceed this"
     }),
     PREV: _.extend((temporal, quote, dataset, options, expr, columnName, defaultValue) => {
         return positions => {
             var name = columnName(positions);
             var key = _.last(_.keys(_.last(positions)));
-            var previously = positions[positions.length -2];
-            if (_.has(previously, key)) return previously[key][name];
-            else if (defaultValue) return defaultValue(positions);
+            for (var i=positions.length-2; i>=0; i--) {
+                var previously = positions[i];
+                if (_.has(previously, key)) return previously[key][name];
+            }
+            if (defaultValue) return defaultValue(positions);
             else return null;
         };
     }, {
         args: "columnName, defaultValue",
         description: "Returns the value of columnName from the previous retained value for this security"
     }),
-    COUNTPREV: _.extend((temporal, quote, dataset, options, expr, numberOfValues, columnName) => {
+    COUNTPREV: _.extend((temporal, quote, dataset, options, expr, numberOfValues, columnName, criteria) => {
+        var name = columnName();
+        var condition = parseCriteria(name, criteria, options);
         return positions => {
             if (positions.length < 2) return 0;
-            var name = columnName(positions);
             var num = numberOfValues(positions);
             var key = _.last(_.keys(_.last(positions)));
             var len = positions.length -1;
-            var values = _.pluck(_.pluck(positions.slice(Math.max(len - num, 0), len), key), name);
+            var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            var values = _.pluck(previous.filter(condition), name);
             return _.filter(values, val => val === 0 || val).length;
         };
     }, {
-        args: "numberOfValues, columnName",
+        args: "numberOfValues, columnName, [criteria]",
         description: "Returns the sum of columnName values from the previous numberOfValues retained"
     }),
-    SUMPREV: _.extend((temporal, quote, dataset, options, expr, numberOfValues, columnName) => {
+    SUMPREV: _.extend((temporal, quote, dataset, options, expr, numberOfValues, columnName, criteria) => {
+        var name = columnName();
+        var condition = parseCriteria(name, criteria, options);
         return positions => {
             if (positions.length < 2) return 0;
-            var name = columnName(positions);
             var num = numberOfValues(positions);
             var key = _.last(_.keys(_.last(positions)));
             var len = positions.length -1;
-            var values = _.pluck(_.pluck(positions.slice(Math.max(len - num, 0), len), key), name);
+            var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            var values = _.pluck(previous.filter(condition), name);
             return values.reduce((a, b) => (a || 0) + (b || 0), 0);
         };
     }, {
-        args: "numberOfValues, columnName",
+        args: "numberOfValues, columnName, [criteria]",
         description: "Returns the sum of columnName values from the previous numberOfValues retained"
     }),
-    MAXCORREL: _.extend((temporal, quote, dataset, options, expr, duration, expression) => {
+    MAXCORREL: _.extend((temporal, quote, dataset, options, expr, duration, expression, criteria) => {
         var n = asPositiveInteger(duration, "MAXCORREL");
         var arg = Parser({
             constant(value) {
@@ -145,6 +154,7 @@ var functions = module.exports.functions = {
         if (!arg) throw Error("Unrecongized call to MAXCORREL: " + expr);
         var filtered = dataset.filter(data => !_.isEmpty(data));
         if (filtered.length < 2) return positions => 0;
+        var condition = parseCriteria(arg, criteria, options);
         var optionset = filtered.map(data => {
             var first = _.first(data);
             var last = _.last(data);
@@ -170,7 +180,7 @@ var functions = module.exports.functions = {
                 var positions = _.last(historic);
                 if (_.size(positions) < 2) return 0;
                 var matrix = _.keys(_.pick(positions, _.isObject)).map((symbol, i, keys) => {
-                    var position = positions[symbol];
+                    if (i < keys.length -1 && !condition(positions[symbol])) return null;
                     var data = dataset[symbol];
                     if (!data) throw Error("Could not find dataset: " + symbol);
                     var end = _.sortedIndex(data, positions, temporal);
@@ -186,7 +196,7 @@ var functions = module.exports.functions = {
             };
         });
     }, {
-        args: "duration, expression",
+        args: "duration, expression, [criteria]",
         description: "Maximum correlation coefficient among other securities"
     })
 };
@@ -197,4 +207,32 @@ function asPositiveInteger(calc, msg) {
         if (n > 0 && _.isFinite(n) && Math.round(n) == n) return n;
     } catch (e) {}
     throw Error("Expected a literal positive interger in " + msg + " not " + n);
+}
+
+function parseCriteria(columnName, criteria, options) {
+    if (!criteria)
+        return _.constant(true);
+    if (_.isFunction(criteria))
+        return parseCriteria(columnName, criteria(), options);
+    if (!_.isString(criteria))
+        return parseCriteria(columnName, criteria.toString(), options);
+    if (_.contains(['<', '>', '=', '!'], criteria.charAt(0)))
+        return parseCriteria(columnName, columnName + criteria, options);
+    try {
+        var expression = false;
+        var parsed = Parser({
+            constant(value) {
+                return _.constant(value);
+            },
+            variable(name) {
+                return context => _.has(context, name) ? context[name] : options[name];
+            },
+            expression(expr, name, args) {
+                expression = true;
+                return common(name, args, options);
+            }
+        }).parse(criteria);
+        if (expression) return parsed;
+    } catch(e) {} // not an expression, must be a value
+    return context => context[columnName] == criteria;
 }
