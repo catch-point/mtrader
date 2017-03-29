@@ -159,6 +159,94 @@
         }
       }
     },
+    "USD": {
+      "description": "Forex Capital Markets trading using USD as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "02:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "USD",
+      "tz": "America/New_York",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["CCY"],
+          "marketLang": "en-US",
+          "yahooSuffix": "USD=X",
+          "fetch": ["fundamental"]
+        },
+        "iqfeed": {
+          "dtnSuffix": "USD.FXCM",
+          "listed_market": 74,
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        }
+      }
+    },
+    "JPY": {
+      "description": "Forex Capital Markets trading using JPY as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "02:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "JPY",
+      "tz": "America/New_York",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["CCY"],
+          "marketLang": "en-US",
+          "yahooSuffix": "JPY=X",
+          "fetch": ["fundamental"]
+        },
+        "iqfeed": {
+          "dtnSuffix": "JPY.FXCM",
+          "listed_market": 74,
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        }
+      }
+    },
+    "CHF": {
+      "description": "Forex Capital Markets trading using CHF as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "02:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "CHF",
+      "tz": "America/New_York",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["CCY"],
+          "marketLang": "en-US",
+          "yahooSuffix": "CHF=X",
+          "fetch": ["fundamental"]
+        },
+        "iqfeed": {
+          "dtnSuffix": "CHF.FXCM",
+          "listed_market": 74,
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        }
+      }
+    },
+    "GBP": {
+      "description": "Forex Capital Markets trading using GBP as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "02:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "GBP",
+      "tz": "America/New_York",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["CCY"],
+          "marketLang": "en-US",
+          "yahooSuffix": "GBP=X",
+          "fetch": ["fundamental"]
+        },
+        "iqfeed": {
+          "dtnSuffix": "GBP.FXCM",
+          "listed_market": 74,
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        }
+      }
+    },
     "LSE": {
       "description": "The London Stock Exchange (LSE) is a stock exchange located in the City of London in the United Kingdom and the third-largest stock exchange in the world.",
       "label": "London Stock Exchange",
