@@ -164,9 +164,10 @@ var functions = module.exports.functions = {
             return Math.ceil(expression(context));
         };
     },
-    ROUND(opts, expression) {
+    ROUND(opts, expression, count) {
+        var scale = Math.pow(10, count ? count() : 0);
         return context => {
-            return Math.round(expression(context));
+            return Math.round(expression(context)*scale)/scale;
         };
     },
     FLOOR(opts, expression) {
@@ -290,20 +291,20 @@ var functions = module.exports.functions = {
     /* Addition */
     ADD(opts, a, b) {
         return context => {
-            return a(context) + b(context);
+            return precision(a(context) + b(context));
         };
     },
     /* Subtraction */
     SUBTRACT(opts, a, b) {
         return context => {
-            return a(context) - b(context);
+            return precision(a(context) - b(context));
         };
     },
     /* Multiplication */
     PRODUCT: _.extend(function(opts) {
         var numbers = _.rest(arguments);
         return context => numbers.reduce((product, num) => {
-            return product * num(context);
+            return precision(product * num(context));
         }, 1);
     }, {
         args: "numbers..."
@@ -311,13 +312,13 @@ var functions = module.exports.functions = {
     /* Divide */
     DIVIDE(opts, n, d) {
         return context => {
-            return n(context) / d(context);
+            return precision(n(context) / d(context));
         };
     },
     /* Modulus */
     MOD(opts, number, divisor) {
         return context => {
-            return number(context) % divisor(context);
+            return precision(number(context) % divisor(context));
         };
     },
     /* Percent change ratio */
@@ -334,3 +335,8 @@ var functions = module.exports.functions = {
 _.forEach(functions, fn => {
     fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,?\s*([^)]*)\)/)[1];
 });
+
+function precision(number) {
+    if (!_.isNumber(number)) return number;
+    return parseFloat(number.toPrecision(12));
+}
