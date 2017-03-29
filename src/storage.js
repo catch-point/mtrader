@@ -151,7 +151,7 @@ function openCollection(dirname, name) {
             var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return metadata.tables[idx].size;
-            else throw Error("Unknown table " + name);
+            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
         },
         columnsOf(name) {
             var id = safe(name);
@@ -161,27 +161,27 @@ function openCollection(dirname, name) {
                   .reduce((columns, obj) => {
                     return _.union(columns, _.keys(obj));
                 }, []);
-            else throw Error("Unknown table " + name);
+            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
         },
         headOf(name) {
             var id = safe(name);
             var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return metadata.tables[idx].head;
-            else throw Error("Unknown table " + name);
+            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
         },
         tailOf(name) {
             var id = safe(name);
             var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return metadata.tables[idx].tail;
-            else throw Error("Unknown table " + name);
+            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
         },
         readFrom(name) {
             var id = safe(name);
             var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (!metadata.tables[idx] || metadata.tables[idx].id != id)
-                throw Error("Unknown table " + name);
+                throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
             var filename = path.resolve(collpath, id + '.csv');
             return cachedTables(filename, metadata.tables[idx].size);
         },
