@@ -134,6 +134,7 @@ if (process.send) {
     if (require.main === module) {
         var name = program.args.join(' ');
         var read = name ? config.read(name) : {};
+        if (!read) throw Error("Could not read " + name + " settings");
         var options = _.defaults(read, config.opts(), config.options());
         module.exports(options).then(result => tabular(result))
           .catch(err => logger.error(err, err.stack))
@@ -167,7 +168,9 @@ function shell(desc, collect, app) {
         collect(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     app.cmd("collect :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
-        collect(_.defaults(config.read(cmd.params.name), config.options()))
+        var read = config.read(cmd.params.name);
+        if (!read) throw Error("Could not read " + name + " settings");
+        collect(_.defaults(read, config.options()))
             .then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     _.forEach(rolling.functions, (fn, name) => {
