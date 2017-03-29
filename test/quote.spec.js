@@ -470,7 +470,7 @@ describe("quote", function() {
             {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726},
             {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:0.1093},
             {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,Change:0},
-            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:(1.10758-1.10749)*100/1.10749}
+            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:0.0081}
         ]);
     });
     it("should combine intervals conditionally", function() {
