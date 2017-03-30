@@ -142,25 +142,6 @@ if (process.send) {
     }
 }
 
-function readRange(begin) {
-    if (!begin) return {};
-    else if (begin.match(/^\d\d\d\d$/)) return {
-        begin: begin + '-01-01',
-        end: (1 + +begin) + '-01-01'
-    };
-    else if (begin.match(/^\d\d\d\d-\d\d$/)) return {
-        begin: begin + '-01',
-        end: moment(begin + '-01').add(1, 'month').format('YYYY-MM-DD')
-    };
-    else if (begin.match(/^\d\d\d\d-?W\d\d(-?\d)?$/)) return {
-        begin: begin,
-        end: moment(begin).add(1, 'week').format('YYYY-MM-DD')
-    };
-    else return {
-        begin: begin,
-    };
-}
-
 function shell(desc, collect, app) {
     app.on('quit', () => collect.close());
     app.on('exit', () => collect.close());
