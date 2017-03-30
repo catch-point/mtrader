@@ -168,6 +168,7 @@ ${listExchanges()}
     help pad_end  
     help columns  
     help retain  
+    help criteria  
     help output  
     help reverse  
 `);
@@ -204,6 +205,21 @@ help(app, 'retain', `
 
   An expression (possibly of an rolling function) of each included
   security bar that must be true to be included in the result
+
+  See also:
+    help expression  
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+    help rolling-functions  
+    help LEADING  
+`);
+help(app, 'criteria', `
+  Usage: set criteria :expression
+
+  An expression indicating a block of results over which have the same LEADING
+  results (reflecting the first result in the block). For results with a false
+  expression value will be treated as their own block.
 
   See also:
     help expression  

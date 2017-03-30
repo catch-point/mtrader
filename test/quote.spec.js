@@ -628,7 +628,7 @@ describe("quote", function() {
             {Date: "2014-12-01", Time: "12:00:00", Price: 1.13436}
         ]);
     });
-    it("should filter out most results using leading criteria", function() {
+    it("should filter out most results using leading retain", function() {
         return quote({
             columns: [
                 'DATE(m30.ending) AS "Date"',
@@ -668,6 +668,39 @@ describe("quote", function() {
             {Date:"2014-11-03",Time:"12:30:00",Price:1.13363},
             {Date:"2014-11-03",Time:"13:00:00",Price:1.13378},
             {Date:"2014-11-03",Time:"13:30:00",Price:1.13521}
+        ]);
+    });
+    it("should filter out most results using leading criteria", function() {
+        return quote({
+            columns: [
+                'DATE(m30.ending) AS "Date"',
+                'TIME(m30.ending) AS "Time"',
+                'm30.close AS "Price"',
+                'IF(LEADING(m30.ending)<m30.ending, 100, 0) AS position'
+            ],
+            retain: [
+                'WORKDAY(month.ending) = WORKDAY(day.ending)'
+            ].join(' and '),
+            criteria: [
+                'LEADING(HOUR(m60.ending)) = 12',
+                'm30.close >= OFFSET(1,m30.close)'
+            ].join(' and '),
+            symbol: 'USD',
+            exchange: 'CAD',
+            begin: moment('2014-01-02T11:30:00-0500'),
+            end: moment('2014-01-02T17:00:00-0500')
+        }).should.eventually.be.like([
+            {Date:"2014-01-02",Time:"11:30:00",Price:1.06343,position:0},
+            {Date:"2014-01-02",Time:"12:00:00",Price:1.06335,position:0},
+            {Date:"2014-01-02",Time:"12:30:00",Price:1.06356,position:0},
+            {Date:"2014-01-02",Time:"13:00:00",Price:1.06393,position:100},
+            {Date:"2014-01-02",Time:"13:30:00",Price:1.06394,position:100},
+            {Date:"2014-01-02",Time:"14:00:00",Price:1.06515,position:100},
+            {Date:"2014-01-02",Time:"14:30:00",Price:1.06544,position:100},
+            {Date:"2014-01-02",Time:"15:00:00",Price:1.0661,position:100},
+            {Date:"2014-01-02",Time:"15:30:00",Price:1.0662,position:100},
+            {Date:"2014-01-02",Time:"16:00:00",Price:1.06721,position:100},
+            {Date:"2014-01-02",Time:"16:30:00",Price:1.06671,position:0}
         ]);
     });
     it("should lookback to multiple blocks", function() {
