@@ -35,6 +35,7 @@ const List = require('./list.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
+const quoting = require('./quoting-functions.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const like = require('./like.js');
@@ -47,14 +48,13 @@ const expect = require('chai').use(like).expect;
  */
 module.exports = function(quote) {
     var temporal = 'DATETIME(ending)';
-    var exchanges = _.keys(config('exchanges'));
     return _.extend(function(options) {
         expect(options).to.have.property('portfolio');
         expect(options).to.have.property('columns');
         var portfolio = getPortfolio(options.portfolio);
-        var formatColumns = getNeededColumns(exchanges, _.flatten([options.columns]).join(','), options);
-        var retainColumns = getNeededColumns(exchanges, options.retain, options);
-        var precedenceColumns = getNeededColumns(exchanges, options.precedence, options);
+        var formatColumns = getNeededColumns(_.flatten([options.columns]).join(','), options);
+        var retainColumns = getNeededColumns(options.retain, options);
+        var precedenceColumns = getNeededColumns(options.precedence, options);
         var allColumns = _.uniq(_.compact(_.flatten([
             'symbol',
             'exchange',
@@ -64,7 +64,7 @@ module.exports = function(quote) {
             retainColumns,
             precedenceColumns
         ])));
-        var criteria = getQuoteCriteria(exchanges, options.retain, options).join(' AND ');
+        var criteria = getQuoteCriteria(options.retain, options).join(' AND ');
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
                 columns: allColumns,
@@ -73,8 +73,8 @@ module.exports = function(quote) {
                 pad_begin: (options.pad_begin || 0) + (options.pad_leading || 0)
             }, security, options));
         })).then(dataset => {
-            var parser = createParser(exchanges, temporal, quote, dataset, allColumns, options);
-            return collectDataset(exchanges, dataset, temporal, parser, options);
+            var parser = createParser(temporal, quote, dataset, allColumns, options);
+            return collectDataset(dataset, temporal, parser, options);
         }).then(collection => {
             var begin = moment(options.begin || moment(options.now).endOf('day')).toISOString();
             var start = _.sortedIndex(collection, {[temporal]: begin}, temporal) - (options.pad_begin || 0);
@@ -107,7 +107,7 @@ function getPortfolio(portfolio) {
 /**
  * Returns the expressions that should be delegated to quote.js
  */
-function getNeededColumns(exchanges, expr, options) {
+function getNeededColumns(expr, options) {
     if (!expr) return [];
     return _.uniq(_.flatten(_.values(Parser({
         substitutions: _.flatten([options.columns]).join(','),
@@ -118,11 +118,10 @@ function getNeededColumns(exchanges, expr, options) {
             return name;
         },
         expression(expr, name, args) {
-            var external = isInstrument(exchanges, name);
             var order = name == 'DESC' || name == 'ASC';
-            var fn = rolling.functions[name];
+            var fn = rolling.has(name);
             var roll = _.some(args, _.isArray);
-            if (external) return [];
+            if (quoting.has(name)) return [];
             else if (!order && !fn && !roll) return expr;
             else return _.flatten(_.compact(args), true);
         }
@@ -132,7 +131,7 @@ function getNeededColumns(exchanges, expr, options) {
 /**
  * Returns the retain expression that should be delegated to quote.js
  */
-function getQuoteCriteria(exchanges, expr, options) {
+function getQuoteCriteria(expr, options) {
     if (!expr) return [];
     return _.compact(Parser({
         substitutions: _.flatten([options.columns]).join(','),
@@ -143,29 +142,21 @@ function getQuoteCriteria(exchanges, expr, options) {
             return name;
         },
         expression(expr, name, args) {
-            var external = isInstrument(exchanges, name);
             var order = name == 'DESC' || name == 'ASC';
-            var fn = rolling.functions[name];
+            var fn = rolling.has(name);
             var roll = _.some(args, _.isNull);
-            if (external || order || fn || roll) return null;
+            if (quoting.has(name) || order || fn || roll) return null;
             else return expr;
         }
     }).parseCriteriaList(expr));
 }
 
 /**
- * Creates an expression parser that recognizes the rolling functions.
+ * Creates an expression parser that recognizes the rolling/quote functions.
  */
-function createParser(exchanges, temporal, quote, dataset, cached, options) {
-    var external = _.memoize(expr => {
-        var m = expr.match(/^([^(]+)\((.*)\)$/);
-        if (!m) throw Error("Unrecongized call to external security: " + expr);
-        var name = m[1];
-        var expression = m[2];
-        return promiseExternal(temporal, quote, dataset, name, expression);
-    });
-    var roll = _.memoize((expr, name, args) => {
-        return rolling(expr, name, args, temporal, quote, dataset, options);
+function createParser(temporal, quote, dataset, cached, options) {
+    var external = _.memoize((expr, name, args) => {
+        return quoting(expr, name, args, temporal, quote, dataset, options);
     });
     return Parser({
         substitutions: _.flatten([options.columns]).join(','),
@@ -180,10 +171,9 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
             if (_.contains(cached, expr)) return _.compose(_.property(expr), _.last, _.values, _.last);
             return Promise.all(args).then(args => {
                 var fn = common(name, args, options) ||
-                    roll(expr, name, args);
-                var instrument = isInstrument(exchanges, name);
+                    rolling(name, args, options) ||
+                    external(expr, name, args);
                 if (fn) return fn;
-                else if (instrument) return external(expr);
                 else return () => {
                     throw Error("Only common and rolling functions can be used here: " + expr);
                 };
@@ -195,8 +185,8 @@ function createParser(exchanges, temporal, quote, dataset, cached, options) {
 /**
  * Combines the quote.js results into a single array containing retained securities.
  */
-function collectDataset(exchanges, dataset, temporal, parser, options) {
-    var precedenceColumns = getNeededColumns(exchanges, options.precedence, options);
+function collectDataset(dataset, temporal, parser, options) {
+    var precedenceColumns = getNeededColumns(options.precedence, options);
     var precedence = getPrecedence(options.precedence, precedenceColumns, options);
     return promiseColumns(parser, options)
       .then(columns => promiseRetain(parser, options)
@@ -241,7 +231,7 @@ function getPrecedence(expr, cached, options) {
             if (name == 'DESC') return {desc: true, by: _.first(args).by};
             else if (name == 'ASC') return {desc: false, by:  _.first(args).by};
             else if (_.contains(cached, expr)) return {by: expr};
-            else if (!rolling.functions[name]) return {};
+            else if (!rolling.has(name) && !quoting.has(name)) return {};
             else throw Error("Aggregate functions cannot be used here: " + expr);
         }
     }).parseColumnsMap(expr));
@@ -266,14 +256,6 @@ function promiseRetain(parser, options) {
 }
 
 /**
- * Determines if a function name is referring to an external security.
- */
-function isInstrument(exchanges, name) {
-    if (!name || !~name.indexOf('.')) return false;
-    else return _.contains(exchanges, name.substring(name.indexOf('.')+1));
-}
-
-/**
  * Takes the quote.js results as an array and matches the results by temporal date calling cb.
  */
 function reduceInterval(data, temporal, cb, memo) {
@@ -286,28 +268,4 @@ function reduceInterval(data, temporal, cb, memo) {
         memo = cb(memo, points);
     }
     return memo;
-}
-
-/**
- * Retrieves external security data that is used in an expression.
- */
-function promiseExternal(temporal, quote, dataset, name, expr) {
-    expect(name).to.match(/^\S+\.\w+$/);
-    var begin = _.first(_.pluck(_.map(dataset, _.first), temporal).sort());
-    var end = _.last(_.pluck(_.map(dataset, _.last), temporal).sort());
-    var symbol = name.substring(0, name.lastIndexOf('.'));
-    var exchange = name.substring(name.lastIndexOf('.')+1);
-    var last = _.compose(_.last, _.values, _.last);
-    return quote({
-        symbol: symbol,
-        exchange: exchange,
-        columns: temporal + ',' + expr,
-        pad_begin: 1,
-        begin: begin,
-        end: end
-    }).then(data => positions => {
-        var idx = _.sortedIndex(data, last(positions), temporal);
-        if (idx >= data.length || idx && data[idx][temporal] > last(positions)[temporal]) idx--;
-        return data[idx][expr];
-    });
 }
