@@ -185,14 +185,16 @@ function parseWarmUpMap(options) {
 function parseCriteriaMap(retain, cached, options) {
     var list = createParser(cached, options).parseCriteriaList(retain);
     var intervals = list.reduce((intervals, fn) => {
-        var diff = _.without(fn.intervals || [], intervals);
+        var diff = _.difference(fn.intervals || [], intervals);
         if (_.isEmpty(diff)) return intervals;
         else return periods.sort(diff.concat(intervals));
     }, []);
     var group = list.reduce((m, fn) => {
         var interval = _.first(fn.intervals);
-        if (m[interval]) return m[interval].concat([fn]);
-        else return _.extend(m, {
+        if (m[interval]) {
+            m[interval] = m[interval].concat([fn]);
+            return m;
+        } else return _.extend(m, {
             [interval]: [fn]
         });
     }, {});
