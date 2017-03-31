@@ -245,8 +245,8 @@ var functions = module.exports.functions = {
             warmUpLength: n -1
         });
     },
-    /* Percent of Volume Below */
-    POVB(n) {
+    /* Percent of trade Volume below close Oscillator */
+    POVO(n) {
         return _.extend(bars => {
             var target = _.last(bars).close;
             var prices = getPrices(bars);
