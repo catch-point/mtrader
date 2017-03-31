@@ -350,12 +350,16 @@ function parseAsExpressions(str) {
         var start = index;
         if (!isQuote(quote)) expect("quote");
         else expect(quote);
+        var buf = ['"'];
         while (index < str.length && str[index] != quote) {
+            if (str[index] == '"' || str[index] == '\\') buf.push('\\');
             if (str[index] == '\\') index+= 2;
             else index++;
+            buf.push(str[index -1]);
         }
+        buf.push('"');
         expect(quote);
-        return JSON.stringify(JSON.parse(str.substring(start, index)));
+        return JSON.stringify(JSON.parse(buf.join('')));
     }
     function parseNumber() {
         if (!isNumber(peek()) && peek() != '-') expect("number");

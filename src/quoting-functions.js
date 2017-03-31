@@ -1,4 +1,4 @@
-// aggregate-functions.js
+// quoting-functions.js
 /*
  *  Copyright (c) 2017 James Leigh, Some Rights Reserved
  *
@@ -32,76 +32,66 @@
 const _ = require('underscore');
 const statkit = require("statkit");
 const Parser = require('./parser.js');
+const common = require('./common-functions.js');
+const config = require('./config.js');
+const expect = require('chai').expect;
 
 /**
  * These functions operate of an array of securities at the same point in time.
  */
-module.exports = function(expr, name, args, quote, dataset, options) {
+module.exports = function(expr, name, args, temporal, quote, dataset, options) {
     if (functions[name])
-        return functions[name].apply(this, [quote, dataset, options, expr].concat(args));
+        return functions[name].apply(this, [temporal, quote, dataset, options, expr].concat(args));
+    else if (module.exports.has(name))
+        return functions['symbol.exchange'].apply(this, [temporal, quote, dataset, options, expr]);
+};
+
+module.exports.has = function(name) {
+    var exchanges = _.keys(config('exchanges'));
+    if (functions[name]) return true;
+    else if (!name || !~name.indexOf('.')) return false;
+    else return _.contains(exchanges, name.substring(name.indexOf('.')+1));
 };
 
 var functions = module.exports.functions = {
-    COUNT: _.extend((quote, dataset, options, expr, expression) => {
-        return positions => {
-            var context = _.initial(positions);
-            var row = context.length;
-            var currently = _.last(positions);
-            var keys = _.keys(currently);
-            var inputs = keys.map((key, i, keys) => _.pick(currently, keys.slice(0, i+1)));
-            return inputs.map(input => {
-                context[row] = input;
-                return expression(context);
-            }).filter(val => val != null).length;
-        };
+    'symbol.exchange': _.extend((temporal, quote, dataset, options, expr) => {
+        var args = Parser({
+            constant(value) {
+                return [value];
+            },
+            variable(name) {
+                return [name];
+            },
+            expression(expr, name, args) {
+                return [expr].concat(args.map(_.first));
+            }
+        }).parse(expr);
+        if (!args || args.length != 2) throw Error("Unrecongized quote call: " + expr);
+        var name = args[0].substring(0, args[0].indexOf('('));
+        var expression = args[1];
+        expect(name).to.match(/^\S+\.\w+$/);
+        var begin = _.first(_.pluck(_.map(dataset, _.first), temporal).sort());
+        var end = _.last(_.pluck(_.map(dataset, _.last), temporal).sort());
+        var symbol = name.substring(0, name.lastIndexOf('.'));
+        var exchange = name.substring(name.lastIndexOf('.')+1);
+        var last = _.compose(_.last, _.values, _.last);
+        return quote({
+            symbol: symbol,
+            exchange: exchange,
+            columns: temporal + ',' + expression,
+            pad_begin: 1,
+            begin: begin,
+            end: end
+        }).then(data => positions => {
+            var idx = _.sortedIndex(data, last(positions), temporal);
+            if (idx >= data.length || idx && data[idx][temporal] > last(positions)[temporal]) idx--;
+            return data[idx][expression];
+        });
     }, {
         args: "expression",
-        description: "Counts the number of retained securities that evaluate expression to a value"
+        description: "Retrieves external security data that is used in an expression."
     }),
-    SUM: _.extend((quote, dataset, options, expr, expression) => {
-        return positions => {
-            var context = _.initial(positions);
-            var row = context.length;
-            var currently = _.last(positions);
-            var keys = _.keys(currently);
-            var inputs = keys.map((key, i, keys) => _.pick(currently, keys.slice(0, i+1)));
-            return inputs.map(input => {
-                context[row] = input;
-                return expression(context);
-            }).filter(_.isFinite).reduce((a, b) => a + b);
-        };
-    }, {
-        args: "expression",
-        description: "Returns the sum of all numeric values of retained securities"
-    }),
-    PREV: _.extend((quote, dataset, options, expr, columnName, defaultValue) => {
-        return positions => {
-            var name = columnName(positions);
-            var key = _.last(_.keys(_.last(positions)));
-            var previously = positions[positions.length -2];
-            if (_.has(previously, key)) return previously[key][name];
-            else if (defaultValue) return defaultValue(positions);
-            else return null;
-        };
-    }, {
-        args: "columnName, defaultValue",
-        description: "Returns the value of columnName from the previous retained value for this security"
-    }),
-    SUMPREV: _.extend((quote, dataset, options, expr, numberOfValues, columnName) => {
-        return positions => {
-            if (positions.length < 2) return 0;
-            var name = columnName(positions);
-            var num = numberOfValues(positions);
-            var key = _.last(_.keys(_.last(positions)));
-            var len = positions.length -1;
-            var values = _.pluck(_.pluck(positions.slice(Math.max(len - num, 0), len), key), name);
-            return values.reduce((a, b) => (a || 0) + (b || 0), 0);
-        };
-    }, {
-        args: "numberOfValues, columnName",
-        description: "Returns the sum of columnName values from the previous numberOfValues retained"
-    }),
-    MAXCORREL: _.extend((quote, dataset, options, expr, duration, expression) => {
+    MAXCORREL: _.extend((temporal, quote, dataset, options, expr, duration, expression, criteria) => {
         var n = asPositiveInteger(duration, "MAXCORREL");
         var arg = Parser({
             constant(value) {
@@ -117,18 +107,19 @@ var functions = module.exports.functions = {
         if (!arg) throw Error("Unrecongized call to MAXCORREL: " + expr);
         var filtered = dataset.filter(data => !_.isEmpty(data));
         if (filtered.length < 2) return positions => 0;
+        var condition = parseCriteria(arg, criteria, options);
         var optionset = filtered.map(data => {
             var first = _.first(data);
             var last = _.last(data);
             return _.defaults({
                 symbol: first.symbol,
                 exchange: first.exchange,
-                columns: 'ending,' + arg,
+                columns: temporal + ',' + arg,
                 pad_begin: n,
                 begin: first.ending,
                 end: last.ending,
                 pad_end: 0,
-                criteria: null
+                retain: null
             }, options);
         });
         return Promise.all(optionset.map(options => quote(options))).then(dataset => {
@@ -141,12 +132,12 @@ var functions = module.exports.functions = {
             return historic => {
                 var positions = _.last(historic);
                 if (_.size(positions) < 2) return 0;
-                var matrix = _.keys(positions).map((symbol, i, keys) => {
-                    var position = positions[symbol];
+                var matrix = _.keys(_.pick(positions, _.isObject)).map((symbol, i, keys) => {
+                    if (i < keys.length -1 && !condition(positions[symbol])) return null;
                     var data = dataset[symbol];
                     if (!data) throw Error("Could not find dataset: " + symbol);
-                    var end = _.sortedIndex(data, position, 'ending');
-                    if (data[end] && data[end].ending == position.ending) end++;
+                    var end = _.sortedIndex(data, positions, temporal);
+                    if (data[end] && data[end][temporal] == positions[temporal]) end++;
                     return _.pluck(data.slice(Math.max(end - n, 0), end), arg);
                 });
                 var last = matrix.pop();
@@ -158,7 +149,7 @@ var functions = module.exports.functions = {
             };
         });
     }, {
-        args: "duration, expression",
+        args: "duration, expression, [criteria]",
         description: "Maximum correlation coefficient among other securities"
     })
 };
@@ -169,4 +160,32 @@ function asPositiveInteger(calc, msg) {
         if (n > 0 && _.isFinite(n) && Math.round(n) == n) return n;
     } catch (e) {}
     throw Error("Expected a literal positive interger in " + msg + " not " + n);
+}
+
+function parseCriteria(columnName, criteria, options) {
+    if (!criteria)
+        return _.constant(true);
+    if (_.isFunction(criteria))
+        return parseCriteria(columnName, criteria(), options);
+    if (!_.isString(criteria))
+        return parseCriteria(columnName, criteria.toString(), options);
+    if (_.contains(['<', '>', '=', '!'], criteria.charAt(0)))
+        return parseCriteria(columnName, columnName + criteria, options);
+    try {
+        var expression = false;
+        var parsed = Parser({
+            constant(value) {
+                return _.constant(value);
+            },
+            variable(name) {
+                return context => _.has(context, name) ? context[name] : options[name];
+            },
+            expression(expr, name, args) {
+                expression = true;
+                return common(name, args, options);
+            }
+        }).parse(criteria);
+        if (expression) return parsed;
+    } catch(e) {} // not an expression, must be a value
+    return context => context[columnName] == criteria;
 }

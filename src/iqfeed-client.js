@@ -62,7 +62,6 @@ module.exports = function(command, productId, productVersion) {
         },
         lookup(symbol, listed_market) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            logger.debug("Lookup", symbol);
             return sbf(throttled, {
                 field: 's',
                 search: symbol,

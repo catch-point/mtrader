@@ -94,26 +94,43 @@ var functions = module.exports.functions = {
         description: "HH:mm:ss time 24hr format",
         seeAlso: ['DATE']
     }),
-    /* Date of Month (1-31) */
+    /* Date of Month as a string ('01'-'31') */
     DAY: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
-            return date.date();
+            var number = date.date();
+            if (number < 10) return '0' + number;
+            else return '' + number;
         };
     }, {
-        description: "Date of Month (1-31)",
+        description: "Date of Month as a string ('01'-'31')",
         seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
     }),
-    /* Month of Year (1-12) */
+    /* Week of Year as a string ('01'-'52') */
+    WEEK: _.extend((opts, ending) => {
+        return context => {
+            var date = moment(ending(context)).tz(opts.tz);
+            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            var number = date.week();
+            if (number < 10) return '0' + number;
+            else return '' + number;
+        };
+    }, {
+        description: "Date of Month as a string ('01'-'31')",
+        seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
+    }),
+    /* Month of Year as a string ('01'-'12') */
     MONTH: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
-            return date.month() + 1;
+            var number = date.month() + 1;
+            if (number < 10) return '0' + number;
+            else return '' + number;
         };
     }, {
-        description: "Month of Year (1-12)",
+        description: "Month of Year as a string ('01'-'12')",
         seeAlso: ['YEAR', 'MONTH', 'DAY', 'DATE', 'TIME']
     }),
     /* Year */
@@ -145,6 +162,12 @@ var functions = module.exports.functions = {
     CEIL(opts, expression) {
         return context => {
             return Math.ceil(expression(context));
+        };
+    },
+    ROUND(opts, expression, count) {
+        var scale = Math.pow(10, count ? count() : 0);
+        return context => {
+            return Math.round(expression(context)*scale)/scale;
         };
     },
     FLOOR(opts, expression) {
@@ -268,20 +291,20 @@ var functions = module.exports.functions = {
     /* Addition */
     ADD(opts, a, b) {
         return context => {
-            return a(context) + b(context);
+            return precision(a(context) + b(context));
         };
     },
     /* Subtraction */
     SUBTRACT(opts, a, b) {
         return context => {
-            return a(context) - b(context);
+            return precision(a(context) - b(context));
         };
     },
     /* Multiplication */
     PRODUCT: _.extend(function(opts) {
         var numbers = _.rest(arguments);
         return context => numbers.reduce((product, num) => {
-            return product * num(context);
+            return precision(product * num(context));
         }, 1);
     }, {
         args: "numbers..."
@@ -289,25 +312,31 @@ var functions = module.exports.functions = {
     /* Divide */
     DIVIDE(opts, n, d) {
         return context => {
-            return n(context) / d(context);
+            return precision(n(context) / d(context));
         };
     },
     /* Modulus */
     MOD(opts, number, divisor) {
         return context => {
-            return number(context) % divisor(context);
+            return precision(number(context) % divisor(context));
         };
     },
     /* Percent change ratio */
     CHANGE(opts, target, reference, denominator) {
-        var den = denominator ? denominator : reference;
-        return context => {
-            var numerator = target(context) - reference(context);
-            return numerator * 100 / den(context);
+        if (!target || !reference) throw Error("CHANGE requires two or three arguments");
+        var den = denominator || reference;
+        return bars => {
+            var numerator = target(bars) - reference(bars);
+            return Math.round(numerator * 10000/ den(bars)) /100;
         };
     }
 };
 
 _.forEach(functions, fn => {
-    fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/);
+    fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,?\s*([^)]*)\)/)[1];
 });
+
+function precision(number) {
+    if (!_.isNumber(number)) return number;
+    return parseFloat(number.toPrecision(12));
+}

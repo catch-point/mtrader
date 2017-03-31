@@ -1,0 +1,2 @@
+yahoo_symbol,symbol,MarketCapitalization,name,exch,AverageDailyVolume,EarningsShare,EPSEstimateCurrentYear,EPSEstimateNextYear,EPSEstimateNextQuarter,BookValue,EBITDA,PriceSales,PriceBook,PEGRatio,PriceEPSEstimateCurrentYear,PriceEPSEstimateNextYear,ShortRatio
+YHOO,YHOO,43.96B,Yahoo! Inc.,NMS,8383310,-4.756,0.680,0.710,0.150,32.502,226.80M,8.580,1.427,17.570,67.581,64.725,7.490

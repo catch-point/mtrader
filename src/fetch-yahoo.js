@@ -250,7 +250,7 @@ function includeIntraday(yahoo, bars, now, symbol, options) {
         var intraday = _.defaults({
             ending: latest.ending || quote.ending,
             open: latest.open || quote.open,
-            high: Math.max(latest.high || 0, quote.high),
+            high: Math.max(latest.high || 0, quote.high || 0),
             low: latest.low && latest.low < quote.low ? latest.low : quote.low,
             close: quote.close,
             adj_close: quote.close * prior_close / quote.prior_close,

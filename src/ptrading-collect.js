@@ -39,15 +39,14 @@ const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const replyTo = require('./ipc-promise-reply.js');
 const config = require('./ptrading-config.js');
-const quote = require('./ptrading-quote.js');
-const collect = require('./collect.js')(quote);
+const Collect = require('./collect.js');
 const expect = require('chai').expect;
-const aggregate = require('./aggregate-functions.js');
+const rolling = require('./rolling-functions.js');
 
 function usage(command) {
     return command.version(require('../package.json').version)
         .description("Collects historic portfolio data")
-        .usage('[date] [options]')
+        .usage('[identifier] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
@@ -59,76 +58,137 @@ function usage(command) {
         .option('--pad-end <number>', "Number of bars after end dateTime")
         .option('--portfolio <list>', "Comma separated list of <symbol>.<exchange> to search")
         .option('--columns <list>', "Comma separated list of columns (such as day.close)")
-        .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
-        .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero for a security to be retained in the result")
+        .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('--output <file>', "CSV file to write the result into")
         .option('--reverse', "Reverse the order of the rows")
         .option('--transpose', "Swap the columns and rows");
 }
 
-if (require.main === module) {
-    var program = usage(commander).parse(process.argv);
-    if (program.args.length) {
-        Promise.resolve(program.args).then(args => {
-            return collect(readBegin(args.join(' '), config.options()));
-        }).then(result => tabular(result))
-          .catch(err => logger.error(err, err.stack))
-          .then(() => quote.close());
-    } else {
-        program.help();
-    }
+if (process.send) {
+    var parent = replyTo(process).handle('collect', payload => {
+        return collect()(payload);
+    });
+    var collect = _.once(() => Collect(function(options) {
+        return parent.request('quote', options);
+    }));
+    process.on('disconnect', () => collect().close());
 } else {
-    var program = usage(new commander.Command());
-    module.exports = collect;
+    var quote = require('./ptrading-quote.js');
+    var collect = Collect(quote);
+    var program = require.main === module ?
+        usage(commander).parse(process.argv) : usage(new commander.Command());
+    var workers = commander.workers || os.cpus().length;
+    var children = _.range(workers).map(() => {
+        return replyTo(config.fork(module.filename, program)).handle('quote', payload => {
+            return quote(payload);
+        });
+    });
+    var seq = 0;
+    module.exports = function(options) {
+        var duration = options.duration && moment.duration(options.duration);
+        var begin = moment(options.begin);
+        var end = moment(options.end);
+        if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.duration);
+        if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
+        if (!end.isValid()) throw Error("Invalid end date: " + options.end);
+        var segments = [options.begin];
+        if (duration) {
+            begin.add(duration);
+            while (begin.isBefore(end)) {
+                segments.push(begin.format());
+                begin.add(duration);
+            }
+        }
+        var optionset = segments.map((segment, i, segments) => {
+            if (i === 0 && i == segments.length -1) return options;
+            else if (i === 0) return _.defaults({
+                begin: options.begin, end: segments[i+1],
+                pad_begin: options.pad_begin, pad_end: 0
+            }, options);
+            else if (i < segments.length -1) return _.defaults({
+                begin: segment, end: segments[i+1],
+                pad_begin: 0, pad_end: 0
+            }, options);
+            else return _.defaults({
+                begin: segment, end: options.end,
+                pad_begin: 0, pad_end: options.pad_end
+            }, options);
+        });
+        var promises = optionset.reduce((promises, options, i) => {
+            var wait = i < workers ? Promise.resolve() : promises[i - workers];
+            promises.push(wait.then(() => {
+                return children[seq++ % workers].request('collect', options);
+            }));
+            return promises;
+        }, []);
+        return Promise.all(promises).then(dataset => {
+            return _.flatten(dataset, true);
+        });
+    };
     module.exports.close = function() {
+        children.forEach(child => child.disconnect());
         return quote.close();
     };
-    module.exports.shell = shell.bind(this, program.description());
+    module.exports.shell = shell.bind(this, program.description(), module.exports);
+    if (require.main === module) {
+        var name = program.args.join(' ');
+        var read = name ? config.read(name) : {};
+        if (!read) throw Error("Could not read " + name + " settings");
+        var options = _.defaults(read, config.opts(), config.options());
+        module.exports(options).then(result => tabular(result))
+          .catch(err => logger.error(err, err.stack))
+          .then(() => module.exports.close());
+    }
 }
 
-function shell(desc, app) {
-    app.cmd('collect :begin([\\d\\-:+.WTZ]+)?', desc, (cmd, sh, cb) => {
-        var options = readBegin(cmd.params.begin, config.options());
-        collect(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
+function shell(desc, collect, app) {
+    app.on('quit', () => collect.close());
+    app.on('exit', () => collect.close());
+    app.cmd('collect', desc, (cmd, sh, cb) => {
+        collect(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    _.forEach(aggregate.functions, (fn, name) => {
+    app.cmd("collect :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
+        var read = config.read(cmd.params.name);
+        if (!read) throw Error("Could not read " + name + " settings");
+        collect(_.defaults(read, config.options()))
+            .then(result => tabular(result)).then(() => sh.prompt(), cb);
+    });
+    _.forEach(rolling.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));
     });
 // help
 help(app, 'collect', `
-  Usage: collect :begin
+  Usage: collect :name
 
   ${desc}
 
-    :begin
-      Indicates the year, month, week, or start date that should be collected. 
+    :name
+      Uses the values from the named stored session to override the values of
+      the current session.
 
   See also:
     help begin  
     help end  
     help pad_begin  
     help pad_end  
+    help pad_leading  
+    help duration  
     help columns  
-    help criteria  
     help retain  
     help precedence  
     help output  
     help reverse  
 `);
-help(app, 'retain', `
-  Usage: set retain :expression
+help(app, 'pad_leading', `
+  Usage: set pad_leading 0  
 
-  An expression (possibly of an aggregate function) of each included
-  security that must be true to be included in the result
+  Sets the number of additional rows to to compute as a warmup, but not included in the result
+`);
+help(app, 'duration', `
+  Usage: set duration P1Y  
 
-  See also:
-    help expression  
-    help common-functions  
-    help lookback-functions  
-    help indicator-functions  
-    help aggregate-functions  
-    help LEADING  
+  Sets the duration that collect should run before resetting any preceeding values
 `);
 help(app, 'precedence', `
   Usage: set precedence :expression
@@ -142,15 +202,15 @@ help(app, 'precedence', `
     help common-functions  
     help lookback-functions  
     help indicator-functions  
-    help aggregate-functions  
+    help rolling-functions  
     help LEADING  
     help DESC  
     help ASC  
 `);
-help(app, 'aggregate-functions', `
+help(app, 'rolling-functions', `
   Aggregate functions may read already retained securities and the proposed security values.
 
-  ${listFunctions(aggregate.functions)}
+  ${listFunctions(rolling.functions)}
 `);
 help(app, 'DESC', `
   Usage: DESC(expression)  
@@ -164,33 +224,10 @@ help(app, 'ASC', `
 `);
 }
 
-function readBegin(begin, options) {
-    if (!begin) return options;
-    if (begin.match(/^\d\d\d\d$/)) return _.defaults({
-        begin: begin + '-01-01',
-        end: (1 + begin) + '-01-01'
-    }, options);
-    if (begin.match(/^\d\d\d\d-\d\d$/)) return _.defaults({
-        begin: begin + '-01',
-        end: moment(begin + '-01').add(1, 'month').format('YYYY-MM-DD')
-    }, options);
-    if (begin.match(/^\d\d\d\d-?W\d\d(-?\d)?$/)) return _.defaults({
-        begin: begin,
-        end: moment(begin).add(1, 'week').format('YYYY-MM-DD')
-    }, options);
-    if (options.pad_end) return _.defaults({
-        begin: begin,
-        end: begin
-    }, options);
-    else return _.defaults({
-        begin: begin,
-    }, options);
-}
-
 function functionHelp(name, fn) {
     var source = fn.toString();
     var m = source.match(/^[^(]*\(([^)]*)\)/);
-    var args = fn.args || _.property(1)(m) || '';
+    var args = _.isString(fn.args) ? fn.args : _.property(1)(m) || '';
     var usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
     var body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
     var desc = fn.description ? '\n  ' + wrap(fn.description, 2, 80) + '\n' : body;

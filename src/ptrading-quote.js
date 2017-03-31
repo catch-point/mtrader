@@ -47,7 +47,7 @@ const indicator = require('./indicator-functions.js');
 function usage(command) {
     return command.version(require('../package.json').version)
         .description("Quotes historical data for the given symbol")
-        .usage('<symbol> [exchange] [options]')
+        .usage('<symbol.exchange> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
@@ -58,7 +58,7 @@ function usage(command) {
         .option('--pad-begin <number>', "Number of bars before begin dateTime")
         .option('--pad-end <number>', "Number of bars after end dateTime")
         .option('--columns <list>', "Comma separated list of columns (such as day.close)")
-        .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
+        .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
         .option('--output <file>', "CSV file to write the result into")
         .option('--reverse', "Reverse the order of the rows")
         .option('--transpose', "Swap the columns and rows");
@@ -69,18 +69,23 @@ if (require.main === module) {
     if (program.args.length) {
         var fetch = require('./ptrading-fetch.js');
         var quote = Quote(fetch);
-        Promise.resolve(program.args)
-            .then(args => quote(_.defaults({
-                symbol: args[0],
-                exchange: args[1]
-            }, config.opts())))
-            .then(result => tabular(result))
-            .catch(err => logger.error(err, err.stack))
-            .then(() => quote.close())
-            .then(() => fetch.close());
+        var symbol = program.args[0];
+        var exchange = program.args[1];
+        if (!exchange && ~symbol.indexOf('.')) {
+            exchange = symbol.substring(symbol.lastIndexOf('.')+1);
+            symbol = symbol.substring(0, symbol.lastIndexOf('.'));
+        }
+        Promise.resolve().then(() => quote(_.defaults({
+            symbol: symbol,
+            exchange: exchange
+        }, config.opts(), config.options())))
+        .then(result => tabular(result))
+        .catch(err => logger.error(err, err.stack))
+        .then(() => quote.close())
+        .then(() => fetch.close());
     } else if (process.send) {
         var parent = replyTo(process).handle('quote', payload => {
-            return quote()(_.defaults({}, payload, config.options()));
+            return quote()(payload);
         });
         var quote = _.once(() => Quote(function(options) {
             return parent.request('fetch', options);
@@ -95,8 +100,7 @@ if (require.main === module) {
     var workers = commander.workers || os.cpus().length;
     var children = _.range(workers).map(() => {
         return replyTo(config.fork(module.filename, program)).handle('fetch', payload => {
-            var options = _.defaults({}, payload, config.options());
-            return fetch(options);
+            return fetch(payload);
         });
     });
     module.exports = function(options) {
@@ -107,7 +111,7 @@ if (require.main === module) {
         children.forEach(child => child.disconnect());
         return fetch.close();
     };
-    module.exports.shell = shell.bind(this, program.description(), children);
+    module.exports.shell = shell.bind(this, program.description(), module.exports);
 }
 
 function chooseWorker(workers, string) {
@@ -127,13 +131,16 @@ function hashCode(str){
     return hash;
 }
 
-function shell(desc, children, app) {
-    app.on('quit', () => children.forEach(child => child.disconnect()));
-    app.on('exit', () => children.forEach(child => child.disconnect()));
-    app.cmd('quote :symbol :exchange?', desc, (cmd, sh, cb) => {
-        chooseWorker(children, cmd.params.symbol).request('quote', _.defaults({
-            symbol: cmd.params.symbol,
-            exchange: cmd.params.exchange
+function shell(desc, quote, app) {
+    app.on('quit', () => quote.close());
+    app.on('exit', () => quote.close());
+    app.cmd('quote :symbol', desc, (cmd, sh, cb) => {
+        var s = cmd.params.symbol;
+        var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
+        var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
+        quote(_.defaults({
+            symbol: symbol,
+            exchange: exchange
         }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
     _.forEach(common.functions, (fn, name) => {
@@ -147,14 +154,12 @@ function shell(desc, children, app) {
     });
 // help
 help(app, 'quote', `
-  Usage: quote :symbol[ :exchange]
+  Usage: quote :symbol.exchange
 
   ${desc}
 
-    :symbol
-      The ticker symbol used by the exchange
-    :exchange
-      If provided, one of the following exchange acronyms:
+    :symbol.exchange
+      The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
 ${listExchanges()}
   See also:
     help begin  
@@ -162,6 +167,7 @@ ${listExchanges()}
     help pad_begin  
     help pad_end  
     help columns  
+    help retain  
     help criteria  
     help output  
     help reverse  
@@ -191,18 +197,36 @@ help(app, 'columns', `
     help common-functions  
     help lookback-functions  
     help indicator-functions  
+    help rolling-functions  
+    help LEADING  
 `);
-help(app, 'criteria', `
-  Usage: set criteria :expression
+help(app, 'retain', `
+  Usage: set retain :expression
 
-  An expression that must evaluate to a non-zero value for an interval bar to be
-  included in the output.
+  An expression (possibly of an rolling function) of each included
+  security bar that must be true to be included in the result
 
   See also:
     help expression  
     help common-functions  
     help lookback-functions  
     help indicator-functions  
+    help rolling-functions  
+    help LEADING  
+`);
+help(app, 'criteria', `
+  Usage: set criteria :expression
+
+  An expression indicating a block of results over which have the same LEADING
+  results (reflecting the first result in the block). For results with a false
+  expression value will be treated as their own block.
+
+  See also:
+    help expression  
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+    help rolling-functions  
     help LEADING  
 `);
 help(app, 'expression', `
@@ -293,7 +317,7 @@ help(app, 'indicator-functions', `
 function functionHelp(name, fn) {
     var source = fn.toString();
     var m = source.match(/^[^(]*\(([^)]*)\)/);
-    var args = fn.args || _.property(1)(m) || '';
+    var args = _.isString(fn.args) ? fn.args : _.property(1)(m) || '';
     var usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
     var body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
     var desc = fn.description ? '\n  ' + wrap(fn.description, 2, 80) + '\n' : body;

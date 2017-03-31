@@ -115,7 +115,7 @@ function loadQuotes(rates, queue) {
     }, {});
     return _.reduce(filters, function(promise, group){
         if (rates.failure > 1 && !rates.success) {
-            console.log("Yahoo! Query Language is temporarily disabled for finance historicaldata");
+            logger.info("Yahoo! Query Language is temporarily disabled for finance historicaldata");
             return Promise.reject(rates.lastError);
         }
         var url = [

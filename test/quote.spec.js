@@ -213,7 +213,7 @@ describe("quote", function() {
                 'day.close AS "Close"',
                 '(day.close - OFFSET(1, day.close)) *100 / day.close AS "Change"',
                 'day.incomplete AS "incomplete"'
-            ].join(','),
+            ],
             symbol: 'IBM',
             exchange: 'NYSE',
             begin: moment.tz('2009-12-01', tz),
@@ -228,7 +228,7 @@ describe("quote", function() {
                     'DATE(day.ending) AS "Date"',
                     'day.close AS "Close"',
                     '(day.close - OFFSET(1, day.close)) *100 / OFFSET(1, day.close) AS "Change"'
-                ].join(','),
+                ],
                 symbol: 'IBM',
                 exchange: 'NYSE',
                 begin: moment.tz('2009-12-01', tz),
@@ -305,7 +305,7 @@ describe("quote", function() {
                 'DATE(day.ending) AS "Date"',
                 'day.close AS "Close"',
                 '(day.close - OFFSET(1, day.close)) *100 / day.close AS "Change"'
-            ].join(','),
+            ],
             symbol: 'DIS',
             exchange: 'NYSE',
             begin: moment.tz('2016-11-01', tz),
@@ -321,7 +321,7 @@ describe("quote", function() {
                     'DATE(day.ending) AS "Date"',
                     'day.close AS "Close"',
                     '(day.close - OFFSET(1, day.close)) *100 / OFFSET(1, day.close) AS "Change"'
-                ].join(','),
+                ],
                 symbol: 'DIS',
                 exchange: 'NYSE',
                 begin: moment.tz('2016-11-01', tz),
@@ -446,7 +446,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"',
                 '(m30.close - day.close)*100/day.close AS "Change"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -470,7 +470,7 @@ describe("quote", function() {
             {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726},
             {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:0.1093},
             {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,Change:0},
-            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:(1.10758-1.10749)*100/1.10749}
+            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:0.0081}
         ]);
     });
     it("should combine intervals conditionally", function() {
@@ -480,31 +480,31 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"',
                 'CHANGE(m30.close, IF(TIME(day.ending)=TIME(m30.ending),OFFSET(1,day.close),day.close)) AS "Change"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:30:00-0500')
         }).should.eventually.be.like([
-            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.3289},
-            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,Change:0.2160},
-            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,Change:0.1663},
-            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.2575},
-            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,Change:0.1617},
-            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,Change:0.1346},
-            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.1916},
-            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.2349},
-            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,Change:0.1816},
-            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.3172},
-            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,Change:0.2946},
-            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:0.2792},
-            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,Change:0.1861},
-            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,Change:0.1744},
-            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,Change:0.1382},
-            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726},
-            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:0.1093},
-            {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,Change:(1.10749-1.1064)*100/1.1064},
-            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:(1.10758-1.10749)*100/1.10749}
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.33},
+            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,Change:0.22},
+            {Date:'2014-03-03',Time:'09:30:00',Price:1.10824,Change:0.17},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.26},
+            {Date:'2014-03-03',Time:'10:30:00',Price:1.10819,Change:0.16},
+            {Date:'2014-03-03',Time:'11:00:00',Price:1.10789,Change:0.13},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.19},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.23},
+            {Date:'2014-03-03',Time:'12:30:00',Price:1.10841,Change:0.18},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.32},
+            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,Change:0.29},
+            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:0.28},
+            {Date:'2014-03-03',Time:'14:30:00',Price:1.10846,Change:0.19},
+            {Date:'2014-03-03',Time:'15:00:00',Price:1.10833,Change:0.17},
+            {Date:'2014-03-03',Time:'15:30:00',Price:1.10793,Change:0.14},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.17},
+            {Date:'2014-03-03',Time:'16:30:00',Price:1.10761,Change:0.11},
+            {Date:'2014-03-03',Time:'17:00:00',Price:1.10749,Change:0.10},
+            {Date:'2014-03-03',Time:'17:30:00',Price:1.10758,Change:0.01}
         ]);
     });
     it("should compute YTD", function() {
@@ -514,7 +514,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"',
                 '(m30.close - year.close)*100/year.close AS "YTD"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -549,8 +549,8 @@ describe("quote", function() {
                 'm30.close AS Price',
                 'CHANGE(Price, Another) AS Change',
                 'day.close * (1 + Change) AS Another'
-            ].join(','),
-            criteria: 'Price > OFFSET(1, Price)',
+            ],
+            retain: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -564,8 +564,8 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"',
                 '(m30.close - day.close)*100/day.close AS "Change"'
-            ].join(','),
-            criteria: 'm30.close > OFFSET(1, m30.close)',
+            ],
+            retain: 'm30.close > OFFSET(1, m30.close)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -586,19 +586,19 @@ describe("quote", function() {
                 'TIME(m30.ending) AS Time',
                 'm30.close AS Price',
                 'CHANGE(Price, day.close) AS Change'
-            ].join(','),
-            criteria: 'Price > OFFSET(1, Price)',
+            ],
+            retain: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
-            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.3289},
-            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.2575},
-            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.1916},
-            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.2349},
-            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.3172},
-            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726}
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.33},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.26},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.19},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.23},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.32},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.17}
         ]);
     });
     it("should filter out most results", function() {
@@ -607,8 +607,8 @@ describe("quote", function() {
                 'DATE(m30.ending) AS "Date"',
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"'
-            ].join(','),
-            criteria: 'WORKDAY(month.ending) = WORKDAY(day.ending) and HOUR(m30.ending) = 12',
+            ],
+            retain: 'WORKDAY(month.ending) = WORKDAY(day.ending) and HOUR(m30.ending) = 12',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-01-01T08:30:00-0500'),
@@ -628,14 +628,14 @@ describe("quote", function() {
             {Date: "2014-12-01", Time: "12:00:00", Price: 1.13436}
         ]);
     });
-    it("should filter out most results using leading criteria", function() {
+    it("should filter out most results using leading retain", function() {
         return quote({
             columns: [
                 'DATE(m30.ending) AS "Date"',
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"'
-            ].join(','),
-            criteria: [
+            ],
+            retain: [
                 'WORKDAY(month.ending) = WORKDAY(day.ending)',
                 'LEADING(HOUR(m60.ending)) = 12',
                 'm30.close >= OFFSET(1,m30.close)'
@@ -670,6 +670,39 @@ describe("quote", function() {
             {Date:"2014-11-03",Time:"13:30:00",Price:1.13521}
         ]);
     });
+    it("should filter out most results using leading criteria", function() {
+        return quote({
+            columns: [
+                'DATE(m30.ending) AS "Date"',
+                'TIME(m30.ending) AS "Time"',
+                'm30.close AS "Price"',
+                'IF(LEADING(m30.ending)<m30.ending, 100, 0) AS position'
+            ],
+            retain: [
+                'WORKDAY(month.ending) = WORKDAY(day.ending)'
+            ].join(' and '),
+            criteria: [
+                'LEADING(HOUR(m60.ending)) = 12',
+                'm30.close >= OFFSET(1,m30.close)'
+            ].join(' and '),
+            symbol: 'USD',
+            exchange: 'CAD',
+            begin: moment('2014-01-02T11:30:00-0500'),
+            end: moment('2014-01-02T17:00:00-0500')
+        }).should.eventually.be.like([
+            {Date:"2014-01-02",Time:"11:30:00",Price:1.06343,position:0},
+            {Date:"2014-01-02",Time:"12:00:00",Price:1.06335,position:0},
+            {Date:"2014-01-02",Time:"12:30:00",Price:1.06356,position:0},
+            {Date:"2014-01-02",Time:"13:00:00",Price:1.06393,position:100},
+            {Date:"2014-01-02",Time:"13:30:00",Price:1.06394,position:100},
+            {Date:"2014-01-02",Time:"14:00:00",Price:1.06515,position:100},
+            {Date:"2014-01-02",Time:"14:30:00",Price:1.06544,position:100},
+            {Date:"2014-01-02",Time:"15:00:00",Price:1.0661,position:100},
+            {Date:"2014-01-02",Time:"15:30:00",Price:1.0662,position:100},
+            {Date:"2014-01-02",Time:"16:00:00",Price:1.06721,position:100},
+            {Date:"2014-01-02",Time:"16:30:00",Price:1.06671,position:0}
+        ]);
+    });
     it("should lookback to multiple blocks", function() {
         return quote({
             columns: [
@@ -678,7 +711,7 @@ describe("quote", function() {
                 'm240.close AS "Price"',
                 'OFFSET(120, m240.close) AS "M1"',
                 'OFFSET(240, m240.close) AS "M2"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: '2016-01-15',
@@ -702,7 +735,7 @@ describe("quote", function() {
                 'OFFSET(120, m240.close) AS "M1"',
                 'OFFSET(240, m240.close) AS "M2"',
                 'm240.incomplete AS "incomplete"'
-            ].join(','),
+            ],
             symbol: 'USD',
             exchange: 'CAD',
             begin: '2016-02-15',
@@ -717,7 +750,7 @@ describe("quote", function() {
                     'DATE(m240.ending) AS "Date"',
                     'TIME(m240.ending) AS "Time"',
                     'm240.close AS "Price"'
-                ].join(','),
+                ],
                 symbol: 'USD',
                 exchange: 'CAD',
                 begin: '2016-02-16',
@@ -731,7 +764,7 @@ describe("quote", function() {
                     'm240.close AS "Price"',
                     'OFFSET(120, m240.close) AS "M1"',
                     'OFFSET(240, m240.close) AS "M2"'
-                ].join(','),
+                ],
                 symbol: 'USD',
                 exchange: 'CAD',
                 begin: '2016-02-16',
@@ -745,6 +778,34 @@ describe("quote", function() {
             {Date:"2016-02-16",Time:"16:00:00",Price:1.3882,M1:1.4592,M2:1.3958},
             {Date:"2016-02-16",Time:"20:00:00",Price:1.3871,M1:1.4489,M2:1.3934},
             {Date:"2016-02-17",Time:"00:00:00",Price:1.3872,M1:1.4459,M2:1.3937}
+        ]);
+    });
+    it("should use LEADING to meansure change", function() {
+        return quote({
+            symbol: "USD",
+            exchange: "CAD",
+            columns: [
+                "DATE(ending) AS date",
+                "day.close AS close",
+                "CHANGE(close,OFFSET(1,close)) AS change",
+                "ROUND(day.POVB(20)) AS povb",
+                "IF(LEADING(day.POVB(20))<18 AND day.POVB(20)<50,100000,0) AS position",
+                "ROUND((close-LEADING(close))/LEADING(close)*100000,2) AS profit",
+            ],
+            criteria: "LEADING(day.POVB(20))<18 AND day.POVB(20)<50",
+            begin: '2014-02-10',
+            end: '2014-02-22'
+        }).should.eventually.be.like([
+            {date:"2014-02-10",close:1.10574,change:0.23,povb:37,position:0,profit:0},
+            {date:"2014-02-11",close:1.10067,change:-0.46,povb:22,position:0,profit:0},
+            {date:"2014-02-12",close:1.10008,change:-0.05,povb:17,position:100000,profit:0},
+            {date:"2014-02-13",close:1.09751,change:-0.23,povb:11,position:100000,profit:-233.62},
+            {date:"2014-02-14",close:1.09849,change:0.09,povb:12,position:100000,profit:-144.53},
+            {date:"2014-02-17",close:1.09609,change:-0.22,povb:4,position:100000,profit:-362.70},
+            {date:"2014-02-18",close:1.09454,change:-0.14,povb:1,position:100000,profit:-503.60},
+            {date:"2014-02-19",close:1.10772,change:1.2,povb:42,position:100000,profit:694.49},
+            {date:"2014-02-20",close:1.10969,change:0.18,povb:65,position:0,profit:0},
+            {date:"2014-02-21",close:1.1112,change:0.14,povb:70,position:0,profit:0}
         ]);
     });
 });

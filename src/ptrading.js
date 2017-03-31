@@ -41,7 +41,7 @@ var program = require('commander').version(require('../package.json').version)
     .command('config <name> [value]', "View or change stored options")
     .command('fetch <interval> <symbol> [exchange]', "Historic information of a security")
     .command('quote <interval> <symbol> [exchange]', "Historic information of a security")
-    .command('collect [date]', "Collects historic portfolio data")
+    .command('collect [identifier]', "Collects historic portfolio data")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-s, --silent', "Include less information about what the system is doing")
     .option('--debug', "Include details about what the system is working on")
@@ -85,21 +85,6 @@ if (require.main === module) {
     var collect = require('./ptrading-collect.js');
     module.exports = {
         config: config,
-        store(name, value) {
-            return config.store(name, value);
-        },
-        options(name, value) {
-            return config.options(name, value);
-        },
-        unset(name) {
-            return config.unset(name);
-        },
-        save(name) {
-            return config.save(name);
-        },
-        load(name) {
-            return config.load(name);
-        },
         lookup(options) {
             return fetch(_.defaults({
                 interval: 'lookup'
