@@ -788,24 +788,24 @@ describe("quote", function() {
                 "DATE(ending) AS date",
                 "day.close AS close",
                 "CHANGE(close,OFFSET(1,close)) AS change",
-                "ROUND(day.POVB(20)) AS povb",
-                "IF(LEADING(day.POVB(20))<18 AND day.POVB(20)<50,100000,0) AS position",
+                "ROUND(day.POVO(20)) AS povo",
+                "IF(LEADING(day.POVO(20))<18 AND day.POVO(20)<50,100000,0) AS position",
                 "ROUND((close-LEADING(close))/LEADING(close)*100000,2) AS profit",
             ],
-            criteria: "LEADING(day.POVB(20))<18 AND day.POVB(20)<50",
+            criteria: "LEADING(day.POVO(20))<18 AND day.POVO(20)<50",
             begin: '2014-02-10',
             end: '2014-02-22'
         }).should.eventually.be.like([
-            {date:"2014-02-10",close:1.10574,change:0.23,povb:37,position:0,profit:0},
-            {date:"2014-02-11",close:1.10067,change:-0.46,povb:22,position:0,profit:0},
-            {date:"2014-02-12",close:1.10008,change:-0.05,povb:17,position:100000,profit:0},
-            {date:"2014-02-13",close:1.09751,change:-0.23,povb:11,position:100000,profit:-233.62},
-            {date:"2014-02-14",close:1.09849,change:0.09,povb:12,position:100000,profit:-144.53},
-            {date:"2014-02-17",close:1.09609,change:-0.22,povb:4,position:100000,profit:-362.70},
-            {date:"2014-02-18",close:1.09454,change:-0.14,povb:1,position:100000,profit:-503.60},
-            {date:"2014-02-19",close:1.10772,change:1.2,povb:42,position:100000,profit:694.49},
-            {date:"2014-02-20",close:1.10969,change:0.18,povb:65,position:0,profit:0},
-            {date:"2014-02-21",close:1.1112,change:0.14,povb:70,position:0,profit:0}
+            {date:"2014-02-10",close:1.10574,change:0.23,povo:37,position:0,profit:0},
+            {date:"2014-02-11",close:1.10067,change:-0.46,povo:22,position:0,profit:0},
+            {date:"2014-02-12",close:1.10008,change:-0.05,povo:17,position:100000,profit:0},
+            {date:"2014-02-13",close:1.09751,change:-0.23,povo:11,position:100000,profit:-233.62},
+            {date:"2014-02-14",close:1.09849,change:0.09,povo:12,position:100000,profit:-144.53},
+            {date:"2014-02-17",close:1.09609,change:-0.22,povo:4,position:100000,profit:-362.70},
+            {date:"2014-02-18",close:1.09454,change:-0.14,povo:1,position:100000,profit:-503.60},
+            {date:"2014-02-19",close:1.10772,change:1.2,povo:42,position:100000,profit:694.49},
+            {date:"2014-02-20",close:1.10969,change:0.18,povo:65,position:0,profit:0},
+            {date:"2014-02-21",close:1.1112,change:0.14,povo:70,position:0,profit:0}
         ]);
     });
 });
