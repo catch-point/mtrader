@@ -167,7 +167,7 @@ var functions = module.exports.functions = {
     ROUND(opts, expression, count) {
         var scale = Math.pow(10, count ? count() : 0);
         return context => {
-            return Math.round(expression(context)*scale)/scale;
+            return precision(Math.round(expression(context)*scale)/scale);
         };
     },
     FLOOR(opts, expression) {
