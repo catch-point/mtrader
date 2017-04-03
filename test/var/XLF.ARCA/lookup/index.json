@@ -4,13 +4,23 @@
   {
    "id": "lookup",
    "name": "lookup",
-   "size": 1,
+   "size": 2,
    "head": [
     {
      "symbol": "XLF",
      "yahoo_symbol": "XLF",
      "exchange": "ARCA",
      "name": "Financial Select Sector SPDR ETF",
+     "exch": "PCX",
+     "type": "E",
+     "exchDisp": "NYSEArca",
+     "typeDisp": "ETF"
+    },
+    {
+     "symbol": "XLFS",
+     "yahoo_symbol": "XLFS",
+     "exchange": "ARCA",
+     "name": "Financial Services Select Sector SPDR",
      "exch": "PCX",
      "type": "E",
      "exchDisp": "NYSEArca",
@@ -27,11 +37,21 @@
      "type": "E",
      "exchDisp": "NYSEArca",
      "typeDisp": "ETF"
+    },
+    {
+     "symbol": "XLFS",
+     "yahoo_symbol": "XLFS",
+     "exchange": "ARCA",
+     "name": "Financial Services Select Sector SPDR",
+     "exch": "PCX",
+     "type": "E",
+     "exchDisp": "NYSEArca",
+     "typeDisp": "ETF"
     }
    ],
-   "updatedAt": "2017-02-13T13:26:19.081Z",
+   "updatedAt": "2017-04-03T14:37:01.429Z",
    "properties": {},
-   "createdAt": "2017-02-13T13:26:19.081Z"
+   "createdAt": "2017-04-03T14:37:01.429Z"
   }
  ]
 }

@@ -4,7 +4,7 @@
   {
    "id": "lookup",
    "name": "lookup",
-   "size": 3,
+   "size": 5,
    "head": [
     {
      "symbol": "QQQ",
@@ -17,14 +17,14 @@
      "typeDisp": "ETF"
     },
     {
-     "symbol": "SQQQ",
-     "yahoo_symbol": "SQQQ",
+     "symbol": "QQQQ",
+     "yahoo_symbol": "QQQQ",
      "exchange": "NASDAQ",
-     "name": "ProShares UltraPro Short QQQ",
+     "name": "QQQQ",
      "exch": "NGM",
-     "type": "S",
+     "type": "E",
      "exchDisp": "NASDAQ",
-     "typeDisp": "Equity"
+     "typeDisp": "ETF"
     }
    ],
    "tail": [
@@ -39,19 +39,19 @@
      "typeDisp": "Equity"
     },
     {
-     "symbol": "TQQQ",
-     "yahoo_symbol": "TQQQ",
+     "symbol": "QQQX",
+     "yahoo_symbol": "QQQX",
      "exchange": "NASDAQ",
-     "name": "ProShares UltraPro QQQ",
-     "exch": "NGM",
+     "name": "Nuveen Nasdaq 100 Dynamic Overwrite Fund",
+     "exch": "NMS",
      "type": "S",
      "exchDisp": "NASDAQ",
      "typeDisp": "Equity"
     }
    ],
-   "updatedAt": "2017-02-13T13:22:16.555Z",
+   "updatedAt": "2017-04-03T14:37:57.587Z",
    "properties": {},
-   "createdAt": "2017-02-13T13:22:16.555Z"
+   "createdAt": "2017-04-03T14:37:57.587Z"
   }
  ]
 }

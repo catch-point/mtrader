@@ -17,8 +17,8 @@
      "typeDisp": "Equity"
     },
     {
-     "symbol": "BRK-B",
-     "yahoo_symbol": "BRK-B",
+     "symbol": "BRKB",
+     "yahoo_symbol": "BRKB",
      "exchange": "NYSE",
      "name": "Berkshire Hathaway Inc.",
      "exch": "NYQ",
@@ -39,8 +39,8 @@
      "typeDisp": "Equity"
     },
     {
-     "symbol": "BRKB",
-     "yahoo_symbol": "BRKB",
+     "symbol": "BRK-B",
+     "yahoo_symbol": "BRK-B",
      "exchange": "NYSE",
      "name": "Berkshire Hathaway Inc.",
      "exch": "NYQ",
@@ -49,9 +49,9 @@
      "typeDisp": "Equity"
     }
    ],
-   "updatedAt": "2017-02-13T13:27:11.666Z",
+   "updatedAt": "2017-04-03T14:37:53.159Z",
    "properties": {},
-   "createdAt": "2017-02-13T13:27:11.666Z"
+   "createdAt": "2017-04-03T14:37:53.159Z"
   }
  ]
 }

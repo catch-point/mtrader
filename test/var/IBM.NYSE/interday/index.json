@@ -45,9 +45,9 @@
      "adj_close": 81.614074
     }
    ],
-   "updatedAt": "2017-02-13T13:22:37.188Z",
+   "updatedAt": "2017-04-03T14:38:21.034Z",
    "properties": {},
-   "createdAt": "2017-02-13T13:22:37.188Z"
+   "createdAt": "2017-04-03T14:38:21.034Z"
   },
   {
    "id": "day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00",
@@ -61,8 +61,7 @@
      "low": 111.88,
      "close": 116,
      "volume": 10347700,
-     "adj_close": 87.761136,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 7.526881720430112
+     "adj_close": 87.761136
     },
     {
      "ending": "2000-01-04T16:00:00-05:00",
@@ -71,8 +70,7 @@
      "low": 110.88,
      "close": 112.06,
      "volume": 8227800,
-     "adj_close": 84.782175,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": -3.3965517241379293
+     "adj_close": 84.782175
     }
    ],
    "tail": [
@@ -83,8 +81,7 @@
      "low": 130.68,
      "close": 132.57,
      "volume": 3867000,
-     "adj_close": 111.505942,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.5460750853242312
+     "adj_close": 111.505942
     },
     {
      "ending": "2009-12-31T16:00:00-05:00",
@@ -93,18 +90,17 @@
      "low": 130.75,
      "close": 130.9,
      "volume": 4223400,
-     "adj_close": 110.101277,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": -1.2597118503432054
+     "adj_close": 110.101277
     }
    ],
-   "updatedAt": "2017-02-13T13:22:37.697Z",
+   "updatedAt": "2017-04-03T14:36:59.846Z",
    "properties": {},
-   "createdAt": "2017-02-13T13:22:37.697Z"
+   "createdAt": "2017-04-03T14:36:59.846Z"
   },
   {
    "id": "day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
    "name": "day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
-   "size": 1790,
+   "size": 1825,
    "head": [
     {
      "ending": "2010-01-04T16:00:00-05:00",
@@ -114,7 +110,8 @@
      "close": 132.45,
      "volume": 6155300,
      "adj_close": 111.405,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 1.1841100076394062
+     "OFFSET(1,day.adj_close)": 110.101277,
+     "PF(120,day.adj_close)": 1.6825157890596225
     },
     {
      "ending": "2010-01-05T16:00:00-05:00",
@@ -124,42 +121,45 @@
      "close": 130.85,
      "volume": 6841400,
      "adj_close": 110.059232,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": -1.2080030200075458
+     "OFFSET(1,day.adj_close)": 111.405,
+     "PF(120,day.adj_close)": 1.5377120037543648
     }
    ],
    "tail": [
     {
-     "ending": "2017-02-09T16:00:00-05:00",
-     "open": 176.17,
-     "high": 177.8,
-     "low": 175.91,
-     "close": 177.21,
-     "volume": 3090700,
-     "adj_close": 177.210007,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.5903388772208779
+     "ending": "2017-03-31T16:00:00-04:00",
+     "open": 173.98,
+     "high": 174.95,
+     "low": 173.69,
+     "close": 174.14,
+     "volume": 2911200,
+     "adj_close": 174.139999,
+     "OFFSET(1,day.adj_close)": 173.860001,
+     "PF(120,day.adj_close)": 1.3952914839620785
     },
     {
-     "ending": "2017-02-10T16:00:00-05:00",
-     "open": 177.37,
-     "high": 178.87,
-     "low": 176.76,
-     "close": 178.68,
-     "adj_close": 180.1621869490435,
-     "volume": 5857248,
-     "lastTrade": "2017-02-10T16:01:00-05:00",
-     "asof": "2017-02-13T08:22:36-05:00",
+     "ending": "2017-04-03T16:00:00-04:00",
+     "open": 173.82,
+     "high": 174.3669,
+     "low": 173.54,
+     "close": 174.3669,
+     "adj_close": 174.366898998697,
+     "volume": 690572,
+     "lastTrade": "2017-04-03T10:21:00-04:00",
+     "asof": "2017-04-03T10:36:59-04:00",
      "incomplete": true,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.8295242932114434
+     "OFFSET(1,day.adj_close)": 174.139999,
+     "PF(120,day.adj_close)": 1.374655225202539
     }
    ],
-   "updatedAt": "2017-02-13T13:22:38.166Z",
+   "updatedAt": "2017-04-03T14:37:00.467Z",
    "properties": {},
-   "createdAt": "2017-02-13T13:22:38.166Z"
+   "createdAt": "2017-04-03T14:37:00.467Z"
   },
   {
    "id": "day.2010_01_28T16_00_00_05_00.2020_01_01T00_00_00_05_00",
    "name": "day.2010_01_28T16_00_00_05_00.2020_01_01T00_00_00_05_00",
-   "size": 1773,
+   "size": 1808,
    "head": [
     {
      "ending": "2010-01-28T16:00:00-05:00",
@@ -182,86 +182,86 @@
    ],
    "tail": [
     {
-     "ending": "2017-02-09T16:00:00-05:00",
-     "open": 176.17,
-     "high": 177.8,
-     "low": 175.91,
-     "close": 177.21,
-     "volume": 3090700,
-     "adj_close": 177.210007
+     "ending": "2017-03-31T16:00:00-04:00",
+     "open": 173.98,
+     "high": 174.95,
+     "low": 173.69,
+     "close": 174.14,
+     "volume": 2911200,
+     "adj_close": 174.139999
     },
     {
-     "ending": "2017-02-10T16:00:00-05:00",
-     "open": 177.37,
-     "high": 178.87,
-     "low": 176.76,
-     "close": 178.68,
-     "adj_close": 180.1621869490435,
-     "volume": 5857248,
-     "lastTrade": "2017-02-10T16:01:00-05:00",
-     "asof": "2017-02-13T08:22:36-05:00",
+     "ending": "2017-04-03T16:00:00-04:00",
+     "open": 173.82,
+     "high": 174.46,
+     "low": 173.54,
+     "close": 174.46,
+     "adj_close": 174.4599989981624,
+     "volume": 705775,
+     "lastTrade": "2017-04-03T10:23:00-04:00",
+     "asof": "2017-04-03T10:38:19-04:00",
      "incomplete": true
     }
    ],
-   "updatedAt": "2017-02-13T13:22:36.668Z",
+   "updatedAt": "2017-04-03T14:38:20.481Z",
    "properties": {},
-   "createdAt": "2017-02-13T13:22:36.668Z"
+   "createdAt": "2017-04-03T14:38:20.481Z"
   },
   {
-   "id": "day.2017_02_09T16_00_00_05_00.2020_01_01T00_00_00_05_00",
-   "name": "day.2017_02_09T16_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "id": "day.2017_03_31T16_00_00_04_00.2020_01_01T00_00_00_05_00",
+   "name": "day.2017_03_31T16_00_00_04_00.2020_01_01T00_00_00_05_00",
    "size": 2,
    "head": [
     {
-     "ending": "2017-02-09T16:00:00-05:00",
-     "open": 176.17,
-     "high": 177.8,
-     "low": 175.91,
-     "close": 177.21,
-     "volume": 3090700,
-     "adj_close": 177.210007
+     "ending": "2017-03-31T16:00:00-04:00",
+     "open": 173.98,
+     "high": 174.95,
+     "low": 173.69,
+     "close": 174.14,
+     "volume": 2911200,
+     "adj_close": 174.139999
     },
     {
-     "ending": "2017-02-10T16:00:00-05:00",
-     "open": 177.37,
-     "high": 178.87,
-     "low": 176.76,
-     "close": 178.68,
-     "adj_close": 180.1621869490435,
-     "volume": 5857248,
-     "lastTrade": "2017-02-10T16:01:00-05:00",
-     "asof": "2017-02-13T08:22:39-05:00",
+     "ending": "2017-04-03T16:00:00-04:00",
+     "open": 173.82,
+     "high": 174.46,
+     "low": 173.54,
+     "close": 174.46,
+     "adj_close": 174.4599989981624,
+     "volume": 705775,
+     "lastTrade": "2017-04-03T10:23:00-04:00",
+     "asof": "2017-04-03T10:38:22-04:00",
      "incomplete": true,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.8295242932114434
+     "OFFSET(1,day.close)": 174.14
     }
    ],
    "tail": [
     {
-     "ending": "2017-02-09T16:00:00-05:00",
-     "open": 176.17,
-     "high": 177.8,
-     "low": 175.91,
-     "close": 177.21,
-     "volume": 3090700,
-     "adj_close": 177.210007
+     "ending": "2017-03-31T16:00:00-04:00",
+     "open": 173.98,
+     "high": 174.95,
+     "low": 173.69,
+     "close": 174.14,
+     "volume": 2911200,
+     "adj_close": 174.139999
     },
     {
-     "ending": "2017-02-10T16:00:00-05:00",
-     "open": 177.37,
-     "high": 178.87,
-     "low": 176.76,
-     "close": 178.68,
-     "adj_close": 180.1621869490435,
-     "volume": 5857248,
-     "lastTrade": "2017-02-10T16:01:00-05:00",
-     "asof": "2017-02-13T08:22:39-05:00",
+     "ending": "2017-04-03T16:00:00-04:00",
+     "open": 173.82,
+     "high": 174.46,
+     "low": 173.54,
+     "close": 174.46,
+     "adj_close": 174.4599989981624,
+     "volume": 705775,
+     "lastTrade": "2017-04-03T10:23:00-04:00",
+     "asof": "2017-04-03T10:38:22-04:00",
      "incomplete": true,
-     "DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))": 0.8295242932114434
+     "OFFSET(1,day.close)": 174.14
     }
    ],
-   "updatedAt": "2017-02-13T13:22:39.838Z",
+   "updatedAt": "2017-04-03T14:38:22.807Z",
    "properties": {},
-   "createdAt": "2017-02-13T13:22:39.838Z"
+   "createdAt": "2017-04-03T14:38:22.807Z"
   }
  ]
 }
