@@ -34,7 +34,6 @@ const fs = require('fs');
 const path = require('path');
 const process = require('process');
 const child_process = require('child_process');
-const replyTo = require('./ipc-promise-reply.js');
 const commander = require('commander');
 const options = commander.options;
 const commander_emit = commander.Command.prototype.emit.bind(commander);
@@ -117,7 +116,10 @@ config.opts = function() {
         var key = name.split('-').reduce((str, word) => {
             return str + word[0].toUpperCase() + word.slice(1);
         });
-        result[prop] = name === 'version' ? commander._version : commander[key];
+        var value = name === 'version' ? commander._version : commander[key];
+        if (value != null) {
+            result[prop] = value;
+        }
         return result;
     }, {});
 }
