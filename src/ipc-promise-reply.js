@@ -30,15 +30,16 @@
  */
 
 const _ = require('underscore');
+const logger = require('./logger.js');
 const AssertionError = require('chai').AssertionError;
 
 module.exports = function(process) {
     var seq = 0;
-    var outstanding = {};
     var handlers = {};
-    process.on('message', msg => {
-        if (msg.cmd.indexOf('reply_to_') === 0 && outstanding[msg.in_reply_to]) {
-            var pending = outstanding[msg.in_reply_to];
+    var outstanding = createQueue(handlers);
+    process.on('disconnect', ()=>outstanding.close()).on('message', msg => {
+        if (msg.cmd.indexOf('reply_to_') === 0 && outstanding.has(msg.in_reply_to)) {
+            var pending = outstanding.remove(msg.in_reply_to);
             try {
                 if (!_.has(msg, 'error'))
                     return pending.onresponse(msg.payload);
@@ -52,8 +53,6 @@ module.exports = function(process) {
                     return pending.onerror(Error(msg.error.message));
             } catch (err) {
                 return pending.onerror(err);
-            } finally {
-                delete outstanding[msg.in_reply_to];
             }
         } else if (handlers[msg.cmd]) {
             Promise.resolve(msg.payload).then(handlers[msg.cmd]).then(response => {
@@ -88,10 +87,12 @@ module.exports = function(process) {
         request(cmd, payload) {
             return new Promise((response, error) => {
                 var id = nextId(cmd);
-                outstanding[id] = {
+                outstanding.add(id, {
                     onresponse: response,
-                    onerror: error
-                };
+                    onerror: error,
+                    cmd: cmd,
+                    payload: payload
+                });
                 process.send({
                     cmd: cmd,
                     id: id,
@@ -122,6 +123,61 @@ module.exports = function(process) {
         return id;
     }
 };
+
+var monitor;
+var queue = [];
+
+function createQueue(handlers) {
+    var outstanding = {};
+    queue.push(outstanding);
+    return {
+        add(id, pending) {
+            outstanding[id] = _.extend({}, pending);
+            if (!monitor) monitor = setInterval(() => {
+                var outstanding = _.flatten(queue.map(o => _.values(o)));
+                if (_.isEmpty(outstanding)) {
+                    clearInterval(monitor);
+                    monitor = null;
+                } else {
+                    var marked = _.filter(outstanding, 'marked');
+                    var cmds = _.uniq(marked.map(pending => pending.cmd));
+                    if (!_.isEmpty(cmds)) logger.info("Still processing", cmds.join(' and '));
+                    _.reject(marked, 'logged').forEach(pending => {
+                        logger.debug("Waiting for", pending.cmd, pending.payload);
+                        pending.logged = true;
+                    });
+                    _.forEach(outstanding, pending => {
+                        pending.marked = true;
+                    });
+                }
+            }, 60000);
+        },
+        has(id) {
+            return _.has(outstanding, id);
+        },
+        remove(id) {
+            try {
+                return outstanding[id];
+            } finally {
+                delete outstanding[id];
+                if (monitor && _.isEmpty(_.flatten(queue.map(o => _.values(o))))) {
+                    clearInterval(monitor);
+                    monitor = null;
+                }
+            }
+        },
+        close() {
+            var idx = queue.indexOf(outstanding);
+            if (idx >= 0) {
+                queue.splice(1, idx);
+            }
+            if (_.isEmpty(queue) && monitor) {
+                clearInterval(monitor);
+                monitor = null;
+            }
+        }
+    };
+}
 
 function serializeError(err) {
     try {
