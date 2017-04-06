@@ -670,7 +670,7 @@ describe("quote", function() {
             {Date:"2014-11-03",Time:"13:30:00",Price:1.13521}
         ]);
     });
-    it("should filter out most results using leading criteria", function() {
+    it("should identify results using leading criteria", function() {
         return quote({
             columns: [
                 'DATE(m30.ending) AS "Date"',
@@ -789,23 +789,67 @@ describe("quote", function() {
                 "day.close AS close",
                 "CHANGE(close,OFFSET(1,close)) AS change",
                 "ROUND(day.POVO(20)) AS povo",
-                "IF(LEADING(day.POVO(20))<18 AND day.POVO(20)<50,100000,0) AS position",
+                "IF(LEADING(day.POVO(20))<15 AND day.POVO(20)<50,100000,0) AS position",
                 "ROUND((close-LEADING(close))/LEADING(close)*100000,2) AS profit",
             ],
-            criteria: "LEADING(day.POVO(20))<18 AND day.POVO(20)<50",
+            criteria: "LEADING(day.POVO(20))<15 AND day.POVO(20)<50",
             begin: '2014-02-10',
             end: '2014-02-22'
         }).should.eventually.be.like([
             {date:"2014-02-10",close:1.10574,change:0.23,povo:37,position:0,profit:0},
             {date:"2014-02-11",close:1.10067,change:-0.46,povo:22,position:0,profit:0},
-            {date:"2014-02-12",close:1.10008,change:-0.05,povo:17,position:100000,profit:0},
-            {date:"2014-02-13",close:1.09751,change:-0.23,povo:11,position:100000,profit:-233.62},
-            {date:"2014-02-14",close:1.09849,change:0.09,povo:12,position:100000,profit:-144.53},
-            {date:"2014-02-17",close:1.09609,change:-0.22,povo:4,position:100000,profit:-362.70},
-            {date:"2014-02-18",close:1.09454,change:-0.14,povo:1,position:100000,profit:-503.60},
-            {date:"2014-02-19",close:1.10772,change:1.2,povo:42,position:100000,profit:694.49},
+            {date:"2014-02-12",close:1.10008,change:-0.05,povo:17,position:0,profit:0},
+            {date:"2014-02-13",close:1.09751,change:-0.23,povo:11,position:100000,profit:0},
+            {date:"2014-02-14",close:1.09849,change:0.09,povo:12,position:100000,profit:89.29},
+            {date:"2014-02-17",close:1.09609,change:-0.22,povo:4,position:100000,profit:-129.38},
+            {date:"2014-02-18",close:1.09454,change:-0.14,povo:1,position:100000,profit:-270.61},
+            {date:"2014-02-19",close:1.10772,change:1.2,povo:42,position:100000,profit:930.29},
             {date:"2014-02-20",close:1.10969,change:0.18,povo:65,position:0,profit:0},
             {date:"2014-02-21",close:1.1112,change:0.14,povo:70,position:0,profit:0}
+        ]);
+    });
+    it("should reset LEADING at the same point", function() {
+        return quote({
+            symbol: "USD",
+            exchange: "CAD",
+            columns: [
+                "DATE(ending) AS date",
+                "day.close AS close",
+                "CHANGE(close,OFFSET(1,close)) AS change",
+                "ROUND(day.POVO(20)) AS povo",
+                "IF(LEADING(povo)<15 AND povo<85,100000,LEADING(povo)>85 AND povo>15,-100000,0) AS position",
+                "ROUND((close-LEADING(close))/LEADING(close)*position,2) AS profit",
+            ],
+            criteria: "LEADING(povo)<15 AND povo<85 OR LEADING(povo)>85 AND povo>15",
+            begin: '2014-01-30',
+            end: '2014-03-07'
+        }).should.eventually.be.like([
+            {date:"2014-01-30",close:1.11578,change:-0.08,povo:90,position:-100000,profit:0},
+            {date:"2014-01-31",close:1.11251,change:-0.29,povo:81,position:-100000,profit:293.07},
+            {date:"2014-02-03",close:1.11162,change:-0.08,povo:77,position:-100000,profit:372.83},
+            {date:"2014-02-04",close:1.108,change:-0.33,povo:54,position:-100000,profit:697.27},
+            {date:"2014-02-05",close:1.1081,change:0.01,povo:51,position:-100000,profit:688.31},
+            {date:"2014-02-06",close:1.10684,change:-0.11,povo:43,position:-100000,profit:801.23},
+            {date:"2014-02-07",close:1.10319,change:-0.33,povo:33,position:-100000,profit:1128.36},
+            {date:"2014-02-10",close:1.10574,change:0.23,povo:37,position:-100000,profit:899.82},
+            {date:"2014-02-11",close:1.10067,change:-0.46,povo:22,position:-100000,profit:1354.21},
+            {date:"2014-02-12",close:1.10008,change:-0.05,povo:17,position:-100000,profit:1407.09},
+            {date:"2014-02-13",close:1.09751,change:-0.23,povo:11,position:100000,profit:0},
+            {date:"2014-02-14",close:1.09849,change:0.09,povo:12,position:100000,profit:89.29},
+            {date:"2014-02-17",close:1.09609,change:-0.22,povo:4,position:100000,profit:-129.38},
+            {date:"2014-02-18",close:1.09454,change:-0.14,povo:1,position:100000,profit:-270.61},
+            {date:"2014-02-19",close:1.10772,change:1.2,povo:42,position:100000,profit:930.29},
+            {date:"2014-02-20",close:1.10969,change:0.18,povo:65,position:100000,profit:1109.78},
+            {date:"2014-02-21",close:1.1112,change:0.14,povo:70,position:100000,profit:1247.37},
+            {date:"2014-02-24",close:1.10549,change:-0.51,povo:35,position:100000,profit:727.1},
+            {date:"2014-02-25",close:1.10829,change:0.25,povo:56,position:100000,profit:982.22},
+            {date:"2014-02-26",close:1.11262,change:0.39,povo:88,position:-100000,profit:0},
+            {date:"2014-02-27",close:1.11188,change:-0.07,povo:83,position:-100000,profit:66.51},
+            {date:"2014-02-28",close:1.1064,change:-0.49,povo:45,position:-100000,profit:559.04},
+            {date:"2014-03-03",close:1.10749,change:0.1,povo:53,position:-100000,profit:461.07},
+            {date:"2014-03-04",close:1.10899,change:0.14,povo:71,position:-100000,profit:326.26},
+            {date:"2014-03-05",close:1.10276,change:-0.56,povo:29,position:-100000,profit:886.2},
+            {date:"2014-03-06",close:1.09829,change:-0.41,povo:16,position:-100000,profit:1287.95}
         ]);
     });
 });

@@ -348,13 +348,17 @@ function readSignals(points, entry, exit, retain, criteria) {
     }];
     var e = 0;
     var signals = [];
+    retain = retain || _.constant(true);
+    criteria = criteria || _.constant(true);
     points.slice(start).reduce((position, point, i) => {
         var to = start + i;
-        var from = position && _.last(signals).leading ? e : to;
-        var keep = !retain || retain(points.slice(from, to+1).toArray());
-        var pass = !criteria || criteria(points.slice(from, to+1).toArray());
+        var active = position && _.last(signals).leading;
+        var keep = retain(points.slice(active ? e : to, to+1).toArray()) ||
+            position && e != to && retain(points.slice(to, to+1).toArray());
+        var hold = active && criteria(points.slice(active ? e : to, to+1).toArray());
+        var pass = hold || criteria(points.slice(to, to+1).toArray());
         if (keep && pass) {
-            if (position && _.last(signals).leading) { // extend
+            if (hold) { // extend
                 _.last(signals).points = points.slice(start + e, start + i +1);
             } else { // reset
                 if (position) {
