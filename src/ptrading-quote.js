@@ -60,6 +60,7 @@ function usage(command) {
         .option('--columns <list>', "Comma separated list of columns (such as day.close)")
         .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
         .option('--output <file>', "CSV file to write the result into")
+        .option('--launch <program>', "Program used to open the output file")
         .option('--reverse', "Reverse the order of the rows")
         .option('--transpose', "Swap the columns and rows");
 }

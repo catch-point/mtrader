@@ -37,8 +37,10 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 module.exports = function() {
+    var launch = config(['iqfeed', 'command']);
+    var command = _.isArray(launch) ? launch : launch.split(' ');
     var iqclient = iqfeed(
-        config(['iqfeed', 'command']),
+        command,
         config(['iqfeed', 'productId']),
         config('version')
     );

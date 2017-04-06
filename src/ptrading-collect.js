@@ -61,6 +61,7 @@ function usage(command) {
         .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('--output <file>', "CSV file to write the result into")
+        .option('--launch <program>', "Program used to open the output file")
         .option('--reverse', "Reverse the order of the rows")
         .option('--transpose', "Swap the columns and rows");
 }

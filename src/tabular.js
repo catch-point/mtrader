@@ -30,14 +30,20 @@
  */
 
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const process = require('process');
 const _ = require('underscore');
+const spawn = require('child_process').spawn;
 const Writable = require('stream').Writable;
 const csv = require('fast-csv');
+const logger = require('./logger.js');
 const config = require('./config.js');
 
 module.exports = function(data) {
+    var filename = getOutputFile();
     return new Promise(finished => {
-        var output = createWriteStream(config('output'));
+        var output = createWriteStream(filename);
         output.on('finish', finished);
         var transpose = config('transpose') && config('transpose').toString() != 'false';
         var reverse = config('reverse') && config('reverse').toString() != 'false';
@@ -72,8 +78,18 @@ module.exports = function(data) {
             else writer.write(data);
             writer.end();
         }
+    }).then(() => {
+        return launchOutput(filename);
     });
 };
+
+function getOutputFile() {
+    var output = config('output');
+    if (output) return output;
+    else if (!config('launch')) return null;
+    var name = process.title.replace(/\W/g,'') + process.pid + Date.now().toString(16) + '.csv';
+    return path.resolve(os.tmpdir(), name);
+}
 
 function createWriteStream(outputFile) {
     if (outputFile) return fs.createWriteStream(outputFile);
@@ -89,4 +105,21 @@ function createWriteStream(outputFile) {
     output.uncork = delegate.uncork.bind(delegate);
     output.write = delegate.write.bind(delegate);
     return output;
+}
+
+function launchOutput(outputFile) {
+    var launch = config('launch');
+    if (!launch) return outputFile;
+    var command = (_.isArray(launch) ? launch : launch.split(' ')).concat(outputFile);
+    return new Promise((ready, exit) => {
+        logger.debug("launching", command);
+        var p = spawn(_.first(command), _.rest(command), {
+            detached: true,
+            stdio: 'inherit'
+        }).on('error', exit).on('exit', code => {
+            if (code) exit(Error("Process exitted with code " + code));
+            else ready();
+        }).unref();
+        _.delay(ready, 500); // give child process a chance to error
+    }).then(_.constant(outputFile));
 }
