@@ -389,5 +389,32 @@ describe("collect", function() {
             {symbol:"XIC",date:"2016-01-29",Price:20.26}
         ]);
     });
+    it("should inline criteria variables", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            columns: [
+                "DATE(ending) AS date",
+                "day.close AS close",
+                "CHANGE(close,OFFSET(1,close)) AS change",
+                "ROUND(day.POVO(20)) AS povo",
+                "IF(LEADING(povo)<18 AND povo<50,100000,0) AS position",
+                "ROUND((close-LEADING(close))/LEADING(close)*100000,2) AS profit",
+            ],
+            criteria: "LEADING(povo)<18 AND povo<50",
+            begin: '2014-02-10',
+            end: '2014-02-22'
+        }).should.eventually.be.like([
+            {date:"2014-02-10",close:1.10574,change:0.23,povo:37,position:0,profit:0},
+            {date:"2014-02-11",close:1.10067,change:-0.46,povo:22,position:0,profit:0},
+            {date:"2014-02-12",close:1.10008,change:-0.05,povo:17,position:100000,profit:0},
+            {date:"2014-02-13",close:1.09751,change:-0.23,povo:11,position:100000,profit:-233.62},
+            {date:"2014-02-14",close:1.09849,change:0.09,povo:12,position:100000,profit:-144.53},
+            {date:"2014-02-17",close:1.09609,change:-0.22,povo:4,position:100000,profit:-362.70},
+            {date:"2014-02-18",close:1.09454,change:-0.14,povo:1,position:100000,profit:-503.60},
+            {date:"2014-02-19",close:1.10772,change:1.2,povo:42,position:100000,profit:694.49},
+            {date:"2014-02-20",close:1.10969,change:0.18,povo:65,position:0,profit:0},
+            {date:"2014-02-21",close:1.1112,change:0.14,povo:70,position:0,profit:0}
+        ]);
+    });
 });
 

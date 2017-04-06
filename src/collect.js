@@ -64,11 +64,12 @@ module.exports = function(quote) {
             retainColumns,
             precedenceColumns
         ])));
-        var criteria = getQuoteCriteria(options.retain, options).join(' AND ');
+        var criteria = getQuoteCriteria(options.retain, false, options).join(' AND ');
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
                 columns: allColumns,
                 retain: criteria,
+                criteria: getQuoteCriteria(options.criteria, true, options).join(' AND '),
                 pad_leading: 0,
                 pad_begin: (options.pad_begin || 0) + (options.pad_leading || 0)
             }, security, options));
@@ -131,7 +132,7 @@ function getNeededColumns(expr, options) {
 /**
  * Returns the retain expression that should be delegated to quote.js
  */
-function getQuoteCriteria(expr, options) {
+function getQuoteCriteria(expr, isCriteria, options) {
     if (!expr) return [];
     return _.compact(Parser({
         substitutions: _.flatten([options.columns]).join(','),
@@ -145,8 +146,9 @@ function getQuoteCriteria(expr, options) {
             var order = name == 'DESC' || name == 'ASC';
             var fn = rolling.has(name);
             var roll = _.some(args, _.isNull);
-            if (quoting.has(name) || order || fn || roll) return null;
-            else return expr;
+            if (!quoting.has(name) && !order && !fn && !roll) return expr;
+            else if (isCriteria) throw Error("Cannot include " + name + " function in criteria");
+            else return null;
         }
     }).parseCriteriaList(expr));
 }
