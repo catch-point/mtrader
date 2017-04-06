@@ -47,7 +47,8 @@ var program = require('commander').version(require('../package.json').version)
     .option('--debug', "Include details about what the system is working on")
     .option('--prefix <dirname>', "Path where the program files are stored")
     .option('--load <identifier>', "Read the given session settings")
-    .option('--workers <numOfWorkers>', 'Number of workers to spawn');
+    .option('--workers <numOfWorkers>', 'Number of workers to spawn')
+    .option('--set <name=value>', "Name=Value pairs to be used in session");
 
 if (require.main === module) {
     if (process.argv.length > 2) {

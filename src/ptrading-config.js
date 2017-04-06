@@ -85,8 +85,10 @@ module.exports.shell = function(app) {
             "Changes the given option value for this session using a dot path notation", (cmd, sh, cb) => {
         try {
             var str = cmd.params.value;
-            var value = str == "true" ? true : str == "false" ? false :
-                _.isFinite(str) && parseFloat(str).toString() == str ? parseFloat(str) : str;
+            var chr = str.charAt(0);
+            var value = chr == '{' || chr == '"' || chr == '[' ||
+                str == 'true' || str == 'false' || _.isFinite(str) ?
+                JSON.parse(str) : str;
             config(cmd.params.option, value);
             var value = config(cmd.params.option);
             sh.white(JSON.stringify(value)).ln();
@@ -140,8 +142,10 @@ module.exports.shell = function(app) {
             "Changes the given option value persistently", (cmd, sh, cb) => {
         try {
             var str = cmd.params.value;
-            var value = str == "true" ? true : str == "false" ? false :
-                _.isFinite(str) && parseFloat(str).toString() == str ? parseFloat(str) : str;
+            var chr = str.charAt(0);
+            var value = chr == '{' || chr == '"' || chr == '[' ||
+                str == 'true' || str == 'false' || _.isFinite(str) ?
+                JSON.parse(str) : str;
             config.store(cmd.params.option, value);
             var value = config(cmd.params.option);
             sh.white(JSON.stringify(value)).ln();

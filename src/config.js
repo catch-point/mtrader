@@ -49,6 +49,21 @@ var stored = _.extend({}, defaults, loadConfigFile(path.resolve(defaults.prefix,
 var session = _.contains(process.argv, '--load') ?
     loadConfigFile(path.resolve(defaults.prefix, 'etc', process.argv[process.argv.indexOf('--load')+1] + '.json')) : {};
 
+process.argv.forEach((arg, i, args) => {
+    if (arg == '--set' && i < args.length -1) {
+        var pair = args[i+1].split('=', 2);
+        var name = pair[0];
+        var str = pair[1];
+        if (name && str) {
+            var chr = str.charAt(0);
+            var value = chr == '{' || chr == '"' || chr == '[' ||
+                str == 'true' || str == 'false' || _.isFinite(str) ?
+                JSON.parse(str) : str;
+            session[name] = value;
+        }
+    }
+});
+
 var config = module.exports = function(name, value) {
     if (_.isUndefined(value)) {
         var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
@@ -72,13 +87,17 @@ if (process.send) {
 config.fork = function(modulePath, program) {
     var pairs = program.options.filter(o => o.required || o.optional).map(o => o.name().replace('-', '_'));
     var bools = _.reject(program.options, o => o.required || o.optional).map(o => o.name().replace('-', '_'));
-    var cfg = _.omit(config(), value => typeof value == 'object' || value === undefined);
+    var cfg = _.omit(config(), value => typeof value == 'object' || value == null);
     var cfg_pairs = _.pick(cfg, pairs);
     var cfg_bools = _.without(_.intersection(bools, _.keys(cfg)), 'version');
-    var args = _.flatten(_.zip(
+    var cfg_other = _.difference(_.keys(cfg), pairs, bools);
+    var arg_pairs = _.flatten(_.zip(
         _.keys(cfg_pairs).map(option => '--' + option.replace('_', '-')),
         _.values(cfg_pairs)
-    )).concat(cfg_bools.map(option => '--' + option.replace('_', '-')));
+    ));
+    var arg_bools = cfg_bools.map(option => (cfg[option] ? '--' : '--no-') + option.replace('_', '-'));
+    var arg_other = _.flatten(cfg_other.map(name => ['--set', name + '=' + JSON.stringify(cfg[name])]));
+    var args = arg_pairs.concat(arg_bools, arg_other);
     var child = child_process.fork(modulePath, args);
     config.addListener((name, value) => child.send({
         cmd: 'config',
