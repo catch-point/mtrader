@@ -808,6 +808,69 @@ describe("quote", function() {
             {date:"2014-02-21",close:1.1112,change:0.14,povo:70,position:0,profit:0}
         ]);
     });
+    it("should use LEADING to meansure change", function() {
+        return quote({
+            symbol: "USD",
+            exchange: "CAD",
+            columns: [
+                "DATE(ending) AS date",
+                "HOUR(ending) AS hour",
+                "m240.close AS close",
+                "CHANGE(close,OFFSET(1,close)) AS change",
+                "ROUND(day.POVO(20)) AS povo",
+                "IF(LEADING(day.POVO(20))<15 AND day.POVO(20)<50,100000,0) AS position",
+                "ROUND((close-LEADING(close))/LEADING(close)*100000,2) AS profit"
+            ],
+            criteria: "LEADING(day.POVO(20))<15 AND day.POVO(20)<50",
+            begin: '2014-02-12',
+            end: '2014-02-21'
+        }).should.eventually.be.like([
+            {date:"2014-02-12",hour:0,close:1.09959,change:-0.23,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:4,close:1.09941,change:-0.02,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:8,close:1.10071,change:0.12,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:12,close:1.0992,change:-0.14,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:16,close:1.09963,change:0.04,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:20,close:1.10079,change:0.11,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:0,close:1.10068,change:-0.01,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:4,close:1.09839,change:-0.21,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:8,close:1.09909,change:0.06,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:12,close:1.09786,change:-0.11,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:16,close:1.09759,change:-0.02,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:20,close:1.09746,change:-0.01,povo:11,position:100000,profit:0},
+            {date:"2014-02-14",hour:0,close:1.09504,change:-0.22,povo:11,position:100000,profit:-220.51},
+            {date:"2014-02-14",hour:4,close:1.09598,change:0.09,povo:11,position:100000,profit:-134.86},
+            {date:"2014-02-14",hour:8,close:1.09475,change:-0.11,povo:11,position:100000,profit:-246.93},
+            {date:"2014-02-14",hour:12,close:1.09804,change:0.3,povo:11,position:100000,profit:52.85},
+            {date:"2014-02-14",hour:16,close:1.09816,change:0.01,povo:11,position:100000,profit:63.78},
+            {date:"2014-02-14",hour:20,close:1.09849,change:0.03,povo:12,position:100000,profit:93.85},
+            {date:"2014-02-16",hour:20,close:1.09789,change:-0.05,povo:12,position:100000,profit:39.18},
+            {date:"2014-02-17",hour:0,close:1.09723,change:-0.06,povo:12,position:100000,profit:-20.96},
+            {date:"2014-02-17",hour:4,close:1.09747,change:0.02,povo:12,position:100000,profit:0.91},
+            {date:"2014-02-17",hour:8,close:1.09659,change:-0.08,povo:12,position:100000,profit:-79.27},
+            {date:"2014-02-17",hour:12,close:1.09605,change:-0.05,povo:12,position:100000,profit:-128.48},
+            {date:"2014-02-17",hour:16,close:1.09613,change:0.01,povo:12,position:100000,profit:-121.19},
+            {date:"2014-02-17",hour:20,close:1.0952,change:-0.08,povo:4,position:100000,profit:-205.93},
+            {date:"2014-02-18",hour:0,close:1.0956,change:0.04,povo:4,position:100000,profit:-169.48},
+            {date:"2014-02-18",hour:4,close:1.09669,change:0.1,povo:4,position:100000,profit:-70.16},
+            {date:"2014-02-18",hour:8,close:1.09654,change:-0.01,povo:4,position:100000,profit:-83.83},
+            {date:"2014-02-18",hour:12,close:1.09511,change:-0.13,povo:4,position:100000,profit:-214.13},
+            {date:"2014-02-18",hour:16,close:1.095,change:-0.01,povo:4,position:100000,profit:-224.15},
+            {date:"2014-02-18",hour:20,close:1.09546,change:0.04,povo:1,position:100000,profit:-182.24},
+            {date:"2014-02-19",hour:0,close:1.09339,change:-0.19,povo:1,position:100000,profit:-370.86},
+            {date:"2014-02-19",hour:4,close:1.09293,change:-0.04,povo:1,position:100000,profit:-412.77},
+            {date:"2014-02-19",hour:8,close:1.09434,change:0.13,povo:1,position:100000,profit:-284.29},
+            {date:"2014-02-19",hour:12,close:1.10446,change:0.92,povo:1,position:100000,profit:637.84},
+            {date:"2014-02-19",hour:16,close:1.10808,change:0.33,povo:1,position:100000,profit:967.69},
+            {date:"2014-02-19",hour:20,close:1.1073,change:-0.07,povo:42,position:100000,profit:896.62},
+            {date:"2014-02-20",hour:0,close:1.10766,change:0.03,povo:42,position:100000,profit:929.42},
+            {date:"2014-02-20",hour:4,close:1.10663,change:-0.09,povo:42,position:100000,profit:835.57},
+            {date:"2014-02-20",hour:8,close:1.10784,change:0.11,povo:42,position:100000,profit:945.82},
+            {date:"2014-02-20",hour:12,close:1.11039,change:0.23,povo:42,position:100000,profit:1178.18},
+            {date:"2014-02-20",hour:16,close:1.10976,change:-0.06,povo:42,position:100000,profit:1120.77},
+            {date:"2014-02-20",hour:20,close:1.11183,change:0.19,povo:65,position:0,profit:0},
+            {date:"2014-02-21",hour:0,close:1.11255,change:0.06,povo:65,position:0,profit:0}
+        ]);;
+    });
     it("should reset LEADING at the same point", function() {
         return quote({
             symbol: "USD",

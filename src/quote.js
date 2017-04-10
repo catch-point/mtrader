@@ -124,11 +124,11 @@ function fetchOptionsFactory(fetch) {
 function quote(fetch, store, options) {
     var exprMap = parseWarmUpMap(options);
     var cached = _.mapObject(exprMap, _.keys);
-    var retain = parseCriteriaMap(options.retain, cached, options);
-    var criteria = parseCriteriaMap(options.criteria, cached, options);
+    var intervals = periods.sort(_.keys(exprMap));
+    var retain = parseCriteriaMap(options.retain, cached, intervals, options);
+    var criteria = parseCriteriaMap(options.criteria, cached, intervals, options);
     var name = options.exchange ?
         options.symbol + '.' + options.exchange : options.symbol;
-    var intervals = periods.sort(_.keys(exprMap));
     expect(intervals).not.to.be.empty;
     var interval = intervals[0];
     intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
@@ -182,13 +182,8 @@ function parseWarmUpMap(options) {
 /**
  * Create a function for each interval that should be evaluated to include in result.
  */
-function parseCriteriaMap(retain, cached, options) {
-    var list = createParser(cached, options).parseCriteriaList(retain);
-    var intervals = list.reduce((intervals, fn) => {
-        var diff = _.difference(fn.intervals || [], intervals);
-        if (_.isEmpty(diff)) return intervals;
-        else return periods.sort(diff.concat(intervals));
-    }, []);
+function parseCriteriaMap(criteria, cached, intervals, options) {
+    var list = createParser(cached, options).parseCriteriaList(criteria);
     var group = list.reduce((m, fn) => {
         var interval = _.first(fn.intervals);
         if (m[interval]) {
@@ -199,7 +194,7 @@ function parseCriteriaMap(retain, cached, options) {
         });
     }, {});
     _.reduceRight(intervals, (ar, interval) => {
-        if (!group[interval]) return ar;
+        if (!group[interval]) return group[interval] = ar;
         return group[interval] = group[interval].concat(ar);
     }, []);
     return _.mapObject(group, (list, interval) => {
@@ -321,7 +316,16 @@ function mergeBars(quoteBars, exprMap, retain, criteria, options) {
                 }, intraday.length);
                 return intraday;
             }).then(points => readSignals(points, entry, signal.exit, retain[interval], criteria[interval]));
-        }))).then(signalsMap => _.flatten(signalsMap, true));
+        }))).then(signalsMap => {
+            return signalsMap.reduce((result, signals) => {
+                while (result.length && signals.length && _.first(signals).points.first().ending <= result.last().points.last().ending) {
+                    // remove overlap
+                    if (_.first(signals).points.length == 1) signals.shift();
+                    else _.first(signals).points.shift();
+                }
+                return result.concat(signals);
+            }, new List()).toArray();
+        });
     }, Promise.resolve([{}])).then(signals => {
         if (signals.length && options.begin > _.first(signals).points.first().ending) {
             if (_.first(signals).points.length == 1) signals.shift();
@@ -383,10 +387,11 @@ function readSignals(points, entry, exit, retain, criteria) {
         }
         return keep;
     }, false);
-    if (exit && signals.length && !_.last(signals).exit && _.last(signals).points.length == 1)
-        signals.pop();
-    if (exit && signals.length && !_.last(signals).exit && _.last(signals).points.length > 1)
-        _.last(signals).exit = _.last(signals).points.pop();
+    if (exit && signals.length && !_.last(signals).exit) {
+        if (_.last(signals).points.last().ending < exit.ending) _.last(signals).exit = exit;
+        else if (_.last(signals).points.length == 1) signals.pop();
+        else _.last(signals).exit = _.last(signals).points.pop();
+    }
     return signals;
 }
 
