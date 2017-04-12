@@ -332,8 +332,7 @@ function parseAsExpressions(str) {
         var args = [parseExpression()];
         while (peek() == ',') {
             index++;
-            // indicator functions can only accept numbers
-            args.push(indicator ? parseNumber() : parseExpression());
+            args.push(parseExpression());
         };
         expect(')');
         return [word].concat(args);
