@@ -61,6 +61,29 @@ var functions = module.exports.functions = {
     }, {
         description: "The number of workdays (Mon-Fri) since 1970-01-01"
     }),
+    /* The number of days since 1899-12-31 */
+    DATEVALUE: _.extend((opts, ending) => {
+        return context => {
+            var start = moment(ending(context)).tz(opts.tz);
+            if (!start.isValid()) throw Error("Invalid date: " + ending(context));
+            var zero = moment.tz('1899-12-31', opts.tz);
+            return start.diff(zero, 'days');
+        };
+    }, {
+        description: "The number of days since 1899-12-31"
+    }),
+    /* The fraction of day */
+    TIMEVALUE: _.extend((opts, ending) => {
+        return context => {
+            var start = moment(ending(context)).tz(opts.tz);
+            if (!start.isValid()) throw Error("Invalid date: " + ending(context));
+            var noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
+            var hours = (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
+            return hours/24;
+        };
+    }, {
+        description: "The number of workdays (Mon-Fri) since 1970-01-01"
+    }),
     /* Converts dateTime to simplified extended ISO format (ISO 8601) format in UTC */
     DATETIME: _.extend((opts, ending) => {
         return context => {
@@ -73,10 +96,12 @@ var functions = module.exports.functions = {
         seeAlso: ['DATE', 'TIME']
     }),
     /* Y-MM-DD date format */
-    DATE: _.extend((opts, ending) => {
+    DATE: _.extend((opts, ending, month, day) => {
         return context => {
-            var date = moment(ending(context)).tz(opts.tz);
-            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            var date = month ?
+                moment.tz(new Date(ending(context), month(context)-1, day(context)).toISOString().substring(0,10), opts.tz) :
+                moment(ending(context)).tz(opts.tz);
+            if (!date.isValid()) throw Error("Invalid date: " + _.compact([ending(context),month&&month(context),day&&day(context)]).join(', '));
             return date.format('Y-MM-DD');
         };
     }, {
@@ -94,43 +119,48 @@ var functions = module.exports.functions = {
         description: "HH:mm:ss time 24hr format",
         seeAlso: ['DATE']
     }),
-    /* Date of Month as a string ('01'-'31') */
+    /* Date of Month as a number (1-31) */
     DAY: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
-            var number = date.date();
-            if (number < 10) return '0' + number;
-            else return '' + number;
+            return date.date();
         };
     }, {
-        description: "Date of Month as a string ('01'-'31')",
+        description: "Date of Month as a number (1-31)",
         seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
     }),
-    /* Week of Year as a string ('01'-'52') */
-    WEEK: _.extend((opts, ending) => {
+    /* Week of Year as a number (1-52) */
+    WEEKNUM: _.extend((opts, ending, mode) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
-            var number = date.week();
-            if (number < 10) return '0' + number;
-            else return '' + number;
+            if (!mode || mode(context) == 1) return date.week();
+            else return date.isoWeek();
         };
     }, {
-        description: "Date of Month as a string ('01'-'31')",
+        description: "Date of Month as a number (1-52)",
         seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
     }),
-    /* Month of Year as a string ('01'-'12') */
+    WEEKDAY: _.extend((opts, ending) => {
+        return context => {
+            var date = moment(ending(context)).tz(opts.tz);
+            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            return date.day()+1;
+        };
+    }, {
+        description: "Day of week as a number (1-7)",
+        seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
+    }),
+    /* Month of Year as a number (1-12) */
     MONTH: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
             if (!date.isValid()) throw Error("Invalid date: " + ending(context));
-            var number = date.month() + 1;
-            if (number < 10) return '0' + number;
-            else return '' + number;
+            return date.month() + 1;
         };
     }, {
-        description: "Month of Year as a string ('01'-'12')",
+        description: "Month of Year as a number (1-12)",
         seeAlso: ['YEAR', 'MONTH', 'DAY', 'DATE', 'TIME']
     }),
     /* Year */
@@ -153,15 +183,31 @@ var functions = module.exports.functions = {
     }, {
         description: "Hour of day (0-23.999999722)"
     }),
+    DAYS: _.extend((opts, to, from) => {
+        return context => {
+            var a = moment(to(context)).tz(opts.tz);
+            var b = moment(from(context)).tz(opts.tz);
+            return a.diff(b, 'days');
+        };
+    }, {
+        description: "Calculates the number of days between two dates"
+    }),
+    NUMBERVALUE(opts, text) {
+        return context => {
+            return parseFloat(text(context));
+        };
+    },
     /* Absolute value */
     ABS(opts, expression) {
         return context => {
             return Math.abs(expression(context));
         };
     },
-    CEIL(opts, expression) {
+    CEILING(opts, expression, significance) {
         return context => {
-            return Math.ceil(expression(context));
+            if (!significance) return Math.ceil(expression(context));
+            var sig = significance(context);
+            return precision(Math.ceil(expression(context)/sig)*sig);
         };
     },
     ROUND(opts, expression, count) {
@@ -170,9 +216,11 @@ var functions = module.exports.functions = {
             return precision(Math.round(expression(context)*scale)/scale);
         };
     },
-    FLOOR(opts, expression) {
+    FLOOR(opts, expression, significance) {
         return context => {
-            return Math.floor(expression(context));
+            if (!significance) return Math.floor(expression(context));
+            var sig = significance(context);
+            return precision(Math.floor(expression(context)/sig)*sig);
         };
     },
     TRUNC(opts, expression) {

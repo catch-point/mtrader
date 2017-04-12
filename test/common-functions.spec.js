@@ -139,12 +139,12 @@ describe("common-functions", function(){
         it("DAY0", function(){
             expect(
                 DAY({"day.ending":"2015-07-18T00:00:00-04:00"})
-            ).to.equal('18');
+            ).to.equal(18);
         });
         it("MONTH0", function(){
             expect(
                 MONTH({"day.ending":"2015-07-18T00:00:00-04:00"})
-            ).to.equal('07');
+            ).to.equal(7);
         });
         it("YEAR", function(){
             expect(

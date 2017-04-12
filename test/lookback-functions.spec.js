@@ -237,7 +237,7 @@ describe("lookback-functions", function(){
         });
         it("PRIOR", function() {
             var fn = parser.parse('PRIOR(1, DAY(ending))');
-            expect(fn(points)).to.equal('26');
+            expect(fn(points)).to.equal(26);
         });
         it("TOD", function() {
             var fn = parser.parse('TOD(OFFSET(1, close))');
