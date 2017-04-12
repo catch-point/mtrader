@@ -32,6 +32,7 @@
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
 const storage = require('./storage.js');
 const periods = require('./periods.js');
 const List = require('./list.js');
@@ -431,7 +432,10 @@ function fetchNeededBlocks(fetch, collection, warmUpLength, options) {
     var end = options.end || moment(options.now).tz(options.tz);
     var stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
     var blocks = getBlocks(options.interval, start, stop, options);
-    return collection.lockWith(blocks, blocks => fetchBlocks(fetch, options, collection, stop, blocks));
+    return collection.lockWith(blocks, blocks => {
+        var version = getStorageVersion(collection);
+        return fetchBlocks(fetch, options, collection, version, stop, blocks);
+    });
 }
 
 /**
@@ -539,14 +543,31 @@ function formatColumns(signals, options) {
 }
 
 /**
+ * Returns a compatibility version used to indicate if the block needs to be reset
+ */
+function getStorageVersion(collection) {
+    var blocks = collection.listNames();
+    var version = _.last(blocks.map(block => collection.propertyOf(block, 'version')).sort());
+    if (version && version.indexOf(minor_version) === 0) return version;
+    else return createStorageVersion();
+}
+
+/**
+ * Returns a new version that must match among compatible blocks
+ */
+function createStorageVersion() {
+    return minor_version + '+' + new Date().valueOf().toString(36);
+}
+
+/**
  * Checks if any of the blocks need to be updated
  */
-function fetchBlocks(fetch, options, collection, stop, blocks) {
-    var fetchComplete = fetchCompleteBlock.bind(this, fetch, options, collection);
+function fetchBlocks(fetch, options, collection, version, stop, blocks) {
+    var fetchComplete = fetchCompleteBlock.bind(this, fetch, options, collection, version);
     var fetchPartial = fetchPartialBlock.bind(this, fetch, options, collection);
     return Promise.all(blocks.map((block, i, blocks) => {
         var last = i == blocks.length -1;
-        if (!collection.exists(block) || _.contains(collection.property('incompatible'), block))
+        if (!collection.exists(block) || collection.propertyOf(block, 'version') != version)
             return fetchComplete(block, last);
         var tail = collection.tailOf(block);
         if (_.isEmpty(tail) || !_.last(tail).incomplete)
@@ -557,26 +578,20 @@ function fetchBlocks(fetch, options, collection, stop, blocks) {
             return fetchPartial(block, _.first(tail).ending);
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
-        collection.property('incompatible', _.compact(_.union(
-            collection.property('incompatible'),
-            collection.listNames(),
-            blocks
-        )));
-        return fetchBlocks(fetch, options, collection, stop, blocks);
+        var version = createStorageVersion();
+        return fetchBlocks(fetch, options, collection, version, stop, blocks);
     });
 }
 
 /**
  * Attempts to load a complete block
  */
-function fetchCompleteBlock(fetch, options, collection, block, last) {
+function fetchCompleteBlock(fetch, options, collection, version, block, last) {
     return fetch(blockOptions(block, options)).then(records => {
         if (last && _.isEmpty(records)) return records; // don't write incomplete empty blocks
         return collection.remove(block).then(() => collection.writeTo(records, block));
     }).then(() => {
-        var incompatible = collection.property('incompatible');
-        if (_.contains(incompatible, block))
-            collection.property('incompatible', _.without(incompatible, block));
+        collection.propertyOf(block, 'version', version);
     });
 }
 

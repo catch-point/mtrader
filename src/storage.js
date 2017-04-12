@@ -106,12 +106,6 @@ function openCollection(dirname, name) {
             });
             return promise;
         },
-        property(name, value) {
-            if (arguments.length == 1)
-                return metadata.properties[name];
-            else
-                metadata.properties[name] = value;
-        },
         propertyOf(block, name, value) {
             var id = safe(block);
             var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
@@ -227,8 +221,6 @@ function readMetadata(dirname) {
         if (absent.code != 'ENOENT') logger.error("Could not read", filename, absent);
         else return {};
     }).then(metadata => {
-        if (!_.isObject(metadata.properties))
-            metadata.properties = {};
         if (!_.isArray(metadata.tables))
             metadata.tables = [];
         return metadata;
