@@ -218,7 +218,7 @@ function createParser(cached, options) {
             else if (_.has(options, name) && !_.isObject(options[name]) && name.match(/^\w+$/))
                 return _.constant(options[name]);
             else if (!~name.indexOf('.'))
-                throw Error("Unknown field: " + name);
+                throw Error("Unknown field: " + name + " in " + options.symbol);
             var interval = name.substring(0, name.indexOf('.'));
             expect(interval).to.be.oneOf(periods.values);
             var lname = name.substring(name.indexOf('.')+1);
@@ -547,8 +547,12 @@ function formatColumns(signals, options) {
  */
 function getStorageVersion(collection) {
     var blocks = collection.listNames();
-    var version = _.last(blocks.map(block => collection.propertyOf(block, 'version')).sort());
-    if (version && version.indexOf(minor_version) === 0) return version;
+    var versions = blocks
+        .map(block => collection.propertyOf(block, 'version'))
+        .filter(version=>version.indexOf(minor_version) === 0);
+    var len = _.max(_.map(versions, 'length'));
+    var version = _.last(versions.filter(version=>version.length==len).sort());
+    if (version) return version;
     else return createStorageVersion();
 }
 
@@ -589,9 +593,9 @@ function fetchBlocks(fetch, options, collection, version, stop, blocks) {
 function fetchCompleteBlock(fetch, options, collection, version, block, last) {
     return fetch(blockOptions(block, options)).then(records => {
         if (last && _.isEmpty(records)) return records; // don't write incomplete empty blocks
-        return collection.remove(block).then(() => collection.writeTo(records, block));
-    }).then(() => {
-        collection.propertyOf(block, 'version', version);
+        return collection.remove(block)
+          .then(() => collection.writeTo(records, block))
+          .then(() => collection.propertyOf(block, 'version', version));
     });
 }
 

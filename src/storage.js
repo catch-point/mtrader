@@ -110,7 +110,7 @@ function openCollection(dirname, name) {
             var id = safe(block);
             var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             var entry = metadata.tables[idx];
-            if (!entry || entry.id != id) throw Error("Unknown table " + block);
+            if (!entry || entry.id != id) throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
             if (arguments.length == 2)
                 return entry.properties[name];
             else
