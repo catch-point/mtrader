@@ -71,10 +71,11 @@ var functions = module.exports.functions = {
         return positions => {
             var num = numberOfIntervals(positions);
             var len = positions.length -1;
-            var values = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
-                return _.pluck(_.values(positions).filter(ctx => _.isObject(ctx) && condition(ctx)), name);
+            var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            return _.filter(_.initial(values), val => val === 0 || val).length;
+            var values = _.pluck(_.initial(bars).filter(condition), name);
+            return values.filter(val => val === 0 || val).length;
         };
     }, {
         args: "numberOfIntervals, columnName, [criteria]",
@@ -86,10 +87,11 @@ var functions = module.exports.functions = {
         return positions => {
             var num = numberOfIntervals(positions);
             var len = positions.length -1;
-            var values = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
-                return _.pluck(_.values(positions).filter(ctx => _.isObject(ctx) && condition(ctx)), name);
+            var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            return _.initial(values).filter(_.isFinite).reduce((a, b) => a + b, 0);
+            var values = _.pluck(_.initial(bars).filter(condition), name);
+            return values.filter(_.isFinite).reduce((a, b) => a + b, 0);
         };
     }, {
         args: "numberOfIntervals, columnName, [criteria]",
