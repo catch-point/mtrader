@@ -45,18 +45,15 @@ module.exports = function(name, args, options) {
 };
 
 var functions = module.exports.functions = {
-    /* The number of workdays (Mon-Fri) since 1970-01-01 */
-    WORKDAY: _.extend((opts, ending) => {
+    /* Add d workdays to the date */
+    WORKDAY: _.extend((opts, ending, days) => {
         return context => {
             var start = moment(ending(context)).tz(opts.tz);
             if (!start.isValid()) throw Error("Invalid date: " + ending(context));
-            var noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
-            var zero = moment.tz('1970-01-01', opts.tz).startOf('isoWeek');
-            var weeks = start.diff(zero, 'weeks');
-            var days = start.isoWeekday() - 1;
-            if (days > 4) return weeks * 5 + 5;
-            var hours = (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
-            return weeks*5 + days + hours/24;
+            var d = Math.min(start.isoWeekday()-1,4) + days(context);
+            var wk = d > 0 ? Math.floor(d /5) : Math.ceil(d /5);
+            var wd = d - wk *5 +1;
+            return start.add(wk, 'weeks').isoWeekday(wd).format();
         };
     }, {
         description: "The number of workdays (Mon-Fri) since 1970-01-01"
