@@ -608,7 +608,7 @@ describe("quote", function() {
                 'TIME(m30.ending) AS "Time"',
                 'm30.close AS "Price"'
             ],
-            retain: 'WORKDAY(month.ending) = WORKDAY(day.ending) and HOUR(m30.ending) = 12',
+            retain: 'DATE(month.ending) = DATE(day.ending) and HOUR(m30.ending) = 12',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-01-01T08:30:00-0500'),
@@ -636,7 +636,7 @@ describe("quote", function() {
                 'm30.close AS "Price"'
             ],
             retain: [
-                'WORKDAY(month.ending) = WORKDAY(day.ending)',
+                'DATE(month.ending) = DATE(day.ending)',
                 'LEADING(HOUR(m60.ending)) = 12',
                 'm30.close >= OFFSET(1,m30.close)'
             ].join(' and '),
@@ -679,7 +679,7 @@ describe("quote", function() {
                 'IF(LEADING(m30.ending)<m30.ending, 100, 0) AS position'
             ],
             retain: [
-                'WORKDAY(month.ending) = WORKDAY(day.ending)'
+                'DATE(month.ending) = DATE(day.ending)'
             ].join(' and '),
             criteria: [
                 'LEADING(HOUR(m60.ending)) = 12',
