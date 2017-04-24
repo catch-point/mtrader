@@ -905,38 +905,54 @@ describe("lookback-functions", function(){
             {Date:"2016-01-29",Close:193.72,Change:0.93,PF:1.15}
         ]);
     });
-    it("SLOPE", function() {
+    it("LRS", function() {
+        var R2 = parser.parse('LRS(10,close)');
+        var values = [357.14,53.57,48.78,10.48];
+        expect(R2(values.map(v=>({close:v})))).to.be.like(-88.92);
+    });
+    it("R2", function() {
+        var R2 = parser.parse('R2(10,close)');
+        var values = [357.14,53.57,48.78,10.48];
+        expect(R2(values.map(v=>({close:v})))).to.be.like(70.25);
+    });
+    it("LRS SPY", function() {
         return quote({
             columns: [
                 'DATE(day.ending) AS "Date"',
                 'day.close AS "Close"',
                 'CHANGE(day.close, OFFSET(5, day.close)) AS "Change"',
-                'SLOPE(5, day.close) AS "Slope"'
+                '5*LRS(5, day.close) AS "Slope"',
+                'R2(5,day.close) AS RR'
             ].join(','),
             symbol: 'SPY',
             exchange: 'ARCA',
             begin: moment('2016-01-01'),
-            end: moment('2016-02-01')
+            end: moment('2016-02-01'),
+            pad_begin: 4
         }).should.eventually.be.like([
-            {Date:"2016-01-04",Close:201.02,Change:-2.27,Slope:-0.51},
-            {Date:"2016-01-05",Close:201.36,Change:-1.87,Slope:-0.54},
-            {Date:"2016-01-06",Close:198.82,Change:-4.14,Slope:-0.55},
-            {Date:"2016-01-07",Close:194.05,Change:-5.76,Slope:-0.40},
-            {Date:"2016-01-08",Close:191.92,Change:-5.86,Slope:-0.35},
-            {Date:"2016-01-11",Close:192.11,Change:-4.43,Slope:-0.35},
-            {Date:"2016-01-12",Close:193.66,Change:-3.82,Slope:-0.39},
-            {Date:"2016-01-13",Close:188.83,Change:-5.02,Slope:-0.51},
-            {Date:"2016-01-14",Close:191.93,Change:-1.09,Slope:-0.26},
-            {Date:"2016-01-15",Close:187.81,Change:-2.14,Slope:-0.43},
-            {Date:"2016-01-19",Close:188.06,Change:-2.10,Slope:-0.45},
-            {Date:"2016-01-20",Close:185.65,Change:-4.13,Slope:-0.49},
-            {Date:"2016-01-21",Close:186.69,Change:-1.13,Slope:-0.55},
-            {Date:"2016-01-22",Close:190.52,Change:-0.73,Slope:0.30},
-            {Date:"2016-01-25",Close:187.64,Change:-0.09,Slope:0.30},
-            {Date:"2016-01-26",Close:190.2,Change:1.14,Slope:0.54},
-            {Date:"2016-01-27",Close:188.13,Change:1.34,Slope:0.23},
-            {Date:"2016-01-28",Close:189.11,Change:1.30,Slope:-0.37},
-            {Date:"2016-01-29",Close:193.72,Change:1.68,Slope:0.47}
+            {Date:"2015-12-28",Close:205.21,Change:2.59,Slope:2.26,RR:65.06},
+            {Date:"2015-12-29",Close:207.4,Change:2.84,Slope:1.70,RR:61.25},
+            {Date:"2015-12-30",Close:205.93,Change:1.19,Slope:0.37,RR:8.85},
+            {Date:"2015-12-31",Close:203.87,Change:-1.04,Slope:-0.70,RR:12.94},
+            {Date:"2016-01-04",Close:201.02,Change:-2.27,Slope:-2.90,RR:60.90},
+            {Date:"2016-01-05",Close:201.36,Change:-1.88,Slope:-4.17,RR:92.77},
+            {Date:"2016-01-06",Close:198.82,Change:-4.14,Slope:-4.13,RR:92.60},
+            {Date:"2016-01-07",Close:194.05,Change:-5.77,Slope:-5.46,RR:87.50},
+            {Date:"2016-01-08",Close:191.92,Change:-5.86,Slope:-6.46,RR:90.32},
+            {Date:"2016-01-11",Close:192.11,Change:-4.43,Slope:-6.49,RR:90.03},
+            {Date:"2016-01-12",Close:193.66,Change:-3.82,Slope:-3.16,RR:48.20},
+            {Date:"2016-01-13",Close:188.83,Change:-5.02,Slope:-2.26,RR:44.62},
+            {Date:"2016-01-14",Close:191.93,Change:-1.09,Slope:-0.85,RR:8.60},
+            {Date:"2016-01-15",Close:187.81,Change:-2.14,Slope:-2.70,RR:44.51},
+            {Date:"2016-01-19",Close:188.06,Change:-2.11,Slope:-3.21,RR:55.24},
+            {Date:"2016-01-20",Close:185.65,Change:-4.14,Slope:-2.71,RR:50.66},
+            {Date:"2016-01-21",Close:186.69,Change:-1.13,Slope:-3.36,RR:70.32},
+            {Date:"2016-01-22",Close:190.52,Change:-0.73,Slope:1.08,RR:12.32},
+            {Date:"2016-01-25",Close:187.64,Change:-0.09,Slope:1.073,RR:12.20},
+            {Date:"2016-01-26",Close:190.2,Change:1.14,Slope:2.67,RR:54.71},
+            {Date:"2016-01-27",Close:188.13,Change:1.34,Slope:0.68,RR:5.94},
+            {Date:"2016-01-28",Close:189.11,Change:1.3,Slope:-0.61,RR:8.62},
+            {Date:"2016-01-29",Close:193.72,Change:1.68,Slope:2.91,RR:52.260}
         ]);
     });
     it("VAR", function() {

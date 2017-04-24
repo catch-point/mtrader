@@ -155,25 +155,43 @@ var functions = module.exports.functions = {
             warmUpLength: n + calc.warmUpLength
         });
     },
-    SLOPE(opts, num, calc) {
-        var n = asPositiveInteger(num, "SLOPE");
+    LRS(opts, n, expression) {
+        var len = asPositiveInteger(n, "LRS");
         return _.extend(bars => {
-            var values = getValues(n, calc, bars);
-            var sx = values.reduce(function(sum, value, i){
-                return sum + value;
-            }, 0);
-            var sy = values.reduce(function(sum, value, i){
-                return sum + i;
-            }, 0);
-            var sxx = values.reduce(function(sum, value, i){
-                return sum + value * value;
-            }, 0);
-            var sxy = values.reduce(function(sum, value, i){
-                return sum + value * i;
-            }, 0);
-            return (sxy*values.length - sx*sy) / (sxx*values.length - sx*sx);
+            var values = getValues(len, expression, bars);
+            var n = values.length;
+            var sx = values.reduce((s, y, x) => s + x, 0);
+            var sy = values.reduce((s, y, x) => s + y, 0);
+            var sxx = values.reduce((s, y, x) => s + x * x, 0);
+            var sxy = values.reduce((s, y, x) => s + x * y, 0);
+            var det = sxx*n - sx*sx;
+            var a = (sxy*n - sy*sx)/det;
+            var sma = sy/n;
+            return a*100/sma;
         }, {
-            warmUpLength: n * 10 + calc.warmUpLength - 1
+            warmUpLength: len * 10 + expression.warmUpLength - 1,
+            description: "Linear Regression Slope as a percentage"
+        });
+    },
+    R2(opts, n, expression) {
+        var len = asPositiveInteger(n, "R2");
+        return _.extend(bars => {
+            var values = getValues(len, expression, bars);
+            var n = values.length;
+            var sx = values.reduce((s, y, x) => s + x, 0);
+            var sy = values.reduce((s, y, x) => s + y, 0);
+            var sxx = values.reduce((s, y, x) => s + x * x, 0);
+            var sxy = values.reduce((s, y, x) => s + x * y, 0);
+            var det = sxx*n - sx*sx;
+            var a = (sxy*n - sy*sx)/det;
+            var b = (sy*sxx - sx*sxy)/det;
+            var sma = sy/n;
+            var see = values.reduce((s, y, x) => s + Math.pow(a*x+b - y, 2), 0);
+            var smm = values.reduce((s, y, x) => s + Math.pow(sma - y, 2), 0);
+            return 100 - see*100/smm;
+        }, {
+            warmUpLength: len * 10 + expression.warmUpLength - 1,
+            description: "R-squared as a percentage"
         });
     },
     /* Standard Deviation */
