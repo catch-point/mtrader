@@ -36,6 +36,11 @@ const promiseText = require('./promise-text.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 
+const yql = "http://query.yahooapis.com/v1/public/yql";
+const table = "https://ichart.finance.yahoo.com/table.csv";
+const autoc = "http://d.yimg.com/aq/autoc";
+const quotes = "http://download.finance.yahoo.com/d/quotes.csv";
+
 module.exports = function() {
     return {
         close() {},
@@ -119,7 +124,8 @@ function loadQuotes(rates, queue) {
             return Promise.reject(rates.lastError);
         }
         var url = [
-            "http://query.yahooapis.com/v1/public/yql?q=",
+            yql,
+            "?q=",
             encodeURIComponent([
                 'select * from yahoo.finance.historicaldata where symbol in (',
                 group.symbols.sort().reduce(function(sb, symbol) {
@@ -193,7 +199,8 @@ function loadPriceTable(loadCSV, g, symbol, begin, end, marketClosesAt, tz) {
         moment.tz(begin, tz);
     var startMatch = start.format('YYYY-MM-DD').match(/(\d\d\d\d)-(\d\d)-(\d\d)/);
     var url = [
-        "http://ichart.finance.yahoo.com/table.csv?s=", encodeURIComponent(symbol),
+        table,
+        "?s=", encodeURIComponent(symbol),
         "&a=", parseInt(startMatch[2], 10) - 1, "&b=", startMatch[3], "&c=", startMatch[1],
         "&d=", parseInt(endMatch[2], 10) - 1, "&e=", endMatch[3], "&f=", endMatch[1],
         "&g=", g
@@ -204,7 +211,8 @@ function loadPriceTable(loadCSV, g, symbol, begin, end, marketClosesAt, tz) {
 function lookupSymbol(listSymbols, symbol, marketLang) {
     var root = symbol.replace(/^\W+/, '').replace(/\W.*$/, '');
     var url = [
-        "http://d.yimg.com/aq/autoc?callback=YAHOO.util.ScriptNodeDataSource.callbacks",
+        autoc,
+        "?callback=YAHOO.util.ScriptNodeDataSource.callbacks",
         "&lang=", marketLang || 'en-US',
         "&region=", marketLang ? marketLang.replace(/.*-/,'') : 'US',
         "&query=", encodeURIComponent(root)
@@ -247,7 +255,7 @@ function parseJSON(text) {
 }
 
 function loadSecurity(symbols) {
-    var url = "http://download.finance.yahoo.com/d/quotes.csv?f=sj1nxa2ee7e8e9b4j4p5p6rr5r6r7s7&s="
+    var url = quotes + "?f=sj1nxa2ee7e8e9b4j4p5p6rr5r6r7s7&s="
         + symbols.map(encodeURIComponent).join(',');
     return promiseText(url).then(parseCSV).then(rows => rows.map(row => _.object(
         ['symbol', 'MarketCapitalization', 'name', 'exch', 'AverageDailyVolume', 'EarningsShare', 'EPSEstimateCurrentYear', 'EPSEstimateNextYear', 'EPSEstimateNextQuarter', 'BookValue', 'EBITDA', 'PriceSales', 'PriceBook', 'PERatio', 'PEGRatio', 'PriceEPSEstimateCurrentYear', 'PriceEPSEstimateNextYear', 'ShortRatio'],
@@ -261,7 +269,7 @@ function loadSecurity(symbols) {
 }
 
 function loadIntradayQuote(symbols) {
-    var url = "http://download.finance.yahoo.com/d/quotes.csv?f=sd1t1ol1mvp&s="
+    var url = quotes + "?f=sd1t1ol1mvp&s="
         + symbols.map(encodeURIComponent).join(',');
     return promiseText(url).then(parseCSV).then(rows => rows.map(row => _.object(
         ["symbol", "date", "time", "open", "close", "range", "volume", "prior_close"],

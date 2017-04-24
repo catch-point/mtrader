@@ -30,12 +30,14 @@
  */
 
 const http = require('http');
+const https = require('https');
 const logger = require('./logger.js');
 
 module.exports = function(url) {
     return new Promise(function(resolve, reject) {
         logger.debug(url);
-        http.get(url, res => {
+        var protocol = url.indexOf('https') === 0 ? https : http;
+        protocol.get(url, res => {
             var buffer = [];
             res.setEncoding('utf8');
             res.on('data', data => {
