@@ -39,7 +39,7 @@
       "tz": "America/New_York",
       "datasources": {
         "yahoo": {
-          "exchs": ["NAS", "NCM", "NGM", "NMS"],
+          "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
           "marketLang": "en-US",
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
         },
