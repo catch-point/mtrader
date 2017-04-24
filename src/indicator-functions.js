@@ -59,7 +59,7 @@ var functions = module.exports.functions = {
     /* Weighted On Blanance Volume */
     OBV(n) {
         return _.extend(bars => {
-            var numerator = bars.reduce(function(p, bar, i, bars){
+            var numerator = adj(bars).reduce(function(p, bar, i, bars){
                 if (i === 0) return 0;
                 var prior = bars[i - 1];
                 if (bar.close > prior.close)
@@ -70,14 +70,13 @@ var functions = module.exports.functions = {
             }, 0);
             return numerator / (bars.length * (bars.length - 1)) * 2;
         }, {
-            fields: ['close', 'volume'],
             warmUpLength: n * 10
         });
     },
     /* Average True Range */
     ATR(n) {
         return _.extend(bars => {
-            var ranges = bars.map(function(bar,i,bars) {
+            var ranges = adj(bars).map(function(bar,i,bars) {
                 var previous = bars[i-1];
                 if (!previous) return bar.high - bar.low;
                 return Math.max(
@@ -91,7 +90,6 @@ var functions = module.exports.functions = {
                 return (atr * (n-1) + range) / n;
             }, sum(first) / first.length);
         }, {
-            fields: ['high', 'low', 'close'],
             warmUpLength: n + 250
         });
     },
@@ -136,7 +134,7 @@ var functions = module.exports.functions = {
                     af: factor
                 };
             };
-            return bars.reduce(function(sar, bar) {
+            return adj(bars).reduce(function(sar, bar) {
                 return sar.trend(bar);
             }, {
                 trend: down,
@@ -145,7 +143,6 @@ var functions = module.exports.functions = {
                 af: factor
             }).stop;
         }, {
-            fields: ['high', 'low'],
             warmUpLength: n -1
         });
     },
@@ -173,7 +170,7 @@ var functions = module.exports.functions = {
                     af: factor
                 };
             };
-            return bars.reduce(function(sar, bar) {
+            return adj(bars).reduce(function(sar, bar) {
                 return sar.trend(bar);
             }, {
                 trend: down,
@@ -182,7 +179,6 @@ var functions = module.exports.functions = {
                 af: factor
             }).stop;
         }, {
-            fields: ['high', 'low'],
             warmUpLength: n -1
         });
     },
@@ -210,7 +206,7 @@ var functions = module.exports.functions = {
                     af: factor
                 };
             };
-            return bars.reduce(function(sar, bar) {
+            return adj(bars).reduce(function(sar, bar) {
                 return sar.trend(bar);
             }, {
                 trend: up,
@@ -219,17 +215,17 @@ var functions = module.exports.functions = {
                 af: factor
             }).stop;
         }, {
-            fields: ['high', 'low'],
             warmUpLength: n -1
         });
     },
     /* Price of Percent of Volume */
     POPV(n, p) {
         return _.extend(bars => {
-            var prices = getPrices(bars);
+            var adj_bars = adj(bars);
+            var prices = getPrices(adj_bars);
             if (p <= 0) return _.first(prices);
             if (!(p < 100)) return _.last(prices);
-            var volume = reducePriceVolumeWeight(bars, prices, function(volume, price, weight){
+            var volume = reducePriceVolumeWeight(adj_bars, prices, function(volume, price, weight){
                 var i = _.sortedIndex(prices, price);
                 volume[i] = weight + (volume[i] || 0);
                 return volume;
@@ -241,34 +237,35 @@ var functions = module.exports.functions = {
             }
             return prices[i-1];
         }, {
-            fields: ['open', 'high', 'low', 'close'],
             warmUpLength: n -1
         });
     },
     /* Percent of trade Volume below close Oscillator */
     POVO(n) {
         return _.extend(bars => {
-            var target = _.last(bars).close;
-            var prices = getPrices(bars);
+            if (_.isEmpty(bars)) return;
+            var adj_bars = adj(bars);
+            var target = _.last(adj_bars).close;
+            var prices = getPrices(adj_bars);
             if (target <= _.first(prices)) return 0;
             if (target > _.last(prices)) return 100;
             var total = 0;
-            var below = reducePriceVolumeWeight(bars, prices, function(below, price, weight){
+            var below = reducePriceVolumeWeight(adj_bars, prices, function(below, price, weight){
                 total += weight;
                 if (price < target) return below + weight;
                 else return below;
             }, 0);
             return below *100 / total;
         }, {
-            fields: ['open', 'high', 'low', 'close'],
             warmUpLength: n -1
         });
     },
     /* Time Price Opportunity Count percentage */
     TPOC(n) {
         return _.extend(bars => {
-            var tpos = getTPOCount(bars);
-            var target = _.last(bars).close;
+            var adj_bars = adj(bars);
+            var tpos = getTPOCount(adj_bars);
+            var target = _.last(adj_bars).close;
             var bottom = 0, top = tpos.length-1;
             while (tpos[bottom].count <= 1 && bottom < top) bottom++;
             while (tpos[top].count <= 1 && top > bottom) top--;
@@ -287,35 +284,33 @@ var functions = module.exports.functions = {
             var total = value + above + below;
             return (value + below) / total * 100;
         }, {
-            fields: ['high', 'low', 'close'],
             warmUpLength: n -1
         });
     },
     /* Rotation Factor */
     ROF(n) {
         return _.extend(bars => {
-            return bars.reduce(function(factor, bar, i, bars) {
+            var adj_bars = adj(bars);
+            return adj_bars.reduce(function(factor, bar, i, adj_bars) {
                 if (i < 1) return factor;
-                else if (bars[i-1].low < bar.low)
+                else if (adj_bars[i-1].low < bar.low)
                     return factor + 1;
                 else return factor - 1;
-            }, bars.reduce(function(factor, bar, i, bars) {
+            }, adj_bars.reduce(function(factor, bar, i, adj_bars) {
                 if (i < 1) return factor;
-                else if (bars[i-1].high < bar.high)
+                else if (adj_bars[i-1].high < bar.high)
                     return factor + 1;
                 else return factor - 1;
             }, 0));
         }, {
-            fields: ['high', 'low'],
             warmUpLength: n -1
         });
     },
     /* Point Of Control */
     POC(n) {
         return _.extend(bars => {
-            return getPointOfControl(getTPOCount(bars));
+            return getPointOfControl(getTPOCount(adj(bars)));
         }, {
-            fields: ['high', 'low'],
             warmUpLength: n -1
         });
     }
@@ -331,6 +326,25 @@ function getPrices(bars) {
             return prices;
         }, prices);
     }, []);
+}
+
+/**
+ * Adjust open/high/low/close to the last bar
+ */
+function adj(bars) {
+    var last = _.last(bars);
+    if (!_.has(last, 'adj_close')) return bars;
+    var norm = last.close / last.adj_close;
+    return bars.map(bar => {
+        var scale = bar.adj_close/bar.close * norm;
+        if (Math.abs(scale -1) < 0.0000001) return bar;
+        else return _.defaults({
+            open: bar.open*scale,
+            high: bar.high*scale,
+            low: bar.low*scale,
+            close: bar.close*scale
+        }, bar);
+    });
 }
 
 function reducePriceVolumeWeight(bars, prices, fn, memo) {
