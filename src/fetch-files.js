@@ -48,7 +48,7 @@ module.exports = function() {
             'iqfeed' == fallback ? iqfeed() :
             null;
     });
-    var dirname = config('files.dirname') || path.resolve(config('prefix'), 'var/ptrading/');
+    var dirname = config('files.dirname') || path.resolve(config('prefix'), 'var/fetch/');
     var store = Promise.resolve(storage(dirname));
     config.addListener((name, value) => {
         if (name == 'files.dirname') {

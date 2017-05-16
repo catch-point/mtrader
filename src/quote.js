@@ -49,7 +49,7 @@ const expect = require('chai').use(like).expect;
  * @returns a function that returns array of row objects based on given options
  */
 module.exports = function(fetch) {
-    var store = storage(path.resolve(config('prefix'), 'var/quotes/'));
+    var store = storage(path.resolve(config('prefix'), 'var/'));
     var fetchOptions = fetchOptionsFactory(fetch);
     var self = function(options) {
         return fetchOptions(options).then(options => quote(fetch, store, options));
