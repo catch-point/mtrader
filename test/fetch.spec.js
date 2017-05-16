@@ -42,6 +42,7 @@ describe("fetch", function() {
     var fetch;
     before(function() {
         config('prefix', __dirname);
+        config(['files','dirname'], path.resolve(__dirname, 'var'));
         config('config', path.resolve(__dirname, 'etc/ptrading.json'));
         fetch = Fetch();
     });
