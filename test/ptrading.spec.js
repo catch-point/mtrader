@@ -29,6 +29,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+const path = require('path');
 const _ = require('underscore');
 const ptrading = require('../src/ptrading.js');
 const like = require('./should-be-like.js');
@@ -36,7 +37,21 @@ const createTempDir = require('./create-temp-dir.js');
 
 describe("ptrading", function() {
     this.timeout(60000);
-    ptrading.config('prefix', createTempDir('ptrading'));
+    before(function() {
+        ptrading.config('config', path.resolve(__dirname, 'etc/ptrading.json'));
+        ptrading.config('prefix', createTempDir('ptrading'));
+        ptrading.config(['iqfeed','enabled'], false);
+        ptrading.config(['yahoo','enabled'], false);
+        ptrading.config(['files','enabled'], true);
+        ptrading.config(['files','dirname'], path.resolve(__dirname, 'var'));
+    });
+    after(function() {
+        ptrading.config.unset('prefix');
+        ptrading.config.unset(['iqfeed','enabled']);
+        ptrading.config.unset(['yahoo','enabled']);
+        ptrading.config.unset(['files','enabled']);
+        ptrading.config.unset(['files','dirname']);
+    });
     it("lookup", function() {
         return ptrading.lookup({symbol: 'YHOO'}).then(suggestions => {
           suggestions.forEach(suggestion => {
@@ -58,7 +73,9 @@ describe("ptrading", function() {
         return ptrading.fetch({
           interval: 'day',
           symbol: 'YHOO',
-          exchange: 'NASDAQ'
+          exchange: 'NASDAQ',
+          begin: "2017-01-13",
+          end: "2017-01-14",
         }).then(_.first).should.eventually.be.like({
             ending: _.isString,
             open: _.isFinite,

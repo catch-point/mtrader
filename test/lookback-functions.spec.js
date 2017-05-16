@@ -77,6 +77,7 @@ describe("lookback-functions", function(){
     });
     after(function() {
         config.unset('prefix');
+        config.unset(['files','dirname']);
         return Promise.all([
             quote.close(),
             fetch.close()

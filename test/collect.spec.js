@@ -57,6 +57,7 @@ describe("collect", function() {
         config.unset(['iqfeed','enabled']);
         config.unset(['yahoo','enabled']);
         config.unset(['files','enabled']);
+        config.unset(['files','dirname']);
         return Promise.all([
             collect.close(),
             quote.close(),

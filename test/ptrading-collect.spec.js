@@ -50,6 +50,7 @@ describe("ptrading-collect", function() {
         ptrading.config.unset(['iqfeed','enabled']);
         ptrading.config.unset(['yahoo','enabled']);
         ptrading.config.unset(['files','enabled']);
+        ptrading.config.unset(['files','dirname']);
     });
     it("change", function() {
         return ptrading.collect({

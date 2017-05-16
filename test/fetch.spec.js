@@ -47,6 +47,7 @@ describe("fetch", function() {
         fetch = Fetch();
     });
     after(function() {
+        config.unset(['files','dirname']);
         return fetch.close();
     });
     it("should find YHOO", function() {
