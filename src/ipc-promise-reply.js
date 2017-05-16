@@ -37,7 +37,12 @@ module.exports = function(process) {
     var seq = 0;
     var handlers = {};
     var outstanding = createQueue(handlers);
-    process.on('disconnect', ()=>outstanding.close()).on('message', msg => {
+    process.on('disconnect', ()=> {
+        outstanding.close();
+        _.compact(outstanding.keys().map(id => outstanding.remove(id))).forEach(pending => {
+            pending.onerror(Error("Disconnecting"));
+        });
+    }).on('message', msg => {
         if (msg.cmd.indexOf('reply_to_') === 0 && outstanding.has(msg.in_reply_to)) {
             var pending = outstanding.remove(msg.in_reply_to);
             try {
@@ -129,9 +134,11 @@ var queue = [];
 
 function createQueue(handlers) {
     var outstanding = {};
+    var closed = false;
     queue.push(outstanding);
     return {
         add(id, pending) {
+            if (closed) throw Error("Disconnected");
             outstanding[id] = _.extend({}, pending);
             if (!monitor) monitor = setInterval(() => {
                 var outstanding = _.flatten(queue.map(o => _.values(o)));
@@ -166,7 +173,11 @@ function createQueue(handlers) {
                 }
             }
         },
+        keys() {
+            return _.keys(outstanding);
+        },
         close() {
+            closed = true;
             var idx = queue.indexOf(outstanding);
             if (idx >= 0) {
                 queue.splice(1, idx);
