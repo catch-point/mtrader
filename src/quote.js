@@ -35,6 +35,7 @@ const moment = require('moment-timezone');
 const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
 const storage = require('./storage.js');
 const periods = require('./periods.js');
+const interrupt = require('./interrupt.js');
 const List = require('./list.js');
 const Parser = require('./parser.js');
 const common = require('../src/common-functions.js');
@@ -67,7 +68,7 @@ function fetchOptionsFactory(fetch) {
             interval: 'lookup',
             symbol: symbol,
             exchange: exchange
-        }).then(matches => _.first(matches)).then(security =>{
+        }).then(matches => _.first(matches)).then(security => {
             if (_.isEmpty(security)) throw Error("Unknown symbol: " + symbol);
             else if (security.symbol == symbol) return security;
             else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
@@ -341,6 +342,7 @@ function mergeBars(quoteBars, exprMap, retain, criteria, options) {
  */
 function readSignals(points, entry, exit, retain, criteria) {
     if (!points.length) return [];
+    var check = interrupt();
     var start = points.sortedIndexOf(entry, 'ending');
     if (start > 0 && (start == points.length || entry.ending < points.item(start).ending))
         start--;
@@ -356,6 +358,7 @@ function readSignals(points, entry, exit, retain, criteria) {
     retain = retain || _.constant(true);
     criteria = criteria || _.constant(true);
     points.slice(start).reduce((position, point, i) => {
+        check();
         var to = start + i;
         var active = position && _.last(signals).leading;
         var keep = retain(points.slice(active ? e : to, to+1).toArray()) ||
@@ -579,7 +582,9 @@ function fetchBlocks(fetch, options, collection, version, stop, blocks) {
         if (_.first(tail).incomplete)
             return fetchComplete(block, last);
         if (i < blocks.length -1 || stop && _.first(tail).ending < stop.format())
-            return fetchPartial(block, _.first(tail).ending);
+            return fetchPartial(block, _.first(tail).ending).catch(error => {
+                logger.warn("Fetch failed", error);
+            });
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
         var version = createStorageVersion();

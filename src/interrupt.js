@@ -1,6 +1,6 @@
-// logger.js
+// interrupt.js
 /*
- *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -29,30 +29,16 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const path = require('path');
-const process = require('process');
-const config = require('./config.js');
 
-var silent = process.argv.some(arg => /^--silent$|^-\w*s/.test(arg)) || config('silent');
-var verbose = process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg)) || config('verbose');
-var relative = path.relative(process.cwd(), path.dirname(__filename));
-var debugging = !relative || relative == 'src' || process.argv.indexOf('--debug') >= 0 || config('debug');
-
-var logger = module.exports = {
-    debug: !silent && debugging ? console.error.bind(console) : () => {},
-    log: !silent && verbose ? console.error.bind(console) : () => {},
-    info: !silent ? console.error.bind(console) : () => {},
-    warn: !silent ? console.error.bind(console) : () => {},
-    error: console.error.bind(console)
-};
-
-config.addListener((name, value) => {
-    if (name == 'verbose')
-        logger.log = value ? console.error.bind(console) : () => {};
-    if (name == 'debug')
-        logger.debug = value ? console.error.bind(console) : () => {};
-    if (name == 'silent')
-        logger.info = !value ? console.error.bind(console) : () => {};
-    if (name == 'silent')
-        logger.warn = !value ? console.error.bind(console) : () => {};
+var interrupted = 0;
+process.on('SIGINT', () => {
+    interrupted++;
 });
+
+module.exports = function() {
+    var base = interrupted;
+    return () => {
+        if (base != interrupted) throw Error('SIGINT');
+    };
+}
+

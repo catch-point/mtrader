@@ -35,6 +35,7 @@ const _ = require('underscore');
 const csv = require('fast-csv');
 const expect = require('chai').expect;
 const logger = require('./logger.js');
+const interrupt = require('./interrupt.js');
 const debounce = require('./debounce.js');
 const cache = require('./cache.js');
 
@@ -248,11 +249,15 @@ function writeMetadata(dirname, metadata) {
 }
 
 function readTable(filename, size) {
+    var check = interrupt();
     return new Promise((ready, error) => {
         var objects = _.isFinite(size) ? new Array(size) : new Array();
         objects.length = 0;
         csv.fromStream(fs.createReadStream(filename), {headers : true, ignoreEmpty: true})
-            .on('data', data => objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value)))
+            .on('data', data => {
+                check();
+                objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value));
+            })
             .on('end', () => ready(objects))
             .on('error', error);
     });

@@ -33,6 +33,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const List = require('./list.js');
 const Parser = require('./parser.js');
+const interrupt = require('./interrupt.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
 const quoting = require('./quoting-functions.js');
@@ -261,8 +262,10 @@ function promiseRetain(parser, options) {
  * Takes the quote.js results as an array and matches the results by temporal date calling cb.
  */
 function reduceInterval(data, temporal, cb, memo) {
+    var check = interrupt();
     var lists = data.map(ar => List.from(ar));
     while (lists.some(list => list.length)) {
+        check();
         var ending = _.first(_.compact(_.pluck(lists.map(list => list.first()), temporal)).sort());
         var points = _.compact(lists.map(list => {
             if (list.length && list.first()[temporal] == ending) return list.shift();

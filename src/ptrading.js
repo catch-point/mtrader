@@ -79,6 +79,7 @@ if (require.main === module) {
         require('./ptrading-fetch.js').shell(app);
         require('./ptrading-quote.js').shell(app);
         require('./ptrading-collect.js').shell(app);
+        process.on('SIGINT', () => app.quit());
     }
 } else {
     var fetch = require('./ptrading-fetch.js');

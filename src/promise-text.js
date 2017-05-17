@@ -34,7 +34,10 @@ const https = require('https');
 const logger = require('./logger.js');
 
 module.exports = function(url) {
+    var pending = {url: url};
     return new Promise(function(resolve, reject) {
+        pending.onerror = reject;
+        outstanding.push(pending);
         logger.debug(url);
         var protocol = url.indexOf('https') === 0 ? https : http;
         protocol.get(url, res => {
@@ -43,6 +46,7 @@ module.exports = function(url) {
             res.on('data', data => {
                 buffer.push(data);
             }).on('end', () => {
+                clear(pending);
                 var code = res.statusCode;
                 var body = buffer.join('');
                 if (code == 404 || code == 410) {
@@ -54,8 +58,24 @@ module.exports = function(url) {
                     resolve(body);
                 }
             });
-        }).on('error', reject);
+        }).on('error', error => clear(pending) && reject(error));
     });
+}
+
+var outstanding = [];
+
+process.on('SIGINT', () => {
+    var error = Error('SIGINT');
+    outstanding.forEach(pending => {
+        pending.onerror(error);
+    });
+});
+
+function clear(pending) {
+    var idx = outstanding.indexOf(pending);
+    if (idx >= 0) {
+        outstanding.splice(1, idx);
+    }
 }
 
 function titleOf(html, status) {
