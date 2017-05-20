@@ -339,10 +339,10 @@ function adj(bars) {
         var scale = bar.adj_close/bar.close * norm;
         if (Math.abs(scale -1) < 0.0000001) return bar;
         else return _.defaults({
-            open: bar.open*scale,
-            high: bar.high*scale,
-            low: bar.low*scale,
-            close: bar.close*scale
+            open: decimal(bar.open*scale),
+            high: decimal(bar.high*scale),
+            low: decimal(bar.low*scale),
+            close: decimal(bar.close*scale)
         }, bar);
     });
 }
