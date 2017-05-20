@@ -40,7 +40,7 @@ const debounce = require('./debounce.js');
 const cache = require('./cache.js');
 
 module.exports = function(dirname) {
-    var cachedDatabases = cache(openDatabase.bind(this, dirname), 10);
+    var cachedDatabases = cache(openDatabase.bind(this, dirname), require('os').cpus().length*2);
     return {
         open(name, cb) {
             return cachedDatabases(safe(name), cb);

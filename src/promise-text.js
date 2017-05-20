@@ -31,17 +31,19 @@
 
 const http = require('http');
 const https = require('https');
+const _ = require('underscore');
 const logger = require('./logger.js');
 
 module.exports = function(url) {
-    var pending = {url: url};
+    var pending = _.isString(url) ? {url: url} : _.clone(url);
     return new Promise(function(resolve, reject) {
         pending.onerror = reject;
         outstanding.push(pending);
-        logger.debug(url);
-        var protocol = url.indexOf('https') === 0 ? https : http;
+        logger.debug(url.path || url);
+        var protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
         protocol.get(url, res => {
             var buffer = [];
+            saveCookies(url.headers, res.headers);
             res.setEncoding('utf8');
             res.on('data', data => {
                 buffer.push(data);
@@ -52,7 +54,7 @@ module.exports = function(url) {
                 if (code == 404 || code == 410) {
                     resolve();
                 } else if (code != 200 && code != 203) {
-                    logger.warn(res.statusMessage, code, url);
+                    logger.warn(res.statusMessage, code, url.path || url);
                     reject(Error(titleOf(body, res.statusMessage)));
                 } else {
                     resolve(body);
@@ -75,6 +77,20 @@ function clear(pending) {
     var idx = outstanding.indexOf(pending);
     if (idx >= 0) {
         outstanding.splice(1, idx);
+    }
+}
+
+function saveCookies(req, res) {
+    if (!_.isEmpty(res['set-cookie']) && req) {
+        var keys = _.object(_.keys(req).map(k=>k.toLowerCase()), _.keys(req));
+        var key = keys.cookie || 'Cookie';
+        var cookies = req[key] || "";
+        res['set-cookie'].forEach(cookie => {
+            var idx = cookie.indexOf(';');
+            var pair = cookie.substring(0, idx > 0 ? idx : cookie.length);
+            cookies = cookies ? cookies + "; " + pair : pair;
+        });
+        req[key] = cookies;
     }
 }
 

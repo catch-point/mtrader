@@ -133,7 +133,7 @@ describe("fetch-yahoo", function() {
             symbol: 'YHOO',
             yahoo_symbol: 'YHOO',
             begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2014-02-01', tz),
+            end: moment.tz('2014-01-31', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).should.eventually.be.like([
             {ending:'2013-10-31T16:00:00-04:00',open:33.36,high:35.06,low:31.70,close:32.94},
@@ -173,5 +173,130 @@ describe("fetch-yahoo", function() {
         }).should.eventually.be.like(results => _.some(results, like(
             {symbol: /^BRK.A/, name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
         )));
+    });
+    it("should adjust first dividend", function() {
+        return client.interday({
+            interval: 'day',
+            symbol: 'SPY',
+            yahoo_symbol: 'SPY',
+            begin: moment.tz('2017-03-15', tz),
+            end: moment.tz('2017-03-21', tz),
+            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+        }).should.eventually.be.like([
+            {ending:'2017-03-15T16:00:00-04:00',open:237.56,close:238.95,adj_close:237.91},
+            {ending:'2017-03-16T16:00:00-04:00',open:239.11,close:238.48,adj_close:237.45},
+            {ending:'2017-03-17T16:00:00-04:00',open:237.75,close:237.03,adj_close:237.03},
+            {ending:'2017-03-20T16:00:00-04:00',open:237.03,close:236.77,adj_close:236.77},
+            {ending:'2017-03-21T16:00:00-04:00',open:237.47,close:233.73,adj_close:233.73}
+        ]);
+    });
+    it("should adjust second dividend", function() {
+        return client.interday({
+            interval: 'day',
+            symbol: 'SPY',
+            yahoo_symbol: 'SPY',
+            begin: moment.tz('2016-12-01', tz),
+            end: moment.tz('2016-12-31', tz),
+            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+        }).should.eventually.be.like([
+            {ending:'2016-12-01T16:00:00-05:00',open:220.73,close:219.57,adj_close:217.34},
+            {ending:'2016-12-02T16:00:00-05:00',open:219.67,close:219.68,adj_close:217.45},
+            {ending:'2016-12-05T16:00:00-05:00',open:220.65,close:221.00,adj_close:218.75},
+            {ending:'2016-12-06T16:00:00-05:00',open:221.22,close:221.70,adj_close:219.45},
+            {ending:'2016-12-07T16:00:00-05:00',open:221.52,close:224.60,adj_close:222.32},
+            {ending:'2016-12-08T16:00:00-05:00',open:224.57,close:225.15,adj_close:222.86},
+            {ending:'2016-12-09T16:00:00-05:00',open:225.41,close:226.51,adj_close:224.21},
+            {ending:'2016-12-12T16:00:00-05:00',open:226.40,close:226.25,adj_close:223.95},
+            {ending:'2016-12-13T16:00:00-05:00',open:227.02,close:227.76,adj_close:225.44},
+            {ending:'2016-12-14T16:00:00-05:00',open:227.41,close:225.88,adj_close:223.58},
+            {ending:'2016-12-15T16:00:00-05:00',open:226.16,close:226.81,adj_close:224.50},
+            {ending:'2016-12-16T16:00:00-05:00',open:226.01,close:225.04,adj_close:224.07},
+            {ending:'2016-12-19T16:00:00-05:00',open:225.25,close:225.53,adj_close:224.55},
+            {ending:'2016-12-20T16:00:00-05:00',open:226.15,close:226.40,adj_close:225.42},
+            {ending:'2016-12-21T16:00:00-05:00',open:226.25,close:225.77,adj_close:224.79},
+            {ending:'2016-12-22T16:00:00-05:00',open:225.60,close:225.38,adj_close:224.40},
+            {ending:'2016-12-23T16:00:00-05:00',open:225.43,close:225.71,adj_close:224.73},
+            {ending:'2016-12-27T16:00:00-05:00',open:226.02,close:226.27,adj_close:225.29},
+            {ending:'2016-12-28T16:00:00-05:00',open:226.57,close:224.40,adj_close:223.43},
+            {ending:'2016-12-29T16:00:00-05:00',open:224.48,close:224.35,adj_close:223.38},
+            {ending:'2016-12-30T16:00:00-05:00',open:224.73,close:223.53,adj_close:222.56}
+        ]);
+    });
+    it("should handle ignore peudo split entry", function() {
+        return client.interday({
+            interval: 'day',
+            symbol: 'XLF',
+            yahoo_symbol: 'XLF',
+            begin: moment.tz('2016-09-15', tz),
+            end: moment.tz('2016-09-21', tz),
+            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+        }).should.eventually.be.like([
+            {ending:'2016-09-15T16:00:00-04:00',open:23.77,close:23.96,adj_close:19.21},
+            {ending:'2016-09-16T16:00:00-04:00',open:23.75,close:23.62,adj_close:19.03},
+            {ending:'2016-09-19T16:00:00-04:00',open:19.18,close:19.31,adj_close:19.15},
+            {ending:'2016-09-20T16:00:00-04:00',open:19.45,close:19.32,adj_close:19.16},
+            {ending:'2016-09-21T16:00:00-04:00',open:19.41,close:19.44,adj_close:19.28}
+        ]);
+    });
+    it("should adjust monthly dividend", function() {
+        return client.interday({
+            interval: 'month',
+            symbol: 'SPY',
+            yahoo_symbol: 'SPY',
+            begin: moment.tz('2016-01-01', tz),
+            end: moment.tz('2016-12-31', tz),
+            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+        }).should.eventually.be.like([
+            {ending:'2016-01-29T16:00:00-05:00',open:200.49,close:193.72,adj_close:188.83},
+            {ending:'2016-02-29T16:00:00-05:00',open:192.53,close:193.56,adj_close:188.67},
+            {ending:'2016-03-31T16:00:00-04:00',open:195.01-1.00,close:205.52,adj_close:201.36},
+            {ending:'2016-04-29T16:00:00-04:00',open:204.35,close:206.33,adj_close:202.16},
+            {ending:'2016-05-31T16:00:00-04:00',open:206.92,close:209.84,adj_close:205.59},
+            {ending:'2016-06-30T16:00:00-04:00',open:209.12-1.08,close:209.47,adj_close:206.30},
+            {ending:'2016-07-29T16:00:00-04:00',open:209.48,close:217.12,adj_close:213.83},
+            {ending:'2016-08-31T16:00:00-04:00',open:217.19,close:217.38,adj_close:214.09},
+            {ending:'2016-09-30T16:00:00-04:00',open:217.37-1.10,close:216.30,adj_close:214.10},
+            {ending:'2016-10-31T16:00:00-04:00',open:215.82,close:212.55,adj_close:210.39},
+            {ending:'2016-11-30T16:00:00-05:00',open:212.93,close:220.38,adj_close:218.14},
+            {ending:'2016-12-30T16:00:00-05:00',open:220.73-1.29,close:223.53,adj_close:222.56}
+        ]);
+    });
+    it("should adjust splits and dividends", function() {
+        return client.interday({
+            interval: 'month',
+            symbol: 'AAPL',
+            yahoo_symbol: 'AAPL',
+            begin: moment.tz('2014-01-01', tz),
+            end: moment.tz('2014-09-30', tz),
+            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+        }).should.eventually.be.like([
+            {ending:'2014-01-31T16:00:00-05:00',open:555.68,close:500.60,adj_close:66.80},
+            {ending:'2014-02-28T16:00:00-05:00',open:502.61-2.99,close:526.24,adj_close:70.64},
+            {ending:'2014-03-31T16:00:00-04:00',open:523.42,close:536.74,adj_close:72.05},
+            {ending:'2014-04-30T16:00:00-04:00',open:537.76,close:590.09,adj_close:79.21},
+            {ending:'2014-05-30T16:00:00-04:00',open:592.00-3.29,close:633.00,adj_close:85.45},
+            {ending:'2014-06-30T16:00:00-04:00',open:Math.round(633.96/7*100000)/100000,close:92.93,adj_close:87.81},
+            {ending:'2014-07-31T16:00:00-04:00',open:93.52,close:95.60,adj_close:90.34},
+            {ending:'2014-08-29T16:00:00-04:00',open:94.90-0.47,close:102.50,adj_close:97.34},
+            {ending:'2014-09-30T16:00:00-04:00',open:103.06,close:100.75,adj_close:95.68}
+        ].splice(0));
+    });
+    it("should adjust yearly dividends", function() {
+        return client.interday({
+            interval: 'year',
+            symbol: 'SPY',
+            yahoo_symbol: 'SPY',
+            begin: moment.tz('2010-01-01', tz),
+            end: moment.tz('2016-12-31', tz),
+            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+        }).should.eventually.be.like([
+            {ending:'2010-12-31T16:00:00-05:00',open:112.37-2.17,close:125.75,adj_close:110.64},
+            {ending:'2011-12-30T16:00:00-05:00',open:126.71-2.60,close:125.5,adj_close:112.732},
+            {ending:'2012-12-31T16:00:00-05:00',open:127.76-2.78,close:142.41,adj_close:130.76},
+            {ending:'2013-12-31T16:00:00-05:00',open:145.11-2.87,close:184.69,adj_close:173.00},
+            {ending:'2014-12-31T16:00:00-05:00',open:183.98-3.53,close:205.54,adj_close:196.30},
+            {ending:'2015-12-31T16:00:00-05:00',open:206.38-4.18,close:203.87,adj_close:198.72},
+            {ending:'2016-12-30T16:00:00-05:00',open:200.49-4.22,close:223.53,adj_close:222.56}
+        ]);
     });
 });

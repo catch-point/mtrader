@@ -652,12 +652,12 @@ function getBlocks(interval, begin, end, options) {
         throw Error("Begin date is not valid " + begin);
     } else if (!end || !end.isValid()) {
         throw Error("End date is not valid " + end);
-    } else if (!m) { // day is separated every decade
-        var start = begin.year() - 10;
+    } else if (!m) { // day is separated every half decade
+        var start = begin.year() - 5;
         return _.range(
-            Math.floor(start /10) *10,
-            Math.floor(end.year() /10) *10 +10,
-            10
+            Math.floor(start /5) *5,
+            Math.floor(end.year() /5) *5 +5,
+            5
         );
     } else if (+m[1] >= 30) { // m30 is separated monthly
         var start = moment(begin).subtract(1, 'months');
@@ -704,7 +704,7 @@ function blockOptions(block, options) {
         }, options);
     } else if ('day' == options.interval) {
         var begin = moment.tz(block + '-01-01', options.tz);
-        var end = moment.tz((10+block) + '-01-01', options.tz);
+        var end = moment.tz((5+block) + '-01-01', options.tz);
         return _.defaults({
             begin: begin.format(),
             end: end.format()

@@ -30,182 +30,88 @@
  */
 
 const _ = require('underscore');
+const url = require('url');
 const moment = require('moment-timezone');
 const throttlePromise = require('./throttle.js');
 const promiseText = require('./promise-text.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 
-const yql = "http://query.yahooapis.com/v1/public/yql";
-const table = "https://ichart.finance.yahoo.com/table.csv";
+const quote = "https://finance.yahoo.com/quote/{symbol}";
+const download = "https://query1.finance.yahoo.com/v7/finance/download/{symbol}?period1={period1}&period2={period2}&interval={interval}&events={events}&crumb={crumb}"
 const autoc = "http://d.yimg.com/aq/autoc";
 const quotes = "http://download.finance.yahoo.com/d/quotes.csv";
 
 module.exports = function() {
+    var agent = throttlePromise(promiseHistoryAgent(), 2);
     return {
         close() {},
         lookup: lookupSymbol.bind(this, _.memoize(throttlePromise(listSymbols, 2))),
         fundamental: queue(loadSecurity, 32),
         intraday: queue(loadIntradayQuote, 32),
-        month: loadPriceTable.bind(this, throttlePromise(loadCSV, 2), 'm'),
-        week: loadPriceTable.bind(this, throttlePromise(loadCSV, 2), 'w'),
-        day: loadDailyPrice.bind(this,
-            loadSymbol.bind(this, queue(loadQuotes.bind(this, {}), 10)),
-            throttlePromise(loadCSV, 2)
-        )
+        month: loadTable.bind(this, agent, '1mo', 'history'),
+        day: loadTable.bind(this, agent, '1d', 'history'),
+        dividend: loadTable.bind(this, agent, '1d', 'div'),
+        split: loadTable.bind(this, agent, '1d', 'split')
     };
 };
 
-function loadDailyPrice(loadSymbol, loadCSV, symbol, begin, end, marketClosesAt, tz) {
-    expect(loadSymbol).to.be.a('function');
+function promiseHistoryAgent() {
+    var createAgent = symbol => {
+        var options = url.parse(quote.replace('{symbol}', symbol));
+        var headers = options.headers = {};
+        return promiseText(options).then(body => {
+            var keyword = '"CrumbStore":{"crumb":"';
+            var start = body.indexOf(keyword) + keyword.length;
+            var end = body.indexOf('"', start);
+            if (start < 0 && end < 0) return promiseText;
+            var crumb = encodeURIComponent(JSON.parse(body.substring(start-1, end+1)));
+            return query => {
+                var options = url.parse(query.replace('{crumb}', crumb));
+                options.headers = headers;
+                return promiseText(options);
+            };
+        });
+    };
+    var agent = _.once(createAgent);
+    return query => {
+        var url = _.keys(query).reduce((url, key) => {
+            return url.replace('{' + key + '}', query[key]);
+        }, download);
+        return agent(query.symbol)
+            .then(fn => fn(url))
+            .catch(error => {
+                if (error.message == 'Bad Request') return ""; // no data in period
+                else throw error;
+            })
+            .then(parseCSV)
+            .then(rows2objects);
+    };
+}
+
+function loadTable(loadCSV, interval, events, symbol, begin, tz) {
     expect(loadCSV).to.be.a('function');
+    expect(interval).to.be.oneOf(['1mo','1wk','1d']);
     expect(symbol).to.be.a('string').and.match(/^\S+$/);
-    expect(marketClosesAt).to.be.a('string').and.match(/^\d\d:\d\d(:00)?$/);
+    var options = _.extend({
+        symbol: symbol,
+        events: events
+    }, periods(interval, begin, tz));
+    return loadCSV(options);
+}
+
+function periods(interval, begin, tz) {
     expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
     var mb = moment.tz(begin, tz);
-    var me = moment.tz(end || new Date(), tz);
     if (!mb.isValid()) throw Error("Invalid begin date " + begin);
-    if (!me.isValid()) throw Error("Invalid end date " + end);
-    expect(mb.format()).to.be.below(me.format());
-    if (me.diff(mb, 'years') > 0)
-        return loadPriceTable(loadCSV, 'd', symbol, mb, me, marketClosesAt, tz);
-    return loadSymbol(symbol, mb, me, marketClosesAt, tz).catch(err => {
-        logger.debug("Could not query Yahoo! finance historicaldata", err);
-        return loadPriceTable(loadCSV, 'd', symbol, mb, me, marketClosesAt, tz);
-    });
-}
-
-function loadSymbol(loadQuotes, symbol, begin, end, marketClosesAt, tz){
-    expect(loadQuotes).to.be.a('function');
-    expect(symbol).to.be.a('string').and.match(/^\S+$/);
-    expect(marketClosesAt).to.be.a('string').and.match(/^\d\d:\d\d(:00)?$/);
-    expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
-    return loadQuotes([{
-        symbol: symbol,
-        start: begin,
-        end: end,
-        marketClosesAt: marketClosesAt,
-        tz: tz
-    }]).then(function(results){
-        if (results && results.length) return results;
-        throw Error("Empty results for " + symbol);
-    });
-}
-
-function loadQuotes(rates, queue) {
-    var filters = queue.reduce(function(filters, item) {
-        var end = moment.tz(item.end || new Date(), item.tz);
-        if (!end.isValid()) throw Error("Invalid end date " + item.end);
-        var start = moment.tz(item.start, item.tz);
-        if (!start.isValid()) throw Error("Invalid begin date " + item.start);
-        var filter = [
-            'startDate="', start.format('YYYY-MM-DD'), '"',
-            ' and endDate="', end.format('YYYY-MM-DD'), '"'
-        ].join('');
-        var key = filter + item.marketClosesAt + item.tz;
-        var group = filters[key];
-        if (group) {
-            if (group.symbols.indexOf(item.symbol) < 0) {
-                group.symbols.push(item.symbol);
-            }
-        } else {
-            filters[key] = {
-                symbols: [item.symbol],
-                filter: filter,
-                marketClosesAt: item.marketClosesAt,
-                tz: item.tz
-            };
-        }
-        return filters;
-    }, {});
-    return _.reduce(filters, function(promise, group){
-        if (rates.failure > 1 && !rates.success) {
-            logger.info("Yahoo! Query Language is temporarily disabled for finance historicaldata");
-            return Promise.reject(rates.lastError);
-        }
-        var url = [
-            yql,
-            "?q=",
-            encodeURIComponent([
-                'select * from yahoo.finance.historicaldata where symbol in (',
-                group.symbols.sort().reduce(function(sb, symbol) {
-                    sb.push("'" + symbol.replace(/'/g, "\\'") + "'");
-                    return sb;
-                }, []).join(','),
-                ') and ', group.filter
-            ].join('')).replace(/%2C/g, ','),
-            "&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys"
-        ].join('');
-        return promise.then(function(hash){
-            return promiseText(url).then(json => JSON.parse(json)).then(function(result){
-                if (result.query.results)
-                    return result.query.results.quote;
-                return [];
-            }).then(function(results){
-                if (_.isArray(results)) return results;
-                else if (_.isObject(results)) return [results];
-                else return [];
-            }).then(function(results){
-                return results.map(function(result){
-                    if (isNaN(parseFloat(result.Close)) && isNaN(parseFloat(result.col6)))
-                        throw Error("Not a quote: " + JSON.stringify(result));
-                    if (result.Close) return result;
-                    else return {
-                        symbol: result.Symbol,
-                        Date: result.col0,
-                        Open: result.col1,
-                        High: result.col2,
-                        Low: result.col3,
-                        Close: result.col4,
-                        Volume: result.col5,
-                        Adj_Close: result.col6
-                    };
-                });
-            }).then(function(results){
-                return results.reduce(function(hash, result){
-                    if (!hash[result.symbol]) hash[result.symbol] = [];
-                    hash[result.symbol].push(_.omit(result, 'symbol'));
-                    return hash;
-                }, hash);
-            }).then(function(result){
-                rates.success = 1 + (rates.success || 0);
-                return result;
-            }, function(error){
-                rates.failure = 1 + (rates.failure || 0);
-                rates.lastError = error;
-                return Promise.reject(error);
-            });
-        });
-    }, Promise.resolve({})).then(function(hash){
-        return queue.map(function(item){
-            return hash[item.symbol];
-        });
-    });
-}
-
-function loadPriceTable(loadCSV, g, symbol, begin, end, marketClosesAt, tz) {
-    expect(loadCSV).to.be.a('function');
-    expect(g).to.be.oneOf(['m','w','d']);
-    expect(symbol).to.be.a('string').and.match(/^\S+$/);
-    if (end) expect(begin).to.be.below(end);
-    expect(marketClosesAt).to.be.a('string').and.match(/^\d\d:\d\d(:00)?$/);
-    expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
-    var endMatch = _.first(_.sortBy(_.compact([
-        moment(end).format('YYYY-MM-DD'),
-        moment().tz(tz).format('YYYY-MM-DD')
-    ]))).match(/(\d\d\d\d)-(\d\d)-(\d\d)/);
-    var start = g == 'm' ? moment.tz(begin, tz).startOf('month') :
-        g == 'w' ? moment.tz(begin, tz).startOf('isoWeek') :
-        moment.tz(begin, tz);
-    var startMatch = start.format('YYYY-MM-DD').match(/(\d\d\d\d)-(\d\d)-(\d\d)/);
-    var url = [
-        table,
-        "?s=", encodeURIComponent(symbol),
-        "&a=", parseInt(startMatch[2], 10) - 1, "&b=", startMatch[3], "&c=", startMatch[1],
-        "&d=", parseInt(endMatch[2], 10) - 1, "&e=", endMatch[3], "&f=", endMatch[1],
-        "&g=", g
-    ].join('');
-    return loadCSV(url);
+    var start = interval == '1mo' ? mb.startOf('month') :
+        interval == '1wk' ? mb.startOf('isoWeek') : mb.startOf('day');
+    var end = moment().tz(tz).startOf('day');
+    return {
+        period1: start.valueOf()/1000,
+        period2: end.valueOf()/1000,
+        interval: interval
+    };
 }
 
 function lookupSymbol(listSymbols, symbol, marketLang) {
@@ -307,10 +213,6 @@ function queue(func, batchSize) {
             });
         });
     };
-}
-
-function loadCSV(url){
-    return promiseText(url).then(parseCSV).then(rows2objects);
 }
 
 function parseCSV(text) {
