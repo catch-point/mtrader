@@ -1,1 +1,156 @@
-{"properties":{},"tables":[{"id":"day.1990_01_01T00_00_00_05_00.2000_01_01T00_00_00_05_00","name":"day.1990_01_01T00_00_00_05_00.2000_01_01T00_00_00_05_00","size":2528,"head":[{"ending":"1990-01-02T16:00:00-05:00","open":94.75,"high":98.13,"low":94.5,"close":98,"volume":7041600,"adj_close":14.610478},{"ending":"1990-01-03T16:00:00-05:00","open":98.75,"high":99.5,"low":98.38,"close":98.88,"volume":9464000,"adj_close":14.740928}],"tail":[{"ending":"1999-12-30T16:00:00-05:00","open":109.69,"high":110.5,"low":108.56,"close":108.75,"volume":3435100,"adj_close":82.276065},{"ending":"1999-12-31T16:00:00-05:00","open":109.19,"high":109.5,"low":106.63,"close":107.88,"volume":2870300,"adj_close":81.614074}],"updatedAt":"2017-02-11T16:50:03.512Z","properties":{},"createdAt":"2017-02-11T16:50:03.512Z"},{"id":"day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00","name":"day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00","size":2515,"head":[{"ending":"2000-01-03T16:00:00-05:00","open":112.44,"high":116,"low":111.88,"close":116,"volume":10347700,"adj_close":87.761136,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":7.0000000000000036},{"ending":"2000-01-04T16:00:00-05:00","open":114,"high":114.5,"low":110.88,"close":112.06,"volume":8227800,"adj_close":84.782175,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":-3.515973585579152}],"tail":[{"ending":"2009-12-30T16:00:00-05:00","open":131.23,"high":132.68,"low":130.68,"close":132.57,"volume":3867000,"adj_close":111.505942,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":0.5431093007467744},{"ending":"2009-12-31T16:00:00-05:00","open":132.41,"high":132.85,"low":130.75,"close":130.9,"volume":4223400,"adj_close":110.101277,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":-1.2757830404889132}],"updatedAt":"2017-02-11T16:50:03.967Z","properties":{},"createdAt":"2017-02-11T16:50:03.967Z"},{"id":"day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00","name":"day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00","size":1790,"head":[{"ending":"2010-01-04T16:00:00-05:00","open":131.18,"high":132.97,"low":130.85,"close":132.45,"volume":6155300,"adj_close":111.405,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":1.1702529256323013,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":1.1841100076394062},{"ending":"2010-01-05T16:00:00-05:00","open":131.68,"high":131.85,"low":130.1,"close":130.85,"volume":6841400,"adj_close":110.059232,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":-1.2227741688956777,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":-1.2080030200075458}],"tail":[{"ending":"2017-02-09T16:00:00-05:00","open":176.17,"high":177.8,"low":175.91,"close":177.21,"volume":3090700,"adj_close":177.210007,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":0.5868743298911012,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":0.5903388772208779},{"ending":"2017-02-10T16:00:00-05:00","open":177.37,"high":178.87,"low":176.76,"close":178.68,"volume":2924300,"adj_close":178.679993,"asof":"2017-02-11T11:50:02-05:00","incomplete":true,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":0.8226997985224976}],"updatedAt":"2017-02-11T16:50:04.326Z","properties":{},"createdAt":"2017-02-11T16:50:04.326Z"},{"id":"day.2017_02_09T16_00_00_05_00.2020_01_01T00_00_00_05_00","name":"day.2017_02_09T16_00_00_05_00.2020_01_01T00_00_00_05_00","size":2,"head":[{"ending":"2017-02-09T16:00:00-05:00","open":176.17,"high":177.8,"low":175.91,"close":177.21,"volume":3090700,"adj_close":177.210007},{"ending":"2017-02-10T16:00:00-05:00","open":177.37,"high":178.87,"low":176.76,"close":178.68,"volume":2924300,"adj_close":178.679993,"asof":"2017-02-11T11:50:05-05:00","incomplete":true,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":0.8226997985224976,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":0.8295242932114434}],"tail":[{"ending":"2017-02-09T16:00:00-05:00","open":176.17,"high":177.8,"low":175.91,"close":177.21,"volume":3090700,"adj_close":177.210007},{"ending":"2017-02-10T16:00:00-05:00","open":177.37,"high":178.87,"low":176.76,"close":178.68,"volume":2924300,"adj_close":178.679993,"asof":"2017-02-11T11:50:05-05:00","incomplete":true,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),day.close)":0.8226997985224976,"DIVIDE(PRODUCT(SUBTRACT(day.close,OFFSET(1,day.close)),100),OFFSET(1,day.close))":0.8295242932114434}],"updatedAt":"2017-02-11T16:50:05.781Z","properties":{},"createdAt":"2017-02-11T16:50:05.781Z"}]}
+{
+ "tables": [
+  {
+   "id": "day.2000_01_01T00_00_00_05_00.2005_01_01T00_00_00_05_00",
+   "name": "day.2000_01_01T00_00_00_05_00.2005_01_01T00_00_00_05_00",
+   "size": 1256,
+   "head": [
+    {
+     "ending": "2000-01-03T16:00:00-05:00",
+     "open": 112.44,
+     "high": 116,
+     "low": 111.88,
+     "close": 116,
+     "volume": 10347700,
+     "adj_close": 86.91243
+    },
+    {
+     "ending": "2000-01-04T16:00:00-05:00",
+     "open": 114,
+     "high": 114.5,
+     "low": 110.88,
+     "close": 112.06,
+     "volume": 8227800,
+     "adj_close": 83.9604
+    }
+   ],
+   "tail": [
+    {
+     "ending": "2004-12-30T16:00:00-05:00",
+     "open": 98.1,
+     "high": 99,
+     "low": 98.07,
+     "close": 98.3,
+     "volume": 3812400,
+     "adj_close": 76.05747
+    },
+    {
+     "ending": "2004-12-31T16:00:00-05:00",
+     "open": 98.6,
+     "high": 98.91,
+     "low": 98.49,
+     "close": 98.58,
+     "volume": 2793200,
+     "adj_close": 76.27411
+    }
+   ],
+   "updatedAt": "2017-05-19T19:00:58.400Z",
+   "properties": {},
+   "createdAt": "2017-05-19T19:00:58.400Z"
+  },
+  {
+   "id": "day.2005_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00",
+   "name": "day.2005_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00",
+   "size": 1259,
+   "head": [
+    {
+     "ending": "2005-01-03T16:00:00-05:00",
+     "open": 98.97,
+     "high": 99.1,
+     "low": 97.25,
+     "close": 97.75,
+     "volume": 5295200,
+     "adj_close": 75.63192,
+     "OFFSET(1,day.close)": 98.58
+    },
+    {
+     "ending": "2005-01-04T16:00:00-05:00",
+     "open": 97.74,
+     "high": 98.42,
+     "low": 96.52,
+     "close": 96.7,
+     "volume": 5711000,
+     "adj_close": 74.81951,
+     "OFFSET(1,day.close)": 97.75
+    }
+   ],
+   "tail": [
+    {
+     "ending": "2009-12-30T16:00:00-05:00",
+     "open": 131.23,
+     "high": 132.68,
+     "low": 130.68,
+     "close": 132.57,
+     "volume": 3867000,
+     "adj_close": 110.42713,
+     "OFFSET(1,day.close)": 131.85
+    },
+    {
+     "ending": "2009-12-31T16:00:00-05:00",
+     "open": 132.41,
+     "high": 132.85,
+     "low": 130.75,
+     "close": 130.9,
+     "volume": 4223400,
+     "adj_close": 109.03607,
+     "OFFSET(1,day.close)": 132.57
+    }
+   ],
+   "updatedAt": "2017-05-19T19:00:59.004Z",
+   "properties": {},
+   "createdAt": "2017-05-19T19:00:59.004Z"
+  },
+  {
+   "id": "day.2010_01_01T00_00_00_05_00.2015_01_01T00_00_00_05_00",
+   "name": "day.2010_01_01T00_00_00_05_00.2015_01_01T00_00_00_05_00",
+   "size": 1258,
+   "head": [
+    {
+     "ending": "2010-01-04T16:00:00-05:00",
+     "open": 131.18,
+     "high": 132.97,
+     "low": 130.85,
+     "close": 132.45,
+     "volume": 6155300,
+     "adj_close": 110.32718,
+     "OFFSET(1,day.close)": 130.9
+    },
+    {
+     "ending": "2010-01-05T16:00:00-05:00",
+     "open": 131.68,
+     "high": 131.85,
+     "low": 130.1,
+     "close": 130.85,
+     "volume": 6841400,
+     "adj_close": 108.99442,
+     "OFFSET(1,day.close)": 132.45
+    }
+   ],
+   "tail": [
+    {
+     "ending": "2014-12-30T16:00:00-05:00",
+     "open": 160.02,
+     "high": 160.82,
+     "low": 159.79,
+     "close": 160.05,
+     "volume": 2829900,
+     "adj_close": 146.69545,
+     "OFFSET(1,day.close)": 160.51
+    },
+    {
+     "ending": "2014-12-31T16:00:00-05:00",
+     "open": 160.41,
+     "high": 161.5,
+     "low": 160.38,
+     "close": 160.44,
+     "volume": 4011900,
+     "adj_close": 147.05291,
+     "OFFSET(1,day.close)": 160.05
+    }
+   ],
+   "updatedAt": "2017-05-19T19:00:59.445Z",
+   "properties": {},
+   "createdAt": "2017-05-19T19:00:59.445Z"
+  }
+ ]
+}

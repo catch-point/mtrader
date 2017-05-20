@@ -1,4 +1,6 @@
 symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
 DIS,DIS,NYSE,The Walt Disney Company,NYQ,S,NYSE,Equity
-ADSW,ADSW,NYSE,"Advanced Disposal Services, Inc.",NYQ,S,NYSE,Equity
 DFS,DFS,NYSE,Discover Financial Services,NYQ,S,NYSE,Equity
+CBD,CBD,NYSE,Companhia Brasileira de Distribuição,NYQ,S,NYSE,Equity
+ADSW,ADSW,NYSE,"Advanced Disposal Services, Inc.",NYQ,S,NYSE,Equity
+DL,DL,NYSE,China Distance Education Holdings Limited,NYQ,S,NYSE,Equity

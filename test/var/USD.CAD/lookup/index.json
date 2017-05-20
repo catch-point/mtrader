@@ -1,5 +1,4 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "lookup",
@@ -25,9 +24,9 @@
      "name": "FXCM USD CAD Spot"
     }
    ],
-   "updatedAt": "2017-04-03T14:37:17.167Z",
+   "updatedAt": "2017-05-20T01:04:49.479Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:17.167Z"
+   "createdAt": "2017-05-20T01:04:49.479Z"
   }
  ]
 }

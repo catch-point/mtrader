@@ -1,116 +1,115 @@
 {
- "properties": {},
  "tables": [
   {
-   "id": "day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00",
-   "name": "day.2000_01_01T00_00_00_05_00.2010_01_01T00_00_00_05_00",
-   "size": 2515,
+   "id": "day.2010_01_01T00_00_00_05_00.2015_01_01T00_00_00_05_00",
+   "name": "day.2010_01_01T00_00_00_05_00.2015_01_01T00_00_00_05_00",
+   "size": 15,
    "head": [
     {
-     "ending": "2000-01-03T16:00:00-05:00",
-     "open": 29.48,
-     "high": 29.48,
-     "low": 28.69,
-     "close": 28.84,
-     "volume": 82800,
-     "adj_close": 21.074296
+     "ending": "2014-12-10T16:00:00-05:00",
+     "open": 56.48,
+     "high": 56.59,
+     "low": 55.5,
+     "close": 55.56,
+     "volume": 12942200,
+     "adj_close": null
     },
     {
-     "ending": "2000-01-04T16:00:00-05:00",
-     "open": 28.47,
-     "high": 28.61,
-     "low": 27.94,
-     "close": 28.05,
-     "volume": 146900,
-     "adj_close": 20.492074
+     "ending": "2014-12-11T16:00:00-05:00",
+     "open": null,
+     "high": null,
+     "low": null,
+     "close": null,
+     "volume": null,
+     "adj_close": null
     }
    ],
    "tail": [
     {
-     "ending": "2009-12-30T16:00:00-05:00",
-     "open": 28.12,
-     "high": 28.25,
-     "low": 28.1,
-     "close": 28.14,
-     "volume": 5471000,
-     "adj_close": 24.239081
+     "ending": "2014-12-30T16:00:00-05:00",
+     "open": null,
+     "high": null,
+     "low": null,
+     "close": null,
+     "volume": null,
+     "adj_close": null
     },
     {
-     "ending": "2009-12-31T16:00:00-05:00",
-     "open": 28.24,
-     "high": 28.24,
-     "low": 27.77,
-     "close": 27.79,
-     "volume": 3117000,
-     "adj_close": 23.937601
+     "ending": "2014-12-31T16:00:00-05:00",
+     "open": null,
+     "high": null,
+     "low": null,
+     "close": null,
+     "volume": null,
+     "adj_close": null
     }
    ],
-   "updatedAt": "2017-04-03T14:37:11.145Z",
+   "updatedAt": "2017-05-20T01:04:44.551Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:11.145Z"
+   "createdAt": "2017-05-20T01:04:44.551Z"
   },
   {
-   "id": "day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
-   "name": "day.2010_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
-   "size": 1825,
+   "id": "day.2015_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "name": "day.2015_01_01T00_00_00_05_00.2020_01_01T00_00_00_05_00",
+   "size": 592,
    "head": [
     {
-     "ending": "2010-01-04T16:00:00-05:00",
-     "open": 28.09,
-     "high": 28.32,
-     "low": 27.96,
-     "close": 28.32,
-     "volume": 7471500,
-     "adj_close": 24.394129,
-     "CVAR(5,60,day.adj_close)": 0.02733856053164796,
-     "PF(120,day.adj_close)": 1.5371025702770391,
-     "PF(200,day.adj_close)": 1.4094581661296977
+     "ending": "2015-01-14T16:00:00-05:00",
+     "open": 54.26,
+     "high": 54.71,
+     "low": 53.98,
+     "close": 54.63,
+     "volume": 19597500,
+     "adj_close": null,
+     "CVAR(5,60,day.adj_close)": null,
+     "PF(120,day.adj_close)": null,
+     "PF(200,day.adj_close)": null
     },
     {
-     "ending": "2010-01-05T16:00:00-05:00",
-     "open": 28.28,
-     "high": 28.45,
-     "low": 28.18,
-     "close": 28.42,
-     "volume": 8256700,
-     "adj_close": 24.480267,
-     "CVAR(5,60,day.adj_close)": 0.02733856053164796,
-     "PF(120,day.adj_close)": 1.4940428447088274,
-     "PF(200,day.adj_close)": 1.4429042131131975
+     "ending": "2015-01-15T16:00:00-05:00",
+     "open": null,
+     "high": null,
+     "low": null,
+     "close": null,
+     "volume": null,
+     "adj_close": null,
+     "CVAR(5,60,day.adj_close)": null,
+     "PF(120,day.adj_close)": null,
+     "PF(200,day.adj_close)": null
     }
    ],
    "tail": [
     {
-     "ending": "2017-03-31T16:00:00-04:00",
-     "open": 65.16,
-     "high": 65.38,
-     "low": 65.06,
-     "close": 65.06,
-     "volume": 7596700,
-     "adj_close": 65.059998,
-     "CVAR(5,60,day.adj_close)": 0.013002156310885752,
-     "PF(120,day.adj_close)": 1.557338044075302,
-     "PF(200,day.adj_close)": 1.3756122338771462
+     "ending": "2017-05-18T16:00:00-04:00",
+     "open": 65.01,
+     "high": 65.69,
+     "low": 64.65,
+     "close": 65.3,
+     "volume": 15061100,
+     "adj_close": 65.3,
+     "CVAR(5,60,day.adj_close)": 0.0163356193021682,
+     "PF(120,day.adj_close)": 1.2205404783852438,
+     "PF(200,day.adj_close)": 1.3385621398572802
     },
     {
-     "ending": "2017-04-03T16:00:00-04:00",
-     "open": 65.09,
-     "high": 65.29,
-     "low": 64.94,
-     "close": 65.01,
-     "adj_close": 65.00999800153703,
-     "volume": 1426360,
-     "lastTrade": "2017-04-03T10:22:00-04:00",
-     "asof": "2017-04-03T10:37:10-04:00",
+     "ending": "2017-05-19T16:00:00-04:00",
+     "open": 65.51,
+     "high": 66.46,
+     "low": 65.51,
+     "close": 66.16,
+     "adj_close": 66.16,
+     "volume": 10322281,
+     "lastTrade": "2017-05-19T20:00:00-04:00",
+     "asof": "2017-05-19T21:04:44-04:00",
      "incomplete": true,
-     "CVAR(5,60,day.adj_close)": 0.013002156310885752,
-     "PF(120,day.adj_close)": 1.5479388095115585,
-     "PF(200,day.adj_close)": 1.3695833596380917
+     "CVAR(5,60,day.adj_close)": 0.0163356193021682,
+     "PF(120,day.adj_close)": 1.2527025239896237,
+     "PF(200,day.adj_close)": 1.3610829216659657
     }
    ],
-   "updatedAt": "2017-04-03T14:37:11.588Z",
+   "updatedAt": "2017-05-20T01:04:44.795Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:11.588Z"
+   "createdAt": "2017-05-20T01:04:44.795Z"
   }
  ]
 }

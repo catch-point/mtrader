@@ -1,5 +1,4 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "fundamental",
@@ -9,21 +8,21 @@
     {
      "yahoo_symbol": "YHOO",
      "symbol": "YHOO",
-     "MarketCapitalization": "44.47B",
+     "MarketCapitalization": "48.08B",
      "name": "Yahoo! Inc.",
      "exch": "NMS",
-     "AverageDailyVolume": "6954490",
-     "EarningsShare": "-0.23",
-     "EPSEstimateCurrentYear": "0.68",
-     "EPSEstimateNextYear": "0.71",
-     "EPSEstimateNextQuarter": "0.14",
-     "BookValue": "32.50",
-     "EBITDA": "226.80M",
-     "PriceSales": "8.59",
-     "PriceBook": "1.43",
-     "PEGRatio": "17.59",
-     "PriceEPSEstimateCurrentYear": "68.37",
-     "PriceEPSEstimateNextYear": "65.48",
+     "AverageDailyVolume": "6987040",
+     "EarningsShare": "-0.03",
+     "EPSEstimateCurrentYear": "0.71",
+     "EPSEstimateNextYear": "0.72",
+     "EPSEstimateNextQuarter": "0.18",
+     "BookValue": "37.00",
+     "EBITDA": "260.79M",
+     "PriceSales": "8.79",
+     "PriceBook": "1.34",
+     "PEGRatio": "14.87",
+     "PriceEPSEstimateCurrentYear": "70.68",
+     "PriceEPSEstimateNextYear": "69.69",
      "ShortRatio": "7.79"
     }
    ],
@@ -31,27 +30,27 @@
     {
      "yahoo_symbol": "YHOO",
      "symbol": "YHOO",
-     "MarketCapitalization": "44.47B",
+     "MarketCapitalization": "48.08B",
      "name": "Yahoo! Inc.",
      "exch": "NMS",
-     "AverageDailyVolume": "6954490",
-     "EarningsShare": "-0.23",
-     "EPSEstimateCurrentYear": "0.68",
-     "EPSEstimateNextYear": "0.71",
-     "EPSEstimateNextQuarter": "0.14",
-     "BookValue": "32.50",
-     "EBITDA": "226.80M",
-     "PriceSales": "8.59",
-     "PriceBook": "1.43",
-     "PEGRatio": "17.59",
-     "PriceEPSEstimateCurrentYear": "68.37",
-     "PriceEPSEstimateNextYear": "65.48",
+     "AverageDailyVolume": "6987040",
+     "EarningsShare": "-0.03",
+     "EPSEstimateCurrentYear": "0.71",
+     "EPSEstimateNextYear": "0.72",
+     "EPSEstimateNextQuarter": "0.18",
+     "BookValue": "37.00",
+     "EBITDA": "260.79M",
+     "PriceSales": "8.79",
+     "PriceBook": "1.34",
+     "PEGRatio": "14.87",
+     "PriceEPSEstimateCurrentYear": "70.68",
+     "PriceEPSEstimateNextYear": "69.69",
      "ShortRatio": "7.79"
     }
    ],
-   "updatedAt": "2017-04-03T14:38:16.301Z",
+   "updatedAt": "2017-05-20T01:05:57.081Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:38:16.301Z"
+   "createdAt": "2017-05-20T01:05:57.081Z"
   }
  ]
 }
