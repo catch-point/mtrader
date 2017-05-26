@@ -38,15 +38,21 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 module.exports = function() {
-    var yahoo = _.mapObject(yahooClient(), fn => {
-        if (!_.isFunction(fn)) return fn;
+    var yahoo = _.mapObject(yahooClient(), (fn, name) => {
+        if (!_.isFunction(fn) || name == 'close') return fn;
         else return cache(fn, function() {
             return JSON.stringify(_.toArray(arguments));
         }, require('os').cpus().length*2);
     });
     return {
         close() {
-            yahoo.close();
+            return Promise.all(_.map(yahoo, (fn, name) => {
+                if (_.isFunction(fn.close)) {
+                    return fn.close();
+                } else if (name == 'close') {
+                    return fn();
+                }
+            }));
         },
         lookup(options) {
             var exchanges = config('exchanges');
@@ -153,8 +159,10 @@ function year(yahoo, symbol, options) {
             high: Math.max(year.high, adj(month.high)) || year.high || adj(month.high),
             low: Math.min(year.low, adj(month.low)) || year.low || adj(month.low),
             close: month.close,
-            volume: (year.volume || 0) + month.volume,
-            adj_close: month.adj_close
+            volume: year.volume + month.volume || year.volume || month.volume,
+            adj_close: month.adj_close,
+            split: (year.split || 1) * (month.split || 1),
+            dividend: (year.dividend || 0) + (month.dividend || 0)
         }, month, year);
       }, {})));
 }
@@ -173,8 +181,10 @@ function quarter(yahoo, symbol, options) {
             high: Math.max(quarter.high, adj(month.high)) || quarter.high || adj(month.high),
             low: Math.min(quarter.low, adj(month.low)) || quarter.low || adj(month.low),
             close: month.close,
-            volume: (quarter.volume || 0) + month.volume,
-            adj_close: month.adj_close
+            volume: quarter.volume + month.volume || quarter.volume || month.volume,
+            adj_close: month.adj_close,
+            split: (quarter.split || 1) * (month.split || 1),
+            dividend: (quarter.dividend || 0) + (month.dividend || 0)
         }, month, quarter);
       }, {})));
 }
@@ -193,8 +203,10 @@ function month(yahoo, symbol, options) {
             high: Math.max(month.high, adj(day.high)) || month.high || adj(day.high),
             low: Math.min(month.low, adj(day.low)) || month.low || adj(day.low),
             close: day.close,
-            volume: (month.volume || 0) + day.volume,
-            adj_close: day.adj_close
+            volume: month.volume + day.volume || month.volume || day.volume,
+            adj_close: day.adj_close,
+            split: (month.split || 1) * (day.split || 1),
+            dividend: (month.dividend || 0) + (day.dividend || 0)
         }, day, month);
       }, {})));
 }
@@ -213,8 +225,10 @@ function week(yahoo, symbol, options) {
             high: Math.max(week.high, adj(day.high)) || week.high || adj(day.high),
             low: Math.min(week.low, adj(day.low)) || week.low || adj(day.low),
             close: day.close,
-            volume: (week.volume || 0) + day.volume,
-            adj_close: day.adj_close
+            volume: week.volume + day.volume || week.volume || day.volume,
+            adj_close: day.adj_close,
+            split: (week.split || 1) * (day.split || 1),
+            dividend: (week.dividend || 0) + (day.dividend || 0)
         }, day, week);
       }, {})));
 }
@@ -238,13 +252,15 @@ function day(yahoo, symbol, options) {
             low: parseCurrency(datum.Low, splits),
             close: parseCurrency(datum.Close, 1),
             volume: parseFloat(datum.Volume),
-            adj_close: _.isEmpty(today) ? parseCurrency(datum.Close, 1) : Math.round((
+            adj_close: Math.round((_.isEmpty(today) ?
+                parseCurrency(datum.Close, 1)/split - div :
                 today.adj_close + today.adj_close/today.close *
                     (parseCurrency(datum.Close, 1)/split - today.close - div)
                 ) * 1000000) / 1000000
         }));
         return appendIntraday(bars, intraday, now, options);
     }).then(result => {
+        if (_.last(result) && !_.last(result).close) result.pop();
         if (!options.end) return result;
         var last = _.sortedIndex(result, {ending: final}, 'ending');
         if (result[last] && result[last].ending == final) last++;
@@ -262,11 +278,10 @@ function adjustment(base, bar) {
     };
 }
 
-function adjRight(_bars, _splits, _divs, options, cb) {
-    var bars = [].concat(_bars);
+function adjRight(bars, _splits, _divs, options, cb) {
+    var result = [];
     var splits = _.sortBy(_splits, 'Date');
     var divs = _.sortBy(_divs, 'Date');
-    var final = endOf('day', options.end || _.last(bars).Date, options);
     var today = null;
     var msplit = 1;
     for (var i=bars.length -1; i>=0; i--) {
@@ -282,9 +297,20 @@ function adjRight(_bars, _splits, _divs, options, cb) {
         msplit = msplit * ratio;
         // check if split is being used to adjust for a big dividend
         var split = !div || ratio < 1 || ratio > 2 ? ratio : 1;
-        bars[i] = today = cb(today, bars[i], msplit, split, div);
+        if (today) {
+            today.split = split;
+            today.dividend = div;
+        } else {
+            result[bars.length] = {
+                split: split,
+                dividend: div
+            };
+        }
+        result[i] = today = cb(today, bars[i], msplit, split, div);
+        today.split = 1;
+        today.dividend = 0;
     }
-    return bars;
+    return result;
 }
 
 function appendIntraday(bars, intraday, now, options) {
@@ -309,18 +335,20 @@ function appendIntraday(bars, intraday, now, options) {
         volume: _.isFinite(intraday.volume) ? +intraday.volume : undefined,
         lastTrade: moment.tz(lastTrade, tz).format()
     };
-    if (!_.isFinite(quote.close)) return bars;
-    var merge = _.last(bars).ending >= quote.ending;
-    var latest = merge ? bars.pop() : {};
+    if (!_.isFinite(quote.open)) return bars;
+    var latest = {};
+    while (!_.last(bars).ending || _.last(bars).ending >= quote.ending) latest = bars.pop();
     var prior_close = latest.adj_close || _.last(bars).adj_close || quote.prior_close;
     var intraday = _.defaults({
         ending: latest.ending || quote.ending,
         open: latest.open || quote.open,
-        high: Math.max(latest.high || 0, quote.high || 0),
-        low: latest.low && latest.low < quote.low ? latest.low : quote.low,
+        high: Math.max(latest.high, quote.high) || latest.high || quote.high,
+        low: Math.min(latest.low, quote.low) || latest.low || quote.low,
         close: quote.close,
-        adj_close: quote.close * prior_close / quote.prior_close,
         volume: quote.volume + (latest.volume || 0),
+        adj_close: Math.round(quote.close * prior_close / quote.prior_close * 1000000) / 1000000,
+        split: latest.split || 1,
+        dividend: latest.dividend || 0,
         lastTrade: quote.lastTrade,
         asof: now.format(),
         incomplete: true

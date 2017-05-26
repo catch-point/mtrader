@@ -43,16 +43,17 @@ const autoc = "http://d.yimg.com/aq/autoc";
 const quotes = "http://download.finance.yahoo.com/d/quotes.csv";
 
 module.exports = function() {
-    var agent = throttlePromise(promiseHistoryAgent(), 2);
+    var agent = promiseHistoryAgent();
+    var throttled = throttlePromise(agent, 2);
     return {
         close() {},
         lookup: lookupSymbol.bind(this, _.memoize(throttlePromise(listSymbols, 2))),
         fundamental: queue(loadSecurity, 32),
         intraday: queue(loadIntradayQuote, 32),
-        month: loadTable.bind(this, agent, '1mo', 'history'),
-        day: loadTable.bind(this, agent, '1d', 'history'),
-        dividend: loadTable.bind(this, agent, '1d', 'div'),
-        split: loadTable.bind(this, agent, '1d', 'split')
+        month: loadTable.bind(this, throttled, '1mo', 'history'),
+        day: loadTable.bind(this, throttled, '1d', 'history'),
+        dividend: loadTable.bind(this, throttled, '1d', 'div'),
+        split: loadTable.bind(this, throttled, '1d', 'split')
     };
 };
 
@@ -73,7 +74,7 @@ function promiseHistoryAgent() {
             };
         });
     };
-    var agent = _.once(createAgent);
+    var agent = expire(createAgent, 60 * 1000);
     return query => {
         var url = _.keys(query).reduce((url, key) => {
             return url.replace('{' + key + '}', query[key]);
@@ -88,6 +89,20 @@ function promiseHistoryAgent() {
             .then(rows2objects);
     };
 }
+
+function expire(func, after) {
+    var result;
+    var previous = 0;
+    return function() {
+        var now = _.now();
+        var remaining = after - (now - previous);
+        if (remaining <= 0 || remaining > after) {
+            previous = now;
+            result = func.apply(this, arguments);
+        }
+        return result;
+    };
+  }
 
 function loadTable(loadCSV, interval, events, symbol, begin, tz) {
     expect(loadCSV).to.be.a('function');
