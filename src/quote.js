@@ -91,6 +91,7 @@ function fetchOptionsFactory(fetch) {
             );
         }, err => {
             if (!exchange) throw err;
+            expect(exchange).to.have.property('tz');
             logger.warn("Fetch lookup failed", err);
             return _.defaults(
                 _.omit(exchanges[exchange], 'datasources', 'label', 'description'),
@@ -697,7 +698,7 @@ function getBlocks(interval, begin, end, options) {
 function blockOptions(block, options) {
     var m = options.interval.match(/^m(\d+)$/);
     if (block == options.interval) {
-        var begin = moment.tz(0, options.tz);
+        var begin = moment.tz('1990-01-01', options.tz);
         return _.defaults({
             begin: begin.format(),
             end: null
