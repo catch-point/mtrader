@@ -44,7 +44,7 @@ var defaults = _.extend({
         process.argv[process.argv.indexOf('--prefix')+1] :
         process.argv[1] ? path.resolve(process.argv[1], '../..') : ''
 }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
-var stored = _.extend({}, defaults, loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json')));
+var stored = merge({}, loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json')), defaults);
 var session = _.contains(process.argv, '--load') ?
     loadConfigFile(path.resolve(defaults.prefix, 'etc', process.argv[process.argv.indexOf('--load')+1] + '.json')) : {};
 
