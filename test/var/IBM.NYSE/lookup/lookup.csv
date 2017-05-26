@@ -1,2 +1,3 @@
 symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
 IBM,IBM,NYSE,International Business Machines Corporation,NYQ,S,NYSE,Equity
+IBMI,IBMI,NYSE,iShares Trust - iShares iBonds Sep 2020 Term Muni Bond ETF,NYQ,E,NYSE,ETF

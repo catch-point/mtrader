@@ -1,26 +1,15 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "lookup",
    "name": "lookup",
-   "size": 2,
+   "size": 1,
    "head": [
     {
      "symbol": "XLF",
      "yahoo_symbol": "XLF",
      "exchange": "ARCA",
-     "name": "Financial Select Sector SPDR ETF",
-     "exch": "PCX",
-     "type": "E",
-     "exchDisp": "NYSEArca",
-     "typeDisp": "ETF"
-    },
-    {
-     "symbol": "XLFS",
-     "yahoo_symbol": "XLFS",
-     "exchange": "ARCA",
-     "name": "Financial Services Select Sector SPDR",
+     "name": "The Select Sector SPDR Trust - The Financial Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",
      "exchDisp": "NYSEArca",
@@ -32,26 +21,16 @@
      "symbol": "XLF",
      "yahoo_symbol": "XLF",
      "exchange": "ARCA",
-     "name": "Financial Select Sector SPDR ETF",
-     "exch": "PCX",
-     "type": "E",
-     "exchDisp": "NYSEArca",
-     "typeDisp": "ETF"
-    },
-    {
-     "symbol": "XLFS",
-     "yahoo_symbol": "XLFS",
-     "exchange": "ARCA",
-     "name": "Financial Services Select Sector SPDR",
+     "name": "The Select Sector SPDR Trust - The Financial Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",
      "exchDisp": "NYSEArca",
      "typeDisp": "ETF"
     }
    ],
-   "updatedAt": "2017-04-03T14:37:01.429Z",
+   "updatedAt": "2017-05-20T01:04:39.219Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:01.429Z"
+   "createdAt": "2017-05-20T01:04:39.219Z"
   }
  ]
 }

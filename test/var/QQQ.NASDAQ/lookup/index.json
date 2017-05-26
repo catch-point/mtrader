@@ -1,5 +1,4 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "lookup",
@@ -10,11 +9,33 @@
      "symbol": "QQQ",
      "yahoo_symbol": "QQQ",
      "exchange": "NASDAQ",
-     "name": "PowerShares QQQ ETF",
+     "name": "PowerShares QQQ Trust, Series 1",
      "exch": "NGM",
      "type": "E",
      "exchDisp": "NASDAQ",
      "typeDisp": "ETF"
+    },
+    {
+     "symbol": "TQQQ",
+     "yahoo_symbol": "TQQQ",
+     "exchange": "NASDAQ",
+     "name": "ProShares Trust - ProShares UltraPro QQQ",
+     "exch": "NGM",
+     "type": "E",
+     "exchDisp": "NASDAQ",
+     "typeDisp": "ETF"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "QQQX",
+     "yahoo_symbol": "QQQX",
+     "exchange": "NASDAQ",
+     "name": "Nuveen Nasdaq 100 Dynamic Overwrite Fund",
+     "exch": "NMS",
+     "type": "S",
+     "exchDisp": "NASDAQ",
+     "typeDisp": "Equity"
     },
     {
      "symbol": "QQQQ",
@@ -27,31 +48,9 @@
      "typeDisp": "ETF"
     }
    ],
-   "tail": [
-    {
-     "symbol": "SQQQ",
-     "yahoo_symbol": "SQQQ",
-     "exchange": "NASDAQ",
-     "name": "ProShares UltraPro Short QQQ",
-     "exch": "NGM",
-     "type": "S",
-     "exchDisp": "NASDAQ",
-     "typeDisp": "Equity"
-    },
-    {
-     "symbol": "QQQX",
-     "yahoo_symbol": "QQQX",
-     "exchange": "NASDAQ",
-     "name": "Nuveen Nasdaq 100 Dynamic Overwrite Fund",
-     "exch": "NMS",
-     "type": "S",
-     "exchDisp": "NASDAQ",
-     "typeDisp": "Equity"
-    }
-   ],
-   "updatedAt": "2017-04-03T14:37:57.587Z",
+   "updatedAt": "2017-05-20T01:05:37.361Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:57.587Z"
+   "createdAt": "2017-05-20T01:05:37.361Z"
   }
  ]
 }

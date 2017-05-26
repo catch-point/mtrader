@@ -3,6 +3,9 @@
   "files": {
     "enabled": true
   },
+  "google": {
+    "enabled": true
+  },
   "yahoo": {
     "enabled": true
   },
@@ -17,6 +20,10 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
+        "google": {
+            "e": "NYSEARCA",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["PCX"],
           "marketLang": "en-US",
@@ -38,6 +45,10 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
+        "google": {
+            "e": "NASDAQ",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
           "marketLang": "en-US",
@@ -59,6 +70,10 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
+        "google": {
+            "e": "NYSE",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["NYQ"],
           "marketLang": "en-US",
@@ -80,6 +95,10 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
+        "google": {
+            "e": "NYSEMKT",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["ASE"],
           "marketLang": "en-US",
@@ -101,6 +120,10 @@
       "currency": "CAD",
       "tz": "America/Toronto",
       "datasources": {
+        "google": {
+            "e": "TSE",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["TOR", "YHD"],
           "marketLang": "en-CA",
@@ -124,6 +147,10 @@
       "currency": "CAD",
       "tz": "America/Toronto",
       "datasources": {
+        "google": {
+            "e": "CVE",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["TOR"],
           "marketLang": "en-CA",
@@ -257,6 +284,10 @@
       "currency": "GBP",
       "tz": "Europe/London",
       "datasources": {
+        "google": {
+            "e": "LON",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["LSE"],
           "marketLang": "en-GB",

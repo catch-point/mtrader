@@ -77,10 +77,10 @@ if (process.send) {
     }));
     process.on('disconnect', () => collect().close());
 } else {
-    var quote = require('./ptrading-quote.js');
-    var collect = Collect(quote);
     var program = require.main === module ?
         usage(commander).parse(process.argv) : usage(new commander.Command());
+    var quote = require('./ptrading-quote.js');
+    var collect = Collect(quote);
     var workers = commander.workers || os.cpus().length;
     var children = _.range(workers).map(() => {
         return replyTo(config.fork(module.filename, program)).handle('quote', payload => {

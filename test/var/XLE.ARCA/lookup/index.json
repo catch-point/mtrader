@@ -1,5 +1,4 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "lookup",
@@ -10,7 +9,7 @@
      "symbol": "XLE",
      "yahoo_symbol": "XLE",
      "exchange": "ARCA",
-     "name": "Energy Select Sector SPDR ETF",
+     "name": "The Select Sector SPDR Trust - The Energy Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",
      "exchDisp": "NYSEArca",
@@ -22,16 +21,16 @@
      "symbol": "XLE",
      "yahoo_symbol": "XLE",
      "exchange": "ARCA",
-     "name": "Energy Select Sector SPDR ETF",
+     "name": "The Select Sector SPDR Trust - The Energy Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",
      "exchDisp": "NYSEArca",
      "typeDisp": "ETF"
     }
    ],
-   "updatedAt": "2017-04-03T14:37:01.478Z",
+   "updatedAt": "2017-05-20T01:04:39.206Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:01.478Z"
+   "createdAt": "2017-05-20T01:04:39.206Z"
   }
  ]
 }

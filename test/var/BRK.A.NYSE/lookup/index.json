@@ -1,5 +1,4 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "lookup",
@@ -7,8 +6,8 @@
    "size": 4,
    "head": [
     {
-     "symbol": "BRK-A",
-     "yahoo_symbol": "BRK-A",
+     "symbol": "BRK-B",
+     "yahoo_symbol": "BRK-B",
      "exchange": "NYSE",
      "name": "Berkshire Hathaway Inc.",
      "exch": "NYQ",
@@ -17,8 +16,8 @@
      "typeDisp": "Equity"
     },
     {
-     "symbol": "BRKB",
-     "yahoo_symbol": "BRKB",
+     "symbol": "BRK-A",
+     "yahoo_symbol": "BRK-A",
      "exchange": "NYSE",
      "name": "Berkshire Hathaway Inc.",
      "exch": "NYQ",
@@ -29,8 +28,8 @@
    ],
    "tail": [
     {
-     "symbol": "BRKA",
-     "yahoo_symbol": "BRKA",
+     "symbol": "BRKB",
+     "yahoo_symbol": "BRKB",
      "exchange": "NYSE",
      "name": "Berkshire Hathaway Inc.",
      "exch": "NYQ",
@@ -39,8 +38,8 @@
      "typeDisp": "Equity"
     },
     {
-     "symbol": "BRK-B",
-     "yahoo_symbol": "BRK-B",
+     "symbol": "BRKA",
+     "yahoo_symbol": "BRKA",
      "exchange": "NYSE",
      "name": "Berkshire Hathaway Inc.",
      "exch": "NYQ",
@@ -49,9 +48,9 @@
      "typeDisp": "Equity"
     }
    ],
-   "updatedAt": "2017-04-03T14:37:53.159Z",
+   "updatedAt": "2017-05-20T01:05:31.283Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:53.159Z"
+   "createdAt": "2017-05-20T01:05:31.283Z"
   }
  ]
 }

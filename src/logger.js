@@ -42,7 +42,7 @@ var logger = module.exports = {
     debug: !silent && debugging ? console.error.bind(console) : () => {},
     log: !silent && verbose ? console.error.bind(console) : () => {},
     info: !silent ? console.error.bind(console) : () => {},
-    warn: console.error.bind(console),
+    warn: !silent ? console.error.bind(console) : () => {},
     error: console.error.bind(console)
 };
 
@@ -53,4 +53,6 @@ config.addListener((name, value) => {
         logger.debug = value ? console.error.bind(console) : () => {};
     if (name == 'silent')
         logger.info = !value ? console.error.bind(console) : () => {};
+    if (name == 'silent')
+        logger.warn = !value ? console.error.bind(console) : () => {};
 });

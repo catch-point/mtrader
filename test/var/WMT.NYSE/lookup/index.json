@@ -1,5 +1,4 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "lookup",
@@ -29,9 +28,9 @@
      "typeDisp": "Equity"
     }
    ],
-   "updatedAt": "2017-04-03T14:37:54.824Z",
+   "updatedAt": "2017-05-20T01:05:33.122Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:54.824Z"
+   "createdAt": "2017-05-20T01:05:33.122Z"
   }
  ]
 }

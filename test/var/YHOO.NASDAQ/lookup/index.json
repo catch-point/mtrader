@@ -1,5 +1,4 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "lookup",
@@ -11,7 +10,7 @@
      "yahoo_symbol": "YHOO",
      "exchange": "NASDAQ",
      "name": "Yahoo! Inc.",
-     "exch": "NMS",
+     "exch": "NAS",
      "type": "S",
      "exchDisp": "NASDAQ",
      "typeDisp": "Equity"
@@ -23,15 +22,15 @@
      "yahoo_symbol": "YHOO",
      "exchange": "NASDAQ",
      "name": "Yahoo! Inc.",
-     "exch": "NMS",
+     "exch": "NAS",
      "type": "S",
      "exchDisp": "NASDAQ",
      "typeDisp": "Equity"
     }
    ],
-   "updatedAt": "2017-04-03T14:36:59.020Z",
+   "updatedAt": "2017-05-20T01:04:36.606Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:36:59.020Z"
+   "createdAt": "2017-05-20T01:04:36.606Z"
   }
  ]
 }

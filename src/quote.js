@@ -35,6 +35,7 @@ const moment = require('moment-timezone');
 const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
 const storage = require('./storage.js');
 const periods = require('./periods.js');
+const interrupt = require('./interrupt.js');
 const List = require('./list.js');
 const Parser = require('./parser.js');
 const common = require('../src/common-functions.js');
@@ -49,7 +50,7 @@ const expect = require('chai').use(like).expect;
  * @returns a function that returns array of row objects based on given options
  */
 module.exports = function(fetch) {
-    var store = storage(path.resolve(config('prefix'), 'var/quotes/'));
+    var store = storage(path.resolve(config('prefix'), 'var/'));
     var fetchOptions = fetchOptionsFactory(fetch);
     var self = function(options) {
         return fetchOptions(options).then(options => quote(fetch, store, options));
@@ -67,7 +68,7 @@ function fetchOptionsFactory(fetch) {
             interval: 'lookup',
             symbol: symbol,
             exchange: exchange
-        }).then(matches => _.first(matches)).then(security =>{
+        }).then(matches => _.first(matches)).then(security => {
             if (_.isEmpty(security)) throw Error("Unknown symbol: " + symbol);
             else if (security.symbol == symbol) return security;
             else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
@@ -90,6 +91,7 @@ function fetchOptionsFactory(fetch) {
             );
         }, err => {
             if (!exchange) throw err;
+            expect(exchange).to.have.property('tz');
             logger.warn("Fetch lookup failed", err);
             return _.defaults(
                 _.omit(exchanges[exchange], 'datasources', 'label', 'description'),
@@ -341,6 +343,7 @@ function mergeBars(quoteBars, exprMap, retain, criteria, options) {
  */
 function readSignals(points, entry, exit, retain, criteria) {
     if (!points.length) return [];
+    var check = interrupt();
     var start = points.sortedIndexOf(entry, 'ending');
     if (start > 0 && (start == points.length || entry.ending < points.item(start).ending))
         start--;
@@ -356,6 +359,7 @@ function readSignals(points, entry, exit, retain, criteria) {
     retain = retain || _.constant(true);
     criteria = criteria || _.constant(true);
     points.slice(start).reduce((position, point, i) => {
+        check();
         var to = start + i;
         var active = position && _.last(signals).leading;
         var keep = retain(points.slice(active ? e : to, to+1).toArray()) ||
@@ -579,7 +583,9 @@ function fetchBlocks(fetch, options, collection, version, stop, blocks) {
         if (_.first(tail).incomplete)
             return fetchComplete(block, last);
         if (i < blocks.length -1 || stop && _.first(tail).ending < stop.format())
-            return fetchPartial(block, _.first(tail).ending);
+            return fetchPartial(block, _.first(tail).ending).catch(error => {
+                logger.warn("Fetch failed", error);
+            });
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
         var version = createStorageVersion();
@@ -647,12 +653,12 @@ function getBlocks(interval, begin, end, options) {
         throw Error("Begin date is not valid " + begin);
     } else if (!end || !end.isValid()) {
         throw Error("End date is not valid " + end);
-    } else if (!m) { // day is separated every decade
-        var start = begin.year() - 10;
+    } else if (!m) { // day is separated every half decade
+        var start = begin.year() - 5;
         return _.range(
-            Math.floor(start /10) *10,
-            Math.floor(end.year() /10) *10 +10,
-            10
+            Math.floor(start /5) *5,
+            Math.floor(end.year() /5) *5 +5,
+            5
         );
     } else if (+m[1] >= 30) { // m30 is separated monthly
         var start = moment(begin).subtract(1, 'months');
@@ -692,14 +698,14 @@ function getBlocks(interval, begin, end, options) {
 function blockOptions(block, options) {
     var m = options.interval.match(/^m(\d+)$/);
     if (block == options.interval) {
-        var begin = moment.tz(0, options.tz);
+        var begin = moment.tz('1990-01-01', options.tz);
         return _.defaults({
             begin: begin.format(),
             end: null
         }, options);
     } else if ('day' == options.interval) {
         var begin = moment.tz(block + '-01-01', options.tz);
-        var end = moment.tz((10+block) + '-01-01', options.tz);
+        var end = moment.tz((5+block) + '-01-01', options.tz);
         return _.defaults({
             begin: begin.format(),
             end: end.format()

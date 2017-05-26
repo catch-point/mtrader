@@ -1,6 +1,6 @@
 symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
-QQQ,QQQ,NASDAQ,PowerShares QQQ ETF,NGM,E,NASDAQ,ETF
-QQQQ,QQQQ,NASDAQ,QQQQ,NGM,E,NASDAQ,ETF
-TQQQ,TQQQ,NASDAQ,ProShares UltraPro QQQ,NGM,S,NASDAQ,Equity
-SQQQ,SQQQ,NASDAQ,ProShares UltraPro Short QQQ,NGM,S,NASDAQ,Equity
+QQQ,QQQ,NASDAQ,"PowerShares QQQ Trust, Series 1",NGM,E,NASDAQ,ETF
+TQQQ,TQQQ,NASDAQ,ProShares Trust - ProShares UltraPro QQQ,NGM,E,NASDAQ,ETF
+SQQQ,SQQQ,NASDAQ,ProShares Trust - ProShares UltraPro Short QQQ,NGM,E,NASDAQ,ETF
 QQQX,QQQX,NASDAQ,Nuveen Nasdaq 100 Dynamic Overwrite Fund,NMS,S,NASDAQ,Equity
+QQQQ,QQQQ,NASDAQ,QQQQ,NGM,E,NASDAQ,ETF

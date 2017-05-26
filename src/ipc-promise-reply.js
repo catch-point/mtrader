@@ -36,10 +36,18 @@ const AssertionError = require('chai').AssertionError;
 module.exports = function(process) {
     var seq = 0;
     var handlers = {};
-    var outstanding = createQueue(handlers);
-    process.on('disconnect', ()=>outstanding.close()).on('message', msg => {
-        if (msg.cmd.indexOf('reply_to_') === 0 && outstanding.has(msg.in_reply_to)) {
-            var pending = outstanding.remove(msg.in_reply_to);
+    var onquit = error => {
+        _.compact(queue.keys().map(id => queue.remove(id))).forEach(pending => {
+            pending.onerror(error);
+        });
+    };
+    var queue = createQueue(onquit);
+    process.on('disconnect', () => {
+        queue.close();
+        onquit(Error("Disconnecting"));
+    }).on('message', msg => {
+        if (msg.cmd.indexOf('reply_to_') === 0 && queue.has(msg.in_reply_to)) {
+            var pending = queue.remove(msg.in_reply_to);
             try {
                 if (!_.has(msg, 'error'))
                     return pending.onresponse(msg.payload);
@@ -87,7 +95,7 @@ module.exports = function(process) {
         request(cmd, payload) {
             return new Promise((response, error) => {
                 var id = nextId(cmd);
-                outstanding.add(id, {
+                queue.add(id, {
                     onresponse: response,
                     onerror: error,
                     cmd: cmd,
@@ -119,22 +127,32 @@ module.exports = function(process) {
         var id;
         do {
             id = prefix + (++seq).toString(16);
-        } while(outstanding[id]);
+        } while(queue.has(id));
         return id;
     }
 };
 
 var monitor;
-var queue = [];
+var instances = [];
 
-function createQueue(handlers) {
+process.on('SIGINT', () => {
+    var error = Error('SIGINT');
+    instances.forEach(queue => {
+        queue.onquit(error);
+    });
+});
+
+function createQueue(onquit) {
     var outstanding = {};
-    queue.push(outstanding);
+    var closed = false;
+    var queue = {onquit: onquit, outstanding: outstanding};
+    instances.push(queue);
     return {
         add(id, pending) {
+            if (closed) throw Error("Disconnected");
             outstanding[id] = _.extend({}, pending);
             if (!monitor) monitor = setInterval(() => {
-                var outstanding = _.flatten(queue.map(o => _.values(o)));
+                var outstanding = _.flatten(instances.map(o => _.values(o.outstanding)));
                 if (_.isEmpty(outstanding)) {
                     clearInterval(monitor);
                     monitor = null;
@@ -160,18 +178,22 @@ function createQueue(handlers) {
                 return outstanding[id];
             } finally {
                 delete outstanding[id];
-                if (monitor && _.isEmpty(_.flatten(queue.map(o => _.values(o))))) {
+                if (monitor && _.isEmpty(_.flatten(instances.map(o => _.values(o.outstanding))))) {
                     clearInterval(monitor);
                     monitor = null;
                 }
             }
         },
+        keys() {
+            return _.keys(outstanding);
+        },
         close() {
-            var idx = queue.indexOf(outstanding);
+            closed = true;
+            var idx = instances.indexOf(queue);
             if (idx >= 0) {
-                queue.splice(1, idx);
+                instances.splice(1, idx);
             }
-            if (_.isEmpty(queue) && monitor) {
+            if (_.isEmpty(instances) && monitor) {
                 clearInterval(monitor);
                 monitor = null;
             }

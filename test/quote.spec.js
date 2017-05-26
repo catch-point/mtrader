@@ -46,6 +46,7 @@ describe("quote", function() {
         config('config', path.resolve(__dirname, 'etc/ptrading.json'));
         config('prefix', createTempDir('quotes'));
         config(['iqfeed','enabled'], false);
+        config(['google','enabled'], false);
         config(['yahoo','enabled'], false);
         config(['files','enabled'], true);
         config(['files','dirname'], path.resolve(__dirname, 'var'));
@@ -55,8 +56,10 @@ describe("quote", function() {
     after(function() {
         config.unset('prefix');
         config.unset(['iqfeed','enabled']);
+        config.unset(['google','enabled']);
         config.unset(['yahoo','enabled']);
         config.unset(['files','enabled']);
+        config.unset(['files','dirname']);
         return Promise.all([
             quote.close(),
             fetch.close()
@@ -304,15 +307,15 @@ describe("quote", function() {
             columns: [
                 'DATE(day.ending) AS "Date"',
                 'day.close AS "Close"',
-                '(day.close - OFFSET(1, day.close)) *100 / day.close AS "Change"'
+                'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "Change"'
             ],
             symbol: 'DIS',
             exchange: 'NYSE',
-            begin: moment.tz('2016-11-01', tz),
-            end: moment.tz('2016-12-01', tz)
+            begin: moment.tz('2016-12-01', tz),
+            end: moment.tz('2016-12-08', tz).endOf('day')
         }).then(wrong => {
-            _.first(wrong).should.be.like(
-                {Date:"2016-11-01",Close:57.19,Change:-2.3955}
+            _.last(wrong).should.be.like(
+                {Date:"2016-12-08",Close:103.38,Change:1.36}
             );
         }).then(() => {
             config('files.dirname', path.resolve(__dirname, 'var'));
@@ -320,56 +323,35 @@ describe("quote", function() {
                 columns: [
                     'DATE(day.ending) AS "Date"',
                     'day.close AS "Close"',
-                    '(day.close - OFFSET(1, day.close)) *100 / OFFSET(1, day.close) AS "Change"'
+                    'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "Change"'
                 ],
                 symbol: 'DIS',
                 exchange: 'NYSE',
-                begin: moment.tz('2016-11-01', tz),
+                begin: moment.tz('2016-12-01', tz),
                 end: moment.tz('2016-12-31', tz),
             });
         }).should.eventually.be.like([
-            {Date:"2016-11-01",Close:92.39,Change:-0.3236},
-            {Date:"2016-11-02",Close:91.91,Change:-0.5195},
-            {Date:"2016-11-03",Close:93.37,Change:1.5885},
-            {Date:"2016-11-04",Close:92.45,Change:-0.9853},
-            {Date:"2016-11-07",Close:94.43,Change:2.1416},
-            {Date:"2016-11-08",Close:94.38,Change:-0.0529},
-            {Date:"2016-11-09",Close:94.64,Change:0.2754},
-            {Date:"2016-11-10",Close:94.96,Change:0.3381},
-            {Date:"2016-11-11",Close:97.68,Change:2.8643},
-            {Date:"2016-11-14",Close:97.92,Change:0.2457},
-            {Date:"2016-11-15",Close:97.7,Change:-0.2246},
-            {Date:"2016-11-16",Close:99.12,Change:1.4534},
-            {Date:"2016-11-17",Close:99.37,Change:0.2522},
-            {Date:"2016-11-18",Close:98.24,Change:-1.1371},
-            {Date:"2016-11-21",Close:97.63,Change:-0.6209},
-            {Date:"2016-11-22",Close:97.71,Change:0.0819},
-            {Date:"2016-11-23",Close:98.26,Change:0.5628},
-            {Date:"2016-11-25",Close:98.82,Change:0.5699},
-            {Date:"2016-11-28",Close:98.97,Change:0.1517},
-            {Date:"2016-11-29",Close:99.67,Change:0.7072},
-            {Date:"2016-11-30",Close:99.12,Change:-0.5518},
-            {Date:"2016-12-01",Close:98.94,Change:-0.1815},
-            {Date:"2016-12-02",Close:98.5,Change:-0.4447},
-            {Date:"2016-12-05",Close:99.96,Change:1.4822},
-            {Date:"2016-12-06",Close:100.66,Change:0.7002},
-            {Date:"2016-12-07",Close:101.99,Change:1.3212},
-            {Date:"2016-12-08",Close:103.38,Change:1.3628},
-            {Date:"2016-12-09",Close:104.86,Change:1.4316},
-            {Date:"2016-12-12",Close:104.06,Change:-0.7629},
-            {Date:"2016-12-13",Close:103.85,Change:-0.2018},
-            {Date:"2016-12-14",Close:104.05,Change:0.1925},
-            {Date:"2016-12-15",Close:104.39,Change:0.3267},
-            {Date:"2016-12-16",Close:103.91,Change:-0.4598},
-            {Date:"2016-12-19",Close:105.3,Change:1.3376},
-            {Date:"2016-12-20",Close:105.46,Change:0.1519},
-            {Date:"2016-12-21",Close:105.56,Change:0.0948},
-            {Date:"2016-12-22",Close:105.42,Change:-0.1326},
-            {Date:"2016-12-23",Close:105.15,Change:-0.2561},
-            {Date:"2016-12-27",Close:105.17,Change:0.0190},
-            {Date:"2016-12-28",Close:104.3,Change:-0.8272},
-            {Date:"2016-12-29",Close:104.56,Change:0.2492},
-            {Date:"2016-12-30",Close:104.22,Change:-0.3251}
+            {Date:"2016-12-01",Close:98.94,Change:-0.18},
+            {Date:"2016-12-02",Close:98.5,Change:-0.44},
+            {Date:"2016-12-05",Close:99.96,Change:1.48},
+            {Date:"2016-12-06",Close:100.66,Change:0.70},
+            {Date:"2016-12-07",Close:101.99,Change:1.32},
+            {Date:"2016-12-08",Close:103.38,Change:2.14},
+            {Date:"2016-12-09",Close:104.86,Change:1.43},
+            {Date:"2016-12-12",Close:104.06,Change:-0.76},
+            {Date:"2016-12-13",Close:103.85,Change:-0.20},
+            {Date:"2016-12-14",Close:104.05,Change:0.19},
+            {Date:"2016-12-15",Close:104.39,Change:0.33},
+            {Date:"2016-12-16",Close:103.91,Change:-0.46},
+            {Date:"2016-12-19",Close:105.3,Change:1.34},
+            {Date:"2016-12-20",Close:105.46,Change:0.15},
+            {Date:"2016-12-21",Close:105.56,Change:0.09},
+            {Date:"2016-12-22",Close:105.42,Change:-0.13},
+            {Date:"2016-12-23",Close:105.15,Change:-0.26},
+            {Date:"2016-12-27",Close:105.17,Change:0.02},
+            {Date:"2016-12-28",Close:104.3,Change:-0.83},
+            {Date:"2016-12-29",Close:104.56,Change:0.25},
+            {Date:"2016-12-30",Close:104.22,Change:-0.33}
         ]);
     });
     it("should load the last 100 days", function() {

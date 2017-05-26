@@ -1,0 +1,32 @@
+{
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "USD",
+     "iqfeed_symbol": "USDCAD.FXCM",
+     "exchange": "CAD",
+     "listed_market": 74,
+     "securityTypeID": 16,
+     "name": "FXCM USD CAD Spot"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "USD",
+     "iqfeed_symbol": "USDCAD.FXCM",
+     "exchange": "CAD",
+     "listed_market": 74,
+     "securityTypeID": 16,
+     "name": "FXCM USD CAD Spot"
+    }
+   ],
+   "updatedAt": "2017-05-19T19:07:10.283Z",
+   "properties": {},
+   "createdAt": "2017-05-19T19:07:10.283Z"
+  }
+ ]
+}

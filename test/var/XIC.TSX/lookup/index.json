@@ -1,5 +1,4 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "lookup",
@@ -29,9 +28,9 @@
      "typeDisp": "ETF"
     }
    ],
-   "updatedAt": "2017-04-03T14:37:15.604Z",
+   "updatedAt": "2017-05-20T01:04:47.552Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:15.604Z"
+   "createdAt": "2017-05-20T01:04:47.552Z"
   }
  ]
 }

@@ -33,6 +33,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const config = require('./config.js');
 const logger = require('./logger.js');
+const google = require('./fetch-google.js');
 const yahoo = require('./fetch-yahoo.js');
 const iqfeed = require('./fetch-iqfeed.js');
 const files = require('./fetch-files.js');
@@ -42,6 +43,7 @@ const expect = require('chai').use(like).expect;
 module.exports = function() {
     var datasources = _.extend(
         config(['files','enabled']) ? {files: files()} : {},
+        config(['google','enabled']) ? {google: google()} : {},
         config(['yahoo','enabled']) ? {yahoo: yahoo()} : {},
         config(['iqfeed','enabled']) ? {iqfeed: iqfeed()} : {}
     );
@@ -171,22 +173,35 @@ function interday(datasources, options) {
         tz: _.isString
     });
     var now = moment().tz(options.tz);
-    var opts = options.begin ? options : _.defaults({
-        begin: moment(now).startOf('month').subtract(1, 'month').format()
+    var begin = options.begin ? moment.tz(options.begin, options.tz) :
+        moment(now).startOf('month').subtract(1, 'month');
+    var early = begin.year() < now.year() - 5 ?
+        moment(now).subtract(5,'years').format('Y-MM-DD') : // results okay if >5yrs
+        moment(begin).add(1,'weeks').format('Y-MM-DD'); // or starts within a week
+    var opts = _.defaults({
+        begin: begin.format()
     }, options);
     var sources = getDatasources(datasources, opts.exchange, opts.interval);
     if (_.isEmpty(sources)) throw Error("No datasources available for " + opts.interval
         + " using " + _.keys(getDatasources(datasources, opts.exchange)).join(', '));
     return _.reduce(sources, (promise, source, id) => promise.catch(err => {
         return datasources[id].interday(_.defaults({}, source, opts)).then(result => {
-            if (err) logger.warn("Fetch", opts.interval, "failed", err);
+            if (err && !_.isArray(err)) logger.warn("Fetch", opts.interval, "failed", err);
+            if (err && !_.isArray(err)) logger.debug("Fetch", opts.interval, "failed", err.stack);
+            if (_.isArray(err) && err.length >= result.length)
+                return err;
+            if (_.isEmpty(result) || _.first(result).ending > early)
+                return Promise.reject(result); // not within a week of begin or >5yrs
             return result;
         }, err2 => {
-            if (!err) throw err2;
+            if (_.isEmpty(err)) throw err2;
             logger.warn("Fetch", opts.interval, "failed", err2);
             throw err;
         });
-    }), Promise.reject()).then(results => {
+    }), Promise.reject()).catch(err => {
+        if (_.isArray(err)) return err;
+        else throw err;
+    }).then(results => {
         var aWeek = 5 * 24 * 60 * 60 * 1000;
         var latest = _.last(results);
         if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {

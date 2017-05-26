@@ -1,1 +1,36 @@
-{"properties":{},"tables":[{"id":"lookup","name":"lookup","size":1,"head":[{"symbol":"IBM","yahoo_symbol":"IBM","exchange":"NYSE","name":"International Business Machines Corporation","exch":"NYQ","type":"S","exchDisp":"NYSE","typeDisp":"Equity"}],"tail":[{"symbol":"IBM","yahoo_symbol":"IBM","exchange":"NYSE","name":"International Business Machines Corporation","exch":"NYQ","type":"S","exchDisp":"NYSE","typeDisp":"Equity"}],"updatedAt":"2017-02-11T16:50:02.963Z","properties":{},"createdAt":"2017-02-11T16:50:02.963Z"}]}
+{
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "IBM",
+     "yahoo_symbol": "IBM",
+     "exchange": "NYSE",
+     "name": "International Business Machines Corporation",
+     "exch": "NYQ",
+     "type": "S",
+     "exchDisp": "NYSE",
+     "typeDisp": "Equity"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "IBM",
+     "yahoo_symbol": "IBM",
+     "exchange": "NYSE",
+     "name": "International Business Machines Corporation",
+     "exch": "NYQ",
+     "type": "S",
+     "exchDisp": "NYSE",
+     "typeDisp": "Equity"
+    }
+   ],
+   "updatedAt": "2017-05-19T19:00:56.257Z",
+   "properties": {},
+   "createdAt": "2017-05-19T19:00:56.257Z"
+  }
+ ]
+}

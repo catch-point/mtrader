@@ -1,5 +1,4 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "fundamental",
@@ -27,9 +26,9 @@
      "PEGRatio": "0.0000"
     }
    ],
-   "updatedAt": "2017-04-03T14:37:52.298Z",
+   "updatedAt": "2017-05-20T01:05:28.583Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:52.298Z"
+   "createdAt": "2017-05-20T01:05:28.583Z"
   }
  ]
 }

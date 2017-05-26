@@ -1,26 +1,15 @@
 {
- "properties": {},
  "tables": [
   {
    "id": "lookup",
    "name": "lookup",
-   "size": 5,
+   "size": 1,
    "head": [
     {
      "symbol": "SPY",
      "yahoo_symbol": "SPY",
      "exchange": "ARCA",
-     "name": "SPDR S&P 500 ETF",
-     "exch": "PCX",
-     "type": "E",
-     "exchDisp": "NYSEArca",
-     "typeDisp": "ETF"
-    },
-    {
-     "symbol": "SPYD",
-     "yahoo_symbol": "SPYD",
-     "exchange": "ARCA",
-     "name": "SPDR S&P 500 High Dividend ETF",
+     "name": "SPDR S&P 500 ETF Trust",
      "exch": "PCX",
      "type": "E",
      "exchDisp": "NYSEArca",
@@ -29,29 +18,19 @@
    ],
    "tail": [
     {
-     "symbol": "SPYV",
-     "yahoo_symbol": "SPYV",
+     "symbol": "SPY",
+     "yahoo_symbol": "SPY",
      "exchange": "ARCA",
-     "name": "SPDR S&P 500 Value ETF",
-     "exch": "PCX",
-     "type": "E",
-     "exchDisp": "NYSEArca",
-     "typeDisp": "ETF"
-    },
-    {
-     "symbol": "SPYB",
-     "yahoo_symbol": "SPYB",
-     "exchange": "ARCA",
-     "name": "SPDR S&P 500 Buyback ETF",
+     "name": "SPDR S&P 500 ETF Trust",
      "exch": "PCX",
      "type": "E",
      "exchDisp": "NYSEArca",
      "typeDisp": "ETF"
     }
    ],
-   "updatedAt": "2017-04-03T14:37:15.621Z",
+   "updatedAt": "2017-05-20T01:04:47.614Z",
    "properties": {},
-   "createdAt": "2017-04-03T14:37:15.621Z"
+   "createdAt": "2017-05-20T01:04:47.614Z"
   }
  ]
 }
