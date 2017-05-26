@@ -46,6 +46,7 @@ describe("quote", function() {
         config('config', path.resolve(__dirname, 'etc/ptrading.json'));
         config('prefix', createTempDir('quotes'));
         config(['iqfeed','enabled'], false);
+        config(['google','enabled'], false);
         config(['yahoo','enabled'], false);
         config(['files','enabled'], true);
         config(['files','dirname'], path.resolve(__dirname, 'var'));
@@ -55,6 +56,7 @@ describe("quote", function() {
     after(function() {
         config.unset('prefix');
         config.unset(['iqfeed','enabled']);
+        config.unset(['google','enabled']);
         config.unset(['yahoo','enabled']);
         config.unset(['files','enabled']);
         config.unset(['files','dirname']);

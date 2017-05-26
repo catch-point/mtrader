@@ -45,6 +45,7 @@ describe("collect", function() {
         config('config', path.resolve(__dirname, 'etc/ptrading.json'));
         config('prefix', createTempDir('collect'));
         config(['iqfeed','enabled'], false);
+        config(['google','enabled'], false);
         config(['yahoo','enabled'], false);
         config(['files','enabled'], true);
         config(['files','dirname'], path.resolve(__dirname, 'var'));
@@ -55,6 +56,7 @@ describe("collect", function() {
     after(function() {
         config.unset('prefix');
         config.unset(['iqfeed','enabled']);
+        config.unset(['google','enabled']);
         config.unset(['yahoo','enabled']);
         config.unset(['files','enabled']);
         config.unset(['files','dirname']);

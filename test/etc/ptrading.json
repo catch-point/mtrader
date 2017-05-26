@@ -1,7 +1,10 @@
 {
   "files": {
     "enabled": true,
-    "fallback": ["yahoo", "iqfeed"]
+    "fallback": ["google", "yahoo", "iqfeed"]
+  },
+  "google": {
+    "enabled": true
   },
   "yahoo": {
     "enabled": true
@@ -19,6 +22,10 @@
       "datasources": {
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
+        "google": {
+            "e": "NYSEARCA",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
         },
         "yahoo": {
           "exchs": ["PCX"],
@@ -44,8 +51,12 @@
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
         },
+        "google": {
+            "e": "NASDAQ",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
-          "exchs": ["NAS", "NCM", "NGM", "NMS"],
+          "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
           "marketLang": "en-US",
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
         },
@@ -67,6 +78,10 @@
       "datasources": {
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
+        "google": {
+            "e": "NYSE",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
         },
         "yahoo": {
           "exchs": ["NYQ"],
@@ -92,6 +107,10 @@
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
         },
+        "google": {
+            "e": "NYSEMKT",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["ASE"],
           "marketLang": "en-US",
@@ -115,6 +134,10 @@
       "datasources": {
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
+        "google": {
+            "e": "TSE",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
         },
         "yahoo": {
           "exchs": ["TOR", "YHD"],
@@ -141,6 +164,10 @@
       "datasources": {
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
+        "google": {
+            "e": "CVE",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
         },
         "yahoo": {
           "exchs": ["TOR"],
@@ -192,6 +219,10 @@
       "datasources": {
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
+        "google": {
+            "e": "LON",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
         },
         "yahoo": {
           "exchs": ["LSE"],

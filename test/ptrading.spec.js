@@ -41,6 +41,7 @@ describe("ptrading", function() {
         ptrading.config('config', path.resolve(__dirname, 'etc/ptrading.json'));
         ptrading.config('prefix', createTempDir('ptrading'));
         ptrading.config(['iqfeed','enabled'], false);
+        ptrading.config(['google','enabled'], false);
         ptrading.config(['yahoo','enabled'], false);
         ptrading.config(['files','enabled'], true);
         ptrading.config(['files','dirname'], path.resolve(__dirname, 'var'));
@@ -48,6 +49,7 @@ describe("ptrading", function() {
     after(function() {
         ptrading.config.unset('prefix');
         ptrading.config.unset(['iqfeed','enabled']);
+        ptrading.config.unset(['google','enabled']);
         ptrading.config.unset(['yahoo','enabled']);
         ptrading.config.unset(['files','enabled']);
         ptrading.config.unset(['files','dirname']);

@@ -69,6 +69,7 @@ describe("lookback-functions", function(){
         config('config', path.resolve(__dirname, 'etc/ptrading.json'));
         config('prefix', createTempDir('quotes'));
         config(['iqfeed','enabled'], false);
+        config(['google','enabled'], false);
         config(['yahoo','enabled'], false);
         config(['files','enabled'], true);
         config(['files','dirname'], path.resolve(__dirname, 'var'));
