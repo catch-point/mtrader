@@ -37,7 +37,7 @@ const promiseText = require('./promise-text.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 
-const quote = "https://finance.yahoo.com/quote/{symbol}";
+const quote = "https://finance.yahoo.com/lookup?s={symbol}";
 const download = "https://query1.finance.yahoo.com/v7/finance/download/{symbol}?period1={period1}&period2={period2}&interval={interval}&events={events}&crumb={crumb}"
 const autoc = "http://d.yimg.com/aq/autoc";
 const quotes = "http://download.finance.yahoo.com/d/quotes.csv";
@@ -59,7 +59,7 @@ module.exports = function() {
 
 function promiseHistoryAgent() {
     var createAgent = symbol => {
-        var options = url.parse(quote.replace('{symbol}', symbol));
+        var options = url.parse(quote.replace('{symbol}', encodeURIComponent(symbol)));
         var headers = options.headers = {};
         return promiseText(options).then(body => {
             var keyword = '"CrumbStore":{"crumb":"';
@@ -80,11 +80,12 @@ function promiseHistoryAgent() {
             return url.replace('{' + key + '}', query[key]);
         }, download);
         return agent(query.symbol)
-            .then(fn => fn(url))
+            .then(fn => fn(url)
             .catch(error => {
                 if (error.message == 'Bad Request') return ""; // no data in period
+                if (error.message == 'Unauthorized') return fn(url); // try again?
                 else throw error;
-            })
+            }))
             .then(parseCSV)
             .then(rows2objects);
     };
