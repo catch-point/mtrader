@@ -68,7 +68,7 @@ describe("quote", function() {
     it("should return daily", function() {
         return quote({
             columns: 'day.ending AS "ending"',
-            symbol: 'YHOO',
+            symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
             end: moment.tz('2014-02-01', tz)
@@ -99,7 +99,7 @@ describe("quote", function() {
     it("should return weekly", function() {
         return quote({
             columns: 'week.ending AS "ending"',
-            symbol: 'YHOO',
+            symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2014-01-06', tz),
             end: moment.tz('2014-02-01', tz)
@@ -113,7 +113,7 @@ describe("quote", function() {
     it("should return monthly", function() {
         return quote({
             columns: 'month.ending AS "ending"',
-            symbol: 'YHOO',
+            symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
             end: moment.tz('2014-02-01', tz)
@@ -363,7 +363,7 @@ describe("quote", function() {
     it("should pad end", function() {
         return quote({
             interval: 'day',
-            symbol: 'YHOO',
+            symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
             end: moment.tz('2014-01-01', tz),

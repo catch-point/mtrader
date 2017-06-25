@@ -41,17 +41,17 @@ describe("yahoo-client", function() {
     after(function() {
         return client.close();
     });
-    it("should find YHOO", function() {
-        return client.lookup('YHOO', 'en-US').should.eventually.be.like(results => _.some(results, like({
-            symbol: 'YHOO',
+    it("should find AABA", function() {
+        return client.lookup('AABA', 'en-US').should.eventually.be.like(results => _.some(results, like({
+            symbol: 'AABA',
             exch: Boolean,
-            name: "Yahoo! Inc."
+            name: "Altaba Inc."
         })));
     });
-    it("should find YHOO details", function() {
-        return client.fundamental('YHOO').should.eventually.be.like({
-            symbol: 'YHOO',
-            name: "Yahoo! Inc."
+    it("should find AABA details", function() {
+        return client.fundamental('AABA').should.eventually.be.like({
+            symbol: 'AABA',
+            name: "Altaba Inc."
         });
     });
     it("should find IBM", function() {
@@ -67,7 +67,7 @@ describe("yahoo-client", function() {
         });
     });
     it("should return daily", function() {
-        return client.day('YHOO', moment.tz('2014-01-01', tz), tz)
+        return client.day('AABA', moment.tz('2014-01-01', tz), tz)
           .then(result => result.slice(0, 21))
           .should.eventually.be.like([
             {Date:'2014-01-02',Open:40.37,High:40.49,Low:39.31,Close:39.59},
@@ -94,7 +94,7 @@ describe("yahoo-client", function() {
         ]);
     });
     it("should return monthly", function() {
-        return client.month('YHOO',moment.tz('2013-10-01', tz), tz)
+        return client.month('AABA',moment.tz('2013-10-01', tz), tz)
           .then(result => result.slice(0, 4))
           .should.eventually.be.like([
             {Date:'2013-10-01',Open:33.36,High:35.06,Low:31.70,Close:32.94},
@@ -104,7 +104,7 @@ describe("yahoo-client", function() {
         ]);
     });
     it("should load intraday quote", function() {
-        return client.intraday('YHOO').should.eventually.have.property('symbol', 'YHOO');
+        return client.intraday('AABA').should.eventually.have.property('symbol', 'AABA');
     });
     it("should find BRK/A symbol", function() {
         return client.lookup('BRK/A', 'en-US').should.eventually.be.like(results => _.some(results, like(

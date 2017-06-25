@@ -56,7 +56,7 @@ describe("ptrading-collect", function() {
     });
     it("change", function() {
         return ptrading.collect({
-          portfolio: 'YHOO.NASDAQ,IBM.NYSE',
+          portfolio: 'AABA.NASDAQ,IBM.NYSE',
           pad_begin: 10,
           begin: "2017-01-13",
           end: "2017-01-14",
@@ -70,21 +70,21 @@ describe("ptrading-collect", function() {
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
-            {symbol:'YHOO',date:"2016-12-30",close:38.67,change:0.08},
+            {symbol:'AABA',date:"2016-12-30",close:38.67,change:0.08},
             {symbol:'IBM',date:"2017-01-03",close:167.19,change:0.72},
             {symbol:'IBM',date:"2017-01-04",close:169.26,change:1.24},
-            {symbol:'YHOO',date:"2017-01-05",close:41.34,change:3.20},
+            {symbol:'AABA',date:"2017-01-05",close:41.34,change:3.20},
             {symbol:'IBM',date:"2017-01-06",close:169.53,change:0.49},
-            {symbol:'YHOO',date:"2017-01-09",close:41.34,change:0.27},
-            {symbol:'YHOO',date:"2017-01-10",close:42.3,change:2.32},
+            {symbol:'AABA',date:"2017-01-09",close:41.34,change:0.27},
+            {symbol:'AABA',date:"2017-01-10",close:42.3,change:2.32},
             {symbol:'IBM',date:"2017-01-11",close:167.75,change:1.35},
             {symbol:'IBM',date:"2017-01-12",close:167.95,change:0.12},
-            {symbol:'YHOO',date:"2017-01-13",close:42.27,change:0.38}
+            {symbol:'AABA',date:"2017-01-13",close:42.27,change:0.38}
         ]);
     });
     it("profit", function() {
         return ptrading.collect({
-          portfolio: 'YHOO.NASDAQ,IBM.NYSE',
+          portfolio: 'AABA.NASDAQ,IBM.NYSE',
           begin: "2017-01-09",
           end: "2017-01-14",
           precedence: 'PF(120,day.adj_close)',
@@ -102,21 +102,21 @@ describe("ptrading-collect", function() {
           ].join(','),
           retain: 'position OR shares'
         }).should.eventually.be.like([
-            {symbol:"YHOO",date:"2017-01-09",target:241,shares:241,position:241,price:41.36,
+            {symbol:"AABA",date:"2017-01-09",target:241,shares:241,position:241,price:41.36,
                 proceeds:-9967.76,commission:1.20,basis:41.36,profit:-1.20},
             {symbol:"IBM",date:"2017-01-10",target:60,shares:60,position:60,price:165.54,
                 proceeds:-9932.40,commission:1,basis:165.54,profit:-1},
-            {symbol:"YHOO",date:"2017-01-10",target:0,shares:-241,position:0,price:42.27,
+            {symbol:"AABA",date:"2017-01-10",target:0,shares:-241,position:0,price:42.27,
                 proceeds:10189.48,commission:1,basis:41.36,profit:219.51},
-            {symbol:"YHOO",date:"2017-01-11",target:234,shares:234,position:234,price:42.61,
+            {symbol:"AABA",date:"2017-01-11",target:234,shares:234,position:234,price:42.61,
                 proceeds:-9970.74,commission:1.17,basis:42.61,profit:218.34},
             {symbol:"IBM",date:"2017-01-11",target:0,shares:-60,position:0,price:167.73,
                 proceeds:10063.8,commission:1,basis:165.54,profit:129.40},
-            {symbol:"YHOO",date:"2017-01-12",target:237,shares:0,position:234,price:42.09,
+            {symbol:"AABA",date:"2017-01-12",target:237,shares:0,position:234,price:42.09,
                 proceeds:0,commission:0,basis:42.61,profit:96.66},
             {symbol:"IBM",date:"2017-01-13",target:59,shares:59,position:59,price:167.36,
                 proceeds:-9874.24,commission:1,basis:167.36,profit:128.40},
-            {symbol:"YHOO",date:"2017-01-13",target:0,shares:-234,position:0,price:42.25,
+            {symbol:"AABA",date:"2017-01-13",target:0,shares:-234,position:0,price:42.25,
                 proceeds:9886.5,commission:1,basis:42.61,profit:133.10}
         ]);
     });
