@@ -149,12 +149,14 @@ function quote(fetch, store, options) {
  * list of what expressions should be computed and stored for further reference.
  */
 function parseWarmUpMap(options) {
-    var exprs = _.compact(_.flatten([options.columns, options.criteria, options.retain])).join(',');
+    var exprs = _.compact(_.flatten([
+        options.columns, options.variables, options.criteria, options.retain
+    ])).join(',');
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
     var p = createParser({}, options);
     var parser = Parser({
-        substitutions: _.flatten([options.columns]).join(','),
+        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
         constant(value) {
             return {warmUpLength: 0};
         },
@@ -210,7 +212,7 @@ function parseCriteriaMap(criteria, cached, intervals, options) {
  */
 function createParser(cached, options) {
     return Parser({
-        substitutions: _.flatten([options.columns]).join(','),
+        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
         constant(value) {
             return () => value;
         },
