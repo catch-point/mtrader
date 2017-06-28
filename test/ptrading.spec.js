@@ -55,26 +55,26 @@ describe("ptrading", function() {
         ptrading.config.unset(['files','dirname']);
     });
     it("lookup", function() {
-        return ptrading.lookup({symbol: 'YHOO'}).then(suggestions => {
+        return ptrading.lookup({symbol: 'AABA'}).then(suggestions => {
           suggestions.forEach(suggestion => {
-            suggestion.symbol.should.eql('YHOO');
+            suggestion.symbol.should.eql('AABA');
             suggestion.exchange.should.eql('NASDAQ');
           });
         });
     });
     it("fundamental", function() {
         return ptrading.fundamental({
-          symbol: 'YHOO',
+          symbol: 'AABA',
           exchange: 'NASDAQ'
         }).should.eventually.be.like({
-            name: 'Yahoo! Inc.',
+            name: 'Altaba Inc.',
             EarningsShare: _.isFinite
         });
     });
     it("fetch", function() {
         return ptrading.fetch({
           interval: 'day',
-          symbol: 'YHOO',
+          symbol: 'AABA',
           exchange: 'NASDAQ',
           begin: "2017-01-13",
           end: "2017-01-14",
@@ -89,7 +89,7 @@ describe("ptrading", function() {
     });
     it("quote", function() {
         return ptrading.quote({
-          symbol: 'YHOO',
+          symbol: 'AABA',
           exchange: 'NASDAQ',
           begin: "2017-01-13",
           pad_begin: 9,
@@ -113,7 +113,7 @@ describe("ptrading", function() {
     });
     it("collect change", function() {
         return ptrading.collect({
-          portfolio: 'YHOO.NASDAQ,IBM.NYSE',
+          portfolio: 'AABA.NASDAQ,IBM.NYSE',
           pad_begin: 10,
           begin: "2017-01-13",
           end: "2017-01-14",
@@ -127,16 +127,16 @@ describe("ptrading", function() {
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
-            {symbol:'YHOO',date:"2016-12-30",close:38.67,change:0.08},
+            {symbol:'AABA',date:"2016-12-30",close:38.67,change:0.08},
             {symbol:'IBM',date:"2017-01-03",close:167.19,change:0.72},
             {symbol:'IBM',date:"2017-01-04",close:169.26,change:1.24},
-            {symbol:'YHOO',date:"2017-01-05",close:41.34,change:3.20},
+            {symbol:'AABA',date:"2017-01-05",close:41.34,change:3.20},
             {symbol:'IBM',date:"2017-01-06",close:169.53,change:0.49},
-            {symbol:'YHOO',date:"2017-01-09",close:41.34,change:0.27},
-            {symbol:'YHOO',date:"2017-01-10",close:42.3,change:2.32},
+            {symbol:'AABA',date:"2017-01-09",close:41.34,change:0.27},
+            {symbol:'AABA',date:"2017-01-10",close:42.3,change:2.32},
             {symbol:'IBM',date:"2017-01-11",close:167.75,change:1.35},
             {symbol:'IBM',date:"2017-01-12",close:167.95,change:0.12},
-            {symbol:'YHOO',date:"2017-01-13",close:42.27,change:0.38}
+            {symbol:'AABA',date:"2017-01-13",close:42.27,change:0.38}
         ]);
     });
 });

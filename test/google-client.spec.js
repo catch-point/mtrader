@@ -41,17 +41,17 @@ describe("google-client", function() {
     after(function() {
         return client.close();
     });
-    it("should find YHOO", function() {
-        return client.lookup('YHOO').should.eventually.be.like(results => _.some(results, like({
-            symbol: 'YHOO',
+    it("should find AABA", function() {
+        return client.lookup('AABA').should.eventually.be.like(results => _.some(results, like({
+            symbol: 'AABA',
             e: Boolean,
-            name: "Yahoo! Inc."
+            name: "Altaba Inc"
         })));
     });
-    it("should find YHOO details", function() {
-        return client.fundamental('NASDAQ:YHOO').should.eventually.be.like({
-            symbol: 'YHOO',
-            name: "Yahoo! Inc."
+    it("should find AABA details", function() {
+        return client.fundamental('NASDAQ:AABA').should.eventually.be.like({
+            symbol: 'AABA',
+            name: "Altaba Inc"
         });
     });
     it("should find IBM", function() {
@@ -67,7 +67,7 @@ describe("google-client", function() {
         });
     });
     it("should return daily", function() {
-        return client.day('NASDAQ:YHOO', moment.tz('2014-01-01', tz), tz)
+        return client.day('NASDAQ:AABA', moment.tz('2014-01-01', tz), tz)
           .then(result => result.slice(-21))
           .should.eventually.be.like([
             {Date:"31-Jan-14",Open:34.7,High:36.3,Low:34.6,Close:36.01},
@@ -94,7 +94,7 @@ describe("google-client", function() {
         ]);
     });
     it("should load intraday quote", function() {
-        return client.quote('NASDAQ:YHOO').should.eventually.have.property('t', 'YHOO');
+        return client.quote('NASDAQ:AABA').should.eventually.have.property('t', 'AABA');
     });
     it("should find BRK/A symbol", function() {
         return client.lookup('BRK/A').should.eventually.be.like(results => _.some(results, like(

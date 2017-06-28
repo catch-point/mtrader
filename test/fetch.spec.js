@@ -50,12 +50,12 @@ describe("fetch", function() {
         config.unset(['files','dirname']);
         return fetch.close();
     });
-    it("should find YHOO", function() {
-        return fetch({interval: 'lookup', symbol:'YHOO'}).then(_.first).should.eventually.be.like({
-            symbol: 'YHOO',
+    it("should find AABA", function() {
+        return fetch({interval: 'lookup', symbol:'AABA'}).then(_.first).should.eventually.be.like({
+            symbol: 'AABA',
             exchange: 'NASDAQ',
-            yahoo_symbol: 'YHOO',
-            name: "Yahoo! Inc."
+            yahoo_symbol: 'AABA',
+            name: "Altaba Inc"
         });
     });
     it("should find IBM", function() {
@@ -82,7 +82,7 @@ describe("fetch", function() {
     it("should return daily", function() {
         return fetch({
             interval: 'day',
-            symbol: 'YHOO',
+            symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
             end: moment.tz('2014-02-01', tz)
@@ -113,7 +113,7 @@ describe("fetch", function() {
     it("should return weekly", function() {
         return fetch({
             interval: 'week',
-            symbol: 'YHOO',
+            symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2014-01-06', tz)
         }).should.eventually.be.like(results => results.slice(0,4).should.be.like([
@@ -126,7 +126,7 @@ describe("fetch", function() {
     it("should return monthly", function() {
         return fetch({
             interval: 'month',
-            symbol: 'YHOO',
+            symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz)
         }).should.eventually.be.like(results => results.slice(0,4).should.be.like([
@@ -139,7 +139,7 @@ describe("fetch", function() {
     it("should return quarter", function() {
         return fetch({
             interval: 'quarter',
-            symbol: 'YHOO',
+            symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
             end: moment.tz('2013-12-01', tz),
@@ -151,7 +151,7 @@ describe("fetch", function() {
     it("should return year", function() {
         return fetch({
             interval: 'year',
-            symbol: 'YHOO',
+            symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
             end: moment.tz('2013-12-01', tz),

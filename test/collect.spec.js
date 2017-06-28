@@ -68,7 +68,7 @@ describe("collect", function() {
     });
     it("count", function() {
         return collect({
-          portfolio: 'YHOO.NASDAQ,IBM.NYSE',
+          portfolio: 'AABA.NASDAQ,IBM.NYSE',
           pad_begin: 10,
           begin: "2017-01-13",
           end: "2017-01-14",
@@ -82,16 +82,16 @@ describe("collect", function() {
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
-            {symbol:'YHOO',date:"2016-12-30",close:38.67,change:0.08},
+            {symbol:'AABA',date:"2016-12-30",close:38.67,change:0.08},
             {symbol:'IBM',date:"2017-01-03",close:167.19,change:0.72},
             {symbol:'IBM',date:"2017-01-04",close:169.26,change:1.24},
-            {symbol:'YHOO',date:"2017-01-05",close:41.34,change:3.20},
+            {symbol:'AABA',date:"2017-01-05",close:41.34,change:3.20},
             {symbol:'IBM',date:"2017-01-06",close:169.53,change:0.49},
-            {symbol:'YHOO',date:"2017-01-09",close:41.34,change:0.27},
-            {symbol:'YHOO',date:"2017-01-10",close:42.3,change:2.32},
+            {symbol:'AABA',date:"2017-01-09",close:41.34,change:0.27},
+            {symbol:'AABA',date:"2017-01-10",close:42.3,change:2.32},
             {symbol:'IBM',date:"2017-01-11",close:167.75,change:1.35},
             {symbol:'IBM',date:"2017-01-12",close:167.95,change:0.12},
-            {symbol:'YHOO',date:"2017-01-13",close:42.27,change:0.38}
+            {symbol:'AABA',date:"2017-01-13",close:42.27,change:0.38}
         ]);
     });
     it("sum", function() {
@@ -120,64 +120,65 @@ describe("collect", function() {
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
           begin: "2016-11-14",
           end: "2016-11-25",
-          columns: [
-              'DATE(ending) AS date',
-              'symbol',
+          variables: [
               'MAXCORREL(60,day.adj_close) AS cor',
               'CVAR(5, 60, day.adj_close) AS risk',
               'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
               'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
               'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0)) AS shares',
-              'PREV("position",0) + shares AS position',
-              'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
               '-shares * price AS proceeds',
               'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission',
               'IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position) AS basis',
-              '(price - PREV("price",0)) * PREV("position",0) AS mtm',
+              '(price - PREV("price",0)) * PREV("position",0) AS mtm'
+          ],
+          columns: [
+              'DATE(ending) AS date',
+              'symbol',
+              'PREV("position",0) + shares AS position',
+              'day.close + 0.02 * SIGN(shares) AS price', // includes slippage
               'PREC("cash",100000)+proceeds-commission AS cash',
               'PREC("value",100000)+mtm-commission AS value'
           ],
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
-        }).then(data=>data.map(o=>_.pick(o,'date', 'symbol', 'position', 'price', 'cash', 'value')))
-          .should.eventually.be.like([
+        }).should.eventually.be.like([
             {date:"2016-11-14",symbol:"XLF",position:429,price:22.22,cash:90465.475,value:99997.855},
             {date:"2016-11-14",symbol:"XLI",position:126,price:61.33,cash:82736.895,value:99996.855},
             {date:"2016-11-14",symbol:"XLE",position:81,price:69.87,cash:77076.425,value:99995.855},
             {date:"2016-11-14",symbol:"XLK",position:194,price:46.04,cash:68143.665,value:99994.855},
             {date:"2016-11-15",symbol:"XLF",position:859,price:22.2,cash:58595.515,value:99984.125},
-            {date:"2016-11-15",symbol:"XLI",position:126,price:61.52,cash:58595.515,value:100008.065},
-            {date:"2016-11-15",symbol:"XLE",position:159,price:71.84,cash:52990.995,value:100166.635},
-            {date:"2016-11-15",symbol:"XLK",position:384,price:46.69,cash:44118.895,value:100291.735},
-            {date:"2016-11-15",symbol:"XLY",position:108,price:80.06,cash:35471.415,value:100290.735},
+            {date:"2016-11-15",symbol:"XLI",position:126,price:61.54,cash:58595.515,value:100010.585},
+            {date:"2016-11-15",symbol:"XLE",position:159,price:71.84,cash:52990.995,value:100169.155},
+            {date:"2016-11-15",symbol:"XLK",position:384,price:46.69,cash:44118.895,value:100294.255},
+            {date:"2016-11-15",symbol:"XLY",position:108,price:80.06,cash:35471.415,value:100293.255},
             {date:"2016-11-16",symbol:"XLI",position:253,price:61.21,cash:27696.745,value:100250.675},
-            {date:"2016-11-16",symbol:"XLF",position:859,price:21.84,cash:27696.745,value:99941.435},
-            {date:"2016-11-16",symbol:"XLK",position:571,price:47.12,cash:18884.305,value:100105.555},
-            {date:"2016-11-16",symbol:"XLE",position:240,price:71.34,cash:13104.765,value:100025.055},
-            {date:"2016-11-16",symbol:"XLY",position:216,price:80.5,cash:4409.765,value:100071.575},
-            {date:"2016-11-17",symbol:"XLF",position:859,price:22.14,cash:4409.765,value:100329.275},
-            {date:"2016-11-17",symbol:"XLI",position:126,price:61.3,cash:12193.865,value:100351.045},
-            {date:"2016-11-17",symbol:"XLK",position:571,price:47.38,cash:12193.865,value:100499.505},
-            {date:"2016-11-17",symbol:"XLE",position:240,price:70.82,cash:12193.865,value:100374.705},
-            {date:"2016-11-17",symbol:"XLY",position:320,price:81.47,cash:3719.985,value:100583.225},
-            {date:"2016-11-18",symbol:"XLF",position:859,price:22.14,cash:3719.985,value:100583.225},
-            {date:"2016-11-18",symbol:"XLI",position:126,price:61.28,cash:3719.985,value:100580.705},
-            {date:"2016-11-18",symbol:"XLK",position:571,price:47.34,cash:3719.985,value:100557.865},
-            {date:"2016-11-18",symbol:"XLY",position:320,price:81.18,cash:3719.985,value:100465.065},
-            {date:"2016-11-18",symbol:"XLE",position:240,price:71.11,cash:3719.985,value:100534.665},
-            {date:"2016-11-21",symbol:"XLF",position:1233,price:22.26,cash:-4607.125,value:100635.875},
-            {date:"2016-11-21",symbol:"XLI",position:0,price:61.61,cash:3154.735,value:100676.455},
-            {date:"2016-11-21",symbol:"XLK",position:571,price:47.82,cash:3154.735,value:100950.535},
-            {date:"2016-11-21",symbol:"XLY",position:320,price:81.71,cash:3154.735,value:101120.135},
-            {date:"2016-11-21",symbol:"XLE",position:240,price:72.8,cash:3154.735,value:101525.735},
-            {date:"2016-11-22",symbol:"XLF",position:1233,price:22.23,cash:3154.735,value:101488.745},
-            {date:"2016-11-22",symbol:"XLK",position:571,price:47.97,cash:3154.735,value:101574.395},
-            {date:"2016-11-22",symbol:"XLY",position:320,price:82.68,cash:3154.735,value:101884.795},
-            {date:"2016-11-22",symbol:"XLE",position:240,price:72.76,cash:3154.735,value:101875.195},
-            {date:"2016-11-23",symbol:"XLF",position:1233,price:22.36,cash:3154.735,value:102035.485},
-            {date:"2016-11-23",symbol:"XLK",position:571,price:47.78,cash:3154.735,value:101926.995},
-            {date:"2016-11-23",symbol:"XLY",position:320,price:82.76,cash:3154.735,value:101952.595},
-            {date:"2016-11-23",symbol:"XLE",position:240,price:73.06,cash:3154.735,value:102024.595}
+            {date:"2016-11-16",symbol:"XLF",position:859,price:21.86,cash:27696.745,value:99958.615},
+            {date:"2016-11-16",symbol:"XLK",position:571,price:47.12,cash:18884.305,value:100122.735},
+            {date:"2016-11-16",symbol:"XLE",position:240,price:71.34,cash:13104.765,value:100042.235},
+            {date:"2016-11-16",symbol:"XLY",position:216,price:80.5,cash:4409.765,value:100088.755},
+            {date:"2016-11-17",symbol:"XLF",position:859,price:22.16,cash:4409.765,value:100346.455},
+            {date:"2016-11-17",symbol:"XLI",position:126,price:61.3,cash:12193.865,value:100368.225},
+            {date:"2016-11-17",symbol:"XLK",position:571,price:47.4,cash:12193.865,value:100528.105},
+            {date:"2016-11-17",symbol:"XLE",position:240,price:70.84,cash:12193.865,value:100408.105},
+            {date:"2016-11-17",symbol:"XLY",position:320,price:81.47,cash:3719.985,value:100616.625},
+            {date:"2016-11-18",symbol:"XLF",position:859,price:22.16,cash:3719.985,value:100616.625},
+            {date:"2016-11-18",symbol:"XLI",position:126,price:61.3,cash:3719.985,value:100616.625},
+            {date:"2016-11-18",symbol:"XLK",position:571,price:47.36,cash:3719.985,value:100593.785},
+            {date:"2016-11-18",symbol:"XLY",position:320,price:81.2,cash:3719.985,value:100507.385},
+            {date:"2016-11-18",symbol:"XLE",position:240,price:71.13,cash:3719.985,value:100576.985},
+            {date:"2016-11-21",symbol:"XLF",position:1233,price:22.26,cash:-4607.125,value:100661.015},
+            {date:"2016-11-21",symbol:"XLI",position:0,price:61.61,cash:3154.735,value:100699.075},
+            {date:"2016-11-21",symbol:"XLK",position:571,price:47.84,cash:3154.735,value:100973.155},
+            {date:"2016-11-21",symbol:"XLY",position:320,price:81.73,cash:3154.735,value:101142.755},
+            {date:"2016-11-21",symbol:"XLE",position:240,price:72.82,cash:3154.735,value:101548.355},
+            {date:"2016-11-22",symbol:"XLF",position:1233,price:22.25,cash:3154.735,value:101536.025},
+            {date:"2016-11-22",symbol:"XLK",position:571,price:47.99,cash:3154.735,value:101621.675},
+            {date:"2016-11-22",symbol:"XLY",position:320,price:82.7,cash:3154.735,value:101932.075},
+            {date:"2016-11-22",symbol:"XLE",position:240,price:72.78,cash:3154.735,value:101922.475},
+            {date:"2016-11-23",symbol:"XLF",position:1233,price:22.38,cash:3154.735,value:102082.765},
+            {date:"2016-11-23",symbol:"XLK",position:571,price:47.8,cash:3154.735,value:101974.275},
+            {date:"2016-11-23",symbol:"XLY",position:320,price:82.78,cash:3154.735,value:101999.875},
+            {date:"2016-11-23",symbol:"XLE",position:240,price:73.08,cash:3154.735,value:102071.875}
         ]);
     });
     it("max correl", function() {
@@ -298,25 +299,26 @@ describe("collect", function() {
           pad_leading: 11,
           begin: "2016-11-30",
           end: "2016-12-01",
-          columns: [
-              'symbol',
-              'DATE(ending) AS date',
+          variables: [
               'MAXCORREL(60,day.adj_close) AS cor',
               'CVAR(5, 60, day.adj_close) AS risk',
               'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
               'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
+              '-shares * price AS proceeds',
+              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission'
+          ],
+          columns: [
+              'symbol',
+              'DATE(ending) AS date',
               'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0)) AS shares',
               'PREV("position",0) + shares AS position',
               'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
-              '-shares * price AS proceeds',
-              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission',
               'ROUND(IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position),2) AS basis',
               'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission AS profit'
           ],
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
-        }).then(data=>data.map(o=>_.omit(o,'cor','risk','weight','target','proceeds','commission')))
-          .should.eventually.be.like([
+        }).should.eventually.be.like([
             {symbol:"XLF",date:"2016-11-30",shares:0,position:1233,price:22.49,basis:22.23,profit:320.385},
             {symbol:"XLK",date:"2016-11-30",shares:0,position:571,price:47.48,basis:46.61,profit:493.78},
             {symbol:"XLE",date:"2016-11-30",shares:0,position:240,price:74.41,basis:71.01,profit:813.87},

@@ -53,7 +53,10 @@ module.exports = function(quote) {
         expect(options).to.have.property('portfolio');
         expect(options).to.have.property('columns');
         var portfolio = getPortfolio(options.portfolio);
-        var formatColumns = getNeededColumns(_.flatten([options.columns]).join(','), options);
+        var columnNames = getColumnNames(options.columns, options);
+        var formatColumns = getNeededColumns(_.flatten([
+            options.columns, options.variables || []
+        ]).join(','), options);
         var retainColumns = getNeededColumns(options.retain, options);
         var precedenceColumns = getNeededColumns(options.precedence, options);
         var allColumns = _.uniq(_.compact(_.flatten([
@@ -68,6 +71,7 @@ module.exports = function(quote) {
         var criteria = getQuoteCriteria(options.retain, false, options).join(' AND ');
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
+                variables: '',
                 columns: allColumns,
                 retain: criteria,
                 criteria: getQuoteCriteria(options.criteria, true, options).join(' AND '),
@@ -83,7 +87,8 @@ module.exports = function(quote) {
             if (start <= 0) return collection;
             else return collection.slice(start);
         }).then(collection => collection.reduce((result, points) => {
-            result.push.apply(result, _.values(points).filter(_.isObject));
+            var objects = _.values(points).filter(_.isObject).map(o => _.pick(o, columnNames));
+            result.push.apply(result, objects);
             return result;
         }, []));
     }, {
@@ -107,12 +112,29 @@ function getPortfolio(portfolio) {
 }
 
 /**
+ * Returns the column names used
+ */
+function getColumnNames(columns, options) {
+    var columns = _.flatten([columns || 'symbol']).join(',');
+    var parser = createColumnParser(options);
+    return _.keys(parser.parseColumnsMap(columns));
+}
+
+/**
  * Returns the expressions that should be delegated to quote.js
  */
 function getNeededColumns(expr, options) {
     if (!expr) return [];
-    return _.uniq(_.flatten(_.values(Parser({
-        substitutions: _.flatten([options.columns]).join(','),
+    var parser = createColumnParser(options);
+    return _.uniq(_.flatten(_.values(parser.parseColumnsMap(expr)), true));
+}
+
+/**
+ * Creates a parser that normalizes the column expressions
+ */
+function createColumnParser(options) {
+    return Parser({
+        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
         constant(value) {
             return null;
         },
@@ -127,7 +149,7 @@ function getNeededColumns(expr, options) {
             else if (!order && !fn && !roll) return expr;
             else return _.flatten(_.compact(args), true);
         }
-    }).parseColumnsMap(expr)), true));
+    });
 }
 
 /**
@@ -136,7 +158,7 @@ function getNeededColumns(expr, options) {
 function getQuoteCriteria(expr, isCriteria, options) {
     if (!expr) return [];
     return _.compact(Parser({
-        substitutions: _.flatten([options.columns]).join(','),
+        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
         constant(value) {
             return _.isString(value) ? JSON.stringify(value) : value;
         },
@@ -162,7 +184,7 @@ function createParser(temporal, quote, dataset, cached, options) {
         return quoting(expr, name, args, temporal, quote, dataset, options);
     });
     return Parser({
-        substitutions: _.flatten([options.columns]).join(','),
+        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
         constant(value) {
             return positions => value;
         },
@@ -223,7 +245,7 @@ function collectDataset(dataset, temporal, parser, options) {
 function getPrecedence(expr, cached, options) {
     if (!expr) return [];
     else return _.values(Parser({
-        substitutions: _.flatten([options.columns]).join(','),
+        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
         constant(value) {
             return {};
         },
@@ -244,7 +266,10 @@ function getPrecedence(expr, cached, options) {
  * @returns a map of functions that can compute the column values for a given row.
  */
 function promiseColumns(parser, options) {
-    var columns = _.flatten([options.columns || 'symbol']).join(',');
+    var columns = _.flatten([
+        options.variables || [],
+        options.columns || 'symbol'
+    ]).join(',');
     var map = parser.parseColumnsMap(columns);
     return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
 }
