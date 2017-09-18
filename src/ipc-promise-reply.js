@@ -41,7 +41,7 @@ module.exports = function(process) {
             pending.onerror(error);
         });
     };
-    var queue = createQueue(onquit);
+    var queue = createQueue(onquit, process.pid);
     process.on('disconnect', () => {
         queue.close();
         onquit(Error("Disconnecting"));
@@ -142,7 +142,7 @@ process.on('SIGINT', () => {
     });
 });
 
-function createQueue(onquit) {
+function createQueue(onquit, pid) {
     var outstanding = {};
     var closed = false;
     var queue = {onquit: onquit, outstanding: outstanding};
@@ -159,9 +159,9 @@ function createQueue(onquit) {
                 } else {
                     var marked = _.filter(outstanding, 'marked');
                     var cmds = _.uniq(marked.map(pending => pending.cmd));
-                    if (!_.isEmpty(cmds)) logger.info("Still processing", cmds.join(' and '));
+                    if (!_.isEmpty(cmds)) logger.info("Still processing", cmds.join(' and '), "from process", pid);
                     _.reject(marked, 'logged').forEach(pending => {
-                        logger.debug("Waiting for", pending.cmd, pending.payload);
+                        logger.debug("Waiting on", pid, "for", pending.cmd, pending.payload);
                         pending.logged = true;
                     });
                     _.forEach(outstanding, pending => {
