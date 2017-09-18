@@ -35,6 +35,30 @@
         }
       }
     },
+    "BATS": {
+      "label": "BATS Global Markets",
+      "description": "In the United States Bats operates two stock exchanges, the BZX Exchange and the BYX Exchange (The Bats Exchanges), which as of 2012 accounted for about 10-12% of all U.S. equity trading on a daily basis.",
+      "afterHoursClosesAt": "20:00:00",
+      "marketClosesAt": "16:00:00",
+      "marketOpensAt": "09:30:00",
+      "premarketOpensAt": "04:00:00",
+      "currency": "USD",
+      "tz": "America/New_York",
+      "datasources": {
+        "google": {
+            "e": "BATS",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
+        "yahoo": {
+          "exchs": ["NYQ", "PCX"],
+          "marketLang": "en-US",
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
+        "iqfeed": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        }
+      }
+    },
     "NASDAQ": {
       "description": "NASDAQ is an American/Canadian stock exchange. It is the second-largest exchange in the world by market capitalization, behind only the New York Stock Exchange.",
       "label": "NASDAQ - All Markets",
