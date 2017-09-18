@@ -250,12 +250,12 @@ function day(yahoo, symbol, options) {
             open: parseCurrency(datum.Open, splits),
             high: parseCurrency(datum.High, splits),
             low: parseCurrency(datum.Low, splits),
-            close: parseCurrency(datum.Close, 1) || today.close,
+            close: parseCurrency(datum.Close, splits) || today.close,
             volume: parseFloat(datum.Volume) || 0,
             adj_close: Math.round((_.isEmpty(today) ?
-                parseCurrency(datum.Close, 1)/split - div :
+                parseCurrency(datum.Close, splits)/split - div :
                 today.adj_close + today.adj_close/today.close *
-                    (parseCurrency(datum.Close, 1)/split - today.close - div)
+                    (parseCurrency(datum.Close, splits)/split - today.close - div)
                 ) * 1000000) / 1000000 || today.adj_close
         })).filter(bar => bar.volume);
         return appendIntraday(bars, intraday, now, options);
