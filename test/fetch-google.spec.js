@@ -230,14 +230,15 @@ describe("fetch-google", function() {
             interval: 'day',
             symbol: 'XLF',
             google_symbol: 'NYSEARCA:XLF',
-            begin: moment.tz('2016-09-15', tz),
+            begin: moment.tz('2016-09-14', tz),
             end: moment.tz('2016-09-21', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
         }).should.eventually.be.like([
-            {ending:'2016-09-15T16:00:00-04:00',open:23.77,close:23.96,adj_close:19.36},
+            {ending:'2016-09-14T16:00:00-04:00',open:23.88,close:23.82,adj_close:19.22},
+            {ending:'2016-09-15T16:00:00-04:00',open:23.77,close:23.96,adj_close:19.3},
             {ending:'2016-09-16T16:00:00-04:00',open:23.75,close:23.62,adj_close:19.18},
             {ending:'2016-09-19T16:00:00-04:00',open:19.35,close:19.31,adj_close:19.31},
             {ending:'2016-09-20T16:00:00-04:00',open:19.45,close:19.32,adj_close:19.32},
@@ -306,7 +307,7 @@ describe("fetch-google", function() {
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
         }).should.eventually.be.like([
             {ending:'2010-12-31T16:00:00-05:00',open:112.37-2.17,close:125.75,adj_close:111.12},
-            {ending:'2011-12-30T16:00:00-05:00',open:126.71-2.60,close:125.5,adj_close:113.23},
+            {ending:'2011-12-30T16:00:00-05:00',open:126.71-2.60,close:126,adj_close:113.7},
             {ending:'2012-12-31T16:00:00-05:00',open:127.76-2.78,close:142.41,adj_close:131.32},
             {ending:'2013-12-31T16:00:00-05:00',open:145.11-2.87,close:184.69,adj_close:173.75},
             {ending:'2014-12-31T16:00:00-05:00',open:183.98-3.53,close:205.54,adj_close:197.15},
