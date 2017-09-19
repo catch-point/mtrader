@@ -214,8 +214,7 @@ function collectDataset(dataset, temporal, parser, options) {
     var precedenceColumns = getNeededColumns(options.precedence, options);
     var precedence = getPrecedence(options.precedence, precedenceColumns, options);
     return promiseColumns(parser, options)
-      .then(columns => promiseRetain(parser, options)
-      .then(retain => {
+      .then(columns => promiseRetain(parser, options.retain).then(retain => {
         return reduceInterval(dataset, temporal, (result, points) => {
             var positions = precedence.reduceRight((points, o) => {
                 var positions = o.by ? _.sortBy(points, o.by) : points;
@@ -277,8 +276,7 @@ function promiseColumns(parser, options) {
 /**
  * Returns a function that can determine if the security should be retained
  */
-function promiseRetain(parser, options) {
-    var expr = options.retain;
+function promiseRetain(parser, expr) {
     if (!expr) return Promise.resolve(_.constant(true));
     return Promise.resolve(parser.parse(expr));
 }

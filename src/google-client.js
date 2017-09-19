@@ -37,9 +37,9 @@ const promiseText = require('./promise-text.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 
-const historical = "http://www.google.com/finance/historical?q={symbol}&startdate={startdate}&enddate={enddate}&output=csv"
-const match = "https://www.google.com/finance/match?matchtype=matchall&q={symbol}";
-const info = "http://finance.google.com/finance/info?infotype=infoquoteall&q={symbols}";
+const historical = "http://finance.google.com/finance/historical?q={symbol}&startdate={startdate}&enddate={enddate}&output=csv"
+const match = "https://finance.google.com/finance/match?q={symbol}";
+const info = "https://finance.google.com/finance?output=json&q={symbols}";
 const getprices = "http://www.google.com/finance/getprices?q={symbol}&x={exchange}&i={interval}&p=1d&f=d,o,h,l,c,v&df=cpct";
 
 module.exports = function() {
@@ -116,7 +116,9 @@ function parseJSON(text) {
     try {
         return JSON.parse(text);
     } catch (e) {
-        return JSON.parse(text.replace('// [','['));
+        return JSON.parse(text.replace('// [','[').replace(/\\x\w+/g, encoding => {
+            return decodeURIComponent('%' + encoding.substring(2));
+        }));
     }
 }
 
