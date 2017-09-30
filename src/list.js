@@ -33,8 +33,9 @@ const assert = require('assert');
 const _ = require('underscore');
 
 var List = module.exports = function(array) {
-    this.sources = [];
-    if (arguments.length == 1 && _.isArray(array)) {
+    if (!arguments.length || _.isArray(array) && !array.length) {
+        this.sources = [];
+    } else if (arguments.length == 1 && _.isArray(array)) {
         this.sources = [{
             firstIndex: 0,
             lastIndex: array.length -1,
@@ -46,6 +47,7 @@ var List = module.exports = function(array) {
         array.sources.forEach(source => source.mutable = false);
         this.sources = array.sources.map(_.clone);
     } else if (arguments.length == 1 && _.isFinite(array) && array >= 0) {
+        this.sources = [];
         this.length = array;
     } else if (arguments.length) {
         var dest = List.of.apply(List, arguments);
@@ -60,15 +62,17 @@ List.from = function(arrayLike, mapFn, thisArg) {
     }
     var array = Array.isArray(arrayLike) ? arrayLike : Array.from(arrayLike);
     var dest = new List();
-    dest.sources = [{
-        firstIndex: 0,
-        lastIndex: array.length -1,
-        offset: 0,
-        array: array,
-        map: mapFn ? mapFn.bind(thisArg) : undefined,
-        mapOffset: 0,
-        mutable: false
-    }];
+    if (array.length > 0) {
+        dest.sources = [{
+            firstIndex: 0,
+            lastIndex: array.length -1,
+            offset: 0,
+            array: array,
+            map: mapFn ? mapFn.bind(thisArg) : undefined,
+            mapOffset: 0,
+            mutable: false
+        }];
+    }
     return dest;
 };
 
@@ -248,7 +252,7 @@ List.prototype = {
         this.sources.forEach(source => source.mutable = false);
         dest.sources = this.sources.map(_.clone);
         for (var i=0; i<arguments.length; i++) {
-            if (Array.isArray(arguments[i])) {
+            if (Array.isArray(arguments[i]) && arguments[i].length) {
                 var start = dest.length;
                 dest.sources.push({
                     firstIndex: start,
@@ -271,7 +275,7 @@ List.prototype = {
                         mutable: false
                     });
                 }, this);
-            } else {
+            } else if (!Array.isArray(arguments[i])) {
                 var last = _.last(dest.sources);
                 if (last && last.mutable) {
                     last.lastIndex++;

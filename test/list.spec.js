@@ -48,6 +48,7 @@ describe("list", function() {
             list.item(0, "one");
             ar[0].should.eql("one");
             new List([1]).item(0).should.eql(1);
+            new List([]).isEmpty().should.eql(true);
         });
         it("from list as copy", function() {
             var ar = [1,2,3];
@@ -76,6 +77,7 @@ describe("list", function() {
             list.item(0).should.eql("1");
             ar[0].should.eql(1);
             calls.should.eql(1);
+            List.from([]).isEmpty().should.eql(true);
         });
         it("from array references", function() {
             var a = [1,2,3];
@@ -91,6 +93,7 @@ describe("list", function() {
             var b = [4,5, [6,7, [8,9]]];
             var list = List.flatten([a, b]);
             list.length.should.eql(9);
+            List.flatten([]).isEmpty().should.eql(true);
         });
     });
     describe("item", function() {
@@ -283,6 +286,7 @@ describe("list", function() {
         list.length.should.eql(3);
         concat.toArray().should.eql([1,2,3,4,5,6,7,8,9]);
         concat.length.should.eql(9);
+        expect(new List().concat([],[1]).first()).to.eql(1);
     });
     it("map", function() {
         new List([1, 2, 3]).map(num => num * 2).toArray().should.eql([2, 4, 6]);
