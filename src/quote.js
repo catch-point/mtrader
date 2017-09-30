@@ -129,7 +129,6 @@ function quote(fetch, store, options) {
     var cached = _.mapObject(exprMap, _.keys);
     var intervals = periods.sort(_.keys(exprMap));
     var retain = parseCriteriaMap(options.retain, cached, intervals, options);
-    var criteria = parseCriteriaMap(options.criteria, cached, intervals, options);
     var name = options.exchange ?
         options.symbol + '.' + options.exchange : options.symbol;
     expect(intervals).not.to.be.empty;
@@ -140,7 +139,7 @@ function quote(fetch, store, options) {
         var quoteBars = fetchBars.bind(this, fetch, db);
         return inlinePadBegin(quoteBars, interval, options)
           .then(options => inlinePadEnd(quoteBars, interval, options))
-          .then(options => mergeBars(quoteBars, exprMap, retain, criteria, options));
+          .then(options => mergeBars(quoteBars, exprMap, retain, options));
     }).then(signals => formatColumns(signals, options));
 }
 
@@ -233,8 +232,7 @@ function createParser(cached, options) {
         expression(expr, name, args) {
             var fn = common(name, args, options) ||
                 lookback(name, args, options) ||
-                indicator(name, args, options) ||
-                name == 'LEADING' && leading(_.first(args));
+                indicator(name, args, options);
             if (!fn) throw Error("Unknown function: " + name);
             var interval =_.first(fn.intervals);
             if (!_.contains(cached[interval], expr)) return fn;
@@ -242,15 +240,6 @@ function createParser(cached, options) {
                 intervals: fn.intervals
             });
         }
-    });
-}
-
-function leading(arg) {
-    return _.extend(points => {
-        return arg(points.slice(0, 1));
-    }, {
-        intervals: arg.intervals,
-        warmUpLength: Infinity
     });
 }
 
@@ -294,9 +283,9 @@ function inlinePadEnd(quoteBars, interval, options) {
 
 /**
  * For each expression interval it reads the bars and evaluates the retain.
- * @returns the combined bars as an array of points
+ * @returns the combined bars as a list of points
  */
-function mergeBars(quoteBars, exprMap, retain, criteria, options) {
+function mergeBars(quoteBars, exprMap, retain, options) {
     var intervals = _.keys(exprMap);
     return intervals.reduceRight((promise, interval) => {
         return promise.then(signals => Promise.all(signals.map(signal => {
@@ -320,7 +309,7 @@ function mergeBars(quoteBars, exprMap, retain, criteria, options) {
                     return start;
                 }, intraday.length);
                 return intraday;
-            }).then(points => readSignals(points, entry, signal.exit, retain[interval], criteria[interval]));
+            }).then(points => readSignals(points, entry, signal.exit, retain[interval]));
         }))).then(signalsMap => {
             return signalsMap.reduce((result, signals) => {
                 while (result.length && signals.length && _.first(signals).points.first().ending <= result.last().points.last().ending) {
@@ -336,60 +325,44 @@ function mergeBars(quoteBars, exprMap, retain, criteria, options) {
             if (_.first(signals).points.length == 1) signals.shift();
             else _.first(signals).points = _.first(signals).points.slice(1);
         }
-        return signals;
+        return signals.reduce((points, signal) => {
+            return points.concat(signal.points);
+        }, new List());
     });
 }
 
 /**
  * Identifies the entry and exit points and returns an array of these signals
  */
-function readSignals(points, entry, exit, retain, criteria) {
+function readSignals(points, entry, exit, retain) {
     if (!points.length) return [];
     var check = interrupt();
     var start = points.sortedIndexOf(entry, 'ending');
     if (start > 0 && (start == points.length || entry.ending < points.item(start).ending))
         start--;
-    if (!retain && !criteria && exit) return [{
+    if (!retain && exit) return [{
         points: points.slice(start, points.length -1),
         exit: points.last()
     }];
-    else if (!retain && !criteria) return [{
+    else if (!retain) return [{
         points: points.slice(start)
     }];
     var e = 0;
     var signals = [];
     retain = retain || _.constant(true);
-    criteria = criteria || _.constant(true);
-    points.slice(start).reduce((position, point, i) => {
+    points.slice(start).reduce((active, point, i) => {
         check();
         var to = start + i;
-        var active = position && _.last(signals).leading;
         var keep = retain(points.slice(active ? e : to, to+1).toArray()) ||
-            position && e != to && retain(points.slice(to, to+1).toArray());
-        var hold = active && criteria(points.slice(active ? e : to, to+1).toArray());
-        var pass = hold || criteria(points.slice(to, to+1).toArray());
-        if (keep && pass) {
-            if (hold) { // extend
+            active && e != to && retain(points.slice(to, to+1).toArray());
+        if (keep) {
+            if (active) { // extend
                 _.last(signals).points = points.slice(start + e, start + i +1);
             } else { // reset
-                if (position) {
-                    _.last(signals).exit = point;
-                }
-                e = i;
-                signals.push({leading: point, points: new List([point])});
-            }
-        } else if (keep) {
-            // retain w/o leading
-            if (position && !_.last(signals).leading) { // extend
-                _.last(signals).points = points.slice(start + e, start + i +1);
-            } else { // reset
-                if (position) {
-                    _.last(signals).exit = point;
-                }
                 e = i;
                 signals.push({points: new List([point])});
             }
-        } else if (position) {
+        } else if (active) {
             _.last(signals).exit = point;
         }
         return keep;
@@ -520,11 +493,11 @@ function readBlocks(collection, blocks, options) {
 }
 
 /**
- * Converts array of signals into array of rows keyed by column names
+ * Converts list of points into array of rows keyed by column names
  */
-function formatColumns(signals, options) {
-    if (!signals.length) return [];
-    var fields = _.mapObject(_.pick(_.first(signals).points.first(), _.isObject), _.keys);
+function formatColumns(points, options) {
+    if (!points.length) return [];
+    var fields = _.mapObject(_.pick(points.first(), _.isObject), _.keys);
     var columns = options.columns ? _.flatten([options.columns]) :
         _.size(fields) == 1 ? _.first(_.map(fields, (keys, interval) => {
             return keys.filter(field => field.match(/^\w+$/)).map(field => {
@@ -538,14 +511,7 @@ function formatColumns(signals, options) {
         }), true);
     var map = createParser(fields, options).parseColumnsMap(columns.join(','));
     var depth = 0;
-    return signals.reduce((bars, signal) =>
-        signal.points.reduce((bars, point, i) => {
-            bars.push(_.mapObject(map, expr => {
-                if (!signal.leading) return expr([point]);
-                else return expr(signal.points.slice(0, i+1).toArray());
-            }));
-            return bars;
-        }, bars), []);
+    return points.map(point => _.mapObject(map, expr => expr([point]))).toArray();
 }
 
 /**

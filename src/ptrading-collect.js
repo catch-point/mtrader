@@ -59,7 +59,6 @@ function usage(command) {
         .option('--portfolio <list>', "Comma separated list of <symbol>.<exchange> to search")
         .option('--columns <list>', "Comma separated list of columns (such as day.close)")
         .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
-        .option('--criteria <expression>', "Conditional expression indicating a set of results with the same LEADING values")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
@@ -206,7 +205,6 @@ help(app, 'precedence', `
     help lookback-functions  
     help indicator-functions  
     help rolling-functions  
-    help LEADING  
     help DESC  
     help ASC  
 `);
