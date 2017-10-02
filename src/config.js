@@ -196,6 +196,20 @@ config.unset = function(name) {
         writeConfigFile(filename, json);
 };
 
+config.add = function(name, value) {
+    var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
+    assign(session, jpath, value);
+};
+
+config.remove = function(name) {
+    var jpath = _.isArray(name) ? name : name.split('.');
+    assign(session, jpath, undefined);
+    var filename = config.configFilename();
+    var json = loadConfigFile(filename);
+    if (unset(json, jpath))
+        writeConfigFile(filename, json);
+};
+
 config.addListener = function(fn) {
     listeners.push(fn);
 };
@@ -274,7 +288,11 @@ function assign(obj, path, value) {
         try {
             return obj[prop] != value;
         } finally {
-            obj[prop] = value;
+            if (_.isUndefined(value)) {
+                delete obj[prop];
+            } else {
+                obj[prop] = value;
+            }
         }
     } else if (_.isObject(obj[prop])) {
         return assign(obj[prop], _.rest(path), value);

@@ -78,8 +78,11 @@ var functions = module.exports.functions = {
         return quote({
             symbol: symbol,
             exchange: exchange,
-            variables: '',
-            columns: temporal + ',' + expression,
+            variables: {},
+            columns: {
+                [temporal]: temporal,
+                [expression]: expression
+            },
             pad_begin: 1,
             begin: begin,
             end: end
@@ -115,8 +118,11 @@ var functions = module.exports.functions = {
             return _.defaults({
                 symbol: first.symbol,
                 exchange: first.exchange,
-                variables: '',
-                columns: temporal + ',' + arg,
+                variables: {},
+                columns: {
+                    [temporal]: temporal,
+                    [arg]: arg
+                },
                 pad_begin: n,
                 begin: first.ending,
                 end: last.ending,

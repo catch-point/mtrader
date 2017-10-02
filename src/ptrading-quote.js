@@ -184,14 +184,13 @@ help(app, 'pad_end', `
   Sets the number of additional rows to include after the end date (might be less)
 `);
 help(app, 'columns', `
-  Usage: set columns [:expression[ AS ":label"],..]  
+  Usage: add columns :label [:expression]
+  Usage: remove columns :label
 
-  Comma separated list of expressions and their labels. If a word is used instead
-  of a quoted label, the word can be used in other columns or expressions to refer
-  back to the expression of the column.
+  Adds or removes a column to the output computing the value of columns using :expression.
 
     :label
-      The quoted string used as the output column name or a variable name
+      The string used as the output column name or a variable name
 
   See also:
     help expression  

@@ -72,12 +72,12 @@ describe("collect", function() {
           pad_begin: 10,
           begin: "2017-01-13",
           end: "2017-01-14",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "close"',
-              'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "change"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              close: 'day.close',
+              change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
+          },
           retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0, "symbol")<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
@@ -99,12 +99,12 @@ describe("collect", function() {
           portfolio: 'XLE.ARCA,XLF.ARCA,XLK.ARCA,XLV.ARCA,XLY.ARCA',
           begin: "2016-12-01",
           end: "2016-12-02",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "Price"',
-              'MIN(0.5/CVAR(5, 60, day.close), 100) AS "Weight"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              Price: 'day.close',
+              Weight: 'MIN(0.5/CVAR(5, 60, day.close), 100)'
+          },
           retain: 'SUMPREC(0, "Weight")+Weight <= 100',
           precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
         }).should.eventually.be.like([
@@ -120,25 +120,25 @@ describe("collect", function() {
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
           begin: "2016-11-14",
           end: "2016-11-25",
-          variables: [
-              'MAXCORREL(60,day.adj_close) AS cor',
-              'CVAR(5, 60, day.adj_close) AS risk',
-              'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
-              'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
-              'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0)) AS shares',
-              '-shares * price AS proceeds',
-              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission',
-              'IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position) AS basis',
-              '(price - PREV("price",0)) * PREV("position",0) AS mtm'
-          ],
-          columns: [
-              'DATE(ending) AS date',
-              'symbol',
-              'PREV("position",0) + shares AS position',
-              'day.close + 0.02 * SIGN(shares) AS price', // includes slippage
-              'PREC("cash",100000)+proceeds-commission AS cash',
-              'PREC("value",100000)+mtm-commission AS value'
-          ],
+          variables: {
+              cor: 'MAXCORREL(60,day.adj_close)',
+              risk: 'CVAR(5, 60, day.adj_close)',
+              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
+              shares: 'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0))',
+              proceeds: '-shares * price',
+              commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))',
+              basis: 'IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position)',
+              mtm: '(price - PREV("price",0)) * PREV("position",0)'
+          },
+          columns: {
+              date: 'DATE(ending)',
+              symbol: 'symbol',
+              position: 'PREV("position",0) + shares',
+              price: 'day.close + 0.02 * SIGN(shares)', // includes slippage
+              cash: 'PREC("cash",100000)+proceeds-commission',
+              value: 'PREC("value",100000)+mtm-commission'
+          },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
         }).should.eventually.be.like([
@@ -186,12 +186,12 @@ describe("collect", function() {
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLU.ARCA,XLV.ARCA,XLY.ARCA',
           begin: "2016-11-14",
           end: "2016-12-01",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "Price"',
-              'ROUND(MIN(0.5/CVAR(5, 60, day.adj_close), 100),2) AS "Weight"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              Price: 'day.close',
+              Weight: 'ROUND(MIN(0.5/CVAR(5, 60, day.adj_close), 100),2)'
+          },
           retain: [
             'MAXCORREL(60,day.adj_close)<0.75',
             'SUMPREC(0, "Weight")+Weight<=100'
@@ -250,15 +250,15 @@ describe("collect", function() {
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
           begin: "2016-11-14",
           end: "2016-11-22",
-          columns: [
-              'symbol',
-              'DATE(ending) AS date',
-              'day.close AS price',
-              'ROUND(MAXCORREL(60,day.adj_close),2) AS cor',
-              'ROUND(CVAR(5, 60, day.adj_close),3) AS risk',
-              'IF(cor<0.75 AND SUMPREC(0,"target")<=95, MIN(ROUND(0.5/risk,2),100-SUMPREC(0,"target")), 0) AS target',
-              'ROUND((target + SUMPREV(2,"target"))/3,2) AS weight'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              price: 'day.close',
+              cor: 'ROUND(MAXCORREL(60,day.adj_close),2)',
+              risk: 'ROUND(CVAR(5, 60, day.adj_close),3)',
+              target: 'IF(cor<0.75 AND SUMPREC(0,"target")<=95, MIN(ROUND(0.5/risk,2),100-SUMPREC(0,"target")), 0)',
+              weight: 'ROUND((target + SUMPREV(2,"target"))/3,2)'
+          },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'weight OR PREV("weight")'
         }).should.eventually.be.like([
@@ -299,23 +299,23 @@ describe("collect", function() {
           pad_leading: 11,
           begin: "2016-11-30",
           end: "2016-12-01",
-          variables: [
-              'MAXCORREL(60,day.adj_close) AS cor',
-              'CVAR(5, 60, day.adj_close) AS risk',
-              'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
-              'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
-              '-shares * price AS proceeds',
-              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission'
-          ],
-          columns: [
-              'symbol',
-              'DATE(ending) AS date',
-              'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0)) AS shares',
-              'PREV("position",0) + shares AS position',
-              'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
-              'ROUND(IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position),2) AS basis',
-              'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission AS profit'
-          ],
+          variables: {
+              cor: 'MAXCORREL(60,day.adj_close)',
+              risk: 'CVAR(5, 60, day.adj_close)',
+              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
+              proceeds: '-shares * price',
+              commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'
+          },
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              shares: 'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0))',
+              position: 'PREV("position",0) + shares',
+              price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
+              basis: 'ROUND(IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position),2)',
+              profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
+          },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
         }).should.eventually.be.like([
@@ -330,11 +330,11 @@ describe("collect", function() {
           portfolio: 'SPY.ARCA,XIC.TSX',
           begin: "2016-01-01",
           end: "2016-02-01",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "Price"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              Price: 'day.close'
+          },
           // USD.CAD day.ending is an hour after SPY.ARCA day.ending, so
           // the previous USD.CAD day.close is used
           retain: 'exchange=IF(USD.CAD(CVAR(5,60,day.close))<0.01,"ARCA","TSX")'
@@ -365,11 +365,11 @@ describe("collect", function() {
           portfolio: 'SPY.ARCA,XIC.TSX',
           begin: "2016-01-01",
           end: "2016-02-01",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "Price"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              Price: 'day.close'
+          },
           retain: 'exchange=IF(USD.CAD(TOD(CVAR(5,60,m60.close)))<0.01,"ARCA","TSX")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
@@ -396,18 +396,18 @@ describe("collect", function() {
     it("should inline criteria variables", function() {
         return collect({
             portfolio: "USD.CAD",
-            variables: [
-                'povo<50 AND (povo<18 OR PREV("open")) AS open',
-                'open AND PREV("open") AND PREV("entry") OR close AS entry'
-            ],
-            columns: [
-                "DATE(ending) AS date",
-                "day.close AS close",
-                "CHANGE(close,OFFSET(1,close)) AS change",
-                "ROUND(day.POVO(20)) AS povo",
-                "IF(open,100000,0) AS position",
-                "ROUND((close-entry)/entry*position,2) AS profit"
-            ],
+            variables: {
+                open: 'povo<50 AND (povo<18 OR PREV("open"))',
+                entry: 'open AND PREV("open") AND PREV("entry") OR close'
+            },
+            columns: {
+                date: "DATE(ending)",
+                close: "day.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                position: "IF(open,100000,0)",
+                profit: "ROUND((close-entry)/entry*position,2)"
+            },
             begin: '2014-02-10',
             end: '2014-02-22'
         }).should.eventually.be.like([
@@ -426,14 +426,14 @@ describe("collect", function() {
     it("should filter out most results using leading retain", function() {
         return collect({
             portfolio: "USD.CAD",
-            variables: [
-                'IF ((HOUR(m60.ending)=12 OR PREV("open")=OFFSET(1,m30.ending)) AND m30.close>=OFFSET(1,m30.close),m30.ending) AS open'
-            ],
-            columns: [
-                'DATE(m30.ending) AS "Date"',
-                'TIME(m30.ending) AS "Time"',
-                'm30.close AS "Price"'
-            ],
+            variables: {
+                open: 'IF ((HOUR(m60.ending)=12 OR PREV("open")=OFFSET(1,m30.ending)) AND m30.close>=OFFSET(1,m30.close),m30.ending)'
+            },
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close'
+            },
             retain: [
                 'DATE(month.ending) = DATE(day.ending)',
                 'HOUR(m60.ending) >= 12',
@@ -470,15 +470,15 @@ describe("collect", function() {
     it("should identify results using leading criteria", function() {
         return collect({
             portfolio: "USD.CAD",
-            variables: [
-                'IF(Price>=OFFSET(1,Price),IF(PREV("entryAt"),PREV("entryAt"), IF(HOUR(m60.ending)=12, m30.ending))) AS entryAt'
-            ],
-            columns: [
-                'DATE(m30.ending) AS Date',
-                'TIME(m30.ending) AS Time',
-                'm30.close AS Price',
-                'IF(entryAt<m30.ending, 100, 0) AS position'
-            ],
+            variables: {
+                entryAt: 'IF(Price>=OFFSET(1,Price),IF(PREV("entryAt"),PREV("entryAt"), IF(HOUR(m60.ending)=12, m30.ending)))'
+            },
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                position: 'IF(entryAt<m30.ending, 100, 0)'
+           },
             retain: [
                 'DATE(month.ending) = DATE(day.ending)'
             ].join(' and '),
@@ -501,18 +501,18 @@ describe("collect", function() {
     it("should use LEADING to meansure change", function() {
         return collect({
             portfolio: "USD.CAD",
-            variables: [
-                'povo<50 AND (povo<15 OR PREV("open")) AS open',
-                'open AND PREV("open") AND PREV("entry") OR close AS entry'
-            ],
-            columns: [
-                "DATE(ending) AS date",
-                "day.close AS close",
-                "CHANGE(close,OFFSET(1,close)) AS change",
-                "ROUND(day.POVO(20)) AS povo",
-                "IF(open,100000,0) AS position",
-                "ROUND((close-entry)/entry*position,2) AS profit"
-            ],
+            variables: {
+                open: 'povo<50 AND (povo<15 OR PREV("open"))',
+                entry: 'open AND PREV("open") AND PREV("entry") OR close'
+            },
+            columns: {
+                date: "DATE(ending)",
+                close: "day.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                position: "IF(open,100000,0)",
+                profit: "ROUND((close-entry)/entry*position,2)"
+            },
             begin: '2014-02-10',
             end: '2014-02-22'
         }).should.eventually.be.like([
@@ -531,19 +531,19 @@ describe("collect", function() {
     it("should use LEADING to meansure change", function() {
         return collect({
             portfolio: "USD.CAD",
-            variables: [
-                'povo<50 AND (povo<15 OR PREV("open")) AS open',
-                'open AND PREV("open") AND PREV("entry") OR close AS entry'
-            ],
-            columns: [
-                "DATE(ending) AS date",
-                "HOUR(ending) AS hour",
-                "m240.close AS close",
-                "CHANGE(close,OFFSET(1,close)) AS change",
-                "ROUND(day.POVO(20)) AS povo",
-                "IF(open,100000,0) AS position",
-                "ROUND((close-entry)/entry*100000,2) AS profit"
-            ],
+            variables: {
+                open: 'povo<50 AND (povo<15 OR PREV("open"))',
+                entry: 'open AND PREV("open") AND PREV("entry") OR close'
+            },
+            columns: {
+                date: "DATE(ending)",
+                hour: "HOUR(ending)",
+                close: "m240.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                position: "IF(open,100000,0)",
+                profit: "ROUND((close-entry)/entry*100000,2)"
+            },
             begin: '2014-02-12',
             end: '2014-02-21'
         }).should.eventually.be.like([
@@ -596,19 +596,19 @@ describe("collect", function() {
     it("should reset LEADING at the same point", function() {
         return collect({
             portfolio: "USD.CAD",
-            variables: [
-                'povo<85 AND (povo<15 OR PREV("uptrend")) AS uptrend',
-                'povo>15 AND (povo>85 OR PREV("downtrend")) AS downtrend',
-                '(uptrend AND PREV("uptrend") OR downtrend AND PREV("downtrend")) AND PREV("entry") OR close AS entry'
-            ],
-            columns: [
-                "DATE(ending) AS date",
-                "day.close AS close",
-                "CHANGE(close,OFFSET(1,close)) AS change",
-                "ROUND(day.POVO(20)) AS povo",
-                "IF(uptrend,100000,downtrend,-100000,0) AS position",
-                "ROUND((close-entry)/entry*position,2) AS profit",
-            ],
+            variables: {
+                uptrend: 'povo<85 AND (povo<15 OR PREV("uptrend"))',
+                downtrend: 'povo>15 AND (povo>85 OR PREV("downtrend"))',
+                entry: '(uptrend AND PREV("uptrend") OR downtrend AND PREV("downtrend")) AND PREV("entry") OR close'
+            },
+            columns: {
+                date: "DATE(ending)",
+                close: "day.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                position: "IF(uptrend,100000,downtrend,-100000,0)",
+                profit: "ROUND((close-entry)/entry*position,2)",
+            },
             begin: '2014-01-30',
             end: '2014-03-07'
         }).should.eventually.be.like([

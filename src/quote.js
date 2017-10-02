@@ -149,13 +149,13 @@ function quote(fetch, store, options) {
  */
 function parseWarmUpMap(options) {
     var exprs = _.compact(_.flatten([
-        options.columns, options.variables, options.criteria, options.retain
-    ])).join(',');
+        _.values(options.columns), _.values(options.variables), options.criteria, options.retain
+    ]));
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
     var p = createParser({}, options);
     var parser = Parser({
-        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
+        substitutions: _.defaults({}, options.variables, options.columns),
         constant(value) {
             return {warmUpLength: 0};
         },
@@ -176,7 +176,7 @@ function parseWarmUpMap(options) {
             return {[_.first(fn.intervals)]: {[expr]: fn}, warmUpLength: fn.warmUpLength};
         }
     });
-    var values = _.values(_.mapObject(parser.parseColumnsMap(exprs), o => _.omit(o, 'warmUpLength')));
+    var values = parser.parse(exprs).map(o => _.omit(o, 'warmUpLength'));
     var intervals = periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
     return _.object(intervals, intervals.map(interval => {
         return _.extend.apply(_, _.compact(_.pluck(values, interval)));
@@ -211,7 +211,7 @@ function parseCriteriaMap(criteria, cached, intervals, options) {
  */
 function createParser(cached, options) {
     return Parser({
-        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
+        substitutions: _.defaults({}, options.variables, options.columns),
         constant(value) {
             return () => value;
         },
@@ -498,19 +498,17 @@ function readBlocks(collection, blocks, options) {
 function formatColumns(points, options) {
     if (!points.length) return [];
     var fields = _.mapObject(_.pick(points.first(), _.isObject), _.keys);
-    var columns = options.columns ? _.flatten([options.columns]) :
-        _.size(fields) == 1 ? _.first(_.map(fields, (keys, interval) => {
-            return keys.filter(field => field.match(/^\w+$/)).map(field => {
-                return interval + '.' + field + ' AS "' + field + '"';
-            });
-        })) :
-        _.flatten(_.map(fields, (keys, interval) => {
-            return keys.filter(field => field.match(/^\w+$/)).map(field => {
-                return interval + '.' + field;
-            });
-        }), true);
-    var map = createParser(fields, options).parseColumnsMap(columns.join(','));
-    var depth = 0;
+    var fieldCols = _.mapObject(fields, (fields, interval) => {
+        var keys = fields.filter(field => field.match(/^\w+$/));
+        var values = keys.map(field => interval + '.' + field);
+        return _.object(keys, values);
+    }); // {interval: {field: "$interval.$field"}}
+    var columns = options.columns ? options.columns :
+        _.size(fields) == 1 ? _.first(_.values(fieldCols)) :
+        _.reduce(fieldCols, (map, fieldCols) => {
+            return _.defaults(map, _.object(_.values(fieldCols), _.values(fieldCols)));
+        }, {});
+    var map = createParser(fields, options).parse(columns);
     return points.map(point => _.mapObject(map, expr => expr([point]))).toArray();
 }
 

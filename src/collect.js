@@ -53,17 +53,18 @@ module.exports = function(quote) {
         expect(options).to.have.property('portfolio');
         expect(options).to.have.property('columns');
         var portfolio = getPortfolio(options.portfolio);
-        var columnNames = getColumnNames(options.columns, options);
-        var formatColumns = getNeededColumns(_.flatten([
-            options.columns, options.variables || []
-        ]).join(','), options);
-        var retainColumns = getNeededColumns(options.retain, options);
-        var precedenceColumns = getNeededColumns(options.precedence, options);
+        var columnNames = _.keys(options.columns);
+        var colParser = createColumnParser(options);
+        var rollingColumns = colParser.parse(_.values(options.variables));
+        var formatColumns = colParser.parse(_.values(options.columns));
+        var retainColumns = colParser.parseCriteriaList(options.retain || []);
+        var precedenceColumns = colParser.parseCriteriaList(options.precedence || []);
         var allColumns = _.uniq(_.compact(_.flatten([
             'symbol',
             'exchange',
             'ending',
             temporal,
+            rollingColumns,
             formatColumns,
             retainColumns,
             precedenceColumns
@@ -71,8 +72,8 @@ module.exports = function(quote) {
         var criteria = getQuoteCriteria(options.retain, options).join(' AND ');
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
-                variables: '',
-                columns: allColumns,
+                variables: {},
+                columns: _.object(allColumns, allColumns),
                 retain: criteria,
                 pad_leading: 0,
                 pad_begin: (options.pad_begin || 0) + (options.pad_leading || 0)
@@ -111,29 +112,11 @@ function getPortfolio(portfolio) {
 }
 
 /**
- * Returns the column names used
- */
-function getColumnNames(columns, options) {
-    var columns = _.flatten([columns || 'symbol']).join(',');
-    var parser = createColumnParser(options);
-    return _.keys(parser.parseColumnsMap(columns));
-}
-
-/**
- * Returns the expressions that should be delegated to quote.js
- */
-function getNeededColumns(expr, options) {
-    if (!expr) return [];
-    var parser = createColumnParser(options);
-    return _.uniq(_.flatten(_.values(parser.parseColumnsMap(expr)), true));
-}
-
-/**
  * Creates a parser that normalizes the column expressions
  */
 function createColumnParser(options) {
     return Parser({
-        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
+        substitutions: _.defaults({}, options.variables, options.columns),
         constant(value) {
             return null;
         },
@@ -157,7 +140,7 @@ function createColumnParser(options) {
 function getQuoteCriteria(expr, options) {
     if (!expr) return [];
     return _.compact(Parser({
-        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
+        substitutions: _.defaults({}, options.variables, options.columns),
         constant(value) {
             return _.isString(value) ? JSON.stringify(value) : value;
         },
@@ -182,7 +165,7 @@ function createParser(temporal, quote, dataset, cached, options) {
         return quoting(expr, name, args, temporal, quote, dataset, options);
     });
     return Parser({
-        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
+        substitutions: _.defaults({}, options.variables, options.columns),
         constant(value) {
             return positions => value;
         },
@@ -209,7 +192,7 @@ function createParser(temporal, quote, dataset, cached, options) {
  * Combines the quote.js results into a single array containing retained securities.
  */
 function collectDataset(dataset, temporal, parser, options) {
-    var precedenceColumns = getNeededColumns(options.precedence, options);
+    var precedenceColumns = _.flatten(createColumnParser(options).parseCriteriaList(options.precedence||[]));
     var precedence = getPrecedence(options.precedence, precedenceColumns, options);
     return promiseColumns(parser, options)
       .then(columns => promiseRetain(parser, options.retain).then(retain => {
@@ -241,8 +224,8 @@ function collectDataset(dataset, temporal, parser, options) {
  */
 function getPrecedence(expr, cached, options) {
     if (!expr) return [];
-    else return _.values(Parser({
-        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
+    else return Parser({
+        substitutions: _.defaults({}, options.variables, options.columns),
         constant(value) {
             return {};
         },
@@ -256,18 +239,14 @@ function getPrecedence(expr, cached, options) {
             else if (!rolling.has(name) && !quoting.has(name)) return {};
             else throw Error("Aggregate functions cannot be used here: " + expr);
         }
-    }).parseColumnsMap(expr));
+    }).parseCriteriaList(expr);
 }
 
 /**
  * @returns a map of functions that can compute the column values for a given row.
  */
 function promiseColumns(parser, options) {
-    var columns = _.flatten([
-        options.variables || [],
-        options.columns || 'symbol'
-    ]).join(',');
-    var map = parser.parseColumnsMap(columns);
+    var map = parser.parse(_.defaults({}, options.variables, options.columns));
     return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
 }
 

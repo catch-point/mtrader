@@ -67,7 +67,7 @@ describe("quote", function() {
     });
     it("should return daily", function() {
         return quote({
-            columns: 'day.ending AS "ending"',
+            columns: {ending: 'day.ending'},
             symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
@@ -98,7 +98,7 @@ describe("quote", function() {
     });
     it("should return weekly", function() {
         return quote({
-            columns: 'week.ending AS "ending"',
+            columns: {ending: 'week.ending'},
             symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2014-01-06', tz),
@@ -112,7 +112,7 @@ describe("quote", function() {
     });
     it("should return monthly", function() {
         return quote({
-            columns: 'month.ending AS "ending"',
+            columns: {ending:'month.ending'},
             symbol: 'AABA',
             exchange: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
@@ -211,12 +211,12 @@ describe("quote", function() {
     it("should update partial blocks", function() {
         config('files.dirname', path.resolve(__dirname, 'partial'));
         return quote({
-            columns: [
-                'DATE(day.ending) AS "Date"',
-                'day.close AS "Close"',
-                '(day.close - OFFSET(1, day.close)) *100 / day.close AS "Change"',
-                'day.incomplete AS "incomplete"'
-            ],
+            columns: {
+                Date: 'DATE(day.ending)',
+                Close: 'day.close',
+                Change: '(day.close - OFFSET(1, day.close)) *100 / day.close',
+                incomplete: 'day.incomplete'
+            },
             symbol: 'IBM',
             exchange: 'NYSE',
             begin: moment.tz('2009-12-01', tz),
@@ -227,11 +227,11 @@ describe("quote", function() {
         }).then(() => {
             config('files.dirname', path.resolve(__dirname, 'var'));
             return quote({
-                columns: [
-                    'DATE(day.ending) AS "Date"',
-                    'day.close AS "Close"',
-                    '(day.close - OFFSET(1, day.close)) *100 / OFFSET(1, day.close) AS "Change"'
-                ],
+                columns: {
+                    Date: 'DATE(day.ending)',
+                    Close: 'day.close',
+                    Change: '(day.close - OFFSET(1, day.close)) *100 / OFFSET(1, day.close)'
+                },
                 symbol: 'IBM',
                 exchange: 'NYSE',
                 begin: moment.tz('2009-12-01', tz),
@@ -304,11 +304,11 @@ describe("quote", function() {
     it("should fix incompatible partial blocks", function() {
         config('files.dirname', path.resolve(__dirname, 'partial'));
         return quote({
-            columns: [
-                'DATE(day.ending) AS "Date"',
-                'day.close AS "Close"',
-                'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "Change"'
-            ],
+            columns: {
+                Date: 'DATE(day.ending)',
+                Close: 'day.close',
+                Change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
+            },
             symbol: 'DIS',
             exchange: 'NYSE',
             begin: moment.tz('2016-12-01', tz),
@@ -320,11 +320,11 @@ describe("quote", function() {
         }).then(() => {
             config('files.dirname', path.resolve(__dirname, 'var'));
             return quote({
-                columns: [
-                    'DATE(day.ending) AS "Date"',
-                    'day.close AS "Close"',
-                    'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "Change"'
-                ],
+                columns: {
+                    Date: 'DATE(day.ending)',
+                    Close: 'day.close',
+                    Change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
+                },
                 symbol: 'DIS',
                 exchange: 'NYSE',
                 begin: moment.tz('2016-12-01', tz),
@@ -398,7 +398,13 @@ describe("quote", function() {
             exchange: 'NYSE',
             begin: moment.tz('2010-01-04', tz),
             end: moment.tz('2010-01-30', tz),
-            columns: 'symbol, exchange, DATE(ending) AS "Date",day.close AS "Close",(day.close - OFFSET(1, day.close))*100/OFFSET(1,day.close) AS "Change"'
+            columns: {
+                symbol: 'symbol',
+                exchange: 'exchange',
+                Date: 'DATE(ending)',
+                Close: 'day.close',
+                Change: '(day.close - OFFSET(1, day.close))*100/OFFSET(1,day.close)'
+            }
         }).should.eventually.be.like([
             {symbol:'IBM',exchange:'NYSE',Date:'2010-01-04',Close:132.45,Change:1.1841},
             {symbol:'IBM',exchange:'NYSE',Date:'2010-01-05',Close:130.85,Change:-1.2080},
@@ -423,12 +429,12 @@ describe("quote", function() {
     });
     it("should combine intervals", function() {
         return quote({
-            columns: [
-                'DATE(m30.ending) AS "Date"',
-                'TIME(m30.ending) AS "Time"',
-                'm30.close AS "Price"',
-                '(m30.close - day.close)*100/day.close AS "Change"'
-            ],
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                Change: '(m30.close - day.close)*100/day.close'
+            },
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -457,12 +463,12 @@ describe("quote", function() {
     });
     it("should combine intervals conditionally", function() {
         return quote({
-            columns: [
-                'DATE(m30.ending) AS "Date"',
-                'TIME(m30.ending) AS "Time"',
-                'm30.close AS "Price"',
-                'CHANGE(m30.close, IF(TIME(day.ending)=TIME(m30.ending),OFFSET(1,day.close),day.close)) AS "Change"'
-            ],
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                Change: 'CHANGE(m30.close, IF(TIME(day.ending)=TIME(m30.ending),OFFSET(1,day.close),day.close))'
+            },
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -491,12 +497,12 @@ describe("quote", function() {
     });
     it("should compute YTD", function() {
         return quote({
-            columns: [
-                'DATE(m30.ending) AS "Date"',
-                'TIME(m30.ending) AS "Time"',
-                'm30.close AS "Price"',
-                '(m30.close - year.close)*100/year.close AS "YTD"'
-            ],
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                YTD: '(m30.close - year.close)*100/year.close'
+            },
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -525,13 +531,13 @@ describe("quote", function() {
     });
     it("should detect circular reference", function() {
         return quote({
-            columns: [
-                'DATE(m30.ending) AS Date',
-                'TIME(m30.ending) AS Time',
-                'm30.close AS Price',
-                'CHANGE(Price, Another) AS Change',
-                'day.close * (1 + Change) AS Another'
-            ],
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                Change: 'CHANGE(Price, Another)',
+                Another: 'day.close * (1 + Change)'
+            },
             retain: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
@@ -541,12 +547,12 @@ describe("quote", function() {
     });
     it("should filter out results", function() {
         return quote({
-            columns: [
-                'DATE(m30.ending) AS "Date"',
-                'TIME(m30.ending) AS "Time"',
-                'm30.close AS "Price"',
-                '(m30.close - day.close)*100/day.close AS "Change"'
-            ],
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                Change: '(m30.close - day.close)*100/day.close'
+            },
             retain: 'm30.close > OFFSET(1, m30.close)',
             symbol: 'USD',
             exchange: 'CAD',
@@ -563,12 +569,12 @@ describe("quote", function() {
     });
     it("should filter out results using variables", function() {
         return quote({
-            columns: [
-                'DATE(m30.ending) AS Date',
-                'TIME(m30.ending) AS Time',
-                'm30.close AS Price',
-                'CHANGE(Price, day.close) AS Change'
-            ],
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                Change: 'CHANGE(Price, day.close)'
+            },
             retain: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
@@ -585,11 +591,11 @@ describe("quote", function() {
     });
     it("should filter out most results", function() {
         return quote({
-            columns: [
-                'DATE(m30.ending) AS "Date"',
-                'TIME(m30.ending) AS "Time"',
-                'm30.close AS "Price"'
-            ],
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close'
+            },
             retain: 'DATE(month.ending) = DATE(day.ending) and HOUR(m30.ending) = 12',
             symbol: 'USD',
             exchange: 'CAD',
@@ -612,13 +618,13 @@ describe("quote", function() {
     });
     it("should lookback to multiple blocks", function() {
         return quote({
-            columns: [
-                'DATE(m240.ending) AS "Date"',
-                'TIME(m240.ending) AS "Time"',
-                'm240.close AS "Price"',
-                'OFFSET(120, m240.close) AS "M1"',
-                'OFFSET(240, m240.close) AS "M2"'
-            ],
+            columns: {
+                Date: 'DATE(m240.ending)',
+                Time: 'TIME(m240.ending)',
+                Price: 'm240.close',
+                M1: 'OFFSET(120, m240.close)',
+                M2: 'OFFSET(240, m240.close)'
+            },
             symbol: 'USD',
             exchange: 'CAD',
             begin: '2016-01-15',
@@ -635,14 +641,14 @@ describe("quote", function() {
     it("should lookback to multiple partial blocks", function() {
         config('files.dirname', path.resolve(__dirname, 'partial'));
         return quote({ // loads partial month and evals
-            columns: [
-                'DATE(m240.ending) AS "Date"',
-                'TIME(m240.ending) AS "Time"',
-                'm240.close AS "Price"',
-                'OFFSET(120, m240.close) AS "M1"',
-                'OFFSET(240, m240.close) AS "M2"',
-                'm240.incomplete AS "incomplete"'
-            ],
+            columns: {
+                Date: 'DATE(m240.ending)',
+                Time: 'TIME(m240.ending)',
+                Price: 'm240.close',
+                M1: 'OFFSET(120, m240.close)',
+                M2: 'OFFSET(240, m240.close)',
+                incomplete: 'm240.incomplete'
+            },
             symbol: 'USD',
             exchange: 'CAD',
             begin: '2016-02-15',
@@ -653,11 +659,11 @@ describe("quote", function() {
         }).then(partial => {
             config('files.dirname', path.resolve(__dirname, 'var'));
             return quote({ // loads rest of the month and computes prior expressions
-                columns: [
-                    'DATE(m240.ending) AS "Date"',
-                    'TIME(m240.ending) AS "Time"',
-                    'm240.close AS "Price"'
-                ],
+                columns: {
+                    Date: 'DATE(m240.ending)',
+                    Time: 'TIME(m240.ending)',
+                    Price: 'm240.close'
+                },
                 symbol: 'USD',
                 exchange: 'CAD',
                 begin: '2016-02-16',
@@ -665,13 +671,13 @@ describe("quote", function() {
             });
         }).then(complete => {
             return quote({ // should already have computed prior expressions in month
-                columns: [
-                    'DATE(m240.ending) AS "Date"',
-                    'TIME(m240.ending) AS "Time"',
-                    'm240.close AS "Price"',
-                    'OFFSET(120, m240.close) AS "M1"',
-                    'OFFSET(240, m240.close) AS "M2"'
-                ],
+                columns: {
+                    Date: 'DATE(m240.ending)',
+                    Time: 'TIME(m240.ending)',
+                    Price: 'm240.close',
+                    M1: 'OFFSET(120, m240.close)',
+                    M2: 'OFFSET(240, m240.close)'
+                },
                 symbol: 'USD',
                 exchange: 'CAD',
                 begin: '2016-02-16',
