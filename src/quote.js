@@ -149,7 +149,7 @@ function quote(fetch, store, options) {
  */
 function parseWarmUpMap(options) {
     var exprs = _.compact(_.flatten([
-        _.values(options.columns), _.values(options.variables), options.criteria, options.retain
+        _.values(options.columns), options.criteria, options.retain
     ]));
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
@@ -218,6 +218,8 @@ function createParser(cached, options) {
         variable(name) {
             if (_.contains(['symbol', 'exchange', 'ending'], name))
                 return _.compose(_.property(name), _.last);
+            else if (_.has(options.parameters, name))
+                return _.constant(options.parameters[name]);
             else if (_.has(options, name) && !_.isObject(options[name]) && name.match(/^\w+$/))
                 return _.constant(options[name]);
             else if (!~name.indexOf('.'))

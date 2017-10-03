@@ -117,7 +117,7 @@ module.exports.shell = function(app) {
             var value = chr == '{' || chr == '"' || chr == '[' ||
                 str == 'true' || str == 'false' || _.isFinite(str) ?
                 JSON.parse(str) : str;
-            var key = cmd.params.option.split('.').concat(cmd.params.label);
+            var key = cmd.params.option.split('.').concat(cmd.params.label.replace(/s?$/,'s'));
             config.add(key, value);
             var value = config(key);
             sh.white(JSON.stringify(value)).ln();
@@ -129,7 +129,7 @@ module.exports.shell = function(app) {
     app.cmd('remove :option :label',
             "Removes the given label from the option for this session", (cmd, sh, cb) => {
         try {
-            var key = cmd.params.option.split('.').concat(cmd.params.label);
+            var key = cmd.params.option.split('.').concat(cmd.params.label.replace(/s?$/,'s'));
             config.remove(key);
             var value = config(cmd.params.option);
             sh.white(JSON.stringify(value)).ln();

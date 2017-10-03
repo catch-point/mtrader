@@ -567,7 +567,7 @@ describe("quote", function() {
             {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.1726}
         ]);
     });
-    it("should filter out results using variables", function() {
+    it("should filter out results using columns", function() {
         return quote({
             columns: {
                 Date: 'DATE(m30.ending)',
@@ -587,6 +587,57 @@ describe("quote", function() {
             {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.23},
             {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.32},
             {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.17}
+        ]);
+    });
+    it("should filter out results using variables", function() {
+        return quote({
+            variables: {
+                pcls: 'OFFSET(1, m30.close)'
+            },
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                Change: 'CHANGE(Price, day.close)'
+            },
+            retain: 'Price > pcls',
+            symbol: 'USD',
+            exchange: 'CAD',
+            begin: moment('2014-03-03T08:30:00-0500'),
+            end: moment('2014-03-03T17:00:00-0500')
+        }).should.eventually.be.like([
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.33},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.26},
+            {Date:'2014-03-03',Time:'11:30:00',Price:1.10852,Change:0.19},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.23},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.32},
+            {Date:'2014-03-03',Time:'16:00:00',Price:1.10831,Change:0.17}
+        ]);
+    });
+    it("should read parameters", function() {
+        return quote({
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                Change: 'CHANGE(Price, day.close)'
+            },
+            retain: 'Change >= minimum',
+            parameters: {
+                minimum: 0.2
+            },
+            symbol: 'USD',
+            exchange: 'CAD',
+            begin: moment('2014-03-03T08:30:00-0500'),
+            end: moment('2014-03-03T17:00:00-0500')
+        }).should.eventually.be.like([
+            {Date:'2014-03-03',Time:'08:30:00',Price:1.11004,Change:0.33},
+            {Date:'2014-03-03',Time:'09:00:00',Price:1.10879,Change:0.22},
+            {Date:'2014-03-03',Time:'10:00:00',Price:1.10925,Change:0.26},
+            {Date:'2014-03-03',Time:'12:00:00',Price:1.10900,Change:0.23},
+            {Date:'2014-03-03',Time:'13:00:00',Price:1.10991,Change:0.32},
+            {Date:'2014-03-03',Time:'13:30:00',Price:1.10966,Change:0.29},
+            {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:0.28}
         ]);
     });
     it("should filter out most results", function() {

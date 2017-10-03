@@ -423,6 +423,38 @@ describe("collect", function() {
             {date:"2014-02-21",close:1.1112,change:0.14,povo:70,position:0,profit:0}
         ]);
     });
+    it("should allow columns to have same name as variable", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                open: 'povo<50 AND (povo<18 OR PREV("open"))',
+                entry: 'open AND PREV("open") AND PREV("entry") OR close',
+                notUsed: 'm30.close'
+            },
+            columns: {
+                date: "DATE(day.ending)",
+                open: "day.open",
+                close: "day.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                entry: 'entry',
+                profit: "ROUND((close-entry)/entry*IF(open,100000,0),2)"
+            },
+            begin: '2014-02-10',
+            end: '2014-02-22'
+        }).should.eventually.be.like([
+            {date:"2014-02-10",open:1.10336,close:1.10574,change:0.23,povo:37,entry:1.10574,profit:0},
+            {date:"2014-02-11",open:1.10574,close:1.10067,change:-0.46,povo:22,entry:1.10067,profit:0},
+            {date:"2014-02-12",open:1.10068,close:1.10008,change:-0.05,povo:17,entry:1.10008,profit:0},
+            {date:"2014-02-13",open:1.10008,close:1.09751,change:-0.23,povo:11,entry:1.10008,profit:-233.62},
+            {date:"2014-02-14",open:1.09751,close:1.09849,change:0.09,povo:12,entry:1.10008,profit:-144.53},
+            {date:"2014-02-17",open:1.0984,close:1.09609,change:-0.22,povo:4,entry:1.10008,profit:-362.7},
+            {date:"2014-02-18",open:1.09625,close:1.09454,change:-0.14,povo:1,entry:1.10008,profit:-503.6},
+            {date:"2014-02-19",open:1.09448,close:1.10772,change:1.2,povo:42,entry:1.10008,profit:694.49},
+            {date:"2014-02-20",open:1.10786,close:1.10969,change:0.18,povo:65,entry:1.10969,profit:0},
+            {date:"2014-02-21",open:1.10969,close:1.1112,change:0.14,povo:70,entry:1.1112,profit:0}
+        ]);
+    });
     it("should filter out most results using leading retain", function() {
         return collect({
             portfolio: "USD.CAD",
