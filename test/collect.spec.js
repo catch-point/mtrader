@@ -499,6 +499,99 @@ describe("collect", function() {
             {Date:"2014-11-03",Time:"13:30:00",Price:1.13521}
         ]);
     });
+    it("should filter out most results using filter", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                open: '(HOUR(m60.ending)=12 OR PREV("open")) AND m30.close>=OFFSET(1,m30.close)'
+            },
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close'
+            },
+            retain: [
+                'DATE(month.ending) = DATE(day.ending)',
+                'HOUR(m60.ending) >= 12'
+            ],
+            filter: [
+                'open'
+            ],
+            begin: '2014-01-01T08:30:00-0500',
+            end: '2014-12-31T17:00:00-0500'
+        }).should.eventually.be.like([
+            {Date:"2014-01-02",Time:"12:30:00",Price:1.06356},
+            {Date:"2014-01-02",Time:"13:00:00",Price:1.06393},
+            {Date:"2014-01-02",Time:"13:30:00",Price:1.06394},
+            {Date:"2014-01-02",Time:"14:00:00",Price:1.06515},
+            {Date:"2014-01-02",Time:"14:30:00",Price:1.06544},
+            {Date:"2014-01-02",Time:"15:00:00",Price:1.0661},
+            {Date:"2014-01-02",Time:"15:30:00",Price:1.0662},
+            {Date:"2014-01-02",Time:"16:00:00",Price:1.06721},
+            {Date:"2014-02-03",Time:"12:00:00",Price:1.10735},
+            {Date:"2014-02-03",Time:"12:30:00",Price:1.10895},
+            {Date:"2014-02-03",Time:"13:00:00",Price:1.10933},
+            {Date:"2014-02-03",Time:"13:30:00",Price:1.10964},
+            {Date:"2014-02-03",Time:"14:00:00",Price:1.11},
+            {Date:"2014-03-03",Time:"12:00:00",Price:1.109},
+            {Date:"2014-04-01",Time:"12:00:00",Price:1.1025},
+            {Date:"2014-06-02",Time:"12:30:00",Price:1.09025},
+            {Date:"2014-07-01",Time:"12:00:00",Price:1.06521},
+            {Date:"2014-08-01",Time:"12:00:00",Price:1.09177},
+            {Date:"2014-09-01",Time:"12:30:00",Price:1.08626},
+            {Date:"2014-11-03",Time:"12:00:00",Price:1.13188},
+            {Date:"2014-11-03",Time:"12:30:00",Price:1.13363},
+            {Date:"2014-11-03",Time:"13:00:00",Price:1.13378},
+            {Date:"2014-11-03",Time:"13:30:00",Price:1.13521}
+        ]);
+    });
+    it("should order results", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                open: '(HOUR(m60.ending)=12 OR PREV("open")) AND m30.close>=OFFSET(1,m30.close)'
+            },
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close'
+            },
+            retain: [
+                'DATE(month.ending) = DATE(day.ending)',
+                'HOUR(m60.ending) >= 12'
+            ],
+            filter: [
+                'open'
+            ],
+            order: 'DESC(Date),DESC(Time)',
+            begin: '2014-01-01T08:30:00-0500',
+            end: '2014-12-31T17:00:00-0500'
+        }).should.eventually.be.like([
+            {Date:"2014-11-03",Time:"13:30:00",Price:1.13521},
+            {Date:"2014-11-03",Time:"13:00:00",Price:1.13378},
+            {Date:"2014-11-03",Time:"12:30:00",Price:1.13363},
+            {Date:"2014-11-03",Time:"12:00:00",Price:1.13188},
+            {Date:"2014-09-01",Time:"12:30:00",Price:1.08626},
+            {Date:"2014-08-01",Time:"12:00:00",Price:1.09177},
+            {Date:"2014-07-01",Time:"12:00:00",Price:1.06521},
+            {Date:"2014-06-02",Time:"12:30:00",Price:1.09025},
+            {Date:"2014-04-01",Time:"12:00:00",Price:1.1025},
+            {Date:"2014-03-03",Time:"12:00:00",Price:1.109},
+            {Date:"2014-02-03",Time:"14:00:00",Price:1.11},
+            {Date:"2014-02-03",Time:"13:30:00",Price:1.10964},
+            {Date:"2014-02-03",Time:"13:00:00",Price:1.10933},
+            {Date:"2014-02-03",Time:"12:30:00",Price:1.10895},
+            {Date:"2014-02-03",Time:"12:00:00",Price:1.10735},
+            {Date:"2014-01-02",Time:"16:00:00",Price:1.06721},
+            {Date:"2014-01-02",Time:"15:30:00",Price:1.0662},
+            {Date:"2014-01-02",Time:"15:00:00",Price:1.0661},
+            {Date:"2014-01-02",Time:"14:30:00",Price:1.06544},
+            {Date:"2014-01-02",Time:"14:00:00",Price:1.06515},
+            {Date:"2014-01-02",Time:"13:30:00",Price:1.06394},
+            {Date:"2014-01-02",Time:"13:00:00",Price:1.06393},
+            {Date:"2014-01-02",Time:"12:30:00",Price:1.06356}
+        ]);
+    });
     it("should identify results using leading criteria", function() {
         return collect({
             portfolio: "USD.CAD",

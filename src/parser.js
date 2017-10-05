@@ -76,10 +76,10 @@ module.exports = function(handlers) {
          * criteria to be considered passing.
          */
         parseCriteriaList(exprs) {
-            if (!exprs) return [];
-            if (!_.isArray(exprs)) expect(exprs).to.be.a('string');
+            if (_.isEmpty(exprs)) return [];
+            if (!_.isArray(exprs) && !_.isString(exprs)) expect(exprs).to.be.a('string');
             var list = _.isArray(exprs) ?
-                exprs.map(val=>parseExpression(val)) :
+                _.flatten(exprs.map(val=>parseExpressions(val, subs)), true) :
                 parseExpressions(exprs, subs);
             var i=0;
             while (i<list.length) {

@@ -240,10 +240,6 @@ help(app, 'parameters', `
   See also:
     help columns  
     help expression  
-    help common-functions  
-    help lookback-functions  
-    help indicator-functions  
-    help rolling-functions  
 `);
 help(app, 'retain', `
   Usage: set retain :expression
@@ -256,7 +252,7 @@ help(app, 'retain', `
     help common-functions  
     help lookback-functions  
     help indicator-functions  
-    help rolling-functions
+    help rolling-functions  
 `);
 help(app, 'expression', `
   :expression

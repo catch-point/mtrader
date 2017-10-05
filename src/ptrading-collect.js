@@ -181,6 +181,8 @@ help(app, 'collect', `
     help columns  
     help retain  
     help precedence  
+    help filter  
+    help order  
     help output  
     help reverse  
 `);
@@ -195,9 +197,40 @@ help(app, 'duration', `
   Sets the duration that collect should run before resetting any preceeding values
 `);
 help(app, 'precedence', `
-  Usage: set precedence :expression
+  Usage: set precedence :expressions
 
   The order that securities should be checked for inclusion in the result.
+  A comma separated list of expressions can be provided and each may be
+  wrapped in a DESC function to indicate the order should be reversed.
+
+  See also:
+    help expression  
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+    help rolling-functions  
+    help DESC  
+    help ASC  
+`);
+help(app, 'filter', `
+  Usage: set filter :expression
+
+  An expression (possibly of an rolling function) of each included
+  security bar that must be true to be included in the result.
+  The result of these expressions have no impact on rolling functions, unlike
+  retain, which is applied earlier.
+
+  See also:
+    help expression  
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+    help rolling-functions  
+`);
+help(app, 'order', `
+  Usage: set order :expressions
+
+  The order that the output should be sorted by.
   A comma separated list of expressions can be provided and each may be
   wrapped in a DESC function to indicate the order should be reversed.
 

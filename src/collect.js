@@ -31,7 +31,6 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
-const List = require('./list.js');
 const Parser = require('./parser.js');
 const interrupt = require('./interrupt.js');
 const common = require('./common-functions.js');
@@ -56,19 +55,19 @@ module.exports = function(quote) {
         var colParser = createColumnParser(options);
         var columns = parseNeededColumns(options);
         var columnNames = _.object(_.keys(options.columns), _.keys(columns));
-        var formatColumns = colParser.parse(_.values(columns));
-        var retainColumns = colParser.parseCriteriaList(options.retain || []);
-        var precedenceColumns = colParser.parseCriteriaList(options.precedence || []);
-        var allColumns = _.uniq(_.compact(_.flatten([
+        var formatColumns = _.flatten(colParser.parse(_.values(columns)), true);
+        var criteriaColumns = _.flatten(colParser.parseCriteriaList(_.flatten(_.compact([
+            options.retain, options.filter, options.precedence, options.order
+        ]), true)), true);
+        var allColumns = _.uniq(_.flatten(_.compact([
             'symbol',
             'exchange',
             'ending',
             temporal,
             formatColumns,
-            retainColumns,
-            precedenceColumns
-        ])));
-        var criteria = getQuoteCriteria(options.retain, options).join(' AND ');
+            criteriaColumns
+        ]), true));
+        var criteria = getQuoteCriteria(options.retain, options);
         return Promise.all(portfolio.map(security => {
             return quote(_.defaults({
                 variables: {},
@@ -79,20 +78,27 @@ module.exports = function(quote) {
             }, security, options));
         })).then(dataset => {
             var parser = createParser(temporal, quote, dataset, allColumns, options);
-            var pcolumns = promiseColumns(parser, columns);
-            var pretain = promiseRetain(parser, options.retain);
-            return collectDataset(dataset, temporal, pcolumns, pretain, options);
+            return collectDataset(dataset, temporal, parser, columns, criteriaColumns, options);
         }).then(collection => {
             var begin = moment(options.begin || moment(options.now).endOf('day')).toISOString();
             var start = _.sortedIndex(collection, {[temporal]: begin}, temporal) - (options.pad_begin || 0);
             if (start <= 0) return collection;
             else return collection.slice(start);
         }).then(collection => collection.reduce((result, points) => {
+            var filter = getOrderBy(options.filter, columns, options);
             var objects = _.values(points).filter(_.isObject)
-                .map(o => _.object(_.keys(columnNames), _.values(columnNames).map(key => o[key])));
-            result.push.apply(result, objects);
+                .filter(point => !filter.find(criteria => criteria.by && !point[criteria.by]));
+            if (!_.isEmpty(objects)) result.push.apply(result, objects);
             return result;
-        }, []));
+        }, [])).then(result => {
+            var order = getOrderBy(options.order, columns, options);
+            return order.reduceRight((result, o) => {
+                if (o.desc) return _.sortBy(result.reverse(), o.by).reverse();
+                else return o.by ? _.sortBy(result, o.by) : result;
+            }, result);
+        }).then(result => {
+            return result.map(o => _.object(_.keys(columnNames), _.values(columnNames).map(key => o[key])))
+        });
     }, {
         close() {}
     });
@@ -136,8 +142,30 @@ function createColumnParser(options) {
     });
 }
 
+/**
+ * Changes column names to avoid variable name conflicts and add variables used
+ * in rolling functions to the end of the array.
+ */
 function parseNeededColumns(options) {
     if (_.isEmpty(options.columns)) return options.columns;
+    var conflicts = _.intersection(_.keys(options.columns), _.keys(options.variables));
+    var masked = _.object(conflicts, conflicts.map(name => Parser().parse(options.columns[name])));
+    var columns = _.reduce(options.columns, (columns, value, key) => {
+        columns[masked[key] || key] = value;
+        return columns;
+    }, {});
+    var filterOrderColumns = normalizeExpressions(_.flatten(_.compact([
+        options.filter, options.order
+    ]), true), options);
+    return _.defaults(getRollingVariables(options).reduce((columns, name) => {
+        if (_.has(options.variables, name)) {
+            columns[name] = options.variables[name];
+        }
+        return columns;
+    }, columns), _.object(filterOrderColumns, filterOrderColumns));
+}
+
+function getRollingVariables(options) {
     var parser = Parser({
         substitutions: _.defaults({}, options.variables, options.columns),
         constant(value) {
@@ -151,22 +179,30 @@ function parseNeededColumns(options) {
             else return _.flatten(args.filter(_.isArray), true);
         }
     });
-    var conflicts = _.intersection(_.keys(options.columns), _.keys(options.variables));
-    var masked = _.object(conflicts, conflicts.map(name => Parser().parse(options.columns[name])));
-    var columns = _.reduce(options.columns, (columns, value, key) => {
-        columns[masked[key] || key] = value;
-        return columns;
-    }, {});
-    return _.flatten(parser.parse(_.values(options.variables)), true).reduce((columns, name) => {
-        if (_.has(options.variables, name)) {
-            columns[name] = options.variables[name];
-        }
-        return columns;
-    }, columns);
+    return _.uniq(_.flatten(parser.parse(_.flatten(_.compact([
+        _.values(options.variables), _.values(options.columns),
+        options.retain, options.filter, options.precedence
+    ]), true)), true).filter(name => {
+        return _.has(options.variables, name) || _.has(options.columns, name);
+    }));
 }
 
 /**
- * Returns the retain expression that should be delegated to quote.js
+ * Normalizes the expressions and substitutes variables
+ */
+function normalizeExpressions(expr, options) {
+    return _.flatten(Parser({
+        substitutions: _.defaults({}, options.variables, options.columns),
+        expression(expr, name, args) {
+            if (name == 'DESC' || name == 'ASC') return _.first(args);
+            else return expr;
+        }
+    }).parseCriteriaList(expr), true);
+}
+
+/**
+ * Returns the retain expression that should be delegated to quote.
+ * Removing the expressions with rolling functions.
  */
 function getQuoteCriteria(expr, options) {
     if (!expr) return [];
@@ -222,15 +258,15 @@ function createParser(temporal, quote, dataset, cached, options) {
 /**
  * Combines the quote.js results into a single array containing retained securities.
  */
-function collectDataset(dataset, temporal, columns, retain, options) {
-    var precedenceColumns = _.flatten(createColumnParser(options).parseCriteriaList(options.precedence||[]));
-    var precedence = getPrecedence(options.precedence, precedenceColumns, options);
-    return columns.then(columns => retain.then(retain => {
+function collectDataset(dataset, temporal, parser, columns, cached, options) {
+    var pcolumns = promiseColumns(parser, columns);
+    var pretain = promiseFilter(parser, options.retain);
+    var precedence = getOrderBy(options.precedence, cached, options);
+    return pcolumns.then(columns => pretain.then(retain => {
         return reduceInterval(dataset, temporal, (result, points) => {
             var positions = precedence.reduceRight((points, o) => {
-                var positions = o.by ? _.sortBy(points, o.by) : points;
-                if (o.desc) positions.reverse();
-                return positions;
+                if (o.desc) return _.sortBy(points.reverse(), o.by).reverse();
+                else return o.by ? _.sortBy(points, o.by) : points;
             }, points);
             var row = result.length;
             result[row] = positions.reduce((retained, point) => {
@@ -250,9 +286,25 @@ function collectDataset(dataset, temporal, columns, retain, options) {
 }
 
 /**
+ * @returns a map of functions that can compute the column values for a given row.
+ */
+function promiseColumns(parser, columns) {
+    var map = parser.parse(columns);
+    return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
+}
+
+/**
+ * Returns a function that can determine if the security should be retained
+ */
+function promiseFilter(parser, expr) {
+    if (!expr) return Promise.resolve(null);
+    return Promise.resolve(parser.parse(_.flatten([expr],true).join(' AND ')));
+}
+
+/**
  * Create a function and direction that securities should be sorted with.
  */
-function getPrecedence(expr, cached, options) {
+function getOrderBy(expr, cached, options) {
     if (!expr) return [];
     else return Parser({
         substitutions: _.defaults({}, options.variables, options.columns),
@@ -266,39 +318,21 @@ function getPrecedence(expr, cached, options) {
             if (name == 'DESC') return {desc: true, by: _.first(args).by};
             else if (name == 'ASC') return {desc: false, by:  _.first(args).by};
             else if (_.contains(cached, expr)) return {by: expr};
-            else if (!rolling.has(name) && !quoting.has(name)) return {};
-            else throw Error("Aggregate functions cannot be used here: " + expr);
+            else return {};
         }
     }).parseCriteriaList(expr);
 }
 
 /**
- * @returns a map of functions that can compute the column values for a given row.
- */
-function promiseColumns(parser, columns) {
-    var map = parser.parse(columns);
-    return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
-}
-
-/**
- * Returns a function that can determine if the security should be retained
- */
-function promiseRetain(parser, expr) {
-    if (!expr) return Promise.resolve(_.constant(true));
-    return Promise.resolve(parser.parse(expr));
-}
-
-/**
  * Takes the quote.js results as an array and matches the results by temporal date calling cb.
  */
-function reduceInterval(data, temporal, cb, memo) {
+function reduceInterval(dataset, temporal, cb, memo) {
     var check = interrupt();
-    var lists = data.map(ar => List.from(ar));
-    while (lists.some(list => list.length)) {
+    while (dataset.some(list => list.length)) {
         check();
-        var ending = _.first(_.compact(_.pluck(lists.map(list => list.first()), temporal)).sort());
-        var points = _.compact(lists.map(list => {
-            if (list.length && list.first()[temporal] == ending) return list.shift();
+        var ending = _.first(_.compact(_.pluck(dataset.map(list => _.first(list)), temporal)).sort());
+        var points = _.compact(dataset.map(list => {
+            if (list.length && _.first(list)[temporal] == ending) return list.shift();
         }));
         memo = cb(memo, points);
     }
