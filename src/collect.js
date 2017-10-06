@@ -32,6 +32,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Parser = require('./parser.js');
+const periods = require('./periods.js');
 const interrupt = require('./interrupt.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
@@ -46,12 +47,15 @@ const expect = require('chai').use(like).expect;
  * securities and read previous retained values.
  * @returns a function that returns array of row objects based on given options.
  */
-module.exports = function(quote) {
+module.exports = function(quote, collectFn) {
     var temporal = 'DATETIME(ending)';
-    return _.extend(function(options) {
+    var collections = _.object(config.list(), []);
+    var self;
+    return self = _.extend(function(options) {
         expect(options).to.have.property('portfolio');
-        expect(options).to.have.property('columns');
-        var portfolio = getPortfolio(options.portfolio);
+        expect(options).to.have.property('columns').that.is.an('object');
+        var collect = collectFn || self;
+        var portfolio = getPortfolio(options.portfolio, collections, options);
         var colParser = createColumnParser(options);
         var columns = parseNeededColumns(options);
         var columnNames = _.object(_.keys(options.columns), _.keys(columns));
@@ -67,15 +71,28 @@ module.exports = function(quote) {
             formatColumns,
             criteriaColumns
         ]), true));
-        var criteria = getQuoteCriteria(options.retain, options);
-        return Promise.all(portfolio.map(security => {
-            return quote(_.defaults({
-                variables: {},
-                columns: _.object(allColumns, allColumns),
-                retain: criteria,
-                pad_leading: 0,
-                pad_begin: (options.pad_begin || 0) + (options.pad_leading || 0)
-            }, security, options));
+        var criteria = getQuoteCriteria(options.retain, getVariables(options));
+        return Promise.all(portfolio.map(opts => {
+            var pad_begin = (options.pad_begin || 0) + (options.pad_leading || 0);
+            if (opts.portfolio) {
+                // inline opts.columns
+                var used = getUsedVariables(opts);
+                var normalizer = createNormalizeParser(opts.columns);
+                var columns = normalizer.parse(allColumns);
+                var filter = [opts.filter, normalizer.parse(criteria)];
+                return collect(_.defaults({
+                    columns: _.extend(_.object(allColumns, columns), _.pick(opts.columns, used)),
+                    filter: _.flatten(_.compact(filter), true),
+                    pad_begin: pad_begin,
+                    order: _.flatten(_.compact([temporal, opts.order]), true)
+                }, opts));
+            } else {
+                return quote(_.defaults({
+                    columns: _.object(allColumns, allColumns),
+                    retain: criteria,
+                    pad_begin: pad_begin
+                }, opts));
+            }
         })).then(dataset => {
             var parser = createParser(temporal, quote, dataset, allColumns, options);
             return collectDataset(dataset, temporal, parser, columns, criteriaColumns, options);
@@ -92,10 +109,7 @@ module.exports = function(quote) {
             return result;
         }, [])).then(result => {
             var order = getOrderBy(options.order, columns, options);
-            return order.reduceRight((result, o) => {
-                if (o.desc) return _.sortBy(result.reverse(), o.by).reverse();
-                else return o.by ? _.sortBy(result, o.by) : result;
-            }, result);
+            return sortBy(result, order);
         }).then(result => {
             return result.map(o => _.object(_.keys(columnNames), _.values(columnNames).map(key => o[key])))
         });
@@ -107,15 +121,27 @@ module.exports = function(quote) {
 /**
  * Parses a comma separated list into symbol/exchange pairs.
  */
-function getPortfolio(portfolio) {
+function getPortfolio(portfolio, collections, options) {
+    var opts = _.omit(options, [
+        'portfolio', 'columns', 'variables', 'retain', 'filter', 'precedence', 'order', 'pad_leading'
+    ]);
     var array = _.isArray(portfolio) ? portfolio : portfolio.split(/\s*,\s*/);
     return array.map(symbolExchange => {
+        if (_.contains(options.upstream, symbolExchange))
+            throw Error("Cycle profile detected: " + options.upstream + " -> " + symbolExchange);
         var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
-        if (!m) throw Error("Unexpected symbol/exchange: " + symbolExchange);
-        return {
+        if (!m || !collections[symbolExchange] && _.has(collections, symbolExchange)) {
+            var cfg = config.read(symbolExchange);
+            if (cfg) collections[symbolExchange] = cfg;
+        }
+        if (collections[symbolExchange]) return _.defaults({
+            upstream: _.flatten(_.compact([options.upstream, symbolExchange]), true)
+        }, collections[symbolExchange], opts);
+        if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
+        return _.defaults({
             symbol: m[1],
             exchange: m[2]
-        };
+        }, opts);
     });
 }
 
@@ -124,7 +150,7 @@ function getPortfolio(portfolio) {
  */
 function createColumnParser(options) {
     return Parser({
-        substitutions: _.defaults({}, options.variables, options.columns),
+        substitutions: getVariables(options),
         constant(value) {
             return null;
         },
@@ -154,9 +180,10 @@ function parseNeededColumns(options) {
         columns[masked[key] || key] = value;
         return columns;
     }, {});
-    var filterOrderColumns = normalizeExpressions(_.flatten(_.compact([
+    var normalizer = createNormalizeParser(getVariables(options), true);
+    var filterOrderColumns = normalizer.parseCriteriaList(_.flatten(_.compact([
         options.filter, options.order
-    ]), true), options);
+    ]), true));
     return _.defaults(getRollingVariables(options).reduce((columns, name) => {
         if (_.has(options.variables, name)) {
             columns[name] = options.variables[name];
@@ -165,9 +192,12 @@ function parseNeededColumns(options) {
     }, columns), _.object(filterOrderColumns, filterOrderColumns));
 }
 
+/**
+ * Returns the variable names used by rolling functions
+ */
 function getRollingVariables(options) {
     var parser = Parser({
-        substitutions: _.defaults({}, options.variables, options.columns),
+        substitutions: getVariables(options),
         constant(value) {
             return value;
         },
@@ -190,24 +220,32 @@ function getRollingVariables(options) {
 /**
  * Normalizes the expressions and substitutes variables
  */
-function normalizeExpressions(expr, options) {
-    return _.flatten(Parser({
-        substitutions: _.defaults({}, options.variables, options.columns),
+function createNormalizeParser(variables, recursive) {
+    // if not recursive, strip out variables that looks like fields
+    var vars = recursive ? variables : getVariables({columns: variables});
+    var nestedParser = recursive ? null : createNormalizeParser(vars, true);
+    return Parser({
+        substitutions: vars,
+        variable(name) {
+            if (nestedParser && variables[name])
+                return nestedParser.parse(variables[name]);
+            else return name;
+        },
         expression(expr, name, args) {
             if (name == 'DESC' || name == 'ASC') return _.first(args);
             else return expr;
         }
-    }).parseCriteriaList(expr), true);
+    });
 }
 
 /**
  * Returns the retain expression that should be delegated to quote.
  * Removing the expressions with rolling functions.
  */
-function getQuoteCriteria(expr, options) {
+function getQuoteCriteria(expr, variables) {
     if (!expr) return [];
     return _.compact(Parser({
-        substitutions: _.defaults({}, options.variables, options.columns),
+        substitutions: variables,
         constant(value) {
             return _.isString(value) ? JSON.stringify(value) : value;
         },
@@ -225,6 +263,26 @@ function getQuoteCriteria(expr, options) {
 }
 
 /**
+ * Returns an array of variable names used by at least one of retain/precedence/filter/order
+ */
+function getUsedVariables(options) {
+    var exprs = _.flatten(_.compact([
+        options.retain, options.precedence, options.filter, options.order
+    ]), true);
+    return _.uniq(_.flatten(Parser({
+        constant(value) {
+            return [];
+        },
+        variable(name) {
+            return [name];
+        },
+        expression(expr, name, args) {
+            return _.uniq(_.flatten(args, true));
+        }
+    }).parse(exprs), true));
+}
+
+/**
  * Creates an expression parser that recognizes the rolling/quote functions.
  */
 function createParser(temporal, quote, dataset, cached, options) {
@@ -232,7 +290,7 @@ function createParser(temporal, quote, dataset, cached, options) {
         return quoting(expr, name, args, temporal, quote, dataset, options);
     });
     return Parser({
-        substitutions: _.defaults({}, options.variables, options.columns),
+        substitutions: getVariables(options),
         constant(value) {
             return positions => value;
         },
@@ -256,6 +314,18 @@ function createParser(temporal, quote, dataset, cached, options) {
 }
 
 /**
+ * Returns map of variables and columns, excluding columns that look like fields
+ */
+function getVariables(options) {
+    return _.defaults({}, options.variables, _.omit(options.columns, (expr, name) => {
+        // exclude column names that looks like fields
+        if (name.indexOf('.') < 1) return false;
+        var interval = name.substring(0, name.indexOf('.'));
+        return _.contains(periods.values, interval);
+    }));
+}
+
+/**
  * Combines the quote.js results into a single array containing retained securities.
  */
 function collectDataset(dataset, temporal, parser, columns, cached, options) {
@@ -264,10 +334,7 @@ function collectDataset(dataset, temporal, parser, columns, cached, options) {
     var precedence = getOrderBy(options.precedence, cached, options);
     return pcolumns.then(columns => pretain.then(retain => {
         return reduceInterval(dataset, temporal, (result, points) => {
-            var positions = precedence.reduceRight((points, o) => {
-                if (o.desc) return _.sortBy(points.reverse(), o.by).reverse();
-                else return o.by ? _.sortBy(points, o.by) : points;
-            }, points);
+            var positions = sortBy(points, precedence);
             var row = result.length;
             result[row] = positions.reduce((retained, point) => {
                 var key = point.symbol + '.' + point.exchange;
@@ -283,6 +350,29 @@ function collectDataset(dataset, temporal, parser, columns, cached, options) {
             return result;
         }, []);
     }));
+}
+
+/**
+ * Returns array after sorting it inplace
+ * @param order an array [{by: prop, desc: false}]
+ */
+function sortBy(array, order) {
+    if (_.isEmpty(order)) return array;
+    else return array.sort((left, right) => {
+        return order.reduce((r, o) => {
+            var a = left[o.by];
+            var b = right[o.by];
+            if (r != 0 || a === b) {
+                return r;
+            } else if (!o.desc) {
+                if (a > b || a === void 0) return 1;
+                if (a < b || b === void 0) return -1;
+            } else {
+                if (a < b || a === void 0) return 1;
+                if (a > b || b === void 0) return -1;
+            }
+        }, 0);
+    });
 }
 
 /**
@@ -307,7 +397,7 @@ function promiseFilter(parser, expr) {
 function getOrderBy(expr, cached, options) {
     if (!expr) return [];
     else return Parser({
-        substitutions: _.defaults({}, options.variables, options.columns),
+        substitutions: getVariables(options),
         constant(value) {
             return {};
         },

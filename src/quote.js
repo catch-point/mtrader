@@ -148,13 +148,13 @@ function quote(fetch, store, options) {
  */
 function parseWarmUpMap(options) {
     var exprs = _.compact(_.flatten([
-        _.values(options.columns), options.criteria, options.retain
+        _.values(options.columns), options.retain
     ]));
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
     var p = createParser({}, options);
     var parser = Parser({
-        substitutions: _.defaults({}, options.variables, options.columns),
+        substitutions: getVariables(options),
         constant(value) {
             return {warmUpLength: 0};
         },
@@ -210,7 +210,7 @@ function parseCriteriaMap(criteria, cached, intervals, options) {
  */
 function createParser(cached, options) {
     return Parser({
-        substitutions: _.defaults({}, options.variables, options.columns),
+        substitutions: getVariables(options),
         constant(value) {
             return () => value;
         },
@@ -242,6 +242,18 @@ function createParser(cached, options) {
             });
         }
     });
+}
+
+/**
+ * Returns map of variables and columns, excluding columns that look like fields
+ */
+function getVariables(options) {
+    return _.defaults({}, options.variables, _.omit(options.columns, (expr, name) => {
+        // exclude column names that looks like fields
+        if (name.indexOf('.') < 1) return false;
+        var interval = name.substring(0, name.indexOf('.'));
+        return _.contains(periods.values, interval);
+    }));
 }
 
 /**

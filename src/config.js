@@ -162,9 +162,9 @@ config.list = function() {
         .map(name => name.substring(0, name.length - '.json'.length));
 };
 
-config.save = function(name) {
+config.save = function(name, cfg) {
     var file = path.resolve(config('prefix'), 'etc', name + '.json');
-    writeConfigFile(file, _.omit(session, _.isNull));
+    writeConfigFile(file, _.omit(cfg || session, _.isNull));
 };
 
 config.read = function(name) {
