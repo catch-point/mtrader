@@ -76,7 +76,7 @@ module.exports = function(quote, collectFn) {
             var pad_begin = (options.pad_begin || 0) + (options.pad_leading || 0);
             if (opts.portfolio) {
                 // inline opts.columns
-                var used = getUsedVariables(opts);
+                var used = getUsedColumns(opts);
                 var normalizer = createNormalizeParser(opts.columns);
                 var columns = normalizer.parse(allColumns);
                 var filter = [opts.filter, normalizer.parse(criteria)];
@@ -263,10 +263,11 @@ function getQuoteCriteria(expr, variables) {
 }
 
 /**
- * Returns an array of variable names used by at least one of retain/precedence/filter/order
+ * Returns an array of variable names used by at least one of variables/retain/precedence/filter/order
  */
-function getUsedVariables(options) {
+function getUsedColumns(options) {
     var exprs = _.flatten(_.compact([
+        _.values(options.variables),
         options.retain, options.precedence, options.filter, options.order
     ]), true);
     return _.uniq(_.flatten(Parser({
