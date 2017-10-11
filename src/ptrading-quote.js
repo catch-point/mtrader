@@ -61,6 +61,7 @@ function usage(command) {
         .option('--add-variable <name=expression>', "Add a variable to include in column expressions")
         .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")
         .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
+        .option('-o, --offline', "Disable data updates")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
