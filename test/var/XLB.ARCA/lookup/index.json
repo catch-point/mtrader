@@ -1,0 +1,48 @@
+{
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 2,
+   "head": [
+    {
+     "symbol": "XLB",
+     "google_symbol": "NYSEARCA:XLB",
+     "exchange": "ARCA",
+     "e": "NYSEARCA",
+     "name": "Materials Select Sector SPDR",
+     "id": "700199"
+    },
+    {
+     "symbol": "XLBT",
+     "google_symbol": "NYSEARCA:XLBT",
+     "exchange": "ARCA",
+     "e": "NYSEARCA",
+     "name": "Russell Developed ex US Low Beta ETF",
+     "id": "15307993"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "XLB",
+     "google_symbol": "NYSEARCA:XLB",
+     "exchange": "ARCA",
+     "e": "NYSEARCA",
+     "name": "Materials Select Sector SPDR",
+     "id": "700199"
+    },
+    {
+     "symbol": "XLBT",
+     "google_symbol": "NYSEARCA:XLBT",
+     "exchange": "ARCA",
+     "e": "NYSEARCA",
+     "name": "Russell Developed ex US Low Beta ETF",
+     "id": "15307993"
+    }
+   ],
+   "updatedAt": "2017-10-11T20:28:42.918Z",
+   "properties": {},
+   "createdAt": "2017-10-11T20:28:42.918Z"
+  }
+ ]
+}

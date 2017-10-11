@@ -35,6 +35,7 @@ const _ = require('underscore');
 const csv = require('fast-csv');
 const moment = require('moment-timezone');
 const config = require('./config.js');
+const google = require('./fetch-google.js');
 const yahoo = require('./fetch-yahoo.js');
 const iqfeed = require('./fetch-iqfeed.js');
 const storage = require('./storage.js');
@@ -42,13 +43,18 @@ const storage = require('./storage.js');
 module.exports = function() {
     var fallbacks = _.mapObject(_.object(_.intersection(
         config('files.fallback') || [],
-        ['yahoo', 'iqfeed']
+        _.compact([
+            config('google.enabled') && 'google',
+            config('yahoo.enabled') && 'yahoo',
+            config('iqfeed.enabled') && 'iqfeed'
+        ])
     ), []), (nil, fallback) => {
-        return 'yahoo' == fallback ? yahoo() :
+        return 'google' == fallback ? google() :
+            'yahoo' == fallback ? yahoo() :
             'iqfeed' == fallback ? iqfeed() :
             null;
     });
-    var dirname = config('files.dirname') || path.resolve(config('prefix'), 'var/fetch/');
+    var dirname = config('files.dirname') || path.resolve(config('prefix'), 'var/');
     var store = Promise.resolve(storage(dirname));
     config.addListener((name, value) => {
         if (name == 'files.dirname') {
@@ -57,6 +63,7 @@ module.exports = function() {
     });
     var open = (name, cb) => store.then(store => store.open(name, cb));
     return {
+        offline: true,
         close() {
             return Promise.all(_.map(fallbacks, fb => fb.close()))
                 .then(() => store).then(store => store.close());
@@ -76,7 +83,8 @@ function readOrWriteResult(fallbacks, open, cmd, options) {
         return db.collection(cmd).then(coll => coll.lockWith([name], names => {
             var name = _.map(args, arg => safe(arg)).join('.') || 'result';
             if (coll.exists(name)) return coll.readFrom(name);
-            else if (_.isEmpty(fallbacks)) throw Error("Data file not found " + coll.filenameOf(name));
+            else if (options.offline || _.isEmpty(fallbacks))
+                throw Error("Data file not found " + coll.filenameOf(name));
             else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
                 var datasource = config(['exchanges', options.exchange, 'datasources', source]);
                 if (!datasource || !_.contains(datasource.fetch, options.interval)) throw err;

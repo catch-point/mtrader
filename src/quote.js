@@ -50,8 +50,10 @@ const expect = require('chai').use(like).expect;
  */
 module.exports = function(fetch) {
     var store = storage(path.resolve(config('prefix'), 'var/'));
-    var fetchOptions = fetchOptionsFactory(fetch);
+    var fetchOnline = fetchOptionsFactory(fetch, false);
+    var fetchOffline = fetchOptionsFactory(fetch, true);
     var self = function(options) {
+        var fetchOptions = options.offline ? fetchOffline : fetchOnline;
         return fetchOptions(options).then(options => quote(fetch, store, options));
     };
     self.close = () => store.close();
@@ -61,12 +63,13 @@ module.exports = function(fetch) {
 /**
  * Converts begin/end to moments and includes some additional options like yahoo_symbol.
  */
-function fetchOptionsFactory(fetch) {
+function fetchOptionsFactory(fetch, offline) {
     var memoizeFirstLookup = _.memoize((symbol, exchange) => {
         return fetch({
             interval: 'lookup',
             symbol: symbol,
-            exchange: exchange
+            exchange: exchange,
+            offline: offline
         }).then(matches => _.first(matches)).then(security => {
             if (_.isEmpty(security)) throw Error("Unknown symbol: " + symbol);
             else if (security.symbol == symbol) return security;
@@ -410,7 +413,7 @@ function getCollectionName(options) {
     var m = options.interval.match(/^m(\d+)$/);
     if (m && +m[1] < 30) return options.begin.substring(0,4) + options.interval;
     else if (m) return options.interval;
-    else return 'interday';
+    else return 'daily';
 }
 
 /**
@@ -424,7 +427,8 @@ function fetchNeededBlocks(fetch, collection, warmUpLength, options) {
     var end = options.end || moment(options.now).tz(options.tz);
     var stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
     var blocks = getBlocks(options.interval, start, stop, options);
-    return collection.lockWith(blocks, blocks => {
+    if (options.offline) return Promise.resolve(blocks);
+    else return collection.lockWith(blocks, blocks => {
         var version = getStorageVersion(collection);
         return fetchBlocks(fetch, options, collection, version, stop, blocks);
     });
