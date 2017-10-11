@@ -187,6 +187,8 @@ function parseNeededColumns(options) {
     return _.defaults(getRollingVariables(options).reduce((columns, name) => {
         if (_.has(options.variables, name)) {
             columns[name] = options.variables[name];
+        } else if (!_.has(options.columns, name)) {
+            columns[name] = name; // pass through
         }
         return columns;
     }, columns), _.object(filterOrderColumns, filterOrderColumns));
@@ -199,22 +201,21 @@ function getRollingVariables(options) {
     var parser = Parser({
         substitutions: getVariables(options),
         constant(value) {
-            return value;
+            return _.isString(value) ? value : null;
         },
         variable(name) {
-            return [];
+            return null;
         },
         expression(expr, name, args) {
-            if (rolling.has(name)) return args;
+            // the first string argument is the variable name in rolling functions
+            if (rolling.has(name)) return [_.first(_.compact(args))];
             else return _.flatten(args.filter(_.isArray), true);
         }
     });
-    return _.uniq(_.flatten(parser.parse(_.flatten(_.compact([
+    return _.uniq(_.compact(_.flatten(parser.parseCriteriaList(_.flatten(_.compact([
         _.values(options.variables), _.values(options.columns),
         options.retain, options.filter, options.precedence
-    ]), true)), true).filter(name => {
-        return _.has(options.variables, name) || _.has(options.columns, name);
-    }));
+    ]), true)).filter(_.isArray), true)));
 }
 
 /**
@@ -280,7 +281,7 @@ function getUsedColumns(options) {
         expression(expr, name, args) {
             return _.uniq(_.flatten(args, true));
         }
-    }).parse(exprs), true));
+    }).parseCriteriaList(exprs), true));
 }
 
 /**
@@ -422,9 +423,12 @@ function reduceInterval(dataset, temporal, cb, memo) {
     while (dataset.some(list => list.length)) {
         check();
         var ending = _.first(_.compact(_.pluck(dataset.map(list => _.first(list)), temporal)).sort());
-        var points = _.compact(dataset.map(list => {
-            if (list.length && _.first(list)[temporal] == ending) return list.shift();
-        }));
+        var points = dataset.reduce((result,list) => {
+            while (list.length && _.first(list)[temporal] == ending) {
+                result.push(list.shift());
+            }
+            return result;
+        }, []);
         memo = cb(memo, points);
     }
     return memo;

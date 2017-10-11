@@ -955,5 +955,97 @@ describe("collect", function() {
             {date:"2017-01-30",close:0.76238}
         ]);
     });
+    it("should not hide columns used by variables", function() {
+        config.save('CADUSD', {
+            portfolio: 'USD.CAD',
+            variables: {
+                cad_change: '(cad_close-PREV("cad_close"))/PREV("cad_close")'
+            },
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(1/day.close,5)',
+                cad_close: '1/day.close',
+                change: 'ROUND(cad_change*100, 2)'
+            }
+        });
+        return collect({
+            portfolio: 'CADUSD',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'day.close',
+                change: 'change'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        }).should.eventually.be.like([
+            {date:"2017-01-02",close:0.74421},
+            {date:"2017-01-03",close:0.74481,change:0.08},
+            {date:"2017-01-04",close:0.75185,change:0.95},
+            {date:"2017-01-05",close:0.7561,change:0.57},
+            {date:"2017-01-06",close:0.75549,change:-0.08},
+            {date:"2017-01-09",close:0.75662,change:0.15},
+            {date:"2017-01-10",close:0.75574,change:-0.12},
+            {date:"2017-01-11",close:0.75882,change:0.41},
+            {date:"2017-01-12",close:0.76076,change:0.26},
+            {date:"2017-01-13",close:0.7629,change:0.28},
+            {date:"2017-01-16",close:0.75911,change:-0.5},
+            {date:"2017-01-17",close:0.76678,change:1.01},
+            {date:"2017-01-18",close:0.75364,change:-1.71},
+            {date:"2017-01-19",close:0.75087,change:-0.37},
+            {date:"2017-01-20",close:0.7514,change:0.07},
+            {date:"2017-01-23",close:0.75548,change:0.54},
+            {date:"2017-01-24",close:0.76014,change:0.62},
+            {date:"2017-01-25",close:0.76518,change:0.66},
+            {date:"2017-01-26",close:0.76397,change:-0.16},
+            {date:"2017-01-27",close:0.76054,change:-0.45},
+            {date:"2017-01-30",close:0.76238,change:0.24}
+        ]);
+    });
+    it("nested", function() {
+        config.save('SPDR', {
+          portfolio: 'XLB.ARCA,XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLP.ARCA,XLU.ARCA,XLV.ARCA,XLY.ARCA',
+          variables: {
+              max: 'MIN(0.5/CVAR(5, 60, day.close), 100)'
+          },
+          columns: {
+              date: 'DATE(ending)',
+              symbol: 'symbol',
+              price: 'day.close',
+              target: 'IF(SUMPREC(0, "max")<100, max)'
+          },
+          precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
+        });
+        return collect({
+          portfolio: 'SPDR',
+          begin: "2016-12-01",
+          end: "2016-12-03",
+          columns: {
+              date: 'date',
+              symbol: 'symbol',
+              price: 'price',
+              weight: 'ROUND(MIN(target,IF(SUMPREC(0,"target")<100,100-SUMPREC(0,"target"),0)),2)'
+          },
+          precedence: 'DESC(target),symbol'
+        }).should.eventually.be.like([
+            {date:"2016-12-01",symbol:"XLI",price:62.82,weight:26.46},
+            {date:"2016-12-01",symbol:"XLK",price:46.52,weight:26.18},
+            {date:"2016-12-01",symbol:"XLY",price:81.89,weight:26.08},
+            {date:"2016-12-01",symbol:"XLB",price:49.96,weight:21.28},
+            {date:"2016-12-01",symbol:"XLE",price:74.61,weight:0},
+            {date:"2016-12-01",symbol:"XLF",price:22.9,weight:0},
+            {date:"2016-12-01",symbol:"XLP",price:50.25,weight:0},
+            {date:"2016-12-01",symbol:"XLU",price:46.38,weight:0},
+            {date:"2016-12-01",symbol:"XLV",price:68.25,weight:0},
+            {date:"2016-12-02",symbol:"XLI",price:62.81,weight:26.46},
+            {date:"2016-12-02",symbol:"XLK",price:46.69,weight:26.18},
+            {date:"2016-12-02",symbol:"XLY",price:81.44,weight:26.08},
+            {date:"2016-12-02",symbol:"XLB",price:49.98,weight:21.28},
+            {date:"2016-12-02",symbol:"XLE",price:74.83,weight:0},
+            {date:"2016-12-02",symbol:"XLF",price:22.65,weight:0},
+            {date:"2016-12-02",symbol:"XLP",price:50.57,weight:0},
+            {date:"2016-12-02",symbol:"XLU",price:46.8,weight:0},
+            {date:"2016-12-02",symbol:"XLV",price:68.41,weight:0}
+        ]);
+    });
 });
 
