@@ -50,15 +50,30 @@ var session = _.contains(process.argv, '--load') ?
 
 process.argv.forEach((arg, i, args) => {
     if (arg == '--set' && i < args.length -1) {
-        var pair = args[i+1].split('=', 2);
-        var name = pair[0];
-        var str = pair[1];
+        var pair = args[i+1].split('=');
+        var name = _.first(pair);
+        var str = _.rest(pair).join('=');
         if (name && str) {
             var chr = str.charAt(0);
             var value = chr == '{' || chr == '"' || chr == '[' ||
                 str == 'true' || str == 'false' || _.isFinite(str) ?
                 JSON.parse(str) : str;
             session[name] = value;
+        }
+    } else if (arg.startsWith('--add-') && i < args.length -1) {
+        var map = arg.substring('--add-'.length).replace(/s?$/,'s');
+        var pair = args[i+1].split('=');
+        var name = _.first(pair);
+        var str = _.rest(pair).join('=');
+        if (map && name && str) {
+            var chr = str.charAt(0);
+            var value = chr == '{' || chr == '"' || chr == '[' ||
+                str == 'true' || str == 'false' || _.isFinite(str) ?
+                JSON.parse(str) : str;
+            if (!session[map]) {
+                session[map] = {};
+            }
+            session[map][name] = value;
         }
     }
 });
@@ -86,10 +101,12 @@ if (process.send) {
 config.fork = function(modulePath, program) {
     var pairs = program.options.filter(o => o.required || o.optional).map(o => o.name().replace('-', '_'));
     var bools = _.reject(program.options, o => o.required || o.optional).map(o => o.name().replace('-', '_'));
-    var cfg = _.omit(config(), value => typeof value == 'object' || value == null);
-    var cfg_pairs = _.pick(cfg, pairs);
+    var opts = config.opts();
+    var cfg = _.omit(config(), value => value == null);
+    var cfg_pairs = _.pick(_.pick(cfg, pairs), _.isString);
     var cfg_bools = _.without(_.intersection(bools, _.keys(cfg)), 'version');
-    var cfg_other = _.difference(_.keys(cfg), pairs, bools);
+    var cfg_other = _.difference(_.keys(cfg), pairs, bools)
+        .filter(key => _.has(session, key) || _.has(opts, key));
     var arg_pairs = _.flatten(_.zip(
         _.keys(cfg_pairs).map(option => '--' + option.replace('_', '-')),
         _.values(cfg_pairs)
@@ -117,7 +134,7 @@ config.opts = function() {
             return str + word[0].toUpperCase() + word.slice(1);
         });
         var value = name === 'version' ? commander._version : commander[key];
-        if (value != null) {
+        if (value != null && !name.startsWith('add-')) {
             result[prop] = value;
         }
         return result;
@@ -145,9 +162,9 @@ config.list = function() {
         .map(name => name.substring(0, name.length - '.json'.length));
 };
 
-config.save = function(name) {
+config.save = function(name, cfg) {
     var file = path.resolve(config('prefix'), 'etc', name + '.json');
-    writeConfigFile(file, _.omit(session, _.isNull));
+    writeConfigFile(file, _.omit(cfg || session, _.isNull));
 };
 
 config.read = function(name) {
@@ -190,6 +207,20 @@ config.unset = function(name) {
     }
     if (jpath.length == 1 && config.opts()[_.first(jpath)])
         commander_emit(_.first(jpath), value);
+    var filename = config.configFilename();
+    var json = loadConfigFile(filename);
+    if (unset(json, jpath))
+        writeConfigFile(filename, json);
+};
+
+config.add = function(name, value) {
+    var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
+    assign(session, jpath, value);
+};
+
+config.remove = function(name) {
+    var jpath = _.isArray(name) ? name : name.split('.');
+    assign(session, jpath, undefined);
     var filename = config.configFilename();
     var json = loadConfigFile(filename);
     if (unset(json, jpath))
@@ -274,7 +305,11 @@ function assign(obj, path, value) {
         try {
             return obj[prop] != value;
         } finally {
-            obj[prop] = value;
+            if (_.isUndefined(value)) {
+                delete obj[prop];
+            } else {
+                obj[prop] = value;
+            }
         }
     } else if (_.isObject(obj[prop])) {
         return assign(obj[prop], _.rest(path), value);

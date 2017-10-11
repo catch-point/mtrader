@@ -58,11 +58,11 @@ ptrading.quote({
   symbol: 'YHOO',
   exchange: 'NASDAQ',
   pad_begin: 9,       // Show today and nine earlier trading days
-  columns: [
-      'DATE(ending) AS "Date"',
-      'day.close AS "Close"',
-      '(day.adj_close - OFFSET(1, day.adj_close))*100/OFFSET(1,day.adj_close) AS "Change"'
-  ].join(','),
+  columns: {
+      Date: 'DATE(ending)',
+      Close: 'day.close',
+      Change: '(day.adj_close - OFFSET(1, day.adj_close))*100/OFFSET(1,day.adj_close)'
+  },
   criteria: 'day.adj_close > OFFSET(1, day.adj_close)'
 }).then(bars => {
   bars.forEach(bar => {
@@ -86,18 +86,18 @@ ptrading.collect({
   begin: "2017-01-09",
   end: "2017-01-14",
   precedence: 'PF(120,day.adj_close)',
-  columns: [
-      'symbol',
-      'DATE(ending) AS date',
-      'IF(COUNT(symbol)<=1,FLOOR(10000/(day.close)),0) AS target',
-      'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0)) AS shares',
-      'PREV("position",0) + shares AS position',
-      'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
-      '-shares * price AS proceeds',
-      'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission',
-      'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position) AS basis',
-      'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission AS profit'
-  ].join(','),
+  columns: {
+      symbol: 'symbol',
+      date: 'DATE(ending)',
+      target: 'IF(COUNT(symbol)<=1,FLOOR(10000/(day.close)),0)',
+      shares: 'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0))',
+      position: 'PREV("position",0) + shares',
+      price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
+      proceeds: '-shares * price',
+      commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))',
+      basis: 'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position)',
+      profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
+  },
   retain: 'position OR shares'
 }).then(trades => {
   trades.forEach(trade => {

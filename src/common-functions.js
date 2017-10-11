@@ -268,25 +268,33 @@ var functions = module.exports.functions = {
     /* Less than or Equal to */
     NOT_GREATER_THAN(opts, lhs, rhs) {
         return context => {
-            return lhs(context) <= rhs(context) ? 1 : 0;
+            var a = lhs(context);
+            var b = rhs(context);
+            return a <= b && a != null && b != null ? 1 : 0;
         };
     },
     /* Greater than or Equal to */
     NOT_LESS_THAN(opts, lhs, rhs) {
         return context => {
-            return lhs(context) >= rhs(context) ? 1 : 0;
+            var a = lhs(context);
+            var b = rhs(context);
+            return a >= b && a != null && b != null ? 1 : 0;
         };
     },
     /* Less than */
     LESS_THAN(opts, lhs, rhs) {
         return context => {
-            return lhs(context) < rhs(context) ? 1 : 0;
+            var a = lhs(context);
+            var b = rhs(context);
+            return a < b && a != null && b != null ? 1 : 0;
         };
     },
     /* Greater than */
     GREATER_THAN(opts, lhs, rhs) {
         return context => {
-            return lhs(context) > rhs(context) ? 1 : 0;
+            var a = lhs(context);
+            var b = rhs(context);
+            return a > b && a != null && b != null ? 1 : 0;
         };
     },
     /* Not */
@@ -299,14 +307,14 @@ var functions = module.exports.functions = {
     AND(opts) {
         var conditions = _.rest(arguments);
         return context => {
-            return conditions.every(fn => fn(context)) ? 1 : 0;
+            return conditions.reduce((memo, fn) => memo && fn(context), 1);
         };
     },
     /* OR */
     OR(opts) {
         var conditions = _.rest(arguments);
         return context => {
-            return conditions.some(fn => fn(context)) ? 1 : 0;
+            return conditions.reduce((memo, fn) => memo || fn(context), null);
         };
     },
     /* XOR */

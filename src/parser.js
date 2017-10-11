@@ -40,7 +40,7 @@ const expect = require('chai').expect;
  * previous calls to one of the given methods.
  */
 module.exports = function(handlers) {
-    var substitutions = parseVariables(handlers && handlers.substitutions);
+    var subs = parseVariables(handlers && handlers.substitutions);
     var _handlers = {
         constant(value) {
             if (!handlers || !handlers.constant) return value;
@@ -60,21 +60,27 @@ module.exports = function(handlers) {
          * @returns function of expr
          */
         parse(expr) {
-            if (_.isNumber(expr)) return _handlers.constant(expr);
-            expect(expr).to.be.ok.and.a('string');
-            var list = parseExpressions(expr, substitutions);
-            if (!list.length) throw Error("No input: " + expr);
-            if (list.length > 1) throw Error("Did not expect multiple expressions: " + expr);
-            return invokeHandler(_.first(list), _handlers);
+            if (_.isNumber(expr))
+                return _handlers.constant(expr);
+            else if (_.isString(expr))
+                return invokeHandler(parseExpression(expr, subs), _handlers);
+            else if (_.isArray(expr))
+                return expr.map(value => invokeHandler(parseExpression(value, subs), _handlers));
+            else if (_.isObject(expr) && !_.isFunction(expr) && _.allKeys(expr).every(k=>_.has(expr,k)))
+                return _.mapObject(expr, value => invokeHandler(parseExpression(value, subs), _handlers));
+            else
+                expect(expr).to.be.ok.and.a('string');
         },
         /**
          * Produces Array of functions that must each resolve to truthy for the
          * criteria to be considered passing.
          */
         parseCriteriaList(exprs) {
-            if (!exprs) return [];
-            expect(exprs).to.be.a('string');
-            var list = parseExpressions(exprs, substitutions);
+            if (_.isEmpty(exprs)) return [];
+            if (!_.isArray(exprs) && !_.isString(exprs)) expect(exprs).to.be.a('string');
+            var list = _.isArray(exprs) ?
+                _.flatten(exprs.map(val=>parseExpressions(val, subs)), true) :
+                parseExpressions(exprs, subs);
             var i=0;
             while (i<list.length) {
                 var expr = list[i];
@@ -84,22 +90,6 @@ module.exports = function(handlers) {
             return list.map(expr => {
                 return invokeHandler(expr, _handlers);
             });
-        },
-        /**
-         * @param exprs a comma separated list of expressions that might use
-         * the AS operation to assign a column name.
-         * @returns Object, keyed by column names, of functions
-         */
-        parseColumnsMap(exprs) {
-            expect(exprs).to.be.ok.and.a('string');
-            var list = parseAsExpressions(exprs);
-            return list.reduce((map, expr) => {
-                var value = inline(_.first(expr) == 'AS' ?
-                    expr[1] : expr, substitutions)
-                var name = _.first(expr) == 'AS' ?
-                    JSON.parse(_.last(expr)) : serialize(value);
-                return _.extend(map, {[name]: invokeHandler(value, _handlers)});
-            }, {});
         }
     };
 };
@@ -109,13 +99,7 @@ module.exports = function(handlers) {
  */
 function parseVariables(exprs) {
     if (!exprs) return {};
-    var list = parseAsExpressions(exprs);
-    var variables = list.reduce((map, expr) => {
-        if (_.first(expr) != 'AS') return map;
-        var name = JSON.parse(_.last(expr));
-        if (!name.match(/^[_a-zA-Z][_\w]*$/)) return map;
-        return _.extend(map, {[name]: expr[1]});
-    }, {});
+    var variables = _.mapObject(_.pick(exprs, (val,key)=>val!=key), val => parseExpression(val));
     var handlers = {
         constant(value) {
             return [];
@@ -144,9 +128,16 @@ function parseVariables(exprs) {
     return variables;
 }
 
+function parseExpression(str, substitutions) {
+    expect(str).to.be.ok.and.a('string');
+    var list = parseExpressions(str, substitutions);
+    if (!list.length) throw Error("No input: " + str);
+    if (list.length > 1) throw Error("Did not expect multiple expressions: " + str);
+    return _.first(list);
+}
+
 function parseExpressions(str, substitutions) {
-    var list = parseAsExpressions(str);
-    var expressions = list.map(expr => _.first(expr) == 'AS' ? expr[1] : expr);
+    var expressions = parseExpressionList(str);
     if (_.isEmpty(substitutions)) return expressions;
     else return expressions.map(expr => inline(expr, substitutions));
 }
@@ -182,33 +173,20 @@ function serialize(expr) {
     else throw Error("Unknown expression: " + expr);
 }
 
-function parseAsExpressions(str) {
+function parseExpressionList(str) {
     try {
         var index = 0;
-        var list = parseAsExpressionList();
+        var expressions = [parseExpression()];
+        while (peek() == ',') {
+            index++;
+            expressions.push(parseExpression());
+        };
         if (peek()) expect("end of input");
-        return list;
+        return expressions;
     } catch (e) {
         throw Error("Could not parse \"" + str + "\". " + e.stack);
     }
 
-    function parseAsExpressionList() {
-        var expressions = [parseAsExpression()];
-        while (peek() == ',') {
-            index++;
-            expressions.push(parseAsExpression());
-        };
-        return expressions;
-    }
-    function parseAsExpression() {
-        var expr = parseExpression();
-        if (peek() != 'A' && peek() != 'a') return expr;
-        var as = str.substring(index, index+2);
-        if ('AS' != as && 'as' != as || isWord(str[index+2])) return expr;
-        index+= 2;
-        var name = isQuote(peek()) ? parseString() : JSON.stringify(parseWord());
-        return ['AS', expr, name];
-    }
     function parseExpression() {
         return parseConditionalOrExpression();
     }

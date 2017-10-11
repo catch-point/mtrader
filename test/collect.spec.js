@@ -72,12 +72,12 @@ describe("collect", function() {
           pad_begin: 10,
           begin: "2017-01-13",
           end: "2017-01-14",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "close"',
-              'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "change"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              close: 'day.close',
+              change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
+          },
           retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0, "symbol")<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
@@ -99,12 +99,12 @@ describe("collect", function() {
           portfolio: 'XLE.ARCA,XLF.ARCA,XLK.ARCA,XLV.ARCA,XLY.ARCA',
           begin: "2016-12-01",
           end: "2016-12-02",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "Price"',
-              'MIN(0.5/CVAR(5, 60, day.close), 100) AS "Weight"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              Price: 'day.close',
+              Weight: 'MIN(0.5/CVAR(5, 60, day.close), 100)'
+          },
           retain: 'SUMPREC(0, "Weight")+Weight <= 100',
           precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
         }).should.eventually.be.like([
@@ -120,25 +120,25 @@ describe("collect", function() {
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
           begin: "2016-11-14",
           end: "2016-11-25",
-          variables: [
-              'MAXCORREL(60,day.adj_close) AS cor',
-              'CVAR(5, 60, day.adj_close) AS risk',
-              'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
-              'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
-              'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0)) AS shares',
-              '-shares * price AS proceeds',
-              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission',
-              'IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position) AS basis',
-              '(price - PREV("price",0)) * PREV("position",0) AS mtm'
-          ],
-          columns: [
-              'DATE(ending) AS date',
-              'symbol',
-              'PREV("position",0) + shares AS position',
-              'day.close + 0.02 * SIGN(shares) AS price', // includes slippage
-              'PREC("cash",100000)+proceeds-commission AS cash',
-              'PREC("value",100000)+mtm-commission AS value'
-          ],
+          variables: {
+              cor: 'MAXCORREL(60,day.adj_close)',
+              risk: 'CVAR(5, 60, day.adj_close)',
+              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
+              shares: 'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0))',
+              proceeds: '-shares * price',
+              commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))',
+              basis: 'IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position)',
+              mtm: '(price - PREV("price",0)) * PREV("position",0)'
+          },
+          columns: {
+              date: 'DATE(ending)',
+              symbol: 'symbol',
+              position: 'PREV("position",0) + shares',
+              price: 'day.close + 0.02 * SIGN(shares)', // includes slippage
+              cash: 'PREC("cash",100000)+proceeds-commission',
+              value: 'PREC("value",100000)+mtm-commission'
+          },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
         }).should.eventually.be.like([
@@ -186,12 +186,12 @@ describe("collect", function() {
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLU.ARCA,XLV.ARCA,XLY.ARCA',
           begin: "2016-11-14",
           end: "2016-12-01",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "Price"',
-              'ROUND(MIN(0.5/CVAR(5, 60, day.adj_close), 100),2) AS "Weight"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              Price: 'day.close',
+              Weight: 'ROUND(MIN(0.5/CVAR(5, 60, day.adj_close), 100),2)'
+          },
           retain: [
             'MAXCORREL(60,day.adj_close)<0.75',
             'SUMPREC(0, "Weight")+Weight<=100'
@@ -250,15 +250,15 @@ describe("collect", function() {
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
           begin: "2016-11-14",
           end: "2016-11-22",
-          columns: [
-              'symbol',
-              'DATE(ending) AS date',
-              'day.close AS price',
-              'ROUND(MAXCORREL(60,day.adj_close),2) AS cor',
-              'ROUND(CVAR(5, 60, day.adj_close),3) AS risk',
-              'IF(cor<0.75 AND SUMPREC(0,"target")<=95, MIN(ROUND(0.5/risk,2),100-SUMPREC(0,"target")), 0) AS target',
-              'ROUND((target + SUMPREV(2,"target"))/3,2) AS weight'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              price: 'day.close',
+              cor: 'ROUND(MAXCORREL(60,day.adj_close),2)',
+              risk: 'ROUND(CVAR(5, 60, day.adj_close),3)',
+              target: 'IF(cor<0.75 AND SUMPREC(0,"target")<=95, MIN(ROUND(0.5/risk,2),100-SUMPREC(0,"target")), 0)',
+              weight: 'ROUND((target + SUMPREV(2,"target"))/3,2)'
+          },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'weight OR PREV("weight")'
         }).should.eventually.be.like([
@@ -299,23 +299,23 @@ describe("collect", function() {
           pad_leading: 11,
           begin: "2016-11-30",
           end: "2016-12-01",
-          variables: [
-              'MAXCORREL(60,day.adj_close) AS cor',
-              'CVAR(5, 60, day.adj_close) AS risk',
-              'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
-              'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
-              '-shares * price AS proceeds',
-              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission'
-          ],
-          columns: [
-              'symbol',
-              'DATE(ending) AS date',
-              'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0)) AS shares',
-              'PREV("position",0) + shares AS position',
-              'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
-              'ROUND(IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position),2) AS basis',
-              'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission AS profit'
-          ],
+          variables: {
+              cor: 'MAXCORREL(60,day.adj_close)',
+              risk: 'CVAR(5, 60, day.adj_close)',
+              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
+              proceeds: '-shares * price',
+              commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'
+          },
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              shares: 'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0))',
+              position: 'PREV("position",0) + shares',
+              price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
+              basis: 'ROUND(IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position),2)',
+              profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
+          },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
         }).should.eventually.be.like([
@@ -330,11 +330,11 @@ describe("collect", function() {
           portfolio: 'SPY.ARCA,XIC.TSX',
           begin: "2016-01-01",
           end: "2016-02-01",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "Price"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              Price: 'day.close'
+          },
           // USD.CAD day.ending is an hour after SPY.ARCA day.ending, so
           // the previous USD.CAD day.close is used
           retain: 'exchange=IF(USD.CAD(CVAR(5,60,day.close))<0.01,"ARCA","TSX")'
@@ -365,11 +365,11 @@ describe("collect", function() {
           portfolio: 'SPY.ARCA,XIC.TSX',
           begin: "2016-01-01",
           end: "2016-02-01",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "Price"'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              Price: 'day.close'
+          },
           retain: 'exchange=IF(USD.CAD(TOD(CVAR(5,60,m60.close)))<0.01,"ARCA","TSX")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
@@ -396,15 +396,18 @@ describe("collect", function() {
     it("should inline criteria variables", function() {
         return collect({
             portfolio: "USD.CAD",
-            columns: [
-                "DATE(ending) AS date",
-                "day.close AS close",
-                "CHANGE(close,OFFSET(1,close)) AS change",
-                "ROUND(day.POVO(20)) AS povo",
-                "IF(LEADING(povo)<18 AND povo<50,100000,0) AS position",
-                "ROUND((close-LEADING(close))/LEADING(close)*100000,2) AS profit",
-            ],
-            criteria: "LEADING(povo)<18 AND povo<50",
+            variables: {
+                open: 'povo<50 AND (povo<18 OR PREV("open"))',
+                entry: 'open AND PREV("open") AND PREV("entry") OR close'
+            },
+            columns: {
+                date: "DATE(ending)",
+                close: "day.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                position: "IF(open,100000,0)",
+                profit: "ROUND((close-entry)/entry*position,2)"
+            },
             begin: '2014-02-10',
             end: '2014-02-22'
         }).should.eventually.be.like([
@@ -418,6 +421,538 @@ describe("collect", function() {
             {date:"2014-02-19",close:1.10772,change:1.2,povo:42,position:100000,profit:694.49},
             {date:"2014-02-20",close:1.10969,change:0.18,povo:65,position:0,profit:0},
             {date:"2014-02-21",close:1.1112,change:0.14,povo:70,position:0,profit:0}
+        ]);
+    });
+    it("should allow columns to have same name as variable", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                open: 'povo<50 AND (povo<18 OR PREV("open"))',
+                entry: 'open AND PREV("open") AND PREV("entry") OR close',
+                notUsed: 'm30.close'
+            },
+            columns: {
+                date: "DATE(day.ending)",
+                open: "day.open",
+                close: "day.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                entry: 'entry',
+                profit: "ROUND((close-entry)/entry*IF(open,100000,0),2)"
+            },
+            begin: '2014-02-10',
+            end: '2014-02-22'
+        }).should.eventually.be.like([
+            {date:"2014-02-10",open:1.10336,close:1.10574,change:0.23,povo:37,entry:1.10574,profit:0},
+            {date:"2014-02-11",open:1.10574,close:1.10067,change:-0.46,povo:22,entry:1.10067,profit:0},
+            {date:"2014-02-12",open:1.10068,close:1.10008,change:-0.05,povo:17,entry:1.10008,profit:0},
+            {date:"2014-02-13",open:1.10008,close:1.09751,change:-0.23,povo:11,entry:1.10008,profit:-233.62},
+            {date:"2014-02-14",open:1.09751,close:1.09849,change:0.09,povo:12,entry:1.10008,profit:-144.53},
+            {date:"2014-02-17",open:1.0984,close:1.09609,change:-0.22,povo:4,entry:1.10008,profit:-362.7},
+            {date:"2014-02-18",open:1.09625,close:1.09454,change:-0.14,povo:1,entry:1.10008,profit:-503.6},
+            {date:"2014-02-19",open:1.09448,close:1.10772,change:1.2,povo:42,entry:1.10008,profit:694.49},
+            {date:"2014-02-20",open:1.10786,close:1.10969,change:0.18,povo:65,entry:1.10969,profit:0},
+            {date:"2014-02-21",open:1.10969,close:1.1112,change:0.14,povo:70,entry:1.1112,profit:0}
+        ]);
+    });
+    it("should filter out most results using leading retain", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                open: 'IF ((HOUR(m60.ending)=12 OR PREV("open")=OFFSET(1,m30.ending)) AND m30.close>=OFFSET(1,m30.close),m30.ending)'
+            },
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close'
+            },
+            retain: [
+                'DATE(month.ending) = DATE(day.ending)',
+                'HOUR(m60.ending) >= 12',
+                'open'
+            ].join(' and '),
+            begin: '2014-01-01T08:30:00-0500',
+            end: '2014-12-31T17:00:00-0500'
+        }).should.eventually.be.like([
+            {Date:"2014-01-02",Time:"12:30:00",Price:1.06356},
+            {Date:"2014-01-02",Time:"13:00:00",Price:1.06393},
+            {Date:"2014-01-02",Time:"13:30:00",Price:1.06394},
+            {Date:"2014-01-02",Time:"14:00:00",Price:1.06515},
+            {Date:"2014-01-02",Time:"14:30:00",Price:1.06544},
+            {Date:"2014-01-02",Time:"15:00:00",Price:1.0661},
+            {Date:"2014-01-02",Time:"15:30:00",Price:1.0662},
+            {Date:"2014-01-02",Time:"16:00:00",Price:1.06721},
+            {Date:"2014-02-03",Time:"12:00:00",Price:1.10735},
+            {Date:"2014-02-03",Time:"12:30:00",Price:1.10895},
+            {Date:"2014-02-03",Time:"13:00:00",Price:1.10933},
+            {Date:"2014-02-03",Time:"13:30:00",Price:1.10964},
+            {Date:"2014-02-03",Time:"14:00:00",Price:1.11},
+            {Date:"2014-03-03",Time:"12:00:00",Price:1.109},
+            {Date:"2014-04-01",Time:"12:00:00",Price:1.1025},
+            {Date:"2014-06-02",Time:"12:30:00",Price:1.09025},
+            {Date:"2014-07-01",Time:"12:00:00",Price:1.06521},
+            {Date:"2014-08-01",Time:"12:00:00",Price:1.09177},
+            {Date:"2014-09-01",Time:"12:30:00",Price:1.08626},
+            {Date:"2014-11-03",Time:"12:00:00",Price:1.13188},
+            {Date:"2014-11-03",Time:"12:30:00",Price:1.13363},
+            {Date:"2014-11-03",Time:"13:00:00",Price:1.13378},
+            {Date:"2014-11-03",Time:"13:30:00",Price:1.13521}
+        ]);
+    });
+    it("should filter out most results using filter", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                open: '(HOUR(m60.ending)=12 OR PREV("open")) AND m30.close>=OFFSET(1,m30.close)'
+            },
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close'
+            },
+            retain: [
+                'DATE(month.ending) = DATE(day.ending)',
+                'HOUR(m60.ending) >= 12'
+            ],
+            filter: [
+                'open'
+            ],
+            begin: '2014-01-01T08:30:00-0500',
+            end: '2014-12-31T17:00:00-0500'
+        }).should.eventually.be.like([
+            {Date:"2014-01-02",Time:"12:30:00",Price:1.06356},
+            {Date:"2014-01-02",Time:"13:00:00",Price:1.06393},
+            {Date:"2014-01-02",Time:"13:30:00",Price:1.06394},
+            {Date:"2014-01-02",Time:"14:00:00",Price:1.06515},
+            {Date:"2014-01-02",Time:"14:30:00",Price:1.06544},
+            {Date:"2014-01-02",Time:"15:00:00",Price:1.0661},
+            {Date:"2014-01-02",Time:"15:30:00",Price:1.0662},
+            {Date:"2014-01-02",Time:"16:00:00",Price:1.06721},
+            {Date:"2014-02-03",Time:"12:00:00",Price:1.10735},
+            {Date:"2014-02-03",Time:"12:30:00",Price:1.10895},
+            {Date:"2014-02-03",Time:"13:00:00",Price:1.10933},
+            {Date:"2014-02-03",Time:"13:30:00",Price:1.10964},
+            {Date:"2014-02-03",Time:"14:00:00",Price:1.11},
+            {Date:"2014-03-03",Time:"12:00:00",Price:1.109},
+            {Date:"2014-04-01",Time:"12:00:00",Price:1.1025},
+            {Date:"2014-06-02",Time:"12:30:00",Price:1.09025},
+            {Date:"2014-07-01",Time:"12:00:00",Price:1.06521},
+            {Date:"2014-08-01",Time:"12:00:00",Price:1.09177},
+            {Date:"2014-09-01",Time:"12:30:00",Price:1.08626},
+            {Date:"2014-11-03",Time:"12:00:00",Price:1.13188},
+            {Date:"2014-11-03",Time:"12:30:00",Price:1.13363},
+            {Date:"2014-11-03",Time:"13:00:00",Price:1.13378},
+            {Date:"2014-11-03",Time:"13:30:00",Price:1.13521}
+        ]);
+    });
+    it("should order results", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                open: '(HOUR(m60.ending)=12 OR PREV("open")) AND m30.close>=OFFSET(1,m30.close)'
+            },
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close'
+            },
+            retain: [
+                'DATE(month.ending) = DATE(day.ending)',
+                'HOUR(m60.ending) >= 12'
+            ],
+            filter: [
+                'open'
+            ],
+            order: 'DESC(Date),DESC(Time)',
+            begin: '2014-01-01T08:30:00-0500',
+            end: '2014-12-31T17:00:00-0500'
+        }).should.eventually.be.like([
+            {Date:"2014-11-03",Time:"13:30:00",Price:1.13521},
+            {Date:"2014-11-03",Time:"13:00:00",Price:1.13378},
+            {Date:"2014-11-03",Time:"12:30:00",Price:1.13363},
+            {Date:"2014-11-03",Time:"12:00:00",Price:1.13188},
+            {Date:"2014-09-01",Time:"12:30:00",Price:1.08626},
+            {Date:"2014-08-01",Time:"12:00:00",Price:1.09177},
+            {Date:"2014-07-01",Time:"12:00:00",Price:1.06521},
+            {Date:"2014-06-02",Time:"12:30:00",Price:1.09025},
+            {Date:"2014-04-01",Time:"12:00:00",Price:1.1025},
+            {Date:"2014-03-03",Time:"12:00:00",Price:1.109},
+            {Date:"2014-02-03",Time:"14:00:00",Price:1.11},
+            {Date:"2014-02-03",Time:"13:30:00",Price:1.10964},
+            {Date:"2014-02-03",Time:"13:00:00",Price:1.10933},
+            {Date:"2014-02-03",Time:"12:30:00",Price:1.10895},
+            {Date:"2014-02-03",Time:"12:00:00",Price:1.10735},
+            {Date:"2014-01-02",Time:"16:00:00",Price:1.06721},
+            {Date:"2014-01-02",Time:"15:30:00",Price:1.0662},
+            {Date:"2014-01-02",Time:"15:00:00",Price:1.0661},
+            {Date:"2014-01-02",Time:"14:30:00",Price:1.06544},
+            {Date:"2014-01-02",Time:"14:00:00",Price:1.06515},
+            {Date:"2014-01-02",Time:"13:30:00",Price:1.06394},
+            {Date:"2014-01-02",Time:"13:00:00",Price:1.06393},
+            {Date:"2014-01-02",Time:"12:30:00",Price:1.06356}
+        ]);
+    });
+    it("should identify results using leading criteria", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                entryAt: 'IF(Price>=OFFSET(1,Price),IF(PREV("entryAt"),PREV("entryAt"), IF(HOUR(m60.ending)=12, m30.ending)))'
+            },
+            columns: {
+                Date: 'DATE(m30.ending)',
+                Time: 'TIME(m30.ending)',
+                Price: 'm30.close',
+                position: 'IF(entryAt<m30.ending, 100, 0)'
+           },
+            retain: [
+                'DATE(month.ending) = DATE(day.ending)'
+            ].join(' and '),
+            begin: '2014-01-02T11:30:00-0500',
+            end: '2014-01-02T17:00:00-0500'
+        }).should.eventually.be.like([
+            {Date:"2014-01-02",Time:"11:30:00",Price:1.06343,position:0},
+            {Date:"2014-01-02",Time:"12:00:00",Price:1.06335,position:0},
+            {Date:"2014-01-02",Time:"12:30:00",Price:1.06356,position:0},
+            {Date:"2014-01-02",Time:"13:00:00",Price:1.06393,position:100},
+            {Date:"2014-01-02",Time:"13:30:00",Price:1.06394,position:100},
+            {Date:"2014-01-02",Time:"14:00:00",Price:1.06515,position:100},
+            {Date:"2014-01-02",Time:"14:30:00",Price:1.06544,position:100},
+            {Date:"2014-01-02",Time:"15:00:00",Price:1.0661,position:100},
+            {Date:"2014-01-02",Time:"15:30:00",Price:1.0662,position:100},
+            {Date:"2014-01-02",Time:"16:00:00",Price:1.06721,position:100},
+            {Date:"2014-01-02",Time:"16:30:00",Price:1.06671,position:0}
+        ]);
+    });
+    it("should use LEADING to meansure change", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                open: 'povo<50 AND (povo<15 OR PREV("open"))',
+                entry: 'open AND PREV("open") AND PREV("entry") OR close'
+            },
+            columns: {
+                date: "DATE(ending)",
+                close: "day.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                position: "IF(open,100000,0)",
+                profit: "ROUND((close-entry)/entry*position,2)"
+            },
+            begin: '2014-02-10',
+            end: '2014-02-22'
+        }).should.eventually.be.like([
+            {date:"2014-02-10",close:1.10574,change:0.23,povo:37,position:0,profit:0},
+            {date:"2014-02-11",close:1.10067,change:-0.46,povo:22,position:0,profit:0},
+            {date:"2014-02-12",close:1.10008,change:-0.05,povo:17,position:0,profit:0},
+            {date:"2014-02-13",close:1.09751,change:-0.23,povo:11,position:100000,profit:0},
+            {date:"2014-02-14",close:1.09849,change:0.09,povo:12,position:100000,profit:89.29},
+            {date:"2014-02-17",close:1.09609,change:-0.22,povo:4,position:100000,profit:-129.38},
+            {date:"2014-02-18",close:1.09454,change:-0.14,povo:1,position:100000,profit:-270.61},
+            {date:"2014-02-19",close:1.10772,change:1.2,povo:42,position:100000,profit:930.29},
+            {date:"2014-02-20",close:1.10969,change:0.18,povo:65,position:0,profit:0},
+            {date:"2014-02-21",close:1.1112,change:0.14,povo:70,position:0,profit:0}
+        ]);
+    });
+    it("should use LEADING to meansure change", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                open: 'povo<50 AND (povo<15 OR PREV("open"))',
+                entry: 'open AND PREV("open") AND PREV("entry") OR close'
+            },
+            columns: {
+                date: "DATE(ending)",
+                hour: "HOUR(ending)",
+                close: "m240.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                position: "IF(open,100000,0)",
+                profit: "ROUND((close-entry)/entry*100000,2)"
+            },
+            begin: '2014-02-12',
+            end: '2014-02-21'
+        }).should.eventually.be.like([
+            {date:"2014-02-12",hour:0,close:1.09959,change:-0.23,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:4,close:1.09941,change:-0.02,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:8,close:1.10071,change:0.12,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:12,close:1.0992,change:-0.14,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:16,close:1.09963,change:0.04,povo:22,position:0,profit:0},
+            {date:"2014-02-12",hour:20,close:1.10079,change:0.11,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:0,close:1.10068,change:-0.01,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:4,close:1.09839,change:-0.21,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:8,close:1.09909,change:0.06,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:12,close:1.09786,change:-0.11,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:16,close:1.09759,change:-0.02,povo:17,position:0,profit:0},
+            {date:"2014-02-13",hour:20,close:1.09746,change:-0.01,povo:11,position:100000,profit:0},
+            {date:"2014-02-14",hour:0,close:1.09504,change:-0.22,povo:11,position:100000,profit:-220.51},
+            {date:"2014-02-14",hour:4,close:1.09598,change:0.09,povo:11,position:100000,profit:-134.86},
+            {date:"2014-02-14",hour:8,close:1.09475,change:-0.11,povo:11,position:100000,profit:-246.93},
+            {date:"2014-02-14",hour:12,close:1.09804,change:0.3,povo:11,position:100000,profit:52.85},
+            {date:"2014-02-14",hour:16,close:1.09816,change:0.01,povo:11,position:100000,profit:63.78},
+            {date:"2014-02-14",hour:20,close:1.09849,change:0.03,povo:12,position:100000,profit:93.85},
+            {date:"2014-02-16",hour:20,close:1.09789,change:-0.05,povo:12,position:100000,profit:39.18},
+            {date:"2014-02-17",hour:0,close:1.09723,change:-0.06,povo:12,position:100000,profit:-20.96},
+            {date:"2014-02-17",hour:4,close:1.09747,change:0.02,povo:12,position:100000,profit:0.91},
+            {date:"2014-02-17",hour:8,close:1.09659,change:-0.08,povo:12,position:100000,profit:-79.27},
+            {date:"2014-02-17",hour:12,close:1.09605,change:-0.05,povo:12,position:100000,profit:-128.48},
+            {date:"2014-02-17",hour:16,close:1.09613,change:0.01,povo:12,position:100000,profit:-121.19},
+            {date:"2014-02-17",hour:20,close:1.0952,change:-0.08,povo:4,position:100000,profit:-205.93},
+            {date:"2014-02-18",hour:0,close:1.0956,change:0.04,povo:4,position:100000,profit:-169.48},
+            {date:"2014-02-18",hour:4,close:1.09669,change:0.1,povo:4,position:100000,profit:-70.16},
+            {date:"2014-02-18",hour:8,close:1.09654,change:-0.01,povo:4,position:100000,profit:-83.83},
+            {date:"2014-02-18",hour:12,close:1.09511,change:-0.13,povo:4,position:100000,profit:-214.13},
+            {date:"2014-02-18",hour:16,close:1.095,change:-0.01,povo:4,position:100000,profit:-224.15},
+            {date:"2014-02-18",hour:20,close:1.09546,change:0.04,povo:1,position:100000,profit:-182.24},
+            {date:"2014-02-19",hour:0,close:1.09339,change:-0.19,povo:1,position:100000,profit:-370.86},
+            {date:"2014-02-19",hour:4,close:1.09293,change:-0.04,povo:1,position:100000,profit:-412.77},
+            {date:"2014-02-19",hour:8,close:1.09434,change:0.13,povo:1,position:100000,profit:-284.29},
+            {date:"2014-02-19",hour:12,close:1.10446,change:0.92,povo:1,position:100000,profit:637.84},
+            {date:"2014-02-19",hour:16,close:1.10808,change:0.33,povo:1,position:100000,profit:967.69},
+            {date:"2014-02-19",hour:20,close:1.1073,change:-0.07,povo:42,position:100000,profit:896.62},
+            {date:"2014-02-20",hour:0,close:1.10766,change:0.03,povo:42,position:100000,profit:929.42},
+            {date:"2014-02-20",hour:4,close:1.10663,change:-0.09,povo:42,position:100000,profit:835.57},
+            {date:"2014-02-20",hour:8,close:1.10784,change:0.11,povo:42,position:100000,profit:945.82},
+            {date:"2014-02-20",hour:12,close:1.11039,change:0.23,povo:42,position:100000,profit:1178.18},
+            {date:"2014-02-20",hour:16,close:1.10976,change:-0.06,povo:42,position:100000,profit:1120.77},
+            {date:"2014-02-20",hour:20,close:1.11183,change:0.19,povo:65,position:0,profit:0},
+            {date:"2014-02-21",hour:0,close:1.11255,change:0.06,povo:65,position:0,profit:0}
+        ]);;
+    });
+    it("should reset LEADING at the same point", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                uptrend: 'povo<85 AND (povo<15 OR PREV("uptrend"))',
+                downtrend: 'povo>15 AND (povo>85 OR PREV("downtrend"))',
+                entry: '(uptrend AND PREV("uptrend") OR downtrend AND PREV("downtrend")) AND PREV("entry") OR close'
+            },
+            columns: {
+                date: "DATE(ending)",
+                close: "day.close",
+                change: "CHANGE(close,OFFSET(1,close))",
+                povo: "ROUND(day.POVO(20))",
+                position: "IF(uptrend,100000,downtrend,-100000,0)",
+                profit: "ROUND((close-entry)/entry*position,2)",
+            },
+            begin: '2014-01-30',
+            end: '2014-03-07'
+        }).should.eventually.be.like([
+            {date:"2014-01-30",close:1.11578,change:-0.08,povo:90,position:-100000,profit:0},
+            {date:"2014-01-31",close:1.11251,change:-0.29,povo:81,position:-100000,profit:293.07},
+            {date:"2014-02-03",close:1.11162,change:-0.08,povo:77,position:-100000,profit:372.83},
+            {date:"2014-02-04",close:1.108,change:-0.33,povo:54,position:-100000,profit:697.27},
+            {date:"2014-02-05",close:1.1081,change:0.01,povo:51,position:-100000,profit:688.31},
+            {date:"2014-02-06",close:1.10684,change:-0.11,povo:43,position:-100000,profit:801.23},
+            {date:"2014-02-07",close:1.10319,change:-0.33,povo:33,position:-100000,profit:1128.36},
+            {date:"2014-02-10",close:1.10574,change:0.23,povo:37,position:-100000,profit:899.82},
+            {date:"2014-02-11",close:1.10067,change:-0.46,povo:22,position:-100000,profit:1354.21},
+            {date:"2014-02-12",close:1.10008,change:-0.05,povo:17,position:-100000,profit:1407.09},
+            {date:"2014-02-13",close:1.09751,change:-0.23,povo:11,position:100000,profit:0},
+            {date:"2014-02-14",close:1.09849,change:0.09,povo:12,position:100000,profit:89.29},
+            {date:"2014-02-17",close:1.09609,change:-0.22,povo:4,position:100000,profit:-129.38},
+            {date:"2014-02-18",close:1.09454,change:-0.14,povo:1,position:100000,profit:-270.61},
+            {date:"2014-02-19",close:1.10772,change:1.2,povo:42,position:100000,profit:930.29},
+            {date:"2014-02-20",close:1.10969,change:0.18,povo:65,position:100000,profit:1109.78},
+            {date:"2014-02-21",close:1.1112,change:0.14,povo:70,position:100000,profit:1247.37},
+            {date:"2014-02-24",close:1.10549,change:-0.51,povo:35,position:100000,profit:727.1},
+            {date:"2014-02-25",close:1.10829,change:0.25,povo:56,position:100000,profit:982.22},
+            {date:"2014-02-26",close:1.11262,change:0.39,povo:88,position:-100000,profit:0},
+            {date:"2014-02-27",close:1.11188,change:-0.07,povo:83,position:-100000,profit:66.51},
+            {date:"2014-02-28",close:1.1064,change:-0.49,povo:45,position:-100000,profit:559.04},
+            {date:"2014-03-03",close:1.10749,change:0.1,povo:53,position:-100000,profit:461.07},
+            {date:"2014-03-04",close:1.10899,change:0.14,povo:71,position:-100000,profit:326.26},
+            {date:"2014-03-05",close:1.10276,change:-0.56,povo:29,position:-100000,profit:886.2},
+            {date:"2014-03-06",close:1.09829,change:-0.41,povo:16,position:-100000,profit:1287.95}
+        ]);
+    });
+    it("should call nested collect", function() {
+        config.save('CADUSD', {
+            portfolio: 'USD.CAD',
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(1/day.close,5)'
+            }
+        });
+        return collect({
+            portfolio: 'CADUSD',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'day.close'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        }).should.eventually.be.like([
+            {date:"2017-01-02",close:0.74421},
+            {date:"2017-01-03",close:0.74481},
+            {date:"2017-01-04",close:0.75185},
+            {date:"2017-01-05",close:0.7561},
+            {date:"2017-01-06",close:0.75549},
+            {date:"2017-01-09",close:0.75662},
+            {date:"2017-01-10",close:0.75574},
+            {date:"2017-01-11",close:0.75882},
+            {date:"2017-01-12",close:0.76076},
+            {date:"2017-01-13",close:0.7629},
+            {date:"2017-01-16",close:0.75911},
+            {date:"2017-01-17",close:0.76678},
+            {date:"2017-01-18",close:0.75364},
+            {date:"2017-01-19",close:0.75087},
+            {date:"2017-01-20",close:0.7514},
+            {date:"2017-01-23",close:0.75548},
+            {date:"2017-01-24",close:0.76014},
+            {date:"2017-01-25",close:0.76518},
+            {date:"2017-01-26",close:0.76397},
+            {date:"2017-01-27",close:0.76054},
+            {date:"2017-01-30",close:0.76238}
+        ]);
+    });
+    it("should detect nested collect cycle", function() {
+        config.save('USDCAD', {
+            portfolio: 'CADUSD',
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(1/day.close,5)'
+            }
+        });
+        config.save('CADUSD', {
+            portfolio: 'USDCAD',
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(1/day.close,5)'
+            }
+        });
+        return Promise.resolve().then(() => collect({
+            portfolio: 'CADUSD',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'day.close'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        })).should.be.rejected;
+    });
+    it("should ignore unused columns in nested collect", function() {
+        config.save('CADUSD', {
+            portfolio: 'USD.CAD',
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(1/day.close,5)',
+                'm240.ending': 'm240.ending',
+                'm240.close': 'ROUND(1/m240.close,5)'
+            }
+        });
+        return collect({
+            portfolio: 'CADUSD',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'day.close'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        }).should.eventually.be.like([
+            {date:"2017-01-02",close:0.74421},
+            {date:"2017-01-03",close:0.74481},
+            {date:"2017-01-04",close:0.75185},
+            {date:"2017-01-05",close:0.7561},
+            {date:"2017-01-06",close:0.75549},
+            {date:"2017-01-09",close:0.75662},
+            {date:"2017-01-10",close:0.75574},
+            {date:"2017-01-11",close:0.75882},
+            {date:"2017-01-12",close:0.76076},
+            {date:"2017-01-13",close:0.7629},
+            {date:"2017-01-16",close:0.75911},
+            {date:"2017-01-17",close:0.76678},
+            {date:"2017-01-18",close:0.75364},
+            {date:"2017-01-19",close:0.75087},
+            {date:"2017-01-20",close:0.7514},
+            {date:"2017-01-23",close:0.75548},
+            {date:"2017-01-24",close:0.76014},
+            {date:"2017-01-25",close:0.76518},
+            {date:"2017-01-26",close:0.76397},
+            {date:"2017-01-27",close:0.76054},
+            {date:"2017-01-30",close:0.76238}
+        ]);
+    });
+    it("should override order in nested collect", function() {
+        config.save('CADUSD', {
+            portfolio: 'USD.CAD',
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(1/day.close,5)'
+            },
+            order: 'DESC(day.ending)'
+        });
+        return collect({
+            portfolio: 'CADUSD',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'day.close'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        }).should.eventually.be.like([
+            {date:"2017-01-02",close:0.74421},
+            {date:"2017-01-03",close:0.74481},
+            {date:"2017-01-04",close:0.75185},
+            {date:"2017-01-05",close:0.7561},
+            {date:"2017-01-06",close:0.75549},
+            {date:"2017-01-09",close:0.75662},
+            {date:"2017-01-10",close:0.75574},
+            {date:"2017-01-11",close:0.75882},
+            {date:"2017-01-12",close:0.76076},
+            {date:"2017-01-13",close:0.7629},
+            {date:"2017-01-16",close:0.75911},
+            {date:"2017-01-17",close:0.76678},
+            {date:"2017-01-18",close:0.75364},
+            {date:"2017-01-19",close:0.75087},
+            {date:"2017-01-20",close:0.7514},
+            {date:"2017-01-23",close:0.75548},
+            {date:"2017-01-24",close:0.76014},
+            {date:"2017-01-25",close:0.76518},
+            {date:"2017-01-26",close:0.76397},
+            {date:"2017-01-27",close:0.76054},
+            {date:"2017-01-30",close:0.76238}
+        ]);
+    });
+    it("should not hide used columns", function() {
+        config.save('CADUSD', {
+            portfolio: 'USD.CAD',
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(1/day.close,5)',
+                cad_close: '1/day.close'
+            },
+            order: 'cad_close'
+        });
+        return collect({
+            portfolio: 'CADUSD',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'day.close'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        }).should.eventually.be.like([
+            {date:"2017-01-02",close:0.74421},
+            {date:"2017-01-03",close:0.74481},
+            {date:"2017-01-04",close:0.75185},
+            {date:"2017-01-05",close:0.7561},
+            {date:"2017-01-06",close:0.75549},
+            {date:"2017-01-09",close:0.75662},
+            {date:"2017-01-10",close:0.75574},
+            {date:"2017-01-11",close:0.75882},
+            {date:"2017-01-12",close:0.76076},
+            {date:"2017-01-13",close:0.7629},
+            {date:"2017-01-16",close:0.75911},
+            {date:"2017-01-17",close:0.76678},
+            {date:"2017-01-18",close:0.75364},
+            {date:"2017-01-19",close:0.75087},
+            {date:"2017-01-20",close:0.7514},
+            {date:"2017-01-23",close:0.75548},
+            {date:"2017-01-24",close:0.76014},
+            {date:"2017-01-25",close:0.76518},
+            {date:"2017-01-26",close:0.76397},
+            {date:"2017-01-27",close:0.76054},
+            {date:"2017-01-30",close:0.76238}
         ]);
     });
 });

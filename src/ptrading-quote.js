@@ -57,9 +57,10 @@ function usage(command) {
         .option('--end <dateTime>', "ISO dateTime of the ending point")
         .option('--pad-begin <number>', "Number of bars before begin dateTime")
         .option('--pad-end <number>', "Number of bars after end dateTime")
-        .option('--columns <list>', "Comma separated list of columns (such as day.close)")
+        .option('--add-column <name=expression>', "Add a column to the output (such as close=day.close)")
+        .option('--add-variable <name=expression>', "Add a variable to include in column expressions")
+        .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")
         .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
-        .option('--criteria <expression>', "Conditional expression indicating a set of results with the same LEADING values")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
@@ -170,8 +171,9 @@ ${listExchanges()}
     help pad_begin  
     help pad_end  
     help columns  
+    help variables  
+    help parameters  
     help retain  
-    help criteria  
     help output  
     help reverse  
 `);
@@ -186,14 +188,16 @@ help(app, 'pad_end', `
   Sets the number of additional rows to include after the end date (might be less)
 `);
 help(app, 'columns', `
-  Usage: set columns [:expression[ AS ":label"],..]  
+  Usage: add column :label [:expression]
+  Usage: remove column :label
 
-  Comma separated list of expressions and their labels. If a word is used instead
-  of a quoted label, the word can be used in other columns or expressions to refer
-  back to the expression of the column.
+  Adds or removes a column to the output computing the value of columns using :expression.
 
     :label
-      The quoted string used as the output column name or a variable name
+      The string used as the output column name or a variable name
+    :expression
+      An expression is any combination of field, constants, and function calls
+      connected by an operator or operators.
 
   See also:
     help expression  
@@ -201,7 +205,41 @@ help(app, 'columns', `
     help lookback-functions  
     help indicator-functions  
     help rolling-functions  
-    help LEADING  
+`);
+help(app, 'variables', `
+  Usage: add variable :name :expression
+  Usage: remove variable :name
+
+  Adds or removes a variable used to compute the values of columns.
+
+    :name
+      The string used as variable name in column expressions
+    :expression
+      An expression is any combination of field, constants, and function calls
+      connected by an operator or operators.
+
+  See also:
+    help columns  
+    help expression  
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+    help rolling-functions  
+`);
+help(app, 'parameters', `
+  Usage: add parameter :name :value
+  Usage: remove parameter :name
+
+  Adds or removes a parameter used to compute the values of columns.
+
+    :name
+      The string used as variable name in column expressions
+    :value
+      The value substituted in column expressions
+
+  See also:
+    help columns  
+    help expression  
 `);
 help(app, 'retain', `
   Usage: set retain :expression
@@ -215,22 +253,6 @@ help(app, 'retain', `
     help lookback-functions  
     help indicator-functions  
     help rolling-functions  
-    help LEADING  
-`);
-help(app, 'criteria', `
-  Usage: set criteria :expression
-
-  An expression indicating a block of results over which have the same LEADING
-  results (reflecting the first result in the block). For results with a false
-  expression value will be treated as their own block.
-
-  See also:
-    help expression  
-    help common-functions  
-    help lookback-functions  
-    help indicator-functions  
-    help rolling-functions  
-    help LEADING  
 `);
 help(app, 'expression', `
   :expression
@@ -284,12 +306,6 @@ help(app, 'expression', `
 
   See also:
     help common-functions  
-`);
-help(app, 'LEADING', `
-  Usage: LEADING(expression)  
-
-  Evaluates expression as of the last point the criteria went from false to true
-  or as of the current point if the previous criteria was false.
 `);
 help(app, 'common-functions', `
   Common functions have no restrictions on what expressions they can be used in.

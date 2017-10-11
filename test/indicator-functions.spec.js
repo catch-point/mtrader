@@ -69,13 +69,13 @@ describe("indicator-functions", function(){
     });
     it("OBV", function() {
         return quote({
-            columns: [
-                'DATE(day.ending) AS "Date"',
-                'day.close AS "Close"',
-                'SIGN(day.close - OFFSET(1, day.close)) AS "UpDown"',
-                'day.volume AS "Volume"',
-                'day.OBV(28) AS "OBV"'
-            ].join(','),
+            columns: {
+                Date: 'DATE(day.ending)',
+                Close: 'day.close',
+                UpDown: 'SIGN(day.close - OFFSET(1, day.close))',
+                Volume: 'day.volume',
+                OBV: 'day.OBV(28)'
+            },
             symbol: 'WMT',
             exchange: 'NYSE',
             begin: moment('2010-10-27'),
@@ -177,12 +177,12 @@ describe("indicator-functions", function(){
     describe("SAR", function() {
         it("PSAR", function() {
             return quote({
-                columns: [
-                    'DATE(day.ending) AS "Date"',
-                    'day.high AS "High"',
-                    'day.low AS "Low"',
-                    'day.PSAR(0.02, 0.2, 15) AS "PSAR"'
-                ].join(','),
+                columns: {
+                    Date: 'DATE(day.ending)',
+                    High: 'day.high',
+                    Low: 'day.low',
+                    PSAR: 'day.PSAR(0.02, 0.2, 15)'
+                },
                 symbol: 'QQQ',
                 exchange: 'NASDAQ',
                 begin: moment('2010-01-10'),
@@ -216,12 +216,12 @@ describe("indicator-functions", function(){
         });
         it("SAB", function() {
             return quote({
-                columns: [
-                    'DATE(day.ending) AS "Date"',
-                    'day.high AS "High"',
-                    'day.low AS "Low"',
-                    'day.SAB(0.02, 0.2, 15) AS "SAB"'
-                ].join(','),
+                columns: {
+                    Date: 'DATE(day.ending)',
+                    High: 'day.high',
+                    Low: 'day.low',
+                    SAB: 'day.SAB(0.02, 0.2, 15)'
+                },
                 symbol: 'QQQ',
                 exchange: 'NASDAQ',
                 begin: moment('2010-01-10'),
@@ -255,12 +255,12 @@ describe("indicator-functions", function(){
         });
         it("SAS", function() {
             return quote({
-                columns: [
-                    'DATE(day.ending) AS "Date"',
-                    'day.high AS "High"',
-                    'day.low AS "Low"',
-                    'day.SAS(0.02, 0.2, 15) AS "SAS"'
-                ].join(','),
+                columns: {
+                    Date: 'DATE(day.ending)',
+                    High: 'day.high',
+                    Low: 'day.low',
+                    SAS: 'day.SAS(0.02, 0.2, 15)'
+                },
                 symbol: 'QQQ',
                 exchange: 'NASDAQ',
                 begin: moment('2010-01-10'),
@@ -295,13 +295,13 @@ describe("indicator-functions", function(){
     });
     it("POPV", function() {
         return quote({
-            columns: [
-                'DATE(day.ending) AS "Date"',
-                'day.high AS "High"',
-                'day.low AS "Low"',
-                'day.close AS "Close"',
-                'day.POPV(20,50) AS "POPV"'
-            ].join(','),
+            columns: {
+                Date: 'DATE(day.ending)',
+                High: 'day.high',
+                Low: 'day.low',
+                Close: 'day.close',
+                POPV: 'day.POPV(20,50)'
+            },
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-01-01'),
@@ -333,13 +333,13 @@ describe("indicator-functions", function(){
     });
     it("ROF", function() {
         return quote({
-            columns: [
-                'DATE(day.ending) AS "Date"',
-                'day.high AS "High"',
-                'day.low AS "Low"',
-                'day.close AS "Close"',
-                'day.ROF(20) AS "ROF"'
-            ].join(','),
+            columns: {
+                Date: 'DATE(day.ending)',
+                High: 'day.high',
+                Low: 'day.low',
+                Close: 'day.close',
+                ROF: 'day.ROF(20)'
+            },
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-01-01'),

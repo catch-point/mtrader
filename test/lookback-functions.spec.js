@@ -875,12 +875,12 @@ describe("lookback-functions", function(){
     });
     it("PF", function() {
         return quote({
-            columns: [
-                'DATE(day.ending) AS "Date"',
-                'day.close AS "Close"',
-                'CHANGE(day.close, OFFSET(10, day.close)) AS "Change"',
-                'PF(10, day.close) AS "PF"'
-            ].join(','),
+            columns: {
+                Date: 'DATE(day.ending)',
+                Close: 'day.close',
+                Change: 'CHANGE(day.close, OFFSET(10, day.close))',
+                PF: 'PF(10, day.close)'
+            },
             symbol: 'SPY',
             exchange: 'ARCA',
             begin: moment('2016-01-01'),
@@ -919,13 +919,13 @@ describe("lookback-functions", function(){
     });
     it("LRS SPY", function() {
         return quote({
-            columns: [
-                'DATE(day.ending) AS "Date"',
-                'day.close AS "Close"',
-                'CHANGE(day.close, OFFSET(5, day.close)) AS "Change"',
-                '5*LRS(5, day.close) AS "Slope"',
-                'R2(5,day.close) AS RR'
-            ].join(','),
+            columns: {
+                Date: 'DATE(day.ending)',
+                Close: 'day.close',
+                Change: 'CHANGE(day.close, OFFSET(5, day.close))',
+                Slope: '5*LRS(5, day.close)',
+                RR: 'R2(5,day.close)'
+            },
             symbol: 'SPY',
             exchange: 'ARCA',
             begin: moment('2016-01-01'),
@@ -959,12 +959,12 @@ describe("lookback-functions", function(){
     });
     it("VAR", function() {
         return quote({
-            columns: [
-                'DATE(day.ending) AS "Date"',
-                'day.close AS "Close"',
-                'CHANGE(day.adj_close, OFFSET(5, day.adj_close)) AS "Change"',
-                'VAR(5, 260, day.adj_close) AS "VaR"'
-            ].join(','),
+            columns: {
+                Date: 'DATE(day.ending)',
+                Close: 'day.close',
+                Change: 'CHANGE(day.adj_close, OFFSET(5, day.adj_close))',
+                VaR: 'VAR(5, 260, day.adj_close)'
+            },
             symbol: 'SPY',
             exchange: 'ARCA',
             begin: moment('2016-01-01'),
@@ -993,12 +993,12 @@ describe("lookback-functions", function(){
     });
     it("CVAR", function() {
         return quote({
-            columns: [
-                'DATE(day.ending) AS "Date"',
-                'day.close AS "Close"',
-                'CHANGE(day.adj_close, OFFSET(5, day.adj_close)) AS "Change"',
-                'CVAR(5, 260, day.adj_close) AS "Shortfall"'
-            ].join(','),
+            columns: {
+                Date: 'DATE(day.ending)',
+                Close: 'day.close',
+                Change: 'CHANGE(day.adj_close, OFFSET(5, day.adj_close))',
+                Shortfall: 'CVAR(5, 260, day.adj_close)'
+            },
             symbol: 'SPY',
             exchange: 'ARCA',
             begin: moment('2016-01-01'),

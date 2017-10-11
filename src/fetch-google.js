@@ -330,13 +330,13 @@ function sumVolume(intraday, options) {
 
 function appendIntraday(bars, quote, now, options) {
     if (_.isEmpty(quote) || _.isEmpty(bars)) return bars;
-    if (!_.isFinite(quote.el || quote.l) || !_.isFinite(quote.pcls_fix)) return bars;
+    if (!_.isFinite(quote.el || quote.l) || !_.isFinite(quote.c)) return bars;
+    var pcls = +quote.l - +quote.c;
     var lt = quote.elt || quote.lt;
-    var m = lt.match(/(\w+) (\d+), (\d+):(\d\d)(AM|PM) (\w+)/);
-    if (!m) return bars;
-    var tz = moment.tz.zone(m[6]) ? m[6] : options.tz;
+    var m = lt && lt.match(/(\w+) (\d+), (\d+):(\d\d)(AM|PM) (\w+)/);
+    var tz = m && moment.tz.zone(m[6]) ? m[6] : options.tz;
     var marketClosesAt = options.marketClosesAt;
-    var lastTrade = moment.tz(lt, 'MMM D, H:mmA', tz);
+    var lastTrade = m ? moment.tz(lt, 'MMM D, H:mmA', tz) : moment().tz(tz);
     var ending = moment.tz(lastTrade.format('Y-MM-DD') + ' ' + marketClosesAt, tz).format();
     var open = _.isFinite(quote.op) ? +quote.op : undefined;
     var high = _.isFinite(quote.hi) ? +quote.hi : undefined;
@@ -345,7 +345,7 @@ function appendIntraday(bars, quote, now, options) {
     var volume = _.isFinite(quote.volume) ? +quote.volume : undefined;
     var latest = {};
     while (!_.last(bars).ending || _.last(bars).ending >= ending) latest = bars.pop();
-    var prior_close = latest.adj_close || _.last(bars).adj_close || +quote.pcls_fix;
+    var prior_close = latest.adj_close || _.last(bars).adj_close || pcls;
     bars.push(_.defaults({
         ending: latest.ending || ending,
         open: latest.open || open,
@@ -353,7 +353,7 @@ function appendIntraday(bars, quote, now, options) {
         low: Math.min(latest.low, low) || latest.low || low,
         close: close,
         volume: latest.volume || volume || 0,
-        adj_close: Math.round(close * prior_close / +quote.pcls_fix * 1000000) / 1000000,
+        adj_close: Math.round(close * prior_close / pcls * 1000000) / 1000000,
         split: latest.split || 1,
         dividend: latest.dividend || 0,
         lastTrade: lastTrade.format(),

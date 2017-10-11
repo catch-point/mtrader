@@ -40,7 +40,7 @@ const expect = require('chai').expect;
 const historical = "http://finance.google.com/finance/historical?q={symbol}&startdate={startdate}&enddate={enddate}&output=csv"
 const match = "https://finance.google.com/finance/match?q={symbol}";
 const info = "https://finance.google.com/finance?output=json&q={symbols}";
-const getprices = "http://www.google.com/finance/getprices?q={symbol}&x={exchange}&i={interval}&p=1d&f=d,o,h,l,c,v&df=cpct";
+const getprices = "http://finance.google.com/finance/getprices?q={symbol}&x={exchange}&i={interval}&p=1d&f=d,o,h,l,c,v&df=cpct"
 
 module.exports = function() {
     return {
@@ -129,14 +129,16 @@ function loadSecurity(symbols) {
         e: datum.e,
         name: datum.name,
         id: datum.id,
-        type: datum.type,
+        sname: datum.sname,
+        iname: datum.iname,
         hi52: datum.hi52,
         lo52: datum.lo52,
         eps: datum.eps,
         beta: datum.beta,
-        inst_own: datum.inst_own,
+        instown: datum.instown,
         mc: datum.mc,
-        shares: datum.shares
+        shares: datum.shares,
+        overview: _.property('overview')(_.first(datum.summary))
     }))).then(function(list){
         return list.reduce(function(hash, security){
             hash[security.e + ':' + security.symbol] = security;

@@ -94,11 +94,11 @@ describe("ptrading", function() {
           begin: "2017-01-13",
           pad_begin: 9,
           end: "2017-01-14",
-          columns: [
-              'DATE(ending) AS "Date"',
-              'day.close AS "Close"',
-              '(day.adj_close - OFFSET(1, day.adj_close))*100/OFFSET(1,day.adj_close) AS "Change"'
-          ].join(','),
+          columns: {
+              Date: 'DATE(ending)',
+              Close: 'day.close',
+              Change: '(day.adj_close - OFFSET(1, day.adj_close))*100/OFFSET(1,day.adj_close)'
+          },
           retain: 'day.adj_close > OFFSET(1, day.adj_close)'
         }).should.eventually.be.like([
             {Date:"2016-12-30",Close:38.67,Change:0.0776},
@@ -117,12 +117,12 @@ describe("ptrading", function() {
           pad_begin: 10,
           begin: "2017-01-13",
           end: "2017-01-14",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "close"',
-              'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "change"'
-          ].join(','),
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              close: 'day.close',
+              change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
+          },
           retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0,"symbol")<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([

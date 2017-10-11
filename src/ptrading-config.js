@@ -97,6 +97,47 @@ module.exports.shell = function(app) {
             cb(err);
         }
     });
+    app.cmd('add :option :label',
+            "Adds the given label to the option set for this session", (cmd, sh, cb) => {
+        try {
+            var key = cmd.params.option.split('.').concat(cmd.params.label);
+            config.add(key, cmd.params.label);
+            var value = config(key);
+            sh.white(JSON.stringify(value)).ln();
+            sh.prompt();
+        } catch(err) {
+            cb(err);
+        }
+    });
+    app.cmd('add :option :label :value([\\S\\s]+)',
+            "Adds the given label value to the option set for this session", (cmd, sh, cb) => {
+        try {
+            var str = cmd.params.value;
+            var chr = str.charAt(0);
+            var value = chr == '{' || chr == '"' || chr == '[' ||
+                str == 'true' || str == 'false' || _.isFinite(str) ?
+                JSON.parse(str) : str;
+            var key = cmd.params.option.split('.').concat(cmd.params.label.replace(/s?$/,'s'));
+            config.add(key, value);
+            var value = config(key);
+            sh.white(JSON.stringify(value)).ln();
+            sh.prompt();
+        } catch(err) {
+            cb(err);
+        }
+    });
+    app.cmd('remove :option :label',
+            "Removes the given label from the option for this session", (cmd, sh, cb) => {
+        try {
+            var key = cmd.params.option.split('.').concat(cmd.params.label.replace(/s?$/,'s'));
+            config.remove(key);
+            var value = config(cmd.params.option);
+            sh.white(JSON.stringify(value)).ln();
+            sh.prompt();
+        } catch(err) {
+            cb(err);
+        }
+    });
     app.cmd("list",
             "List previous saved sessions that can be used with load", (cmd, sh, cb) => {
         try {
@@ -172,6 +213,14 @@ help(app, 'set', `
 help(app, 'unset', `
   Usage: unset :option
   Resets the given option value persistently
+`);
+help(app, 'add', `
+  Usage: add :option :label :value
+  Adds the label/value pair to option for this session
+`);
+help(app, 'remove', `
+  Usage: remove :option label
+  Removes the label from option for this session
 `);
 help(app, 'list', `
   Usage: list  

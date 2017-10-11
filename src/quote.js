@@ -36,7 +36,6 @@ const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$
 const storage = require('./storage.js');
 const periods = require('./periods.js');
 const interrupt = require('./interrupt.js');
-const List = require('./list.js');
 const Parser = require('./parser.js');
 const common = require('../src/common-functions.js');
 const lookback = require('../src/lookback-functions.js');
@@ -129,7 +128,6 @@ function quote(fetch, store, options) {
     var cached = _.mapObject(exprMap, _.keys);
     var intervals = periods.sort(_.keys(exprMap));
     var retain = parseCriteriaMap(options.retain, cached, intervals, options);
-    var criteria = parseCriteriaMap(options.criteria, cached, intervals, options);
     var name = options.exchange ?
         options.symbol + '.' + options.exchange : options.symbol;
     expect(intervals).not.to.be.empty;
@@ -140,7 +138,7 @@ function quote(fetch, store, options) {
         var quoteBars = fetchBars.bind(this, fetch, db);
         return inlinePadBegin(quoteBars, interval, options)
           .then(options => inlinePadEnd(quoteBars, interval, options))
-          .then(options => mergeBars(quoteBars, exprMap, retain, criteria, options));
+          .then(options => mergeBars(quoteBars, exprMap, retain, options));
     }).then(signals => formatColumns(signals, options));
 }
 
@@ -150,13 +148,13 @@ function quote(fetch, store, options) {
  */
 function parseWarmUpMap(options) {
     var exprs = _.compact(_.flatten([
-        options.columns, options.variables, options.criteria, options.retain
-    ])).join(',');
+        _.values(options.columns), options.retain
+    ]));
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
     var p = createParser({}, options);
     var parser = Parser({
-        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
+        substitutions: getVariables(options),
         constant(value) {
             return {warmUpLength: 0};
         },
@@ -177,7 +175,7 @@ function parseWarmUpMap(options) {
             return {[_.first(fn.intervals)]: {[expr]: fn}, warmUpLength: fn.warmUpLength};
         }
     });
-    var values = _.values(_.mapObject(parser.parseColumnsMap(exprs), o => _.omit(o, 'warmUpLength')));
+    var values = parser.parse(exprs).map(o => _.omit(o, 'warmUpLength'));
     var intervals = periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
     return _.object(intervals, intervals.map(interval => {
         return _.extend.apply(_, _.compact(_.pluck(values, interval)));
@@ -212,13 +210,15 @@ function parseCriteriaMap(criteria, cached, intervals, options) {
  */
 function createParser(cached, options) {
     return Parser({
-        substitutions: _.flatten([options.columns, options.variables || []]).join(','),
+        substitutions: getVariables(options),
         constant(value) {
             return () => value;
         },
         variable(name) {
             if (_.contains(['symbol', 'exchange', 'ending'], name))
                 return _.compose(_.property(name), _.last);
+            else if (_.has(options.parameters, name))
+                return _.constant(options.parameters[name]);
             else if (_.has(options, name) && !_.isObject(options[name]) && name.match(/^\w+$/))
                 return _.constant(options[name]);
             else if (!~name.indexOf('.'))
@@ -233,8 +233,7 @@ function createParser(cached, options) {
         expression(expr, name, args) {
             var fn = common(name, args, options) ||
                 lookback(name, args, options) ||
-                indicator(name, args, options) ||
-                name == 'LEADING' && leading(_.first(args));
+                indicator(name, args, options);
             if (!fn) throw Error("Unknown function: " + name);
             var interval =_.first(fn.intervals);
             if (!_.contains(cached[interval], expr)) return fn;
@@ -245,13 +244,16 @@ function createParser(cached, options) {
     });
 }
 
-function leading(arg) {
-    return _.extend(points => {
-        return arg(points.slice(0, 1));
-    }, {
-        intervals: arg.intervals,
-        warmUpLength: Infinity
-    });
+/**
+ * Returns map of variables and columns, excluding columns that look like fields
+ */
+function getVariables(options) {
+    return _.defaults({}, options.variables, _.omit(options.columns, (expr, name) => {
+        // exclude column names that looks like fields
+        if (name.indexOf('.') < 1) return false;
+        var interval = name.substring(0, name.indexOf('.'));
+        return _.contains(periods.values, interval);
+    }));
 }
 
 /**
@@ -265,11 +267,11 @@ function inlinePadBegin(quoteBars, interval, options) {
         pad_end: 0
     }, options)).then(bars => {
         if (!bars.length) return options;
-        var start = bars.sortedIndexOf({ending: options.begin}, 'ending');
+        var start = _.sortedIndex(bars, {ending: options.begin}, 'ending');
         var i = Math.max(start - options.pad_begin, 0);
         return _.defaults({
             pad_begin: 0,
-            begin: bars.item(i).ending
+            begin: bars[i].ending
         }, options);
     });
 }
@@ -287,20 +289,20 @@ function inlinePadEnd(quoteBars, interval, options) {
         if (!bars.length) return options;
         return _.defaults({
             pad_end: 0,
-            end: bars.last().ending
+            end: _.last(bars).ending
         }, options);
     });
 }
 
 /**
  * For each expression interval it reads the bars and evaluates the retain.
- * @returns the combined bars as an array of points
+ * @returns the combined bars as a list of points
  */
-function mergeBars(quoteBars, exprMap, retain, criteria, options) {
+function mergeBars(quoteBars, exprMap, retain, options) {
     var intervals = _.keys(exprMap);
     return intervals.reduceRight((promise, interval) => {
         return promise.then(signals => Promise.all(signals.map(signal => {
-            var entry = signal.points ? signal.points.first() : {ending: options.begin};
+            var entry = signal.points ? _.first(signal.points) : {ending: options.begin};
             var end = signal.exit ? signal.exit.ending : options.end;
             var opts = _.defaults({
                 interval: interval,
@@ -310,92 +312,76 @@ function mergeBars(quoteBars, exprMap, retain, criteria, options) {
             return quoteBars(exprMap[interval], opts)
               .then(bars => bars.map(bar => createPoint(bar, opts)))
               .then(intraday => {
-                var points = signal.points ? new List().concat(signal.points) : new List();
+                var points = signal.points ? [].concat(signal.points) : [];
                 if (signal.exit) points.push(signal.exit);
                 points.reduceRight((stop, point, idx) => {
-                    var start = intraday.sortedIndexOf(point, 'ending');
+                    var start = _.sortedIndex(intraday, point, 'ending');
                     for (var j=start; j<stop; j++) {
-                        _.defaults(intraday.item(j), point);
+                        _.defaults(intraday[j], point);
                     }
                     return start;
                 }, intraday.length);
                 return intraday;
-            }).then(points => readSignals(points, entry, signal.exit, retain[interval], criteria[interval]));
+            }).then(points => readSignals(points, entry, signal.exit, retain[interval]));
         }))).then(signalsMap => {
             return signalsMap.reduce((result, signals) => {
-                while (result.length && signals.length && _.first(signals).points.first().ending <= result.last().points.last().ending) {
+                while (result.length && signals.length && _.first(_.first(signals).points).ending <= _.last(_.last(result).points).ending) {
                     // remove overlap
                     if (_.first(signals).points.length == 1) signals.shift();
                     else _.first(signals).points.shift();
                 }
                 return result.concat(signals);
-            }, new List()).toArray();
+            }, []);
         });
     }, Promise.resolve([{}])).then(signals => {
-        if (signals.length && options.begin > _.first(signals).points.first().ending) {
+        if (signals.length && options.begin > _.first(_.first(signals).points).ending) {
             if (_.first(signals).points.length == 1) signals.shift();
             else _.first(signals).points = _.first(signals).points.slice(1);
         }
-        return signals;
+        return signals.reduce((points, signal) => {
+            return points.concat(signal.points);
+        }, []);
     });
 }
 
 /**
  * Identifies the entry and exit points and returns an array of these signals
  */
-function readSignals(points, entry, exit, retain, criteria) {
+function readSignals(points, entry, exit, retain) {
     if (!points.length) return [];
     var check = interrupt();
-    var start = points.sortedIndexOf(entry, 'ending');
-    if (start > 0 && (start == points.length || entry.ending < points.item(start).ending))
+    var start = _.sortedIndex(points, entry, 'ending');
+    if (start > 0 && (start == points.length || entry.ending < points[start].ending))
         start--;
-    if (!retain && !criteria && exit) return [{
+    if (!retain && exit) return [{
         points: points.slice(start, points.length -1),
-        exit: points.last()
+        exit: _.last(points)
     }];
-    else if (!retain && !criteria) return [{
+    else if (!retain) return [{
         points: points.slice(start)
     }];
     var e = 0;
     var signals = [];
     retain = retain || _.constant(true);
-    criteria = criteria || _.constant(true);
-    points.slice(start).reduce((position, point, i) => {
+    points.slice(start).reduce((active, point, i) => {
         check();
         var to = start + i;
-        var active = position && _.last(signals).leading;
-        var keep = retain(points.slice(active ? e : to, to+1).toArray()) ||
-            position && e != to && retain(points.slice(to, to+1).toArray());
-        var hold = active && criteria(points.slice(active ? e : to, to+1).toArray());
-        var pass = hold || criteria(points.slice(to, to+1).toArray());
-        if (keep && pass) {
-            if (hold) { // extend
+        var keep = retain(points.slice(active ? e : to, to+1)) ||
+            active && e != to && retain(points.slice(to, to+1));
+        if (keep) {
+            if (active) { // extend
                 _.last(signals).points = points.slice(start + e, start + i +1);
             } else { // reset
-                if (position) {
-                    _.last(signals).exit = point;
-                }
                 e = i;
-                signals.push({leading: point, points: new List([point])});
+                signals.push({points: [point]});
             }
-        } else if (keep) {
-            // retain w/o leading
-            if (position && !_.last(signals).leading) { // extend
-                _.last(signals).points = points.slice(start + e, start + i +1);
-            } else { // reset
-                if (position) {
-                    _.last(signals).exit = point;
-                }
-                e = i;
-                signals.push({points: new List([point])});
-            }
-        } else if (position) {
+        } else if (active) {
             _.last(signals).exit = point;
         }
         return keep;
     }, false);
     if (exit && signals.length && !_.last(signals).exit) {
-        if (_.last(signals).points.last().ending < exit.ending) _.last(signals).exit = exit;
+        if (_.last(_.last(signals).points).ending < exit.ending) _.last(signals).exit = exit;
         else if (_.last(signals).points.length == 1) signals.pop();
         else _.last(signals).exit = _.last(signals).points.pop();
     }
@@ -464,13 +450,13 @@ function evalBlocks(collection, warmUpLength, blocks, expressions, options) {
                 dataBlocks[block] = collection.readFrom(block);
             return Promise.all(blocks.slice(0, i+1).map(block => dataBlocks[block]))
               .then(results => {
-                var data = List.flatten(results, true).map(bar => createPoint(bar, options));
+                var data = _.flatten(results, true).map(bar => createPoint(bar, options));
                 var warmUpRecords = data.length - _.last(results).length;
                 var bars = _.last(results).map((bar, i, bars) => {
                     return _.extend(bar, _.object(missing, missing.map(expr => {
                         var end = warmUpRecords + i;
                         var start = Math.max(end - expressions[expr].warmUpLength, 0);
-                        return expressions[expr](data.slice(start, end+1).toArray());
+                        return expressions[expr](data.slice(start, end+1));
                     })));
                 });
                 return collection.writeTo(bars, block);
@@ -500,52 +486,43 @@ function createPoint(bar, options) {
  */
 function readBlocks(collection, blocks, options) {
     return Promise.all(blocks.map(block => collection.readFrom(block)))
-      .then(tables => List.flatten(tables, true))
+      .then(tables => _.flatten(tables, true))
       .then(bars => {
         if (!bars.length) return bars;
         var format = options.begin;
-        var from = bars.sortedIndexOf({ending: format}, 'ending');
-        if (from == bars.length || from > 0 && format < bars.item(from).ending)
+        var from = _.sortedIndex(bars, {ending: format}, 'ending');
+        if (from == bars.length || from > 0 && format < bars[from].ending)
             from--; // include prior value for retain
         var start = Math.min(Math.max(from - options.pad_begin, 0), bars.length -1);
         return bars.slice(start);
     }).then(bars => {
         if (!bars.length || !options.end) return bars;
         var format = options.end;
-        var to = bars.sortedIndexOf({ending: format}, 'ending');
-        if (to < bars.length && format != bars.item(to).ending) to--;
+        var to = _.sortedIndex(bars, {ending: format}, 'ending');
+        if (to < bars.length && format != bars[to].ending) to--;
         var stop = Math.min(Math.max(to + options.pad_end, 0), bars.length -1);
         return bars.slice(0, stop +1);
     });
 }
 
 /**
- * Converts array of signals into array of rows keyed by column names
+ * Converts list of points into array of rows keyed by column names
  */
-function formatColumns(signals, options) {
-    if (!signals.length) return [];
-    var fields = _.mapObject(_.pick(_.first(signals).points.first(), _.isObject), _.keys);
-    var columns = options.columns ? _.flatten([options.columns]) :
-        _.size(fields) == 1 ? _.first(_.map(fields, (keys, interval) => {
-            return keys.filter(field => field.match(/^\w+$/)).map(field => {
-                return interval + '.' + field + ' AS "' + field + '"';
-            });
-        })) :
-        _.flatten(_.map(fields, (keys, interval) => {
-            return keys.filter(field => field.match(/^\w+$/)).map(field => {
-                return interval + '.' + field;
-            });
-        }), true);
-    var map = createParser(fields, options).parseColumnsMap(columns.join(','));
-    var depth = 0;
-    return signals.reduce((bars, signal) =>
-        signal.points.reduce((bars, point, i) => {
-            bars.push(_.mapObject(map, expr => {
-                if (!signal.leading) return expr([point]);
-                else return expr(signal.points.slice(0, i+1).toArray());
-            }));
-            return bars;
-        }, bars), []);
+function formatColumns(points, options) {
+    if (!points.length) return [];
+    var fields = _.mapObject(_.pick(_.first(points), _.isObject), _.keys);
+    var fieldCols = _.mapObject(fields, (fields, interval) => {
+        var keys = fields.filter(field => field.match(/^\w+$/));
+        var values = keys.map(field => interval + '.' + field);
+        return _.object(keys, values);
+    }); // {interval: {field: "$interval.$field"}}
+    var columns = options.columns ? options.columns :
+        _.size(fields) == 1 ? _.first(_.values(fieldCols)) :
+        _.reduce(fieldCols, (map, fieldCols) => {
+            return _.defaults(map, _.object(_.values(fieldCols), _.values(fieldCols)));
+        }, {});
+    var map = createParser(fields, options).parse(columns);
+    return points.map(point => _.mapObject(map, expr => expr([point])));
 }
 
 /**
@@ -613,17 +590,17 @@ function fetchCompleteBlock(fetch, options, collection, version, block, last) {
 function fetchPartialBlock(fetch, options, collection, block, begin) {
     return fetch(_.defaults({
         begin: begin
-    }, blockOptions(block, options))).then(List.from.bind(List)).then(records => {
-        if (records.isEmpty()) return; // nothing newer
-        return collection.readFrom(block).then(List.from.bind(List)).then(partial => {
+    }, blockOptions(block, options))).then(records => {
+        if (_.isEmpty(records)) return; // nothing newer
+        return collection.readFrom(block).then(partial => {
             partial.pop(); // incomplete
-            if (!_.isMatch(partial.last(), records.shift())) return 'incompatible';
+            if (!_.isMatch(_.last(partial), records.shift())) return 'incompatible';
             var warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
                 var exprs = _.object(warmUps, warmUps.map(expr => createParser({}, options).parse(expr)));
                 var warmUpBlocks = collection.propertyOf(block, 'warmUpBlocks') || [];
                 return Promise.all(warmUpBlocks.map(block => collection.readFrom(block)))
-                  .then(results => List.flatten(results, true))
+                  .then(results => _.flatten(results, true))
                   .then(prior => {
                     var data = prior.concat(partial, records)
                         .map(bar => ({[options.interval]: bar}));
@@ -631,13 +608,13 @@ function fetchPartialBlock(fetch, options, collection, block, begin) {
                         var end = prior.length + partial.length + i;
                         return _.extend(bar, _.mapObject(exprs, expr => {
                             var start = Math.max(end - expr.warmUpLength, 0);
-                            return expr(data.slice(start, end+1).toArray());
+                            return expr(data.slice(start, end+1));
                         }));
                     });
-                    return collection.writeTo(partial.concat(bars).toArray(), block);
+                    return collection.writeTo(partial.concat(bars), block);
                 });
             } else {
-                return collection.writeTo(partial.concat(records).toArray(), block);
+                return collection.writeTo(partial.concat(records), block);
             }
         });
     });

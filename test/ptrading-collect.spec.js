@@ -60,12 +60,12 @@ describe("ptrading-collect", function() {
           pad_begin: 10,
           begin: "2017-01-13",
           end: "2017-01-14",
-          columns: [
-              'symbol',
-              'DATE(ending) AS "date"',
-              'day.close AS "close"',
-              'CHANGE(day.adj_close, OFFSET(1, day.adj_close)) AS "change"'
-          ].join(','),
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              close: 'day.close',
+              change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
+          },
           retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0,"symbol")<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
@@ -88,18 +88,18 @@ describe("ptrading-collect", function() {
           begin: "2017-01-09",
           end: "2017-01-14",
           precedence: 'PF(120,day.adj_close)',
-          columns: [
-              'symbol',
-              'DATE(ending) AS date',
-              'IF(COUNTPREC(0,"symbol")<1,FLOOR(10000/(day.close)),0) AS target',
-              'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0)) AS shares',
-              'PREV("position",0) + shares AS position',
-              'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
-              '-shares * price AS proceeds',
-              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission',
-              'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position) AS basis',
-              'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission AS profit'
-          ].join(','),
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              target: 'IF(COUNTPREC(0,"symbol")<1,FLOOR(10000/(day.close)),0)',
+              shares: 'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0))',
+              position: 'PREV("position",0) + shares',
+              price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
+              proceeds: '-shares * price',
+              commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))',
+              basis: 'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position)',
+              profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
+          },
           retain: 'position OR shares'
         }).should.eventually.be.like([
             {symbol:"AABA",date:"2017-01-09",target:241,shares:241,position:241,price:41.36,
@@ -126,19 +126,19 @@ describe("ptrading-collect", function() {
           pad_leading: 3,
           begin: "2016-10-30",
           end: "2016-12-03",
-          columns: [
-              'symbol',
-              'DATE(ending) AS date',
-              'MAXCORREL(60,day.adj_close) AS cor',
-              'CVAR(5, 60, day.adj_close) AS risk',
-              'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
-              'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
-              'target-PREV("position",0) AS shares',
-              'PREV("position",0) + shares AS position',
-              'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
-              '-shares * price AS proceeds',
-              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              cor: 'MAXCORREL(60,day.adj_close)',
+              risk: 'CVAR(5, 60, day.adj_close)',
+              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
+              shares: 'target-PREV("position",0)',
+              position: 'PREV("position",0) + shares',
+              price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
+              proceeds: '-shares * price',
+              commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'
+          },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
         }).then(expected => ptrading.collect({
@@ -147,19 +147,19 @@ describe("ptrading-collect", function() {
           begin: "2016-10-30",
           end: "2016-12-03",
           duration: 'P7D',
-          columns: [
-              'symbol',
-              'DATE(ending) AS date',
-              'MAXCORREL(60,day.adj_close) AS cor',
-              'CVAR(5, 60, day.adj_close) AS risk',
-              'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0) AS weight',
-              'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close) AS target',
-              'target-PREV("position",0) AS shares',
-              'PREV("position",0) + shares AS position',
-              'day.close + 0.02 * IF(shares>0,1,-1) AS price', // includes slippage
-              '-shares * price AS proceeds',
-              'IF(shares=0,0, MAX(shares * 0.005, 1.00)) AS commission'
-          ],
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              cor: 'MAXCORREL(60,day.adj_close)',
+              risk: 'CVAR(5, 60, day.adj_close)',
+              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
+              shares: 'target-PREV("position",0)',
+              position: 'PREV("position",0) + shares',
+              price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
+              proceeds: '-shares * price',
+              commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'
+          },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           retain: 'position OR shares'
         }).should.eventually.be.like(expected));

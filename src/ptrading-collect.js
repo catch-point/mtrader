@@ -57,9 +57,10 @@ function usage(command) {
         .option('--pad-begin <number>', "Number of bars before begin dateTime")
         .option('--pad-end <number>', "Number of bars after end dateTime")
         .option('--portfolio <list>', "Comma separated list of <symbol>.<exchange> to search")
-        .option('--columns <list>', "Comma separated list of columns (such as day.close)")
+        .option('--add-column <name=expression>', "Add a column to the output (such as close=day.close)")
+        .option('--add-variable <name=expression>', "Add a variable to include in column expressions")
+        .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")
         .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
-        .option('--criteria <expression>', "Conditional expression indicating a set of results with the same LEADING values")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
@@ -74,21 +75,24 @@ if (process.send) {
     });
     var collect = _.once(() => Collect(function(options) {
         return parent.request('quote', options);
+    }, function(options) {
+        return parent.request('collect', options);
     }));
     process.on('disconnect', () => collect().close());
 } else {
     var program = require.main === module ?
         usage(commander).parse(process.argv) : usage(new commander.Command());
     var quote = require('./ptrading-quote.js');
-    var collect = Collect(quote);
     var workers = commander.workers || os.cpus().length;
     var children = _.range(workers).map(() => {
         return replyTo(config.fork(module.filename, program)).handle('quote', payload => {
             return quote(payload);
+        }).handle('collect', payload => {
+            return collect(payload);
         });
     });
     var seq = 0;
-    module.exports = function(options) {
+    var collect = module.exports = function(options) {
         var duration = options.duration && moment.duration(options.duration);
         var begin = moment(options.begin);
         var end = moment(options.end);
@@ -129,19 +133,19 @@ if (process.send) {
             return _.flatten(dataset, true);
         });
     };
-    module.exports.close = function() {
+    collect.close = function() {
         children.forEach(child => child.disconnect());
         return quote.close();
     };
-    module.exports.shell = shell.bind(this, program.description(), module.exports);
+    collect.shell = shell.bind(this, program.description(), collect);
     if (require.main === module) {
         var name = program.args.join(' ');
         var read = name ? config.read(name) : {};
         if (!read) throw Error("Could not read " + name + " settings");
         var options = _.defaults(read, config.opts(), config.options());
-        module.exports(options).then(result => tabular(result))
+        collect(options).then(result => tabular(result))
           .catch(err => logger.error(err, err.stack))
-          .then(() => module.exports.close());
+          .then(() => collect.close());
     }
 }
 
@@ -177,9 +181,14 @@ help(app, 'collect', `
     help pad_end  
     help pad_leading  
     help duration  
+    help portfolio  
+    help variables  
     help columns  
+    help parameters  
     help retain  
     help precedence  
+    help filter  
+    help order  
     help output  
     help reverse  
 `);
@@ -193,8 +202,22 @@ help(app, 'duration', `
 
   Sets the duration that collect should run before resetting any preceeding values
 `);
+help(app, 'portfolio', `
+  Usage: set portfolio (:symbolExchange|:name)...
+
+  Sets the set of securities or nested protfolios to collect data on
+
+    :symbolExchange
+      The ticker symbol followed by a dot and an exchange acronyms to be called with quote.
+    :name
+      Name of a stored session to be called with collect.
+
+  See also:
+    help quote  
+    help collect  
+`);
 help(app, 'precedence', `
-  Usage: set precedence :expression
+  Usage: set precedence :expressions
 
   The order that securities should be checked for inclusion in the result.
   A comma separated list of expressions can be provided and each may be
@@ -206,7 +229,37 @@ help(app, 'precedence', `
     help lookback-functions  
     help indicator-functions  
     help rolling-functions  
-    help LEADING  
+    help DESC  
+    help ASC  
+`);
+help(app, 'filter', `
+  Usage: set filter :expression
+
+  An expression (possibly of an rolling function) of each included
+  security bar that must be true to be included in the result.
+  The result of these expressions have no impact on rolling functions, unlike
+  retain, which is applied earlier.
+
+  See also:
+    help expression  
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+    help rolling-functions  
+`);
+help(app, 'order', `
+  Usage: set order :expressions
+
+  The order that the output should be sorted by.
+  A comma separated list of expressions can be provided and each may be
+  wrapped in a DESC function to indicate the order should be reversed.
+
+  See also:
+    help expression  
+    help common-functions  
+    help lookback-functions  
+    help indicator-functions  
+    help rolling-functions  
     help DESC  
     help ASC  
 `);
