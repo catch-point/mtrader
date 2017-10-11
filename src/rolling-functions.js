@@ -97,6 +97,22 @@ var functions = module.exports.functions = {
         args: "numberOfIntervals, columnName, [criteria]",
         description: "Returns the sum of all numeric values that preceed this"
     }),
+    MAXPREC: _.extend((options, numberOfIntervals, columnName, criteria) => {
+        var name = columnName();
+        var condition = parseCriteria(name, criteria, options);
+        return positions => {
+            var num = numberOfIntervals(positions);
+            var len = positions.length -1;
+            var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
+            }), true);
+            var values = _.pluck(_.initial(bars).filter(condition), name);
+            return values.filter(_.isFinite).reduce((a, b) => Math.max(a, b), 0);
+        };
+    }, {
+        args: "numberOfIntervals, columnName, [criteria]",
+        description: "Returns the maximum of all numeric values that preceed this"
+    }),
     PREV: _.extend((options, columnName, defaultValue) => {
         return positions => {
             var name = columnName(positions);
@@ -143,6 +159,22 @@ var functions = module.exports.functions = {
     }, {
         args: "numberOfValues, columnName, [criteria]",
         description: "Returns the sum of columnName values from the previous numberOfValues retained"
+    }),
+    MAXPREV: _.extend((options, numberOfValues, columnName, criteria) => {
+        var name = columnName();
+        var condition = parseCriteria(name, criteria, options);
+        return positions => {
+            if (positions.length < 2) return 0;
+            var num = numberOfValues(positions);
+            var key = _.last(_.keys(_.last(positions)));
+            var len = positions.length -1;
+            var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            var values = _.pluck(previous.filter(condition), name);
+            return values.filter(_.isFinite).reduce((a, b) => Math.max(a, b), 0);
+        };
+    }, {
+        args: "numberOfValues, columnName, [criteria]",
+        description: "Returns the maximum of columnName values from the previous numberOfValues retained"
     })
 };
 
