@@ -39,15 +39,15 @@ const expect = require('chai').expect;
 
 const historical = "http://finance.google.com/finance/historical?q={symbol}&startdate={startdate}&enddate={enddate}&output=csv"
 const match = "https://finance.google.com/finance/match?q={symbol}";
-const info = "https://finance.google.com/finance?output=json&q={symbols}";
+const info = "https://finance.google.com/finance?output=json&q={symbol}";
 const getprices = "http://finance.google.com/finance/getprices?q={symbol}&x={exchange}&i={interval}&p=1d&f=d,o,h,l,c,v&df=cpct"
 
 module.exports = function() {
     return {
         close() {},
         lookup: lookupSymbol.bind(this, _.memoize(throttlePromise(listSymbols, 2))),
-        fundamental: queue(loadSecurity, 32),
-        quote: queue(loadIntradayQuote, 32),
+        fundamental: loadSecurity,
+        quote: loadIntradayQuote,
         intraday: loadIntradayTable.bind(this, throttlePromise(promiseText, 1)),
         day: loadTable.bind(this, throttlePromise(promiseText, 1))
     };
@@ -122,8 +122,8 @@ function parseJSON(text) {
     }
 }
 
-function loadSecurity(symbols) {
-    var url = info.replace('{symbols}', symbols.map(encodeURIComponent).join(','));
+function loadSecurity(symbol) {
+    var url = info.replace('{symbol}', encodeURIComponent(symbol));
     return promiseText(url).then(parseJSON).then(json => json.map(datum => ({
         symbol: datum.t,
         e: datum.e,
@@ -144,44 +144,18 @@ function loadSecurity(symbols) {
             hash[security.e + ':' + security.symbol] = security;
             return hash;
         }, {});
-    }).then(hash => symbols.map(symbol => hash[symbol]));
+    }).then(hash => hash[symbol]);
 }
 
-function loadIntradayQuote(symbols) {
-    var url = info.replace('{symbols}', symbols.map(encodeURIComponent).join(','));
+function loadIntradayQuote(symbol) {
+    var url = info.replace('{symbol}', encodeURIComponent(symbol));
     return promiseText(url).then(parseJSON).then(list => {
+        expect(list).to.be.an('array', "from " + url);
         return list.reduce(function(hash, security){
             hash[security.e + ':' + security.t] = security;
             return hash;
         }, {});
-    }).then(hash => symbols.map(symbol => hash[symbol]));
-}
-
-function queue(func, batchSize) {
-    var context, promise = Promise.resolve();
-    var queue = [], listeners = [];
-
-    return function(items) {
-        context = this;
-        return new Promise(function(resolve, reject) {
-            queue = queue.concat(items);
-            listeners.push({resolve: resolve, reject: reject});
-            promise = promise.then(function(){
-                var taken = queue.splice(0, batchSize);
-                var notifications = listeners.splice(0, batchSize);
-                if (!taken.length) return undefined;
-                return func.call(context, taken).then(function(result) {
-                    for (var i=0; i<notifications.length; i++) {
-                        notifications[i].resolve(result[i]);
-                    }
-                }, function(error) {
-                    for (var i=0; i<notifications.length; i++) {
-                        notifications[i].reject(error);
-                    }
-                });
-            });
-        });
-    };
+    }).then(hash => hash[symbol]);
 }
 
 function parseCSV(text) {
