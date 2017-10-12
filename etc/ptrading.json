@@ -21,9 +21,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "google": {
             "e": "NYSEARCA",
             "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
@@ -49,9 +46,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "google": {
             "e": "BATS",
             "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
@@ -76,9 +70,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "google": {
             "e": "NASDAQ",
             "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
@@ -104,9 +95,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "google": {
             "e": "NYSE",
             "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
@@ -132,9 +120,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "google": {
             "e": "NYSEMKT",
             "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
@@ -160,9 +145,6 @@
       "currency": "CAD",
       "tz": "America/Toronto",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "google": {
             "e": "TSE",
             "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
@@ -190,9 +172,6 @@
       "currency": "CAD",
       "tz": "America/Toronto",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "google": {
             "e": "CVE",
             "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
@@ -219,9 +198,6 @@
       "currency": "CAD",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "yahoo": {
           "exchs": ["CCY"],
           "marketLang": "en-US",
@@ -244,9 +220,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "yahoo": {
           "exchs": ["CCY"],
           "marketLang": "en-US",
@@ -269,9 +242,6 @@
       "currency": "JPY",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "yahoo": {
           "exchs": ["CCY"],
           "marketLang": "en-US",
@@ -294,9 +264,6 @@
       "currency": "CHF",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "yahoo": {
           "exchs": ["CCY"],
           "marketLang": "en-US",
@@ -319,9 +286,6 @@
       "currency": "GBP",
       "tz": "America/New_York",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "yahoo": {
           "exchs": ["CCY"],
           "marketLang": "en-US",
@@ -345,9 +309,6 @@
       "currency": "GBP",
       "tz": "Europe/London",
       "datasources": {
-        "files": {
-          "fetch": ["lookup", "fundamental"]
-        },
         "google": {
             "e": "LON",
             "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]

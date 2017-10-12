@@ -34,6 +34,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
 const storage = require('./storage.js');
+const Lookup = require('./lookup.js');
 const periods = require('./periods.js');
 const interrupt = require('./interrupt.js');
 const Parser = require('./parser.js');
@@ -49,78 +50,14 @@ const expect = require('chai').use(like).expect;
  * @returns a function that returns array of row objects based on given options
  */
 module.exports = function(fetch) {
+    var lookup = Lookup(fetch);
     var store = storage(path.resolve(config('prefix'), 'var/'));
-    var fetchOnline = fetchOptionsFactory(fetch, false);
-    var fetchOffline = fetchOptionsFactory(fetch, true);
     var self = function(options) {
-        var fetchOptions = options.offline ? fetchOffline : fetchOnline;
-        return fetchOptions(options).then(options => quote(fetch, store, options));
+        return lookup(options).then(options => quote(fetch, store, options));
     };
     self.close = () => store.close();
     return self;
 };
-
-/**
- * Converts begin/end to moments and includes some additional options like yahoo_symbol.
- */
-function fetchOptionsFactory(fetch, offline) {
-    var memoizeFirstLookup = _.memoize((symbol, exchange) => {
-        return fetch({
-            interval: 'lookup',
-            symbol: symbol,
-            exchange: exchange,
-            offline: offline
-        }).then(matches => _.first(matches)).then(security => {
-            if (_.isEmpty(security)) throw Error("Unknown symbol: " + symbol);
-            else if (security.symbol == symbol) return security;
-            else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
-        });
-    }, (symbol, exchange) => {
-        return exchange ? symbol + ' ' + exchange : symbol;
-    });
-    return function(options) {
-        expect(options).to.have.property('symbol');
-        var symbol = options.symbol.toUpperCase();
-        var exchange = options.exchange;
-        var exchanges = config('exchanges');
-        if (exchange) expect(exchange).to.be.oneOf(_.keys(exchanges));
-        var args = _.toArray(arguments);
-        return memoizeFirstLookup(symbol, exchange).then(security => {
-            return _.extend(
-                _.omit(exchanges[security.exchange], 'datasources', 'label', 'description'),
-                options,
-                security
-            );
-        }, err => {
-            if (!exchange) throw err;
-            expect(exchanges[exchange]).to.have.property('tz');
-            logger.warn("Fetch lookup failed", err);
-            return _.defaults(
-                _.omit(exchanges[exchange], 'datasources', 'label', 'description'),
-                options,
-                {symbol: symbol}
-            );
-        }).then(options => {
-            var eod = moment(options.now).tz(options.tz).endOf('day');
-            var begin = options.begin ? moment.tz(options.begin, options.tz) : eod;
-            var oend = options.end && moment.tz(options.end, options.tz);
-            var end = oend && eod.isBefore(oend) ? eod : oend; // limit end to end of today
-            var pad_begin = options.pad_begin ? options.pad_begin :
-                    options.begin ? 0 : 100;
-            var pad_end = end && options.pad_end || 0;
-            if (!begin.isValid())
-                throw Error("Begin date is not valid " + options.begin);
-            if (end && !end.isValid())
-                throw Error("End date is not valid " + options.end);
-            return _.defaults({
-                begin: begin.format(),
-                pad_begin: pad_begin,
-                end: end && end.format(),
-                pad_end: pad_end
-            }, options);
-        });
-    };
-}
 
 /**
  * Given begin/end range, columns, and retain returns an array of row objects
@@ -262,7 +199,8 @@ function getVariables(options) {
 /**
  * Changes pad_begin to zero and adjusts begin by reading the bars from a block
  */
-function inlinePadBegin(quoteBars, interval, options) {
+function inlinePadBegin(quoteBars, interval, opts) {
+    var options = formatBeginEnd(opts);
     if (!options.pad_begin) return Promise.resolve(options);
     else return quoteBars({}, _.defaults({
         interval: interval,
@@ -277,6 +215,29 @@ function inlinePadBegin(quoteBars, interval, options) {
             begin: bars[i].ending
         }, options);
     });
+}
+
+/**
+ * Formats begin and end options.
+ */
+function formatBeginEnd(options) {
+    var eod = moment(options.now).tz(options.tz).endOf('day');
+    var begin = options.begin ? moment.tz(options.begin, options.tz) : eod;
+    var oend = options.end && moment.tz(options.end, options.tz);
+    var end = oend && eod.isBefore(oend) ? eod : oend; // limit end to end of today
+    var pad_begin = options.pad_begin ? options.pad_begin :
+            options.begin ? 0 : 100;
+    var pad_end = end && options.pad_end || 0;
+    if (!begin.isValid())
+        throw Error("Begin date is not valid " + options.begin);
+    if (end && !end.isValid())
+        throw Error("End date is not valid " + options.end);
+    return _.defaults({
+        begin: begin.format(),
+        pad_begin: pad_begin,
+        end: end && end.format(),
+        pad_end: pad_end
+    }, options);
 }
 
 /**
