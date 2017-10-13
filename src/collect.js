@@ -349,6 +349,7 @@ function collectDataset(dataset, temporal, parser, columns, cached, options) {
                     [key]: _.mapObject(columns, column => column(result))
                 });
             }, {[temporal]: points[0][temporal]});
+            if (_.keys(result[row]).length == 1) result.pop();
             return result;
         }, []);
     }));
