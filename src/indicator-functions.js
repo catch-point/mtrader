@@ -63,9 +63,9 @@ var functions = module.exports.functions = {
                 if (i === 0) return 0;
                 var prior = bars[i - 1];
                 if (bar.close > prior.close)
-                    return p + (i + 1) * bar.volume;
+                    return p + (i + 1) * (bar.volume || 1);
                 if (bar.close < prior.close)
-                    return p - (i + 1) * bar.volume;
+                    return p - (i + 1) * (bar.volume || 1);
                 return p;
             }, 0);
             return numerator / (bars.length * (bars.length - 1)) * 2;
@@ -348,12 +348,12 @@ function adj(bars) {
 }
 
 function reducePriceVolumeWeight(bars, prices, fn, memo) {
-    var total = Math.max(sum(_.pluck(bars, 'volume')), 1);
+    var total = Math.max(sum(_.map(bars, bar => bar.volume || 1)), 1);
     return bars.reduce(function(memo, bar){
         var low = _.sortedIndex(prices, bar.low);
         var high = _.sortedIndex(prices, bar.high);
         var range = prices.slice(low, high+1);
-        var r = bar.volume / range.length / total;
+        var r = (bar.volume || 1) / range.length / total;
         return range.reduce(function(memo, price){
             return fn(memo, price, r);
         }, memo);
