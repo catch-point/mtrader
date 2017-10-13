@@ -188,12 +188,16 @@ function createParser(cached, options) {
  * Returns map of variables and columns, excluding columns that look like fields
  */
 function getVariables(options) {
-    return _.defaults({}, options.variables, _.omit(options.columns, (expr, name) => {
+    var params = _.mapObject(_.pick(options.parameters, val => {
+        return _.isString(val) || _.isNumber(val);
+    }), val => JSON.stringify(val));
+    var cols = _.omit(options.columns, (expr, name) => {
         // exclude column names that looks like fields
         if (name.indexOf('.') < 1) return false;
         var interval = name.substring(0, name.indexOf('.'));
         return _.contains(periods.values, interval);
-    }));
+    });
+    return _.defaults({}, options.variables, params, cols);
 }
 
 /**
