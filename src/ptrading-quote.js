@@ -110,7 +110,9 @@ if (require.main === module) {
     });
     module.exports = function(options) {
         expect(options).to.have.property('symbol');
-        return chooseWorker(children, options.symbol).request('quote', options);
+        var name = options.exchange ?
+            options.symbol + '.' + options.exchange : options.symbol;
+        return chooseWorker(children, name).request('quote', options);
     };
     module.exports.close = function() {
         children.forEach(child => child.disconnect());
