@@ -307,7 +307,7 @@ function parseExpressionList(str) {
         }
         if (peek() != '(') return word;
         expect('(');
-        var args = [parseExpression()];
+        var args = peek() == ')' ? [] : [parseExpression()];
         while (peek() == ',') {
             index++;
             args.push(parseExpression());

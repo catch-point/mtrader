@@ -40,11 +40,21 @@ module.exports = function(name, args, options) {
     var len = Math.max.apply(Math, [0].concat(_.compact(_.pluck(args, 'warmUpLength'))));
     return _.extend(bars => fn(bars), {
         intervals: intervals,
-        warmUpLength: len
+        warmUpLength: len,
+        sideEffect: functions[name].sideEffect || _.some(args, arg => arg.sideEffect)
     });
 };
 
 var functions = module.exports.functions = {
+    NOW: _.extend((opts) => {
+        return context => {
+            return moment(opts.now).tz(opts.tz).format();
+        };
+    }, {
+        description: "The local date and time at the point the function was executed",
+        seeAlso: ['DATE', 'TIME'],
+        sideEffect: true
+    }),
     /* Add d workdays to the date */
     WORKDAY: _.extend((opts, ending, days) => {
         return context => {

@@ -529,6 +529,45 @@ describe("quote", function() {
 
         ]);
     });
+    it("should not allow NOW() in lookback functions", function() {
+        return quote({
+            columns: {
+                previously: "OFFSET(1, DAYS(NOW(), day.ending))"
+            },
+            symbol: 'IBM',
+            exchange: 'NYSE',
+            begin: "2010-01-05",
+            end: "2010-01-06",
+            now: "2010-01-08T16:00:00"
+        }).should.be.rejected;
+    });
+    it("should not cache NOW() result", function() {
+        return quote({
+            columns: {
+                previously: "DAYS(NOW(), day.ending)"
+            },
+            symbol: 'IBM',
+            exchange: 'NYSE',
+            begin: "2010-01-05",
+            end: "2010-01-06",
+            now: "2010-01-08T16:00:00"
+        }).then(result=>result[0].previously).then(previously => quote({
+            columns: {
+                currently: "DAYS(NOW(), day.ending)",
+                previously: "previously"
+            },
+            parameters: {
+                previously: previously
+            },
+            symbol: 'IBM',
+            exchange: 'NYSE',
+            begin: "2010-01-05",
+            end: "2010-01-06",
+            now: "2010-01-15T16:00:00"
+        })).should.eventually.be.like([
+            {currently: 10, previously: 3}
+        ]);
+    });
     it("should detect circular reference", function() {
         return quote({
             columns: {

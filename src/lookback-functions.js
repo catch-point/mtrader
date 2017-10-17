@@ -58,7 +58,8 @@ module.exports = function(name, args, options) {
         else return fn(bars.slice(bars.length - n));
     }, {
         intervals: intervals,
-        warmUpLength: len
+        warmUpLength: len,
+        sideEffect: fn.sideEffect || _.some(args, arg => arg.sideEffect)
     });
 };
 

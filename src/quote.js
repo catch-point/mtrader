@@ -67,10 +67,10 @@ function quote(fetch, store, options) {
     var exprMap = parseWarmUpMap(options);
     var cached = _.mapObject(exprMap, _.keys);
     var intervals = periods.sort(_.keys(exprMap));
+    if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
     var retain = parseCriteriaMap(options.retain, cached, intervals, options);
     var name = options.exchange ?
         options.symbol + '.' + options.exchange : options.symbol;
-    expect(intervals).not.to.be.empty;
     var interval = intervals[0];
     intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
     return store.open(name, (err, db) => {
@@ -109,7 +109,9 @@ function parseWarmUpMap(options) {
             var map = _.object(inters, inters.map(interval => {
                 return _.extend.apply(_, _.compact(_.pluck(args, interval)));
             }));
-            map.warmUpLength = _.max(_.pluck(args, 'warmUpLength'));
+            map.warmUpLength = _.max([0].concat(_.pluck(args, 'warmUpLength')));
+            if (fn.warmUpLength>map.warmUpLength && fn.sideEffect)
+                throw Error("Cannot use lookback function " + name + " with side effects: " + expr);
             if (_.size(fn.intervals)!=1 || fn.warmUpLength==map.warmUpLength || !_.isFinite(fn.warmUpLength))
                 return map;
             return {[_.first(fn.intervals)]: {[expr]: fn}, warmUpLength: fn.warmUpLength};
@@ -157,10 +159,6 @@ function createParser(cached, options) {
         variable(name) {
             if (_.contains(['symbol', 'exchange', 'ending'], name))
                 return _.compose(_.property(name), _.last);
-            else if (_.has(options.parameters, name))
-                return _.constant(options.parameters[name]);
-            else if (_.has(options, name) && !_.isObject(options[name]) && name.match(/^\w+$/))
-                return _.constant(options[name]);
             else if (!~name.indexOf('.'))
                 throw Error("Unknown field: " + name + " in " + options.symbol);
             var interval = name.substring(0, name.indexOf('.'));
@@ -191,13 +189,16 @@ function getVariables(options) {
     var params = _.mapObject(_.pick(options.parameters, val => {
         return _.isString(val) || _.isNumber(val);
     }), val => JSON.stringify(val));
+    var opts = _.mapObject(_.pick(options, val => {
+        return _.isString(val) || _.isNumber(val);
+    }), val => JSON.stringify(val));
     var cols = _.omit(options.columns, (expr, name) => {
         // exclude column names that looks like fields
         if (name.indexOf('.') < 1) return false;
         var interval = name.substring(0, name.indexOf('.'));
         return _.contains(periods.values, interval);
     });
-    return _.defaults({}, options.variables, params, cols);
+    return _.defaults({}, options.variables, params, cols, opts);
 }
 
 /**
