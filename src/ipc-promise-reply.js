@@ -46,7 +46,7 @@ module.exports = function(process) {
         queue.close();
         onquit(Error("Disconnecting"));
     }).on('message', msg => {
-        if (msg.cmd.indexOf('reply_to_') === 0 && queue.has(msg.in_reply_to)) {
+        if (msg.cmd && msg.cmd.indexOf('reply_to_') === 0 && queue.has(msg.in_reply_to)) {
             var pending = queue.remove(msg.in_reply_to);
             try {
                 if (!_.has(msg, 'error'))
@@ -84,6 +84,7 @@ module.exports = function(process) {
         },
         kill: process.kill.bind(process),
         on: process.on.bind(process),
+        once: process.once.bind(process),
         send(cmd, payload) {
             return new Promise(cb => process.send({
                 cmd: cmd,
