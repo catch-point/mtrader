@@ -46,7 +46,7 @@ const rolling = require('./rolling-functions.js');
 function usage(command) {
     return command.version(require('../package.json').version)
         .description("Collects historic portfolio data")
-        .usage('[identifier] [options]')
+        .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
         .option('--debug', "Include details about what the system is working on")
@@ -63,6 +63,7 @@ function usage(command) {
         .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('-o, --offline', "Disable data updates")
+        .option('--workers <numOfWorkers>', 'Number of workers to spawn')
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
@@ -70,27 +71,35 @@ function usage(command) {
         .option('--transpose', "Swap the columns and rows");
 }
 
-if (process.send) {
-    var parent = replyTo(process).handle('collect', payload => {
-        return collect()(payload);
-    });
-    var collect = _.once(() => Collect(function(options) {
-        return parent.request('quote', options);
-    }, function(options) {
-        return parent.request('collect', options);
-    }));
-    process.on('disconnect', () => collect().close());
+if (require.main === module) {
+    var program = usage(commander).parse(process.argv);
+    if (program.args.length) {
+        initialize(program);
+    } else if (process.send) {
+        spawn();
+    } else {
+        program.help();
+    }
 } else {
-    var program = require.main === module ?
-        usage(commander).parse(process.argv) : usage(new commander.Command());
+    initialize(usage(new commander.Command()));
+}
+
+function initialize(program) {
     var quote = require('./ptrading-quote.js');
-    var workers = commander.workers || os.cpus().length;
-    var children = _.range(workers).map(() => {
-        return replyTo(config.fork(module.filename, program)).handle('quote', payload => {
-            return quote(payload);
-        }).handle('collect', payload => {
-            return collect(payload);
-        });
+    var workers = commander.workers == 0 ? 1 : commander.workers || os.cpus().length;
+    var children = commander.workers == 0 ? [{
+        request: ((collect, cmd, payload) => {
+            if (cmd == 'quote') return quote(payload);
+            else if (cmd == 'collect') return collect(payload);
+            else if (cmd == 'disconnect') return quote.close();
+        }).bind(this, Collect(quote)),
+        disconnect() {
+            return this.request('disconnect');
+        }
+    }] : _.range(workers).map(() => {
+        return replyTo(config.fork(module.filename, program))
+          .handle('quote', payload => quote(payload))
+          .handle('collect', payload => collect(payload));
     });
     var seq = 0;
     var collect = module.exports = function(options) {
@@ -148,6 +157,18 @@ if (process.send) {
           .catch(err => logger.error(err, err.stack))
           .then(() => collect.close());
     }
+}
+
+function spawn() {
+    var parent = replyTo(process).handle('collect', payload => {
+        return collect()(payload);
+    });
+    var collect = _.once(() => Collect(function(options) {
+        return parent.request('quote', options);
+    }, function(options) {
+        return parent.request('collect', options);
+    }));
+    process.on('disconnect', () => collect().close());
 }
 
 function shell(desc, collect, app) {

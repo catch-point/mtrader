@@ -62,6 +62,7 @@ function usage(command) {
         .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")
         .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
         .option('-o, --offline', "Disable data updates")
+        .option('--workers <numOfWorkers>', 'Number of workers to spawn')
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
@@ -102,11 +103,21 @@ if (require.main === module) {
 } else {
     var fetch = require('./ptrading-fetch.js');
     var program = usage(new commander.Command());
-    var workers = commander.workers || os.cpus().length;
-    var children = _.range(workers).map(() => {
-        return replyTo(config.fork(module.filename, program)).handle('fetch', payload => {
-            return fetch(payload);
-        });
+    var prime = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
+    var workers = commander.workers == 0 ? 1 :
+        commander.workers || prime[_.sortedIndex(prime, os.cpus().length)] || os.cpus().length;
+    var children = commander.workers == 0 ? [{
+        request: ((quote, cmd, payload) => {
+            if (cmd == 'fetch') return fetch(payload);
+            else if (cmd == 'quote') return quote(payload);
+            else if (cmd == 'disconnect') return quote.close();
+        }).bind(this, Quote(fetch)),
+        disconnect() {
+            return this.request('disconnect');
+        }
+    }] : _.range(workers).map(() => {
+        return replyTo(config.fork(module.filename, program))
+          .handle('fetch', payload => fetch(payload));
     });
     module.exports = function(options) {
         expect(options).to.have.property('symbol');
