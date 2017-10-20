@@ -247,7 +247,7 @@ var functions = module.exports.functions = {
         return _.extend(bars => {
             var day = periods(_.defaults({interval:'day'}, opts));
             var ending = day.dec(_.last(bars).ending, d);
-            if (!ending.isValid()) throw Error("Invalid date: " + _.last(bars).ending);
+            if (!ending.isValid()) return null;
             var closes = ending.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt;
             var prior = moment.tz(closes, opts.tz).format();
             var end = _.sortedIndex(bars, {ending: prior}, 'ending');

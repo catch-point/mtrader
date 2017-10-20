@@ -59,7 +59,7 @@ var functions = module.exports.functions = {
     WORKDAY: _.extend((opts, ending, days) => {
         return context => {
             var start = moment(ending(context)).tz(opts.tz);
-            if (!start.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!start.isValid()) return null;
             var d = Math.min(start.isoWeekday()-1,4) + days(context);
             var wk = d > 0 ? Math.floor(d /5) : Math.ceil(d /5);
             var wd = d - wk *5 +1;
@@ -72,7 +72,7 @@ var functions = module.exports.functions = {
     DATEVALUE: _.extend((opts, ending) => {
         return context => {
             var start = moment(ending(context)).tz(opts.tz);
-            if (!start.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!start.isValid()) return null;
             var zero = moment.tz('1899-12-31', opts.tz);
             return start.diff(zero, 'days');
         };
@@ -83,7 +83,7 @@ var functions = module.exports.functions = {
     TIMEVALUE: _.extend((opts, ending) => {
         return context => {
             var start = moment(ending(context)).tz(opts.tz);
-            if (!start.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!start.isValid()) return null;
             var noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
             var hours = (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
             return hours/24;
@@ -95,7 +95,7 @@ var functions = module.exports.functions = {
     DATETIME: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context));
-            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!date.isValid()) return null;
             return date.toISOString();
         };
     }, {
@@ -108,7 +108,7 @@ var functions = module.exports.functions = {
             var date = month ?
                 moment.tz(new Date(ending(context), month(context)-1, day(context)).toISOString().substring(0,10), opts.tz) :
                 moment(ending(context)).tz(opts.tz);
-            if (!date.isValid()) throw Error("Invalid date: " + _.compact([ending(context),month&&month(context),day&&day(context)]).join(', '));
+            if (!date.isValid()) return null;
             return date.format('Y-MM-DD');
         };
     }, {
@@ -119,7 +119,7 @@ var functions = module.exports.functions = {
     TIME: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
-            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!date.isValid()) return null;
             return date.format('HH:mm:ss');
         };
     }, {
@@ -130,7 +130,7 @@ var functions = module.exports.functions = {
     DAY: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
-            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!date.isValid()) return null;
             return date.date();
         };
     }, {
@@ -141,7 +141,7 @@ var functions = module.exports.functions = {
     WEEKNUM: _.extend((opts, ending, mode) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
-            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!date.isValid()) return null;
             if (!mode || mode(context) == 1) return date.week();
             else return date.isoWeek();
         };
@@ -152,7 +152,7 @@ var functions = module.exports.functions = {
     WEEKDAY: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
-            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!date.isValid()) return null;
             return date.day()+1;
         };
     }, {
@@ -163,7 +163,7 @@ var functions = module.exports.functions = {
     MONTH: _.extend((opts, ending) => {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
-            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!date.isValid()) return null;
             return date.month() + 1;
         };
     }, {
@@ -174,7 +174,7 @@ var functions = module.exports.functions = {
     YEAR(opts, ending) {
         return context => {
             var date = moment(ending(context)).tz(opts.tz);
-            if (!date.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!date.isValid()) return null;
             return date.year();
         };
     },
@@ -183,7 +183,7 @@ var functions = module.exports.functions = {
         return context => {
             // pivot around noon as leap seconds/hours occur at night
             var start = moment(ending(context)).tz(opts.tz);
-            if (!start.isValid()) throw Error("Invalid date: " + ending(context));
+            if (!start.isValid()) return null;
             var noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
             return (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
         };
