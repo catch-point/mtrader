@@ -68,12 +68,33 @@ module.exports = function() {
             return Promise.all(_.map(fallbacks, fb => fb.close()))
                 .then(() => store).then(store => store.close());
         },
+        help: readOrWriteHelp.bind(this, fallbacks, open, 'help'),
         lookup: readOrWriteResult.bind(this, fallbacks, open, 'lookup'),
         fundamental: readOrWriteResult.bind(this, fallbacks, open, 'fundamental'),
         interday: readOrWriteResult.bind(this, fallbacks, open, 'interday'),
         intraday: readOrWriteResult.bind(this, fallbacks, open, 'intraday')
     };
 };
+
+function readOrWriteHelp(fallbacks, open, name, options) {
+    return open(name, (err, db) => {
+        if (err) throw err;
+        return db.collection(name).then(coll => coll.lockWith([name], names => {
+            if (coll.exists(name)) return coll.readFrom(name);
+            else if (options.offline || _.isEmpty(fallbacks))
+                throw Error("Data file not found " + coll.filenameOf(name));
+            else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
+                return fb[name](options).then(result => {
+                    return coll.writeTo(result, name).then(() => result);
+                });
+            }), Promise.reject());
+        }));
+    }).then(result => result.map(help => _.defaults({
+        // need to restore columns into arrays
+        options: _.isString(help.options) ? help.options.split(',') : help.options,
+        properties: _.isString(help.properties) ? help.properties.split(',') : help.properties
+    }, help)));
+}
 
 function readOrWriteResult(fallbacks, open, cmd, options) {
     var args = _.compact(_.pick(options, 'interval', 'minutes', 'begin', 'end'));

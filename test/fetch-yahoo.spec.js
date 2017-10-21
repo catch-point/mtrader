@@ -46,7 +46,6 @@ describe("fetch-yahoo", function() {
             symbol: 'AABA',
             exchange: 'NASDAQ',
             yahoo_symbol: 'AABA',
-            exch: Boolean,
             name: "Altaba Inc."
         })));
     });

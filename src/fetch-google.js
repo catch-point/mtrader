@@ -56,6 +56,27 @@ module.exports = function() {
                 }
             })));
         },
+        help(options) {
+            return Promise.resolve([{
+                name: "lookup",
+                usage: "lookup(options)",
+                description: "Looks up existing symbol/exchange using the given symbol prefix using the Google network",
+                options: ['symbol', 'google_symbol', 'e', 'exchange'],
+                properties: ['symbol', 'google_symbol', 'exchange', 'name']
+            }, {
+                name: "fundamental",
+                usage: "fundamental(options)",
+                description: "Details of a security on the Google network",
+                options: ['symbol', 'google_symbol', 'e', 'exchange'],
+                properties: ['t', 'e', 'name', 'id', 'sname', 'iname', 'hi52', 'lo52', 'eps', 'beta', 'instown', 'mc', 'shares', 'overview']
+            }, {
+                name: "interday",
+                usage: "interday(options)",
+                description: "Historic data for a security on the Google network",
+                options: ['symbol', 'google_symbol', 'e', 'yahoo_symbol', 'yahooSuffix', 'exchange', 'interval', 'begin', 'end', 'marketOpensAt', 'marketClosesAt', 'tz'],
+                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
+            }]);
+        },
         lookup(options) {
             var exchanges = config('exchanges');
             return google.lookup(google_symbol(options)).then(rows => rows.map(row => {
@@ -65,11 +86,12 @@ module.exports = function() {
                     ), source =>
                         source && source.e == row.e && _.contains(source.fetch, 'lookup')
                     );
-                return _.defaults({
+                return {
                     symbol: row.symbol,
                     google_symbol: row.e + ':' + row.symbol,
-                    exchange: _.first(_.keys(sources))
-                }, row);
+                    exchange: _.first(_.keys(sources)),
+                    name: row.name
+                };
             })).then(rows => rows.filter(row => row.exchange));
         },
         fundamental(options) {
@@ -78,9 +100,7 @@ module.exports = function() {
                 marketClosesAt: _.isString,
                 tz: _.isString
             });
-            return google.fundamental(google_symbol(options)).then(security => [_.defaults({
-                google_symbol: security.e + ':' + security.symbol
-            }, security)]);
+            return google.fundamental(google_symbol(options)).then(security => [security]);
         },
         interday(options) {
             expect(options).to.be.like({

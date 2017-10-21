@@ -125,7 +125,7 @@ function parseJSON(text) {
 function loadSecurity(symbol) {
     var url = info.replace('{symbol}', encodeURIComponent(symbol));
     return promiseText(url).then(parseJSON).then(json => json.map(datum => ({
-        symbol: datum.t,
+        t: datum.t,
         e: datum.e,
         name: datum.name,
         id: datum.id,
@@ -141,7 +141,7 @@ function loadSecurity(symbol) {
         overview: _.property('overview')(_.first(datum.summary))
     }))).then(function(list){
         return list.reduce(function(hash, security){
-            hash[security.e + ':' + security.symbol] = security;
+            hash[security.e + ':' + security.t] = security;
             return hash;
         }, {});
     }).then(hash => hash[symbol]);

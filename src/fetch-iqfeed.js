@@ -48,6 +48,33 @@ module.exports = function() {
         close() {
             iqclient.close();
         },
+        help(options) {
+            return Promise.resolve([{
+                name: "lookup",
+                usage: "lookup(options)",
+                description: "Looks up existing symbol/exchange using the given symbol prefix using the local IQFeed client",
+                options: ['symbol', 'iqfeed_symbol', 'dtnPrefix', 'listed_market', 'exchange'],
+                properties: ['symbol', 'iqfeed_symbol', 'exchange', 'name']
+            }, {
+                name: "fundamental",
+                usage: "fundamental(options)",
+                description: "Details of a security on the local IQFeed client",
+                options: ['symbol', 'iqfeed_symbol', 'dtnPrefix', 'listed_market', 'exchange', 'marketOpensAt', 'marketClosesAt', 'tz'],
+                properties: ['type', 'symbol', 'exchange_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'exchange_root']
+            }, {
+                name: "interday",
+                usage: "interday(options)",
+                description: "Historic data for a security on the local IQFeed client",
+                options: ['symbol', 'iqfeed_symbol', 'dtnPrefix', 'listed_market', 'exchange', 'interval', 'begin', 'end', 'marketOpensAt', 'marketClosesAt', 'tz'],
+                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
+            }, {
+                name: "intraday",
+                usage: "intraday(options)",
+                description: "Historic data for a security on the local IQFeed client",
+                options: ['symbol', 'iqfeed_symbol', 'dtnPrefix', 'listed_market', 'exchange', 'minutes', 'begin', 'end', 'marketOpensAt', 'marketClosesAt', 'tz'],
+                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
+            }]);
+        },
         lookup(options) {
             var exchanges = config('exchanges');
             return iqclient.lookup(symbol(options), options.listed_market).then(rows => rows.map(row => {
@@ -67,11 +94,12 @@ module.exports = function() {
                     sym.substring(prefix.length, sym.length - prefix.length - suffix.length) :
                     startsWith ? sym.substring(prefix.length) :
                     endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
-                return _.defaults({
+                return {
                     symbol: symbol,
                     iqfeed_symbol: row.symbol,
-                    exchange: _.first(_.keys(sources))
-                }, row);
+                    exchange: _.first(_.keys(sources)),
+                    name: row.name
+                };
             })).then(rows => rows.filter(row => row.exchange));
         },
         fundamental(options) {
@@ -82,12 +110,7 @@ module.exports = function() {
             });
             return iqclient.fundamental(symbol(options),
                 options.marketClosesAt, options.tz
-            ).then(fundamental => {
-                return [_.defaults({
-                    iqfeed_symbol: fundamental.symbol,
-                    name: fundamental.company_name
-                }, fundamental)];
-            });
+            ).then(fundamental => [fundamental]);
         },
         interday(options) {
             expect(options).to.be.like({

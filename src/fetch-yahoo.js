@@ -54,6 +54,27 @@ module.exports = function() {
                 }
             }));
         },
+        help(options) {
+            return Promise.resolve([{
+                name: "lookup",
+                usage: "lookup(options)",
+                description: "Looks up existing symbol/exchange using the given symbol prefix on the Yahoo! network",
+                options: ['symbol', 'yahoo_symbol', 'yahooSuffix', 'marketLang', 'exchs', 'exchange'],
+                properties: ['symbol', 'yahoo_symbol', 'exchange', 'name', 'type', 'typeDisp']
+            }, {
+                name: "fundamental",
+                usage: "fundamental(options)",
+                description: "Details of a security on the Yahoo! network",
+                options: ['symbol', 'yahoo_symbol', 'yahooSuffix', 'exchange', 'marketOpensAt', 'marketClosesAt', 'tz'],
+                properties: ['symbol', 'MarketCapitalization', 'name', 'exch', 'AverageDailyVolume', 'EarningsShare', 'EPSEstimateCurrentYear', 'EPSEstimateNextYear', 'EPSEstimateNextQuarter', 'BookValue', 'EBITDA', 'PriceSales', 'PriceBook', 'PERatio', 'PEGRatio', 'PriceEPSEstimateCurrentYear', 'PriceEPSEstimateNextYear', 'ShortRatio']
+            }, {
+                name: "interday",
+                usage: "interday(options)",
+                description: "Historic data for a security on the Yahoo! network",
+                options: ['symbol', 'yahoo_symbol', 'yahooSuffix', 'exchange', 'interval', 'begin', 'end', 'marketOpensAt', 'marketClosesAt', 'tz'],
+                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
+            }]);
+        },
         lookup(options) {
             var exchanges = config('exchanges');
             var langs = options.marketLang ? [options.marketLang] :
@@ -79,11 +100,14 @@ module.exports = function() {
                 var suffix = ds && ds.yahooSuffix || '';
                 var endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
                 var symbol = endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
-                return _.defaults({
+                return {
                     symbol: symbol,
                     yahoo_symbol: row.symbol,
-                    exchange: _.first(_.keys(sources))
-                }, row);
+                    exchange: _.first(_.keys(sources)),
+                    name: row.name,
+                    type: row.type,
+                    typeDisp: row.typeDisp
+                };
             })).then(rows => rows.filter(row => row.exchange));
         },
         fundamental(options) {
@@ -92,9 +116,8 @@ module.exports = function() {
                 marketClosesAt: _.isString,
                 tz: _.isString
             });
-            return yahoo.fundamental(symbol(options)).then(security => [_.defaults({
-                yahoo_symbol: security.symbol
-            }, _.omit(security, value => value == 'N/A'))]);
+            return yahoo.fundamental(symbol(options))
+                .then(security => [_.omit(security, value => value == 'N/A')]);
         },
         interday(options) {
             expect(options).to.be.like({

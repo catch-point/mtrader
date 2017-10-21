@@ -48,6 +48,8 @@ module.exports = function() {
         config(['iqfeed','enabled']) ? {iqfeed: iqfeed()} : {}
     );
     var self = function(options) {
+        if (options.help || options.interval == 'help')
+            return help(datasources, options);
         expect(options).to.be.like({
             interval: /^\S+$/
         });
@@ -80,6 +82,23 @@ module.exports = function() {
 
 function close(datasources) {
     return Promise.all(_.map(datasources, datasource => datasource.close()));
+}
+
+function help(datasources, options) {
+    return Promise.all(_.map(datasources, datasource => {
+        return datasource.help(options);
+    })).then(helps => {
+        var groups = _.values(_.groupBy(_.flatten(helps), 'name'));
+        return groups.map(helps => helps.reduce((help, h) => {
+            return {
+                name: help.name || h.name,
+                usage: help.usage || h.usage,
+                description: help.description || h.description,
+                options: _.union(help.options, h.options),
+                properties: _.union(help.properties, h.properties)
+            };
+        }));
+    });
 }
 
 function lookup(datasources, options) {

@@ -50,7 +50,7 @@ describe("google-client", function() {
     });
     it("should find AABA details", function() {
         return client.fundamental('NASDAQ:AABA').should.eventually.be.like({
-            symbol: 'AABA',
+            t: 'AABA',
             name: "Altaba Inc"
         });
     });
@@ -62,7 +62,7 @@ describe("google-client", function() {
     });
     it("should find IBM details", function() {
         return client.fundamental('NYSE:IBM').should.eventually.be.like({
-            symbol: 'IBM',
+            t: 'IBM',
             name: "International Business Machines Corp."
         });
     });

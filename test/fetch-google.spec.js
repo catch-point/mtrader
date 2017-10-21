@@ -46,7 +46,6 @@ describe("fetch-google", function() {
             symbol: 'AABA',
             exchange: 'NASDAQ',
             google_symbol: 'NASDAQ:AABA',
-            e: 'NASDAQ',
             name: "Altaba Inc"
         })));
     });
@@ -56,7 +55,7 @@ describe("fetch-google", function() {
             google_symbol:'NASDAQ:AABA',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).should.eventually.be.like([{
-            symbol: 'AABA',
+            t: 'AABA',
             name: "Altaba Inc"
         }]);
     });
@@ -74,7 +73,7 @@ describe("fetch-google", function() {
             google_symbol:'NYSE:IBM',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).should.eventually.be.like([{
-            symbol: 'IBM',
+            t: 'IBM',
             name: "International Business Machines Corp."
         }]);
     });

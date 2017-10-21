@@ -44,7 +44,6 @@ describe("fetch-iqfeed", function() {
     it("should find IBM", function() {
         return client.lookup({symbol:'IBM', listed_market:7}).should.eventually.be.like(results => _.some(results, like({
             symbol: 'IBM',
-            listed_market: 7,
             name: "INTERNATIONAL BUSINESS MACHINE"
         })));
     });
