@@ -44,7 +44,7 @@ describe("common-functions", function(){
                 return context => context[name];
             },
             expression(expr, name, args) {
-                return common(name, args);
+                return common(name, args, {tz: 'America/New_York'});
             }
         });
         it("ADD", function() {

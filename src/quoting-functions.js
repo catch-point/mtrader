@@ -39,11 +39,12 @@ const expect = require('chai').expect;
 /**
  * These functions operate of an array of securities at the same point in time.
  */
-module.exports = function(expr, name, args, temporal, quote, dataset, options) {
+module.exports = function(expr, name, args, quote, dataset, options) {
+    expect(options).to.have.property('temporal').that.is.a('string');
     if (functions[name])
-        return functions[name].apply(this, [temporal, quote, dataset, options, expr].concat(args));
+        return functions[name].apply(this, [quote, dataset, options, expr].concat(args));
     else if (module.exports.has(name))
-        return functions['symbol.exchange'].apply(this, [temporal, quote, dataset, options, expr]);
+        return functions['symbol.exchange'].apply(this, [quote, dataset, options, expr]);
 };
 
 module.exports.has = function(name) {
@@ -54,7 +55,7 @@ module.exports.has = function(name) {
 };
 
 var functions = module.exports.functions = {
-    'symbol.exchange': _.extend((temporal, quote, dataset, options, expr) => {
+    'symbol.exchange': _.extend((quote, dataset, options, expr) => {
         var args = Parser({
             constant(value) {
                 return [value];
@@ -70,8 +71,8 @@ var functions = module.exports.functions = {
         var name = args[0].substring(0, args[0].indexOf('('));
         var expression = args[1];
         expect(name).to.match(/^\S+\.\w+$/);
-        var begin = _.first(_.pluck(_.map(dataset, _.first), temporal).sort());
-        var end = _.last(_.pluck(_.map(dataset, _.last), temporal).sort());
+        var begin = _.first(_.pluck(_.map(dataset, _.first), options.temporal).sort());
+        var end = _.last(_.pluck(_.map(dataset, _.last), options.temporal).sort());
         var symbol = name.substring(0, name.lastIndexOf('.'));
         var exchange = name.substring(name.lastIndexOf('.')+1);
         var last = _.compose(_.last, _.values, _.last);
@@ -80,22 +81,23 @@ var functions = module.exports.functions = {
             exchange: exchange,
             variables: {},
             columns: {
-                [temporal]: temporal,
+                [options.temporal]: options.temporal,
                 [expression]: expression
             },
             pad_begin: 1,
             begin: begin,
             end: end
         }).then(data => positions => {
-            var idx = _.sortedIndex(data, last(positions), temporal);
-            if (idx >= data.length || idx && data[idx][temporal] > last(positions)[temporal]) idx--;
+            var idx = _.sortedIndex(data, last(positions), options.temporal);
+            if (idx >= data.length || idx && data[idx][options.temporal] > last(positions)[options.temporal])
+                idx--;
             return data[idx][expression];
         });
     }, {
         args: "expression",
         description: "Retrieves external security data that is used in an expression."
     }),
-    MAXCORREL: _.extend((temporal, quote, dataset, options, expr, duration, expression, criteria) => {
+    MAXCORREL: _.extend((quote, dataset, options, expr, duration, expression, criteria) => {
         var n = asPositiveInteger(duration, "MAXCORREL");
         var arg = Parser({
             constant(value) {
@@ -120,7 +122,7 @@ var functions = module.exports.functions = {
                 exchange: first.exchange,
                 variables: {},
                 columns: {
-                    [temporal]: temporal,
+                    [options.temporal]: options.temporal,
                     [arg]: arg
                 },
                 pad_begin: n,
@@ -144,8 +146,8 @@ var functions = module.exports.functions = {
                     if (i < keys.length -1 && !condition(positions[symbol])) return null;
                     var data = dataset[symbol];
                     if (!data) throw Error("Could not find dataset: " + symbol);
-                    var end = _.sortedIndex(data, positions, temporal);
-                    if (data[end] && data[end][temporal] == positions[temporal]) end++;
+                    var end = _.sortedIndex(data, positions, options.temporal);
+                    if (data[end] && data[end][options.temporal] == positions[options.temporal]) end++;
                     return _.pluck(data.slice(Math.max(end - n, 0), end), arg);
                 });
                 var last = matrix.pop();

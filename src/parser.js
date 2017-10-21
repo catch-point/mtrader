@@ -43,7 +43,7 @@ module.exports = function(handlers) {
     var subs = parseVariables(handlers && handlers.substitutions);
     var _handlers = {
         constant(value) {
-            if (!handlers || !handlers.constant) return value;
+            if (!handlers || !handlers.constant) return JSON.stringify(value);
             else return handlers.constant(value);
         },
         variable(name) {

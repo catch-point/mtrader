@@ -45,8 +45,8 @@ describe("collect", function() {
         config('config', path.resolve(__dirname, 'etc/ptrading.json'));
         config('prefix', createTempDir('collect'));
         config(['iqfeed','enabled'], false);
-        config(['google','enabled'], true);
-        config(['yahoo','enabled'], true);
+        config(['google','enabled'], false);
+        config(['yahoo','enabled'], false);
         config(['files','enabled'], true);
         config(['files','dirname'], path.resolve(__dirname, 'var'));
         fetch = Fetch();
@@ -764,6 +764,19 @@ describe("collect", function() {
             {date:"2014-03-05",close:1.10276,change:-0.56,povo:29,position:-100000,profit:886.2},
             {date:"2014-03-06",close:1.09829,change:-0.41,povo:16,position:-100000,profit:1287.95}
         ]);
+    });
+    it("should detect variable cycle", function() {
+        return collect({
+            portfolio: 'USD.CAD',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'ROUND(1/day.close,5)',
+                change: 'total_change - PREV("total_change")',
+                total_change: 'PREV("change") + change'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        }).should.be.rejectedWith(Error, /variable/i);
     });
     it("should call nested collect", function() {
         config.save('CADUSD', {

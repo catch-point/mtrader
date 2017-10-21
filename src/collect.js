@@ -49,74 +49,106 @@ const expect = require('chai').use(like).expect;
  */
 module.exports = function(quote, collectFn) {
     var temporal = 'DATETIME(ending)';
+    var promiseHelp = help(quote);
     var collections = _.object(config.list(), []);
     var self;
     return self = _.extend(function(options) {
-        expect(options).to.have.property('portfolio');
-        expect(options).to.have.property('columns').that.is.an('object');
-        var collect = collectFn || self;
-        var portfolio = getPortfolio(options.portfolio, collections, options);
-        var colParser = createColumnParser(options);
-        var columns = parseNeededColumns(options);
-        var columnNames = _.object(_.keys(options.columns), _.keys(columns));
-        var formatColumns = _.flatten(colParser.parse(_.values(columns)), true);
-        var criteriaColumns = _.flatten(colParser.parseCriteriaList(_.flatten(_.compact([
-            options.retain, options.filter, options.precedence, options.order
-        ]), true)), true);
-        var allColumns = _.uniq(_.flatten(_.compact([
-            'symbol',
-            'exchange',
-            'ending',
-            temporal,
-            formatColumns,
-            criteriaColumns
-        ]), true));
-        var criteria = getQuoteCriteria(options.retain, getVariables(options));
-        return Promise.all(portfolio.map(opts => {
-            var pad_begin = (options.pad_begin || 0) + (options.pad_leading || 0);
-            if (opts.portfolio) {
-                // inline opts.columns
-                var used = getUsedColumns(opts);
-                var normalizer = createNormalizeParser(opts.columns);
-                var columns = normalizer.parse(allColumns);
-                var filter = [opts.filter, normalizer.parse(criteria)];
-                return collect(_.defaults({
-                    columns: _.extend(_.object(allColumns, columns), _.pick(opts.columns, used)),
-                    filter: _.flatten(_.compact(filter), true),
-                    pad_begin: pad_begin,
-                    order: _.flatten(_.compact([temporal, opts.order]), true)
-                }, opts));
-            } else {
-                return quote(_.defaults({
-                    columns: _.object(allColumns, allColumns),
-                    retain: criteria,
-                    pad_begin: pad_begin
-                }, opts));
-            }
-        })).then(dataset => {
-            var parser = createParser(temporal, quote, dataset, allColumns, options);
-            return collectDataset(dataset, temporal, parser, columns, criteriaColumns, options);
-        }).then(collection => {
-            var begin = moment(options.begin || moment(options.now).endOf('day')).toISOString();
-            var start = _.sortedIndex(collection, {[temporal]: begin}, temporal) - (options.pad_begin || 0);
-            if (start <= 0) return collection;
-            else return collection.slice(start);
-        }).then(collection => collection.reduce((result, points) => {
-            var filter = getOrderBy(options.filter, columns, options);
-            var objects = _.values(points).filter(_.isObject)
-                .filter(point => !filter.find(criteria => criteria.by && !point[criteria.by]));
-            if (!_.isEmpty(objects)) result.push.apply(result, objects);
-            return result;
-        }, [])).then(result => {
-            var order = getOrderBy(options.order, columns, options);
-            return sortBy(result, order);
-        }).then(result => {
-            return result.map(o => _.object(_.keys(columnNames), _.values(columnNames).map(key => o[key])))
+        if (options.help) return promiseHelp;
+        else return promiseHelp.then(help => {
+            var fields = _.first(help).properties;
+            var opts = _.defaults(_.pick(options, _.first(help).options), {
+                temporal: temporal,
+                variables: {},
+                tz: moment.tz.guess(),
+                now: Date.now()
+            });
+            return collect(quote, collectFn || self, collections, fields, opts);
         });
     }, {
         close() {}
     });
 };
+
+function help(quote) {
+    var used = [
+        'portfolio', 'columns', 'variables', 'retain', 'filter',
+        'precedence', 'order', 'pad_leading', 'duration', 'upstream'
+    ];
+    return quote({help: true}).then(_.first).then(help => {
+        return [{
+            name: 'collect',
+            usage: 'collect(options)',
+            description: "Evaluates columns using historic security data",
+            options: _.union(help.options, used),
+            properties: help.properties
+        }];
+    });
+}
+
+function collect(quote, callCollect, collections, fields, options) {
+    expect(options).to.have.property('portfolio');
+    expect(options).to.have.property('columns').that.is.an('object');
+    expect(options).to.have.property('temporal').that.is.a('string');
+    var portfolio = getPortfolio(options.portfolio, collections, options);
+    var optional = _.difference(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true), fields);
+    var defaults = _.object(optional, optional.map(v => null));
+    var avail = _.union(fields, optional);
+    var columns = parseNeededColumns(avail, options);
+    var columnNames = _.object(_.keys(options.columns), _.keys(columns));
+    var simpleColumns = getSimpleColumns(columns, options);
+    var retain = getSimpleRetain(columns, options);
+    return Promise.all(portfolio.map(opts => {
+        var pad_begin = (options.pad_begin || 0) + (options.pad_leading || 0);
+        if (opts.portfolio) {
+            var used = getUsedColumns(opts);
+            var parser = Parser({
+                variable(name){
+                    return opts.columns[name] || name;
+                },
+                expression(expr, name, args) {
+                    return name + '(' + args.join(',') + ')';
+                }
+            });
+            var columns = parser.parse(simpleColumns);
+            var filter = [opts.filter, parser.parse(retain)];
+            var params = _.omit(defaults, _.keys(opts.columns));
+            return callCollect(_.defaults({
+                columns: _.extend(columns, _.pick(opts.columns, used)),
+                filter: _.flatten(_.compact(filter), true),
+                pad_begin: pad_begin,
+                order: _.flatten(_.compact([options.temporal, opts.order]), true),
+                parameters: _.defaults({}, opts.parameters, params)
+            }, opts));
+        } else {
+            return quote(_.defaults({
+                columns: simpleColumns,
+                retain: retain,
+                pad_begin: pad_begin,
+                parameters: defaults
+            }, opts));
+        }
+    })).then(dataset => {
+        var parser = createParser(quote, dataset, columns, _.keys(simpleColumns), options);
+        return collectDataset(dataset, parser, columns, options);
+    }).then(collection => {
+        var begin = moment(options.begin || moment(options.now).endOf('day')).toISOString();
+        var idx = _.sortedIndex(collection, {[options.temporal]: begin}, options.temporal);
+        var start = idx - (options.pad_begin || 0);
+        if (start <= 0) return collection;
+        else return collection.slice(start);
+    }).then(collection => collection.reduce((result, points) => {
+        var filter = getOrderBy(options.filter, columns, options);
+        var objects = _.values(points).filter(_.isObject)
+            .filter(point => !filter.find(criteria => criteria.by && !point[criteria.by]));
+        if (!_.isEmpty(objects)) result.push.apply(result, objects);
+        return result;
+    }, [])).then(result => {
+        var order = getOrderBy(options.order, columns, options);
+        return sortBy(result, order);
+    }).then(result => {
+        return result.map(o => _.object(_.keys(columnNames), _.values(columnNames).map(key => o[key])))
+    });
+}
 
 /**
  * Parses a comma separated list into symbol/exchange pairs.
@@ -135,6 +167,7 @@ function getPortfolio(portfolio, collections, options) {
             if (cfg) collections[symbolExchange] = cfg;
         }
         if (collections[symbolExchange]) return _.defaults({
+            name: symbolExchange,
             upstream: _.flatten(_.compact([options.upstream, symbolExchange]), true)
         }, collections[symbolExchange], opts);
         if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
@@ -146,92 +179,97 @@ function getPortfolio(portfolio, collections, options) {
 }
 
 /**
- * Creates a parser that normalizes the column expressions
+ * Changes column names to avoid variable name conflicts,
+ * and add variables that are not substituted, with filter and order expressions
  */
-function createColumnParser(options) {
-    return Parser({
-        substitutions: getVariables(options),
+function parseNeededColumns(fields, options) {
+    var varnames = getVariables(fields, options);
+    var normalizer = createNormalizeParser(varnames, options);
+    var columns = _.mapObject(options.columns, expr => normalizer.parse(expr));
+    var conflicts = _.intersection(_.keys(columns),
+        _.union(fields, _.keys(options.variables), [options.temporal])
+    );
+    var masked = _.object(conflicts, conflicts.map(name => columns[name]));
+    var needed = _.reduce(columns, (needed, value, key) => {
+        needed[masked[key] || key] = value;
+        return needed;
+    }, {});
+    var variables = varnames.reduce((needed, name) => {
+        if (_.has(options.variables, name)) {
+            needed[name] = normalizer.parse(options.variables[name]);
+        } else if (!_.has(columns, name)) {
+            needed[name] = name; // pass through fields used in rolling functions
+        }
+        return needed;
+    }, {});
+    var filterOrder = _.difference(normalizer.parseCriteriaList(_.flatten(_.compact([
+        options.filter, options.order
+    ]), true)), _.keys(needed), _.keys(variables));
+    var neededColumns = _.extend(needed, variables, _.object(filterOrder, filterOrder));
+    var references = Parser({
         constant(value) {
-            return null;
+            return [];
         },
         variable(name) {
-            return name;
+            if (neededColumns[name] && neededColumns[name]!=name) return [name];
+            else return [];
         },
         expression(expr, name, args) {
-            var order = name == 'DESC' || name == 'ASC';
-            var fn = rolling.has(name);
-            var roll = _.some(args, _.isArray);
-            if (quoting.has(name)) return [];
-            else if (!order && !fn && !roll) return expr;
-            else return _.flatten(_.compact(args), true);
+            return _.uniq(_.flatten(args, true));
         }
-    });
+    }).parse(_.pick(neededColumns, (v, k) => v!=k));
+    while (_.reduce(references, (more, reference, name) => {
+        if (!reference.length) return more;
+        if (_.contains(reference, name)) throw Error("Circular variable reference " + name);
+        references[name] = _.uniq(_.flatten(reference.map(ref => references[ref]), true));
+        return more || references[name].length;
+    }, false));
+    return neededColumns;
 }
 
 /**
- * Changes column names to avoid variable name conflicts and add variables used
- * in rolling functions to the end of the array.
+ * Returns columns/variables/fields names that should not normally be inlined.
+ * This includes unique columns/variables/fields used in rolling functions,
+ * and variables used multiple times in a single expression
  */
-function parseNeededColumns(options) {
-    if (_.isEmpty(options.columns)) return options.columns;
-    var conflicts = _.intersection(_.keys(options.columns), _.keys(options.variables));
-    var masked = _.object(conflicts, conflicts.map(name => Parser().parse(options.columns[name])));
-    var columns = _.reduce(options.columns, (columns, value, key) => {
-        columns[masked[key] || key] = value;
-        return columns;
-    }, {});
-    var normalizer = createNormalizeParser(getVariables(options), true);
-    var filterOrderColumns = normalizer.parseCriteriaList(_.flatten(_.compact([
-        options.filter, options.order
-    ]), true));
-    return _.defaults(getRollingVariables(options).reduce((columns, name) => {
-        if (_.has(options.variables, name)) {
-            columns[name] = options.variables[name];
-        } else if (!_.has(options.columns, name)) {
-            columns[name] = name; // pass through
-        }
-        return columns;
-    }, columns), _.object(filterOrderColumns, filterOrderColumns));
-}
-
-/**
- * Returns the variable names used by rolling functions
- */
-function getRollingVariables(options) {
+function getVariables(fields, options) {
     var parser = Parser({
-        substitutions: getVariables(options),
         constant(value) {
             return _.isString(value) ? value : null;
         },
         variable(name) {
-            return null;
+            if (~fields.indexOf(name))
+                return {[name]: Infinity}; // must propagate fields through
+            else if (options.columns[name] || options.variables[name])
+                return {[name]: 1};
+            else return {}; // don't include parameters
         },
         expression(expr, name, args) {
             // the first string argument is the variable name in rolling functions
-            if (rolling.has(name)) return [_.first(_.compact(args))];
-            else return _.flatten(args.filter(_.isArray), true);
+            if (rolling.has(name)) return {[_.first(_.compact(args))]: Infinity};
+            else return args.reduce((count, arg) => {
+                if (!_.isObject(arg)) return count;
+                _.each(arg, (value, name) => {
+                    count[name] = value + (count[name] || 0);
+                });
+                return count;
+            }, {});
         }
     });
-    return _.uniq(_.compact(_.flatten(parser.parseCriteriaList(_.flatten(_.compact([
+    var exprs = parser.parseCriteriaList(_.flatten(_.compact([
         _.values(options.variables), _.values(options.columns),
         options.retain, options.filter, options.precedence
-    ]), true)).filter(_.isArray), true)));
+    ]), true));
+    var multiples = _.uniq(_.flatten(exprs.map(expr => _.keys(expr).filter(name => expr[name] > 1)), true));
+    return _.union(_.difference(_.keys(options.columns), fields), multiples);
 }
 
 /**
- * Normalizes the expressions and substitutes variables
+ * Normalizes the expressions and substitutes other variables that aren't given
  */
-function createNormalizeParser(variables, recursive) {
-    // if not recursive, strip out variables that looks like fields
-    var vars = recursive ? variables : getVariables({columns: variables});
-    var nestedParser = recursive ? null : createNormalizeParser(vars, true);
+function createNormalizeParser(variables, options) {
     return Parser({
-        substitutions: vars,
-        variable(name) {
-            if (nestedParser && variables[name])
-                return nestedParser.parse(variables[name]);
-            else return name;
-        },
+        substitutions: getSubstitutions(variables, options),
         expression(expr, name, args) {
             if (name == 'DESC' || name == 'ASC') return _.first(args);
             else return expr;
@@ -240,27 +278,115 @@ function createNormalizeParser(variables, recursive) {
 }
 
 /**
- * Returns the retain expression that should be delegated to quote.
- * Removing the expressions with rolling functions.
+ * Returns map of other variables and parameters (not in the given variables array)
+ * that can safely be inlined in expressions
  */
-function getQuoteCriteria(expr, variables) {
-    if (!expr) return [];
-    return _.compact(Parser({
-        substitutions: variables,
+function getSubstitutions(variables, options) {
+    var params = _.mapObject(_.pick(options.parameters, val => {
+        return _.isString(val) || _.isNumber(val);
+    }), val => JSON.stringify(val));
+    return _.defaults(_.omit(options.variables, variables), params);
+}
+
+/**
+ * Returns expressions that should be delegated to quote.
+ * Removing the expressions with rolling functions and variables. However,
+ * variables are inlined in the arguments for expressions that used in lookback functions.
+ */
+function getSimpleColumns(columns, options) {
+    var colParser = createColumnParser(columns, options);
+    var formatColumns = _.map(columns, expr => colParser.parse(expr).columns).reduce((a,b)=>_.extend(a,b), {});
+    var criteriaColumns = _.pluck(colParser.parseCriteriaList(_.flatten(_.compact([
+        options.retain, options.filter, options.precedence, options.order
+    ]), true)), 'columns').reduce((a,b)=>_.extend(a,b), {});
+    return _.defaults({
+        symbol: 'symbol',
+        exchange: 'exchange',
+        ending: 'ending',
+        [options.temporal]: options.temporal
+    }, formatColumns, criteriaColumns);
+}
+
+/**
+ * Returns a map of expressions, using local variables, to expressions with those
+ * variables inlined.
+ * Only expressions that are to be evaluated before retain are included.
+ */
+function createColumnParser(columns, options) {
+    var inline = createInlineParser(columns, options);
+    var parsedColumns = {};
+    var parser = Parser({
+        substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
-            return _.isString(value) ? JSON.stringify(value) : value;
+            return {complex: false, columns: {}};
         },
         variable(name) {
-            return name;
+            if (!columns[name] || columns[name]==name)
+                return {complex: false, columns: {[name]: name}};
+            parsedColumns[name] = parsedColumns[name] || parser.parse(columns[name]);
+            if (parsedColumns[name].complex)
+                return {complex: true, columns: {}}; // can't include complex variables
+            else return {complex: false, columns: {}}; // parse column later
         },
         expression(expr, name, args) {
             var order = name == 'DESC' || name == 'ASC';
-            var fn = rolling.has(name);
-            var roll = _.some(args, _.isNull);
-            if (!quoting.has(name) && !order && !fn && !roll) return expr;
-            else return null;
+            var complex = _.some(args, arg => arg.complex);
+            var nested = {
+                complex: true,
+                columns: _.pluck(args, 'columns').reduce((a,b)=>_.extend(a,b), {})
+            };
+            if (quoting.has(name)) return {complex: true, columns: {}};
+            else if (order || rolling.has(name) || complex) return nested;
+            var inlined = inline.parse(expr);
+            if (common.has(name) && inlined.length > 512) return nested;
+            else return {complex: false, columns: {[expr]: inlined}}; // lookback
         }
-    }).parseCriteriaList(expr));
+    });
+    return parser;
+}
+
+/**
+ * Returns the retain expression that should be delegated to quote.
+ * Removing the expressions with rolling functions and inlining variables.
+ * This differrs from #getSimpleColumns as it does not return parts of complex expressions
+ */
+function getSimpleRetain(columns, options) {
+    if (!options.retain) return [];
+    var inline = createInlineParser(columns, options);
+    var parsedColumns = {};
+    var parser = Parser({
+        substitutions: getSubstitutions(_.keys(columns), options),
+        variable(name) {
+            if (!columns[name] || columns[name]==name) return name;
+            else return parsedColumns[name] = parsedColumns[name] || parser.parse(columns[name]);
+        },
+        expression(expr, name, args) {
+            var order = name == 'DESC' || name == 'ASC';
+            var complex = _.some(args, _.isNull);
+            if (quoting.has(name)) return null;
+            else if (order || rolling.has(name) || complex) return null;
+            else return inline.parse(expr);
+        }
+    });
+    return _.compact(parser.parseCriteriaList(options.retain));
+}
+
+/**
+ * Parser that inlines all variables in resulting normalized expressions
+ */
+function createInlineParser(columns, options) {
+    var incols = {};
+    var inline = Parser({
+        substitutions: getSubstitutions(_.keys(columns), options),
+        variable(name) {
+            if (!columns[name] || columns[name]==name) return name;
+            else return incols[name] = incols[name] || inline.parse(columns[name]);
+        },
+        expression(expr, name, args) {
+            return name + '(' + args.join(',') + ')';
+        }
+    });
+    return inline;
 }
 
 /**
@@ -273,36 +399,42 @@ function getUsedColumns(options) {
     ]), true);
     return _.uniq(_.flatten(Parser({
         constant(value) {
-            return [];
+            return _.isString(value) ? value : null;
         },
         variable(name) {
             return [name];
         },
         expression(expr, name, args) {
-            return _.uniq(_.flatten(args, true));
+            // the first string argument is the variable name in rolling functions
+            if (rolling.has(name)) return [_.first(_.compact(args))];
+            else return _.uniq(_.flatten(args.filter(_.isArray), true));
         }
-    }).parseCriteriaList(exprs), true));
+    }).parseCriteriaList(exprs).filter(_.isArray), true));
 }
 
 /**
  * Creates an expression parser that recognizes the rolling/quote functions.
  */
-function createParser(temporal, quote, dataset, cached, options) {
+function createParser(quote, dataset, columns, cached, options) {
     var external = _.memoize((expr, name, args) => {
-        return quoting(expr, name, args, temporal, quote, dataset, options);
+        return quoting(expr, name, args, quote, dataset, options);
     });
-    return Parser({
-        substitutions: getVariables(options),
+    var pCols = {};
+    var parser = Parser({
+        substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
             return positions => value;
         },
         variable(name) {
+            if (columns[name] && name!=columns[name])
+                return pCols[name] = pCols[name] || parser.parse(columns[name]);
             // [{"USD.CAD": {"close": 1.00}}]
-            return _.compose(_.property(name), _.last, _.values, _.last);
+            else return _.compose(_.property(name), _.last, _.values, _.last);
         },
         expression(expr, name, args) {
-            if (_.contains(cached, expr)) return _.compose(_.property(expr), _.last, _.values, _.last);
-            return Promise.all(args).then(args => {
+            if (_.contains(cached, expr))
+                return _.compose(_.property(expr), _.last, _.values, _.last);
+            else return Promise.all(args).then(args => {
                 var fn = common(name, args, options) ||
                     rolling(name, args, options) ||
                     external(expr, name, args);
@@ -313,29 +445,18 @@ function createParser(temporal, quote, dataset, cached, options) {
             });
         }
     });
-}
-
-/**
- * Returns map of variables and columns, excluding columns that look like fields
- */
-function getVariables(options) {
-    return _.defaults({}, options.variables, _.omit(options.columns, (expr, name) => {
-        // exclude column names that looks like fields
-        if (name.indexOf('.') < 1) return false;
-        var interval = name.substring(0, name.indexOf('.'));
-        return _.contains(periods.values, interval);
-    }));
+    return parser;
 }
 
 /**
  * Combines the quote.js results into a single array containing retained securities.
  */
-function collectDataset(dataset, temporal, parser, columns, cached, options) {
+function collectDataset(dataset, parser, columns, options) {
     var pcolumns = promiseColumns(parser, columns);
     var pretain = promiseFilter(parser, options.retain);
-    var precedence = getOrderBy(options.precedence, cached, options);
+    var precedence = getOrderBy(options.precedence, columns, options);
     return pcolumns.then(columns => pretain.then(retain => {
-        return reduceInterval(dataset, temporal, (result, points) => {
+        return reduceInterval(dataset, options.temporal, (result, points) => {
             var positions = sortBy(points, precedence);
             var row = result.length;
             result[row] = positions.reduce((retained, point) => {
@@ -348,11 +469,67 @@ function collectDataset(dataset, temporal, parser, columns, cached, options) {
                 else return _.extend(pending, {
                     [key]: _.mapObject(columns, column => column(result))
                 });
-            }, {[temporal]: points[0][temporal]});
+            }, {[options.temporal]: points[0][options.temporal]});
             if (_.keys(result[row]).length == 1) result.pop();
             return result;
         }, []);
     }));
+}
+
+/**
+ * @returns a map of functions that can compute the column values for a given row.
+ */
+function promiseColumns(parser, columns) {
+    var map = parser.parse(columns);
+    return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
+}
+
+/**
+ * Returns a function that can determine if the security should be retained
+ */
+function promiseFilter(parser, expr) {
+    if (!expr) return Promise.resolve(null);
+    return Promise.resolve(parser.parse(_.flatten([expr],true).join(' AND ')));
+}
+
+/**
+ * Create a function and direction that securities should be sorted with.
+ */
+function getOrderBy(expr, columns, options) {
+    if (!expr) return [];
+    return Parser({
+        substitutions: getSubstitutions(_.keys(columns), options),
+        constant(value) {
+            return {};
+        },
+        variable(name) {
+            return {by: name};
+        },
+        expression(expr, name, args) {
+            if (name == 'DESC') return {desc: true, by: _.first(args).by};
+            else if (name == 'ASC') return {desc: false, by:  _.first(args).by};
+            else return {by: expr};
+        }
+    }).parseCriteriaList(expr);
+}
+
+/**
+ * Takes the quote.js results as an array and matches the results by temporal date calling cb.
+ */
+function reduceInterval(dataset, temporal, cb, memo) {
+    var check = interrupt();
+    while (dataset.some(list => list.length)) {
+        check();
+        var ending = _.first(_.compact(_.pluck(dataset.map(list => _.first(list)), temporal)).sort());
+        var points = dataset.reduce((result,list) => {
+            while (list.length && _.first(list)[temporal] == ending) {
+                result.push(list.shift());
+            }
+            return result;
+        }, []);
+        memo = cb(memo, points);
+    }
+    return memo;
 }
 
 /**
@@ -376,61 +553,4 @@ function sortBy(array, order) {
             }
         }, 0);
     });
-}
-
-/**
- * @returns a map of functions that can compute the column values for a given row.
- */
-function promiseColumns(parser, columns) {
-    var map = parser.parse(columns);
-    return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
-}
-
-/**
- * Returns a function that can determine if the security should be retained
- */
-function promiseFilter(parser, expr) {
-    if (!expr) return Promise.resolve(null);
-    return Promise.resolve(parser.parse(_.flatten([expr],true).join(' AND ')));
-}
-
-/**
- * Create a function and direction that securities should be sorted with.
- */
-function getOrderBy(expr, cached, options) {
-    if (!expr) return [];
-    else return Parser({
-        substitutions: getVariables(options),
-        constant(value) {
-            return {};
-        },
-        variable(name) {
-            return {by: name};
-        },
-        expression(expr, name, args) {
-            if (name == 'DESC') return {desc: true, by: _.first(args).by};
-            else if (name == 'ASC') return {desc: false, by:  _.first(args).by};
-            else if (_.contains(cached, expr)) return {by: expr};
-            else return {};
-        }
-    }).parseCriteriaList(expr);
-}
-
-/**
- * Takes the quote.js results as an array and matches the results by temporal date calling cb.
- */
-function reduceInterval(dataset, temporal, cb, memo) {
-    var check = interrupt();
-    while (dataset.some(list => list.length)) {
-        check();
-        var ending = _.first(_.compact(_.pluck(dataset.map(list => _.first(list)), temporal)).sort());
-        var points = dataset.reduce((result,list) => {
-            while (list.length && _.first(list)[temporal] == ending) {
-                result.push(list.shift());
-            }
-            return result;
-        }, []);
-        memo = cb(memo, points);
-    }
-    return memo;
 }

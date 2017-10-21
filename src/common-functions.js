@@ -32,9 +32,11 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const periods = require('./periods.js');
+const expect = require('chai').expect;
 
 module.exports = function(name, args, options) {
     if (!functions[name]) return;
+    expect(options).to.have.property('tz').that.is.a('string');
     var intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
     var fn = functions[name].apply(this, [options].concat(args));
     var len = Math.max.apply(Math, [0].concat(_.compact(_.pluck(args, 'warmUpLength'))));
@@ -198,6 +200,7 @@ var functions = module.exports.functions = {
         return context => {
             var a = moment(to(context)).tz(opts.tz);
             var b = moment(from(context)).tz(opts.tz);
+            if (!a.isValid() || !b.isValid()) return null;
             return a.diff(b, 'days');
         };
     }, {
@@ -337,6 +340,15 @@ var functions = module.exports.functions = {
         return context => {
             return conditions.filter(fn => fn(context)).length %2;
         };
+    },
+    TRUE(opts) {
+        return context => 1;
+    },
+    FALSE(opts) {
+        return context => 0;
+    },
+    NULL(opts) {
+        return context => null;
     },
     /* If then else */
     IF(opts, ifCondition, thenValue, elseValue) {

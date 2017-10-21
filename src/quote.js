@@ -221,8 +221,9 @@ function getVariables(fields, options) {
         if (~fields.indexOf(name))
             return _.isString(val) || _.isNumber(val);
     }), val => JSON.stringify(val));
+    var nulls = _.mapObject(_.pick(options.parameters, _.isNull), val => "NULL()");
     var cols = _.omit(options.columns, fields);
-    return _.defaults({}, options.variables, params, cols, opts);
+    return _.defaults({}, options.variables, params, nulls, cols, opts);
 }
 
 /**
