@@ -120,8 +120,8 @@ if (require.main === module) {
           .handle('fetch', payload => fetch(payload));
     });
     module.exports = function(options) {
-        expect(options).to.have.property('symbol');
-        var name = options.exchange ?
+        if (!options.help) expect(options).to.have.property('symbol');
+        var name = options.help ? 'help' : options.exchange ?
             options.symbol + '.' + options.exchange : options.symbol;
         return chooseWorker(children, name).request('quote', options);
     };

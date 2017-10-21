@@ -52,49 +52,77 @@ const expect = require('chai').use(like).expect;
 module.exports = function(fetch) {
     var lookup = Lookup(fetch);
     var store = storage(path.resolve(config('prefix'), 'var/'));
-    var self = function(options) {
-        return lookup(options).then(options => quote(fetch, store, options));
-    };
-    self.close = () => store.close();
-    return self;
+    var promiseHelp = help(fetch);
+    return _.extend(function(options) {
+        if (options.help) return promiseHelp;
+        else return lookup(options).then(options => promiseHelp.then(help => {
+            var fields = _.first(help).properties;
+            var opts = _.pick(options, _.first(help).options);
+            return quote(fetch, store, fields, opts);
+        }));
+    }, {
+        close() {
+            return store.close();
+        }
+    });
 };
+
+function help(fetch) {
+    return fetch({help: true})
+      .then(help => _.indexBy(help, 'name'))
+      .then(help => _.pick(help, ['lookup', 'interday', 'intraday'])).then(help => {
+        var used = ['symbol', 'exchange', 'columns', 'retain', 'interval', 'parameters', 'variables', 'pad_begin', 'pad_end', 'begin', 'end', 'now', 'tz', 'offline', 'marketOpensAt', 'marketClosesAt', 'premarketOpensAt', 'afterHoursClosesAt'];
+        var variables = periods.values.reduce((variables, interval) => {
+            var fields = interval.charAt(0) != 'm' ? help.interday.properties :
+                help.intraday ? help.intraday.properties : [];
+            return variables.concat(fields.map(field => interval + '.' + field));
+        }, ['ending', 'tz', 'currency'].concat(help.lookup.properties));
+        return [{
+            name: 'quote',
+            usage: 'quote(options)',
+            description: "Formats historic data into provided columns",
+            options: _.uniq(used.concat(_.flatten(_.map(help, help => help.options), true))),
+            properties: variables
+        }];
+    });
+}
 
 /**
  * Given begin/end range, columns, and retain returns an array of row objects
  * that each pass the given criteria and are within the begin/end range.
  */
-function quote(fetch, store, options) {
-    var exprMap = parseWarmUpMap(options);
+function quote(fetch, store, fields, options) {
+    var exprMap = parseWarmUpMap(fields, options);
     var cached = _.mapObject(exprMap, _.keys);
     var intervals = periods.sort(_.keys(exprMap));
     if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
-    var retain = parseCriteriaMap(options.retain, cached, intervals, options);
+    var retain = parseCriteriaMap(options.retain, fields, cached, intervals, options);
     var name = options.exchange ?
         options.symbol + '.' + options.exchange : options.symbol;
     var interval = intervals[0];
     intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
     return store.open(name, (err, db) => {
         if (err) throw err;
-        var quoteBars = fetchBars.bind(this, fetch, db);
+        var quoteBars = fetchBars.bind(this, fetch, db, fields);
         return inlinePadBegin(quoteBars, interval, options)
           .then(options => inlinePadEnd(quoteBars, interval, options))
           .then(options => mergeBars(quoteBars, exprMap, retain, options));
-    }).then(signals => formatColumns(signals, options));
+    }).then(signals => formatColumns(fields, signals, options));
 }
 
 /**
  * Finds out what intervals are used in columns and retain and put together a
  * list of what expressions should be computed and stored for further reference.
  */
-function parseWarmUpMap(options) {
+function parseWarmUpMap(fields, options) {
     var exprs = _.compact(_.flatten([
         _.values(options.columns), options.retain
     ]));
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
-    var p = createParser({}, options);
+    var p = createParser(fields, {}, options);
     var parser = Parser({
-        substitutions: getVariables(options),
+        substitutions: getVariables(fields, options),
         constant(value) {
             return {warmUpLength: 0};
         },
@@ -127,8 +155,8 @@ function parseWarmUpMap(options) {
 /**
  * Create a function for each interval that should be evaluated to include in result.
  */
-function parseCriteriaMap(criteria, cached, intervals, options) {
-    var list = createParser(cached, options).parseCriteriaList(criteria);
+function parseCriteriaMap(criteria, fields, cached, intervals, options) {
+    var list = createParser(fields, cached, options).parseCriteriaList(criteria);
     var group = list.reduce((m, fn) => {
         var interval = _.first(fn.intervals);
         if (m[interval]) {
@@ -150,9 +178,9 @@ function parseCriteriaMap(criteria, cached, intervals, options) {
 /**
  * Creates a parser that can parse expressions into functions
  */
-function createParser(cached, options) {
+function createParser(fields, cached, options) {
     return Parser({
-        substitutions: getVariables(options),
+        substitutions: getVariables(fields, options),
         constant(value) {
             return () => value;
         },
@@ -183,21 +211,17 @@ function createParser(cached, options) {
 }
 
 /**
- * Returns map of variables and columns, excluding columns that look like fields
+ * Returns map of variables and columns, excluding columns with field names
  */
-function getVariables(options) {
+function getVariables(fields, options) {
     var params = _.mapObject(_.pick(options.parameters, val => {
         return _.isString(val) || _.isNumber(val);
     }), val => JSON.stringify(val));
-    var opts = _.mapObject(_.pick(options, val => {
-        return _.isString(val) || _.isNumber(val);
+    var opts = _.mapObject(_.pick(options, (val, name) => {
+        if (~fields.indexOf(name))
+            return _.isString(val) || _.isNumber(val);
     }), val => JSON.stringify(val));
-    var cols = _.omit(options.columns, (expr, name) => {
-        // exclude column names that looks like fields
-        if (name.indexOf('.') < 1) return false;
-        var interval = name.substring(0, name.indexOf('.'));
-        return _.contains(periods.values, interval);
-    });
+    var cols = _.omit(options.columns, fields);
     return _.defaults({}, options.variables, params, cols, opts);
 }
 
@@ -362,11 +386,11 @@ function readSignals(points, entry, exit, retain) {
  * and stores the expressions results.
  * @returns the bars of the blocks
  */
-function fetchBars(fetch, db, expressions, options) {
+function fetchBars(fetch, db, fields, expressions, options) {
     var warmUpLength = _.max(_.pluck(_.values(expressions), 'warmUpLength').concat([0]));
     var name = getCollectionName(options);
     return db.collection(name).then(collection => {
-        return fetchNeededBlocks(fetch, collection, warmUpLength, options)
+        return fetchNeededBlocks(fetch, fields, collection, warmUpLength, options)
           .then(blocks => evalBlocks(collection, warmUpLength, blocks, expressions, options))
           .then(blocks => readBlocks(collection, blocks, options));
     });
@@ -385,7 +409,7 @@ function getCollectionName(options) {
 /**
  * Determines the blocks that will be needed for this begin/end range.
  */
-function fetchNeededBlocks(fetch, collection, warmUpLength, options) {
+function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
     var period = periods(options);
     var begin = options.begin;
     var pad_begin = options.pad_begin + warmUpLength;
@@ -396,7 +420,7 @@ function fetchNeededBlocks(fetch, collection, warmUpLength, options) {
     if (options.offline) return Promise.resolve(blocks);
     else return collection.lockWith(blocks, blocks => {
         var version = getStorageVersion(collection);
-        return fetchBlocks(fetch, options, collection, version, stop, blocks);
+        return fetchBlocks(fetch, fields, options, collection, version, stop, blocks);
     });
 }
 
@@ -478,20 +502,20 @@ function readBlocks(collection, blocks, options) {
 /**
  * Converts list of points into array of rows keyed by column names
  */
-function formatColumns(points, options) {
+function formatColumns(fields, points, options) {
     if (!points.length) return [];
-    var fields = _.mapObject(_.pick(_.first(points), _.isObject), _.keys);
-    var fieldCols = _.mapObject(fields, (fields, interval) => {
-        var keys = fields.filter(field => field.match(/^\w+$/));
+    var props = _.mapObject(_.pick(_.first(points), _.isObject), _.keys);
+    var fieldCols = _.mapObject(props, (props, interval) => {
+        var keys = props.filter(field => field.match(/^\w+$/));
         var values = keys.map(field => interval + '.' + field);
         return _.object(keys, values);
     }); // {interval: {field: "$interval.$field"}}
     var columns = options.columns ? options.columns :
-        _.size(fields) == 1 ? _.first(_.values(fieldCols)) :
+        _.size(props) == 1 ? _.first(_.values(fieldCols)) :
         _.reduce(fieldCols, (map, fieldCols) => {
             return _.defaults(map, _.object(_.values(fieldCols), _.values(fieldCols)));
         }, {});
-    var map = createParser(fields, options).parse(columns);
+    var map = createParser(fields, props, options).parse(columns);
     return points.map(point => _.mapObject(map, expr => expr([point])));
 }
 
@@ -519,9 +543,9 @@ function createStorageVersion() {
 /**
  * Checks if any of the blocks need to be updated
  */
-function fetchBlocks(fetch, options, collection, version, stop, blocks) {
+function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) {
     var fetchComplete = fetchCompleteBlock.bind(this, fetch, options, collection, version);
-    var fetchPartial = fetchPartialBlock.bind(this, fetch, options, collection);
+    var fetchPartial = fetchPartialBlock.bind(this, fetch, fields, options, collection);
     return Promise.all(blocks.map((block, i, blocks) => {
         var last = i == blocks.length -1;
         if (!collection.exists(block) || collection.propertyOf(block, 'version') != version)
@@ -538,7 +562,7 @@ function fetchBlocks(fetch, options, collection, version, stop, blocks) {
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
         var version = createStorageVersion();
-        return fetchBlocks(fetch, options, collection, version, stop, blocks);
+        return fetchBlocks(fetch, fields, options, collection, version, stop, blocks);
     });
 }
 
@@ -557,7 +581,7 @@ function fetchCompleteBlock(fetch, options, collection, version, block, last) {
 /**
  * Attempts to add additional bars to a block
  */
-function fetchPartialBlock(fetch, options, collection, block, begin) {
+function fetchPartialBlock(fetch, fields, options, collection, block, begin) {
     return fetch(_.defaults({
         begin: begin
     }, blockOptions(block, options))).then(records => {
@@ -567,7 +591,7 @@ function fetchPartialBlock(fetch, options, collection, block, begin) {
             if (!_.isMatch(_.last(partial), records.shift())) return 'incompatible';
             var warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
-                var exprs = _.object(warmUps, warmUps.map(expr => createParser({}, options).parse(expr)));
+                var exprs = _.object(warmUps, warmUps.map(expr => createParser(fields, {}, options).parse(expr)));
                 var warmUpBlocks = collection.propertyOf(block, 'warmUpBlocks') || [];
                 return Promise.all(warmUpBlocks.map(block => collection.readFrom(block)))
                   .then(results => _.flatten(results, true))

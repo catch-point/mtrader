@@ -79,10 +79,10 @@ function fetchOptionsFactory(fetch, offline) {
         if (exchange) expect(exchange).to.be.oneOf(_.keys(exchanges));
         var args = _.toArray(arguments);
         return memoizeFirstLookup(symbol, exchange).then(security => {
-            return _.extend(
+            return _.defaults(
                 _.omit(exchanges[security.exchange], 'datasources', 'label', 'description'),
-                options,
-                security
+                security,
+                options
             );
         }, err => {
             if (!exchange) throw err;
