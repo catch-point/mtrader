@@ -395,6 +395,9 @@ function fetchBars(fetch, db, fields, expressions, options) {
         return fetchNeededBlocks(fetch, fields, collection, warmUpLength, options)
           .then(blocks => evalBlocks(collection, warmUpLength, blocks, expressions, options))
           .then(blocks => readBlocks(collection, blocks, options));
+    }).catch(err => {
+        if (!options.offline) throw err;
+        else throw Error("Couldn't read needed data, try again without offline flag");
     });
 }
 

@@ -114,7 +114,7 @@ function lookup(datasources, options) {
     var sources = exchange ? getDatasources(datasources, options, 'lookup') :
         _.object(_.uniq(_.flatten(exchanges.map(exchange => {
             var opts = _.defaults({exchange: exchange}, options);
-            return _.keys(getDatasources(datasources, opts, 'lookup'));
+            return _.keys(getDatasources(datasources, opts, 'lookup', true));
         }))), []);
     var results = _.map(sources, (source, id) => {
         return datasources[id].lookup(_.defaults({
@@ -202,8 +202,6 @@ function interday(datasources, options) {
         begin: begin.format()
     }, options);
     var sources = getDatasources(datasources, opts, opts.interval);
-    if (_.isEmpty(sources)) throw Error("No datasources available for " + opts.interval
-        + " using " + _.keys(getDatasources(datasources, opts)).join(', '));
     return _.reduce(sources, (promise, source, id) => promise.catch(err => {
         return datasources[id].interday(_.defaults({}, source, opts)).then(result => {
             if (err && !_.isArray(err)) logger.warn("Fetch", opts.interval, "failed", err);
@@ -246,8 +244,6 @@ function intraday(datasources, options) {
     }, options);
     var minutes = +opts.interval.substring(1);
     var sources = getDatasources(datasources, opts, opts.interval);
-    if (_.isEmpty(sources)) throw Error("No datasources available for " + opts.interval
-        + " using " + _.keys(getDatasources(datasources, opts)).join(', '));
     return _.reduce(sources, (promise, source, id) => promise.catch(err => {
         return datasources[id].intraday(_.defaults({
             minutes: minutes
@@ -271,11 +267,16 @@ function intraday(datasources, options) {
     });
 }
 
-function getDatasources(datasources, options, interval) {
+function getDatasources(datasources, options, interval, optional) {
     var exchange = options.exchange;
-    return _.mapObject(_.pick(config(['exchanges', exchange, 'datasources']), (source, id) => {
+    var sources = _.mapObject(_.pick(config(['exchanges', exchange, 'datasources']), (source, id) => {
         return _.has(datasources, id) && (!options.offline || datasources[id].offline)
             && (!interval || _.contains(source.fetch, interval))
     }), source => _.omit(source, 'fetch'));
+    if (optional) return sources;
+    if (_.isEmpty(sources) && options.offline) throw Error("Not enough data, try again without offline flag");
+    if (_.isEmpty(sources)) throw Error("No datasources available for " + interval
+        + " using " + _.keys(getDatasources(datasources, options, null, true)).join(', '));
+    return sources;
 }
 
