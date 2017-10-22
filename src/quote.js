@@ -72,7 +72,7 @@ function help(fetch) {
     return fetch({help: true})
       .then(help => _.indexBy(help, 'name'))
       .then(help => _.pick(help, ['lookup', 'interday', 'intraday'])).then(help => {
-        var used = ['symbol', 'exchange', 'columns', 'retain', 'interval', 'parameters', 'variables', 'pad_begin', 'pad_end', 'begin', 'end', 'now', 'tz', 'offline', 'marketOpensAt', 'marketClosesAt', 'premarketOpensAt', 'afterHoursClosesAt'];
+        var used = ['symbol', 'exchange', 'columns', 'retain', 'interval', 'parameters', 'variables', 'pad_begin', 'pad_end', 'begin', 'end', 'now', 'tz', 'currency', 'offline', 'marketOpensAt', 'marketClosesAt', 'premarketOpensAt', 'afterHoursClosesAt'];
         var variables = periods.values.reduce((variables, interval) => {
             var fields = interval.charAt(0) != 'm' ? help.interday.properties :
                 help.intraday ? help.intraday.properties : [];

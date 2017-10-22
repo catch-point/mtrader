@@ -410,6 +410,35 @@ describe("collect", function() {
             {symbol:"XIC",date:"2016-01-29",Price:20.26}
         ]);
     });
+    it("should support multiple timezones", function() {
+        return collect({
+            portfolio: "USD.CAD",
+            variables: {
+                ch: "'America/Chicago'",
+                num: "1",
+                bool: "TRUE()"
+            },
+            columns: {
+                date: "DATE(day.ending)",
+                time: "TIME(ending, tz)",
+                ch_time: "TIME(ending, ch)",
+                ln_time: "IF(num=1, TIME(ending,ln), TIME(ending,ch))",
+                tk_time: "IF(bool, TIME(ending,tk), TIME(ending,ch))"
+            },
+            parameters: {
+                ln: "Europe/London",
+                tk: "Asia/Tokyo"
+            },
+            begin: '2014-02-10',
+            end: '2014-02-15'
+        }).should.eventually.be.like([
+            {date:"2014-02-10",time:"17:00:00",ch_time:"16:00:00",ln_time:"22:00:00",tk_time:"07:00:00"},
+            {date:"2014-02-11",time:"17:00:00",ch_time:"16:00:00",ln_time:"22:00:00",tk_time:"07:00:00"},
+            {date:"2014-02-12",time:"17:00:00",ch_time:"16:00:00",ln_time:"22:00:00",tk_time:"07:00:00"},
+            {date:"2014-02-13",time:"17:00:00",ch_time:"16:00:00",ln_time:"22:00:00",tk_time:"07:00:00"},
+            {date:"2014-02-14",time:"17:00:00",ch_time:"16:00:00",ln_time:"22:00:00",tk_time:"07:00:00"},
+        ]);
+    });
     it("should inline criteria variables", function() {
         return collect({
             portfolio: "USD.CAD",
