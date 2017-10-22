@@ -48,11 +48,12 @@ const expect = require('chai').use(like).expect;
  * @returns a function that returns array of row objects based on given options.
  */
 module.exports = function(quote, collectFn) {
+    var promiseHelp;
     var temporal = 'DATETIME(ending)';
-    var promiseHelp = help(quote);
     var collections = _.object(config.list(), []);
     var self;
     return self = _.extend(function(options) {
+        if (!promiseHelp) promiseHelp = help(quote);
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
             var fields = _.first(help).properties;

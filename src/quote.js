@@ -50,10 +50,11 @@ const expect = require('chai').use(like).expect;
  * @returns a function that returns array of row objects based on given options
  */
 module.exports = function(fetch) {
+    var promiseHelp;
     var lookup = Lookup(fetch);
     var store = storage(path.resolve(config('prefix'), 'var/'));
-    var promiseHelp = help(fetch);
     return _.extend(function(options) {
+        if (!promiseHelp) promiseHelp = help(fetch);
         if (options.help) return promiseHelp;
         else return lookup(options).then(options => promiseHelp.then(help => {
             var fields = _.first(help).properties;

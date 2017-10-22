@@ -64,13 +64,13 @@ module.exports = function(process) {
             }
         } else if (handlers[msg.cmd]) {
             Promise.resolve(msg.payload).then(handlers[msg.cmd]).then(response => {
-                if (msg.id) process.send({
+                if (msg.id && process.connected) process.send({
                     cmd: 'reply_to_' + msg.cmd,
                     in_reply_to: msg.id,
                     payload: response
                 });
             }, err => {
-                if (msg.id) process.send({
+                if (msg.id && process.connected) process.send({
                     cmd: 'reply_to_' + msg.cmd,
                     in_reply_to: msg.id,
                     error: serializeError(err)
@@ -79,6 +79,9 @@ module.exports = function(process) {
         }
     });
     return {
+        get connected() {
+            return process.connected;
+        },
         disconnect() {
             if (process.connected) return process.disconnect();
         },
