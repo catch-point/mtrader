@@ -1,0 +1,115 @@
+{
+ "tables": [
+  {
+   "id": "help",
+   "name": "help",
+   "size": 3,
+   "head": [
+    {
+     "name": "lookup",
+     "usage": "lookup(options)",
+     "description": "Looks up existing symbol/exchange using the given symbol prefix using the Google network",
+     "options": [
+      "symbol",
+      "google_symbol",
+      "e",
+      "exchange"
+     ],
+     "properties": [
+      "symbol",
+      "google_symbol",
+      "exchange",
+      "name"
+     ]
+    },
+    {
+     "name": "fundamental",
+     "usage": "fundamental(options)",
+     "description": "Details of a security on the Google network",
+     "options": [
+      "symbol",
+      "google_symbol",
+      "e",
+      "exchange"
+     ],
+     "properties": [
+      "t",
+      "e",
+      "name",
+      "id",
+      "sname",
+      "iname",
+      "hi52",
+      "lo52",
+      "eps",
+      "beta",
+      "instown",
+      "mc",
+      "shares",
+      "overview"
+     ]
+    }
+   ],
+   "tail": [
+    {
+     "name": "fundamental",
+     "usage": "fundamental(options)",
+     "description": "Details of a security on the Google network",
+     "options": [
+      "symbol",
+      "google_symbol",
+      "e",
+      "exchange"
+     ],
+     "properties": [
+      "t",
+      "e",
+      "name",
+      "id",
+      "sname",
+      "iname",
+      "hi52",
+      "lo52",
+      "eps",
+      "beta",
+      "instown",
+      "mc",
+      "shares",
+      "overview"
+     ]
+    },
+    {
+     "name": "interday",
+     "usage": "interday(options)",
+     "description": "Historic data for a security on the Google network",
+     "options": [
+      "symbol",
+      "google_symbol",
+      "e",
+      "yahoo_symbol",
+      "yahooSuffix",
+      "exchange",
+      "interval",
+      "begin",
+      "end",
+      "marketOpensAt",
+      "marketClosesAt",
+      "tz"
+     ],
+     "properties": [
+      "ending",
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "adj_close"
+     ]
+    }
+   ],
+   "updatedAt": "2017-10-22T00:33:05.124Z",
+   "properties": {},
+   "createdAt": "2017-10-22T00:33:05.124Z"
+  }
+ ]
+}

@@ -1,0 +1,4 @@
+name,usage,description,options,properties
+lookup,lookup(options),Looks up existing symbol/exchange using the given symbol prefix using the Google network,"symbol,google_symbol,e,exchange","symbol,google_symbol,exchange,name"
+fundamental,fundamental(options),Details of a security on the Google network,"symbol,google_symbol,e,exchange","t,e,name,id,sname,iname,hi52,lo52,eps,beta,instown,mc,shares,overview"
+interday,interday(options),Historic data for a security on the Google network,"symbol,google_symbol,e,yahoo_symbol,yahooSuffix,exchange,interval,begin,end,marketOpensAt,marketClosesAt,tz","ending,open,high,low,close,volume,adj_close"

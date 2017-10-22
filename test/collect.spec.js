@@ -327,17 +327,22 @@ describe("collect", function() {
     });
     it("external instrument", function() {
         return collect({
-          portfolio: 'SPY.ARCA,XIC.TSX',
+          portfolio: 'USD.CAD,SPY.ARCA,XIC.TSX',
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
               symbol: 'symbol',
               date: 'DATE(ending)',
-              Price: 'day.close'
+              Price: 'day.close',
+              usd_cad: 'usd_cad_cvar'
+          },
+          variables: {
+              cvar: 'IF(symbol="USD" AND exchange="CAD", CVAR(5,60,day.close))',
+              usd_cad_cvar: 'MAXPREC(1, "cvar", "symbol=\'USD\' AND exchange=\'CAD\'")'
           },
           // USD.CAD day.ending is an hour after SPY.ARCA day.ending, so
           // the previous USD.CAD day.close is used
-          retain: 'exchange=IF(USD.CAD(CVAR(5,60,day.close))<0.01,"ARCA","TSX")'
+          filter: 'exchange=IF(usd_cad_cvar<0.01,"ARCA","TSX")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
             {symbol:"SPY",date:"2016-01-05",Price:201.36},
@@ -361,8 +366,17 @@ describe("collect", function() {
         ]);
     });
     it("external instrument using same time of day", function() {
+        config.save('USDCAD16', {
+            portfolio: 'USD.CAD',
+            columns: {
+                symbol: 'symbol',
+                exchange: 'exchange',
+                cvar: 'TOD(CVAR(5,60,m240.close))'
+            },
+            retain: 'TIME(m240.ending)="16:00:00"'
+        });
         return collect({
-          portfolio: 'SPY.ARCA,XIC.TSX',
+          portfolio: 'USDCAD16,SPY.ARCA,XIC.TSX',
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
@@ -370,7 +384,10 @@ describe("collect", function() {
               date: 'DATE(ending)',
               Price: 'day.close'
           },
-          retain: 'exchange=IF(USD.CAD(TOD(CVAR(5,60,m60.close)))<0.01,"ARCA","TSX")'
+          variables: {
+              usd_cad_cvar: 'MAXPREC(0, "cvar", "symbol=\'USD\' AND exchange=\'CAD\'")'
+          },
+          filter: 'exchange=IF(usd_cad_cvar<0.01,"ARCA","TSX")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
             {symbol:"SPY",date:"2016-01-05",Price:201.36},

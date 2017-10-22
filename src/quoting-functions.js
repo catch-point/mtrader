@@ -43,60 +43,13 @@ module.exports = function(expr, name, args, quote, dataset, options) {
     expect(options).to.have.property('temporal').that.is.a('string');
     if (functions[name])
         return functions[name].apply(this, [quote, dataset, options, expr].concat(args));
-    else if (module.exports.has(name))
-        return functions['symbol.exchange'].apply(this, [quote, dataset, options, expr]);
 };
 
 module.exports.has = function(name) {
-    var exchanges = _.keys(config('exchanges'));
-    if (functions[name]) return true;
-    else if (!name || !~name.indexOf('.')) return false;
-    else return _.contains(exchanges, name.substring(name.indexOf('.')+1));
+    return !!functions[name];
 };
 
 var functions = module.exports.functions = {
-    'symbol.exchange': _.extend((quote, dataset, options, expr) => {
-        var args = Parser({
-            constant(value) {
-                return [value];
-            },
-            variable(name) {
-                return [name];
-            },
-            expression(expr, name, args) {
-                return [expr].concat(args.map(_.first));
-            }
-        }).parse(expr);
-        if (!args || args.length != 2) throw Error("Unrecongized quote call: " + expr);
-        var name = args[0].substring(0, args[0].indexOf('('));
-        var expression = args[1];
-        expect(name).to.match(/^\S+\.\w+$/);
-        var begin = _.first(_.pluck(_.map(dataset, _.first), options.temporal).sort());
-        var end = _.last(_.pluck(_.map(dataset, _.last), options.temporal).sort());
-        var symbol = name.substring(0, name.lastIndexOf('.'));
-        var exchange = name.substring(name.lastIndexOf('.')+1);
-        var last = _.compose(_.last, _.values, _.last);
-        return quote({
-            symbol: symbol,
-            exchange: exchange,
-            variables: {},
-            columns: {
-                [options.temporal]: options.temporal,
-                [expression]: expression
-            },
-            pad_begin: 1,
-            begin: begin,
-            end: end
-        }).then(data => positions => {
-            var idx = _.sortedIndex(data, last(positions), options.temporal);
-            if (idx >= data.length || idx && data[idx][options.temporal] > last(positions)[options.temporal])
-                idx--;
-            return data[idx][expression];
-        });
-    }, {
-        args: "expression",
-        description: "Retrieves external security data that is used in an expression."
-    }),
     MAXCORREL: _.extend((quote, dataset, options, expr, duration, expression, criteria) => {
         var n = asPositiveInteger(duration, "MAXCORREL");
         var arg = Parser({
