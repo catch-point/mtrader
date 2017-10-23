@@ -118,14 +118,14 @@ function collect(quote, callCollect, collections, fields, options) {
                 filter: _.flatten(_.compact(filter), true),
                 pad_begin: pad_begin,
                 order: _.flatten(_.compact([options.temporal, opts.order]), true),
-                parameters: _.defaults({}, opts.parameters, params)
+                parameters: _.defaults({}, options.parameters, opts.parameters, params)
             }, opts));
         } else {
             return quote(_.defaults({
                 columns: simpleColumns,
                 retain: retain,
                 pad_begin: pad_begin,
-                parameters: defaults
+                parameters: _.defaults({}, options.parameters, defaults)
             }, opts));
         }
     })).then(dataset => {
