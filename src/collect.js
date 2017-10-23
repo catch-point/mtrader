@@ -369,7 +369,7 @@ function createColumnParser(columns, options) {
  * This differrs from #getSimpleColumns as it does not return parts of complex expressions
  */
 function getSimpleRetain(columns, options) {
-    if (!options.retain) return [];
+    if (_.isEmpty(options.retain)) return [];
     var inline = createInlineParser(columns, options);
     var parsedColumns = {};
     var parser = Parser({
@@ -517,7 +517,7 @@ function promiseColumns(parser, columns, options) {
  * Returns a function that can determine if the security should be retained
  */
 function promiseFilter(parser, expr) {
-    if (!expr) return Promise.resolve(null);
+    if (_.isEmpty(expr)) return Promise.resolve(null);
     return Promise.resolve(parser.parse(_.flatten([expr],true).join(' AND ')));
 }
 
@@ -525,7 +525,7 @@ function promiseFilter(parser, expr) {
  * Create a function and direction that securities should be sorted with.
  */
 function getOrderBy(expr, columns, options) {
-    if (!expr) return [];
+    if (_.isEmpty(expr)) return [];
     return Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
