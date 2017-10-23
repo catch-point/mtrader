@@ -73,6 +73,7 @@ function help(fetch) {
       .then(help => _.indexBy(help, 'name'))
       .then(help => _.pick(help, ['lookup', 'interday', 'intraday'])).then(help => {
         var used = ['symbol', 'exchange', 'columns', 'retain', 'interval', 'parameters', 'variables', 'pad_begin', 'pad_end', 'begin', 'end', 'now', 'tz', 'currency', 'offline', 'marketOpensAt', 'marketClosesAt', 'premarketOpensAt', 'afterHoursClosesAt'];
+        var downstream = _.flatten(_.map(help, help => help.options), true);
         var variables = periods.values.reduce((variables, interval) => {
             var fields = interval.charAt(0) != 'm' ? help.interday.properties :
                 help.intraday ? help.intraday.properties : [];
@@ -82,7 +83,7 @@ function help(fetch) {
             name: 'quote',
             usage: 'quote(options)',
             description: "Formats historic data into provided columns",
-            options: _.uniq(used.concat(_.flatten(_.map(help, help => help.options), true))),
+            options: _.uniq(used.concat(help.lookup.properties, downstream)),
             properties: variables
         }];
     });
@@ -188,6 +189,8 @@ function createParser(fields, cached, options) {
         variable(name) {
             if (_.contains(['symbol', 'exchange', 'ending'], name))
                 return _.compose(_.property(name), _.last);
+            else if (!~name.indexOf('.') && ~fields.indexOf(name))
+                return _.constant(options[name]);
             else if (!~name.indexOf('.'))
                 throw Error("Unknown field: " + name + " in " + options.symbol);
             var interval = name.substring(0, name.indexOf('.'));

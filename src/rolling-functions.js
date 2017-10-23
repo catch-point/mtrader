@@ -66,19 +66,20 @@ var functions = module.exports.functions = {
         description: "Returns the value of columnName from the preceeding retained value"
     }),
     COUNTPREC: _.extend((options, numberOfIntervals, columnName, criteria) => {
-        var name = columnName();
-        var condition = parseCriteria(name, criteria, options);
+        var name = columnName && columnName();
+        var condition = name && parseCriteria(name, criteria, options);
         return positions => {
-            var num = numberOfIntervals(positions);
+            var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
             var len = positions.length -1;
             var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
+            if (!name) return bars.length -1;
             var values = _.pluck(_.initial(bars).filter(condition), name);
             return values.filter(val => val === 0 || val).length;
         };
     }, {
-        args: "numberOfIntervals, columnName, [criteria]",
+        args: "[numberOfIntervals, [columnName, [criteria]]]",
         description: "Counts the number of retained values that preceed this value"
     }),
     SUMPREC: _.extend((options, numberOfIntervals, columnName, criteria) => {
@@ -129,19 +130,20 @@ var functions = module.exports.functions = {
         description: "Returns the value of columnName from the previous retained value for this security"
     }),
     COUNTPREV: _.extend((options, numberOfValues, columnName, criteria) => {
-        var name = columnName();
-        var condition = parseCriteria(name, criteria, options);
+        var name = columnName && columnName();
+        var condition = name && parseCriteria(name, criteria, options);
         return positions => {
             if (positions.length < 2) return 0;
-            var num = numberOfValues(positions);
+            var num = numberOfValues ? numberOfValues(positions) : 0;
             var key = _.last(_.keys(_.last(positions)));
             var len = positions.length -1;
             var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            if (!name) return bars.length -1;
             var values = _.pluck(previous.filter(condition), name);
             return _.filter(values, val => val === 0 || val).length;
         };
     }, {
-        args: "numberOfValues, columnName, [criteria]",
+        args: "[numberOfValues, [columnName, [criteria]]]",
         description: "Returns the sum of columnName values from the previous numberOfValues retained"
     }),
     SUMPREV: _.extend((options, numberOfValues, columnName, criteria) => {

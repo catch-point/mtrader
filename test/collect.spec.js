@@ -824,6 +824,64 @@ describe("collect", function() {
             end: '2017-01-31'
         }).should.be.rejectedWith(Error, /variable/i);
     });
+    it("should allow same security multiple times", function() {
+        return collect({
+            portfolio: 'USD.CAD,USD.CAD',
+            columns: {
+                symbol: 'IF(first, exchange, symbol)',
+                date: 'DATE(day.ending)',
+                close: 'ROUND(IF(first, 1/day.close, day.close), 5)'
+            },
+            variables: {
+                first: 'COUNTPREC()=0'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        }).should.eventually.be.like([
+            {symbol:"CAD",date:"2017-01-02",close:0.74421},
+            {symbol:"USD",date:"2017-01-02",close:1.34371},
+            {symbol:"CAD",date:"2017-01-03",close:0.74481},
+            {symbol:"USD",date:"2017-01-03",close:1.34262},
+            {symbol:"CAD",date:"2017-01-04",close:0.75185},
+            {symbol:"USD",date:"2017-01-04",close:1.33005},
+            {symbol:"CAD",date:"2017-01-05",close:0.7561},
+            {symbol:"USD",date:"2017-01-05",close:1.32257},
+            {symbol:"CAD",date:"2017-01-06",close:0.75549},
+            {symbol:"USD",date:"2017-01-06",close:1.32365},
+            {symbol:"CAD",date:"2017-01-09",close:0.75662},
+            {symbol:"USD",date:"2017-01-09",close:1.32167},
+            {symbol:"CAD",date:"2017-01-10",close:0.75574},
+            {symbol:"USD",date:"2017-01-10",close:1.32321},
+            {symbol:"CAD",date:"2017-01-11",close:0.75882},
+            {symbol:"USD",date:"2017-01-11",close:1.31783},
+            {symbol:"CAD",date:"2017-01-12",close:0.76076},
+            {symbol:"USD",date:"2017-01-12",close:1.31447},
+            {symbol:"CAD",date:"2017-01-13",close:0.7629},
+            {symbol:"USD",date:"2017-01-13",close:1.31079},
+            {symbol:"CAD",date:"2017-01-16",close:0.75911},
+            {symbol:"USD",date:"2017-01-16",close:1.31734},
+            {symbol:"CAD",date:"2017-01-17",close:0.76678},
+            {symbol:"USD",date:"2017-01-17",close:1.30415},
+            {symbol:"CAD",date:"2017-01-18",close:0.75364},
+            {symbol:"USD",date:"2017-01-18",close:1.32689},
+            {symbol:"CAD",date:"2017-01-19",close:0.75087},
+            {symbol:"USD",date:"2017-01-19",close:1.33179},
+            {symbol:"CAD",date:"2017-01-20",close:0.7514},
+            {symbol:"USD",date:"2017-01-20",close:1.33085},
+            {symbol:"CAD",date:"2017-01-23",close:0.75548},
+            {symbol:"USD",date:"2017-01-23",close:1.32367},
+            {symbol:"CAD",date:"2017-01-24",close:0.76014},
+            {symbol:"USD",date:"2017-01-24",close:1.31555},
+            {symbol:"CAD",date:"2017-01-25",close:0.76518},
+            {symbol:"USD",date:"2017-01-25",close:1.30688},
+            {symbol:"CAD",date:"2017-01-26",close:0.76397},
+            {symbol:"USD",date:"2017-01-26",close:1.30895},
+            {symbol:"CAD",date:"2017-01-27",close:0.76054},
+            {symbol:"USD",date:"2017-01-27",close:1.31485},
+            {symbol:"CAD",date:"2017-01-30",close:0.76238},
+            {symbol:"USD",date:"2017-01-30",close:1.31169}
+        ]);
+    });
     it("should call nested collect", function() {
         config.save('CADUSD', {
             portfolio: 'USD.CAD',

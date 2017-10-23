@@ -162,7 +162,7 @@ function collect(quote, callCollect, collections, fields, options) {
         var order = getOrderBy(options.order, columns, options);
         return sortBy(result, order);
     }).then(result => {
-        return result.map(o => _.object(_.keys(columnNames), _.values(columnNames).map(key => o[key])))
+        return result.map(o => _.object(_.keys(columnNames), _.values(columnNames).map(key => o[key])));
     });
 }
 
@@ -267,7 +267,8 @@ function getVariables(fields, options) {
         },
         expression(expr, name, args) {
             // the first string argument is the variable name in rolling functions
-            if (rolling.has(name)) return {[_.first(_.compact(args))]: Infinity};
+            if (rolling.has(name) && _.some(args, _.isString))
+                return {[_.first(_.compact(args))]: Infinity};
             else return args.reduce((count, arg) => {
                 if (!_.isObject(arg)) return count;
                 _.each(arg, (value, name) => {
@@ -423,7 +424,8 @@ function getUsedColumns(options) {
         },
         expression(expr, name, args) {
             // the first string argument is the variable name in rolling functions
-            if (rolling.has(name)) return [_.first(_.compact(args))];
+            if (rolling.has(name) && _.some(args, _.isString))
+                return [_.first(_.compact(args))];
             else return _.uniq(_.flatten(args.filter(_.isArray), true));
         }
     }).parseCriteriaList(exprs).filter(_.isArray), true));
