@@ -40,7 +40,10 @@ const expect = require('chai').expect;
  * These functions operate of an array of securities at the same point in time.
  */
 module.exports = function(expr, name, args, quote, dataset, options) {
-    expect(options).to.have.property('temporal').that.is.a('string');
+    expect(options).to.have.property('indexCol').that.is.a('string');
+    expect(options).to.have.property('symbolCol').that.is.a('string');
+    expect(options).to.have.property('exchangeCol').that.is.a('string');
+    expect(options).to.have.property('temporalCol').that.is.a('string');
     if (functions[name])
         return functions[name].apply(this, [quote, dataset, options, expr].concat(args));
 };
@@ -71,24 +74,24 @@ var functions = module.exports.functions = {
             var first = _.first(data);
             var last = _.last(data);
             return _.defaults({
-                symbol: first.symbol,
-                exchange: first.exchange,
+                index: first[options.indexCol],
+                symbol: first[options.symbolCol],
+                exchange: first[options.exchangeCol],
                 variables: {},
                 columns: {
-                    [options.temporal]: options.temporal,
+                    [options.temporalCol]: 'DATETIME(ending)',
                     [arg]: arg
                 },
                 pad_begin: n,
-                begin: first.ending,
-                end: last.ending,
+                begin: first[options.temporalCol],
+                end: last[options.temporalCol],
                 pad_end: 0,
                 retain: null
             }, options);
         });
         return Promise.all(optionset.map(options => quote(options))).then(dataset => {
             return dataset.reduce((hash, data, i) => {
-                var key = optionset[i].symbol + '.' + optionset[i].exchange;
-                hash[key] = data;
+                hash[optionset[i].index] = data;
                 return hash;
             }, {});
         }).then(dataset => {
@@ -99,8 +102,8 @@ var functions = module.exports.functions = {
                     if (i < keys.length -1 && !condition(positions[symbol])) return null;
                     var data = dataset[symbol];
                     if (!data) throw Error("Could not find dataset: " + symbol);
-                    var end = _.sortedIndex(data, positions, options.temporal);
-                    if (data[end] && data[end][options.temporal] == positions[options.temporal]) end++;
+                    var end = _.sortedIndex(data, positions, options.temporalCol);
+                    if (data[end] && data[end][options.temporalCol] == positions[options.temporalCol]) end++;
                     return _.pluck(data.slice(Math.max(end - n, 0), end), arg);
                 });
                 var last = matrix.pop();

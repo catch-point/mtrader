@@ -49,7 +49,6 @@ const expect = require('chai').use(like).expect;
  */
 module.exports = function(quote, collectFn) {
     var promiseHelp;
-    var temporal = 'DATETIME(ending)';
     var collections = _.object(config.list(), []);
     var self;
     return self = _.extend(function(options) {
@@ -58,7 +57,10 @@ module.exports = function(quote, collectFn) {
         else return promiseHelp.then(help => {
             var fields = _.first(help).properties;
             var opts = _.defaults(_.pick(options, _.first(help).options), {
-                temporal: temporal,
+                indexCol: '$index',
+                symbolCol: '$symbol',
+                exchangeCol: '$exchange',
+                temporalCol: '$temporal',
                 variables: {},
                 tz: moment.tz.guess(),
                 now: Date.now()
@@ -89,7 +91,8 @@ function help(quote) {
 function collect(quote, callCollect, collections, fields, options) {
     expect(options).to.have.property('portfolio');
     expect(options).to.have.property('columns').that.is.an('object');
-    expect(options).to.have.property('temporal').that.is.a('string');
+    var illegal = _.intersection(_.keys(options.variables), fields);
+    if (illegal.length) expect(options.variables).not.to.have.property(_.first(illegal));
     var portfolio = getPortfolio(options.portfolio, collections, options);
     var optional = _.difference(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true), fields);
     var defaults = _.object(optional, optional.map(v => null));
@@ -98,7 +101,9 @@ function collect(quote, callCollect, collections, fields, options) {
     var columnNames = _.object(_.keys(options.columns), _.keys(columns));
     var simpleColumns = getSimpleColumns(columns, options);
     var retain = getSimpleRetain(columns, options);
-    return Promise.all(portfolio.map(opts => {
+    return Promise.all(portfolio.map((opts, idx) => {
+        var index = '#' + idx.toString() + (options.columns[options.indexCol] ?
+            '.' + JSON.parse(options.columns[options.indexCol]).substring(1) : '');
         var pad_begin = (options.pad_begin || 0) + (options.pad_leading || 0);
         if (opts.portfolio) {
             var used = getUsedColumns(opts);
@@ -114,15 +119,25 @@ function collect(quote, callCollect, collections, fields, options) {
             var filter = [opts.filter, parser.parse(retain)];
             var params = _.omit(defaults, _.keys(opts.columns));
             return callCollect(_.defaults({
-                columns: _.extend(columns, _.pick(opts.columns, used)),
+                columns: _.extend(columns, _.pick(opts.columns, used), {
+                    [options.indexCol]: JSON.stringify(index),
+                    [options.symbolCol]: 'symbol',
+                    [options.exchangeCol]: 'exchange',
+                    [options.temporalCol]: 'DATETIME(ending)'
+                }),
                 filter: _.flatten(_.compact(filter), true),
                 pad_begin: pad_begin,
-                order: _.flatten(_.compact([options.temporal, opts.order]), true),
+                order: _.flatten(_.compact(['DATETIME(ending)', opts.order]), true),
                 parameters: _.defaults({}, options.parameters, opts.parameters, params)
             }, opts));
         } else {
             return quote(_.defaults({
-                columns: simpleColumns,
+                columns: _.defaults({
+                    [options.indexCol]: JSON.stringify(index),
+                    [options.symbolCol]: JSON.stringify(opts.symbol),
+                    [options.exchangeCol]: JSON.stringify(opts.exchange),
+                    [options.temporalCol]: 'DATETIME(ending)'
+                }, simpleColumns),
                 retain: retain,
                 pad_begin: pad_begin,
                 parameters: _.defaults({}, options.parameters, defaults)
@@ -133,7 +148,7 @@ function collect(quote, callCollect, collections, fields, options) {
         return collectDataset(dataset, parser, columns, options);
     }).then(collection => {
         var begin = moment(options.begin || moment(options.now).endOf('day')).toISOString();
-        var idx = _.sortedIndex(collection, {[options.temporal]: begin}, options.temporal);
+        var idx = _.sortedIndex(collection, {[options.temporalCol]: begin}, options.temporalCol);
         var start = idx - (options.pad_begin || 0);
         if (start <= 0) return collection;
         else return collection.slice(start);
@@ -187,10 +202,15 @@ function parseNeededColumns(fields, options) {
     var varnames = getVariables(fields, options);
     var normalizer = createNormalizeParser(varnames, options);
     var columns = _.mapObject(options.columns, expr => normalizer.parse(expr));
-    var conflicts = _.intersection(_.keys(columns),
-        _.union(fields, _.keys(options.variables), [options.temporal])
+    var conflicts = _.intersection(_.keys(_.omit(columns, (v, k) => v==k)),
+        _.union(fields, _.keys(options.variables))
     );
-    var masked = _.object(conflicts, conflicts.map(name => columns[name]));
+    var masked = _.object(conflicts, conflicts.map(name => {
+        if (!~conflicts.indexOf(columns[name])) return columns[name];
+        var seq = 2;
+        while (~conflicts.indexOf(name + seq)) seq++;
+        return name + seq;
+    }));
     var needed = _.reduce(columns, (needed, value, key) => {
         needed[masked[key] || key] = value;
         return needed;
@@ -286,7 +306,8 @@ function getSubstitutions(variables, options) {
     var params = _.mapObject(_.pick(options.parameters, val => {
         return _.isString(val) || _.isNumber(val);
     }), val => JSON.stringify(val));
-    return _.defaults(_.omit(options.variables, variables), params);
+    var nulls = _.mapObject(_.pick(options.parameters, _.isNull), val => 'NULL()');
+    return _.defaults(_.omit(options.variables, variables), params, nulls);
 }
 
 /**
@@ -300,12 +321,7 @@ function getSimpleColumns(columns, options) {
     var criteriaColumns = _.pluck(colParser.parseCriteriaList(_.flatten(_.compact([
         options.retain, options.filter, options.precedence, options.order
     ]), true)), 'columns').reduce((a,b)=>_.extend(a,b), {});
-    return _.defaults({
-        symbol: 'symbol',
-        exchange: 'exchange',
-        ending: 'ending',
-        [options.temporal]: options.temporal
-    }, formatColumns, criteriaColumns);
+    return _.defaults(formatColumns, criteriaColumns);
 }
 
 /**
@@ -453,15 +469,15 @@ function createParser(quote, dataset, columns, cached, options) {
  * Combines the quote.js results into a single array containing retained securities.
  */
 function collectDataset(dataset, parser, columns, options) {
-    var pcolumns = promiseColumns(parser, columns);
+    var pcolumns = promiseColumns(parser, columns, options);
     var pretain = promiseFilter(parser, options.retain);
     var precedence = getOrderBy(options.precedence, columns, options);
     return pcolumns.then(columns => pretain.then(retain => {
-        return reduceInterval(dataset, options.temporal, (result, points) => {
+        return reduceInterval(dataset, options.temporalCol, (result, points) => {
             var positions = sortBy(points, precedence);
             var row = result.length;
             result[row] = positions.reduce((retained, point) => {
-                var key = point.symbol + '.' + point.exchange;
+                var key = point[options.indexCol];
                 var pending = _.extend({}, retained, {
                     [key]: point
                 });
@@ -470,7 +486,7 @@ function collectDataset(dataset, parser, columns, options) {
                 else return _.extend(pending, {
                     [key]: _.mapObject(columns, column => column(result))
                 });
-            }, {[options.temporal]: points[0][options.temporal]});
+            }, {[options.temporalCol]: points[0][options.temporalCol]});
             if (_.keys(result[row]).length == 1) result.pop();
             return result;
         }, []);
@@ -480,9 +496,19 @@ function collectDataset(dataset, parser, columns, options) {
 /**
  * @returns a map of functions that can compute the column values for a given row.
  */
-function promiseColumns(parser, columns) {
+function promiseColumns(parser, columns, options) {
     var map = parser.parse(columns);
-    return Promise.all(_.values(map)).then(values => _.object(_.keys(map), values));
+    return Promise.all(_.values(map))
+      .then(values => _.object(_.keys(map), values))
+      .then(columns => {
+        if (!columns[options.indexCol]) return columns;
+        // nested collect pass through these columns as-is
+        columns[options.indexCol] = _.compose(_.property(options.indexCol), _.last, _.values, _.last)
+        columns[options.symbolCol] = _.compose(_.property(options.symbolCol), _.last, _.values, _.last)
+        columns[options.exchangeCol] = _.compose(_.property(options.exchangeCol), _.last, _.values, _.last)
+        columns[options.temporalCol] = _.compose(_.property(options.temporalCol), _.last, _.values, _.last)
+        return columns;
+    });
 }
 
 /**
