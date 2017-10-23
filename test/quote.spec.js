@@ -124,6 +124,50 @@ describe("quote", function() {
             {ending:'2014-01-31T16:00:00-05:00'}
         ]));
     });
+    it("should return weekly and monthly", function() {
+        return quote({
+            symbol: 'AABA',
+            exchange: 'NASDAQ',
+            columns: {
+                day: 'DATE(day.ending)',
+                close: 'day.close',
+                last_week: 'DATE(week.ending)',
+                last_month: 'DATE(month.ending)',
+                last2_month: 'OFFSET(1,month.close)'
+            },
+            begin: '2013-10-30',
+            end: '2013-12-10'
+        }).should.eventually.be.like(results => results.should.be.like([
+            {day:"2013-10-30",close:32.57,last_week:"2013-10-25",last_month:"2013-09-30",last2_month:27.12},
+            {day:"2013-10-31",close:32.94,last_week:"2013-10-25",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-01",close:33.18,last_week:"2013-11-01",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-04",close:33.19,last_week:"2013-11-01",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-05",close:32.97,last_week:"2013-11-01",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-06",close:32.88,last_week:"2013-11-01",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-07",close:32.11,last_week:"2013-11-01",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-08",close:33.12,last_week:"2013-11-08",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-11",close:33.82,last_week:"2013-11-08",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-12",close:34.07,last_week:"2013-11-08",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-13",close:35.1,last_week:"2013-11-08",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-14",close:35.69,last_week:"2013-11-08",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-15",close:35.47,last_week:"2013-11-15",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-18",close:34.98,last_week:"2013-11-15",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-19",close:34.63,last_week:"2013-11-15",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-20",close:35.62,last_week:"2013-11-15",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-21",close:36.3,last_week:"2013-11-15",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-22",close:36.49,last_week:"2013-11-22",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-25",close:36.29,last_week:"2013-11-22",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-26",close:36.64,last_week:"2013-11-22",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-27",close:36.96,last_week:"2013-11-22",last_month:"2013-10-31",last2_month:33.17},
+            {day:"2013-11-29",close:36.98,last_week:"2013-11-29",last_month:"2013-11-29",last2_month:32.94},
+            {day:"2013-12-02",close:37.01,last_week:"2013-11-29",last_month:"2013-11-29",last2_month:32.94},
+            {day:"2013-12-03",close:36.56,last_week:"2013-11-29",last_month:"2013-11-29",last2_month:32.94},
+            {day:"2013-12-04",close:38.13,last_week:"2013-11-29",last_month:"2013-11-29",last2_month:32.94},
+            {day:"2013-12-05",close:38.87,last_week:"2013-11-29",last_month:"2013-11-29",last2_month:32.94},
+            {day:"2013-12-06",close:38.86,last_week:"2013-12-06",last_month:"2013-11-29",last2_month:32.94},
+            {day:"2013-12-09",close:38.87,last_week:"2013-12-06",last_month:"2013-11-29",last2_month:32.94}
+        ]));
+    });
     it("should return 30 minute intervals", function() {
         return quote({
             interval: 'm30',

@@ -312,14 +312,35 @@ function mergeBars(quoteBars, exprMap, retain, options) {
               .then(intraday => {
                 var points = signal.points ? [].concat(signal.points) : [];
                 if (signal.exit) points.push(signal.exit);
-                points.reduceRight((stop, point, idx) => {
-                    var start = _.sortedIndex(intraday, point, 'ending');
-                    for (var j=start; j<stop; j++) {
-                        _.defaults(intraday[j], point);
-                    }
-                    return start;
-                }, intraday.length);
-                return intraday;
+                if (interval == 'week' && points.length) {
+                    // weekly points don't fit nince into month or year
+                    var endings = _.union(_.pluck(points, 'ending'), _.pluck(intraday, 'ending'));
+                    var index = endings.sort().map(ending => ({ending: ending}));
+                    points.reduceRight((stop, point, idx) => {
+                        var start = _.sortedIndex(index, point, 'ending');
+                        for (var j=start; j<stop; j++) {
+                            _.defaults(index[j], point);
+                        }
+                        return start;
+                    }, index.length);
+                    intraday.reduceRight((stop, point, idx) => {
+                        var start = _.sortedIndex(index, point, 'ending');
+                        for (var j=start; j<stop; j++) {
+                            _.defaults(index[j], point);
+                        }
+                        return start;
+                    }, index.length);
+                    return index;
+                } else {
+                    points.reduceRight((stop, point, idx) => {
+                        var start = _.sortedIndex(intraday, point, 'ending');
+                        for (var j=start; j<stop; j++) {
+                            _.defaults(intraday[j], point);
+                        }
+                        return start;
+                    }, intraday.length);
+                    return intraday;
+                }
             }).then(points => readSignals(points, entry, signal.exit, retain[interval]));
         }))).then(signalsMap => {
             return signalsMap.reduce((result, signals) => {
