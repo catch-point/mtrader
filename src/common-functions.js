@@ -354,7 +354,7 @@ var functions = module.exports.functions = {
     IF(opts, ifCondition, thenValue, elseValue) {
         var conditions = _.filter(_.rest(arguments), (val, i) => (i +1) %2);
         var values = _.filter(_.rest(arguments), (val, i) => i %2);
-        var elseValue = conditions.length > values.length ? conditions.pop() : () => 0;
+        var elseValue = conditions.length > values.length ? conditions.pop() : () => null;
         return context => {
             var i = conditions.findIndex((fn, i) => fn(context));
             if (i < 0) return elseValue(context);
