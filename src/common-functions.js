@@ -206,6 +206,28 @@ var functions = module.exports.functions = {
     }, {
         description: "Calculates the number of days between two dates"
     }),
+    NETWORKDAYS: _.extend((opts, from, to, tz) => {
+        return context => {
+            var a = moment(to(context)).tz(tz ? tz(context) : opts.tz);
+            var b = moment(from(context)).tz(tz ? tz(context) : opts.tz);
+            if (!a.isValid() || !b.isValid()) return null;
+            if (a.isBefore(b)) {
+                var swap = b;
+                b = a;
+                a = swap;
+            }
+            var years = _.range(b.isoWeekYear(), a.isoWeekYear());
+            var weeks = years.reduce((wk, year) => {
+                return wk + moment.tz(year + '-02-01', tz).isoWeeksInYear();
+            }, 0);
+            var wk = weeks + a.isoWeek() - b.isoWeek();
+            var days = wk * 5 + Math.min(a.isoWeekday()+1,6) - Math.min(b.isoWeekday(), 6);
+            if (swap) return -days;
+            else return days;
+        };
+    }, {
+        description: "Calculates the number of weekdays between two dates"
+    }),
     NUMBERVALUE(opts, text) {
         return context => {
             return parseFloat(text(context));
@@ -406,7 +428,7 @@ var functions = module.exports.functions = {
         var den = denominator || reference;
         return bars => {
             var numerator = target(bars) - reference(bars);
-            return Math.round(numerator * 10000/ den(bars)) /100;
+            return precision(Math.round(numerator * 10000/ den(bars)) /100);
         };
     }
 };
@@ -417,5 +439,7 @@ _.forEach(functions, fn => {
 
 function precision(number) {
     if (!_.isNumber(number)) return number;
-    return parseFloat(number.toPrecision(12));
+    var result = parseFloat(number.toPrecision(10));
+    if (isNaN(result)) return null;
+    else return result;
 }

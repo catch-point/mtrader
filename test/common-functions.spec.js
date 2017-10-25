@@ -120,7 +120,7 @@ describe("common-functions", function(){
             expect(parser.parse('XOR(1, 1, 0, 1)')()).to.equal(1);
         });
     });
-    describe("DATE", function(){
+    describe("WORKDATE", function(){
         var parser = Parser({
             constant(value) {
                 return () => value;
@@ -227,6 +227,106 @@ describe("common-functions", function(){
             ).to.equal(
                 WORKDAY5({"day.ending":"2015-07-09T00:00:00-04:00"})
             );
+        });
+    });
+    describe("NETWORKDAYS", function(){
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, {tz: 'America/New_York'});
+            }
+        });
+        var NETWORKDAYS = parser.parse('NETWORKDAYS(from, to)');
+        it("NETWORKDAYS", function() {
+            expect(NETWORKDAYS({
+                from: "2012-10-01",
+                to: "2013-03-01"
+            })).to.equal(110);
+            expect(NETWORKDAYS({
+                from: "2016-01-01",
+                to: "2016-01-01"
+            })).to.equal(1);
+            expect(NETWORKDAYS({
+                from: "2016-01-01",
+                to: "2016-01-02"
+            })).to.equal(1);
+            expect(NETWORKDAYS({
+                from: "2016-01-01",
+                to: "2016-01-03"
+            })).to.equal(1);
+            expect(NETWORKDAYS({
+                from: "2016-01-01",
+                to: "2016-01-04"
+            })).to.equal(2);
+        });
+        it("NETWORKDAYS0", function() {
+            expect(NETWORKDAYS({
+                from: "2015-07-18T00:00:00-04:00",
+                to: "2015-07-19T00:00:00-04:00"
+            })).to.equal(0);
+        });
+        it("NETWORKDAYS2", function(){
+            expect(NETWORKDAYS({
+                from: "2015-07-16T00:00:00-04:00",
+                to: "2015-07-17T00:00:00-04:00"
+            })).to.equal(2);
+        });
+        it("NETWORKDAYS3", function(){
+            expect(NETWORKDAYS({
+                from: "2015-07-16T00:00:00-04:00",
+                to: "2015-07-20T00:00:00-04:00"
+            })).to.equal(3);
+        });
+        it("NETWORKDAYS5", function(){
+            expect(NETWORKDAYS({
+                from: "2015-07-16T00:00:00-04:00",
+                to: "2015-07-22T00:00:00-04:00"
+            })).to.equal(5);
+        });
+        it("NETWORKDAYS6", function(){
+            expect(NETWORKDAYS({
+                from: "2015-07-16T00:00:00-04:00",
+                to: "2015-07-23T00:00:00-04:00"
+            })).to.equal(6);
+        });
+        it("NETWORKDAYS-1", function() {
+            expect(NETWORKDAYS({
+                from: "2015-07-19T00:00:00-04:00",
+                to: "2015-07-17T00:00:00-04:00"
+            })).to.equal(-1);
+            expect(NETWORKDAYS({
+                from: "2015-07-18T00:00:00-04:00",
+                to: "2015-07-17T00:00:00-04:00"
+            })).to.equal(-1);
+        });
+        it("NETWORKDAYS-2", function(){
+            expect(NETWORKDAYS({
+                from: "2015-07-16T00:00:00-04:00",
+                to: "2015-07-15T00:00:00-04:00"
+            })).to.equal(-2);
+        });
+        it("NETWORKDAYS-3", function(){
+            expect(NETWORKDAYS({
+                from: "2015-07-16T00:00:00-04:00",
+                to: "2015-07-14T00:00:00-04:00"
+            })).to.equal(-3);
+        });
+        it("NETWORKDAYS-5", function(){
+            expect(NETWORKDAYS({
+                from: "2015-07-16T00:00:00-04:00",
+                to: "2015-07-10T00:00:00-04:00"
+            })).to.equal(-5);
+        });
+        it("NETWORKDAYS-6", function(){
+            expect(NETWORKDAYS({
+                from: "2015-07-16T00:00:00-04:00",
+                to: "2015-07-09T00:00:00-04:00"
+            })).to.equal(-6);
         });
     });
 });
