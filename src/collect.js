@@ -173,24 +173,31 @@ function getPortfolio(portfolio, collections, options) {
     var opts = _.omit(options, [
         'portfolio', 'columns', 'variables', 'retain', 'filter', 'precedence', 'order', 'pad_leading'
     ]);
-    var array = _.isArray(portfolio) ? portfolio : portfolio.split(/\s*,\s*/);
+    var array = _.isArray(portfolio) ? portfolio :
+        _.isObject(portfolio) ? [portfolio] :
+        _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
+        expect(portfolio).to.be.a('string');
     return array.map(symbolExchange => {
-        if (_.contains(options.upstream, symbolExchange))
-            throw Error("Cycle profile detected: " + options.upstream + " -> " + symbolExchange);
-        var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
-        if (!m || !collections[symbolExchange] && _.has(collections, symbolExchange)) {
-            var cfg = config.read(symbolExchange);
-            if (cfg) collections[symbolExchange] = cfg;
+        if (_.isObject(symbolExchange)) {
+            return _.defaults({}, symbolExchange, opts);
+        } else {
+            if (_.contains(options.upstream, symbolExchange))
+                throw Error("Cycle profile detected: " + options.upstream + " -> " + symbolExchange);
+            var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
+            if (!m || !collections[symbolExchange] && _.has(collections, symbolExchange)) {
+                var cfg = config.read(symbolExchange);
+                if (cfg) collections[symbolExchange] = cfg;
+            }
+            if (collections[symbolExchange]) return _.defaults({
+                name: symbolExchange,
+                upstream: _.flatten(_.compact([options.upstream, symbolExchange]), true)
+            }, collections[symbolExchange], opts);
+            if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
+            return _.defaults({
+                symbol: m[1],
+                exchange: m[2]
+            }, opts);
         }
-        if (collections[symbolExchange]) return _.defaults({
-            name: symbolExchange,
-            upstream: _.flatten(_.compact([options.upstream, symbolExchange]), true)
-        }, collections[symbolExchange], opts);
-        if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
-        return _.defaults({
-            symbol: m[1],
-            exchange: m[2]
-        }, opts);
     });
 }
 
