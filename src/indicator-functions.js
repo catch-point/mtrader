@@ -227,11 +227,12 @@ var functions = module.exports.functions = {
             if (!(p < 100)) return _.last(prices);
             var volume = getPriceVolume(adj_bars, prices);
             var total = volume.reduce((a, b) => a + b);
+            var target = p * total /100;
             var below = 0;
-            for (var i=0; i<volume.length && below * 100 / total < p; i++) {
+            for (var i=0; below + volume[i] < target; i++) {
                 below += volume[i];
             }
-            return prices[i-1];
+            return prices[target - below < volume[i] /2 ? i -1 : i];
         }, {
             warmUpLength: n -1
         });
@@ -243,27 +244,11 @@ var functions = module.exports.functions = {
             var adj_bars = adj(bars);
             var target = _.last(adj_bars).close;
             var prices = getPrices(adj_bars);
-            if (target < _.first(prices)) return 0;
+            if (target <= _.first(prices)) return 0;
             if (target >= _.last(prices)) return 100;
             var volume = getPriceVolume(adj_bars, prices);
             var below = volume.slice(0, _.sortedIndex(prices, target)+1);
             var total = volume.reduce((a, b) => a + b);
-            return below.reduce((a, b) => a + b) *100 / total;
-        }, {
-            warmUpLength: n -1
-        });
-    },
-    /* Time Price Opportunity Count percentage */
-    TPOC(n) {
-        return _.extend(bars => {
-            var adj_bars = adj(bars);
-            var target = _.last(adj_bars).close;
-            var prices = getPrices(adj_bars);
-            if (target < _.first(prices)) return 0;
-            if (target >= _.last(prices)) return 100;
-            var count = getpriceCount(adj_bars, prices);
-            var below = count.slice(0, _.sortedIndex(prices, target)+1);
-            var total = count.reduce((a, b) => a + b);
             return below.reduce((a, b) => a + b) *100 / total;
         }, {
             warmUpLength: n -1
@@ -284,33 +269,6 @@ var functions = module.exports.functions = {
                     return factor + 1;
                 else return factor - 1;
             }, 0));
-        }, {
-            warmUpLength: n -1
-        });
-    },
-    /* Point Of Control */
-    POC(n) {
-        return _.extend(bars => {
-            var adj_bars = adj(bars);
-            var prices = getPrices(adj_bars);
-            var volume = getPriceVolume(adj_bars, prices);
-            var most = _.max(volume);
-            var min = prices.length-1;
-            var max = 0;
-            volume.forEach((c, i) => {
-                if (c == most) {
-                    if (i < min) min = i;
-                    if (i > max) max = i;
-                }
-            });
-            if (min == max) return prices[min];
-            var target = (prices[min] + prices[max]) / 2;
-            var poc = _.range(min+1, max+1).reduce((price, i) => {
-                if (Math.abs(prices[i] - target) < Math.abs(price - target))
-                    return prices[i];
-                return price;
-            }, prices[min]);
-            return poc;
         }, {
             warmUpLength: n -1
         });
@@ -341,7 +299,7 @@ function getPrices(bars) {
         return [
             bar.high, bar.low, bar.open, bar.close
         ].reduce(function(prices, price){
-            if (price <= 0) return prices;
+            if (!(price > 0)) return prices;
             var i = _.sortedIndex(prices, price);
             if (prices[i] != price) prices.splice(i, 0, price);
             return prices;
@@ -352,36 +310,27 @@ function getPrices(bars) {
     return prices;
 }
 
-function reducePriceVolumeWeight(bars, prices, fn, memo) {
-    var total = Math.max(sum(_.map(bars, bar => bar.volume || 1)), 1);
-    return bars.reduce(function(memo, bar){
+function reducePriceVolume(bars, prices, fn, memo) {
+    return bars.reduce((memo, bar) => {
         var oc = _.sortBy([bar.open || bar.close, bar.close]);
-        var open = _.sortedIndex(prices, oc[0]);
-        var close = _.sortedIndex(prices, oc[1]);
-        var low = _.sortedIndex(prices, bar.low || oc[0]);
-        var high = _.sortedIndex(prices, bar.high || oc[1]);
-        var range = prices.slice(low, high+1);
-        var count = range.length + close+1 - open;
-        var unit = (bar.volume || 1) / total / count;
-        return range.reduce((memo, price) => {
+        var low = bar.low || oc[0];
+        var high = bar.high || oc[1];
+        var l = _.sortedIndex(prices, low);
+        var h = _.sortedIndex(prices, high)
+        var range = l == h ? 1 : high - low + oc[1] - oc[0];
+        var unit = (bar.volume || 1) / range;
+        return prices.slice(l, h+1).reduce((memo, price, i, prices) => {
             // prices between open/close are counted twice
-            if (price >= oc[0] && price <= oc[1])
-                return fn(fn(memo, price, unit), price, unit);
-            else return fn(memo, price, unit);
+            var count = price > oc[0] && price <= oc[1] ? 2 : 1;
+            var weight = i == 0 && price < high ? 0 : i == 0 ? 1 :
+                (price - prices[i-1]) * count * unit;
+            return fn(memo, price, weight);
         }, memo);
     }, memo);
 }
 
-function getPriceCount(bars, prices) {
-    return reducePriceVolumeWeight(bars, prices, function(count, price, weight){
-        var i = _.sortedIndex(prices, price);
-        count[i] = (count[i] || 0) + 1;
-        return count;
-    }, new Array(prices.length));
-}
-
 function getPriceVolume(bars, prices) {
-    return reducePriceVolumeWeight(bars, prices, function(volume, price, weight){
+    return reducePriceVolume(bars, prices, (volume, price, weight) => {
         var i = _.sortedIndex(prices, price);
         volume[i] = (volume[i] || 0) + weight;
         return volume;
