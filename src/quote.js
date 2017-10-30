@@ -314,7 +314,9 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
                 if (signal.exit) points.push(signal.exit);
                 points.reduceRight((stop, point, idx) => {
                     var start = _.sortedIndex(intraday, point, 'ending');
-                    if (start == intraday.length || start > 0 && intraday[start].ending != point.ending) {
+                    var lt = start < intraday.length;
+                    var last = idx == points.length-1;
+                    if (start > 0 && lt && intraday[start].ending != point.ending || !lt && !last) {
                         var item = _.defaults({ending: point.ending}, intraday[start -1]);
                         intraday.splice(start, 0, item);
                         stop++;
