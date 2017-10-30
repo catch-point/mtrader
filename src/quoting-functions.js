@@ -86,7 +86,7 @@ var functions = module.exports.functions = {
                 begin: first[options.temporalCol],
                 end: last[options.temporalCol],
                 pad_end: 0,
-                retain: null
+                criteria: null
             }, options);
         });
         return Promise.all(optionset.map(options => quote(options))).then(dataset => {

@@ -60,7 +60,7 @@ function usage(command) {
         .option('--add-column <name=expression>', "Add a column to the output (such as close=day.close)")
         .option('--add-variable <name=expression>', "Add a variable to include in column expressions")
         .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")
-        .option('--retain <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
+        .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('-o, --offline', "Disable data updates")
         .option('--workers <numOfWorkers>', 'Number of workers to spawn')
@@ -176,7 +176,7 @@ function readCollect(name) {
         parameters: _.defaults({}, config('parameters'), read.parameters),
         columns: _.extend({}, read.columns, config('columns')),
         variables: _.defaults({}, config('variables'), read.variables),
-        retain: _.compact(_.flatten([config('retain'), read.retain], true)),
+        criteria: _.compact(_.flatten([config('criteria'), read.criteria], true)),
         filter: _.compact(_.flatten([config('filter'), read.filter], true)),
         precedence: _.compact(_.flatten([config('precedence'), read.precedence], true)),
         order: _.compact(_.flatten([config('order'), read.order], true))
@@ -217,7 +217,7 @@ help(app, 'collect', `
     help variables  
     help columns  
     help parameters  
-    help retain  
+    help criteria  
     help precedence  
     help filter  
     help order  
@@ -270,7 +270,7 @@ help(app, 'filter', `
   An expression (possibly of an rolling function) of each included
   security bar that must be true to be included in the result.
   The result of these expressions have no impact on rolling functions, unlike
-  retain, which is applied earlier.
+  criteria, which is applied earlier.
 
   See also:
     help expression  
@@ -296,7 +296,7 @@ help(app, 'order', `
     help ASC  
 `);
 help(app, 'rolling-functions', `
-  Aggregate functions may read already retained securities and the proposed security values.
+  Aggregate functions may read points that pass the criteria and the proposed security values.
 
   ${listFunctions(rolling.functions)}
 `);

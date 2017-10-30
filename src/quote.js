@@ -72,7 +72,7 @@ function help(fetch) {
     return fetch({help: true})
       .then(help => _.indexBy(help, 'name'))
       .then(help => _.pick(help, ['lookup', 'interday', 'intraday'])).then(help => {
-        var used = ['symbol', 'exchange', 'columns', 'retain', 'interval', 'parameters', 'variables', 'pad_begin', 'pad_end', 'begin', 'end', 'now', 'tz', 'currency', 'offline', 'marketOpensAt', 'marketClosesAt', 'premarketOpensAt', 'afterHoursClosesAt'];
+        var used = ['symbol', 'exchange', 'columns', 'criteria', 'interval', 'parameters', 'variables', 'pad_begin', 'pad_end', 'begin', 'end', 'now', 'tz', 'currency', 'offline', 'marketOpensAt', 'marketClosesAt', 'premarketOpensAt', 'afterHoursClosesAt'];
         var downstream = _.flatten(_.map(help, help => help.options), true);
         var variables = periods.values.reduce((variables, interval) => {
             var fields = interval.charAt(0) != 'm' ? help.interday.properties :
@@ -90,7 +90,7 @@ function help(fetch) {
 }
 
 /**
- * Given begin/end range, columns, and retain returns an array of row objects
+ * Given begin/end range, columns, and criteria returns an array of row objects
  * that each pass the given criteria and are within the begin/end range.
  */
 function quote(fetch, store, fields, options) {
@@ -98,7 +98,7 @@ function quote(fetch, store, fields, options) {
     var cached = _.mapObject(exprMap, _.keys);
     var intervals = periods.sort(_.keys(exprMap));
     if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
-    var retain = parseCriteriaMap(options.retain, fields, cached, intervals, options);
+    var criteria = parseCriteriaMap(options.criteria, fields, cached, intervals, options);
     var name = options.exchange ?
         options.symbol + '.' + options.exchange : options.symbol;
     var interval = intervals[0];
@@ -108,17 +108,17 @@ function quote(fetch, store, fields, options) {
         var quoteBars = fetchBars.bind(this, fetch, db, fields);
         return inlinePadBegin(quoteBars, interval, options)
           .then(options => inlinePadEnd(quoteBars, interval, options))
-          .then(options => mergeBars(quoteBars, exprMap, retain, options));
+          .then(options => mergeBars(quoteBars, exprMap, criteria, options));
     }).then(signals => formatColumns(fields, signals, options));
 }
 
 /**
- * Finds out what intervals are used in columns and retain and put together a
+ * Finds out what intervals are used in columns and criteria and put together a
  * list of what expressions should be computed and stored for further reference.
  */
 function parseWarmUpMap(fields, options) {
     var exprs = _.compact(_.flatten([
-        _.values(options.columns), options.retain
+        _.values(options.columns), options.criteria
     ]));
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
@@ -293,10 +293,10 @@ function inlinePadEnd(quoteBars, interval, options) {
 }
 
 /**
- * For each expression interval it reads the bars and evaluates the retain.
+ * For each expression interval it reads the bars and evaluates the criteria.
  * @returns the combined bars as a list of points
  */
-function mergeBars(quoteBars, exprMap, retain, options) {
+function mergeBars(quoteBars, exprMap, criteria, options) {
     var intervals = _.keys(exprMap);
     return intervals.reduceRight((promise, interval) => {
         return promise.then(signals => Promise.all(signals.map(signal => {
@@ -325,7 +325,7 @@ function mergeBars(quoteBars, exprMap, retain, options) {
                     return start;
                 }, intraday.length);
                 return intraday;
-            }).then(points => readSignals(points, entry, signal.exit, retain[interval]));
+            }).then(points => readSignals(points, entry, signal.exit, criteria[interval]));
         }))).then(signalsMap => {
             return signalsMap.reduce((result, signals) => {
                 while (result.length && signals.length && _.first(_.first(signals).points).ending <= _.last(_.last(result).points).ending) {
@@ -350,27 +350,27 @@ function mergeBars(quoteBars, exprMap, retain, options) {
 /**
  * Identifies the entry and exit points and returns an array of these signals
  */
-function readSignals(points, entry, exit, retain) {
+function readSignals(points, entry, exit, criteria) {
     if (!points.length) return [];
     var check = interrupt();
     var start = _.sortedIndex(points, entry, 'ending');
     if (start > 0 && (start == points.length || entry.ending < points[start].ending))
         start--;
-    if (!retain && exit) return [{
+    if (!criteria && exit) return [{
         points: points.slice(start, points.length -1),
         exit: _.last(points)
     }];
-    else if (!retain) return [{
+    else if (!criteria) return [{
         points: points.slice(start)
     }];
     var e = 0;
     var signals = [];
-    retain = retain || _.constant(true);
+    criteria = criteria || _.constant(true);
     points.slice(start).reduce((active, point, i) => {
         check();
         var to = start + i;
-        var keep = retain(points.slice(active ? e : to, to+1)) ||
-            active && e != to && retain(points.slice(to, to+1));
+        var keep = criteria(points.slice(active ? e : to, to+1)) ||
+            active && e != to && criteria(points.slice(to, to+1));
         if (keep) {
             if (active) { // extend
                 _.last(signals).points = points.slice(start + e, start + i +1);
@@ -499,7 +499,7 @@ function readBlocks(collection, blocks, options) {
         var format = options.begin;
         var from = _.sortedIndex(bars, {ending: format}, 'ending');
         if (from == bars.length || from > 0 && format < bars[from].ending)
-            from--; // include prior value for retain
+            from--; // include prior value for criteria
         var start = Math.min(Math.max(from - options.pad_begin, 0), bars.length -1);
         return bars.slice(start);
     }).then(bars => {

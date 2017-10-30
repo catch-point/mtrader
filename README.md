@@ -98,7 +98,7 @@ ptrading.collect({
       basis: 'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position)',
       profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
   },
-  retain: 'position OR shares'
+  criteria: 'position OR shares'
 }).then(trades => {
   trades.forEach(trade => {
     console.log(trade.symbol, trade.date, trade.shares, trade.price, trade.proceeds, trade.commission);

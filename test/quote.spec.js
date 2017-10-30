@@ -621,7 +621,7 @@ describe("quote", function() {
                 Change: 'CHANGE(Price, Another)',
                 Another: 'day.close * (1 + Change)'
             },
-            retain: 'Price > OFFSET(1, Price)',
+            criteria: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -636,7 +636,7 @@ describe("quote", function() {
                 Price: 'm30.close',
                 Change: '(m30.close - day.close)*100/day.close'
             },
-            retain: 'm30.close > OFFSET(1, m30.close)',
+            criteria: 'm30.close > OFFSET(1, m30.close)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -658,7 +658,7 @@ describe("quote", function() {
                 Price: 'm30.close',
                 Change: 'CHANGE(Price, day.close)'
             },
-            retain: 'Price > OFFSET(1, Price)',
+            criteria: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -683,7 +683,7 @@ describe("quote", function() {
                 Price: 'm30.close',
                 Change: 'CHANGE(Price, day.close)'
             },
-            retain: 'Price > pcls',
+            criteria: 'Price > pcls',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
@@ -705,7 +705,7 @@ describe("quote", function() {
                 Price: 'm30.close',
                 Change: 'CHANGE(Price, day.close)'
             },
-            retain: 'Change >= minimum',
+            criteria: 'Change >= minimum',
             parameters: {
                 minimum: 0.2
             },
@@ -746,7 +746,7 @@ describe("quote", function() {
                 Time: 'TIME(m30.ending)',
                 Price: 'm30.close'
             },
-            retain: 'DATE(month.ending) = DATE(day.ending) and HOUR(m30.ending) = 12',
+            criteria: 'DATE(month.ending) = DATE(day.ending) and HOUR(m30.ending) = 12',
             symbol: 'USD',
             exchange: 'CAD',
             begin: moment('2014-01-01T08:30:00-0500'),

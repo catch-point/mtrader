@@ -62,6 +62,7 @@ module.exports = function(quote, collectFn) {
                 exchangeCol: '$exchange',
                 temporalCol: '$temporal',
                 variables: {},
+                criteria: _.flatten(_.compact([options.criteria, options.retain])),
                 tz: moment.tz.guess(),
                 now: Date.now()
             });
@@ -74,7 +75,7 @@ module.exports = function(quote, collectFn) {
 
 function help(quote) {
     var used = [
-        'portfolio', 'columns', 'variables', 'retain', 'filter',
+        'portfolio', 'columns', 'variables', 'criteria', 'filter',
         'precedence', 'order', 'pad_leading', 'duration', 'upstream'
     ];
     return quote({help: true}).then(_.first).then(help => {
@@ -100,7 +101,7 @@ function collect(quote, callCollect, collections, fields, options) {
     var columns = parseNeededColumns(avail, options);
     var columnNames = _.object(_.keys(options.columns), _.keys(columns));
     var simpleColumns = getSimpleColumns(columns, options);
-    var retain = getSimpleRetain(columns, options);
+    var criteria = getSimpleCriteria(columns, options);
     return Promise.all(portfolio.map((opts, idx) => {
         var index = '#' + idx.toString() + (options.columns[options.indexCol] ?
             '.' + JSON.parse(options.columns[options.indexCol]).substring(1) : '');
@@ -116,7 +117,7 @@ function collect(quote, callCollect, collections, fields, options) {
                 }
             });
             var columns = parser.parse(simpleColumns);
-            var filter = [opts.filter, parser.parse(retain)];
+            var filter = [opts.filter, parser.parse(criteria)];
             var params = _.omit(defaults, _.keys(opts.columns));
             return callCollect(_.defaults({
                 columns: _.extend(columns, _.pick(opts.columns, used), {
@@ -138,7 +139,7 @@ function collect(quote, callCollect, collections, fields, options) {
                     [options.exchangeCol]: JSON.stringify(opts.exchange),
                     [options.temporalCol]: 'DATETIME(ending)'
                 }, simpleColumns),
-                retain: retain,
+                criteria: criteria,
                 pad_begin: pad_begin,
                 parameters: _.defaults({}, options.parameters, defaults)
             }, opts));
@@ -171,7 +172,7 @@ function collect(quote, callCollect, collections, fields, options) {
  */
 function getPortfolio(portfolio, collections, options) {
     var opts = _.omit(options, [
-        'portfolio', 'columns', 'variables', 'retain', 'filter', 'precedence', 'order', 'pad_leading'
+        'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading'
     ]);
     var array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :
@@ -287,7 +288,7 @@ function getVariables(fields, options) {
     });
     var exprs = parser.parseCriteriaList(_.flatten(_.compact([
         _.values(options.variables), _.values(options.columns),
-        options.retain, options.filter, options.precedence
+        options.criteria, options.filter, options.precedence
     ]), true));
     var multiples = _.uniq(_.flatten(exprs.map(expr => _.keys(expr).filter(name => expr[name] > 1)), true));
     return _.union(_.difference(_.keys(options.columns), fields), multiples);
@@ -327,7 +328,7 @@ function getSimpleColumns(columns, options) {
     var colParser = createColumnParser(columns, options);
     var formatColumns = _.map(columns, expr => colParser.parse(expr).columns).reduce((a,b)=>_.extend(a,b), {});
     var criteriaColumns = _.pluck(colParser.parseCriteriaList(_.flatten(_.compact([
-        options.retain, options.filter, options.precedence, options.order
+        options.criteria, options.filter, options.precedence, options.order
     ]), true)), 'columns').reduce((a,b)=>_.extend(a,b), {});
     return _.defaults(formatColumns, criteriaColumns);
 }
@@ -335,7 +336,7 @@ function getSimpleColumns(columns, options) {
 /**
  * Returns a map of expressions, using local variables, to expressions with those
  * variables inlined.
- * Only expressions that are to be evaluated before retain are included.
+ * Only expressions that are to be evaluated before criteria is processed.
  */
 function createColumnParser(columns, options) {
     var inline = createInlineParser(columns, options);
@@ -371,12 +372,12 @@ function createColumnParser(columns, options) {
 }
 
 /**
- * Returns the retain expression that should be delegated to quote.
+ * Returns the criteria expression that should be delegated to quote.
  * Removing the expressions with rolling functions and inlining variables.
  * This differrs from #getSimpleColumns as it does not return parts of complex expressions
  */
-function getSimpleRetain(columns, options) {
-    if (_.isEmpty(options.retain)) return [];
+function getSimpleCriteria(columns, options) {
+    if (_.isEmpty(options.criteria)) return [];
     var inline = createInlineParser(columns, options);
     var parsedColumns = {};
     var parser = Parser({
@@ -393,7 +394,7 @@ function getSimpleRetain(columns, options) {
             else return inline.parse(expr);
         }
     });
-    return _.compact(parser.parseCriteriaList(options.retain));
+    return _.compact(parser.parseCriteriaList(options.criteria));
 }
 
 /**
@@ -415,12 +416,12 @@ function createInlineParser(columns, options) {
 }
 
 /**
- * Returns an array of variable names used by at least one of variables/retain/precedence/filter/order
+ * Returns an array of variable names used by at least one of variables/criteria/precedence/filter/order
  */
 function getUsedColumns(options) {
     var exprs = _.flatten(_.compact([
         _.values(options.variables),
-        options.retain, options.precedence, options.filter, options.order
+        options.criteria, options.precedence, options.filter, options.order
     ]), true);
     return _.uniq(_.flatten(Parser({
         constant(value) {
@@ -479,9 +480,9 @@ function createParser(quote, dataset, columns, cached, options) {
  */
 function collectDataset(dataset, parser, columns, options) {
     var pcolumns = promiseColumns(parser, columns, options);
-    var pretain = promiseFilter(parser, options.retain);
+    var pcriteria = promiseFilter(parser, options.criteria);
     var precedence = getOrderBy(options.precedence, columns, options);
-    return pcolumns.then(columns => pretain.then(retain => {
+    return pcolumns.then(fcolumns => pcriteria.then(criteria => {
         return reduceInterval(dataset, options.temporalCol, (result, points) => {
             var positions = sortBy(points, precedence);
             var row = result.length;
@@ -491,9 +492,9 @@ function collectDataset(dataset, parser, columns, options) {
                     [key]: point
                 });
                 result[row] = pending;
-                if (retain && !retain(result)) return retained;
+                if (criteria && !criteria(result)) return retained;
                 else return _.extend(pending, {
-                    [key]: _.mapObject(columns, column => column(result))
+                    [key]: _.mapObject(fcolumns, fn => fn(result))
                 });
             }, {[options.temporalCol]: points[0][options.temporalCol]});
             if (_.keys(result[row]).length == 1) result.pop();

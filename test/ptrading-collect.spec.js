@@ -66,7 +66,7 @@ describe("ptrading-collect", function() {
               close: 'day.close',
               change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
           },
-          retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0,"symbol")<1',
+          criteria: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0,"symbol")<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
@@ -100,7 +100,7 @@ describe("ptrading-collect", function() {
               basis: 'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position)',
               profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
           },
-          retain: 'position OR shares'
+          criteria: 'position OR shares'
         }).should.eventually.be.like([
             {symbol:"AABA",date:"2017-01-09",target:241,shares:241,position:241,price:41.36,
                 proceeds:-9967.76,commission:1.20,basis:41.36,profit:-1.20},
@@ -140,7 +140,7 @@ describe("ptrading-collect", function() {
               commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'
           },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
-          retain: 'position OR shares'
+          criteria: 'position OR shares'
         }).then(expected => ptrading.collect({
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
           pad_leading: 3,
@@ -161,7 +161,7 @@ describe("ptrading-collect", function() {
               commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'
           },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
-          retain: 'position OR shares'
+          criteria: 'position OR shares'
         }).should.eventually.be.like(expected));
     });
 });

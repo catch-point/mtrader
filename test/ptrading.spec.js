@@ -99,7 +99,7 @@ describe("ptrading", function() {
               Close: 'day.close',
               Change: '(day.adj_close - OFFSET(1, day.adj_close))*100/OFFSET(1,day.adj_close)'
           },
-          retain: 'day.adj_close > OFFSET(1, day.adj_close)'
+          criteria: 'day.adj_close > OFFSET(1, day.adj_close)'
         }).should.eventually.be.like([
             {Date:"2016-12-30",Close:38.67,Change:0.0776},
             {Date:"2017-01-03",Close:38.90,Change:0.5947},
@@ -123,7 +123,7 @@ describe("ptrading", function() {
               close: 'day.close',
               change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
           },
-          retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0,"symbol")<1',
+          criteria: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0,"symbol")<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},

@@ -78,7 +78,7 @@ describe("collect", function() {
               close: 'day.close',
               change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
           },
-          retain: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0, "symbol")<1',
+          criteria: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0, "symbol")<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
@@ -105,7 +105,7 @@ describe("collect", function() {
               Price: 'day.close',
               Weight: 'MIN(0.5/CVAR(5, 60, day.close), 100)'
           },
-          retain: 'SUMPREC(0, "Weight")+Weight <= 100',
+          criteria: 'SUMPREC(0, "Weight")+Weight <= 100',
           precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
         }).should.eventually.be.like([
             {symbol:"XLF",date:"2016-12-01",Price:22.9,Weight:2.7401},
@@ -140,7 +140,7 @@ describe("collect", function() {
               value: 'PREC("value",100000)+mtm-commission'
           },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
-          retain: 'position OR shares'
+          criteria: 'position OR shares'
         }).should.eventually.be.like([
             {date:"2016-11-14",symbol:"XLF",position:429,price:22.22,cash:90465.475,value:99997.855},
             {date:"2016-11-14",symbol:"XLI",position:126,price:61.33,cash:82736.895,value:99996.855},
@@ -192,7 +192,7 @@ describe("collect", function() {
               Price: 'day.close',
               Weight: 'ROUND(MIN(0.5/CVAR(5, 60, day.adj_close), 100),2)'
           },
-          retain: [
+          criteria: [
             'MAXCORREL(60,day.adj_close)<0.75',
             'SUMPREC(0, "Weight")+Weight<=100'
           ].join(' AND '),
@@ -260,7 +260,7 @@ describe("collect", function() {
               weight: 'ROUND((target + SUMPREV(2,"target"))/3,2)'
           },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
-          retain: 'weight OR PREV("weight")'
+          criteria: 'weight OR PREV("weight")'
         }).should.eventually.be.like([
             {symbol:"XLF",date:"2016-11-14",price:22.2,cor:0,risk:0.017,target:29.41,weight:9.8},
             {symbol:"XLI",date:"2016-11-14",price:61.31,cor:0.74,risk:0.021,target:23.81,weight:7.94},
@@ -317,7 +317,7 @@ describe("collect", function() {
               profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
           },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
-          retain: 'position OR shares'
+          criteria: 'position OR shares'
         }).should.eventually.be.like([
             {symbol:"XLF",date:"2016-11-30",shares:0,position:1233,price:22.49,basis:22.23,profit:320.385},
             {symbol:"XLK",date:"2016-11-30",shares:0,position:571,price:47.48,basis:46.61,profit:493.78},
@@ -373,7 +373,7 @@ describe("collect", function() {
                 exchange: 'exchange',
                 cvar: 'TOD(CVAR(5,60,m240.close))'
             },
-            retain: 'TIME(m240.ending)="16:00:00"'
+            criteria: 'TIME(m240.ending)="16:00:00"'
         });
         return collect({
           portfolio: 'USDCAD16,SPY.ARCA,XIC.TSX',
@@ -501,7 +501,7 @@ describe("collect", function() {
             {date:"2014-02-21",open:1.10969,close:1.1112,change:0.14,povo:72,entry:1.1112,profit:0}
         ]);
     });
-    it("should filter out most results using leading retain", function() {
+    it("should filter out most results using leading criteria", function() {
         return collect({
             portfolio: "USD.CAD",
             variables: {
@@ -512,7 +512,7 @@ describe("collect", function() {
                 Time: 'TIME(m30.ending)',
                 Price: 'm30.close'
             },
-            retain: [
+            criteria: [
                 'DATE(month.ending) = DATE(day.ending)',
                 'HOUR(m60.ending) >= 12',
                 'open'
@@ -556,7 +556,7 @@ describe("collect", function() {
                 Time: 'TIME(m30.ending)',
                 Price: 'm30.close'
             },
-            retain: [
+            criteria: [
                 'DATE(month.ending) = DATE(day.ending)',
                 'HOUR(m60.ending) >= 12'
             ],
@@ -602,7 +602,7 @@ describe("collect", function() {
                 Time: 'TIME(m30.ending)',
                 Price: 'm30.close'
             },
-            retain: [
+            criteria: [
                 'DATE(month.ending) = DATE(day.ending)',
                 'HOUR(m60.ending) >= 12'
             ],
@@ -650,7 +650,7 @@ describe("collect", function() {
                 Price: 'm30.close',
                 position: 'IF(entryAt<m30.ending, 100, 0)'
            },
-            retain: [
+            criteria: [
                 'DATE(month.ending) = DATE(day.ending)'
             ].join(' and '),
             begin: '2014-01-02T11:30:00-0500',
