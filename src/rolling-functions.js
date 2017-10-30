@@ -65,7 +65,7 @@ var functions = module.exports.functions = {
         args: "columnName, defaultValue",
         description: "Returns the value of columnName from the preceeding retained value"
     }),
-    COUNTPREC: _.extend((options, numberOfIntervals, columnName, criteria) => {
+    COUNTPREC: _.extend((options, columnName, numberOfIntervals, criteria) => {
         var name = columnName && columnName();
         var condition = name && parseCriteria(name, criteria, options);
         return positions => {
@@ -79,14 +79,14 @@ var functions = module.exports.functions = {
             return values.filter(val => val === 0 || val).length;
         };
     }, {
-        args: "[numberOfIntervals, [columnName, [criteria]]]",
+        args: "[columnName, [numberOfIntervals, [criteria]]]",
         description: "Counts the number of retained values that preceed this value"
     }),
-    SUMPREC: _.extend((options, numberOfIntervals, columnName, criteria) => {
+    SUMPREC: _.extend((options, columnName, numberOfIntervals, criteria) => {
         var name = columnName();
         var condition = parseCriteria(name, criteria, options);
         return positions => {
-            var num = numberOfIntervals(positions);
+            var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
             var len = positions.length -1;
             var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
@@ -95,14 +95,14 @@ var functions = module.exports.functions = {
             return values.filter(_.isFinite).reduce((a, b) => a + b, 0);
         };
     }, {
-        args: "numberOfIntervals, columnName, [criteria]",
+        args: "columnName, [numberOfIntervals, [criteria]]",
         description: "Returns the sum of all numeric values that preceed this"
     }),
-    MAXPREC: _.extend((options, numberOfIntervals, columnName, criteria) => {
+    MAXPREC: _.extend((options, columnName, numberOfIntervals, criteria) => {
         var name = columnName();
         var condition = parseCriteria(name, criteria, options);
         return positions => {
-            var num = numberOfIntervals(positions);
+            var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
             var len = positions.length -1;
             var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
@@ -111,7 +111,7 @@ var functions = module.exports.functions = {
             return values.filter(_.isFinite).reduce((a, b) => Math.max(a, b), 0);
         };
     }, {
-        args: "numberOfIntervals, columnName, [criteria]",
+        args: "columnName, [numberOfIntervals, [criteria]]",
         description: "Returns the maximum of all numeric values that preceed this"
     }),
     PREV: _.extend((options, columnName, defaultValue) => {
@@ -129,7 +129,7 @@ var functions = module.exports.functions = {
         args: "columnName, defaultValue",
         description: "Returns the value of columnName from the previous retained value for this security"
     }),
-    COUNTPREV: _.extend((options, numberOfValues, columnName, criteria) => {
+    COUNTPREV: _.extend((options, columnName, numberOfValues, criteria) => {
         var name = columnName && columnName();
         var condition = name && parseCriteria(name, criteria, options);
         return positions => {
@@ -143,15 +143,15 @@ var functions = module.exports.functions = {
             return _.filter(values, val => val === 0 || val).length;
         };
     }, {
-        args: "[numberOfValues, [columnName, [criteria]]]",
+        args: "[columnName, [numberOfValues, [criteria]]]",
         description: "Returns the sum of columnName values from the previous numberOfValues retained"
     }),
-    SUMPREV: _.extend((options, numberOfValues, columnName, criteria) => {
+    SUMPREV: _.extend((options, columnName, numberOfValues, criteria) => {
         var name = columnName();
         var condition = parseCriteria(name, criteria, options);
         return positions => {
             if (positions.length < 2) return 0;
-            var num = numberOfValues(positions);
+            var num = numberOfValues ? numberOfValues(positions) : 0;
             var key = _.last(_.keys(_.last(positions)));
             var len = positions.length -1;
             var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
@@ -159,15 +159,15 @@ var functions = module.exports.functions = {
             return values.reduce((a, b) => (a || 0) + (b || 0), 0);
         };
     }, {
-        args: "numberOfValues, columnName, [criteria]",
+        args: "columnName, [numberOfValues, [criteria]]",
         description: "Returns the sum of columnName values from the previous numberOfValues retained"
     }),
-    MAXPREV: _.extend((options, numberOfValues, columnName, criteria) => {
+    MAXPREV: _.extend((options, columnName, numberOfValues, criteria) => {
         var name = columnName();
         var condition = parseCriteria(name, criteria, options);
         return positions => {
             if (positions.length < 2) return 0;
-            var num = numberOfValues(positions);
+            var num = numberOfValues ? numberOfValues(positions) : 0;
             var key = _.last(_.keys(_.last(positions)));
             var len = positions.length -1;
             var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
@@ -175,7 +175,7 @@ var functions = module.exports.functions = {
             return values.filter(_.isFinite).reduce((a, b) => Math.max(a, b), 0);
         };
     }, {
-        args: "numberOfValues, columnName, [criteria]",
+        args: "columnName, [numberOfValues, [criteria]]",
         description: "Returns the maximum of columnName values from the previous numberOfValues retained"
     })
 };
@@ -187,7 +187,7 @@ function parseCriteria(columnName, criteria, options) {
         return parseCriteria(columnName, criteria(), options);
     if (!_.isString(criteria))
         return parseCriteria(columnName, criteria.toString(), options);
-    if (_.contains(['<', '>', '=', '!'], criteria.charAt(0)))
+    if (_.contains(['<', '>', '='], criteria.charAt(0)) || criteria.indexOf('!=') === 0)
         return parseCriteria(columnName, columnName + criteria, options);
     try {
         var expression = false;

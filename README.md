@@ -14,24 +14,24 @@ ptrading can be used as a node.js library, as a command line utility or as an in
 const ptrading = require('ptrading');
 
 // lookup exchange for a symbol and search for similar symbols
-ptrading.lookup({symbol: 'YHOO'}).then(suggestions => {
+ptrading.lookup({symbol: 'AABA'}).then(suggestions => {
   suggestions.forEach(suggestion => {
-    console.log(suggestion.symbol, suggestion.exchange, suggestion.name); // YHOO NASDAQ Yahoo! Inc.
+    console.log(suggestion.symbol, suggestion.exchange, suggestion.name); // AABA NASDAQ Altaba Inc
   });
 });
 
 // fundamental
 ptrading.fundamental({
-  symbol: 'YHOO',
+  symbol: 'AABA',
   exchange: 'NASDAQ'
 }).then(security => {
-  console.log(security.name, security.EarningsShare); // Yahoo! Inc. -5.08
+  console.log(security.name, security.EarningsShare); // Altaba Inc 4.58
 });
 
 // fetch day, week, month, quarter, or year historic data about a symbol
 ptrading.fetch({
   interval: 'day',
-  symbol: 'YHOO',
+  symbol: 'AABA',
   exchange: 'NASDAQ'
 }).then(bars => {
   bars.forEach(bar => {
@@ -55,7 +55,7 @@ ptrading.config('prefix', '/tmp/ptrading');
 
 // retrieve historic data using custom columns and filtering
 ptrading.quote({
-  symbol: 'YHOO',
+  symbol: 'AABA',
   exchange: 'NASDAQ',
   pad_begin: 9,       // Show today and nine earlier trading days
   columns: {
@@ -82,21 +82,21 @@ ptrading.quote({
 
 // calculate hypothetical trades for a portfolio
 ptrading.collect({
-  portfolio: 'YHOO.NASDAQ,IBM.NYSE',
+  portfolio: 'AABA.NASDAQ,IBM.NYSE',
   begin: "2017-01-09",
   end: "2017-01-14",
   precedence: 'PF(120,day.adj_close)',
   columns: {
       symbol: 'symbol',
       date: 'DATE(ending)',
-      target: 'IF(COUNT(symbol)<=1,FLOOR(10000/(day.close)),0)',
-      shares: 'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0))',
-      position: 'PREV("position",0) + shares',
-      price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
+      target: 'IF(COUNTPREC()<=1,FLOOR(10000/(day.close)))',
+      shares: 'IF(ABS(target-PREV("position",0))>=10,target-PREV("position"),0)',
+      position: 'PREV("position") + shares',
+      price: 'day.close + 0.02 * SIGN(shares)', // includes slippage
       proceeds: '-shares * price',
-      commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))',
+      commission: 'IF(shares, MAX(shares * 0.005, 1.00), 0)',
       basis: 'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position)',
-      profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
+      profit: 'PREV("profit") + (price - PREV("price")) * PREV("position") - commission'
   },
   criteria: 'position OR shares'
 }).then(trades => {

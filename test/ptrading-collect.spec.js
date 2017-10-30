@@ -66,7 +66,7 @@ describe("ptrading-collect", function() {
               close: 'day.close',
               change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
           },
-          criteria: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0,"symbol")<1',
+          criteria: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC()<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
@@ -91,14 +91,14 @@ describe("ptrading-collect", function() {
           columns: {
               symbol: 'symbol',
               date: 'DATE(ending)',
-              target: 'IF(COUNTPREC(0,"symbol")<1,FLOOR(10000/(day.close)),0)',
-              shares: 'IF(ABS(target-PREV("position",0))<10,0,target-PREV("position",0))',
-              position: 'PREV("position",0) + shares',
+              target: 'IF(COUNTPREC()<1,FLOOR(10000/(day.close)),0)',
+              shares: 'IF(ABS(target-PREV("position"))>=10,target-PREV("position"), 0)',
+              position: 'PREV("position") + shares',
               price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
               proceeds: '-shares * price',
-              commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))',
+              commission: 'IF(shares, MAX(shares * 0.005, 1.00), 0)',
               basis: 'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position)',
-              profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
+              profit: 'PREV("profit") + (price - PREV("price")) * PREV("position") - commission'
           },
           criteria: 'position OR shares'
         }).should.eventually.be.like([
@@ -131,10 +131,10 @@ describe("ptrading-collect", function() {
               date: 'DATE(ending)',
               cor: 'MAXCORREL(60,day.adj_close)',
               risk: 'CVAR(5, 60, day.adj_close)',
-              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
-              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
-              shares: 'target-PREV("position",0)',
-              position: 'PREV("position",0) + shares',
+              weight: 'IF(cor<0.75 AND SUMPREC("weight")<=95, MIN(0.5/risk,100-SUMPREC("weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV("weight",2))/300/day.close)',
+              shares: 'target-PREV("position")',
+              position: 'PREV("position") + shares',
               price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
               proceeds: '-shares * price',
               commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'
@@ -152,10 +152,10 @@ describe("ptrading-collect", function() {
               date: 'DATE(ending)',
               cor: 'MAXCORREL(60,day.adj_close)',
               risk: 'CVAR(5, 60, day.adj_close)',
-              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
-              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
-              shares: 'target-PREV("position",0)',
-              position: 'PREV("position",0) + shares',
+              weight: 'IF(cor<0.75 AND SUMPREC("weight")<=95, MIN(0.5/risk,100-SUMPREC("weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV("weight",2))/300/day.close)',
+              shares: 'target-PREV("position")',
+              position: 'PREV("position") + shares',
               price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
               proceeds: '-shares * price',
               commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'

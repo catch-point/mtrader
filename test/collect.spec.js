@@ -78,7 +78,7 @@ describe("collect", function() {
               close: 'day.close',
               change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
           },
-          criteria: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC(0, "symbol")<1',
+          criteria: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC()<1',
           precedence: 'DESC(PF(120,day.adj_close))'
         }).should.eventually.be.like([
             {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
@@ -105,7 +105,7 @@ describe("collect", function() {
               Price: 'day.close',
               Weight: 'MIN(0.5/CVAR(5, 60, day.close), 100)'
           },
-          criteria: 'SUMPREC(0, "Weight")+Weight <= 100',
+          criteria: 'SUMPREC("Weight")+Weight <= 100',
           precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
         }).should.eventually.be.like([
             {symbol:"XLF",date:"2016-12-01",Price:22.9,Weight:2.7401},
@@ -123,18 +123,18 @@ describe("collect", function() {
           variables: {
               cor: 'MAXCORREL(60,day.adj_close)',
               risk: 'CVAR(5, 60, day.adj_close)',
-              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
-              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
-              shares: 'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0))',
+              weight: 'IF(cor<0.75 AND SUMPREC("weight")<=95, MIN(0.5/risk,100-SUMPREC("weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV("weight",2))/300/day.close)',
+              shares: 'IF(ABS(target-PREV("position"))<50,0,target-PREV("position"))',
               proceeds: '-shares * price',
               commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))',
               basis: 'IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position)',
-              mtm: '(price - PREV("price",0)) * PREV("position",0)'
+              mtm: '(price - PREV("price")) * PREV("position")'
           },
           columns: {
               date: 'DATE(ending)',
               symbol: 'symbol',
-              position: 'PREV("position",0) + shares',
+              position: 'PREV("position") + shares',
               price: 'day.close + 0.02 * SIGN(shares)', // includes slippage
               cash: 'PREC("cash",100000)+proceeds-commission',
               value: 'PREC("value",100000)+mtm-commission'
@@ -194,7 +194,7 @@ describe("collect", function() {
           },
           criteria: [
             'MAXCORREL(60,day.adj_close)<0.75',
-            'SUMPREC(0, "Weight")+Weight<=100'
+            'SUMPREC("Weight")+Weight<=100'
           ].join(' AND '),
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))'
         }).should.eventually.be.like([
@@ -256,8 +256,8 @@ describe("collect", function() {
               price: 'day.close',
               cor: 'ROUND(MAXCORREL(60,day.adj_close),2)',
               risk: 'ROUND(CVAR(5, 60, day.adj_close),3)',
-              target: 'IF(cor<0.75 AND SUMPREC(0,"target")<=95, MIN(ROUND(0.5/risk,2),100-SUMPREC(0,"target")), 0)',
-              weight: 'ROUND((target + SUMPREV(2,"target"))/3,2)'
+              target: 'IF(cor<0.75 AND SUMPREC("target")<=95, MIN(ROUND(0.5/risk,2),100-SUMPREC("target")), 0)',
+              weight: 'ROUND((target + SUMPREV("target",2))/3,2)'
           },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           criteria: 'weight OR PREV("weight")'
@@ -302,19 +302,19 @@ describe("collect", function() {
           variables: {
               cor: 'MAXCORREL(60,day.adj_close)',
               risk: 'CVAR(5, 60, day.adj_close)',
-              weight: 'IF(cor<0.75 AND SUMPREC(0,"weight")<=95, MIN(0.5/risk,100-SUMPREC(0,"weight")), 0)',
-              target: 'FLOOR(100000*(weight + SUMPREV(2,"weight"))/300/day.close)',
+              weight: 'IF(cor<0.75 AND SUMPREC("weight")<=95, MIN(0.5/risk,100-SUMPREC("weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV("weight",2))/300/day.close)',
               proceeds: '-shares * price',
               commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'
           },
           columns: {
               symbol: 'symbol',
               date: 'DATE(ending)',
-              shares: 'IF(ABS(target-PREV("position",0))<50,0,target-PREV("position",0))',
-              position: 'PREV("position",0) + shares',
+              shares: 'IF(ABS(target-PREV("position"))<50,0,target-PREV("position"))',
+              position: 'PREV("position") + shares',
               price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
               basis: 'ROUND(IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position),2)',
-              profit: 'PREV("profit",0) + (price - PREV("price",0)) * PREV("position",0) - commission'
+              profit: 'PREV("profit") + (price - PREV("price")) * PREV("position") - commission'
           },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           criteria: 'position OR shares'
@@ -338,7 +338,7 @@ describe("collect", function() {
           },
           variables: {
               cvar: 'IF(symbol="USD" AND exchange="CAD", CVAR(5,60,day.close))',
-              usd_cad_cvar: 'MAXPREC(1, "cvar", "symbol=\'USD\' AND exchange=\'CAD\'")'
+              usd_cad_cvar: 'MAXPREC("cvar", 1, "symbol=\'USD\' AND exchange=\'CAD\'")'
           },
           // USD.CAD day.ending is an hour after SPY.ARCA day.ending, so
           // the previous USD.CAD day.close is used
@@ -385,7 +385,7 @@ describe("collect", function() {
               Price: 'day.close'
           },
           variables: {
-              usd_cad_cvar: 'MAXPREC(0, "cvar", "symbol=\'USD\' AND exchange=\'CAD\'")'
+              usd_cad_cvar: 'MAXPREC("cvar", 0, "symbol=\'USD\' AND exchange=\'CAD\'")'
           },
           filter: 'exchange=IF(usd_cad_cvar<0.01,"ARCA","TSX")'
         }).should.eventually.be.like([
@@ -1135,7 +1135,7 @@ describe("collect", function() {
               date: 'DATE(ending)',
               symbol: 'symbol',
               price: 'day.close',
-              target: 'IF(SUMPREC(0, "max")<100, max)'
+              target: 'IF(SUMPREC("max")<100, max)'
           },
           precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
         });
@@ -1147,7 +1147,7 @@ describe("collect", function() {
               date: 'date',
               symbol: 'symbol',
               price: 'price',
-              weight: 'ROUND(MIN(target,IF(SUMPREC(0,"target")<100,100-SUMPREC(0,"target"),0)),2)'
+              weight: 'ROUND(MIN(target,IF(SUMPREC("target")<100,100-SUMPREC("target"),0)),2)'
           },
           precedence: 'DESC(target),symbol'
         }).should.eventually.be.like([
