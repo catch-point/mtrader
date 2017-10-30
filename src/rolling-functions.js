@@ -43,7 +43,7 @@ module.exports = function(name, args, options) {
 };
 
 module.exports.has = function(name) {
-    return functions[name];
+    return !!functions[name];
 };
 
 var functions = module.exports.functions = {

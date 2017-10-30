@@ -63,11 +63,11 @@ module.exports = function(handlers) {
             if (_.isNumber(expr))
                 return _handlers.constant(expr);
             else if (_.isString(expr))
-                return invokeHandler(parseExpression(expr, subs), _handlers);
+                return parseExpression(expr, subs, _handlers);
             else if (_.isArray(expr))
-                return expr.map(value => invokeHandler(parseExpression(value, subs), _handlers));
+                return expr.map(value => parseExpression(value, subs, _handlers));
             else if (_.isObject(expr) && !_.isFunction(expr) && _.allKeys(expr).every(k=>_.has(expr,k)))
-                return _.mapObject(expr, value => invokeHandler(parseExpression(value, subs), _handlers));
+                return _.mapObject(expr, value => parseExpression(value, subs, _handlers));
             else
                 expect(expr).to.be.ok.and.a('string');
         },
@@ -128,12 +128,17 @@ function parseVariables(exprs) {
     return variables;
 }
 
-function parseExpression(str, substitutions) {
+function parseExpression(str, substitutions, handlers) {
     expect(str).to.be.ok.and.a('string');
     var list = parseExpressions(str, substitutions);
     if (!list.length) throw Error("No input: " + str);
     if (list.length > 1) throw Error("Did not expect multiple expressions: " + str);
-    return _.first(list);
+    try {
+        if (handlers) return invokeHandler(_.first(list), handlers);
+        else return _.first(list);
+    } catch (e) {
+        throw Error(e.message + " in " + str, e);
+    }
 }
 
 function parseExpressions(str, substitutions) {
@@ -145,7 +150,7 @@ function parseExpressions(str, substitutions) {
 function inline(expr, substitutions) {
     if (_.isArray(expr)) {
         return expr.map((expr, i) => i === 0 ? expr : inline(expr, substitutions));
-    } else if (_.isString(expr) && substitutions[expr]) {
+    } else if (_.isString(expr) && _.has(substitutions, expr)) {
         return substitutions[expr];
     } else {
         return expr;

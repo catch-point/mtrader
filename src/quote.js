@@ -192,7 +192,7 @@ function createParser(fields, cached, options) {
             else if (!~name.indexOf('.') && ~fields.indexOf(name))
                 return _.constant(options[name]);
             else if (!~name.indexOf('.'))
-                throw Error("Unknown field: " + name + " in " + options.symbol);
+                throw Error("Unknown field: " + name);
             var interval = name.substring(0, name.indexOf('.'));
             expect(interval).to.be.oneOf(periods.values);
             var lname = name.substring(name.indexOf('.')+1);
@@ -310,37 +310,21 @@ function mergeBars(quoteBars, exprMap, retain, options) {
             return quoteBars(exprMap[interval], opts)
               .then(bars => bars.map(bar => createPoint(bar, opts)))
               .then(intraday => {
-                var points = signal.points ? [].concat(signal.points) : [];
+                var points = signal.points ? signal.points.slice(0) : [];
                 if (signal.exit) points.push(signal.exit);
-                if (interval == 'week' && points.length) {
-                    // weekly points don't fit nince into month or year
-                    var endings = _.union(_.pluck(points, 'ending'), _.pluck(intraday, 'ending'));
-                    var index = endings.sort().map(ending => ({ending: ending}));
-                    points.reduceRight((stop, point, idx) => {
-                        var start = _.sortedIndex(index, point, 'ending');
-                        for (var j=start; j<stop; j++) {
-                            _.defaults(index[j], point);
-                        }
-                        return start;
-                    }, index.length);
-                    intraday.reduceRight((stop, point, idx) => {
-                        var start = _.sortedIndex(index, point, 'ending');
-                        for (var j=start; j<stop; j++) {
-                            _.defaults(index[j], point);
-                        }
-                        return start;
-                    }, index.length);
-                    return index;
-                } else {
-                    points.reduceRight((stop, point, idx) => {
-                        var start = _.sortedIndex(intraday, point, 'ending');
-                        for (var j=start; j<stop; j++) {
-                            _.defaults(intraday[j], point);
-                        }
-                        return start;
-                    }, intraday.length);
-                    return intraday;
-                }
+                points.reduceRight((stop, point, idx) => {
+                    var start = _.sortedIndex(intraday, point, 'ending');
+                    if (start == intraday.length || start > 0 && intraday[start].ending != point.ending) {
+                        var item = _.defaults({ending: point.ending}, intraday[start -1]);
+                        intraday.splice(start, 0, item);
+                        stop++;
+                    }
+                    for (var j=start; j<stop; j++) {
+                        _.defaults(intraday[j], point);
+                    }
+                    return start;
+                }, intraday.length);
+                return intraday;
             }).then(points => readSignals(points, entry, signal.exit, retain[interval]));
         }))).then(signalsMap => {
             return signalsMap.reduce((result, signals) => {

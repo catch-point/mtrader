@@ -440,6 +440,6 @@ _.forEach(functions, fn => {
 function precision(number) {
     if (!_.isNumber(number)) return number;
     var result = parseFloat(number.toPrecision(10));
-    if (isNaN(result)) return null;
-    else return result;
+    if (isFinite(result)) return result;
+    else return null;
 }
