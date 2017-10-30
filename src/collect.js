@@ -314,10 +314,16 @@ function createNormalizeParser(variables, options) {
  */
 function getSubstitutions(variables, options) {
     var params = _.mapObject(_.pick(options.parameters, val => {
-        return _.isString(val) || _.isNumber(val);
-    }), val => JSON.stringify(val));
-    var nulls = _.mapObject(_.pick(options.parameters, _.isNull), val => 'NULL()');
-    return _.defaults(_.omit(options.variables, variables), params, nulls);
+        return _.isString(val) || _.isNumber(val) || _.isNull(val);
+    }), val => stringify(val));
+    return _.defaults(_.omit(options.variables, variables), params);
+}
+
+function stringify(value) {
+    if (_.isObject(value) || _.isArray(value))
+        throw Error("Must be a number, string, or null: " + value);
+    else if (value == null) return 'NULL()';
+    else return JSON.stringify(value);
 }
 
 /**
@@ -364,7 +370,7 @@ function createColumnParser(columns, options) {
             };
             if (quoting.has(name)) return {complex: true, columns: {}};
             else if (order || rolling.has(name) || complex) return nested;
-            var inlined = inline.parse(expr);
+            var inlined = inline(expr);
             if (common.has(name) && inlined.length > 512) return nested;
             else return {complex: false, columns: {[expr]: inlined}}; // lookback
         }
@@ -392,7 +398,7 @@ function getSimpleCriteria(columns, options) {
             var complex = _.some(args, _.isNull);
             if (quoting.has(name)) return null;
             else if (order || rolling.has(name) || complex) return null;
-            else return inline.parse(expr);
+            else return inline(expr);
         }
     });
     return _.compact(parser.parseCriteriaList(options.criteria));
@@ -405,15 +411,24 @@ function createInlineParser(columns, options) {
     var incols = {};
     var inline = Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
+        constant(value) {
+            return _.constant(value);
+        },
         variable(name) {
             if (!columns[name] || columns[name]==name) return name;
             else return incols[name] = incols[name] || inline.parse(columns[name]);
         },
         expression(expr, name, args) {
-            return name + '(' + args.join(',') + ')';
+            if (common.has(name) && args.every(_.isFunction))
+                return common(name, args, options);
+            var values = args.map(arg => _.isFunction(arg) ? stringify(arg()) : arg);
+            return name + '(' + values.join(',') + ')';
         }
     });
-    return inline;
+    return function(expr) {
+        var parsed = inline.parse(expr);
+        return _.isFunction(parsed) ? stringify(parsed()) : parsed;
+    };
 }
 
 /**
