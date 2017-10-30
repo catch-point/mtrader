@@ -818,6 +818,48 @@ describe("collect", function() {
             {date:"2014-03-06",close:1.09829,change:-0.41,povo:17,position:-100000,profit:1287.95}
         ]);
     });
+    it("should allow variables in rolling criteria", function() {
+        return collect({
+          portfolio: [
+            {
+                portfolio: 'USD.CAD',
+                criteria: 'TIME(m240.ending)="16:00:00"'
+            },
+            'SPY.ARCA'
+          ],
+          begin: "2016-01-01",
+          end: "2016-02-01",
+          columns: {
+              date: 'DATE(ending)',
+              symbol: 'symbol',
+              price_cad: 'ROUND(day.close * usd_cad,2)'
+          },
+          variables: {
+              usd_cad: 'LOOKUP("day.close", "symbol=\'USD\' AND exchange=\'CAD\'")'
+          },
+          filter: 'symbol="SPY"'
+        }).should.eventually.be.like([
+            { date: '2016-01-04', symbol: 'SPY', price_cad: 277.96 },
+            { date: '2016-01-05', symbol: 'SPY', price_cad: 280.93 },
+            { date: '2016-01-06', symbol: 'SPY', price_cad: 278.26 },
+            { date: '2016-01-07', symbol: 'SPY', price_cad: 273.13 },
+            { date: '2016-01-08', symbol: 'SPY', price_cad: 270.88 },
+            { date: '2016-01-11', symbol: 'SPY', price_cad: 272.2 },
+            { date: '2016-01-12', symbol: 'SPY', price_cad: 275.3 },
+            { date: '2016-01-13', symbol: 'SPY', price_cad: 269.29 },
+            { date: '2016-01-14', symbol: 'SPY', price_cad: 275.22 },
+            { date: '2016-01-15', symbol: 'SPY', price_cad: 269.8 },
+            { date: '2016-01-19', symbol: 'SPY', price_cad: 273.75 },
+            { date: '2016-01-20', symbol: 'SPY', price_cad: 270.62 },
+            { date: '2016-01-21', symbol: 'SPY', price_cad: 270.77 },
+            { date: '2016-01-22', symbol: 'SPY', price_cad: 271.78 },
+            { date: '2016-01-25', symbol: 'SPY', price_cad: 264.87 },
+            { date: '2016-01-26', symbol: 'SPY', price_cad: 271.79 },
+            { date: '2016-01-27', symbol: 'SPY', price_cad: 265.58 },
+            { date: '2016-01-28', symbol: 'SPY', price_cad: 266.54 },
+            { date: '2016-01-29', symbol: 'SPY', price_cad: 271.73 }
+        ]);
+    });
     it("should detect variable cycle", function() {
         return collect({
             portfolio: 'USD.CAD',

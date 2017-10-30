@@ -110,7 +110,7 @@ function collect(quote, callCollect, collections, fields, options) {
             var used = getUsedColumns(opts);
             var parser = Parser({
                 variable(name){
-                    return opts.columns[name] || name;
+                    return opts.columns && opts.columns[name] || name;
                 },
                 expression(expr, name, args) {
                     return name + '(' + args.join(',') + ')';
@@ -274,9 +274,10 @@ function getVariables(fields, options) {
             else return {}; // don't include parameters
         },
         expression(expr, name, args) {
-            // the first string argument is the variable name in rolling functions
-            if (rolling.has(name) && _.some(args, _.isString))
-                return {[_.first(_.compact(args))]: Infinity};
+            if (rolling.has(name))
+                return rolling.getVariables(expr).reduce((o, name) => {
+                    return _.extend(o, {[name]: Infinity});
+                }, {});
             else return args.reduce((count, arg) => {
                 if (!_.isObject(arg)) return count;
                 _.each(arg, (value, name) => {
@@ -431,9 +432,7 @@ function getUsedColumns(options) {
             return [name];
         },
         expression(expr, name, args) {
-            // the first string argument is the variable name in rolling functions
-            if (rolling.has(name) && _.some(args, _.isString))
-                return [_.first(_.compact(args))];
+            if (rolling.has(name)) return rolling.getVariables(expr);
             else return _.uniq(_.flatten(args.filter(_.isArray), true));
         }
     }).parseCriteriaList(exprs).filter(_.isArray), true));

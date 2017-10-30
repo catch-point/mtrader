@@ -33,6 +33,7 @@ const _ = require('underscore');
 const statkit = require("statkit");
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
+const logger = require('./logger.js');
 
 /**
  * These functions operate of an array of securities at the corresponding points in time.
@@ -44,6 +45,44 @@ module.exports = function(name, args, options) {
 
 module.exports.has = function(name) {
     return !!functions[name];
+};
+
+module.exports.getVariables = function(expr) {
+    var variables = [];
+    var parser = Parser({
+        constant(value) {
+            return _.constant(value);
+        },
+        variable(name) {
+            variables.push(name);
+            return null;
+        },
+        expression(expr, name, args) {
+            if (module.exports.has(name)) {
+                var columnName;
+                args.forEach(arg => {
+                    var value = arg && arg();
+                    if (!_.isString(value)) return;
+                    if (!columnName) columnName = value;
+                    var compare = _.contains(['<', '>', '='], value.charAt(0));
+                    var rel = compare || value.indexOf('!=') === 0;
+                    var expr = rel ? columnName + value : value;
+                    parser.parse(expr);
+                });
+                return null;
+            } else if (args.some(_.isNull)) {
+                return null;
+            } else {
+                return common(name, args, options);
+            }
+        }
+    });
+    try {
+        var parsed = parser.parse(expr);
+    } catch(e) {
+        logger.debug(expr, e);
+    }
+    return variables;
 };
 
 var functions = module.exports.functions = {
@@ -113,6 +152,24 @@ var functions = module.exports.functions = {
     }, {
         args: "columnName, [numberOfIntervals, [criteria]]",
         description: "Returns the maximum of all numeric values that preceed this"
+    }),
+    LOOKUP: _.extend((options, columnName, criteria) => {
+        var name = columnName();
+        var condition = parseCriteria(name, criteria, options);
+        return positions => {
+            for (var p=positions.length-1; p>=0; p--) {
+                var bars = _.values(positions[p]).filter(ctx => _.isObject(ctx));
+                for (var b = bars.length-1; b>=0; b--) {
+                    if (p != positions.length-1 || b != bars.length-1) {
+                        if (condition(bars[b])) return bars[b][name];
+                    }
+                }
+            }
+            return null;
+        };
+    }, {
+        args: "columnName, criteria",
+        description: "Returns the value of columnName of a row that matches criteria"
     }),
     PREV: _.extend((options, columnName, defaultValue) => {
         return positions => {
