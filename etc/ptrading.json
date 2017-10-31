@@ -32,7 +32,7 @@
         },
         "iqfeed": {
           "listed_market": 11,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -56,7 +56,7 @@
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
         },
         "iqfeed": {
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -81,7 +81,7 @@
         },
         "iqfeed": {
           "listed_market": 5,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -106,7 +106,7 @@
         },
         "iqfeed": {
           "listed_market": 7,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -131,7 +131,7 @@
         },
         "iqfeed": {
           "listed_market": 6,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -158,7 +158,7 @@
         "iqfeed": {
           "dtnPrefix": "C.",
           "listed_market": 50,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -185,7 +185,7 @@
         "iqfeed": {
           "dtnPrefix": "C.",
           "listed_market": 52,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -207,7 +207,7 @@
         "iqfeed": {
           "dtnSuffix": "CAD.FXCM",
           "listed_market": 74,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -229,7 +229,7 @@
         "iqfeed": {
           "dtnSuffix": "USD.FXCM",
           "listed_market": 74,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -251,7 +251,7 @@
         "iqfeed": {
           "dtnSuffix": "JPY.FXCM",
           "listed_market": 74,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -273,7 +273,7 @@
         "iqfeed": {
           "dtnSuffix": "CHF.FXCM",
           "listed_market": 74,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -295,7 +295,7 @@
         "iqfeed": {
           "dtnSuffix": "GBP.FXCM",
           "listed_market": 74,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -317,7 +317,7 @@
         "iqfeed": {
           "dtnSuffix": "AUD.FXCM",
           "listed_market": 74,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
