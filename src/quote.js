@@ -662,7 +662,7 @@ function getBlocks(interval, begin, end, options) {
         return _.range(begin.weekYear(), end.weekYear()+1).reduce((blocks, year) => {
             var starting = begin.weekYear() == year ? begin.week() : 1;
             var ending = end.weekYear() == year ? end.week() :
-                monent.tz(year + '-02-01', begin.tz()).weeksInYear();
+                moment.tz(year + '-02-01', begin.tz()).weeksInYear();
             return blocks.concat(_.range(starting, ending +1).map(week => {
                 return week < 10 ? year + '-0' + week : year + '-' + week;
             }));
