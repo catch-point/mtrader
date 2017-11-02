@@ -183,8 +183,9 @@ function openCollection(dirname, name) {
         writeTo(records, name) {
             var id = safe(name);
             var filename = path.resolve(collpath, id + '.csv');
-            return writeTable(filename, records).then(() => {
-                cachedTables.replaceEntry(filename, Promise.resolve(records));
+            return writeTable(filename, records)
+              .then(() => cachedTables.replaceEntry(filename, Promise.resolve(records)))
+              .then(() => {
                 var entry = {
                     id: id,
                     name: name,
@@ -254,12 +255,16 @@ function readTable(filename, size) {
         var objects = _.isFinite(size) ? new Array(size) : new Array();
         objects.length = 0;
         csv.fromStream(fs.createReadStream(filename), {headers : true, ignoreEmpty: true})
-            .on('data', data => {
-                check();
-                objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value));
+            .on('error', error)
+            .on('data', function(data) {
+                try {
+                    check();
+                    objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value));
+                } catch (e) {
+                    this.emit('error', e);
+                }
             })
-            .on('end', () => ready(objects))
-            .on('error', error);
+            .on('end', () => ready(objects));
     });
 }
 

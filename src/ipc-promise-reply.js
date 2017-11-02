@@ -144,6 +144,10 @@ process.on('SIGINT', () => {
     instances.forEach(queue => {
         queue.onquit(error);
     });
+}).on('unhandledRejection', (reason, p) => {
+    if (!reason || reason.message!='SIGINT') {
+        logger.warn('Unhandled Rejection', reason && reason.message || reason || p);
+    }
 });
 
 function createQueue(onquit, pid) {
@@ -162,15 +166,11 @@ function createQueue(onquit, pid) {
                     monitor = null;
                 } else {
                     var marked = _.filter(outstanding, 'marked');
-                    var labels = _.uniq(marked.map(pending => {
-                        if (pending.payload && pending.payload.label)
-                            return pending.payload.label;
-                        else return pending.cmd;
-                    }));
+                    var labels = _.uniq(marked.map(label));
                     if (!_.isEmpty(labels))
                         logger.info("Still processing", labels.join(' and '), "from process", pid);
                     _.reject(marked, 'logged').forEach(pending => {
-                        logger.debug("Waiting on", pid, "for", pending.cmd, pending.payload);
+                        logger.debug("Waiting on", pid, "for", label(pending), pending.payload);
                         pending.logged = true;
                     });
                     _.forEach(outstanding, pending => {
@@ -208,6 +208,12 @@ function createQueue(onquit, pid) {
             }
         }
     };
+}
+
+function label(pending) {
+    if (pending.payload && pending.payload.label)
+        return pending.payload.label;
+    else return pending.cmd;
 }
 
 function serializeError(err) {

@@ -160,9 +160,7 @@ var functions = module.exports.functions = {
             for (var p=positions.length-1; p>=0; p--) {
                 var bars = _.values(positions[p]).filter(ctx => _.isObject(ctx));
                 for (var b = bars.length-1; b>=0; b--) {
-                    if (p != positions.length-1 || b != bars.length-1) {
-                        if (condition(bars[b])) return bars[b][name];
-                    }
+                    if (condition(bars[b])) return bars[b][name];
                 }
             }
             return null;

@@ -133,12 +133,12 @@ function lookup(datasources, options) {
     return results.reduce((promise, data) => promise.then(result => {
         return data.then(o => result.concat(o), err => {
             if (!error) error = err;
-            else logger.warn("Fetch lookup failed", err);
+            else logger.debug("Fetch lookup failed", err);
             return result;
         });
     }), Promise.resolve([])).then(result => {
         if (error && _.isEmpty(result)) throw error;
-        else if (error) logger.warn("Fetch fundamental failed", error);
+        else if (error) logger.debug("Fetch fundamental failed", error);
         return result;
     }).then(rows => _.map(
         _.groupBy(rows, row => row.symbol + ':' + row.exchange),
@@ -168,12 +168,12 @@ function fundamental(datasources, options) {
     }).reduce((promise, data) => promise.then(result => {
         return data.then(a => a.reduce((result,o) => _.defaults(result, o), result), err => {
             if (!error) error = err;
-            else logger.warn("Fetch fundamental failed", err);
+            else logger.debug("Fetch fundamental failed", err);
             return result;
         });
     }), Promise.resolve({})).then(result => {
         if (error && _.isEmpty(result)) throw error;
-        else if (error) logger.warn("Fetch fundamental failed", error);
+        else if (error) logger.debug("Fetch fundamental failed", error);
         return result;
     }).then(result => {
         return [_.defaults({
@@ -204,7 +204,6 @@ function interday(datasources, options) {
     var sources = getDatasources(datasources, opts, opts.interval);
     return _.reduce(sources, (promise, source, id) => promise.catch(err => {
         return datasources[id].interday(_.defaults({}, source, opts)).then(result => {
-            if (err && !_.isArray(err)) logger.warn("Fetch", opts.interval, "failed", err);
             if (err && !_.isArray(err)) logger.debug("Fetch", opts.interval, "failed", err.stack);
             if (_.isArray(err) && err.length >= result.length)
                 return err;
@@ -213,7 +212,7 @@ function interday(datasources, options) {
             return result;
         }, err2 => {
             if (_.isEmpty(err)) throw err2;
-            logger.warn("Fetch", opts.interval, "failed", err2);
+            logger.debug("Fetch", opts.interval, "failed", err2);
             throw err;
         });
     }), Promise.reject()).catch(err => {
@@ -248,11 +247,11 @@ function intraday(datasources, options) {
         return datasources[id].intraday(_.defaults({
             minutes: minutes
         }, source, opts)).then(result => {
-            if (err) logger.warn("Fetch", minutes, "minutes failed", err);
+            if (err) logger.debug("Fetch", minutes, "minutes failed", err);
             return result;
         }, err2 => {
             if (!err) throw err2;
-            logger.warn("Fetch intraday failed", err2);
+            logger.debug("Fetch intraday failed", err2);
             throw err;
         });
     }), Promise.reject()).then(results => {
