@@ -173,6 +173,7 @@ function readCollect(name) {
     var read = name ? config.read(name) : {};
     if (!read) throw Error("Could not read " + name + " settings");
     return _.defaults({
+        label: name,
         parameters: _.defaults({}, config('parameters'), read.parameters),
         columns: _.extend({}, read.columns, config('columns')),
         variables: _.defaults({}, config('variables'), read.variables),

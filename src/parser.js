@@ -64,6 +64,8 @@ module.exports = function(handlers) {
                 return _handlers.constant(expr);
             else if (_.isString(expr))
                 return parseExpression(expr, subs, _handlers);
+            else if (_.isNumber(expr))
+                return parseExpression(expr.toString(), subs, _handlers);
             else if (_.isArray(expr))
                 return expr.map(value => parseExpression(value, subs, _handlers));
             else if (_.isObject(expr) && !_.isFunction(expr) && _.allKeys(expr).every(k=>_.has(expr,k)))
@@ -129,7 +131,6 @@ function parseVariables(exprs) {
 }
 
 function parseExpression(str, substitutions, handlers) {
-    expect(str).to.be.ok.and.a('string');
     var list = parseExpressions(str, substitutions);
     if (!list.length) throw Error("No input: " + str);
     if (list.length > 1) throw Error("Did not expect multiple expressions: " + str);
@@ -142,7 +143,7 @@ function parseExpression(str, substitutions, handlers) {
 }
 
 function parseExpressions(str, substitutions) {
-    var expressions = parseExpressionList(str);
+    var expressions = parseExpressionList(str.toString());
     if (_.isEmpty(substitutions)) return expressions;
     else return expressions.map(expr => inline(expr, substitutions));
 }

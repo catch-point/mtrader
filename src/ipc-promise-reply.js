@@ -162,8 +162,13 @@ function createQueue(onquit, pid) {
                     monitor = null;
                 } else {
                     var marked = _.filter(outstanding, 'marked');
-                    var cmds = _.uniq(marked.map(pending => pending.cmd));
-                    if (!_.isEmpty(cmds)) logger.info("Still processing", cmds.join(' and '), "from process", pid);
+                    var labels = _.uniq(marked.map(pending => {
+                        if (pending.payload && pending.payload.label)
+                            return pending.payload.label;
+                        else return pending.cmd;
+                    }));
+                    if (!_.isEmpty(labels))
+                        logger.info("Still processing", labels.join(' and '), "from process", pid);
                     _.reject(marked, 'logged').forEach(pending => {
                         logger.debug("Waiting on", pid, "for", pending.cmd, pending.payload);
                         pending.logged = true;

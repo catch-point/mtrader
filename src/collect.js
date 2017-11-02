@@ -127,7 +127,7 @@ function collect(quote, callCollect, collections, fields, options) {
                     [options.temporalCol]: 'DATETIME(ending)'
                 }),
                 filter: _.flatten(_.compact(filter), true),
-                pad_begin: pad_begin,
+                pad_begin: (opts.pad_begin || 0) + pad_begin,
                 order: _.flatten(_.compact(['DATETIME(ending)', opts.order]), true),
                 parameters: _.defaults({}, options.parameters, opts.parameters, params)
             }, opts));
@@ -190,11 +190,12 @@ function getPortfolio(portfolio, collections, options) {
                 if (cfg) collections[symbolExchange] = cfg;
             }
             if (collections[symbolExchange]) return _.defaults({
-                name: symbolExchange,
+                label: symbolExchange,
                 upstream: _.flatten(_.compact([options.upstream, symbolExchange]), true)
             }, collections[symbolExchange], opts);
             if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
             return _.defaults({
+                label: symbolExchange,
                 symbol: m[1],
                 exchange: m[2]
             }, opts);
@@ -226,7 +227,7 @@ function parseNeededColumns(fields, options) {
     var variables = varnames.reduce((needed, name) => {
         if (_.has(options.variables, name)) {
             needed[name] = normalizer.parse(options.variables[name]);
-        } else if (!_.has(columns, name)) {
+        } else if (!_.has(needed, name) && ~fields.indexOf(name)) {
             needed[name] = name; // pass through fields used in rolling functions
         }
         return needed;
