@@ -95,6 +95,23 @@ var functions = module.exports.functions = {
             warmUpLength: n + calc.warmUpLength - 1
         });
     },
+    DIRECTION: _.extend((opts, n_periods, calc) => {
+        var n = asPositiveInteger(n_periods, "DIRECTION");
+        return _.extend(bars => {
+            var values = getValues(n, calc, bars);
+            var currently = _.last(values);
+            for (var i=values.length -2; i>=0; i--) {
+                if (values[i] < currently) return 1;
+                else if (values[i] > currently) return -1;
+            }
+            return 0;
+        }, {
+            warmUpLength: n + calc.warmUpLength - 1
+        });
+    }, {
+        description: "If the prior different value was higher then the current value then return 1, if the prior different value was lower then the current value then return -1, if all prior values within numberOfPeriods was the same then return 0.",
+        args: "numberOfPeriods, expression"
+    }),
     /* Age Of High */
     AOH(opts, num, high) {
         var n = asPositiveInteger(num, "AOH");
@@ -156,7 +173,7 @@ var functions = module.exports.functions = {
             warmUpLength: n + calc.warmUpLength
         });
     },
-    LRS(opts, n, expression) {
+    LRS: _.extend((opts, n, expression) => {
         var len = asPositiveInteger(n, "LRS");
         return _.extend(bars => {
             var values = getValues(len, expression, bars);
@@ -170,11 +187,12 @@ var functions = module.exports.functions = {
             var sma = sy/n;
             return a*100/sma;
         }, {
-            warmUpLength: len * 10 + expression.warmUpLength - 1,
-            description: "Linear Regression Slope as a percentage"
+            warmUpLength: len * 10 + expression.warmUpLength - 1
         });
-    },
-    R2(opts, n, expression) {
+    }, {
+        description: "Linear Regression Slope as a percentage"
+    }),
+    R2: _.extend((opts, n, expression) => {
         var len = asPositiveInteger(n, "R2");
         return _.extend(bars => {
             var values = getValues(len, expression, bars);
@@ -191,10 +209,11 @@ var functions = module.exports.functions = {
             var smm = values.reduce((s, y, x) => s + Math.pow(sma - y, 2), 0);
             return 100 - see*100/smm;
         }, {
-            warmUpLength: len * 10 + expression.warmUpLength - 1,
-            description: "R-squared as a percentage"
+            warmUpLength: len * 10 + expression.warmUpLength - 1
         });
-    },
+    }, {
+        description: "R-squared as a percentage"
+    }),
     /* Standard Deviation */
     STDEV(opts, num, calc) {
         var n = asPositiveInteger(num, "STDEV");
