@@ -321,6 +321,28 @@
         }
       }
     },
+    "NZD": {
+      "description": "Forex Capital Markets trading using NZD as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "02:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "AUD",
+      "tz": "America/New_York",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["CCY"],
+          "marketLang": "en-US",
+          "yahooSuffix": "NZD=X",
+          "fetch": ["fundamental"]
+        },
+        "iqfeed": {
+          "dtnSuffix": "NZD.FXCM",
+          "listed_market": 74,
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
+        }
+      }
+    },
     "LSE": {
       "description": "The London Stock Exchange (LSE) is a stock exchange located in the City of London in the United Kingdom and the third-largest stock exchange in the world.",
       "label": "London Stock Exchange",
