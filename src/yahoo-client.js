@@ -48,8 +48,6 @@ module.exports = function() {
     return {
         close() {},
         lookup: lookupSymbol.bind(this, _.memoize(throttlePromise(listSymbols, 2))),
-        fundamental: queue(loadSecurity, 32),
-        intraday: queue(loadIntradayQuote, 32),
         month: loadTable.bind(this, throttled, '1mo', 'history'),
         day: loadTable.bind(this, throttled, '1d', 'history'),
         dividend: loadTable.bind(this, throttled, '1d', 'div'),
@@ -174,61 +172,6 @@ function parseJSON(text) {
         }
         return {ResultSet:{Result:result}};
     }
-}
-
-function loadSecurity(symbols) {
-    var url = quotes + "?f=sj1nxa2ee7e8e9b4j4p5p6rr5r6r7s7&s="
-        + symbols.map(encodeURIComponent).join(',');
-    return promiseText(url).then(parseCSV).then(rows => rows.map(row => _.object(
-        ['symbol', 'MarketCapitalization', 'name', 'exch', 'AverageDailyVolume', 'EarningsShare', 'EPSEstimateCurrentYear', 'EPSEstimateNextYear', 'EPSEstimateNextQuarter', 'BookValue', 'EBITDA', 'PriceSales', 'PriceBook', 'PERatio', 'PEGRatio', 'PriceEPSEstimateCurrentYear', 'PriceEPSEstimateNextYear', 'ShortRatio'],
-        row
-    ))).then(function(list){
-        return list.reduce(function(hash, security){
-            hash[security.symbol] = security;
-            return hash;
-        }, {});
-    }).then(hash => symbols.map(symbol => hash[symbol]));
-}
-
-function loadIntradayQuote(symbols) {
-    var url = quotes + "?f=sd1t1ol1mvp&s="
-        + symbols.map(encodeURIComponent).join(',');
-    return promiseText(url).then(parseCSV).then(rows => rows.map(row => _.object(
-        ["symbol", "date", "time", "open", "close", "range", "volume", "prior_close"],
-        row
-    ))).then(function(list){
-        return list.reduce(function(hash, security){
-            hash[security.symbol] = security;
-            return hash;
-        }, {});
-    }).then(hash => symbols.map(symbol => hash[symbol]));
-}
-
-function queue(func, batchSize) {
-    var context, promise = Promise.resolve();
-    var queue = [], listeners = [];
-
-    return function(items) {
-        context = this;
-        return new Promise(function(resolve, reject) {
-            queue = queue.concat(items);
-            listeners.push({resolve: resolve, reject: reject});
-            promise = promise.then(function(){
-                var taken = queue.splice(0, batchSize);
-                var notifications = listeners.splice(0, batchSize);
-                if (!taken.length) return undefined;
-                return func.call(context, taken).then(function(result) {
-                    for (var i=0; i<notifications.length; i++) {
-                        notifications[i].resolve(result[i]);
-                    }
-                }, function(error) {
-                    for (var i=0; i<notifications.length; i++) {
-                        notifications[i].reject(error);
-                    }
-                });
-            });
-        });
-    };
 }
 
 function parseCSV(text) {

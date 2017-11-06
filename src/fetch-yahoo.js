@@ -62,12 +62,6 @@ module.exports = function() {
                 options: ['symbol', 'yahoo_symbol', 'yahooSuffix', 'marketLang', 'exchs', 'exchange'],
                 properties: ['symbol', 'yahoo_symbol', 'exchange', 'name', 'type', 'typeDisp']
             }, {
-                name: "fundamental",
-                usage: "fundamental(options)",
-                description: "Details of a security on the Yahoo! network",
-                options: ['symbol', 'yahoo_symbol', 'yahooSuffix', 'exchange', 'marketOpensAt', 'marketClosesAt', 'tz'],
-                properties: ['symbol', 'MarketCapitalization', 'name', 'exch', 'AverageDailyVolume', 'EarningsShare', 'EPSEstimateCurrentYear', 'EPSEstimateNextYear', 'EPSEstimateNextQuarter', 'BookValue', 'EBITDA', 'PriceSales', 'PriceBook', 'PERatio', 'PEGRatio', 'PriceEPSEstimateCurrentYear', 'PriceEPSEstimateNextYear', 'ShortRatio']
-            }, {
                 name: "interday",
                 usage: "interday(options)",
                 description: "Historic data for a security on the Yahoo! network",
@@ -111,13 +105,7 @@ module.exports = function() {
             })).then(rows => rows.filter(row => row.exchange));
         },
         fundamental(options) {
-            expect(options).to.be.like({
-                symbol: /^\S+$/,
-                marketClosesAt: _.isString,
-                tz: _.isString
-            });
-            return yahoo.fundamental(symbol(options))
-                .then(security => [_.omit(security, value => value == 'N/A')]);
+            throw Error("Yahoo! fundamental service has been discontinued");
         },
         interday(options) {
             expect(options).to.be.like({
@@ -264,11 +252,10 @@ function day(yahoo, symbol, options) {
     return Promise.all([
         yahoo.day(symbol, options.begin, options.tz),
         yahoo.split(symbol, decade, options.tz),
-        yahoo.dividend(symbol, decade, options.tz),
-        eod ? {} : yahoo.intraday(symbol)
+        yahoo.dividend(symbol, decade, options.tz)
     ]).then(psdi => {
-        var prices = psdi[0], split = psdi[1], div = psdi[2], intraday = psdi[3];
-        var bars = adjRight(prices, split, div, options, (today, datum, splits, split, div) => ({
+        var prices = psdi[0], split = psdi[1], div = psdi[2];
+        return adjRight(prices, split, div, options, (today, datum, splits, split, div) => ({
             ending: endOf('day', datum.Date, options),
             open: parseCurrency(datum.Open, splits),
             high: parseCurrency(datum.High, splits),
@@ -281,7 +268,6 @@ function day(yahoo, symbol, options) {
                     (parseCurrency(datum.Close, splits)/split - today.close - div)
                 ) * 1000000) / 1000000 || today.adj_close
         })).filter(bar => bar.volume);
-        return appendIntraday(bars, intraday, now, options);
     }).then(result => {
         if (_.last(result) && !_.last(result).close) result.pop();
         if (!options.end) return result;
@@ -334,50 +320,6 @@ function adjRight(bars, _splits, _divs, options, cb) {
         today.dividend = 0;
     }
     return result;
-}
-
-function appendIntraday(bars, intraday, now, options) {
-    if (_.isEmpty(intraday) || _.isEmpty(bars)) return bars;
-    var dateTime = intraday.date + ' ' + intraday.time;
-    var m = dateTime.match(/(\d+)\/(\d+)\/(\d+) (\d+):(\d+)(am|pm)/);
-    if (!m) return bars;
-    var tz = options.tz;
-    var marketClosesAt = options.marketClosesAt;
-    var hour = 'pm' == m[6] && 12 > +m[4] ? 12 + +m[4] : m[4];
-    var date = (m[3]+'-'+m[1]+'-'+m[2]).replace(/\b(\d)\b/g,'0$1');
-    var lastTrade = date + ' ' + (hour+':'+m[5]+':00').replace(/\b(\d)\b/g,'0$1');
-    var low = intraday.range.replace(/[^\d\.].*$/,'');
-    var high = intraday.range.replace(/^.*[^\d\.]/,'');
-    var quote = {
-        ending: moment.tz(date + ' ' + marketClosesAt, tz).format(),
-        open: _.isFinite(intraday.open) ? +intraday.open : undefined,
-        high: _.isFinite(high) ? +high : undefined,
-        low: _.isFinite(low) ? +low : undefined,
-        close: _.isFinite(intraday.close) ? +intraday.close : undefined,
-        prior_close: _.isFinite(intraday.prior_close) ? +intraday.prior_close : undefined,
-        volume: _.isFinite(intraday.volume) ? +intraday.volume : undefined,
-        lastTrade: moment.tz(lastTrade, tz).format()
-    };
-    if (!_.isFinite(quote.open)) return bars;
-    var latest = {};
-    while (!_.last(bars).ending || _.last(bars).ending >= quote.ending) latest = bars.pop();
-    var prior_close = latest.adj_close || _.last(bars).adj_close || quote.prior_close;
-    var intraday = _.defaults({
-        ending: latest.ending || quote.ending,
-        open: latest.open || quote.open,
-        high: Math.max(latest.high, quote.high) || latest.high || quote.high,
-        low: Math.min(latest.low, quote.low) || latest.low || quote.low,
-        close: quote.close,
-        volume: quote.volume + (latest.volume || 0),
-        adj_close: Math.round(quote.close * prior_close / quote.prior_close * 1000000) / 1000000,
-        split: latest.split || 1,
-        dividend: latest.dividend || 0,
-        lastTrade: quote.lastTrade,
-        asof: now.format(),
-        incomplete: true
-    }, latest);
-    bars.push(intraday);
-    return bars;
 }
 
 function endOf(unit, begin, options) {

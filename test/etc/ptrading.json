@@ -1,4 +1,5 @@
 {
+  "description": "Configuration test file for ptrading",
   "files": {
     "enabled": true,
     "fallback": ["google", "yahoo", "iqfeed"]
@@ -30,7 +31,31 @@
         "yahoo": {
           "exchs": ["PCX"],
           "marketLang": "en-US",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
+        }
+      }
+    },
+    "BATS": {
+      "label": "BATS Global Markets",
+      "description": "In the United States Bats operates two stock exchanges, the BZX Exchange and the BYX Exchange (The Bats Exchanges), which as of 2012 accounted for about 10-12% of all U.S. equity trading on a daily basis.",
+      "afterHoursClosesAt": "20:00:00",
+      "marketClosesAt": "16:00:00",
+      "marketOpensAt": "09:30:00",
+      "premarketOpensAt": "04:00:00",
+      "currency": "USD",
+      "tz": "America/New_York",
+      "datasources": {
+        "files": {
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+        },
+        "google": {
+            "e": "BATS",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
+        "yahoo": {
+          "exchs": ["NYQ", "PCX", "BTS"],
+          "marketLang": "en-US",
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         }
       }
     },
@@ -54,7 +79,7 @@
         "yahoo": {
           "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
           "marketLang": "en-US",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         }
       }
     },
@@ -78,7 +103,7 @@
         "yahoo": {
           "exchs": ["NYQ"],
           "marketLang": "en-US",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         }
       }
     },
@@ -102,7 +127,7 @@
         "yahoo": {
           "exchs": ["ASE"],
           "marketLang": "en-US",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         }
       }
     },
@@ -119,11 +144,15 @@
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
         },
+        "google": {
+            "e": "TSE",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["TOR", "YHD"],
           "marketLang": "en-CA",
           "yahooSuffix": ".TO",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         }
       }
     },
@@ -140,11 +169,15 @@
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
         },
+        "google": {
+            "e": "CVE",
+            "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+        },
         "yahoo": {
           "exchs": ["TOR"],
           "marketLang": "en-CA",
           "yahooSuffix": ".V",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         }
       }
     },
@@ -160,16 +193,10 @@
         "files": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
         },
-        "yahoo": {
-          "exchs": ["CCY"],
-          "marketLang": "en-US",
-          "yahooSuffix": "CAD=X",
-          "fetch": ["fundamental"]
-        },
         "iqfeed": {
           "dtnSuffix": "CAD.FXCM",
           "listed_market": 74,
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m10", "m5", "m1"]
+          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
         }
       }
     },
@@ -194,7 +221,7 @@
           "exchs": ["LSE"],
           "marketLang": "en-GB",
           "yahooSuffix": ".L",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         }
       }
     }

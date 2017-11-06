@@ -48,22 +48,10 @@ describe("yahoo-client", function() {
             name: "Altaba Inc."
         })));
     });
-    it("should find AABA details", function() {
-        return client.fundamental('AABA').should.eventually.be.like({
-            symbol: 'AABA',
-            name: "Altaba Inc."
-        });
-    });
     it("should find IBM", function() {
         return client.lookup('IBM', 'en-US').then(_.first).should.eventually.be.like({
             symbol: 'IBM',
             name: "International Business Machines Corporation"
-        });
-    });
-    it("should find IBM details", function() {
-        return client.fundamental('IBM').should.eventually.be.like({
-            symbol: 'IBM',
-            name: "International Business Machines"
         });
     });
     it("should return daily", function() {
@@ -102,9 +90,6 @@ describe("yahoo-client", function() {
             {Date:'2013-12-01',Open:37.04,High:41.05,Low:36.25,Close:40.44},
             {Date:'2014-01-01',Open:40.37,High:41.72,Low:34.45,Close:36.01}
         ]);
-    });
-    it("should load intraday quote", function() {
-        return client.intraday('AABA').should.eventually.have.property('symbol', 'AABA');
     });
     it("should find BRK/A symbol", function() {
         return client.lookup('BRK/A', 'en-US').should.eventually.be.like(results => _.some(results, like(

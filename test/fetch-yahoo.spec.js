@@ -49,16 +49,6 @@ describe("fetch-yahoo", function() {
             name: "Altaba Inc."
         })));
     });
-    it("should find AABA details", function() {
-        return client.fundamental({
-            symbol:'AABA',
-            yahoo_symbol:'AABA',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([{
-            symbol: 'AABA',
-            name: "Altaba Inc."
-        }]);
-    });
     it("should find IBM", function() {
         return client.lookup({
             symbol:'IBM',
@@ -68,16 +58,6 @@ describe("fetch-yahoo", function() {
             symbol: 'IBM',
             name: "International Business Machines Corporation"
         });
-    });
-    it("should find IBM details", function() {
-        return client.fundamental({
-            symbol:'IBM',
-            yahoo_symbol:'IBM',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([{
-            symbol: 'IBM',
-            name: "International Business Machines"
-        }]);
     });
     it("should return daily", function() {
         return client.interday({

@@ -28,7 +28,7 @@
         "yahoo": {
           "exchs": ["PCX"],
           "marketLang": "en-US",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         },
         "iqfeed": {
           "listed_market": 11,
@@ -53,7 +53,7 @@
         "yahoo": {
           "exchs": ["NYQ", "PCX", "BTS"],
           "marketLang": "en-US",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         },
         "iqfeed": {
           "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
@@ -77,7 +77,7 @@
         "yahoo": {
           "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
           "marketLang": "en-US",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         },
         "iqfeed": {
           "listed_market": 5,
@@ -102,7 +102,7 @@
         "yahoo": {
           "exchs": ["NYQ"],
           "marketLang": "en-US",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         },
         "iqfeed": {
           "listed_market": 7,
@@ -127,7 +127,7 @@
         "yahoo": {
           "exchs": ["ASE"],
           "marketLang": "en-US",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         },
         "iqfeed": {
           "listed_market": 6,
@@ -153,7 +153,7 @@
           "exchs": ["TOR", "YHD"],
           "marketLang": "en-CA",
           "yahooSuffix": ".TO",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         },
         "iqfeed": {
           "dtnPrefix": "C.",
@@ -180,7 +180,7 @@
           "exchs": ["TOR"],
           "marketLang": "en-CA",
           "yahooSuffix": ".V",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         },
         "iqfeed": {
           "dtnPrefix": "C.",
@@ -198,12 +198,6 @@
       "currency": "CAD",
       "tz": "America/New_York",
       "datasources": {
-        "yahoo": {
-          "exchs": ["CCY"],
-          "marketLang": "en-US",
-          "yahooSuffix": "CAD=X",
-          "fetch": ["fundamental"]
-        },
         "iqfeed": {
           "dtnSuffix": "CAD.FXCM",
           "listed_market": 74,
@@ -220,12 +214,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "yahoo": {
-          "exchs": ["CCY"],
-          "marketLang": "en-US",
-          "yahooSuffix": "USD=X",
-          "fetch": ["fundamental"]
-        },
         "iqfeed": {
           "dtnSuffix": "USD.FXCM",
           "listed_market": 74,
@@ -242,12 +230,6 @@
       "currency": "JPY",
       "tz": "America/New_York",
       "datasources": {
-        "yahoo": {
-          "exchs": ["CCY"],
-          "marketLang": "en-US",
-          "yahooSuffix": "JPY=X",
-          "fetch": ["fundamental"]
-        },
         "iqfeed": {
           "dtnSuffix": "JPY.FXCM",
           "listed_market": 74,
@@ -264,12 +246,6 @@
       "currency": "CHF",
       "tz": "America/New_York",
       "datasources": {
-        "yahoo": {
-          "exchs": ["CCY"],
-          "marketLang": "en-US",
-          "yahooSuffix": "CHF=X",
-          "fetch": ["fundamental"]
-        },
         "iqfeed": {
           "dtnSuffix": "CHF.FXCM",
           "listed_market": 74,
@@ -286,12 +262,6 @@
       "currency": "GBP",
       "tz": "America/New_York",
       "datasources": {
-        "yahoo": {
-          "exchs": ["CCY"],
-          "marketLang": "en-US",
-          "yahooSuffix": "GBP=X",
-          "fetch": ["fundamental"]
-        },
         "iqfeed": {
           "dtnSuffix": "GBP.FXCM",
           "listed_market": 74,
@@ -308,12 +278,6 @@
       "currency": "AUD",
       "tz": "America/New_York",
       "datasources": {
-        "yahoo": {
-          "exchs": ["CCY"],
-          "marketLang": "en-US",
-          "yahooSuffix": "AUD=X",
-          "fetch": ["fundamental"]
-        },
         "iqfeed": {
           "dtnSuffix": "AUD.FXCM",
           "listed_market": 74,
@@ -330,12 +294,6 @@
       "currency": "AUD",
       "tz": "America/New_York",
       "datasources": {
-        "yahoo": {
-          "exchs": ["CCY"],
-          "marketLang": "en-US",
-          "yahooSuffix": "NZD=X",
-          "fetch": ["fundamental"]
-        },
         "iqfeed": {
           "dtnSuffix": "NZD.FXCM",
           "listed_market": 74,
@@ -361,7 +319,7 @@
           "exchs": ["LSE"],
           "marketLang": "en-GB",
           "yahooSuffix": ".L",
-          "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
+          "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         }
       }
     }
