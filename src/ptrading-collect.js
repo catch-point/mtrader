@@ -103,10 +103,10 @@ function initialize(program) {
     });
     var seq = 0;
     var collect = module.exports = function(options) {
-        var duration = options.duration && moment.duration(options.duration);
+        var duration = options.reset_every && moment.duration(options.reset_every);
         var begin = moment(options.begin);
         var end = moment(options.end);
-        if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.duration);
+        if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.reset_every);
         if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
         if (!end.isValid()) throw Error("Invalid end date: " + options.end);
         var segments = [options.begin];
@@ -213,7 +213,7 @@ help(app, 'collect', `
     help pad_begin  
     help pad_end  
     help pad_leading  
-    help duration  
+    help reset_every  
     help portfolio  
     help variables  
     help columns  
@@ -230,8 +230,8 @@ help(app, 'pad_leading', `
 
   Sets the number of additional rows to to compute as a warmup, but not included in the result
 `);
-help(app, 'duration', `
-  Usage: set duration P1Y  
+help(app, 'reset_every', `
+  Usage: set reset_every P1Y  
 
   Sets the duration that collect should run before resetting any preceeding values
 `);

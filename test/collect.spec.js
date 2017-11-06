@@ -1038,6 +1038,44 @@ describe("collect", function() {
             {date:"2017-01-30",close:0.76238}
         ]);
     });
+    it("should ignore unused variables even in rolling functions", function() {
+        return collect({
+            portfolio: 'USD.CAD',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'ROUND(1/day.close,5)'
+            },
+            variables: {
+                m240_ending: 'm240.ending',
+                m240_close: 'ROUND(1/m240.close,5)',
+                m240_total_change: 'PREV("m240_total_change") + m240_close - PREV("m240_close")'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        }).should.eventually.be.like([
+            {date:"2017-01-02",close:0.74421},
+            {date:"2017-01-03",close:0.74481},
+            {date:"2017-01-04",close:0.75185},
+            {date:"2017-01-05",close:0.7561},
+            {date:"2017-01-06",close:0.75549},
+            {date:"2017-01-09",close:0.75662},
+            {date:"2017-01-10",close:0.75574},
+            {date:"2017-01-11",close:0.75882},
+            {date:"2017-01-12",close:0.76076},
+            {date:"2017-01-13",close:0.7629},
+            {date:"2017-01-16",close:0.75911},
+            {date:"2017-01-17",close:0.76678},
+            {date:"2017-01-18",close:0.75364},
+            {date:"2017-01-19",close:0.75087},
+            {date:"2017-01-20",close:0.7514},
+            {date:"2017-01-23",close:0.75548},
+            {date:"2017-01-24",close:0.76014},
+            {date:"2017-01-25",close:0.76518},
+            {date:"2017-01-26",close:0.76397},
+            {date:"2017-01-27",close:0.76054},
+            {date:"2017-01-30",close:0.76238}
+        ]);
+    });
     it("should override order in nested collect", function() {
         config.save('CADUSD', {
             portfolio: 'USD.CAD',

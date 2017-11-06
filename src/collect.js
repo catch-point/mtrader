@@ -61,8 +61,6 @@ module.exports = function(quote, collectFn) {
                 symbolCol: '$symbol',
                 exchangeCol: '$exchange',
                 temporalCol: '$temporal',
-                variables: {},
-                criteria: _.flatten(_.compact([options.criteria, options.retain])),
                 tz: moment.tz.guess(),
                 now: Date.now()
             });
@@ -76,7 +74,7 @@ module.exports = function(quote, collectFn) {
 function help(quote) {
     var used = [
         'portfolio', 'columns', 'variables', 'criteria', 'filter',
-        'precedence', 'order', 'pad_leading', 'duration', 'upstream'
+        'precedence', 'order', 'pad_leading', 'reset_every', 'upstream'
     ];
     return quote({help: true}).then(_.first).then(help => {
         return [{
@@ -98,6 +96,7 @@ function collect(quote, callCollect, collections, fields, options) {
     var optional = _.difference(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true), fields);
     var defaults = _.object(optional, optional.map(v => null));
     var avail = _.union(fields, optional);
+    checkCircularVariableReference(avail, options);
     var columns = parseNeededColumns(avail, options);
     var columnNames = _.object(_.keys(options.columns), _.keys(columns));
     var simpleColumns = getSimpleColumns(columns, options);
@@ -168,6 +167,31 @@ function collect(quote, callCollect, collections, fields, options) {
 }
 
 /**
+ * Looks for column/variable circular reference and if found throws an Error
+ */
+function checkCircularVariableReference(fields, options) {
+    var variables = _.pick(_.extend({}, _.omit(options.columns, fields), options.variables), (v, k) => v!=k);
+    var references = Parser({
+        constant(value) {
+            return [];
+        },
+        variable(name) {
+            if (_.has(variables, name)) return [name];
+            else return [];
+        },
+        expression(expr, name, args) {
+            return _.uniq(_.flatten(args, true));
+        }
+    }).parse(variables);
+    while (_.reduce(references, (more, reference, name) => {
+        if (!reference.length) return more;
+        if (_.contains(reference, name)) throw Error("Circular variable reference " + name + ": " + variables[name]);
+        references[name] = _.uniq(_.flatten(reference.map(ref => references[ref]), true));
+        return more || references[name].length;
+    }, false));
+}
+
+/**
  * Parses a comma separated list into symbol/exchange pairs.
  */
 function getPortfolio(portfolio, collections, options) {
@@ -235,26 +259,7 @@ function parseNeededColumns(fields, options) {
     var filterOrder = _.difference(normalizer.parseCriteriaList(_.flatten(_.compact([
         options.filter, options.order
     ]), true)), _.keys(needed), _.keys(variables));
-    var neededColumns = _.extend(needed, variables, _.object(filterOrder, filterOrder));
-    var references = Parser({
-        constant(value) {
-            return [];
-        },
-        variable(name) {
-            if (neededColumns[name] && neededColumns[name]!=name) return [name];
-            else return [];
-        },
-        expression(expr, name, args) {
-            return _.uniq(_.flatten(args, true));
-        }
-    }).parse(_.pick(neededColumns, (v, k) => v!=k));
-    while (_.reduce(references, (more, reference, name) => {
-        if (!reference.length) return more;
-        if (_.contains(reference, name)) throw Error("Circular variable reference " + name);
-        references[name] = _.uniq(_.flatten(reference.map(ref => references[ref]), true));
-        return more || references[name].length;
-    }, false));
-    return neededColumns;
+    return _.extend(needed, variables, _.object(filterOrder, filterOrder));
 }
 
 /**
@@ -270,7 +275,7 @@ function getVariables(fields, options) {
         variable(name) {
             if (~fields.indexOf(name))
                 return {[name]: Infinity}; // must propagate fields through
-            else if (options.columns[name] || options.variables[name])
+            else if (_.has(options.columns, name) || _.has(options.variables, name))
                 return {[name]: 1};
             else return {}; // don't include parameters
         },
@@ -289,9 +294,17 @@ function getVariables(fields, options) {
         }
     });
     var exprs = parser.parseCriteriaList(_.flatten(_.compact([
-        _.values(options.variables), _.values(options.columns),
+        _.values(options.columns),
         options.criteria, options.filter, options.precedence
     ]), true));
+    var more_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
+    while (more_vars.length) {
+        var old_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
+        var additional = parser.parseCriteriaList(_.values(_.pick(options.variables, more_vars)));
+        exprs = exprs.concat(additional);
+        var new_vars = _.uniq(_.flatten(additional.map(_.keys), true));
+        more_vars = _.difference(new_vars, old_vars);
+    }
     var multiples = _.uniq(_.flatten(exprs.map(expr => _.keys(expr).filter(name => expr[name] > 1)), true));
     return _.union(_.difference(_.keys(options.columns), fields), multiples);
 }
@@ -443,16 +456,16 @@ function getUsedColumns(options) {
     ]), true);
     return _.uniq(_.flatten(Parser({
         constant(value) {
-            return _.isString(value) ? value : null;
+            return [];
         },
         variable(name) {
             return [name];
         },
         expression(expr, name, args) {
             if (rolling.has(name)) return rolling.getVariables(expr);
-            else return _.uniq(_.flatten(args.filter(_.isArray), true));
+            else return _.uniq(_.flatten(args, true));
         }
-    }).parseCriteriaList(exprs).filter(_.isArray), true));
+    }).parseCriteriaList(exprs), true));
 }
 
 /**
