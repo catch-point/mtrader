@@ -173,10 +173,44 @@ function invokeHandler(expr, handlers) {
     }
 }
 
+const operators = {
+    NEGATIVE: {op: '-', priority: 1},
+    NOT: {op: '!', priority: 1},
+    MOD: {op: '%', priority: 2},
+    DIVIDE: {op: '/', priority: 2},
+    PRODUCT: {op: '*', priority: 2},
+    SUBTRACT: {op: '-', priority: 3},
+    ADD: {op: '+', priority: 3},
+    GREATER_THAN: {op: '>', priority: 4},
+    LESS_THAN: {op: '<', priority: 4},
+    NOT_LESS_THAN: {op: '>=', priority: 4},
+    NOT_GREATER_THAN: {op: '<=', priority: 4},
+    NOT_EQUAL: {op: '!=', priority: 4},
+    EQUALS: {op: '=', priority: 4},
+    AND: {op: ' AND ', priority: 5},
+    OR: {op: ' OR ', priority: 6}
+};
+
 function serialize(expr) {
-    if (_.isArray(expr)) return _.first(expr) + '(' + _.rest(expr).map(serialize).join(',') + ')';
-    else if (_.isString(expr) || _.isFinite(expr)) return expr; // string literal, number or field
-    else throw Error("Unknown expression: " + expr);
+    if (_.isArray(expr) && operators[_.first(expr)]) {
+        var operator = operators[_.first(expr)];
+        var exprs = _.rest(expr).map((arg, i) => {
+            var aop = operators[_.first(arg)];
+            if (!_.isArray(arg) || !aop || aop.priority < operator.priority)
+                return serialize(arg);
+            else if (i===0 && aop.priority == operator.priority)
+                return serialize(arg); // 1 * 2 / 3 or 1 + 2 - 3
+            else return '(' + serialize(arg) + ')';
+        });
+        if (exprs.length == 1) return operator.op + exprs[0];
+        else return exprs.join(operator.op);
+    } else if (_.isArray(expr)) {
+        return _.first(expr) + '(' + _.rest(expr).map(serialize).join(',') + ')';
+    } else if (_.isString(expr) || _.isFinite(expr)) {
+        return expr; // string literal, number or variable
+    } else {
+        throw Error("Unknown expression: " + expr);
+    }
 }
 
 function parseExpressionList(str) {

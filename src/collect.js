@@ -426,9 +426,10 @@ function createInlineParser(columns, options) {
             return name + '(' + values.join(',') + ')';
         }
     });
+    var formatter = Parser();
     return function(expr) {
         var parsed = inline.parse(expr);
-        return _.isFunction(parsed) ? stringify(parsed()) : parsed;
+        return formatter.parse(_.isFunction(parsed) ? stringify(parsed()) : parsed);
     };
 }
 
