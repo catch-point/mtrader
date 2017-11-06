@@ -101,8 +101,9 @@ function initialize(program) {
           .handle('quote', payload => quote(payload))
           .handle('collect', payload => collect(payload));
     });
-    var seq = 0;
-    var collect = module.exports = function(options) {
+    var processing = children.map(_.constant(0));
+    var queue = [];
+    var collect = function(options) {
         var duration = options.reset_every && moment.duration(options.reset_every);
         var begin = moment(options.begin);
         var end = moment(options.end);
@@ -135,7 +136,17 @@ function initialize(program) {
         var promises = optionset.reduce((promises, options, i) => {
             var wait = i < workers ? Promise.resolve() : promises[i - workers];
             promises.push(wait.then(() => {
-                return children[seq++ % workers].request('collect', options);
+                var c = processing.indexOf(_.min(processing));
+                processing[c]++;
+                return children[c].request('collect', options).then(result => {
+                    processing[c]--;
+                    if (!processing[c]) queue_ready();
+                    return result;
+                }, err => {
+                    processing[c]--;
+                    if (!processing[c]) queue_ready();
+                    throw err;
+                });
             }));
             return promises;
         }, []);
@@ -143,17 +154,32 @@ function initialize(program) {
             return _.flatten(dataset, true);
         });
     };
-    collect.close = function() {
+    var queue_ready = function() {
+        var available = processing.filter(load => load === 0).length;
+        queue.splice(0, available).forEach(item => {
+            collect(item.options).then(item.resolve, item.reject);
+        });
+    };
+    module.exports = function(options) {
+        return new Promise((resolve, reject) => {
+            queue.push({options: options, resolve, reject});
+            queue_ready();
+        });
+    };
+    module.exports.close = function() {
+        queue.splice(0).forEach(item => {
+            item.reject(Error("Collect is closing"));
+        });
         children.forEach(child => child.disconnect());
         return quote.close();
     };
-    collect.shell = shell.bind(this, program.description(), collect);
+    module.exports.shell = shell.bind(this, program.description(), module.exports);
     if (require.main === module) {
         var name = program.args.join(' ');
         var options = readCollect(name);
-        collect(options).then(result => tabular(result))
+        module.exports(options).then(result => tabular(result))
           .catch(err => logger.error(err, err.stack))
-          .then(() => collect.close());
+          .then(() => module.exports.close());
     }
 }
 
