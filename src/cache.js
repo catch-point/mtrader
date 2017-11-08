@@ -90,6 +90,10 @@ module.exports = function(func, hashFn, poolSize) {
             marked: false
         };
     };
+    cached.flush = () => {
+        _.forEach(cache, entry => entry.marked = true);
+        return sweep(cache);
+    };
     cached.close = () => {
         _.forEach(cache, entry => entry.marked = true);
         return Promise.all([

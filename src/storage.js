@@ -204,6 +204,9 @@ function openCollection(dirname, name) {
                 }
                 return debouncedWriteMetadata(collpath, metadata);
             });
+        },
+        flushCache() {
+            return cachedTables.flush();
         }
     }));
 }
