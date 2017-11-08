@@ -39,8 +39,7 @@ const rolling = require('./rolling-functions.js');
 const quoting = require('./quoting-functions.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
-const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const expect = require('chai').expect;
 
 /**
  * Delegates most computations to quote.js and add some functions that can compare
@@ -67,7 +66,9 @@ module.exports = function(quote, collectFn) {
             return collect(quote, collectFn || self, collections, fields, opts);
         });
     }, {
-        close() {}
+        close() {
+            return Promise.resolve();
+        }
     });
 };
 
@@ -170,7 +171,14 @@ function collect(quote, callCollect, collections, fields, options) {
  * Looks for column/variable circular reference and if found throws an Error
  */
 function checkCircularVariableReference(fields, options) {
-    var variables = _.pick(_.extend({}, _.omit(options.columns, fields), options.variables), (v, k) => v!=k);
+    var variables = _.extend({}, _.omit(options.columns, fields), options.variables);
+    _.each(getReferences(variables), (reference, name) => {
+        if (_.contains(reference, name) && variables[name] != name)
+            throw Error("Circular variable reference " + name + ": " + variables[name]);
+    });
+}
+
+function getReferences(variables) {
     var references = Parser({
         constant(value) {
             return [];
@@ -183,13 +191,17 @@ function checkCircularVariableReference(fields, options) {
             return _.uniq(_.flatten(args, true));
         }
     }).parse(variables);
-    while (_.reduce(references, (more, reference, name) => {
+    var follow = _.clone(references);
+    while (_.reduce(follow, (more, reference, name) => {
         if (!reference.length) return more;
-        if (_.contains(reference, name)) throw Error("Circular variable reference " + name + ": " + variables[name]);
-        references[name] = _.uniq(_.flatten(reference.map(ref => references[ref]), true));
-        return more || references[name].length;
+        follow[name] = _.uniq(_.flatten(reference.map(ref => ref == name ? [] : follow[ref]), true));
+        references[name] = reference.reduce((union, ref) => {
+            return _.union(union, references[ref]);
+        }, references[name]);
+        return more || follow[name].length;
     }, false));
-}
+    return references;
+};
 
 /**
  * Parses a comma separated list into symbol/exchange pairs.

@@ -171,7 +171,7 @@ function initialize(program) {
             item.reject(Error("Collect is closing"));
         });
         children.forEach(child => child.disconnect());
-        return quote.close();
+        return quote.close().then(collect.close);
     };
     module.exports.shell = shell.bind(this, program.description(), module.exports);
     if (require.main === module) {
