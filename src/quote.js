@@ -72,7 +72,7 @@ function help(fetch) {
     return fetch({help: true})
       .then(help => _.indexBy(help, 'name'))
       .then(help => _.pick(help, ['lookup', 'interday', 'intraday'])).then(help => {
-        var used = ['symbol', 'exchange', 'columns', 'criteria', 'interval', 'parameters', 'variables', 'pad_begin', 'pad_end', 'begin', 'end', 'now', 'tz', 'currency', 'offline', 'marketOpensAt', 'marketClosesAt', 'premarketOpensAt', 'afterHoursClosesAt'];
+        var used = ['symbol', 'exchange', 'columns', 'criteria', 'interval', 'parameters', 'variables', 'pad_begin', 'pad_end', 'begin', 'end', 'now', 'tz', 'currency', 'offline', 'marketOpensAt', 'marketClosesAt', 'premarketOpensAt', 'afterHoursClosesAt', 'transient'];
         var downstream = _.flatten(_.map(help, help => help.options), true);
         var variables = periods.values.reduce((variables, interval) => {
             var fields = interval.charAt(0) != 'm' ? help.interday.properties :
@@ -308,7 +308,7 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
                 end: options.end && options.end < end ? options.end : end && end
             }, options);
             return quoteBars(exprMap[interval], opts)
-              .then(bars => bars.map(bar => createPoint(bar, opts)))
+              .then(bars => createPoints(bars, opts))
               .then(intraday => {
                 var points = signal.points ? signal.points.slice(0) : [];
                 if (signal.exit) points.push(signal.exit);
@@ -403,8 +403,8 @@ function fetchBars(fetch, db, fields, expressions, options) {
     var name = getCollectionName(options);
     return db.collection(name).then(collection => {
         return fetchNeededBlocks(fetch, fields, collection, warmUpLength, options)
-          .then(blocks => evalBlocks(collection, warmUpLength, blocks, expressions, options))
-          .then(blocks => readBlocks(collection, blocks, options));
+          .then(blocks => readBlocks(collection, warmUpLength, blocks, expressions, options))
+          .then(tables => trimTables(tables, options));
     }).catch(err => {
         if (!options.offline) throw err;
         else throw Error("Couldn't read needed data, try again without offline flag");
@@ -440,13 +440,16 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
 }
 
 /**
- * If any of the blocks are missing some expressions, evaluate them and store them.
+ * Read the blocks into memory and ensure that expressions have already been computed
  */
-function evalBlocks(collection, warmUpLength, blocks, expressions, options) {
-    if (_.isEmpty(expressions)) return blocks;
+function readBlocks(collection, warmUpLength, blocks, expressions, options) {
+    if (_.isEmpty(expressions))
+        return Promise.all(blocks.map(block => collection.readFrom(block)));
+    var dataPoints = _.object(blocks, []);
     return collection.lockWith(blocks, blocks => blocks.reduce((promise, block, i, blocks) => {
         var last = _.last(collection.tailOf(block));
-        if (!last || options.begin > last.ending) return promise; // warmUp blocks are not evaluated
+        if (!last || options.begin > last.ending)
+            return promise; // warmUp blocks are not evaluated
         var missing = _.difference(_.keys(expressions), collection.columnsOf(block));
         if (!missing.length) return promise;
         return promise.then(dataBlocks => {
@@ -457,61 +460,96 @@ function evalBlocks(collection, warmUpLength, blocks, expressions, options) {
             });
             if (!dataBlocks[block])
                 dataBlocks[block] = collection.readFrom(block);
-            return Promise.all(blocks.slice(0, i+1).map(block => dataBlocks[block]))
-              .then(results => {
-                var data = _.flatten(results, true).map(bar => createPoint(bar, options));
-                var warmUpRecords = data.length - _.last(results).length;
-                var bars = _.last(results).map((bar, i, bars) => {
+            return Promise.all(blocks.slice(0, i+1).map(block => {
+                if (dataPoints[block]) return dataPoints[block];
+                else return dataPoints[block] = dataBlocks[block].then(bars => createPoints(bars, options));
+            })).then(results => {
+                var dataSize = results.reduce((size,result) => size + result.length, 0);
+                var warmUpRecords = dataSize - _.last(results).length;
+                var bars = _.last(results).map((point, i, points) => {
+                    var bar = point[options.interval];
+                    if (options.transient) {
+                        if (points[i+1] && points[i+1].ending < options.begin)
+                            return bar;
+                        if (options.end && points[i-1] && points[i-1].ending > options.end)
+                            return bar;
+                        bar = _.clone(bar);
+                    }
                     return _.extend(bar, _.object(missing, missing.map(expr => {
                         var end = warmUpRecords + i;
                         var start = Math.max(end - expressions[expr].warmUpLength, 0);
-                        return expressions[expr](data.slice(start, end+1));
+                        return expressions[expr](flattenSlice(results, start, end+1));
                     })));
                 });
-                return collection.writeTo(bars, block);
-            }).then(() => {
-                var value = collection.propertyOf(block, 'warmUpBlocks') || [];
-                var blocks = _.union(value, warmUpBlocks).sort();
-                collection.propertyOf(block, 'warmUpBlocks', blocks);
-            }).then(() => dataBlocks);
+                dataBlocks[block] = bars;
+                if (options.transient) return dataBlocks;
+                else return collection.writeTo(bars, block).then(() => {
+                    var value = collection.propertyOf(block, 'warmUpBlocks') || [];
+                    var blocks = _.union(value, warmUpBlocks).sort();
+                    collection.propertyOf(block, 'warmUpBlocks', blocks);
+                }).then(() => dataBlocks);
+            });
         });
-    }, Promise.resolve(_.object(blocks, [])))).then(() => blocks);
+    }, Promise.resolve(_.object(blocks, [])))).then(dataBlocks => {
+        return Promise.all(blocks.map(block => dataBlocks[block] || collection.readFrom(block)));
+    });
 }
 
 /**
- * Convert a bar into a point (a point contains bars from multilpe intervals).
+ * Convert bars into points (a point contains bars from multilpe intervals).
  */
-function createPoint(bar, options) {
-    return {
+function createPoints(bars, options) {
+    return bars.map(bar => ({
         ending: bar.ending,
         symbol: options.symbol,
         exchange: options.exchange,
         [options.interval]: bar
-    };
+    }));
 }
 
 /**
- * Reads the blocks and trims the result to be within the begin/end range
+ * Optimized version of _.flatten(array, true).slice(start, end)
  */
-function readBlocks(collection, blocks, options) {
-    return Promise.all(blocks.map(block => collection.readFrom(block)))
-      .then(tables => _.flatten(tables, true))
-      .then(bars => {
-        if (!bars.length) return bars;
-        var format = options.begin;
-        var from = _.sortedIndex(bars, {ending: format}, 'ending');
-        if (from == bars.length || from > 0 && format < bars[from].ending)
-            from--; // include prior value for criteria
-        var start = Math.min(Math.max(from - options.pad_begin, 0), bars.length -1);
-        return bars.slice(start);
-    }).then(bars => {
-        if (!bars.length || !options.end) return bars;
-        var format = options.end;
-        var to = _.sortedIndex(bars, {ending: format}, 'ending');
-        if (to < bars.length && format != bars[to].ending) to--;
-        var stop = Math.min(Math.max(to + options.pad_end, 0), bars.length -1);
-        return bars.slice(0, stop +1);
-    });
+function flattenSlice(array, start, end) {
+    var chunks = array.slice(0);
+    while (start >= _.first(chunks).length) {
+        var len = chunks.shift().length;
+        start -= len;
+        end -= len;
+    }
+    var totalSize = chunks.reduce((size, chunk) => size + chunk.length, 0);
+    while (end <= totalSize - _.last(chunks).length) {
+        totalSize -= chunks.pop().length;
+    }
+    if (chunks.length == 1) return chunks[0].slice(start, end);
+    if (start > 0) chunks[0] = chunks[0].slice(start);
+    if (end < totalSize) chunks.push(chunks.pop().slice(0, end - totalSize));
+    return Array.prototype.concat.apply([], chunks);
+}
+
+/**
+ * trims the result to be within the begin/end range
+ */
+function trimTables(tables, options) {
+    var dataset = tables.filter(table => table.length);
+    if (!dataset.length) return [];
+    while (dataset.length > 1 && _.first(dataset[1]).ending < options.begin) {
+        dataset.shift();
+    }
+    var bars = _.flatten(dataset, true);
+    if (!bars.length) return bars;
+    var format = options.begin;
+    var from = _.sortedIndex(bars, {ending: format}, 'ending');
+    if (from == bars.length || from > 0 && format < bars[from].ending)
+        from--; // include prior value for criteria
+    var start = Math.min(Math.max(from - options.pad_begin, 0), bars.length -1);
+    bars = bars.slice(start);
+    if (!bars.length || !options.end) return bars;
+    var format = options.end;
+    var to = _.sortedIndex(bars, {ending: format}, 'ending');
+    if (to < bars.length && format != bars[to].ending) to--;
+    var stop = Math.min(Math.max(to + options.pad_end, 0), bars.length -1);
+    return bars.slice(0, stop +1);
 }
 
 /**
@@ -541,9 +579,9 @@ function getStorageVersion(collection) {
     var blocks = collection.listNames();
     var versions = blocks
         .map(block => collection.propertyOf(block, 'version'))
-        .filter(version=>version.indexOf(minor_version) === 0);
+        .filter(version => version && version.indexOf(minor_version) === 0);
     var len = _.max(_.map(versions, 'length'));
-    var version = _.last(versions.filter(version=>version.length==len).sort());
+    var version = _.last(versions.filter(version => version.length==len).sort());
     if (version) return version;
     else return createStorageVersion();
 }
