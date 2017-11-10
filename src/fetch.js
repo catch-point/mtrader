@@ -85,19 +85,23 @@ function close(datasources) {
 }
 
 function help(datasources, options) {
+    var exchangeOptions = _.map(config('exchanges'), _.keys);
+    var datasourcesOptions = _.map(config('exchanges'), exchange => _.map(exchange.datasources, _.keys));
+    var omitOptions = _.uniq(_.flatten([exchangeOptions, datasourcesOptions]));
     return Promise.all(_.map(datasources, datasource => {
         return datasource.help(options);
     })).then(helps => {
         var groups = _.values(_.groupBy(_.flatten(helps), 'name'));
         return groups.map(helps => helps.reduce((help, h) => {
+            var lookupProperties = h.name == 'lookup' ? omitOptions : [];
             return {
                 name: help.name || h.name,
                 usage: help.usage || h.usage,
                 description: help.description || h.description,
-                options: _.union(help.options, h.options),
-                properties: _.union(help.properties, h.properties)
+                properties: _.union(help.properties, h.properties, lookupProperties),
+                options: _.extend({}, help.options, _.omit(h.options, omitOptions))
             };
-        }));
+        }, {}));
     });
 }
 

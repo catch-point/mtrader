@@ -49,30 +49,77 @@ module.exports = function() {
             iqclient.close();
         },
         help(options) {
+            var commonOptions = {
+                symbol: {
+                    description: "Ticker symbol used by the exchange"
+                },
+                exchange: {
+                    description: "Exchange acronym"
+                },
+                iqfeed_symbol: {
+                    description: "Symbol used in the DTN network"
+                },
+                dtnPrefix: {
+                    description: "Common prefix used in the DTN network for symbol in this exchange"
+                },
+                listed_market: {
+                    description: "Market ID for this exchange in the DTN network"
+                }
+            };
+            var tzOptions = {
+                    marketOpensAt: {
+                        description: "Time of day that the exchange options"
+                    },
+                    marketClosesAt: {
+                        description: "Time of day that the exchange closes"
+                    },
+                    tz: {
+                        description: "Timezone of the exchange formatted using the identifier in the tz database"
+                    }
+            };
+            var durationOptions = {
+                    begin: {
+                        example: "YYYY-MM-DD",
+                        description: "Sets the earliest date (or dateTime) to retrieve"
+                    },
+                    end: {
+                        example: "YYYY-MM-DD HH:MM:SS",
+                        description: "Sets the latest dateTime to retrieve"
+                    }
+            };
             return Promise.resolve([{
                 name: "lookup",
                 usage: "lookup(options)",
                 description: "Looks up existing symbol/exchange using the given symbol prefix using the local IQFeed client",
-                options: ['symbol', 'iqfeed_symbol', 'dtnPrefix', 'listed_market', 'exchange'],
-                properties: ['symbol', 'iqfeed_symbol', 'exchange', 'name']
+                properties: ['symbol', 'iqfeed_symbol', 'exchange', 'name'],
+                options: commonOptions
             }, {
                 name: "fundamental",
                 usage: "fundamental(options)",
                 description: "Details of a security on the local IQFeed client",
-                options: ['symbol', 'iqfeed_symbol', 'dtnPrefix', 'listed_market', 'exchange', 'marketOpensAt', 'marketClosesAt', 'tz'],
-                properties: ['type', 'symbol', 'exchange_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'exchange_root']
+                properties: ['type', 'symbol', 'exchange_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'exchange_root'],
+                options: _.extend(commonOptions, tzOptions)
             }, {
                 name: "interday",
                 usage: "interday(options)",
                 description: "Historic data for a security on the local IQFeed client",
-                options: ['symbol', 'iqfeed_symbol', 'dtnPrefix', 'listed_market', 'exchange', 'interval', 'begin', 'end', 'marketOpensAt', 'marketClosesAt', 'tz'],
-                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
+                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
+                options: _.extend(commonOptions, durationOptions, tzOptions, {
+                    interval: {
+                        usage: "year|quarter|month|week|day",
+                        description: "The bar timeframe for the results"
+                    },
+                })
             }, {
                 name: "intraday",
                 usage: "intraday(options)",
                 description: "Historic data for a security on the local IQFeed client",
-                options: ['symbol', 'iqfeed_symbol', 'dtnPrefix', 'listed_market', 'exchange', 'minutes', 'begin', 'end', 'marketOpensAt', 'marketClosesAt', 'tz'],
-                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
+                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
+                options: _.extend(commonOptions, durationOptions, tzOptions, {
+                    minutes: {
+                        description: "Number of minutes in a single bar length"
+                    }
+                })
             }]);
         },
         lookup(options) {

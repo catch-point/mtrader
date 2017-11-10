@@ -80,22 +80,33 @@ function readOrWriteHelp(fallbacks, open, name, options) {
     return open(name, (err, db) => {
         if (err) throw err;
         return db.collection(name).then(coll => coll.lockWith([name], names => {
-            if (coll.exists(name)) return coll.readFrom(name);
-            else if (options.offline)
-                throw Error("Not enough data, try again without offline flag");
-            else if (_.isEmpty(fallbacks))
-                throw Error("Data file not found " + coll.filenameOf(name));
-            else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
-                return fb[name](options).then(result => {
-                    return coll.writeTo(result, name).then(() => result);
-                });
-            }), Promise.reject());
+            return Promise.resolve().then(() => {
+                if (coll.exists(name))
+                    return coll.readFrom(name).then(result => result.map(help => _.defaults({
+                        // need to restore columns into objects
+                        options: _.isString(help.options) ?
+                            JSON.parse(help.options) : help.options,
+                        properties: _.isString(help.properties) ?
+                            JSON.parse(help.properties) : help.properties
+                    }, help))).catch(err => {});
+            }).then(result => {
+                if (result)
+                    return result;
+                if (options.offline)
+                    throw Error("Not enough data, try again without offline flag");
+                else if (_.isEmpty(fallbacks))
+                    throw Error("Data file not found " + coll.filenameOf(name));
+                else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
+                    return fb[name](options).then(result => {
+                        return coll.writeTo(result.map(datum => _.extend({}, datum, {
+                            options: JSON.stringify(datum.options),
+                            properties: JSON.stringify(datum.properties)
+                        })), name).then(() => result);
+                    });
+                }), Promise.reject());
+            });
         }));
-    }).then(result => result.map(help => _.defaults({
-        // need to restore columns into arrays
-        options: _.isString(help.options) ? help.options.split(',') : help.options,
-        properties: _.isString(help.properties) ? help.properties.split(',') : help.properties
-    }, help)));
+    });
 }
 
 function readOrWriteResult(fallbacks, open, cmd, options) {

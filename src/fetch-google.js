@@ -57,24 +57,66 @@ module.exports = function() {
             })));
         },
         help(options) {
+            var commonOptions = {
+                symbol: {
+                    description: "Ticker symbol used by the exchange"
+                },
+                exchange: {
+                    description: "Exchange acronym"
+                },
+                google_symbol: {
+                    description: "Symbol used in the Google finance network"
+                },
+                e: {
+                    description: "Exchange code used in the Google finance network"
+                }
+            };
             return Promise.resolve([{
                 name: "lookup",
                 usage: "lookup(options)",
                 description: "Looks up existing symbol/exchange using the given symbol prefix using the Google network",
-                options: ['symbol', 'google_symbol', 'e', 'exchange'],
-                properties: ['symbol', 'google_symbol', 'exchange', 'name']
+                properties: ['symbol', 'google_symbol', 'exchange', 'name'],
+                options: commonOptions
             }, {
                 name: "fundamental",
                 usage: "fundamental(options)",
                 description: "Details of a security on the Google network",
-                options: ['symbol', 'google_symbol', 'e', 'exchange'],
-                properties: ['t', 'e', 'name', 'id', 'sname', 'iname', 'hi52', 'lo52', 'eps', 'beta', 'instown', 'mc', 'shares', 'overview']
+                properties: ['t', 'e', 'name', 'id', 'sname', 'iname', 'hi52', 'lo52', 'eps', 'beta', 'instown', 'mc', 'shares', 'overview'],
+                options: commonOptions
             }, {
                 name: "interday",
                 usage: "interday(options)",
                 description: "Historic data for a security on the Google network",
-                options: ['symbol', 'google_symbol', 'e', 'yahoo_symbol', 'yahooSuffix', 'exchange', 'interval', 'begin', 'end', 'marketOpensAt', 'marketClosesAt', 'tz'],
-                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
+                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
+                options: _.extend({}, commonOptions, {
+                    yahoo_symbol: {
+                        description: "Symbol for security as used by The Yahoo! Network"
+                    },
+                    yahooSuffix: {
+                        description: "Symbol prefix used in The Yahoo! Network"
+                    },
+                    interval: {
+                        usage: "year|quarter|month|week|day",
+                        description: "The bar timeframe for the results"
+                    },
+                    begin: {
+                        example: "YYYY-MM-DD",
+                        description: "Sets the earliest date (or dateTime) to retrieve"
+                    },
+                    end: {
+                        example: "YYYY-MM-DD HH:MM:SS",
+                        description: "Sets the latest dateTime to retrieve"
+                    },
+                    marketOpensAt: {
+                        description: "Time of day that the exchange options"
+                    },
+                    marketClosesAt: {
+                        description: "Time of day that the exchange closes"
+                    },
+                    tz: {
+                        description: "Timezone of the exchange formatted using the identifier in the tz database"
+                    }
+                })
             }]);
         },
         lookup(options) {

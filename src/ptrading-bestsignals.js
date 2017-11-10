@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// ptrading-collect.js
+// ptrading-bestsignals.js
 /*
  *  Copyright (c) 2017 James Leigh, Some Rights Reserved
  *
@@ -31,7 +31,8 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const os = require('os');
+const fs = require('fs');
+const Writable = require('stream').Writable;
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
@@ -39,13 +40,13 @@ const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const replyTo = require('./ipc-promise-reply.js');
 const config = require('./ptrading-config.js');
-const Collect = require('./collect.js');
+const Bestsignals = require('./bestsignals.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 
 function usage(command) {
     return command.version(require('../package.json').version)
-        .description("Collects historic portfolio data")
+        .description("Determines the best signals for the given portfolio")
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
@@ -65,10 +66,7 @@ function usage(command) {
         .option('-o, --offline', "Disable data updates")
         .option('--workers <numOfWorkers>', 'Number of workers to spawn')
         .option('--set <name=value>', "Name=Value pairs to be used in session")
-        .option('--output <file>', "CSV file to write the result into")
-        .option('--launch <program>', "Program used to open the output file")
-        .option('--reverse', "Reverse the order of the rows")
-        .option('--transpose', "Swap the columns and rows");
+        .option('--save <file>', "JSON file to write the result into");
 }
 
 if (require.main === module) {
@@ -85,117 +83,30 @@ if (require.main === module) {
 }
 
 function initialize(program) {
-    var quote = require('./ptrading-quote.js');
-    var workers = commander.workers == 0 ? 1 : commander.workers || os.cpus().length;
-    var children = commander.workers == 0 ? [{
-        request: ((collect, cmd, payload) => {
-            if (cmd == 'quote') return quote(payload);
-            else if (cmd == 'collect') return collect(payload);
-            else if (cmd == 'disconnect') return quote.close();
-        }).bind(this, Collect(quote)),
-        disconnect() {
-            return this.request('disconnect');
-        }
-    }] : _.range(workers).map(() => {
-        return replyTo(config.fork(module.filename, program))
-          .handle('quote', payload => quote(payload))
-          .handle('collect', payload => collect(payload));
-    });
-    var queue = [];
-    var processing = children.map(_.constant(0));
-    var collect = function(options) {
-        var duration = options.reset_every && moment.duration(options.reset_every);
-        var begin = moment(options.begin);
-        var end = moment(options.end || options.now);
-        if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.reset_every);
-        if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
-        if (!end.isValid()) throw Error("Invalid end date: " + options.end);
-        var segments = [options.begin];
-        if (duration) {
-            begin.add(duration);
-            while (begin.isBefore(end)) {
-                segments.push(begin.format());
-                begin.add(duration);
-            }
-        }
-        var optionset = segments.map((segment, i, segments) => {
-            if (segments.length == 1) return options;
-            else if (i === 0) return _.defaults({
-                begin: options.begin, end: segments[i+1],
-                pad_begin: options.pad_begin, pad_end: 0
-            }, options);
-            else if (i < segments.length -1) return _.defaults({
-                begin: segment, end: segments[i+1],
-                pad_begin: 0, pad_end: 0
-            }, options);
-            else return _.defaults({
-                begin: segment, end: options.end,
-                pad_begin: 0, pad_end: options.pad_end
-            }, options);
-        });
-        var promises = optionset.reduce((promises, options, i) => {
-            var wait = i < workers ? Promise.resolve() : promises[i - workers];
-            promises.push(wait.then(() => {
-                var c = processing.indexOf(_.min(processing));
-                processing[c]++;
-                return children[c].request('collect', options).then(result => {
-                    processing[c]--;
-                    if (!processing[c]) queue_ready();
-                    return result;
-                }, err => {
-                    processing[c]--;
-                    if (!processing[c]) queue_ready();
-                    throw err;
-                });
-            }));
-            return promises;
-        }, []);
-        return Promise.all(promises).then(dataset => {
-            return _.flatten(dataset, true);
-        });
-    };
-    var queue_ready = function() {
-        var available = processing.filter(load => load === 0).length;
-        queue.splice(0, available).forEach(item => {
-            collect(item.options).then(item.resolve, item.reject);
-        });
-    };
+    var collect = require('./ptrading-collect.js');
+    var bestsignals = Bestsignals(collect);
     module.exports = function(options) {
-        return new Promise((resolve, reject) => {
-            queue.push({options, resolve, reject});
-            queue_ready();
-        });
+        return bestsignals(options);
     };
     module.exports.close = function() {
-        queue.splice(0).forEach(item => {
-            item.reject(Error("Collect is closing"));
-        });
-        children.forEach(child => child.disconnect());
-        return quote.close().then(collect.close);
+        return collect.close().then(bestsignals.close);
     };
     module.exports.shell = shell.bind(this, program.description(), module.exports);
     if (require.main === module) {
         var name = program.args.join(' ');
-        var options = readCollect(name);
-        module.exports(options).then(result => tabular(result))
-          .catch(err => logger.error(err, err.stack))
+        var options = readSignals(name);
+        module.exports(options).then(result => new Promise(done => {
+            var output = JSON.stringify(result, null, ' ');
+            var writer = createWriteStream(config('save'));
+            writer.on('finish', done);
+            writer.write(output, 'utf-8');
+            writer.end();
+        })).catch(err => logger.error(err, err.stack))
           .then(() => module.exports.close());
     }
 }
 
-function spawn() {
-    var parent = replyTo(process).handle('collect', payload => {
-        return collect()(payload);
-    });
-    var collect = _.once(() => Collect(function(options) {
-        return parent.request('quote', options);
-    }, function(options) {
-        return parent.request('collect', options);
-    }));
-    process.on('disconnect', () => collect().close());
-}
-
-function readCollect(name) {
+function readSignals(name) {
     var read = name ? config.read(name) : {};
     if (!read) throw Error("Could not read " + name + " settings");
     return _.defaults({
@@ -210,25 +121,38 @@ function readCollect(name) {
     }, read, config.opts(), config.options());
 }
 
-function shell(desc, collect, app) {
-    app.on('quit', () => collect.close());
-    app.on('exit', () => collect.close());
-    app.cmd('collect', desc, (cmd, sh, cb) => {
-        collect(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
+function createWriteStream(outputFile) {
+    if (outputFile) return fs.createWriteStream(outputFile);
+    var delegate = process.stdout;
+    var output = Object.create(Writable.prototype);
+    output.cork = delegate.cork.bind(delegate);
+    output.end = function(chunk) {
+        if (chunk) delegate.write.apply(delegate, arguments);
+        delegate.uncork();
+        output.emit('finish');
+    };
+    output.setDefaultEncoding = encoding => delegate.setDefaultEncoding(encoding);
+    output.uncork = delegate.uncork.bind(delegate);
+    output.write = delegate.write.bind(delegate);
+    return output;
+}
+
+function shell(desc, bestsignals, app) {
+    app.on('quit', () => bestsignals.close());
+    app.on('exit', () => bestsignals.close());
+    app.cmd('bestsignals', desc, (cmd, sh, cb) => {
+        bestsignals(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    app.cmd("collect :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
-        var options = readCollect(cmd.params.name);
-        collect(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
-    });
-    _.forEach(rolling.functions, (fn, name) => {
-        help(app, name, functionHelp(name, fn));
+    app.cmd("bestsignals :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
+        var options = readSignals(cmd.params.name);
+        bestsignals(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
 // help
-return collect({help: true}).then(_.first).then(info => {
-help(app, 'collect', `
-  Usage: collect :name
+return bestsignals({help: true}).then(_.first).then(info => {
+help(app, 'bestsignals', `
+  Usage: bestsignals :name
 
-  ${info.description}
+  ${desc}
 
     :name
       Uses the values from the named stored session to override the values of
@@ -236,9 +160,6 @@ help(app, 'collect', `
 
   Options:
 ${listOptions(info.options)}
-  See also:
-    help output  
-    help reverse  
 `);
 _.each(info.options, (option, name) => {
 help(app, name, `
@@ -251,47 +172,7 @@ option.seeAlso.reduce((buf, also) => buf + `
     help ${also}  `, '') + `  
 ` : ''));
 });
-help(app, 'rolling-functions', `
-  Aggregate functions may read points that pass the criteria and the proposed security values.
-
-  The following functions are available:
-${listFunctions(rolling.functions)}
-`);
-help(app, 'DESC', `
-  Usage: DESC(expression)  
-
-  Indicates the expression order should be reversed
-`);
-help(app, 'ASC', `
-  Usage: ASC(expression)  
-
-  Indicates the expression order should not be reversed
-`);
 });
-}
-
-function functionHelp(name, fn) {
-    var source = fn.toString();
-    var m = source.match(/^[^(]*\(([^)]*)\)/);
-    var args = _.isString(fn.args) ? fn.args : _.property(1)(m) || '';
-    var usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
-    var body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
-    var desc = fn.description ? '\n  ' + wrap(fn.description, '  ', 80) + '\n' : body;
-    var seeAlso = fn.seeAlso ? '\n  See also:\n' + fn.seeAlso.map(name => {
-        return '    help ' + name + '  ';
-    }).join('\n') + '\n' : '';
-    return usage + desc + seeAlso;
-}
-
-function listFunctions(functions) {
-    return listOptions(_.mapObject(functions, (fn, name) => {
-        var source = fn.toString();
-        var m = source.match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/) ||
-            source.match(/^[^(]*\(([^)]*)\)/);
-        var args = fn.args || _.property(1)(m) || '';
-        var desc = fn.description || name + '(' + args + ')';
-        return {description:  desc};
-    }));
 }
 
 function listOptions(options) {

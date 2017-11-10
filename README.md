@@ -98,7 +98,7 @@ ptrading.collect({
       basis: 'IF(position=0,PREV("basis",price),(PREV("basis")*PREV("position")+price*shares)/position)',
       profit: 'PREV("profit") + (price - PREV("price")) * PREV("position") - commission'
   },
-  criteria: 'position OR shares'
+  filter: 'position OR shares'
 }).then(trades => {
   trades.forEach(trade => {
     console.log(trade.symbol, trade.date, trade.shares, trade.price, trade.proceeds, trade.commission);
@@ -113,6 +113,72 @@ IBM  2017-01-11  -60 167.73 10063.8  1
 YHOO 2017-01-12    0  42.08       0  0
 IBM  2017-01-13   59 167.36 -9874.24 1
 YHOO 2017-01-13 -234  42.25  9886.5  1
+*/
+
+// find the best SMA cross between 2000 and 2010
+ptrading.bestsignals({
+    portfolio: 'SPY.ARCA',
+    begin: '2000-01-01',
+    end: '2010-01-01',
+    termination: 'PT5M',
+    eval_validity: 'fast_len<slow_len',
+    eval_score: 'gain/pain',
+    columns: {
+        date: 'DATE(ending)',
+        change: 'close - PREV("close")',
+        close: 'day.adj_close',
+        gain: 'PREC("gain") + change * PREV("sma_cross")',
+        pain: 'drawdown'
+    },
+    variables: {
+        sma_cross: 'SMA(fast_len,day.adj_close)>SMA(slow_len,day.adj_close)',
+        peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
+        drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
+    },
+    parameter_values: {
+        fast_len: [5,10,15,20,25,50],
+        slow_len: [20,25,50,80,100,150,200]
+    }
+}).then(best => {
+    console.log(best.parameters);
+});
+/*
+{ fast_len: 50, slow_len: 200 }
+*/
+
+// test SMA cross vs EMA cross between 2000 and 2010
+ptrading.bestsignals({
+    portfolio: 'SPY.ARCA',
+    begin: '2000-01-01',
+    end: '2010-01-01',
+    termination: 'PT5M',
+    eval_validity: 'fast_len<slow_len',
+    eval_score: 'gain/pain',
+    columns: {
+        date: 'DATE(ending)',
+        change: 'close - PREV("close")',
+        close: 'day.adj_close',
+        gain: 'PREC("gain") + change * PREV("signal")',
+        pain: 'drawdown'
+    },
+    signal_variable: 'signal',
+    signals: ['sma_cross','ema_cross'],
+    variables: {
+        signal: 'ema_cross OR sma_cross',
+        ema_cross: 'EMA(fast_len,day.adj_close)>EMA(slow_len,day.adj_close)',
+        sma_cross: 'SMA(fast_len,day.adj_close)>SMA(slow_len,day.adj_close)',
+        peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
+        drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
+    },
+    parameter_values: {
+        fast_len: [5,10,15,20,25,50],
+        slow_len: [20,25,50,80,100,150,200]
+    }
+}).then(best => {
+    console.log(best.signals, best.parameters);
+});
+/*
+[ 'sma_cross' ] { fast_len: 50, slow_len: 200 }
 */
 
 // close down helper threads

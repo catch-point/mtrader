@@ -139,6 +139,35 @@ describe("ptrading", function() {
             {symbol:'AABA',date:"2017-01-13",close:42.27,change:0.38}
         ]);
     });
+    it("bestsignals SMA", function() {
+        return ptrading.bestsignals({
+            portfolio: 'SPY.ARCA',
+            begin: '2000-01-01',
+            end: '2010-01-01',
+            termination: 'PT5M',
+            eval_validity: 'fast_len<slow_len',
+            eval_score: 'gain/pain',
+            columns: {
+                date: 'DATE(ending)',
+                change: 'close - PREV("close")',
+                close: 'day.adj_close',
+                gain: 'PREC("gain") + change * PREV("sma_cross")',
+                pain: 'drawdown'
+            },
+            variables: {
+                sma_cross: 'SMA(fast_len,day.adj_close)>SMA(slow_len,day.adj_close)',
+                peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
+                drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
+            },
+            parameters: { fast_len: 25, slow_len: 200 },
+            parameter_values: {
+                fast_len: [5,10,15,20,25,50],
+                slow_len: [20,25,50,80,100,150,200]
+            }
+        }).should.eventually.be.like({
+            parameters: { fast_len: 50, slow_len: 200 }
+        });
+    });
 });
 
 

@@ -85,9 +85,10 @@ function fetchOptionsFactory(fetch, offline) {
                 options
             );
         }, err => {
+            memoizeFirstLookup.cache = {};
             if (!exchange) throw err;
             expect(exchanges[exchange]).to.have.property('tz');
-            logger.warn("Fetch lookup failed", err);
+            logger.debug("Fetch lookup failed", err);
             return _.defaults(
                 _.omit(exchanges[exchange], 'datasources', 'label', 'description'),
                 options,

@@ -93,7 +93,7 @@ if (require.main === module) {
     };
     module.exports.process = child.process;
     module.exports.close = function() {
-        child.disconnect();
+        return child.disconnect();
     };
     module.exports.shell = shell.bind(this, program.description(), child);
 }
@@ -135,10 +135,14 @@ function shell(desc, child, app) {
         }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
 // help
+return child.request('fetch', {help: true}).then(info => _.indexBy(info, 'name')).then(info => {
 help(app, 'lookup', `
   Usage: lookup :symbol
 
   List securities and their exchange that have similar symbols
+
+  Options:
+${listOptions(info.lookup.options)}
 `);
 help(app, 'fundamental', `
   Usage: fundamental :symbol.exchange
@@ -147,7 +151,10 @@ help(app, 'fundamental', `
 
     :symbol.exchange
       The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
-${listExchanges()}
+${listOptions(config('exchanges'))}
+
+  Options:
+${listOptions(info.fundamental.options)}
   See also:
     help transpose  
 `);
@@ -167,23 +174,22 @@ help(app, 'fetch', `
 
     :symbol.exchange
       The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
-${listExchanges()}
+${listOptions(config('exchanges'))}
+  Options:
+${listOptions(_.omit(info.interday.options, ['symbol', 'exchange', 'interval']))}
   See also:
     help begin  
     help end  
     help output  
     help reverse  
 `);
-help(app, 'begin', `
-  Usage: set begin YYYY-MM-DD  
+_.values(info).map(info => info.options).forEach(options => _.each(options, (option, name) => {
+help(app, name, `
+  Usage: set ${name} ${option.usage || 'value'}  
 
-  Sets the earliest date (or dateTime) to retrieve
+  ${option.description}
 `);
-help(app, 'end', `
-  Usage: set end YYYY-MM-DD HH:MM:SS  
-
-  Sets the latest dateTime to retrieve
-`);
+}));
 help(app, 'output', `
   Usage: set output :filename
 
@@ -199,34 +205,40 @@ help(app, 'transpose', `
 
   The rows become columns and the columns the rows in the output
 `);
+});
 }
 
-function listExchanges() {
+function listOptions(options) {
     var buf = [];
-    var exchanges = config('exchanges');
-    _.keys(exchanges).forEach(exchange => {
-        var desc = exchanges[exchange].description;
-        buf.push("      ");
-        buf.push(exchange);
-        buf.push("        ".substring(Math.min(exchange.length,7)));
-        if (desc && desc.length < 80 - 14) {
-            buf.push(desc);
-            buf.push('\n');
-        } else if (desc) {
-            var width = 80 - 14;
-            var remain = desc.trim();
-            while (remain) {
-                var idx = remain.lastIndexOf(' ', width);
-                if (idx <= 0) idx = remain.indexOf(' ', width);
-                if (idx <= 0 || remain.length < width) idx = remain.length;
-                buf.push(remain.substring(0, idx));
-                buf.push('\n');
-                remain = remain.substring(idx +1);
-                if (remain) buf.push(_.range(14).map(i => " ").join(''));
-            }
-        }
+    var left = Math.max(_.max(_.keys(options).map(name => name.length)), 5) + 8;
+    var indent = new Array(left+1).join(' ');
+    var width = 80 - indent.length;
+    _.each(options, (option, name) => {
+        buf.push(indent.substring(0,6));
+        buf.push(name);
+        buf.push(indent.substring(6 + name.length));
+        buf.push(wrap(option.description, indent, 80));
         buf.push('\n');
     });
+    return buf.join('');
+}
+
+function wrap(desc, indent, len) {
+    var buf = [];
+    if (desc && desc.length < len - indent.length) {
+        buf.push(desc);
+    } else if (desc) {
+        var width = len - indent.length;
+        var remain = desc.trim();
+        while (remain) {
+            var idx = remain.lastIndexOf(' ', width);
+            if (idx <= 0) idx = remain.indexOf(' ', width);
+            if (idx <= 0 || remain.length < width) idx = remain.length;
+            buf.push(remain.substring(0, idx));
+            remain = remain.substring(idx +1);
+            if (remain) buf.push('\n' + indent);
+        }
+    }
     return buf.join('');
 }
 

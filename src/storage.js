@@ -56,9 +56,17 @@ function openDatabase(dir, name) {
     var memoized = _.memoize(openCollection.bind(this, dirname));
     return {
         collection: memoized,
+        flushCache() {
+            var values = _.values(memoized.cache);
+            memoized.cache = {};
+            return Promise.all(values)
+                .then(collections => Promise.all(collections.map(coll => coll.close())));
+        },
         close() {
-            return Promise.all(_.values(memoized.cache))
-                .then(values => Promise.all(values.map(collection => collection.close())));
+            var values = _.values(memoized.cache);
+            memoized.cache = {};
+            return Promise.all(values)
+                .then(collections => Promise.all(collections.map(coll => coll.close())));
         }
     };
 }

@@ -55,18 +55,61 @@ module.exports = function() {
             }));
         },
         help(options) {
+            var commonOptions = {
+                symbol: {
+                    description: "Ticker symbol used by the exchange"
+                },
+                exchange: {
+                    description: "Exchange acronym"
+                },
+                yahoo_symbol: {
+                    description: "Symbol for security as used by The Yahoo! Network"
+                },
+                yahooSuffix: {
+                    description: "Symbol prefix used in The Yahoo! Network"
+                }
+            };
             return Promise.resolve([{
                 name: "lookup",
                 usage: "lookup(options)",
                 description: "Looks up existing symbol/exchange using the given symbol prefix on the Yahoo! network",
-                options: ['symbol', 'yahoo_symbol', 'yahooSuffix', 'marketLang', 'exchs', 'exchange'],
-                properties: ['symbol', 'yahoo_symbol', 'exchange', 'name', 'type', 'typeDisp']
+                properties: ['symbol', 'yahoo_symbol', 'exchange', 'name', 'type', 'typeDisp'],
+                options: _.extend(commonOptions, {
+                    marketLang: {
+                        description: "The locale to be search within The Yahoo! Network"
+                    },
+                    exchs: {
+                        description: "The Yahoo! exchange code"
+                    }
+                })
             }, {
                 name: "interday",
                 usage: "interday(options)",
                 description: "Historic data for a security on the Yahoo! network",
-                options: ['symbol', 'yahoo_symbol', 'yahooSuffix', 'exchange', 'interval', 'begin', 'end', 'marketOpensAt', 'marketClosesAt', 'tz'],
-                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close']
+                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
+                options: _.extend(commonOptions, {
+                    interval: {
+                        usage: "year|quarter|month|week|day",
+                        description: "The bar timeframe for the results"
+                    },
+                    begin: {
+                        example: "YYYY-MM-DD",
+                        description: "Sets the earliest date (or dateTime) to retrieve"
+                    },
+                    end: {
+                        example: "YYYY-MM-DD HH:MM:SS",
+                        description: "Sets the latest dateTime to retrieve"
+                    },
+                    marketOpensAt: {
+                        description: "Time of day that the exchange options"
+                    },
+                    marketClosesAt: {
+                        description: "Time of day that the exchange closes"
+                    },
+                    tz: {
+                        description: "Timezone of the exchange formatted using the identifier in the tz database"
+                    }
+                })
             }]);
         },
         lookup(options) {

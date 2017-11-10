@@ -56,11 +56,13 @@ module.exports = function(fetch) {
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(fetch);
         if (options.help) return promiseHelp;
-        else return lookup(options).then(options => promiseHelp.then(help => {
+        else return promiseHelp.then(help => {
             var fields = _.first(help).properties;
-            var opts = _.pick(options, _.first(help).options);
-            return quote(fetch, store, fields, opts);
-        }));
+            var opts = _.pick(options, _.keys(_.first(help).options));
+            return lookup(opts).then(opts =>  {
+                return quote(fetch, store, fields, opts);
+            });
+        });
     }, {
         close() {
             return store.close();
@@ -68,12 +70,14 @@ module.exports = function(fetch) {
     });
 };
 
+/**
+ * Array of one Object with description of module, including supported options
+ */
 function help(fetch) {
     return fetch({help: true})
       .then(help => _.indexBy(help, 'name'))
       .then(help => _.pick(help, ['lookup', 'interday', 'intraday'])).then(help => {
-        var used = ['symbol', 'exchange', 'columns', 'criteria', 'interval', 'parameters', 'variables', 'pad_begin', 'pad_end', 'begin', 'end', 'now', 'tz', 'currency', 'offline', 'marketOpensAt', 'marketClosesAt', 'premarketOpensAt', 'afterHoursClosesAt', 'transient'];
-        var downstream = _.flatten(_.map(help, help => help.options), true);
+        var downstream = _.reduce(help, (downstream, help) => _.extend(downstream, help.options), {});
         var variables = periods.values.reduce((variables, interval) => {
             var fields = interval.charAt(0) != 'm' ? help.interday.properties :
                 help.intraday ? help.intraday.properties : [];
@@ -83,8 +87,57 @@ function help(fetch) {
             name: 'quote',
             usage: 'quote(options)',
             description: "Formats historic data into provided columns",
-            options: _.uniq(used.concat(help.lookup.properties, downstream)),
-            properties: variables
+            properties: variables,
+            options: _.extend({}, _.omit(downstream, help.lookup.properties), {
+                symbol: downstream.symbol,
+                exchange: downstream.exchange,
+                begin: downstream.begin,
+                end: downstream.end,
+                interval: downstream.interval,
+                columns: {
+                    type: 'map',
+                    usage: '<expression>',
+                    description: "Column expression included in the output. The expression can be any combination of field, constants, and function calls connected by an operator or operators.",
+                    seeAlso: ['expression', 'common-functions', 'lookback-functions', 'indicator-functions', 'rolling-functions']
+                },
+                criteria: {
+                    usage: '<expression>',
+                    description: "An expression (possibly of an rolling function) of each included security bar that must be true to be included in the result.",
+                    seeAlso: ['expression', 'common-functions', 'lookback-functions', 'indicator-functions', 'rolling-functions']
+                },
+                parameters: {
+                    type: 'map',
+                    usage: 'string|number',
+                    description: "Parameter used to help compute a column. The value must be a constant literal.",
+                    seeAlso: ['columns']
+                },
+                variables: {
+                    type: 'map',
+                    usage: '<expression>',
+                    description: "Variable used to help compute a column. The expression can be any combination of field, constants, and function calls connected by an operator or operators.",
+                    seeAlso: ['expression', 'common-functions', 'lookback-functions', 'indicator-functions', 'rolling-functions']
+                },
+                pad_begin: {
+                    usage: '<number of bar>',
+                    description: "Sets the number of additional rows to include before the begin date (might be less)"
+                },
+                pad_end: {
+                    usage: '<number of bar>',
+                    description: "Sets the number of additional rows to include after the end date (might be less)"
+                },
+                now: {
+                    usage: '<timestamp>',
+                    description: "The current date/time this request is started"
+                },
+                offline: {
+                    usage: 'true',
+                    description: "If only the local data should be used in the computation"
+                },
+                transient: {
+                    usage: 'true',
+                    description: "If no computed columns should be persisted to disk. Useful when evaluating expressions, over a short time period, that might not be evaluated again."
+                }
+            })
         }];
     });
 }
@@ -407,7 +460,9 @@ function fetchBars(fetch, db, fields, expressions, options) {
           .then(tables => trimTables(tables, options));
     }).catch(err => {
         if (!options.offline) throw err;
-        else throw Error("Couldn't read needed data, try again without offline flag");
+        else return db.flushCache().then(() => {
+            throw Error("Couldn't read needed data, try again without offline flag " + err.message);
+        });
     });
 }
 

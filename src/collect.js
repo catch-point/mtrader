@@ -55,7 +55,7 @@ module.exports = function(quote, collectFn) {
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
             var fields = _.first(help).properties;
-            var opts = _.defaults(_.pick(options, _.first(help).options), {
+            var opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
                 indexCol: '$index',
                 symbolCol: '$symbol',
                 exchangeCol: '$exchange',
@@ -72,22 +72,64 @@ module.exports = function(quote, collectFn) {
     });
 };
 
+/**
+ * Array of one Object with description of module, including supported options
+ */
 function help(quote) {
-    var used = [
-        'portfolio', 'columns', 'variables', 'criteria', 'filter',
-        'precedence', 'order', 'pad_leading', 'reset_every', 'upstream'
-    ];
     return quote({help: true}).then(_.first).then(help => {
         return [{
             name: 'collect',
             usage: 'collect(options)',
             description: "Evaluates columns using historic security data",
-            options: _.union(help.options, used),
-            properties: help.properties
+            properties: help.properties,
+            options: _.extend({}, _.omit(help.options, ['symbol','exchange']), {
+                portfolio: {
+                    usage: 'symbol.exchange,..',
+                    description: "Sets the set of securities or nested protfolios to collect data on"
+                },
+                filter: {
+                    usage: '<expression>',
+                    description: "An expression (possibly of an rolling function) of each included security bar that must be true to be included in the result. The result of these expressions have no impact on rolling functions, unlike criteria, which is applied earlier."
+                },
+                precedence: {
+                    usage: '<expression>',
+                    description: "The order that securities should be checked for inclusion in the result. A comma separated list of expressions can be provided and each may be wrapped in a DESC function to indicate the order should be reversed."
+                },
+                order: {
+                    usage: '<expression>,..',
+                    description: "The order that the output should be sorted by. A comma separated list of expressions can be provided and each may be wrapped in a DESC function to indicate the order should be reversed."
+                },
+                pad_leading: {
+                    usage: '<number of bars>',
+                    description: "Sets the number of additional rows to to compute as a warmup, but not included in the result"
+                },
+                reset_every: {
+                    usage: 'P1Y',
+                    description: "Sets the duration that collect should run before resetting any preceeding values"
+                },
+                head: {
+                    usage: '<number of rows>',
+                    description: "Limits the rows in the result to the given first few"
+                },
+                tail: {
+                    usage: '<number of rows>',
+                    description: "Include the given last few rows in the result"
+                },
+                tz: {
+                    description: "Timezone formatted using the identifier in the tz database"
+                },
+                avoid: {
+                    usage: '[name,..]',
+                    description: "Array of subcollect names that must not be followed"
+                }
+            })
         }];
     });
 }
 
+/**
+ * Computes column values given expressions and variables in options
+ */
 function collect(quote, callCollect, collections, fields, options) {
     expect(options).to.have.property('portfolio');
     expect(options).to.have.property('columns').that.is.an('object');
@@ -230,8 +272,8 @@ function getPortfolio(portfolio, collections, options) {
         if (_.isObject(symbolExchange)) {
             return _.defaults({}, symbolExchange, opts);
         } else {
-            if (_.contains(options.upstream, symbolExchange))
-                throw Error("Cycle profile detected: " + options.upstream + " -> " + symbolExchange);
+            if (_.contains(options.avoid, symbolExchange))
+                throw Error("Cycle profile detected: " + options.avoid + " -> " + symbolExchange);
             var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
             if (!m || !collections[symbolExchange] && _.has(collections, symbolExchange)) {
                 var cfg = config.read(symbolExchange);
@@ -239,7 +281,7 @@ function getPortfolio(portfolio, collections, options) {
             }
             if (collections[symbolExchange]) return _.defaults({
                 label: symbolExchange,
-                upstream: _.flatten(_.compact([options.upstream, symbolExchange]), true)
+                avoid: _.flatten(_.compact([options.avoid, symbolExchange]), true)
             }, collections[symbolExchange], opts);
             if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
             return _.defaults({

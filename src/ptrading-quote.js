@@ -119,24 +119,72 @@ if (require.main === module) {
         return replyTo(config.fork(module.filename, program))
           .handle('fetch', payload => fetch(payload));
     });
+    var queue = [];
+    var processing = children.map(_.constant(0));
+    var quote = function(options) {
+        var master = getMasterIndex(children, options);
+        var slave = chooseSlaveIndex(master, processing, options);
+        processing[slave]++;
+        var opts = _.extend({offline: slave != master}, options);
+        return children[slave].request('quote', opts).then(result => {
+            processing[slave]--;
+            if (!processing[slave]) queue_ready();
+            return result;
+        }, err => {
+            processing[slave]--;
+            try {
+                if (master == slave || _.has(options, 'offline')) throw err;
+                else if (!err || !err.message || !~err.message.indexOf('offline')) throw err;
+                logger.debug("Retrying", options.label || '', "using master node");
+                return quote(_.extend({offline: false}, options)); // retry using master
+            } finally {
+                if (!processing[slave]) queue_ready();
+            }
+        });
+    };
+    var queue_ready = function() {
+        var available = processing.filter(load => load === 0).length;
+        var selected = [];
+        for (var i=0; i<queue.length && selected.length<available; i++) {
+            var item = queue[i];
+            var master = getMasterIndex(children, item.options);
+            if (processing[master] < children.length) selected.push(i);
+        }
+        selected.reverse().map(i => queue.splice(i, 1)[0]).reverse().forEach(item => {
+            quote(item.options).then(item.resolve, item.reject);
+        });
+    };
     module.exports = function(options) {
-        if (!options.help) expect(options).to.have.property('symbol');
-        var name = options.help ? 'help' : options.exchange ?
-            options.symbol + '.' + options.exchange : options.symbol;
-        return chooseWorker(children, name).request('quote', options);
+        return new Promise((resolve, reject) => {
+            queue.push({options, resolve, reject});
+            queue_ready();
+        });
     };
     module.exports.close = function() {
+        queue.splice(0).forEach(item => {
+            item.reject(Error("Collect is closing"));
+        });
         children.forEach(child => child.disconnect());
         return fetch.close();
     };
     module.exports.shell = shell.bind(this, program.description(), module.exports);
 }
 
-function chooseWorker(workers, string) {
+function getMasterIndex(workers, options) {
+    if (!options.help) expect(options).to.have.property('symbol');
+    var name = options.help ? 'help' : options.exchange ?
+        options.symbol + '.' + options.exchange : options.symbol;
     expect(workers).to.be.an('array').and.not.empty;
     var mod = workers.length;
-    var w = (hashCode(string) % mod + mod) % mod;
-    return workers[w];
+    return (hashCode(name) % mod + mod) % mod;
+}
+
+function chooseSlaveIndex(master, processing, options) {
+    if (!options.transient) return master; // read-write master
+    var avail = _.min(processing);
+    if (processing[master] == avail) return master; // master is available
+    else if (options.offline == false) return master; // write requested
+    else return processing.indexOf(avail); // use available slave
 }
 
 function hashCode(str){
@@ -171,103 +219,45 @@ function shell(desc, quote, app) {
         help(app, name, functionHelp(name, fn));
     });
 // help
+return quote({help: true}).then(_.first).then(info => {
 help(app, 'quote', `
   Usage: quote :symbol.exchange
 
-  ${desc}
+  ${info.description}
 
     :symbol.exchange
       The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
-${listExchanges()}
+${listOptions(config('exchanges'))}
+  Options:
+${listOptions(_.omit(info.options, ['symbol', 'exchange']))}
   See also:
-    help begin  
-    help end  
-    help pad_begin  
-    help pad_end  
-    help columns  
-    help variables  
-    help parameters  
-    help criteria  
     help output  
     help reverse  
 `);
-help(app, 'pad_begin', `
-  Usage: set pad_begin 0  
+_.each(info.options, (option, name) => {
+if (option.type == 'map') {
+help(app, name, `
+  Usage: add ${name} :label ${option.usage || 'value'}
+  Usage: remove ${name} :label
 
-  Sets the number of additional rows to include before the begin date (might be less)
-`);
-help(app, 'pad_end', `
-  Usage: set pad_end 0  
+  ${option.description}
+` + (option.seeAlso ? `
+  See also:` +
+option.seeAlso.reduce((buf, also) => buf + `
+    help ${also}  `, '') + `  
+` : ''));
+} else {
+help(app, name, `
+  Usage: set ${name} ${option.usage || 'value'}  
 
-  Sets the number of additional rows to include after the end date (might be less)
-`);
-help(app, 'columns', `
-  Usage: add column :label [:expression]
-  Usage: remove column :label
-
-  Adds or removes a column to the output computing the value of columns using :expression.
-
-    :label
-      The string used as the output column name or a variable name
-    :expression
-      An expression is any combination of field, constants, and function calls
-      connected by an operator or operators.
-
-  See also:
-    help expression  
-    help common-functions  
-    help lookback-functions  
-    help indicator-functions  
-    help rolling-functions  
-`);
-help(app, 'variables', `
-  Usage: add variable :name :expression
-  Usage: remove variable :name
-
-  Adds or removes a variable used to compute the values of columns.
-
-    :name
-      The string used as variable name in column expressions
-    :expression
-      An expression is any combination of field, constants, and function calls
-      connected by an operator or operators.
-
-  See also:
-    help columns  
-    help expression  
-    help common-functions  
-    help lookback-functions  
-    help indicator-functions  
-    help rolling-functions  
-`);
-help(app, 'parameters', `
-  Usage: add parameter :name :value
-  Usage: remove parameter :name
-
-  Adds or removes a parameter used to compute the values of columns.
-
-    :name
-      The string used as variable name in column expressions
-    :value
-      The value substituted in column expressions
-
-  See also:
-    help columns  
-    help expression  
-`);
-help(app, 'criteria', `
-  Usage: set criteria :expression
-
-  An expression (possibly of an rolling function) of each included
-  security bar that must be true to be included in the result
-
-  See also:
-    help expression  
-    help common-functions  
-    help lookback-functions  
-    help indicator-functions  
-    help rolling-functions  
-`);
+  ${option.description}
+` + (option.seeAlso ? `
+  See also:` +
+option.seeAlso.reduce((buf, also) => buf + `
+    help ${also}  `, '') + `  
+` : ''));
+}
+});
 help(app, 'expression', `
   :expression
     An expression is any combination of field, constants, and function calls
@@ -324,12 +314,14 @@ help(app, 'expression', `
 help(app, 'common-functions', `
   Common functions have no restrictions on what expressions they can be used in.
 
-  ${listFunctions(common.functions)}
+  The following functions are available:
+${listFunctions(common.functions)}
 `);
 help(app, 'lookback-functions', `
   Lookback functions may read data in the past to determine the current value.
 
-  ${listFunctions(lookback.functions)}
+  The following functions are available:
+${listFunctions(lookback.functions)}
 `);
 help(app, 'indicator-functions', `
   Indicator functions must be prefixed by an interval and a dot and take numbers
@@ -343,8 +335,10 @@ help(app, 'indicator-functions', `
       day         Daily quotes for security
       mX          Intraday quotes for security by X minutes
 
-  ${listFunctions(indicator.functions)}
+  The following functions are available:
+${listFunctions(indicator.functions)}
 `);
+});
 }
 
 function functionHelp(name, fn) {
@@ -353,41 +347,34 @@ function functionHelp(name, fn) {
     var args = _.isString(fn.args) ? fn.args : _.property(1)(m) || '';
     var usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
     var body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
-    var desc = fn.description ? '\n  ' + wrap(fn.description, 2, 80) + '\n' : body;
+    var desc = fn.description ? '\n  ' + wrap(fn.description, '  ', 80) + '\n' : body;
     var seeAlso = fn.seeAlso ? '\n  See also:\n' + fn.seeAlso.map(name => {
         return '    help ' + name + '  ';
     }).join('\n') + '\n' : '';
     return usage + desc + seeAlso;
 }
 
-function listExchanges() {
-    var buf = [];
-    var exchanges = config('exchanges');
-    _.keys(exchanges).forEach(exchange => {
-        var desc = exchanges[exchange].description;
-        buf.push("      ");
-        buf.push(exchange);
-        buf.push("        ".substring(Math.min(exchange.length,7)));
-        buf.push(wrap(desc, 14, 80));
-        buf.push('\n');
-    });
-    return buf.join('');
-}
-
 function listFunctions(functions) {
-    var buf = ['The following functions are available:\n'];
-    var indent = _.reduce(functions, (max, fn, name) => Math.max(max, name.length), 0) + 8;
-    var pad = _.range(indent - 6).map(i => " ").join('');
-    _.forEach(functions, (fn, name) => {
-        buf.push("      ");
-        buf.push(name);
-        buf.push(pad.substring(Math.min(name.length,indent - 5)));
+    return listOptions(_.mapObject(functions, (fn, name) => {
         var source = fn.toString();
         var m = source.match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/) ||
             source.match(/^[^(]*\(([^)]*)\)/);
         var args = fn.args || _.property(1)(m) || '';
         var desc = fn.description || name + '(' + args + ')';
-        buf.push(wrap(desc, indent, 80));
+        return {description:  desc};
+    }));
+}
+
+function listOptions(options) {
+    var buf = [];
+    var left = Math.max(_.max(_.keys(options).map(name => name.length)), 5) + 8;
+    var indent = new Array(left+1).join(' ');
+    var width = 80 - indent.length;
+    _.each(options, (option, name) => {
+        buf.push(indent.substring(0,6));
+        buf.push(name);
+        buf.push(indent.substring(6 + name.length));
+        buf.push(wrap(option.description, indent, 80));
         buf.push('\n');
     });
     return buf.join('');
@@ -395,10 +382,10 @@ function listFunctions(functions) {
 
 function wrap(desc, indent, len) {
     var buf = [];
-    if (desc && desc.length < len - indent) {
+    if (desc && desc.length < len - indent.length) {
         buf.push(desc);
     } else if (desc) {
-        var width = len - indent;
+        var width = len - indent.length;
         var remain = desc.trim();
         while (remain) {
             var idx = remain.lastIndexOf(' ', width);
@@ -406,7 +393,7 @@ function wrap(desc, indent, len) {
             if (idx <= 0 || remain.length < width) idx = remain.length;
             buf.push(remain.substring(0, idx));
             remain = remain.substring(idx +1);
-            if (remain) buf.push('\n' + _.range(indent).map(i => " ").join(''));
+            if (remain) buf.push('\n' + indent);
         }
     }
     return buf.join('');

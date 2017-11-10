@@ -41,10 +41,15 @@ module.exports = function(process) {
             pending.onerror(error);
         });
     };
+    var ondisconnect = [];
     var queue = createQueue(onquit, process.pid);
     process.on('disconnect', () => {
-        queue.close();
-        onquit(Error("Disconnecting"));
+        try {
+            queue.close();
+            onquit(Error("Disconnecting"));
+        } finally {
+            ondisconnect.forEach(fn => fn());
+        }
     }).on('message', msg => {
         if (msg.cmd && msg.cmd.indexOf('reply_to_') === 0 && queue.has(msg.in_reply_to)) {
             var pending = queue.remove(msg.in_reply_to);
@@ -83,7 +88,11 @@ module.exports = function(process) {
             return process.connected;
         },
         disconnect() {
-            if (process.connected) return process.disconnect();
+            return new Promise(disconnected => {
+                if (!process.connected) disconnected();
+                ondisconnect.push(disconnected);
+                return process.disconnect();
+            });
         },
         kill: process.kill.bind(process),
         on: process.on.bind(process),
@@ -145,7 +154,7 @@ process.on('SIGINT', () => {
         queue.onquit(error);
     });
 }).on('unhandledRejection', (reason, p) => {
-    if (!reason || reason.message!='SIGINT') {
+    if (!reason || reason.message!='SIGINT' && reason.message!='Disconnecting') {
         logger.warn('Unhandled Rejection', reason && reason.message || reason || p);
     }
 });

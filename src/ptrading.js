@@ -42,6 +42,7 @@ var program = require('commander').version(require('../package.json').version)
     .command('fetch <interval> <symbol.exchange>', "Fetches remote data for the given symbol")
     .command('quote <symbol.exchange>', "Historic information of a security")
     .command('collect [identifier]', "Collects historic portfolio data")
+    .command('bestsignals [identifier]', "Determines the best signals for the given portfolio")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-s, --silent', "Include less information about what the system is doing")
     .option('--debug', "Include details about what the system is working on")
@@ -68,23 +69,27 @@ if (require.main === module) {
     }
     if (_.isEmpty(program.args)) {
         var app = new shell({isShell: true});
+        var settings = {shell: app, introduction: true};
         app.configure(function(){
-            app.use(shell.history({shell: app}));
-            app.use(shell.completer({shell: app}));
-            app.use(shell.router({shell: app}));
-            app.use(shell.help({shell: app, introduction: true}));
-            app.use(shellError({shell: app}));
+            app.use(shell.history(settings));
+            app.use(shell.completer(settings));
+            app.use(shell.router(settings));
+            app.use(shell.help(settings));
+            app.use(shellError(settings));
         });
+        settings.sensitive = null; // disable case insensitivity in commands
         config.shell(app);
         require('./ptrading-fetch.js').shell(app);
         require('./ptrading-quote.js').shell(app);
         require('./ptrading-collect.js').shell(app);
+        require('./ptrading-bestsignals.js').shell(app);
         process.on('SIGINT', () => app.quit());
     }
 } else {
     var fetch = require('./ptrading-fetch.js');
     var quote = require('./ptrading-quote.js');
     var collect = require('./ptrading-collect.js');
+    var bestsignals = require('./ptrading-bestsignals.js');
     module.exports = {
         config: config,
         lookup(options) {
@@ -100,14 +105,18 @@ if (require.main === module) {
         fetch: fetch,
         quote: quote,
         collect: collect,
+        bestsignals: bestsignals,
         close() {
-            return collect.close();
+            return bestsignals.close();
         },
         shell(app) {
-            config.shell(app);
-            fetch.shell(app);
-            quote.shell(app);
-            collect.shell(app);
+            Promise.all([
+                config.shell(app),
+                fetch.shell(app),
+                quote.shell(app),
+                collect.shell(app),
+                bestsignals.shell(app)
+            ]).catch(err => console.error("Could not complete shell setup", err));
         }
     };
 }
