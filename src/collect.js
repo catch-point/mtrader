@@ -98,8 +98,9 @@ function collect(quote, callCollect, collections, fields, options) {
     var defaults = _.object(optional, optional.map(v => null));
     var avail = _.union(fields, optional);
     checkCircularVariableReference(avail, options);
-    var columns = parseNeededColumns(avail, options);
-    var columnNames = _.object(_.keys(options.columns), _.keys(columns));
+    var zipColumns = parseNeededColumns(avail, options);
+    var columns = _.object(zipColumns);
+    var columnNames = _.object(_.keys(options.columns), zipColumns.map(_.first));
     var simpleColumns = getSimpleColumns(columns, options);
     var criteria = getSimpleCriteria(columns, options);
     return Promise.all(portfolio.map((opts, idx) => {
@@ -163,6 +164,14 @@ function collect(quote, callCollect, collections, fields, options) {
         var order = getOrderBy(options.order, columns, options);
         return sortBy(result, order);
     }).then(result => {
+        if (options.head && options.tail)
+            return result.slice(0, options.head).concat(result.slice(-options.tail));
+        else if (options.head)
+            return result.slice(0, options.head);
+        else if (options.tail)
+            return result.slice(-options.tail);
+        else return result;
+    }).then(result => {
         return result.map(o => _.object(_.keys(columnNames), _.values(columnNames).map(key => o[key])));
     });
 }
@@ -178,6 +187,9 @@ function checkCircularVariableReference(fields, options) {
     });
 }
 
+/**
+ * Hash of variable names to array of variable names it depends on
+ */
 function getReferences(variables) {
     var references = Parser({
         constant(value) {
@@ -256,22 +268,27 @@ function parseNeededColumns(fields, options) {
         while (~conflicts.indexOf(name + seq)) seq++;
         return name + seq;
     }));
-    var needed = _.reduce(columns, (needed, value, key) => {
+    var result = [];
+    var needed = _.reduce(options.columns, (needed, expr, key) => {
+        var value = columns[key];
         needed[masked[key] || key] = value;
+        result.push([masked[key] || key, value]);
         return needed;
     }, {});
-    var variables = varnames.reduce((needed, name) => {
+    var variables = varnames.reduce((variables, name) => {
         if (_.has(options.variables, name)) {
-            needed[name] = normalizer.parse(options.variables[name]);
-        } else if (!_.has(needed, name) && ~fields.indexOf(name)) {
-            needed[name] = name; // pass through fields used in rolling functions
+            variables[name] = normalizer.parse(options.variables[name]);
+            result.push([name, variables[name]]);
+        } else if (!_.has(needed, name) && !_.has(variables, name) && ~fields.indexOf(name)) {
+            variables[name] = name; // pass through fields used in rolling functions
+            result.push([name, variables[name]]);
         }
-        return needed;
+        return variables;
     }, {});
     var filterOrder = _.difference(normalizer.parseCriteriaList(_.flatten(_.compact([
         options.filter, options.order
     ]), true)), _.keys(needed), _.keys(variables));
-    return _.extend(needed, variables, _.object(filterOrder, filterOrder));
+    return result.concat(_.zip(filterOrder, filterOrder));
 }
 
 /**
@@ -345,6 +362,9 @@ function getSubstitutions(variables, options) {
     return _.defaults(_.omit(options.variables, variables), params);
 }
 
+/**
+ * Calls JSON.stringify on strings and numbres, and returns 'NULL()' if null value
+ */
 function stringify(value) {
     if (_.isObject(value) || _.isArray(value))
         throw Error("Must be a number, string, or null: " + value);
