@@ -63,7 +63,6 @@ module.exports = function() {
     });
     var open = (name, cb) => store.then(store => store.open(name, cb));
     return {
-        offline: true,
         close() {
             return Promise.all(_.map(fallbacks, fb => fb.close()))
                 .then(() => store).then(store => store.close());
@@ -92,8 +91,6 @@ function readOrWriteHelp(fallbacks, open, name, options) {
             }).then(result => {
                 if (result)
                     return result;
-                if (options.offline)
-                    throw Error("Not enough data, try again without offline flag");
                 else if (_.isEmpty(fallbacks))
                     throw Error("Data file not found " + coll.filenameOf(name));
                 else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
@@ -117,8 +114,6 @@ function readOrWriteResult(fallbacks, open, cmd, options) {
         return db.collection(cmd).then(coll => coll.lockWith([name], names => {
             var name = _.map(args, arg => safe(arg)).join('.') || 'result';
             if (coll.exists(name)) return coll.readFrom(name);
-            else if (options.offline)
-                throw Error("Not enough data, try again without offline flag");
             else if (_.isEmpty(fallbacks))
                 throw Error("Data file not found " + coll.filenameOf(name));
             else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {

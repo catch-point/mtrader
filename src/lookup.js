@@ -41,10 +41,12 @@ const expect = require('chai').use(like).expect;
  * @returns a function that returns an object about the security in the given options
  */
 module.exports = function(fetch) {
-    var fetchOnline = fetchOptionsFactory(fetch, false);
-    var fetchOffline = fetchOptionsFactory(fetch, true);
+    var fetchOnline = fetchOptionsFactory(fetch, false, false);
+    var fetchReadOnly = fetchOptionsFactory(fetch, false, true);
+    var fetchOffline = fetchOptionsFactory(fetch, true, true);
     var self = function(options) {
-        return options.offline ? fetchOffline(options) : fetchOnline(options);
+        return options.offline ? fetchOffline(options) :
+            options.read_only ? fetchReadOnly(options) : fetchOnline(options);
     };
     self.close = () => store.close();
     return self;
@@ -53,20 +55,22 @@ module.exports = function(fetch) {
 /**
  * @returns a function that returns an object about the security in the given options
  */
-function fetchOptionsFactory(fetch, offline) {
+function fetchOptionsFactory(fetch, offline, read_only) {
     var memoizeFirstLookup = _.memoize((symbol, exchange) => {
         return readInfo(symbol, exchange, offline).catch(err => {
             if (offline) throw err;
             else return fetch({
                 interval: 'lookup',
                 symbol: symbol,
-                exchange: exchange,
-                offline: offline
+                exchange: exchange
             }).then(matches => _.first(matches)).then(security => {
                 if (_.isEmpty(security)) throw Error("Unknown symbol: " + symbol);
                 else if (security.symbol == symbol) return security;
                 else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
-            }).then(info => saveInfo(symbol, exchange, info));
+            }).then(info => {
+                if (read_only) return info;
+                else return saveInfo(symbol, exchange, info);
+            });
         });
     }, (symbol, exchange) => {
         return exchange ? symbol + ' ' + exchange : symbol;

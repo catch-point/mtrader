@@ -125,7 +125,7 @@ if (require.main === module) {
         var master = getMasterIndex(children, options);
         var slave = chooseSlaveIndex(master, processing, options);
         processing[slave]++;
-        var opts = _.extend({offline: slave != master}, options);
+        var opts = _.extend({read_only: slave != master}, options);
         return children[slave].request('quote', opts).then(result => {
             processing[slave]--;
             if (!processing[slave]) queue_ready();
@@ -133,10 +133,11 @@ if (require.main === module) {
         }, err => {
             processing[slave]--;
             try {
-                if (master == slave || _.has(options, 'offline')) throw err;
-                else if (!err || !err.message || !~err.message.indexOf('offline')) throw err;
+                if (master == slave || _.has(options, 'read_only')) throw err;
+                else if (!err || !err.message) throw err;
+                else if (!~err.message.indexOf('read_only')) throw err;
                 logger.debug("Retrying", options.label || '', "using master node");
-                return quote(_.extend({offline: false}, options)); // retry using master
+                return quote(_.extend({read_only: false}, options)); // retry using master
             } finally {
                 if (!processing[slave]) queue_ready();
             }
@@ -180,10 +181,9 @@ function getMasterIndex(workers, options) {
 }
 
 function chooseSlaveIndex(master, processing, options) {
-    if (!options.transient) return master; // read-write master
     var avail = _.min(processing);
     if (processing[master] == avail) return master; // master is available
-    else if (options.offline == false) return master; // write requested
+    else if (_.has(options, 'read_only') && !options.read_only) return master; // write requested
     else return processing.indexOf(avail); // use available slave
 }
 

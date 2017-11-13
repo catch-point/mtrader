@@ -133,6 +133,10 @@ function help(fetch) {
                     usage: 'true',
                     description: "If only the local data should be used in the computation"
                 },
+                read_only: {
+                    usage: 'true',
+                    descirption: "If only precomputed lookback and indicator function should be used"
+                },
                 transient: {
                     usage: 'true',
                     description: "If no computed columns should be persisted to disk. Useful when evaluating expressions, over a short time period, that might not be evaluated again."
@@ -459,9 +463,9 @@ function fetchBars(fetch, db, fields, expressions, options) {
           .then(blocks => readBlocks(collection, warmUpLength, blocks, expressions, options))
           .then(tables => trimTables(tables, options));
     }).catch(err => {
-        if (!options.offline) throw err;
+        if (!options.offline && !options.read_only) throw err;
         else return db.flushCache().then(() => {
-            throw Error("Couldn't read needed data, try again without offline flag " + err.message);
+            throw Error("Couldn't read needed data, try again without offline/read_only flag " + err.message);
         });
     });
 }
@@ -487,7 +491,7 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
     var end = options.end || moment(options.now).tz(options.tz);
     var stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
     var blocks = getBlocks(options.interval, start, stop, options);
-    if (options.offline) return Promise.resolve(blocks);
+    if (options.offline || options.read_only) return Promise.resolve(blocks);
     else return collection.lockWith(blocks, blocks => {
         var version = getStorageVersion(collection);
         return fetchBlocks(fetch, fields, options, collection, version, stop, blocks);
@@ -507,6 +511,8 @@ function readBlocks(collection, warmUpLength, blocks, expressions, options) {
             return promise; // warmUp blocks are not evaluated
         var missing = _.difference(_.keys(expressions), collection.columnsOf(block));
         if (!missing.length) return promise;
+        else if (options.read_only && !options.transient)
+            throw Error("Missing " + _.first(missing) + " try again without the read_only flag");
         return promise.then(dataBlocks => {
             var warmUpBlocks = blocks.slice(0, i);
             warmUpBlocks.forEach(block => {

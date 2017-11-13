@@ -155,7 +155,7 @@ process.on('SIGINT', () => {
     });
 }).on('unhandledRejection', (reason, p) => {
     if (!reason || reason.message!='SIGINT' && reason.message!='Disconnecting') {
-        logger.warn('Unhandled Rejection', reason && reason.message || reason || p);
+        logger.warn('Unhandled Rejection', reason && reason.message || reason || p, reason && reason.stack || '');
     }
 });
 

@@ -273,11 +273,9 @@ function intraday(datasources, options) {
 function getDatasources(datasources, options, interval, optional) {
     var exchange = options.exchange;
     var sources = _.mapObject(_.pick(config(['exchanges', exchange, 'datasources']), (source, id) => {
-        return _.has(datasources, id) && (!options.offline || datasources[id].offline)
-            && (!interval || _.contains(source.fetch, interval))
+        return _.has(datasources, id) && (!interval || _.contains(source.fetch, interval))
     }), source => _.omit(source, 'fetch'));
     if (optional) return sources;
-    if (_.isEmpty(sources) && options.offline) throw Error("Not enough data, try again without offline flag");
     if (_.isEmpty(sources)) throw Error("No datasources available for " + interval
         + " using " + _.keys(getDatasources(datasources, options, null, true)).join(', '));
     return sources;
