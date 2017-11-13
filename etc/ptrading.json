@@ -26,7 +26,7 @@
             "fetch": ["lookup", "fundamental", "year", "quarter", "month", "week", "day"]
         },
         "yahoo": {
-          "exchs": ["PCX"],
+          "exchs": ["NYQ", "PCX"],
           "marketLang": "en-US",
           "fetch": ["lookup", "year", "quarter", "month", "week", "day"]
         },
