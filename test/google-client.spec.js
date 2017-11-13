@@ -67,7 +67,7 @@ describe("google-client", function() {
         });
     });
     it("should return daily", function() {
-        return client.day('NASDAQ:AABA', moment.tz('2014-01-01', tz), tz)
+        return client.day('NASDAQ:AABA', moment.tz('2014-01-01', tz), moment().tz(tz), tz)
           .then(result => result.slice(-21))
           .should.eventually.be.like([
             {Date:"31-Jan-14",Open:34.7,High:36.3,Low:34.6,Close:36.01},

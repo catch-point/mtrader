@@ -74,11 +74,11 @@ function loadIntradayTable(get, symbol, interval) {
         .then(rows2objects);
 }
 
-function loadTable(get, symbol, begin, tz) {
+function loadTable(get, symbol, begin, end, tz) {
     expect(symbol).to.be.a('string').and.match(/^\S+:\S+$/);
     var query = _.extend({
         symbol: symbol
-    }, periods(begin, tz));
+    }, periods(begin, end, tz));
     var url = _.keys(query).reduce((url, key) => {
         return url.replace('{' + key + '}', encodeURIComponent(query[key]));
     }, historical)
@@ -87,12 +87,12 @@ function loadTable(get, symbol, begin, tz) {
         .then(rows2objects);
 }
 
-function periods(begin, tz) {
+function periods(begin, end, tz) {
     expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
     var mb = moment.tz(begin, tz);
     if (!mb.isValid()) throw Error("Invalid begin date " + begin);
     var start = mb.startOf('day');
-    var end = moment().tz(tz).startOf('day');
+    var end = moment.tz(end, tz).startOf('day');
     return {
         startdate: start.format('MMM D, Y'),
         enddate: end.format('MMM D, Y')

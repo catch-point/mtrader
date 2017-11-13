@@ -307,7 +307,7 @@ function day(google, yahoo, options) {
     var final = endOf('day', options.end || now, options);
     var decade = (Math.floor(moment.tz(options.begin, options.tz).year()/10)*10)+'-01-01';
     return Promise.all([
-        google.day(google_symbol(options), options.begin, options.tz),
+        getPrices(google, google_symbol(options), options.begin, now, options.tz),
         yahoo.split(yahoo_symbol(options), decade, options.tz),
         yahoo.dividend(yahoo_symbol(options), decade, options.tz),
         eod ? [] : google.intraday(google_symbol(options), 300),
@@ -336,6 +336,18 @@ function day(google, yahoo, options) {
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
         else return result.slice(0, last);
+    });
+}
+
+function getPrices(google, google_symbol, begin, end, tz) {
+    return google.day(google_symbol, begin, end, tz).then(prices => {
+        if (prices.length <= 0 || prices.length % 1000 !== 0) return prices;
+        // data was likely truncated
+        var earlier = moment.tz(_.last(prices).Date, 'D-MMM-YY', tz).subtract(1, 'days');
+        if (earlier.isBefore(begin)) return prices; // it is all here
+        return getPrices(google, google_symbol, begin, earlier, tz).then(predata => {
+            return prices.concat(predata);
+        });
     });
 }
 
