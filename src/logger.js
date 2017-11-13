@@ -38,21 +38,71 @@ var verbose = process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg)) || config
 var relative = path.relative(process.cwd(), path.dirname(__filename));
 var debugging = !relative || relative == 'src' || process.argv.indexOf('--debug') >= 0 || config('debug');
 
+var colours = {
+    black: '\x1b[30m',
+    red: '\x1b[31m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    magenta: '\x1b[35m',
+    cyan: '\x1b[36m',
+    white: '\x1b[37m',
+    reset: '\b\x1b[0m',
+    bright: '\x1b[1m',
+    dim: '\x1b[2m',
+    underscore: '\x1b[4m',
+    blink: '\x1b[5m',
+    reverse: '\x1b[7m',
+    hidden: '\x1b[8m',
+    dim_blue: '\x1b[2m\x1b[34m'
+}
+
 var logger = module.exports = {
-    debug: !silent && debugging ? console.error.bind(console) : () => {},
-    log: !silent && verbose ? console.error.bind(console) : () => {},
-    info: !silent ? console.error.bind(console) : () => {},
-    warn: !silent ? console.error.bind(console) : () => {},
-    error: console.error.bind(console)
+    debug: !silent && debugging ? debug : nil,
+    log: !silent && verbose ? verbose : nil,
+    info: !silent ? info : nil,
+    warn: !silent ? warn : nil,
+    error: error
 };
 
 config.addListener((name, value) => {
     if (name == 'verbose')
-        logger.log = value ? console.error.bind(console) : () => {};
+        logger.log = value ? verbose : nil;
     if (name == 'debug')
-        logger.debug = value ? console.error.bind(console) : () => {};
+        logger.debug = value ? debug: nil
     if (name == 'silent')
-        logger.info = !value ? console.error.bind(console) : () => {};
+        logger.info = !value ? info: nil;
     if (name == 'silent')
-        logger.warn = !value ? console.error.bind(console) : () => {};
+        logger.warn = !value ? debug : nil;
 });
+
+function verbose() {
+    return logWithColour(colours.dim, Array.prototype.slice.call(arguments, 0));
+}
+
+function debug() {
+    return logWithColour(colours.dim_blue, Array.prototype.slice.call(arguments, 0));
+}
+
+function info() {
+    return logWithColour(colours.cyan, Array.prototype.slice.call(arguments, 0));
+}
+
+function warn() {
+    return logWithColour(colours.yellow, Array.prototype.slice.call(arguments, 0));
+}
+
+function error() {
+    return logWithColour(colours.red, Array.prototype.slice.call(arguments, 0));
+}
+
+function logWithColour(colour, args) {
+    if (typeof args[0] == 'string') args[0] = colour + args[0];
+    else args.unshift(colour);
+    args.push(colours.reset);
+    return console.error.apply(console, args);
+}
+
+function nil() {
+    // silence
+}
