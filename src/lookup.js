@@ -64,7 +64,8 @@ function fetchOptionsFactory(fetch, offline, read_only) {
                 symbol: symbol,
                 exchange: exchange
             }).then(matches => _.first(matches)).then(security => {
-                if (_.isEmpty(security)) throw Error("Unknown symbol: " + symbol);
+                if (_.isEmpty(security))
+                    throw Error("Unknown symbol: " + (exchange ? symbol + '.' + exchange:exchange));
                 else if (security.symbol == symbol) return security;
                 else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
             }).then(info => {

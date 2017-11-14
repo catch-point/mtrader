@@ -44,7 +44,7 @@ const MIN_POPULATION = 8;
 
 /**
  * Given signals and possible parameter_values, searches for the best signal
- * using collect to perform the fitnenss test
+ * using an Evolution strategy with collect as the fitnenss test
  */
 module.exports = function(collect) {
     var promiseHelp;
@@ -208,8 +208,8 @@ function searchParameters(collect, prng, signal, pnames, options) {
     return Promise.resolve(createPopulation).then(population => {
         var fitnessFn = fitness(collect, options, signal, pnames);
         var selectionFn = selection.bind(this, fitnessFn, Math.floor(_.size(population)/2));
-        var crossoverFn = crossover.bind(this, prng, _.size(population), pvalues, space);
-        return optimize(selectionFn, crossoverFn, signal, pnames, terminateAt, staleAfter, options, population);
+        var mutationFn = mutation.bind(this, prng, _.size(population), pvalues, space);
+        return optimize(selectionFn, mutationFn, signal, pnames, terminateAt, staleAfter, options, population);
     }).then(solutions => {
         var count = options.signal_count || 1;
         return _.sortBy(solutions, 'score').slice(-count).reverse();
@@ -321,7 +321,7 @@ function sampleSolutions(collect, prng, signal, pnames, space, options) {
             population.push(seed);
         }
         if (population.length >= size) return population;
-        else return crossover(prng, size, pvalues, space, population, 0);
+        else return mutation(prng, size, pvalues, space, population, 0);
     });
 }
 
@@ -356,21 +356,21 @@ function initialPopulation(prng, pnames, space, options) {
 /**
  * Cycles between candidate selection and mutation until the score of the best/worst selected solution is the same for `stale` number of iterations
  */
-function optimize(selection, crossover, signal, pnames, terminateAt, stale, options, population, stats) {
+function optimize(selection, mutation, signal, pnames, terminateAt, stale, options, population, stats) {
     return selection(population).then(solutions => {
         var best = _.first(solutions);
         var worst = _.last(solutions);
-        var factor = stats && stats.high == best.score && stats.low == worst.score ?
-            stats.factor + 1 : 0;
-        if (stats) logger.info("Signal", signal, options.begin, "G" + stats.generation, "P" + population.length, "F" + stats.factor, best.pindex.map((idx,i) => {
+        var strength = stats && stats.high == best.score && stats.low == worst.score ?
+            stats.strength + 1 : 0;
+        if (stats) logger.log("Signal", signal, options.begin, "G" + stats.generation, "P" + population.length, "M" + stats.strength, best.pindex.map((idx,i) => {
             return options.parameter_values[pnames[i]][idx];
         }).join(','), ':', best.score);
-        if (factor >= stale || terminateAt && terminateAt < Date.now()) return solutions;
-        var candidates = crossover(solutions, factor);
-        return optimize(selection, crossover, signal, pnames, terminateAt, stale, options, candidates, {
+        if (strength >= stale || terminateAt && terminateAt < Date.now()) return solutions;
+        var candidates = mutation(solutions, strength);
+        return optimize(selection, mutation, signal, pnames, terminateAt, stale, options, candidates, {
             high: best.score,
             low: worst.score,
-            factor: factor,
+            strength: strength,
             generation: stats ? stats.generation + 1 : 1,
             mtime: Date.now()
         });
@@ -427,11 +427,11 @@ function selection(fitness, size, population) {
 /**
  * Takes the solutions and adds mutated candidates using the gaussian distribution of the solution set
  */
-function crossover(prng, size, pvalues, space, solutions, randomFactor) {
+function mutation(prng, size, pvalues, space, solutions, strength) {
     var mutations = pvalues.map((values,i) => {
         var vals = _.map(solutions, sol => sol.pindex[i]);
         var avg = vals.reduce((a,b) => a + b) / vals.length;
-        var stdev = Math.min((vals.length>2 && statkit.std(vals) || 0.5) + randomFactor, Math.ceil(values.length/2));
+        var stdev = Math.min((vals.length>2 && statkit.std(vals) || 0.5) + strength, Math.ceil(values.length/2));
         return function(value) {
             var val = arguments.length ? value : avg;
             var target = statkit.norminv(prng()) * stdev + val;
@@ -449,7 +449,7 @@ function crossover(prng, size, pvalues, space, solutions, randomFactor) {
             population.push(mutated);
         }
     });
-    var target = size + randomFactor;
+    var target = size + strength;
     for (var i=0; i<target && _.size(population) < target; i++) {
         var candidate = {pindex: mutations.map(fn => fn())};
         if (space.add(candidate)) {

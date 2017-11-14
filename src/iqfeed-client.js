@@ -323,7 +323,7 @@ function watch(ready) {
                             try {
                                 if (options.update) return options.update(result);
                             } catch(e) {
-                                logger.error(e);
+                                logger.error("IQFeed", e);
                             }
                             deregister(watching, socketId, symbol, pending);
                         },
@@ -437,7 +437,7 @@ function promiseNewLevel1Socket(blacklist, watching, port, retry) {
                     });
                     return false;
                 } else if ('E' == row[0]) { // Update
-                    logger.error(row[1]);
+                    logger.error("IQFeed", row[1]);
                     return false;
                 }
             });
@@ -485,7 +485,7 @@ function promiseNewAdminSocket(port, command, productId, productVersion) {
                 var registration;
                 var warning = _.throttle(msg => logger.warn(msg), 10000, {trailing: false});
                 socket.on('error', error => {
-                    logger.error(error, error.stack);
+                    logger.error("IQFeed", error, error.stack);
                     abort(error);
                 });
                 onreceive(socket, function(line) {
@@ -530,7 +530,7 @@ function closeSocket(socket) {
 
 function send(cmd, socket) {
     return new Promise(function(callback, abort) {
-        logger.debug(cmd);
+        logger.log(cmd);
         socket.on('error', abort);
         socket.write(cmd + '\r\n', () => {
             socket.removeListener('error', abort);

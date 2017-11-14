@@ -33,9 +33,9 @@ const path = require('path');
 const process = require('process');
 const config = require('./config.js');
 
-var silent = process.argv.some(arg => /^--silent$|^-\w*s/.test(arg)) || config('silent');
-var verbose = process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg)) || config('verbose');
 var relative = path.relative(process.cwd(), path.dirname(__filename));
+var silent = process.argv.some(arg => /^--silent$|^-\w*s/.test(arg)) || config('silent');
+var verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg)) || config('verbose');
 var debugging = !relative || relative == 'src' || process.argv.indexOf('--debug') >= 0 || config('debug');
 
 var colours = {
@@ -59,29 +59,36 @@ var colours = {
 
 var logger = module.exports = {
     debug: !silent && debugging ? debug : nil,
-    log: !silent && verbose ? verbose : nil,
+    log: !silent && verbosity ? verbose : nil,
     info: !silent ? info : nil,
     warn: !silent ? warn : nil,
     error: error
 };
 
+process.on('SIGINT', () => {
+    logger.log = nil;
+    logger.info = nil;
+    logger.warn = nil;
+    logger.error = nil;
+});
+
 config.addListener((name, value) => {
+    if (name == 'debug')
+        logger.debug = value ? debug: nil;
     if (name == 'verbose')
         logger.log = value ? verbose : nil;
-    if (name == 'debug')
-        logger.debug = value ? debug: nil
     if (name == 'silent')
         logger.info = !value ? info: nil;
     if (name == 'silent')
         logger.warn = !value ? debug : nil;
 });
 
-function verbose() {
-    return logWithColour(colours.dim, Array.prototype.slice.call(arguments, 0));
-}
-
 function debug() {
     return logWithColour(colours.dim_blue, Array.prototype.slice.call(arguments, 0));
+}
+
+function verbose() {
+    return logWithColour(colours.dim, Array.prototype.slice.call(arguments, 0));
 }
 
 function info() {
