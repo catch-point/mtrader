@@ -309,7 +309,6 @@ function sampleSolutions(collect, prng, signal, pnames, space, options) {
     })).then(results => {
         var parameters = _.pick(options.parameters, pnames);
         var count = options.signal_count || 1;
-        var seed = {pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))};
         var population = results.reduce((population, sols) => sols.reduce((population, solution) => {
             var candidate = {pindex: solution.pindex};
             if (space.add(candidate)) {
@@ -317,6 +316,7 @@ function sampleSolutions(collect, prng, signal, pnames, space, options) {
             }
             return population;
         }, population), []);
+        var seed = {pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))};
         if (!_.isEmpty(parameters) && space.add(seed)) {
             population.push(seed);
         }
@@ -334,23 +334,15 @@ function initialPopulation(prng, pnames, space, options) {
     var count = options.signal_count || 1;
     var size = options.population_size ||
         Math.max(_.max(_.map(pvalues, _.size)), count * 2, MIN_POPULATION);
-    var seed = {pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))};
     var population = [];
     if (!_.isEmpty(parameters)) {
+        var seed = {
+            pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))
+        };
         population.push(seed);
         space.add(seed);
     }
-    for (var i=0; i<size*2 && _.size(population) < size; i++) {
-        var candidate = {
-            pindex: pvalues.map(values => {
-                return Math.floor(prng() * values.length);
-            })
-        };
-        if (space.add(candidate)) {
-            population.push(candidate);
-        }
-    }
-    return population;
+    return mutation(prng, size, pvalues, space, population, 0);
 }
 
 /**
@@ -428,18 +420,19 @@ function selection(fitness, size, population) {
  * Takes the solutions and adds mutated candidates using the gaussian distribution of the solution set
  */
 function mutation(prng, size, pvalues, space, solutions, strength) {
+    var empty = _.isEmpty(solutions);
+    var one = solutions.length == 1;
     var mutations = pvalues.map((values,i) => {
-        var vals = _.map(solutions, sol => sol.pindex[i]);
-        var avg = vals.reduce((a,b) => a + b) / vals.length;
-        var stdev = Math.min((vals.length>2 && statkit.std(vals) || 0.5) + strength, Math.ceil(values.length/2));
+        var vals = empty || one ? _.range(values.length) : _.map(solutions, sol => sol.pindex[i]);
+        var avg = one ? solutions[0].pindex[i] : vals.reduce((a,b) => a + b) / vals.length;
+        var stdev = vals.length>2 && statkit.std(vals) || 0.5;
+        var window = Math.min(stdev + strength, Math.ceil(values.length/2));
         return function(value) {
             var val = arguments.length ? value : avg;
-            var target = statkit.norminv(prng()) * stdev + val;
-            if (target > values.length) target = values.length*2 - target%(values.length*2);
-            if (target < 0) target = -target;
-            var idx = Math.round(target);
-            if (idx >= values.length) idx = values.length -1;
-            return idx;
+            var target = statkit.norminv(prng()) * window + val;
+            var abs = Math.abs(target % (values.length * 2));
+            return abs >= values.length ?
+                Math.ceil(values.length * 2 - abs) - 1 : Math.floor(abs);
         };
     });
     var population = solutions;

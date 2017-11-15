@@ -103,7 +103,7 @@ describe("bestsignals", function() {
         }).should.eventually.be.like({
             signals: ['ema_cross'],
             parameters: {
-                fast_len: 10,
+                fast_len: 50,
                 slow_len: 150
             }
         });
@@ -418,8 +418,8 @@ describe("bestsignals", function() {
             signals: ['macd_cross'],
             parameters: {
                 fast_len: 3,
-                slow_len: 10,
-                signal_len: 16
+                slow_len: 35,
+                signal_len: 5
             }
         });
     });
@@ -496,8 +496,8 @@ describe("bestsignals", function() {
         }).should.eventually.be.like({
             signals: ['ema_cross', 'bollinger_signal', 'STO_signal'],
             parameters:  {
-                fast_len: 10,
-                slow_len: 150,
+                fast_len: 25,
+                slow_len: 100,
                 len: 10,
                 multiplier: 2,
                 lookback: 10,
