@@ -1,4 +1,4 @@
-// ipc-promise-reply.js
+// promise-reply.js
 /*
  *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
  *
@@ -43,6 +43,14 @@ module.exports = function(process) {
     };
     var ondisconnect = [];
     var queue = createQueue(onquit, process.pid);
+    var stats = {
+        messages_sent: 0,
+        requests_sent: 0,
+        replies_sent: 0,
+        messages_rec: 0,
+        requests_rec: 0,
+        replies_rec: 0
+    };
     process.on('disconnect', () => {
         try {
             queue.close();
@@ -52,6 +60,7 @@ module.exports = function(process) {
         }
     }).on('message', msg => {
         if (msg.cmd && msg.cmd.indexOf('reply_to_') === 0 && queue.has(msg.in_reply_to)) {
+            stats.replies_rec++;
             var pending = queue.remove(msg.in_reply_to);
             try {
                 if (!_.has(msg, 'error'))
@@ -68,22 +77,30 @@ module.exports = function(process) {
                 return pending.onerror(err);
             }
         } else if (handlers[msg.cmd]) {
-            Promise.resolve(msg.payload).then(handlers[msg.cmd]).then(response => {
-                if (msg.id && process.connected) process.send({
+            stats.requests_rec++;
+            new Promise(cb => cb(handlers[msg.cmd].call(self, msg.payload))).then(response => {
+                if (msg.id && process.connected) ++stats.replies_sent && process.send({
                     cmd: 'reply_to_' + msg.cmd,
                     in_reply_to: msg.id,
                     payload: response
                 });
             }, err => {
-                if (msg.id && process.connected) process.send({
+                if (msg.id && process.connected) ++stats.replies_sent && process.send({
                     cmd: 'reply_to_' + msg.cmd,
                     in_reply_to: msg.id,
                     error: serializeError(err)
                 });
             });
+        } else if (msg.cmd == 'config') {
+            stats.messages_rec++;
+        } else {
+            stats.messages_rec++;
+            logger.debug("Unknown message", msg);
         }
     });
-    return {
+    var self;
+    return self = {
+        stats: stats,
         get connected() {
             return process.connected;
         },
@@ -95,9 +112,16 @@ module.exports = function(process) {
             });
         },
         kill: process.kill.bind(process),
-        on: process.on.bind(process),
-        once: process.once.bind(process),
+        on: function(event, listener) {
+            process.on(event, listener.bind(this));
+            return this;
+        },
+        once: function(event, listener) {
+            process.once(event, listener.bind(this));
+            return this;
+        },
         send(cmd, payload) {
+            stats.messages_sent++;
             return new Promise(cb => process.send({
                 cmd: cmd,
                 payload: payload
@@ -106,6 +130,7 @@ module.exports = function(process) {
             });
         },
         request(cmd, payload) {
+            stats.requests_sent++;
             return new Promise((response, error) => {
                 var id = nextId(cmd);
                 queue.add(id, {

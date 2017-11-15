@@ -31,18 +31,21 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-var os = require('os');
+const path = require('path');
 const _ = require('underscore');
 const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const Quote = require('./quote.js');
-const replyTo = require('./ipc-promise-reply.js');
+const remote = require('./remote-process.js');
+const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const expect = require('chai').expect;
 const common = require('./common-functions.js');
 const lookback = require('./lookback-functions.js');
 const indicator = require('./indicator-functions.js');
+
+const WORKER_COUNT = require('os').cpus().length;
 
 function usage(command) {
     return command.version(require('../package.json').version)
@@ -75,6 +78,7 @@ if (require.main === module) {
     if (program.args.length) {
         var fetch = require('./ptrading-fetch.js');
         var quote = Quote(fetch);
+        process.on('SIGINT', () => quote.close().then(() => fetch.close()));
         var symbol = program.args[0];
         var exchange = program.args[1];
         if (!exchange && ~symbol.indexOf('.')) {
@@ -103,10 +107,77 @@ if (require.main === module) {
 } else {
     var fetch = require('./ptrading-fetch.js');
     var program = usage(new commander.Command());
-    var prime = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
-    var workers = commander.workers == 0 ? 1 :
-        commander.workers || prime[_.sortedIndex(prime, os.cpus().length)] || os.cpus().length;
-    var children = commander.workers == 0 ? [{
+    var workers = [];
+    var stoppedWorkers = [];
+    var queue = [];
+    var quote = function(options) {
+        var master = getMasterWorker(workers, options);
+        var slave = chooseSlaveWorker(workers, master, options);
+        var opts = slave.process.remote || slave == master ? options :
+            _.extend({read_only: true}, options);
+        return slave.request('quote', opts).catch(err => {
+            if (slave.process.remote && options.read_only != false) {
+                logger.debug("Quote", slave.process.pid, err, err.stack);
+            } else {
+                if (!err || !err.message) throw err;
+                else if (!~err.message.indexOf('read_only')) throw err;
+                else if (!opts.read_only || _.has(options, 'read_only')) throw err;
+                else if (slave == getMasterWorker(workers, options)) throw err;
+            }
+            logger.debug("Retrying", options.label || '', "using master node", master.process.pid);
+            return quote(_.extend({read_only: false}, options)); // retry using master
+        });
+    };
+    var check_queue = function() {
+        stoppedWorkers.forEach(worker => {
+            if (worker.stats.requests_sent == worker.stats.replies_rec) {
+                worker.disconnect();
+            }
+        });
+        var spare = workers.reduce((capacity, worker) => {
+            return capacity + (worker.count || 1) - worker.stats.requests_sent + worker.stats.replies_rec;
+        }, 0);
+        queue.splice(0, spare).forEach(item => {
+            quote(item.options).then(item.resolve, item.reject);
+        });
+    };
+    workers.push.apply(workers, createWorkers(fetch, quote, program));
+    workers.forEach(worker => worker.on('message', check_queue).handle('stop', function() {
+        var idx = workers.indexOf(this);
+        if (idx >= 0) workers.splice(idx, 1);
+        stoppedWorkers.push(this);
+        check_queue();
+    }).once('disconnect', function() {
+        var idx = workers.indexOf(this);
+        if (idx >= 0) workers.splice(idx, 1)[0];
+        var sidx = stoppedWorkers.indexOf(this);
+        if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
+        logger.log("Worker", this.process.pid, "has disconnected");
+    }));
+    var promiseHelp = _.first(workers).request('quote', {help: true});
+    module.exports = function(options) {
+        return promiseHelp.then(_.first).then(info => {
+            return _.pick(options, ['help'].concat(_.keys(info.options)));
+        }).then(options => new Promise((resolve, reject) => {
+            queue.push({options, resolve, reject});
+            check_queue();
+        }));
+    };
+    module.exports.close = function() {
+        queue.splice(0).forEach(item => {
+            item.reject(Error("Collect is closing"));
+        });
+        return Promise.all(_.flatten([
+            workers.map(child => child.disconnect()),
+            stoppedWorkers.map(child => child.disconnect())
+        ])).then(fetch.close);
+    };
+    module.exports.shell = shell.bind(this, program.description(), module.exports);
+}
+
+function createWorkers(fetch, quote, program) {
+    var signal = config('workers') == 0 && !config('remote_workers');
+    if (signal) return [{
         request: ((quote, cmd, payload) => {
             if (cmd == 'fetch') return fetch(payload);
             else if (cmd == 'quote') return quote(payload);
@@ -114,77 +185,57 @@ if (require.main === module) {
         }).bind(this, Quote(fetch)),
         disconnect() {
             return this.request('disconnect');
-        }
-    }] : _.range(workers).map(() => {
+        },
+        once: function() {},
+        stats: {
+            requests_sent: 0,
+            replies_rec: 0
+        },
+        process: process
+    }];
+    var prime = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
+    var size = _.isFinite(config('workers')) ? config('workers') :
+        prime[_.sortedIndex(prime, WORKER_COUNT)] || WORKER_COUNT;
+    var local = _.range(size).map(() => {
         return replyTo(config.fork(module.filename, program))
           .handle('fetch', payload => fetch(payload));
     });
-    var queue = [];
-    var processing = children.map(_.constant(0));
-    var quote = function(options) {
-        var master = getMasterIndex(children, options);
-        var slave = chooseSlaveIndex(master, processing, options);
-        processing[slave]++;
-        var opts = _.extend({read_only: slave != master}, options);
-        return children[slave].request('quote', opts).then(result => {
-            processing[slave]--;
-            if (!processing[slave]) queue_ready();
-            return result;
-        }, err => {
-            processing[slave]--;
-            try {
-                if (master == slave || _.has(options, 'read_only')) throw err;
-                else if (!err || !err.message) throw err;
-                else if (!~err.message.indexOf('read_only')) throw err;
-                logger.debug("Retrying", options.label || '', "using master node");
-                return quote(_.extend({read_only: false}, options)); // retry using master
-            } finally {
-                if (!processing[slave]) queue_ready();
-            }
-        });
-    };
-    var queue_ready = function() {
-        var available = processing.filter(load => load === 0).length;
-        var selected = [];
-        for (var i=0; i<queue.length && selected.length<available; i++) {
-            var item = queue[i];
-            var master = getMasterIndex(children, item.options);
-            if (processing[master] < children.length) selected.push(i);
-        }
-        selected.reverse().map(i => queue.splice(i, 1)[0]).reverse().forEach(item => {
-            quote(item.options).then(item.resolve, item.reject);
-        });
-    };
-    module.exports = function(options) {
-        return new Promise((resolve, reject) => {
-            queue.push({options, resolve, reject});
-            queue_ready();
-        });
-    };
-    module.exports.close = function() {
-        queue.splice(0).forEach(item => {
-            item.reject(Error("Collect is closing"));
-        });
-        children.forEach(child => child.disconnect());
-        return fetch.close();
-    };
-    module.exports.shell = shell.bind(this, program.description(), module.exports);
-}
+    var remote_workers = _.flatten(_.compact(_.flatten([config('remote_workers')]))
+        .map(addr => addr.split(',')));
+    if (_.isEmpty(remote_workers)) return local;
+    var remoteWorkers = remote_workers.map(address => {
+        return replyTo(remote(address))
+            .on('error', err => logger.error(err, err.stack));
+    });
+    remoteWorkers.forEach(worker => {
+        worker.request('worker_count')
+            .then(count => worker.count = count)
+            .catch(err => logger.error(err, err.stack));
+    });
+    return local.concat(remoteWorkers);
+};
 
-function getMasterIndex(workers, options) {
+function getMasterWorker(workers, options) {
     if (!options.help) expect(options).to.have.property('symbol');
     var name = options.help ? 'help' : options.exchange ?
         options.symbol + '.' + options.exchange : options.symbol;
     expect(workers).to.be.an('array').and.not.empty;
-    var mod = workers.length;
-    return (hashCode(name) % mod + mod) % mod;
+    var local = workers.filter(worker => !worker.process.remote);
+    var pool = _.isEmpty(local) ? workers : local; // use local workers as masters
+    var capacity = pool.reduce((capacity, worker) => capacity + (worker.count || 1), 0);
+    var number = (hashCode(name) % capacity + capacity) % capacity;
+    return pool.find(worker => (number-= worker.count || 1) < 0);
 }
 
-function chooseSlaveIndex(master, processing, options) {
-    var avail = _.min(processing);
-    if (processing[master] == avail) return master; // master is available
-    else if (_.has(options, 'read_only') && !options.read_only) return master; // write requested
-    else return processing.indexOf(avail); // use available slave
+function chooseSlaveWorker(workers, master, options) {
+    if (_.has(options, 'read_only') && !options.read_only)
+        return master; // write requested
+    var loads = workers.map(w => {
+        return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
+    });
+    var light = _.min(loads);
+    if (loads[workers.indexOf(master)] == light) return master; // master is available
+    else return workers[loads.indexOf(light)]; // use available slave
 }
 
 function hashCode(str){

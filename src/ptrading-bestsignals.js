@@ -38,7 +38,7 @@ const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
-const replyTo = require('./ipc-promise-reply.js');
+const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const Bestsignals = require('./bestsignals.js');
 const expect = require('chai').expect;
@@ -65,6 +65,7 @@ function usage(command) {
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('-o, --offline', "Disable data updates")
         .option('--workers <numOfWorkers>', 'Number of workers to spawn')
+        .option('--remote-workers <host:port,..>', "List of host:port addresses to connect to")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--save <file>', "JSON file to write the result into");
 }
@@ -72,38 +73,68 @@ function usage(command) {
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        initialize(program);
-    } else if (process.send) {
-        spawn();
-    } else {
-        program.help();
-    }
-} else {
-    initialize(usage(new commander.Command()));
-}
-
-function initialize(program) {
-    var collect = require('./ptrading-collect.js');
-    var bestsignals = Bestsignals(collect);
-    module.exports = function(options) {
-        return bestsignals(options);
-    };
-    module.exports.close = function() {
-        return collect.close().then(bestsignals.close);
-    };
-    module.exports.shell = shell.bind(this, program.description(), module.exports);
-    if (require.main === module) {
+        var bestsignals = createInstance(program);
+        process.on('SIGINT', () => bestsignals.close());
         var name = program.args.join(' ');
         var options = readSignals(name);
-        module.exports(options).then(result => new Promise(done => {
+        bestsignals(options).then(result => new Promise(done => {
             var output = JSON.stringify(result, null, ' ');
             var writer = createWriteStream(config('save'));
             writer.on('finish', done);
             writer.write(output, 'utf-8');
             writer.end();
         })).catch(err => logger.error(err, err.stack))
-          .then(() => module.exports.close());
+          .then(() => bestsignals.close());
+    } else if (process.send) {
+        spawn();
+    } else {
+        program.help();
     }
+} else {
+    module.exports = createInstance(usage(new commander.Command()));
+}
+
+function createInstance(program) {
+    var collect = require('./ptrading-collect.js');
+    var bestsignals = Bestsignals(collect);
+    var collections = {};
+    var instance = function(options) {
+        if (options.signalset || options.protfolio)
+            return bestsignals(inlineCollections(collections, options));
+        else return bestsignals(options);
+    };
+    instance.close = function() {
+        return collect.close().then(bestsignals.close);
+    };
+    instance.shell = shell.bind(this, program.description(), instance);
+    return instance;
+}
+
+function inlineCollections(collections, options, avoid) {
+    if (!options)
+        return options;
+    else if (_.isArray(options))
+        return options.map(item => inlineCollections(collections, item, avoid));
+    else if (_.isObject(options) && (options.portfolio || options.signalset))
+        return _.defaults({
+            portfolio: inlineCollections(collections, options.portfolio, avoid),
+            signalset: inlineCollections(collections, options.signalset, avoid)
+        }, options);
+    else if (_.isObject(options))
+        return options;
+    else if (_.contains(avoid, options))
+        throw Error("Cycle profile detected: " + avoid + " -> " + options);
+    if (_.isEmpty(collections)) {
+        _.extend(collections, _.object(config.list(), []));
+    }
+    if (!collections[options] && _.has(collections, options)) {
+        var cfg = config.read(options);
+        if (cfg) collections[options] = inlineCollections(collections, _.extend({
+            label: options,
+        }, cfg), _.flatten(_.compact([avoid, options]), true));
+    }
+    if (collections[options]) return collections[options];
+    else return options;
 }
 
 function readSignals(name) {

@@ -43,8 +43,29 @@ describe("ptrading-collect", function() {
         ptrading.config(['iqfeed','enabled'], false);
         ptrading.config(['google','enabled'], true);
         ptrading.config(['yahoo','enabled'], false);
-        ptrading.config(['files','enabled'], true);
+        ptrading.config(['files','enabled'], false);
         ptrading.config(['files','dirname'], path.resolve(__dirname, 'var'));
+        ptrading.config.save('SPY', {
+            portfolio: 'SPY.ARCA',
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(day.close,5)'
+            }
+        });
+        ptrading.config.save('SPY_ARCA', {
+            portfolio: 'ARCA_SPY',
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(day.close,5)'
+            }
+        });
+        ptrading.config.save('ARCA_SPY', {
+            portfolio: 'SPY_ARCA',
+            columns: {
+                'day.ending': 'day.ending',
+                'day.close': 'ROUND(1/day.close,5)'
+            }
+        });
     });
     after(function() {
         ptrading.config.unset('prefix');
@@ -164,8 +185,46 @@ describe("ptrading-collect", function() {
           criteria: 'position OR shares'
         }).should.eventually.be.like(expected));
     });
+    it("should call nested collect", function() {
+        return ptrading.collect({
+            portfolio: 'SPY',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'day.close'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        }).should.eventually.be.like([
+            {date:"2017-01-03",close:225.24},
+            {date:"2017-01-04",close:226.58},
+            {date:"2017-01-05",close:226.4},
+            {date:"2017-01-06",close:227.21},
+            {date:"2017-01-09",close:226.46},
+            {date:"2017-01-10",close:226.46},
+            {date:"2017-01-11",close:227.1},
+            {date:"2017-01-12",close:226.53},
+            {date:"2017-01-13",close:227.05},
+            {date:"2017-01-17",close:226.25},
+            {date:"2017-01-18",close:226.75},
+            {date:"2017-01-19",close:225.91},
+            {date:"2017-01-20",close:226.74},
+            {date:"2017-01-23",close:226.15},
+            {date:"2017-01-24",close:227.6},
+            {date:"2017-01-25",close:229.57},
+            {date:"2017-01-26",close:229.33},
+            {date:"2017-01-27",close:228.97},
+            {date:"2017-01-30",close:227.55}
+        ]);
+    });
+    it("should detect nested collect cycle", function() {
+        return Promise.resolve().then(() => ptrading.collect({
+            portfolio: 'SPY_ARCA',
+            columns: {
+                date: 'DATE(day.ending)',
+                close: 'day.close'
+            },
+            begin: '2017-01-01',
+            end: '2017-01-31'
+        })).should.be.rejected;
+    });
 });
-
-
-
-

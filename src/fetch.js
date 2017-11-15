@@ -41,12 +41,11 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 module.exports = function() {
-    var datasources = _.extend(
-        config(['files','enabled']) ? {files: files()} : {},
-        config(['google','enabled']) ? {google: google()} : {},
-        config(['yahoo','enabled']) ? {yahoo: yahoo()} : {},
-        config(['iqfeed','enabled']) ? {iqfeed: iqfeed()} : {}
-    );
+    var datasources = createDatasources();
+    config.addListener(() => {
+        close(datasources);
+        _.extend(datasources, createDatasources());
+    });
     var self = function(options) {
         if (options.help || options.interval == 'help')
             return help(datasources, options);
@@ -80,8 +79,21 @@ module.exports = function() {
     return self;
 };
 
+function createDatasources() {
+    return _.extend(
+        config(['files','enabled']) ? {files: files()} : {},
+        config(['google','enabled']) ? {google: google()} : {},
+        config(['yahoo','enabled']) ? {yahoo: yahoo()} : {},
+        config(['iqfeed','enabled']) ? {iqfeed: iqfeed()} : {}
+    );
+}
+
 function close(datasources) {
-    return Promise.all(_.map(datasources, datasource => datasource.close()));
+    try {
+        return Promise.all(_.map(datasources, datasource => datasource.close()));
+    } finally {
+        _.keys(datasources).forEach(key => delete datasources[key]);
+    }
 }
 
 function help(datasources, options) {

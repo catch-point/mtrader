@@ -43,7 +43,7 @@ describe("ptrading", function() {
         ptrading.config(['iqfeed','enabled'], false);
         ptrading.config(['google','enabled'], true);
         ptrading.config(['yahoo','enabled'], false);
-        ptrading.config(['files','enabled'], true);
+        ptrading.config(['files','enabled'], false);
         ptrading.config(['files','dirname'], path.resolve(__dirname, 'var'));
     });
     after(function() {
@@ -67,8 +67,8 @@ describe("ptrading", function() {
           symbol: 'AABA',
           exchange: 'NASDAQ'
         }).should.eventually.be.like({
-            name: 'Altaba Inc.',
-            EarningsShare: _.isFinite
+            name: 'Altaba Inc',
+            eps: _.isFinite
         });
     });
     it("fetch", function() {

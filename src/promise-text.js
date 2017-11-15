@@ -39,7 +39,7 @@ module.exports = function(url) {
     return new Promise(function(resolve, reject) {
         pending.onerror = reject;
         outstanding.push(pending);
-        logger.debug(url.path || url);
+        logger.log(url.path || url);
         var protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
         protocol.get(url, res => {
             var buffer = [];

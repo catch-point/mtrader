@@ -48,7 +48,6 @@ const expect = require('chai').expect;
  */
 module.exports = function(quote, collectFn) {
     var promiseHelp;
-    var collections = _.object(config.list(), []);
     var self;
     return self = _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(quote);
@@ -63,7 +62,7 @@ module.exports = function(quote, collectFn) {
                 tz: moment.tz.guess(),
                 now: Date.now()
             });
-            return collect(quote, collectFn || self, collections, fields, opts);
+            return collect(quote, collectFn || self, fields, opts);
         });
     }, {
         close() {
@@ -117,10 +116,6 @@ function help(quote) {
                 },
                 tz: {
                     description: "Timezone formatted using the identifier in the tz database"
-                },
-                avoid: {
-                    usage: '[name,..]',
-                    description: "Array of subcollect names that must not be followed"
                 }
             })
         }];
@@ -130,12 +125,12 @@ function help(quote) {
 /**
  * Computes column values given expressions and variables in options
  */
-function collect(quote, callCollect, collections, fields, options) {
+function collect(quote, callCollect, fields, options) {
     expect(options).to.have.property('portfolio');
     expect(options).to.have.property('columns').that.is.an('object');
     var illegal = _.intersection(_.keys(options.variables), fields);
     if (illegal.length) expect(options.variables).not.to.have.property(_.first(illegal));
-    var portfolio = getPortfolio(options.portfolio, collections, options);
+    var portfolio = getPortfolio(options.portfolio, options);
     var optional = _.difference(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true), fields);
     var defaults = _.object(optional, optional.map(v => null));
     var avail = _.union(fields, optional);
@@ -260,7 +255,7 @@ function getReferences(variables) {
 /**
  * Parses a comma separated list into symbol/exchange pairs.
  */
-function getPortfolio(portfolio, collections, options) {
+function getPortfolio(portfolio, options) {
     var opts = _.omit(options, [
         'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading'
     ]);
@@ -269,27 +264,15 @@ function getPortfolio(portfolio, collections, options) {
         _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
         expect(portfolio).to.be.a('string');
     return array.map(symbolExchange => {
-        if (_.isObject(symbolExchange)) {
+        if (_.isObject(symbolExchange))
             return _.defaults({}, symbolExchange, opts);
-        } else {
-            if (_.contains(options.avoid, symbolExchange))
-                throw Error("Cycle profile detected: " + options.avoid + " -> " + symbolExchange);
-            var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
-            if (!m || !collections[symbolExchange] && _.has(collections, symbolExchange)) {
-                var cfg = config.read(symbolExchange);
-                if (cfg) collections[symbolExchange] = cfg;
-            }
-            if (collections[symbolExchange]) return _.defaults({
-                label: symbolExchange,
-                avoid: _.flatten(_.compact([options.avoid, symbolExchange]), true)
-            }, collections[symbolExchange], opts);
-            if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
-            return _.defaults({
-                label: symbolExchange,
-                symbol: m[1],
-                exchange: m[2]
-            }, opts);
-        }
+        var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
+        if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
+        return _.defaults({
+            label: symbolExchange,
+            symbol: m[1],
+            exchange: m[2]
+        }, opts);
     });
 }
 

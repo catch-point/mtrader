@@ -36,7 +36,7 @@ const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const Fetch = require('./fetch.js');
-const replyTo = require('./ipc-promise-reply.js');
+const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 
 function usage(command) {
@@ -68,6 +68,7 @@ if (require.main === module) {
             symbol = symbol.substring(0, symbol.lastIndexOf('.'));
         }
         var fetch = Fetch();
+        process.on('SIGINT', () => fetch.close());
         Promise.resolve().then(() => fetch(_.defaults({
             interval: interval,
             symbol: symbol,

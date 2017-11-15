@@ -398,7 +398,8 @@ describe("collect", function() {
         ]);
     });
     it("external instrument using same time of day", function() {
-        config.save('USDCAD16', {
+        return collect({
+          portfolio: [{
             portfolio: 'USD.CAD',
             columns: {
                 symbol: 'symbol',
@@ -406,9 +407,7 @@ describe("collect", function() {
                 cvar: 'TOD(CVAR(5,60,m240.close))'
             },
             criteria: 'TIME(m240.ending)="16:00:00"'
-        });
-        return collect({
-          portfolio: 'USDCAD16,SPY.ARCA,XIC.TSX',
+          }, 'SPY.ARCA','XIC.TSX'],
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
@@ -963,83 +962,17 @@ describe("collect", function() {
             {symbol:"USD",date:"2017-01-30",close:1.31169}
         ]);
     });
-    it("should call nested collect", function() {
-        config.save('CADUSD', {
-            portfolio: 'USD.CAD',
-            columns: {
-                'day.ending': 'day.ending',
-                'day.close': 'ROUND(1/day.close,5)'
-            }
-        });
-        return collect({
-            portfolio: 'CADUSD',
-            columns: {
-                date: 'DATE(day.ending)',
-                close: 'day.close'
-            },
-            begin: '2017-01-01',
-            end: '2017-01-31'
-        }).should.eventually.be.like([
-            {date:"2017-01-02",close:0.74421},
-            {date:"2017-01-03",close:0.74481},
-            {date:"2017-01-04",close:0.75185},
-            {date:"2017-01-05",close:0.7561},
-            {date:"2017-01-06",close:0.75549},
-            {date:"2017-01-09",close:0.75662},
-            {date:"2017-01-10",close:0.75574},
-            {date:"2017-01-11",close:0.75882},
-            {date:"2017-01-12",close:0.76076},
-            {date:"2017-01-13",close:0.7629},
-            {date:"2017-01-16",close:0.75911},
-            {date:"2017-01-17",close:0.76678},
-            {date:"2017-01-18",close:0.75364},
-            {date:"2017-01-19",close:0.75087},
-            {date:"2017-01-20",close:0.7514},
-            {date:"2017-01-23",close:0.75548},
-            {date:"2017-01-24",close:0.76014},
-            {date:"2017-01-25",close:0.76518},
-            {date:"2017-01-26",close:0.76397},
-            {date:"2017-01-27",close:0.76054},
-            {date:"2017-01-30",close:0.76238}
-        ]);
-    });
-    it("should detect nested collect cycle", function() {
-        config.save('USDCAD', {
-            portfolio: 'CADUSD',
-            columns: {
-                'day.ending': 'day.ending',
-                'day.close': 'ROUND(1/day.close,5)'
-            }
-        });
-        config.save('CADUSD', {
-            portfolio: 'USDCAD',
-            columns: {
-                'day.ending': 'day.ending',
-                'day.close': 'ROUND(1/day.close,5)'
-            }
-        });
-        return Promise.resolve().then(() => collect({
-            portfolio: 'CADUSD',
-            columns: {
-                date: 'DATE(day.ending)',
-                close: 'day.close'
-            },
-            begin: '2017-01-01',
-            end: '2017-01-31'
-        })).should.be.rejected;
-    });
     it("should ignore unused columns in nested collect", function() {
-        config.save('CADUSD', {
-            portfolio: 'USD.CAD',
-            columns: {
-                'day.ending': 'day.ending',
-                'day.close': 'ROUND(1/day.close,5)',
-                'm240.ending': 'm240.ending',
-                'm240.close': 'ROUND(1/m240.close,5)'
-            }
-        });
         return collect({
-            portfolio: 'CADUSD',
+            portfolio: {
+                portfolio: 'USD.CAD',
+                columns: {
+                    'day.ending': 'day.ending',
+                    'day.close': 'ROUND(1/day.close,5)',
+                    'm240.ending': 'm240.ending',
+                    'm240.close': 'ROUND(1/m240.close,5)'
+                }
+            },
             columns: {
                 date: 'DATE(day.ending)',
                 close: 'day.close'
@@ -1109,16 +1042,15 @@ describe("collect", function() {
         ]);
     });
     it("should override order in nested collect", function() {
-        config.save('CADUSD', {
-            portfolio: 'USD.CAD',
-            columns: {
-                'day.ending': 'day.ending',
-                'day.close': 'ROUND(1/day.close,5)'
-            },
-            order: 'DESC(day.ending)'
-        });
         return collect({
-            portfolio: 'CADUSD',
+            portfolio: {
+                portfolio: 'USD.CAD',
+                columns: {
+                    'day.ending': 'day.ending',
+                    'day.close': 'ROUND(1/day.close,5)'
+                },
+                order: 'DESC(day.ending)'
+            },
             columns: {
                 date: 'DATE(day.ending)',
                 close: 'day.close'
@@ -1150,17 +1082,16 @@ describe("collect", function() {
         ]);
     });
     it("should not hide used columns", function() {
-        config.save('CADUSD', {
-            portfolio: 'USD.CAD',
-            columns: {
-                'day.ending': 'day.ending',
-                'day.close': 'ROUND(1/day.close,5)',
-                cad_close: '1/day.close'
-            },
-            order: 'cad_close'
-        });
         return collect({
-            portfolio: 'CADUSD',
+            portfolio: {
+                portfolio: 'USD.CAD',
+                columns: {
+                    'day.ending': 'day.ending',
+                    'day.close': 'ROUND(1/day.close,5)',
+                    cad_close: '1/day.close'
+                },
+                order: 'cad_close'
+            },
             columns: {
                 date: 'DATE(day.ending)',
                 close: 'day.close'
@@ -1192,20 +1123,19 @@ describe("collect", function() {
         ]);
     });
     it("should not hide columns used by variables", function() {
-        config.save('CADUSD', {
-            portfolio: 'USD.CAD',
-            variables: {
-                cad_change: '(cad_close-PREV("cad_close"))/PREV("cad_close")'
-            },
-            columns: {
-                'day.ending': 'day.ending',
-                'day.close': 'ROUND(1/day.close,5)',
-                cad_close: '1/day.close',
-                change: 'ROUND(cad_change*100, 2)'
-            }
-        });
         return collect({
-            portfolio: 'CADUSD',
+            portfolio: {
+                portfolio: 'USD.CAD',
+                variables: {
+                    cad_change: '(cad_close-PREV("cad_close"))/PREV("cad_close")'
+                },
+                columns: {
+                    'day.ending': 'day.ending',
+                    'day.close': 'ROUND(1/day.close,5)',
+                    cad_close: '1/day.close',
+                    change: 'ROUND(cad_change*100, 2)'
+                }
+            },
             columns: {
                 date: 'DATE(day.ending)',
                 close: 'day.close',
@@ -1238,21 +1168,20 @@ describe("collect", function() {
         ]);
     });
     it("nested", function() {
-        config.save('SPDR', {
-          portfolio: 'XLB.ARCA,XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLP.ARCA,XLU.ARCA,XLV.ARCA,XLY.ARCA',
-          variables: {
-              max: 'MIN(0.5/CVAR(5, 60, day.close), 100)'
-          },
-          columns: {
-              date: 'DATE(ending)',
-              symbol: 'symbol',
-              price: 'day.close',
-              target: 'IF(SUMPREC("max")<100, max)'
-          },
-          precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
-        });
         return collect({
-          portfolio: 'SPDR',
+          portfolio: {
+              portfolio: 'XLB.ARCA,XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLP.ARCA,XLU.ARCA,XLV.ARCA,XLY.ARCA',
+              variables: {
+                  max: 'MIN(0.5/CVAR(5, 60, day.close), 100)'
+              },
+              columns: {
+                  date: 'DATE(ending)',
+                  symbol: 'symbol',
+                  price: 'day.close',
+                  target: 'IF(SUMPREC("max")<100, max)'
+              },
+              precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
+          },
           begin: "2016-12-01",
           end: "2016-12-03",
           columns: {

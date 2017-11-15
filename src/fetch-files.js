@@ -59,6 +59,9 @@ module.exports = function() {
     config.addListener((name, value) => {
         if (name == 'files.dirname') {
             store = store.then(store => store.close()).then(() => storage(value));
+        } else if (name == 'prefix') {
+            var dir = config('files.dirname') || path.resolve(value, 'var/');
+            store = store.then(store => store.close()).then(() => storage(dir));
         }
     });
     var open = (name, cb) => store.then(store => store.open(name, cb));

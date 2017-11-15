@@ -31,17 +31,21 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const os = require('os');
+const net = require('net');
+const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
-const replyTo = require('./ipc-promise-reply.js');
+const remote = require('./remote-process.js');
+const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
+
+const WORKER_COUNT = require('os').cpus().length;
 
 function usage(command) {
     return command.version(require('../package.json').version)
@@ -63,7 +67,8 @@ function usage(command) {
         .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('-o, --offline', "Disable data updates")
-        .option('--workers <numOfWorkers>', 'Number of workers to spawn')
+        .option('--workers <numOfWorkers>', "Number of workers to spawn")
+        .option('--remote-workers <host:port,..>', "List of host:port addresses to connect to")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
@@ -74,35 +79,27 @@ function usage(command) {
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        initialize(program);
+        var collect = createInstance(program);
+        process.on('SIGINT', () => collect.close());
+        var name = program.args.join(' ');
+        var options = readCollect(name);
+        collect(options).then(result => tabular(result))
+          .catch(err => logger.error(err, err.stack))
+          .then(() => collect.close());
     } else if (process.send) {
         spawn();
     } else {
         program.help();
     }
 } else {
-    initialize(usage(new commander.Command()));
+    module.exports = createInstance(usage(new commander.Command()));
 }
 
-function initialize(program) {
+function createInstance(program) {
     var quote = require('./ptrading-quote.js');
-    var workers = commander.workers == 0 ? 1 : commander.workers || os.cpus().length;
-    var children = commander.workers == 0 ? [{
-        request: ((collect, cmd, payload) => {
-            if (cmd == 'quote') return quote(payload);
-            else if (cmd == 'collect') return collect(payload);
-            else if (cmd == 'disconnect') return quote.close();
-        }).bind(this, Collect(quote)),
-        disconnect() {
-            return this.request('disconnect');
-        }
-    }] : _.range(workers).map(() => {
-        return replyTo(config.fork(module.filename, program))
-          .handle('quote', payload => quote(payload))
-          .handle('collect', payload => collect(payload));
-    });
+    var workers = [];
+    var stoppedWorkers = [];
     var queue = [];
-    var processing = children.map(_.constant(0));
     var collect = function(options) {
         var duration = options.reset_every && moment.duration(options.reset_every);
         var begin = moment(options.begin);
@@ -133,19 +130,25 @@ function initialize(program) {
                 pad_begin: 0, pad_end: options.pad_end
             }, options);
         });
+        var capacity = workers.reduce((capacity, worker) => capacity + (worker.count || 1), 0);
         var promises = optionset.reduce((promises, options, i) => {
-            var wait = i < workers ? Promise.resolve() : promises[i - workers];
+            var wait = i < capacity ? Promise.resolve() : promises[i % capacity];
             promises.push(wait.then(() => {
-                var c = processing.indexOf(_.min(processing));
-                processing[c]++;
-                return children[c].request('collect', options).then(result => {
-                    processing[c]--;
-                    if (!processing[c]) queue_ready();
-                    return result;
-                }, err => {
-                    processing[c]--;
-                    if (!processing[c]) queue_ready();
-                    throw err;
+                var loads = workers.map(w => {
+                    return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
+                });
+                var worker = workers[loads.indexOf(_.min(loads))];
+                return worker.request('collect', options).catch(err => {
+                    if (!worker.process.remote) throw err;
+                    var loads = workers.map(w => {
+                        if (w.process.remote) return Infinity;
+                        return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
+                    });
+                    var local = workers[loads.indexOf(_.min(loads))];
+                    if (!local) throw err;
+                    logger.debug("Collect", worker.process.pid, err, err.stack);
+                    logger.debug("Retrying", options.label || '', "using local node", local.process.pid);
+                    return local.request('collect', options);
                 });
             }));
             return promises;
@@ -154,33 +157,107 @@ function initialize(program) {
             return _.flatten(dataset, true);
         });
     };
-    var queue_ready = function() {
-        var available = processing.filter(load => load === 0).length;
-        queue.splice(0, available).forEach(item => {
+    var check_queue = function() {
+        stoppedWorkers.forEach(worker => {
+            if (worker.stats.requests_sent == worker.stats.replies_rec) {
+                worker.disconnect();
+            }
+        });
+        var spare = workers.reduce((capacity, worker) => {
+            return capacity + (worker.count || 1) - worker.stats.requests_sent + worker.stats.replies_rec;
+        }, 0);
+        queue.splice(0, spare).forEach(item => {
             collect(item.options).then(item.resolve, item.reject);
         });
     };
-    module.exports = function(options) {
-        return new Promise((resolve, reject) => {
+    workers.push.apply(workers, createWorkers(quote, collect, program));
+    workers.forEach(worker => worker.on('message', check_queue).handle('stop', function() {
+        var idx = workers.indexOf(this);
+        if (idx >= 0) workers.splice(idx, 1);
+        stoppedWorkers.push(this);
+        check_queue();
+    }).once('disconnect', function() {
+        var idx = workers.indexOf(this);
+        if (idx >= 0) workers.splice(idx, 1);
+        var sidx = stoppedWorkers.indexOf(this);
+        if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
+        logger.log("Worker", this.process.pid, "has disconnected");
+    }));
+    var collections = {};
+    config.addListener(name => name=='prefix' && _.keys(collections).forEach(key=>delete collections[key]));
+    var promiseHelp = _.first(workers).request('collect', {help: true});
+    var instance = function(options) {
+        return promiseHelp.then(_.first).then(info => {
+            return _.pick(options, ['help'].concat(_.keys(info.options)));
+        }).then(options => inlineCollections(collections, options))
+          .then(options => new Promise((resolve, reject) => {
             queue.push({options, resolve, reject});
-            queue_ready();
-        });
+            check_queue();
+        }));
     };
-    module.exports.close = function() {
+    instance.close = function() {
         queue.splice(0).forEach(item => {
             item.reject(Error("Collect is closing"));
         });
-        children.forEach(child => child.disconnect());
-        return quote.close().then(collect.close);
+        return Promise.all(_.flatten([
+            workers.map(child => child.disconnect()),
+            stoppedWorkers.map(child => child.disconnect())
+        ])).then(quote.close).then(collect.close);
     };
-    module.exports.shell = shell.bind(this, program.description(), module.exports);
-    if (require.main === module) {
-        var name = program.args.join(' ');
-        var options = readCollect(name);
-        module.exports(options).then(result => tabular(result))
-          .catch(err => logger.error(err, err.stack))
-          .then(() => module.exports.close());
-    }
+    instance.shell = shell.bind(this, program.description(), instance);
+    return instance;
+}
+
+function createWorkers(quote, collect, program) {
+    var single = config('workers') == 0 && !config('remote_workers');
+    if (single) return [{
+        request: _.partial(function(collect, cmd, payload) {
+            return (cmd == 'quote' ? quote(payload) :
+                cmd == 'collect' ? collect(payload) :
+                cmd == 'disconnect' ? quote.close() :
+                Promise.reject(Error("Unknown cmd " + cmd))
+            ).then(result => {
+                this.listener();
+                return result;
+            }, err => {
+                this.listener();
+                throw err;
+            });
+        }, Collect(quote)),
+        disconnect() {
+            return this.request('disconnect');
+        },
+        on: function(message, listener) {
+            this.listener = listener;
+            return this;
+        },
+        once: function() {
+            return this;
+        },
+        stats: {
+            requests_sent: 0,
+            replies_rec: 0
+        },
+        process: process
+    }];
+    var local = _.range(config('workers') || WORKER_COUNT).map(() => {
+        return replyTo(config.fork(module.filename, program))
+          .handle('quote', payload => quote(payload))
+          .handle('collect', payload => collect(payload));
+    });
+    var remote_workers = _.flatten(_.compact(_.flatten([config('remote_workers')]))
+        .map(addr => addr.split(',')));
+    if (_.isEmpty(remote_workers)) return local;
+    var remoteWorkers = remote_workers.map(address => {
+        return replyTo(remote(address))
+            .on('error', err => logger.error(err, err.stack));
+    });
+    remoteWorkers.forEach(worker => {
+        worker.request('worker_count')
+            .then(count => worker.count = count)
+            .catch(err => logger.error(err, err.stack));
+    });
+    return local.concat(remoteWorkers);
 }
 
 function spawn() {
@@ -193,6 +270,33 @@ function spawn() {
         return parent.request('collect', options);
     }));
     process.on('disconnect', () => collect().close());
+    process.on('SIGINT', () => collect().close());
+}
+
+function inlineCollections(collections, options, avoid) {
+    if (!options)
+        return options;
+    else if (_.isArray(options))
+        return options.map(item => inlineCollections(collections, item, avoid));
+    else if (_.isObject(options) && options.portfolio)
+        return _.defaults({
+            portfolio: inlineCollections(collections, options.portfolio, avoid)
+        }, options);
+    else if (_.isObject(options))
+        return options;
+    else if (_.contains(avoid, options))
+        throw Error("Cycle profile detected: " + avoid + " -> " + options);
+    if (_.isEmpty(collections)) {
+        _.extend(collections, _.object(config.list(), []));
+    }
+    if (!collections[options] && _.has(collections, options)) {
+        var cfg = config.read(options);
+        if (cfg) collections[options] = inlineCollections(collections, _.extend({
+            label: options,
+        }, cfg), _.flatten(_.compact([avoid, options]), true));
+    }
+    if (collections[options]) return collections[options];
+    else return options;
 }
 
 function readCollect(name) {
