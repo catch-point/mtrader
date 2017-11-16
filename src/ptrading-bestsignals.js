@@ -98,10 +98,17 @@ function createInstance(program) {
     var collect = require('./ptrading-collect.js');
     var bestsignals = Bestsignals(collect);
     var collections = {};
+    var promiseKeys = bestsignals({help: true})
+        .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+    var promiseDefaults = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
     var instance = function(options) {
-        if (options.signalset || options.protfolio)
-            return bestsignals(inlineCollections(collections, options));
-        else return bestsignals(options);
+        return promiseKeys.then(keys => promiseDefaults.then(defaults => {
+            return _.extend({}, defaults, _.pick(options, keys));
+        })).then(options => {
+            if (options.signalset || options.protfolio)
+                return bestsignals(inlineCollections(collections, options));
+            else return bestsignals(options);
+        });
     };
     instance.close = function() {
         return collect.close().then(bestsignals.close);

@@ -185,11 +185,13 @@ function createInstance(program) {
     }));
     var collections = {};
     config.addListener(name => name=='prefix' && _.keys(collections).forEach(key=>delete collections[key]));
-    var promiseHelp = _.first(workers).request('collect', {help: true});
+    var promiseKeys = _.first(workers).request('collect', {help: true})
+        .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+    var promiseDefaults = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
     var instance = function(options) {
-        return promiseHelp.then(_.first).then(info => {
-            return _.pick(options, ['help'].concat(_.keys(info.options)));
-        }).then(options => inlineCollections(collections, options))
+        return promiseKeys.then(keys => promiseDefaults.then(defaults => {
+            return _.extend({}, defaults, _.pick(options, keys));
+        })).then(options => inlineCollections(collections, options))
           .then(options => new Promise((resolve, reject) => {
             queue.push({options, resolve, reject});
             check_queue();

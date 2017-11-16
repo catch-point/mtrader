@@ -154,11 +154,13 @@ if (require.main === module) {
         if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
         logger.log("Worker", this.process.pid, "has disconnected");
     }));
-    var promiseHelp = _.first(workers).request('quote', {help: true});
+    var promiseKeys = _.first(workers).request('quote', {help: true})
+        .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+    var promiseDefaults = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
     module.exports = function(options) {
-        return promiseHelp.then(_.first).then(info => {
-            return _.pick(options, ['help'].concat(_.keys(info.options)));
-        }).then(options => new Promise((resolve, reject) => {
+        return promiseKeys.then(keys => promiseDefaults.then(defaults => {
+            return _.extend({}, defaults, _.pick(options, keys));
+        })).then(options => new Promise((resolve, reject) => {
             queue.push({options, resolve, reject});
             check_queue();
         }));
