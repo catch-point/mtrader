@@ -38,11 +38,11 @@ const AssertionError = require('chai').AssertionError;
 
 const EOM = '\r\n\r\n';
 
-var remote = module.exports = function(socket) {
+var remote = module.exports = function(socket, label) {
     if (typeof socket == 'string')
-        return remote(parseAddressPort(socket));
-    else if (socket.port && socket.address)
-        return remote(net.connect(socket.port, socket.address));
+        return remote(parseAddressPort(socket), label || socket);
+    else if (socket.port)
+        return remote(net.connect(socket.port, socket.address), label);
     var buf = '';
     var emitter = new EventEmitter();
     socket.setEncoding('utf-8');
@@ -76,6 +76,7 @@ var remote = module.exports = function(socket) {
     });
     emitter.remote = true;
     emitter.connected = true;
+    emitter.pid = label || '';
     emitter.send = message => socket.write(JSON.stringify(message) + EOM);
     emitter.disconnect = () => socket.end();
     emitter.kill = () => socket.destroy();

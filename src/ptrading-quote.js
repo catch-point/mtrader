@@ -205,12 +205,12 @@ function createWorkers(fetch, quote, program) {
     if (_.isEmpty(remote_workers)) return local;
     var remoteWorkers = remote_workers.map(address => {
         return replyTo(remote(address))
-            .on('error', err => logger.error(err, err.stack));
+            .on('error', err => logger.warn(err.message || err));
     });
     remoteWorkers.forEach(worker => {
         worker.request('worker_count')
             .then(count => worker.count = count)
-            .catch(err => logger.error(err, err.stack));
+            .catch(err => logger.debug(err, err.stack));
     });
     return local.concat(remoteWorkers);
 };
