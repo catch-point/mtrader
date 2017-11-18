@@ -35,13 +35,14 @@ const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
 const Collect = require('../src/collect.js');
+const Optimize = require('../src/optimize.js');
 const Bestsignals = require('../src/bestsignals.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
 describe("bestsignals", function() {
     this.timeout(60000);
-    var fetch, quote, collect, bestsignals;
+    var fetch, quote, collect, optimize, bestsignals;
     before(function() {
         config('config', path.resolve(__dirname, 'etc/ptrading.json'));
         config('prefix', createTempDir('bestsignals'));
@@ -53,10 +54,11 @@ describe("bestsignals", function() {
         fetch = Fetch();
         quote = Quote(fetch);
         collect = Collect(quote);
-        bestsignals = Bestsignals(collect);
+        optimize = Optimize(collect);
+        bestsignals = Bestsignals(optimize);
     });
     beforeEach(function() {
-        bestsignals.seed(27644437);
+        optimize.seed(27644437);
     });
     after(function() {
         config.unset('prefix');
@@ -67,6 +69,7 @@ describe("bestsignals", function() {
         config.unset(['files','dirname']);
         return Promise.all([
             bestsignals.close(),
+            optimize.close(),
             collect.close(),
             quote.close(),
             fetch.close()
@@ -202,125 +205,6 @@ describe("bestsignals", function() {
             }
         });
     });
-    it("should find best sma cross parameters with gain/pain", function() {
-        return bestsignals({
-            portfolio: 'SPY.ARCA',
-            begin: '2016-01-01',
-            end: '2016-12-31',
-            eval_validity: 'fast_len<slow_len',
-            eval_score: 'gain/pain',
-            columns: {
-                date: 'DATE(ending)',
-                change: 'close - PREV("close")',
-                close: 'day.adj_close',
-                gain: 'PREC("gain") + change * PREV("sma_cross")',
-                pain: 'drawdown'
-            },
-            variables: {
-                sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))',
-                peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
-                drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
-            },
-            parameter_values: {
-                fast_len: [5,10,15,20,25,50],
-                slow_len: [20,25,50,80,100,150,200]
-            }
-        }).should.eventually.be.like({
-            parameters: {
-                fast_len: 5,
-                slow_len: 200
-            }
-        });
-    });
-    it("should find best mean reversion bollinger parameters", function() {
-        return bestsignals({
-            portfolio: 'SPY.ARCA',
-            begin: '2016-01-01',
-            end: '2016-12-31',
-            signal_variable: 'signal',
-            eval_score: 'gain/pain',
-            columns: {
-                date: 'DATE(ending)',
-                change: 'close - PREV("close")',
-                close: 'day.adj_close',
-                gain: 'PREC("gain") + change * PREV("signal")',
-                pain: 'drawdown'
-            },
-            variables: {
-                peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
-                drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
-            },
-            signalset: {
-                signals: ['bollinger_signal'],
-                variables: {
-                    middle_band: 'SMA(len,day.adj_close)',
-                    upper_band: 'middle_band+multiplier*STDEV(len,day.adj_close)',
-                    lower_band: 'middle_band-multiplier*STDEV(len,day.adj_close)',
-                    bollinger_signal: 'IF(day.adj_close<upper_band AND (PREV("bollinger_signal")>0 OR day.adj_close<lower_band),1,day.adj_close>lower_band AND (PREV("bollinger_signal")<0 OR day.adj_close>upper_band),-1,0)'
-                },
-                parameters: {
-                    len: 20,
-                    multiplier: 2
-                },
-                parameter_values: {
-                    len: [5,10,15,20,25,50],
-                    multiplier: [1,2,3]
-                }
-            }
-        }).should.eventually.be.like({
-            signals: ['bollinger_signal'],
-            parameters: {
-                len: 15,
-                multiplier: 2
-            },
-        });
-    });
-    it("should find best relative strength STO parameters", function() {
-        return bestsignals({
-            portfolio: 'SPY.ARCA',
-            begin: '2016-10-01',
-            end: '2016-12-31',
-            signal_variable: 'signal',
-            eval_score: 'gain/pain',
-            columns: {
-                date: 'DATE(ending)',
-                change: 'close - PREV("close")',
-                close: 'day.adj_close',
-                gain: 'PREC("gain") + change * PREV("signal")',
-                pain: 'drawdown'
-            },
-            variables: {
-                peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
-                drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
-            },
-            signalset: {
-                signals: ['STO_signal'],
-                variables: {
-                    STO_signal: 'SIGN(K-D)',
-                    STO: 'CHANGE(day.adj_close,LOWEST(lookback,day.low),HIGHEST(lookback,day.high)-LOWEST(lookback,day.low))',
-                    K: 'SMA(Ksmoothing,STO)',
-                    D: 'SMA(Dmoving,K)'
-                },
-                parameters: {
-                    lookback: 14,
-                    Ksmoothing: 3,
-                    Dmoving: 3
-                },
-                parameter_values: {
-                    lookback: [7,10,14,20,28,50],
-                    Ksmoothing: [1,3,5,7],
-                    Dmoving: [3,5]
-                }
-            }
-        }).should.eventually.be.like({
-            signals: ['STO_signal'],
-            parameters: {
-                lookback: 10,
-                Ksmoothing: 5,
-                Dmoving: 3
-            }
-        });
-    });
     it("should find the two best relative strength STO parameters", function() {
         return bestsignals({
             portfolio: 'SPY.ARCA',
@@ -377,104 +261,7 @@ describe("bestsignals", function() {
             }
         });
     });
-    it("should find best momentum MACD parameters", function() {
-        return bestsignals({
-            portfolio: 'SPY.ARCA',
-            begin: '2016-11-01',
-            end: '2016-12-01',
-            signal_variable: 'signal',
-            eval_score: 'gain/pain',
-            columns: {
-                date: 'DATE(ending)',
-                change: 'close - PREV("close")',
-                close: 'day.adj_close',
-                gain: 'PREC("gain") + change * PREV("signal")',
-                pain: 'drawdown'
-            },
-            variables: {
-                peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
-                drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
-            },
-            signalset: {
-                signals: ['macd_cross'],
-                variables: {
-                    line: 'EMA(fast_len,day.adj_close)-EMA(slow_len,day.adj_close)',
-                    signal_line: 'EMA(signal_len,line)',
-                    histogram: 'line-signal_line',
-                    macd_cross: 'SIGN(histogram)'
-                },
-                parameters: {
-                    fast_len: 12,
-                    slow_len: 26,
-                    signal_len: 9
-                },
-                parameter_values: {
-                    fast_len: [3,5,9,12],
-                    slow_len: [10,26,35],
-                    signal_len: [2,5,9,16]
-                }
-            }
-        }).should.eventually.be.like({
-            signals: ['macd_cross'],
-            parameters: {
-                fast_len: 3,
-                slow_len: 35,
-                signal_len: 5
-            }
-        });
-    });
     it("should find best signal parameters for each", function() {
-        config.save('TREND', {
-            signals: ['sma_cross','ema_cross'],
-            variables: {
-                sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))',
-                ema_cross: 'SIGN(EMA(fast_len,day.adj_close)-EMA(slow_len,day.adj_close))'
-            },
-            parameters: {
-                fast_len: 50,
-                slow_len: 200
-            },
-            parameter_values: {
-                fast_len: [1,5,10,15,20,25,50],
-                slow_len: [20,25,50,80,100,150,200]
-            }
-        });
-        config.save('MEANREVERSION', {
-            signals: ['bollinger_signal'],
-            variables: {
-                middle_band: 'SMA(len,day.adj_close)',
-                upper_band: 'middle_band+multiplier*STDEV(len,day.adj_close)',
-                lower_band: 'middle_band-multiplier*STDEV(len,day.adj_close)',
-                bollinger_signal: 'IF(day.adj_close<upper_band AND (PREV("bollinger_signal")>0 OR day.adj_close<lower_band),1,day.adj_close>lower_band AND (PREV("bollinger_signal")<0 OR day.adj_close>upper_band),-1,0)'
-            },
-            parameters: {
-                len: 20,
-                multiplier: 2
-            },
-            parameter_values: {
-                len: [5,10,15,20,25,50],
-                multiplier: [1,2,3]
-            }
-        });
-        config.save('RELATIVESTRENGTH', {
-            signals: ['STO_signal'],
-            variables: {
-                STO_signal: 'SIGN(K-D)',
-                STO: 'CHANGE(day.adj_close,LOWEST(lookback,day.low),HIGHEST(lookback,day.high)-LOWEST(lookback,day.low))',
-                K: 'SMA(Ksmoothing,STO)',
-                D: 'SMA(Dmoving,K)'
-            },
-            parameters: {
-                lookback: 14,
-                Ksmoothing: 3,
-                Dmoving: 3
-            },
-            parameter_values: {
-                lookback: [7,10,14,20,28,50],
-                Ksmoothing: [1,3,5,7],
-                Dmoving: [3,5]
-            }
-        });
         return bestsignals({
             portfolio: 'SPY.ARCA',
             begin: '2016-07-01',
@@ -492,7 +279,55 @@ describe("bestsignals", function() {
                 peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
                 drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
             },
-            signalset: ['TREND', 'MEANREVERSION', 'RELATIVESTRENGTH']
+            signalset: [{
+                signals: ['sma_cross','ema_cross'],
+                variables: {
+                    sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))',
+                    ema_cross: 'SIGN(EMA(fast_len,day.adj_close)-EMA(slow_len,day.adj_close))'
+                },
+                parameters: {
+                    fast_len: 50,
+                    slow_len: 200
+                },
+                parameter_values: {
+                    fast_len: [1,5,10,15,20,25,50],
+                    slow_len: [20,25,50,80,100,150,200]
+                }
+            }, {
+                signals: ['bollinger_signal'],
+                variables: {
+                    middle_band: 'SMA(len,day.adj_close)',
+                    upper_band: 'middle_band+multiplier*STDEV(len,day.adj_close)',
+                    lower_band: 'middle_band-multiplier*STDEV(len,day.adj_close)',
+                    bollinger_signal: 'IF(day.adj_close<upper_band AND (PREV("bollinger_signal")>0 OR day.adj_close<lower_band),1,day.adj_close>lower_band AND (PREV("bollinger_signal")<0 OR day.adj_close>upper_band),-1,0)'
+                },
+                parameters: {
+                    len: 20,
+                    multiplier: 2
+                },
+                parameter_values: {
+                    len: [5,10,15,20,25,50],
+                    multiplier: [1,2,3]
+                }
+            }, {
+                signals: ['STO_signal'],
+                variables: {
+                    STO_signal: 'SIGN(K-D)',
+                    STO: 'CHANGE(day.adj_close,LOWEST(lookback,day.low),HIGHEST(lookback,day.high)-LOWEST(lookback,day.low))',
+                    K: 'SMA(Ksmoothing,STO)',
+                    D: 'SMA(Dmoving,K)'
+                },
+                parameters: {
+                    lookback: 14,
+                    Ksmoothing: 3,
+                    Dmoving: 3
+                },
+                parameter_values: {
+                    lookback: [7,10,14,20,28,50],
+                    Ksmoothing: [1,3,5,7],
+                    Dmoving: [3,5]
+                }
+            }]
         }).should.eventually.be.like({
             signals: ['ema_cross', 'bollinger_signal', 'STO_signal'],
             parameters:  {
@@ -563,57 +398,6 @@ describe("bestsignals", function() {
                 len: 10,
                 multiplier: 2,
             }
-        });
-    });
-    it("should find best mean reversion bollinger parameters by sampling periods", function() {
-        return bestsignals({
-            portfolio: 'SPY.ARCA',
-            begin: '2013-01-01',
-            end: '2016-12-31',
-            sample_duration: 'P1Y',
-            signal_variable: 'signal',
-            eval_score: 'gain/pain',
-            columns: {
-                date: 'DATE(ending)',
-                change: 'close - PREV("close")',
-                close: 'day.adj_close',
-                proceeds: 'change * PREV("signal")',
-                gain: '(profit + past_profit)/(1 + past_years)',
-                pain: '(drawdown + past_drawdown)/(1 + past_years)'
-            },
-            variables: {
-                profit: 'IF(newyear,0,PREV("profit")) + proceeds',
-                peak: 'IF(PREC("peak")>profit AND !newyear,PREC("peak"),profit)',
-                drawdown: 'IF(PREC("drawdown")>peak-profit AND !newyear,PREC("drawdown"),peak-profit)',
-                year: 'YEAR(ending)',
-                newyear: 'year!=PREV("year",year)',
-                past_years: 'PREV("past_years")+IF(newyear,1)',
-                past_profit: 'PREV("past_profit") + IF(newyear,PREV("profit"))',
-                past_drawdown: 'PREV("past_drawdown") + IF(newyear,PREC("drawdown"))'
-            },
-            signalset: {
-                signals: ['bollinger_signal'],
-                variables: {
-                    middle_band: 'SMA(len,day.adj_close)',
-                    upper_band: 'middle_band+multiplier*STDEV(len,day.adj_close)',
-                    lower_band: 'middle_band-multiplier*STDEV(len,day.adj_close)',
-                    bollinger_signal: 'IF(day.adj_close<upper_band AND (PREV("bollinger_signal")>0 OR day.adj_close<lower_band),1,day.adj_close>middle_band AND (PREV("bollinger_signal")<0 OR day.adj_close>upper_band),-1,0)'
-                },
-                parameters: {
-                    len: 20,
-                    multiplier: 2
-                },
-                parameter_values: {
-                    len: [5,10,15,20,25,50],
-                    multiplier: [1,2,3]
-                }
-            }
-        }).should.eventually.be.like({
-            signals: ['bollinger_signal'],
-            parameters: {
-                len: 10,
-                multiplier: 2
-            },
         });
     });
 });

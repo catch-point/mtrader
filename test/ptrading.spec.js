@@ -139,8 +139,8 @@ describe("ptrading", function() {
             {symbol:'AABA',date:"2017-01-13",close:42.27,change:0.38}
         ]);
     });
-    it("bestsignals SMA", function() {
-        return ptrading.bestsignals({
+    it("optimize SMA", function() {
+        return ptrading.optimize({
             portfolio: 'SPY.ARCA',
             begin: '2000-01-01',
             end: '2010-01-01',
@@ -166,6 +166,90 @@ describe("ptrading", function() {
             }
         }).should.eventually.be.like({
             parameters: { fast_len: 50, slow_len: 200 }
+        });
+    });
+    it("should find best signal parameters for each", function() {
+        ptrading.optimize.seed(27644437);
+        ptrading.config.save('TREND', {
+            signals: ['sma_cross','ema_cross'],
+            variables: {
+                sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))',
+                ema_cross: 'SIGN(EMA(fast_len,day.adj_close)-EMA(slow_len,day.adj_close))'
+            },
+            parameters: {
+                fast_len: 50,
+                slow_len: 200
+            },
+            parameter_values: {
+                fast_len: [1,5,10,15,20,25,50],
+                slow_len: [20,25,50,80,100,150,200]
+            }
+        });
+        ptrading.config.save('MEANREVERSION', {
+            signals: ['bollinger_signal'],
+            variables: {
+                middle_band: 'SMA(len,day.adj_close)',
+                upper_band: 'middle_band+multiplier*STDEV(len,day.adj_close)',
+                lower_band: 'middle_band-multiplier*STDEV(len,day.adj_close)',
+                bollinger_signal: 'IF(day.adj_close<upper_band AND (PREV("bollinger_signal")>0 OR day.adj_close<lower_band),1,day.adj_close>lower_band AND (PREV("bollinger_signal")<0 OR day.adj_close>upper_band),-1,0)'
+            },
+            parameters: {
+                len: 20,
+                multiplier: 2
+            },
+            parameter_values: {
+                len: [5,10,15,20,25,50],
+                multiplier: [1,2,3]
+            }
+        });
+        ptrading.config.save('RELATIVESTRENGTH', {
+            signals: ['STO_signal'],
+            variables: {
+                STO_signal: 'SIGN(K-D)',
+                STO: 'CHANGE(day.adj_close,LOWEST(lookback,day.low),HIGHEST(lookback,day.high)-LOWEST(lookback,day.low))',
+                K: 'SMA(Ksmoothing,STO)',
+                D: 'SMA(Dmoving,K)'
+            },
+            parameters: {
+                lookback: 14,
+                Ksmoothing: 3,
+                Dmoving: 3
+            },
+            parameter_values: {
+                lookback: [7,10,14,20,28,50],
+                Ksmoothing: [1,3,5,7],
+                Dmoving: [3,5]
+            }
+        });
+        return ptrading.bestsignals({
+            portfolio: 'SPY.ARCA',
+            begin: '2016-07-01',
+            end: '2016-12-31',
+            signal_variable: 'signal',
+            eval_score: 'gain/pain',
+            columns: {
+                date: 'DATE(ending)',
+                change: 'close - PREV("close")',
+                close: 'day.adj_close',
+                gain: 'PREC("gain") + change * PREV("signal")',
+                pain: 'drawdown'
+            },
+            variables: {
+                peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
+                drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
+            },
+            signalset: ['TREND', 'MEANREVERSION', 'RELATIVESTRENGTH']
+        }).should.eventually.be.like({
+            signals: ['ema_cross', 'bollinger_signal', 'STO_signal'],
+            parameters:  {
+                fast_len: isFinite,
+                slow_len: isFinite,
+                len: 10,
+                multiplier: 2,
+                lookback: 10,
+                Ksmoothing: 5,
+                Dmoving: 3
+            }
         });
     });
 });

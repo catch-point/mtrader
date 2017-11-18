@@ -51,6 +51,7 @@ module.exports = function(quote, collectFn) {
     var self;
     return self = _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(quote);
+        expect(options).to.be.an('object');
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
             var fields = _.first(help).properties;

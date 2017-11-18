@@ -40,18 +40,14 @@ const config = require('./config.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 
-const MIN_POPULATION = 8;
-
 /**
- * Given signals and possible parameter_values, searches for the best signal
- * using an Evolution strategy with collect as the fitnenss test
+ * Given signals and possible parameter_values, returns the best signals
+ * and their parameter values after optimizing each of them
  */
-module.exports = function(collect) {
+module.exports = function(optimize) {
     var promiseHelp;
-    var prng = new Alea();
-    var collections = _.object(config.list(), []);
     return _.extend(function(options) {
-        if (!promiseHelp) promiseHelp = help(collect);
+        if (!promiseHelp) promiseHelp = help(optimize);
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
             var fields = _.first(help).properties;
@@ -59,12 +55,9 @@ module.exports = function(collect) {
                 tz: moment.tz.guess(),
                 now: Date.now()
             });
-            return bestsignals(collect, collections, prng, opts);
+            return bestsignals(optimize, opts);
         });
     }, {
-        seed(number) {
-            prng = new Alea(number);
-        },
         close() {
             return Promise.resolve();
         }
@@ -74,57 +67,25 @@ module.exports = function(collect) {
 /**
  * Array of one Object with description of module, including supported options
  */
-function help(collect) {
-    return collect({help: true}).then(_.first).then(help => {
+function help(optimize) {
+    return optimize({help: true}).then(_.first).then(help => {
         return [{
             name: 'bestsignals',
             usage: 'bestsignals(options)',
             description: "Searches possible signal parameters to find the highest score",
-            properties: help.properties,
+            properties: ['signals'].concat(help.properties),
             options: _.extend({}, help.options, {
-                signal_count: {
-                    usage: '<number of signals>',
-                    description: "Number of signals to include in result"
-                },
                 signals: {
                     usage: '[<variable name>,..]',
                     description: "Array of variable names that should be tested as signals"
-                },
-                sample_duration: {
-                    usage: 'P1Y',
-                    description: "Duration of each sample"
-                },
-                sample_count: {
-                    usage: '<number of samples>',
-                    description: "Number of samples to search before searching the entire date range (begin-end)"
                 },
                 signal_variable: {
                     usage: '<variable name>',
                     description: "The variable name to use when testing various signals"
                 },
-                eval_validity: {
-                    usage: '<expression>',
-                    description: "Simple expression that invalidates candidates by returning 0 or null"
-                },
-                eval_score: {
-                    usage: '<expression>',
-                    description: "Expression that determines the signal score for a sample"
-                },
-                parameter_values: {
-                    usage: '{name: [value,..],..}',
-                    description: "Possible parameter values for each each parameter name"
-                },
                 signalset: {
                     usage: '[<signalset>,..]',
-                    description: "Array of signal sets that include array of signals (variable names), hash of variables, default parameters, and possible parameter_values. May either be an object or name of a stored session"
-                },
-                population_size: {
-                    usage: '<number of candidates>',
-                    description: "Number of candidates to test and mutate together"
-                },
-                termination: {
-                    usage: 'PT5M',
-                    description: "Amount of time spent searching for a solution before the best yet is used"
+                    description: "Array of signal sets that include array of signals (variable names), hash of variables, default parameters, and possible parameter_values"
                 }
             })
         }];
@@ -134,12 +95,14 @@ function help(collect) {
 /**
  * Searches possible signal parameters to determine the best score for a date range
  */
-function bestsignals(collect, collections, prng, options) {
-    return Promise.all(getSignalSets(collections, options).map(options => {
-        var signals = getSignals(options);
+function bestsignals(optimize, options) {
+    return Promise.all(getSignalSets(options).map(options => {
+        var signals = _.isString(options.signals) ?
+            options.signals.split(',') : options.signals;
         expect(options).to.have.property('parameter_values');
+        expect(options).to.have.property('signals');
         return Promise.all(signals.map(signal => {
-            return bestsignal(collect, prng, signal, options);
+            return bestsignal(optimize, signal, options);
         })).then(_.flatten).then(signals => {
             var count = options.signal_count || 1;
             return _.sortBy(signals, 'score').slice(-count).reverse();
@@ -150,104 +113,36 @@ function bestsignals(collect, collections, prng, options) {
 /**
  * List of signal sets that each should be search independently
  */
-function getSignalSets(collections, options) {
+function getSignalSets(options) {
     var signalset = _.isArray(options.signalset) ? options.signalset :
         _.isObject(options.signalset) ? [options.signalset] : [options];
-    return signalset.map(set => {
-        if (_.isObject(set)) return set;
-        if (!collections[set]) {
-            var cfg = config.read(set);
-            if (cfg) collections[set] = cfg;
-        }
-        if (collections[set]) return _.defaults({
-            label: set
-        }, collections[set]);
-        else throw Error("Unknown signalset: " + set);
-    }).map(signalset => _.defaults({
+    return signalset.map(signalset => _.defaults({
         variables: _.defaults({}, signalset.variables, options.variables),
         parameters: _.defaults({}, signalset.parameters, options.parameters),
         parameter_values: _.defaults({}, signalset.parameter_values, options.parameter_values),
     }, signalset, options));
 }
 
-function getSignals(options) {
-    return _.isArray(options.signals) ? options.signals :
-        _.isString(options.signals) ? options.signals.split(',') : [''];
-}
-
 /**
- * Searches a particular signal parameter values to determine the best score
+ * Optimizes signal parameter values to determine the ones with the best scores
  */
-function bestsignal(collect, prng, signal, options) {
+function bestsignal(optimize, signal, options) {
     var pnames = getParameterNames(signal, options);
     var pvalues = pnames.map(name => options.parameter_values[name]);
-    return searchParameters(collect, prng, signal, pnames, options)
+    var signal_variable = {[options.signal_variable || 'signal']: signal};
+    return optimize(_.defaults({
+        label: (options.label ? options.label + ' ' : '') + signal,
+        signal_count: options.signal_count || 1,
+        variables: _.defaults(signal_variable, options.variables),
+        parameter_values: _.object(pnames, pvalues)
+    }, options))
       .then(solutions => solutions.map((solution, i) => ({
         score: solution.score,
-        signals: signal ? [signal] : [],
+        signals: [signal],
         variables: options.variables,
-        parameters: _.object(pnames,
-            solution.pindex.map((idx, i) => pvalues[i][idx])
-        ),
+        parameters: solution.parameters,
         parameter_values: _.object(pnames, pvalues)
     })));
-}
-
-/**
- * Searches the signal parameters returning signal_count results
- */
-function searchParameters(collect, prng, signal, pnames, options) {
-    var terminateAt = options.termination &&
-        moment().add(moment.duration(options.termination)).valueOf()
-    var space = createSearchSpace(pnames, options);
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var staleAfter = _.max(pvalues.map(_.size));
-    var createPopulation = options.sample_duration || options.sample_count ?
-        sampleSolutions(collect, prng, signal, pnames, space, options) :
-        initialPopulation(prng, pnames, space, options);
-    return Promise.resolve(createPopulation).then(population => {
-        var fitnessFn = fitness(collect, options, signal, pnames);
-        var selectionFn = selection.bind(this, fitnessFn, Math.floor(_.size(population)/2));
-        var mutationFn = mutation.bind(this, prng, _.size(population), pvalues, space);
-        return optimize(selectionFn, mutationFn, signal, pnames, terminateAt, staleAfter, options, population);
-    }).then(solutions => {
-        var count = options.signal_count || 1;
-        return _.sortBy(solutions, 'score').slice(-count).reverse();
-    });
-}
-
-/**
- * Simple in-memory cache of candidates to avoid re-evaluating them again
- */
-function createSearchSpace(pnames, options) {
-    var hash = {};
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var parser = Parser({
-        constant(value) {
-            return _.constant(value);
-        },
-        variable(name) {
-            var idx = pnames.indexOf(name);
-            if (idx >= 0) return pindex => pvalues[idx][pindex[idx]];
-            var p = _.property(name);
-            var value = p(options.parameters) || p(options.parameters);
-            return _.constant(value);
-        },
-        expression(expr, name, args) {
-            if (common.has(name)) return common(name, args, options);
-            else throw Error("Cannot use " + name + " in eval_validity");
-        }
-    });
-    var validity = parser.parseCriteriaList(options.eval_validity);
-    var invalid = ctx => !!validity.find(fn => !fn(ctx));
-    return {
-        add(candidate) {
-            var key = candidate.pindex.join(',');
-            if (hash[key] || invalid(candidate.pindex)) return false;
-            hash[key] = candidate;
-            return true;
-        }
-    };
 }
 
 /**
@@ -268,188 +163,6 @@ function getParameterNames(signal, options) {
         }
     }).parse(options.variables[signal]);
     return _.intersection(_.keys(options.parameter_values), varnames);
-}
-
-/**
- * Creates an initial population from the best signals of a set of sample periods
- */
-function sampleSolutions(collect, prng, signal, pnames, space, options) {
-    var begin = moment(options.begin);
-    var end = moment(options.end || options.now);
-    if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
-    if (!end.isValid()) throw Error("Invalid end date: " + options.end);
-    var count = options.sample_count || 1;
-    var period = createDuration(begin, end, count);
-    var unit = getDurationUnit(period, count);
-    var duration = options.sample_duration ?
-        moment.duration(options.sample_duration) :
-        moment.duration(Math.round(period.as(unit) / count), unit);
-    if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.sample_duration);
-    var period_units = period.subtract(duration).as(unit);
-        var pvalues = pnames.map(name => options.parameter_values[name]);
-    var size = options.population_size ||
-        Math.max(_.max(pvalues.map(_.size)), count * 2, MIN_POPULATION);
-    var termination = options.termination &&
-        moment.duration(moment.duration(options.termination).asMilliseconds()/3).toISOString();
-    var optionset = _.range(count).map(() => {
-        var periodBegin = moment(begin).add(Math.round(prng() * period_units), unit);
-        var periodEnd = moment(periodBegin).add(duration);
-        if (periodEnd.isAfter(end)) {
-            periodEnd = end;
-            periodBegin = moment(end).subtract(duration);
-        }
-        return _.defaults({
-            termination: termination,
-            signal_count: Math.ceil(size/2),
-            begin: periodBegin.format(), end: periodEnd.format()
-        }, _.omit(options, ['sample_duration', 'sample_count']));
-    });
-    return Promise.all(optionset.map(opts => {
-        return searchParameters(collect, prng, signal, pnames, opts);
-    })).then(results => {
-        var parameters = _.pick(options.parameters, pnames);
-        var count = options.signal_count || 1;
-        var population = results.reduce((population, sols) => sols.reduce((population, solution) => {
-            var candidate = {pindex: solution.pindex};
-            if (space.add(candidate)) {
-                population.push(candidate);
-            }
-            return population;
-        }, population), []);
-        var seed = {pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))};
-        if (!_.isEmpty(parameters) && space.add(seed)) {
-            population.push(seed);
-        }
-        if (population.length >= size) return population;
-        else return mutation(prng, size, pvalues, space, population, 0);
-    });
-}
-
-/**
- * Creates a random initial population, but also includes the default parameters.
- */
-function initialPopulation(prng, pnames, space, options) {
-    var parameters = _.pick(options.parameters, pnames);
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var count = options.signal_count || 1;
-    var size = options.population_size ||
-        Math.max(_.max(_.map(pvalues, _.size)), count * 2, MIN_POPULATION);
-    var population = [];
-    if (!_.isEmpty(parameters)) {
-        var seed = {
-            pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))
-        };
-        population.push(seed);
-        space.add(seed);
-    }
-    return mutation(prng, size, pvalues, space, population, 0);
-}
-
-/**
- * Cycles between candidate selection and mutation until the score of the best/worst selected solution is the same for `stale` number of iterations
- */
-function optimize(selection, mutation, signal, pnames, terminateAt, stale, options, population, stats) {
-    return selection(population).then(solutions => {
-        var best = _.first(solutions);
-        var worst = _.last(solutions);
-        var strength = stats && stats.high == best.score && stats.low == worst.score ?
-            stats.strength + 1 : 0;
-        if (stats) logger.log("Signal", signal, options.begin, "G" + stats.generation, "P" + population.length, "M" + stats.strength, best.pindex.map((idx,i) => {
-            return options.parameter_values[pnames[i]][idx];
-        }).join(','), ':', best.score);
-        if (strength >= stale || terminateAt && terminateAt < Date.now()) return solutions;
-        var candidates = mutation(solutions, strength);
-        return optimize(selection, mutation, signal, pnames, terminateAt, stale, options, candidates, {
-            high: best.score,
-            low: worst.score,
-            strength: strength,
-            generation: stats ? stats.generation + 1 : 1,
-            mtime: Date.now()
-        });
-    });
-}
-
-/**
- * Creates the fitness function for a signal
- */
-function fitness(collect, options, signal, pnames) {
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var score_column = getScoreColumn(options);
-    var signal_variable = signal ? {[options.signal_variable || 'signal']: signal} : {};
-    return function(candidate) {
-        var parameters = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
-        var opts = _.defaults({
-            tail: 1,
-            transient: true, // don't persist signal values
-            columns: _.defaults({[score_column]: options.eval_score}, options.columns),
-            variables: _.defaults(signal_variable, options.variables),
-            parameters: _.defaults(parameters, options.parameters)
-        }, options);
-        return collect(opts)
-          .then(results => {
-            return results;
-          })
-          .then(_.last).then(_.property(score_column)).then(score => {
-            return _.extend(candidate, {
-                score: score
-            });
-        });
-    };
-}
-
-/**
- * Determines the score of the population and returns the best size solutions
- */
-function selection(fitness, size, population) {
-    var candidates = [];
-    var elite = [];
-    population.forEach(candidate => {
-        if (_.has(candidate, 'score')) {
-            elite.push(candidate);
-        } else {
-            candidates.push(candidate);
-        }
-    });
-    return Promise.all(candidates.map(fitness))
-      .then(solutions => {
-        return _.sortBy(elite.concat(solutions), 'score').slice(-Math.ceil(size)).reverse();
-    });
-}
-
-/**
- * Takes the solutions and adds mutated candidates using the gaussian distribution of the solution set
- */
-function mutation(prng, size, pvalues, space, solutions, strength) {
-    var empty = _.isEmpty(solutions);
-    var one = solutions.length == 1;
-    var mutations = pvalues.map((values,i) => {
-        var vals = empty || one ? _.range(values.length) : _.map(solutions, sol => sol.pindex[i]);
-        var avg = one ? solutions[0].pindex[i] : vals.reduce((a,b) => a + b) / vals.length;
-        var stdev = vals.length>2 && statkit.std(vals) || 0.5;
-        var window = Math.min(stdev + strength, Math.ceil(values.length/2));
-        return function(value) {
-            var val = arguments.length ? value : avg;
-            var target = statkit.norminv(prng()) * window + val;
-            var abs = Math.abs(target % (values.length * 2));
-            return abs >= values.length ?
-                Math.ceil(values.length * 2 - abs) - 1 : Math.floor(abs);
-        };
-    });
-    var population = solutions;
-    solutions.forEach(solution => {
-        var mutated = {pindex: mutations.map((fn, i) => fn(solution.pindex[i]))};
-        if (space.add(mutated)) {
-            population.push(mutated);
-        }
-    });
-    var target = size + strength;
-    for (var i=0; i<target && _.size(population) < target; i++) {
-        var candidate = {pindex: mutations.map(fn => fn())};
-        if (space.add(candidate)) {
-            population.push(candidate);
-        }
-    }
-    return population;
 }
 
 /**
@@ -485,6 +198,7 @@ function formatSignals(signalsets, options) {
             parameter_values: _.reduce(_.pick(signalset.parameter_values, local), rename, {})
         };
     });
+    var extend2 = (a, b) => _.extend(a, b);
     return _.extend(_.clone(options), {
         score: _.max(_.pluck(signals, 'score')),
         signals: _.flatten(_.pluck(signals, 'signals'), true),
@@ -525,7 +239,7 @@ function getReferences(variables) {
 }
 
 /**
- * Returns a function that takes an expression and rewrites replacing variables in in local with replacement
+ * Returns a function that takes an expression and rewrites replacing variables in replacement hash
  */
 function createReplacer(replacement) {
     var parser = Parser();
@@ -547,48 +261,4 @@ function createReplacer(replacement) {
         var parsed = parser.parse(replacer.parse(expr));
         return _.object(_.keys(parsed).map(map), _.values(parsed));
     };
-}
-
-/**
- * Splits the date range begin-end up into even count segments along major divisions (year,month,day)
- */
-function createDuration(begin, end, count) {
-    var duration = moment.duration(Math.round(end.diff(begin, 'seconds')), 'seconds');
-    var unit = getDurationUnit(duration, count);
-    return moment.duration(duration.as(unit), unit);
-}
-
-/**
- * Chooses a major division unit, one of years, months, days, hours, minutes, or seconds
- */
-function getDurationUnit(duration, count) {
-    return ['years', 'months', 'days', 'hours', 'minutes'].reduce((result, unit) => {
-        var number = duration.as(unit);
-        if (!result && number > count && Math.abs(number - Math.round(number)) < 0.1)
-            return unit;
-        else return result;
-    }, null) || 'seconds';
-}
-
-/**
- * Chooses a score column name that does not conflict with existing columns
- */
-function getScoreColumn(options) {
-    var score_column = 'score';
-    if (options.eval_score) {
-        // find a unique column
-        for (var i=0; _.has(options.columns, score_column); i++) {
-            score_column = 'score' + i;
-        }
-    } else if (!options.columns[score_column]) {
-        throw Error("Must have eval_score options set or a score column");
-    }
-    return score_column;
-}
-
-/**
- * Like _.exend, but only looks at the first two parameters
- */
-function extend2(a, b) {
-    return _.extend(a, b);
 }

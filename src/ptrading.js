@@ -49,6 +49,7 @@ var program = require('commander').version(require('../package.json').version)
     .command('fetch <interval> <symbol.exchange>', "Fetches remote data for the given symbol")
     .command('quote <symbol.exchange>', "Historic information of a security")
     .command('collect [identifier]', "Collects historic portfolio data")
+    .command('optimize [identifier]', "Optimizes the parameter values in the given portfolio")
     .command('bestsignals [identifier]', "Determines the best signals for the given portfolio")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-s, --silent', "Include less information about what the system is doing")
@@ -131,6 +132,7 @@ function createInstance() {
     var fetch = require('./ptrading-fetch.js');
     var quote = require('./ptrading-quote.js');
     var collect = require('./ptrading-collect.js');
+    var optimize = require('./ptrading-optimize.js');
     var bestsignals = require('./ptrading-bestsignals.js');
     return {
         config: config,
@@ -147,6 +149,7 @@ function createInstance() {
         fetch: fetch,
         quote: quote,
         collect: collect,
+        optimize: optimize,
         bestsignals: bestsignals,
         close() {
             return bestsignals.close();
@@ -157,6 +160,7 @@ function createInstance() {
                 fetch.shell(app),
                 quote.shell(app),
                 collect.shell(app),
+                optimize.shell(app),
                 bestsignals.shell(app)
             ]).catch(err => console.error("Could not complete shell setup", err));
         }
@@ -178,6 +182,7 @@ function listen(address, ptrading) {
             .handle('fetch', ptrading.fetch)
             .handle('quote', ptrading.quote)
             .handle('collect', ptrading.collect)
+            .handle('optimize', ptrading.optimize)
             .handle('bestsignals', ptrading.bestsignals)
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
             .handle('stop', () => {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// ptrading-bestsignals.js
+// ptrading-optimize.js
 /*
  *  Copyright (c) 2017 James Leigh, Some Rights Reserved
  *
@@ -40,13 +40,13 @@ const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
-const Bestsignals = require('./bestsignals.js');
+const Optimize = require('./optimize.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 
 function usage(command) {
     return command.version(require('../package.json').version)
-        .description("Determines the best signals for the given portfolio")
+        .description("Optimizes the parameter values in the given portfolio")
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
@@ -73,18 +73,18 @@ function usage(command) {
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var bestsignals = createInstance(program);
-        process.on('SIGINT', () => bestsignals.close());
+        var optimize = createInstance(program);
+        process.on('SIGINT', () => optimize.close());
         var name = program.args.join(' ');
         var options = readSignals(name);
-        bestsignals(options).then(result => new Promise(done => {
+        optimize(options).then(result => new Promise(done => {
             var output = JSON.stringify(result, null, ' ');
             var writer = createWriteStream(config('save'));
             writer.on('finish', done);
             writer.write(output, 'utf-8');
             writer.end();
         })).catch(err => logger.error(err, err.stack))
-          .then(() => bestsignals.close());
+          .then(() => optimize.close());
     } else if (process.send) {
         spawn();
     } else {
@@ -95,23 +95,24 @@ if (require.main === module) {
 }
 
 function createInstance(program) {
-    var optimize = require('./ptrading-optimize.js');
-    var bestsignals = Bestsignals(optimize);
+    var collect = require('./ptrading-collect.js');
+    var optimize = Optimize(collect);
     var collections = {};
-    var promiseKeys = bestsignals({help: true})
+    var promiseKeys = optimize({help: true})
         .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
     var promiseDefaults = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
     var instance = function(options) {
         return promiseKeys.then(keys => promiseDefaults.then(defaults => {
             return _.extend({}, defaults, _.pick(options, keys));
         })).then(options => {
-            if (options.signalset || options.protfolio)
-                return bestsignals(inlineCollections(collections, options));
-            else return bestsignals(options);
+            if (options.protfolio)
+                return optimize(inlineCollections(collections, options));
+            else return optimize(options);
         });
     };
+    instance.seed = optimize.seed;
     instance.close = function() {
-        return optimize.close().then(bestsignals.close);
+        return collect.close().then(optimize.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;
@@ -122,10 +123,9 @@ function inlineCollections(collections, options, avoid) {
         return options;
     else if (_.isArray(options))
         return options.map(item => inlineCollections(collections, item, avoid));
-    else if (_.isObject(options) && (options.portfolio || options.signalset))
+    else if (_.isObject(options) && options.portfolio)
         return _.defaults({
-            portfolio: inlineCollections(collections, options.portfolio, avoid),
-            signalset: inlineCollections(collections, options.signalset, avoid)
+            portfolio: inlineCollections(collections, options.portfolio, avoid)
         }, options);
     else if (_.isObject(options))
         return options;
@@ -175,20 +175,20 @@ function createWriteStream(outputFile) {
     return output;
 }
 
-function shell(desc, bestsignals, app) {
-    app.on('quit', () => bestsignals.close());
-    app.on('exit', () => bestsignals.close());
-    app.cmd('bestsignals', desc, (cmd, sh, cb) => {
-        bestsignals(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
+function shell(desc, optimize, app) {
+    app.on('quit', () => optimize.close());
+    app.on('exit', () => optimize.close());
+    app.cmd('optimize', desc, (cmd, sh, cb) => {
+        optimize(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
-    app.cmd("bestsignals :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
+    app.cmd("optimize :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
         var options = readSignals(cmd.params.name);
-        bestsignals(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        optimize(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
     });
 // help
-return bestsignals({help: true}).then(_.first).then(info => {
-help(app, 'bestsignals', `
-  Usage: bestsignals :name
+return optimize({help: true}).then(_.first).then(info => {
+help(app, 'optimize', `
+  Usage: optimize :name
 
   ${desc}
 

@@ -115,8 +115,8 @@ IBM  2017-01-13   59 167.36 -9874.24 1
 YHOO 2017-01-13 -234  42.25  9886.5  1
 */
 
-// find the best SMA cross between 2000 and 2010
-ptrading.bestsignals({
+// optimize SMA cross parameters between 2000 and 2010
+ptrading.optimize({
     portfolio: 'SPY.ARCA',
     begin: '2000-01-01',
     end: '2010-01-01',
