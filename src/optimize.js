@@ -303,16 +303,15 @@ function fitness(collect, options, pnames) {
     var score_column = getScoreColumn(options);
     return function(candidate) {
         var parameters = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
+        var picked = ['portfolio', 'columns', 'variables', 'parameters', 'filter', 'precedence', 'order', 'pad_leading', 'reset_every'];
         var opts = _.defaults({
             tail: 1,
             transient: true, // don't persist parameter values
-            columns: _.defaults({[score_column]: options.eval_score}, options.columns),
-            parameters: _.defaults(parameters, options.parameters)
-        }, options);
+            portfolio: [_.pick(options, picked)],
+            columns: {[score_column]: options.eval_score},
+            parameters: parameters
+        }, _.omit(options, picked));
         return collect(opts)
-          .then(results => {
-            return results;
-          })
           .then(_.last).then(_.property(score_column)).then(score => {
             return _.extend(candidate, {
                 score: score
