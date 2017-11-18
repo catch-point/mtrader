@@ -127,7 +127,48 @@ function help(quote) {
  * Computes column values given expressions and variables in options
  */
 function collect(quote, callCollect, fields, options) {
+    var duration = options.reset_every && moment.duration(options.reset_every);
+    var begin = moment(options.begin);
+    var end = moment(options.end || options.now);
+    if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.reset_every);
+    if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
+    if (!end.isValid()) throw Error("Invalid end date: " + options.end);
+    var segments = [options.begin];
+    if (duration) {
+        begin.add(duration);
+        while (begin.isBefore(end)) {
+            segments.push(begin.format());
+            begin.add(duration);
+        }
+    }
+    if (segments.length < 2) // only one period
+        return collectDuration(quote, callCollect, fields, options);
+    var optionset = segments.map((segment, i, segments) => {
+        if (segments.length == 1) return options;
+        else if (i === 0) return _.defaults({
+            begin: options.begin, end: segments[i+1],
+            pad_begin: options.pad_begin, pad_end: 0
+        }, options);
+        else if (i < segments.length -1) return _.defaults({
+            begin: segment, end: segments[i+1],
+            pad_begin: 0, pad_end: 0
+        }, options);
+        else return _.defaults({
+            begin: segment, end: options.end,
+            pad_begin: 0, pad_end: options.pad_end
+        }, options);
+    });
+    return Promise.all(optionset.map(opts => callCollect(opts))).then(dataset => {
+        return _.flatten(dataset, true);
+    });
+}
+
+/**
+ * Computes column values given expressions and variables in options for a duration
+ */
+function collectDuration(quote, callCollect, fields, options) {
     expect(options).to.have.property('portfolio');
+    expect(options).to.have.property('begin');
     expect(options).to.have.property('columns').that.is.an('object');
     var illegal = _.intersection(_.keys(options.variables), fields);
     if (illegal.length) expect(options.variables).not.to.have.property(_.first(illegal));
@@ -146,7 +187,6 @@ function collect(quote, callCollect, fields, options) {
             '.' + JSON.parse(options.columns[options.indexCol]).substring(1) : '');
         var pad_begin = (options.pad_begin || 0) + (options.pad_leading || 0);
         if (opts.portfolio) {
-            var used = getUsedColumns(opts);
             var parser = Parser({
                 variable(name){
                     return opts.columns && opts.columns[name] || name;
@@ -156,6 +196,7 @@ function collect(quote, callCollect, fields, options) {
                 }
             });
             var columns = parser.parse(simpleColumns);
+            var used = getUsedColumns(columns, opts);
             var filter = [opts.filter, parser.parse(criteria)];
             var params = _.omit(defaults, _.keys(opts.columns));
             return callCollect(_.defaults({
@@ -187,7 +228,7 @@ function collect(quote, callCollect, fields, options) {
         var parser = createParser(quote, dataset, columns, _.keys(simpleColumns), options);
         return collectDataset(dataset, parser, columns, options);
     }).then(collection => {
-        var begin = moment(options.begin || moment(options.now).endOf('day')).toISOString();
+        var begin = moment(options.begin).toISOString();
         var idx = _.sortedIndex(collection, {[options.temporalCol]: begin}, options.temporalCol);
         var start = idx - (options.pad_begin || 0);
         if (start <= 0) return collection;
@@ -226,9 +267,37 @@ function checkCircularVariableReference(fields, options) {
 }
 
 /**
+ * Returns an array of variable names used by at least one of variables/criteria/precedence/filter/order
+ */
+function getUsedColumns(columns, options) {
+    var variables = _.defaults({}, columns, options.columns, options.variables);
+    var exprs = _.flatten(_.compact([
+        options.criteria, options.precedence, options.filter, options.order
+    ]), true);
+    var names = _.uniq(_.flatten(Parser({
+        constant(value) {
+            return [];
+        },
+        variable(name) {
+            return [name];
+        },
+        expression(expr, name, args) {
+            if (rolling.has(name)) return rolling.getVariables(expr);
+            else return _.uniq(_.flatten(args, true));
+        }
+    }).parseCriteriaList(exprs), true));
+    var references = getReferences(variables, true);
+    return _.uniq(names.concat(_.keys(columns)).reduce((used, name) => {
+        used.push(name);
+        if (references[name]) used.push.apply(used, references[name]);
+        return used;
+    }, []));
+}
+
+/**
  * Hash of variable names to array of variable names it depends on
  */
-function getReferences(variables) {
+function getReferences(variables, includeRolling) {
     var references = Parser({
         constant(value) {
             return [];
@@ -238,7 +307,9 @@ function getReferences(variables) {
             else return [];
         },
         expression(expr, name, args) {
-            return _.uniq(_.flatten(args, true));
+            if (includeRolling && rolling.has(name))
+                return rolling.getVariables(expr);
+            else return _.uniq(_.flatten(args, true));
         }
     }).parse(variables);
     var follow = _.clone(references);
@@ -502,28 +573,6 @@ function createInlineParser(columns, options) {
         var parsed = inline.parse(expr);
         return formatter.parse(_.isFunction(parsed) ? stringify(parsed()) : parsed);
     };
-}
-
-/**
- * Returns an array of variable names used by at least one of variables/criteria/precedence/filter/order
- */
-function getUsedColumns(options) {
-    var exprs = _.flatten(_.compact([
-        _.values(options.variables),
-        options.criteria, options.precedence, options.filter, options.order
-    ]), true);
-    return _.uniq(_.flatten(Parser({
-        constant(value) {
-            return [];
-        },
-        variable(name) {
-            return [name];
-        },
-        expression(expr, name, args) {
-            if (rolling.has(name)) return rolling.getVariables(expr);
-            else return _.uniq(_.flatten(args, true));
-        }
-    }).parseCriteriaList(exprs), true));
 }
 
 /**

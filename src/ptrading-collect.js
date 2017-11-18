@@ -101,60 +101,21 @@ function createInstance(program) {
     var stoppedWorkers = [];
     var queue = [];
     var collect = function(options) {
-        var duration = options.reset_every && moment.duration(options.reset_every);
-        var begin = moment(options.begin);
-        var end = moment(options.end || options.now);
-        if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.reset_every);
-        if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
-        if (!end.isValid()) throw Error("Invalid end date: " + options.end);
-        var segments = [options.begin];
-        if (duration) {
-            begin.add(duration);
-            while (begin.isBefore(end)) {
-                segments.push(begin.format());
-                begin.add(duration);
-            }
-        }
-        var optionset = segments.map((segment, i, segments) => {
-            if (segments.length == 1) return options;
-            else if (i === 0) return _.defaults({
-                begin: options.begin, end: segments[i+1],
-                pad_begin: options.pad_begin, pad_end: 0
-            }, options);
-            else if (i < segments.length -1) return _.defaults({
-                begin: segment, end: segments[i+1],
-                pad_begin: 0, pad_end: 0
-            }, options);
-            else return _.defaults({
-                begin: segment, end: options.end,
-                pad_begin: 0, pad_end: options.pad_end
-            }, options);
+        var loads = workers.map(w => {
+            return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
         });
-        var capacity = workers.reduce((capacity, worker) => capacity + (worker.count || 1), 0);
-        var promises = optionset.reduce((promises, options, i) => {
-            var wait = i < capacity ? Promise.resolve() : promises[i % capacity];
-            promises.push(wait.then(() => {
-                var loads = workers.map(w => {
-                    return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
-                });
-                var worker = workers[loads.indexOf(_.min(loads))];
-                return worker.request('collect', options).catch(err => {
-                    if (!worker.process.remote) throw err;
-                    var loads = workers.map(w => {
-                        if (w.process.remote) return Infinity;
-                        return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
-                    });
-                    var local = workers[loads.indexOf(_.min(loads))];
-                    if (!local) throw err;
-                    logger.debug("Collect", worker.process.pid, err, err.stack);
-                    logger.debug("Retrying", options.label || '', "using local node", local.process.pid);
-                    return local.request('collect', options);
-                });
-            }));
-            return promises;
-        }, []);
-        return Promise.all(promises).then(dataset => {
-            return _.flatten(dataset, true);
+        var worker = workers[loads.indexOf(_.min(loads))];
+        return worker.request('collect', options).catch(err => {
+            if (!worker.process.remote) throw err;
+            var loads = workers.map(w => {
+                if (w.process.remote) return Infinity;
+                return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
+            });
+            var local = workers[loads.indexOf(_.min(loads))];
+            if (!local) throw err;
+            logger.debug("Collect", worker.process.pid, err, err.stack);
+            logger.debug("Retrying", options.label || '\b', "using local node", local.process.pid);
+            return local.request('collect', options);
         });
     };
     var check_queue = function() {
