@@ -491,7 +491,7 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
     var end = options.end || moment(options.now).tz(options.tz);
     var stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
     var blocks = getBlocks(options.interval, start, stop, options);
-    if (options.offline || options.read_only) return Promise.resolve(blocks);
+    if (options.offline) return Promise.resolve(blocks);
     else return collection.lockWith(blocks, blocks => {
         var version = getStorageVersion(collection);
         return fetchBlocks(fetch, fields, options, collection, version, stop, blocks);
@@ -658,8 +658,12 @@ function createStorageVersion() {
  * Checks if any of the blocks need to be updated
  */
 function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) {
-    var fetchComplete = fetchCompleteBlock.bind(this, fetch, options, collection, version);
-    var fetchPartial = fetchPartialBlock.bind(this, fetch, fields, options, collection);
+    var cmsg = "Incomplete data try again without the read_only flag";
+    var pmsg = "or without the read_only flag";
+    var fetchComplete = options.read_only ? () => Promise.reject(Error(cmsg)) :
+        fetchCompleteBlock.bind(this, fetch, options, collection, version);
+    var fetchPartial = options.read_only ? () => Promise.reject(Error(pmsg)) :
+        fetchPartialBlock.bind(this, fetch, fields, options, collection);
     return Promise.all(blocks.map((block, i, blocks) => {
         var last = i == blocks.length -1;
         if (!collection.exists(block) || collection.propertyOf(block, 'version') != version)
@@ -671,7 +675,7 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
             return fetchComplete(block, last);
         if (i < blocks.length -1 || stop && _.first(tail).ending < stop.format())
             return fetchPartial(block, _.first(tail).ending).catch(error => {
-                logger.warn("Fetch failed", error);
+                throw Error("Fetch failed try using the offline flag " + error.message);
             });
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;

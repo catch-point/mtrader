@@ -33,6 +33,7 @@
 
 const path = require('path');
 const _ = require('underscore');
+const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
@@ -124,7 +125,7 @@ if (require.main === module) {
                 else if (!opts.read_only || _.has(options, 'read_only')) throw err;
                 else if (slave == getMasterWorker(workers, options)) throw err;
             }
-            logger.debug("Retrying", options.label || '', "using master node", master.process.pid);
+            logger.debug("Retrying", options.label || '\b', "using master node", master.process.pid);
             return quote(_.extend({read_only: false}, options)); // retry using master
         });
     };
@@ -232,6 +233,8 @@ function getMasterWorker(workers, options) {
 function chooseSlaveWorker(workers, master, options) {
     if (_.has(options, 'read_only') && !options.read_only)
         return master; // write requested
+    if (!options.end || moment.tz(options.end, options.tz).valueOf() >= Date.now())
+        return master; // latest data requested
     var loads = workers.map(w => {
         return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
     });
