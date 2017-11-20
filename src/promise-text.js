@@ -71,6 +71,11 @@ process.on('SIGINT', () => {
     outstanding.forEach(pending => {
         pending.onerror(error);
     });
+}).on('SIGTERM', () => {
+    var error = Error('SIGTERM');
+    outstanding.forEach(pending => {
+        pending.onerror(error);
+    });
 });
 
 function clear(pending) {

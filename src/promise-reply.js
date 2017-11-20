@@ -178,8 +178,13 @@ process.on('SIGINT', () => {
     instances.forEach(queue => {
         queue.onquit(error);
     });
+}).on('SIGTERM', () => {
+    var error = Error('SIGTERM');
+    instances.forEach(queue => {
+        queue.onquit(error);
+    });
 }).on('unhandledRejection', (reason, p) => {
-    if (!reason || reason.message!='SIGINT' && reason.message!='Disconnecting') {
+    if (!reason || reason.message!='SIGINT' && reason.message!='SIGTERM' && reason.message!='Disconnecting') {
         logger.warn('Unhandled Rejection', reason && reason.message || reason || p, reason && reason.stack || '');
     }
 });

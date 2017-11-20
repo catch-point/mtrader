@@ -75,6 +75,7 @@ if (require.main === module) {
     if (program.args.length) {
         var bestsignals = createInstance(program);
         process.on('SIGINT', () => bestsignals.close());
+        process.on('SIGTERM', () => bestsignals.close());
         var name = program.args.join(' ');
         var options = readSignals(name);
         bestsignals(options).then(result => new Promise(done => {

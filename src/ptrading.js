@@ -97,6 +97,10 @@ if (require.main === module) {
             server.close();
             server.clients.forEach(client => client.end());
             ptrading.close();
+        }).on('SIGTERM', () => {
+            server.close();
+            server.clients.forEach(client => client.end());
+            ptrading.close();
         });
     } else if (_.isEmpty(program.args)) {
         var app = new shell({isShell: true});
@@ -112,6 +116,7 @@ if (require.main === module) {
         var ptrading = createInstance();
         ptrading.shell(app);
         process.on('SIGINT', () => app.quit());
+        process.on('SIGTERM', () => app.quit());
     }
 } else {
     module.exports = createInstance();

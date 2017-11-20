@@ -81,6 +81,7 @@ if (require.main === module) {
     if (program.args.length) {
         var collect = createInstance(program);
         process.on('SIGINT', () => collect.close());
+        process.on('SIGTERM', () => collect.close());
         var name = program.args.join(' ');
         var options = readCollect(name);
         collect(options).then(result => tabular(result))
@@ -234,6 +235,7 @@ function spawn() {
     }));
     process.on('disconnect', () => collect().close());
     process.on('SIGINT', () => collect().close());
+    process.on('SIGTERM', () => collect().close());
 }
 
 function inlineCollections(collections, options, avoid) {

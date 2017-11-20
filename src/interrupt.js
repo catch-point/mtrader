@@ -29,16 +29,21 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-
+var signal;
 var interrupted = 0;
+
 process.on('SIGINT', () => {
+    signal = 'SIGINT';
+    interrupted++;
+}).on('SIGTERM', () => {
+    signal = 'SIGTERM';
     interrupted++;
 });
 
 module.exports = function() {
     var base = interrupted;
     return () => {
-        if (base != interrupted) throw Error('SIGINT');
+        if (base != interrupted) throw Error(signal);
     };
 }
 

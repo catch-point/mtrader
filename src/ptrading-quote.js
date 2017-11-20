@@ -80,6 +80,7 @@ if (require.main === module) {
         var fetch = require('./ptrading-fetch.js');
         var quote = Quote(fetch);
         process.on('SIGINT', () => quote.close().then(() => fetch.close()));
+        process.on('SIGTERM', () => quote.close().then(() => fetch.close()));
         var symbol = program.args[0];
         var exchange = program.args[1];
         if (!exchange && ~symbol.indexOf('.')) {
@@ -102,6 +103,8 @@ if (require.main === module) {
             return parent.request('fetch', options);
         }));
         process.on('disconnect', () => quote().close());
+        process.on('SIGINT', () => quote().close());
+        process.on('SIGTERM', () => quote().close());
     } else {
         program.help();
     }
