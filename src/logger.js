@@ -31,6 +31,7 @@
 
 const path = require('path');
 const process = require('process');
+const _ = require('underscore');
 const config = require('./config.js');
 
 var relative = path.relative(process.cwd(), path.dirname(__filename));
@@ -38,7 +39,7 @@ var silent = process.argv.some(arg => /^--silent$|^-\w*s/.test(arg)) || config('
 var verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg)) || config('verbose');
 var debugging = !relative || relative == 'src' || process.argv.indexOf('--debug') >= 0 || config('debug');
 
-var colours = {
+var tty_colours = {
     black: '\x1b[30m',
     red: '\x1b[31m',
     green: '\x1b[32m',
@@ -55,7 +56,10 @@ var colours = {
     reverse: '\x1b[7m',
     hidden: '\x1b[8m',
     dim_blue: '\x1b[2m\x1b[34m'
-}
+};
+
+var colours = process.stderr.isTTY ? tty_colours :
+    _.extend(_.mapObject(tty_colours, _.constant('')), {reset: '\b'});
 
 var logger = module.exports = {
     debug: !silent && debugging ? debug : nil,
@@ -66,6 +70,11 @@ var logger = module.exports = {
 };
 
 process.on('SIGINT', () => {
+    logger.log = nil;
+    logger.info = nil;
+    logger.warn = nil;
+    logger.error = nil;
+}).on('SIGTERM', () => {
     logger.log = nil;
     logger.info = nil;
     logger.warn = nil;
