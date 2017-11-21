@@ -75,8 +75,13 @@ module.exports.load();
 
 if (process.send) {
     process.on('message', msg => {
-        if (msg.cmd == 'config' && msg.payload.signal == 'SIGHUP') {
-            process.emit('SIGHUP');
+        if (msg.cmd == 'config' && msg.payload.loadFile) {
+            if (_.isString(msg.payload.loadFile))
+                module.exports.load(msg.payload.loadFile);
+            else
+                process.emit('SIGHUP');
+        } else if (msg.cmd == 'config' && msg.payload.unset) {
+            module.exports.unset(msg.payload.name);
         } else if (msg.cmd == 'config') {
             module.exports(msg.payload.name, msg.payload.value);
         }
@@ -89,7 +94,8 @@ process.on('SIGHUP', () => {
 
 function createInstance(session) {
     var listeners = [];
-    var defaults = {}, stored = {}, loaded = {};
+    var defaults = {}, stored = {};
+    var loadedFrom, loaded = {};
 
     var config = function(name, value) {
         if (_.isUndefined(value)) {
@@ -107,10 +113,10 @@ function createInstance(session) {
                 process.argv[1] ? path.resolve(process.argv[1], '../..') : ''
         }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
         stored = merge({}, loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json')), defaults);
-        var loadFile = filename || _.contains(process.argv, '--load') && process.argv[process.argv.indexOf('--load')+1] + '.json';
+        var loadedFrom = filename || loadedFrom || _.contains(process.argv, '--load') && process.argv[process.argv.indexOf('--load')+1] + '.json';
         var config_dir = stored.config_dir ? stored.config_dir : path.resolve(defaults.prefix, 'etc');
-        loaded = loadFile ? loadConfigFile(path.resolve(config_dir, loadFile)) : {};
-        listeners.forEach(listener => listener(null, null, 'SIGHUP'));
+        loaded = loadedFrom ? loadConfigFile(path.resolve(config_dir, loadedFrom)) : {};
+        listeners.forEach(listener => listener(null, null, filename || true));
     };
 
     config.fork = function(modulePath, program) {
@@ -130,9 +136,9 @@ function createInstance(session) {
         var arg_other = _.flatten(cfg_other.map(name => ['--set', name + '=' + JSON.stringify(cfg[name])]));
         var args = arg_pairs.concat(arg_bools, arg_other);
         var child = child_process.fork(modulePath, args);
-        var fn = (name, value, signal) => child.connected && child.send({
+        var fn = (name, value, loadFile) => child.connected && child.send({
             cmd: 'config',
-            payload: {name, value, signal}
+            payload: {name, value, unset: value === undefined, loadFile}
         });
         listeners.push(fn);
         child.on('disconnect', () => {
@@ -215,16 +221,9 @@ function createInstance(session) {
 
     config.unset = function(name) {
         var jpath = _.isArray(name) ? name : name.split('.');
-        var value = get(defaults, jpath);
-        if (assign(session, jpath, value || null)) {
-            listeners.forEach(listener => listener(name, value || null));
+        if (unset(session, jpath)) {
+            listeners.forEach(listener => listener(name, undefined));
         }
-        if (jpath.length == 1 && config.opts()[_.first(jpath)])
-            commander_emit(_.first(jpath), value);
-        var filename = config.configFilename();
-        var json = loadConfigFile(filename);
-        if (unset(json, jpath))
-            writeConfigFile(filename, json);
     };
 
     config.add = function(name, value) {

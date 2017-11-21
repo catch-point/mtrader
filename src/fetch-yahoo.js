@@ -37,7 +37,63 @@ const cache = require('./cache.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
+function help() {
+    var commonOptions = {
+        symbol: {
+            description: "Ticker symbol used by the exchange"
+        },
+        exchange: {
+            description: "Exchange market acronym",
+            values: _.keys(_.pick(config('exchanges'), exch => exch.datasources.yahoo))
+        },
+        yahoo_symbol: {
+            description: "Symbol for security as used by The Yahoo! Network"
+        }
+    };
+    var lookup = {
+        name: "lookup",
+        usage: "lookup(options)",
+        description: "Looks up existing symbol/exchange using the given symbol prefix on the Yahoo! network",
+        properties: ['symbol', 'yahoo_symbol', 'exchange', 'name', 'type', 'typeDisp'],
+        options: commonOptions
+    };
+    var interday = {
+        name: "interday",
+        usage: "interday(options)",
+        description: "Historic data for a security on the Yahoo! network",
+        properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
+        options: _.extend(commonOptions, {
+            interval: {
+                usage: "year|quarter|month|week|day",
+                description: "The bar timeframe for the results",
+                values: _.intersection(["year", "quarter", "month", "week", "day"], config('yahoo.interday'))
+            },
+            begin: {
+                example: "YYYY-MM-DD",
+                description: "Sets the earliest date (or dateTime) to retrieve"
+            },
+            end: {
+                example: "YYYY-MM-DD HH:MM:SS",
+                description: "Sets the latest dateTime to retrieve"
+            },
+            marketOpensAt: {
+                description: "Time of day that the exchange options"
+            },
+            marketClosesAt: {
+                description: "Time of day that the exchange closes"
+            },
+            tz: {
+                description: "Timezone of the exchange formatted using the identifier in the tz database"
+            }
+        })
+    };
+    return config('yahoo.lookup') ? [lookup, interday] : [interday];
+}
+
 module.exports = function() {
+    var helpInfo = help();
+    var exchanges = config('exchanges');
+    var symbol = yahoo_symbol.bind(this, exchanges);
     var yahoo = _.mapObject(yahooClient(), (fn, name) => {
         if (!_.isFunction(fn) || name == 'close') return fn;
         else return cache(fn, function() {
@@ -54,84 +110,25 @@ module.exports = function() {
                 }
             }));
         },
-        help(options) {
-            var commonOptions = {
-                symbol: {
-                    description: "Ticker symbol used by the exchange"
-                },
-                exchange: {
-                    description: "Exchange acronym"
-                },
-                yahoo_symbol: {
-                    description: "Symbol for security as used by The Yahoo! Network"
-                },
-                yahooSuffix: {
-                    description: "Symbol prefix used in The Yahoo! Network"
-                }
-            };
-            return Promise.resolve([{
-                name: "lookup",
-                usage: "lookup(options)",
-                description: "Looks up existing symbol/exchange using the given symbol prefix on the Yahoo! network",
-                properties: ['symbol', 'yahoo_symbol', 'exchange', 'name', 'type', 'typeDisp'],
-                options: _.extend(commonOptions, {
-                    marketLang: {
-                        description: "The locale to be search within The Yahoo! Network"
-                    },
-                    exchs: {
-                        description: "The Yahoo! exchange code"
-                    }
-                })
-            }, {
-                name: "interday",
-                usage: "interday(options)",
-                description: "Historic data for a security on the Yahoo! network",
-                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
-                options: _.extend(commonOptions, {
-                    interval: {
-                        usage: "year|quarter|month|week|day",
-                        description: "The bar timeframe for the results"
-                    },
-                    begin: {
-                        example: "YYYY-MM-DD",
-                        description: "Sets the earliest date (or dateTime) to retrieve"
-                    },
-                    end: {
-                        example: "YYYY-MM-DD HH:MM:SS",
-                        description: "Sets the latest dateTime to retrieve"
-                    },
-                    marketOpensAt: {
-                        description: "Time of day that the exchange options"
-                    },
-                    marketClosesAt: {
-                        description: "Time of day that the exchange closes"
-                    },
-                    tz: {
-                        description: "Timezone of the exchange formatted using the identifier in the tz database"
-                    }
-                })
-            }]);
+        help() {
+            return Promise.resolve(helpInfo);
         },
         lookup(options) {
-            var exchanges = config('exchanges');
-            var langs = options.marketLang ? [options.marketLang] :
-                _.uniq(_.compact(_.map(exchanges, exchange =>
+            var langs = _.uniq(_.compact(_.map(exchanges, exchange =>
                     exchange.datasources.yahoo && exchange.datasources.yahoo.marketLang
                 )));
             return Promise.all(langs.map(marketLang =>
                 yahoo.lookup(symbol(options), marketLang)
             )).then(rows => _.flatten(rows, true)).then(rows => rows.filter(row => {
                 var suffix = options.yahooSuffix || '';
-                if (suffix && row.symbol.indexOf(suffix) != row.symbol.length - suffix.length)
-                    return false;
-                return !options.exchs || _.contains(options.exchs, row.exch);
+                return !suffix || row.symbol.indexOf(suffix) == row.symbol.length - suffix.length;
             })).then(rows => rows.map(row => {
                 var sym = row.symbol;
                 var sources = options.exchange ? {[options.exchange]: options} :
                     _.pick(_.mapObject(exchanges, exchange =>
                         exchange.datasources.yahoo
                     ), source =>
-                        source && _.contains(source.exchs, row.exch) && _.contains(source.fetch, 'lookup')
+                        source && _.contains(source.exchs, row.exch)
                     );
                 var ds = _.find(sources);
                 var suffix = ds && ds.yahooSuffix || '';
@@ -176,17 +173,18 @@ module.exports = function() {
     };
 };
 
-function symbol(options) {
+function yahoo_symbol(exchanges, options) {
     if (options.yahoo_symbol) {
         expect(options).to.be.like({
             yahoo_symbol: /^\S+$/
         });
         return options.yahoo_symbol;
-    } else {
+    } else if (exchanges[options.exchange] && exchanges[options.exchange].datasources.yahoo) {
         expect(options).to.be.like({
             symbol: /^\S+$/
         });
-        var suffix = options.yahooSuffix || '';
+        var source = exchanges[options.exchange].datasources.yahoo;
+        var suffix = source.yahooSuffix || '';
         if (!suffix && options.symbol.match(/^\w+$/))
             return options.symbol;
         else
@@ -196,6 +194,11 @@ function symbol(options) {
                 .replace(/-PR./, '-P')
                 .replace(/\./g, '') +
                 suffix;
+    } else {
+        expect(options).to.be.like({
+            symbol: /^\S+$/
+        });
+        return options.symbol;
     }
 }
 

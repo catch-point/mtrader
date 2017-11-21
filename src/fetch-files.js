@@ -41,14 +41,12 @@ const iqfeed = require('./fetch-iqfeed.js');
 const storage = require('./storage.js');
 
 module.exports = function() {
-    var fallbacks = _.mapObject(_.object(_.intersection(
-        config('files.fallback') || [],
-        _.compact([
-            config('google.enabled') && 'google',
-            config('yahoo.enabled') && 'yahoo',
-            config('iqfeed.enabled') && 'iqfeed'
-        ])
-    ), []), (nil, fallback) => {
+    var fallbacks = _.mapObject(_.object(
+            config('files.fallback') || _.compact([
+                config('google.enabled') && 'google',
+                config('yahoo.enabled') && 'yahoo',
+                config('iqfeed.enabled') && 'iqfeed'
+            ]), []), (nil, fallback) => {
         return 'google' == fallback ? google() :
             'yahoo' == fallback ? yahoo() :
             'iqfeed' == fallback ? iqfeed() :
@@ -70,7 +68,7 @@ module.exports = function() {
     };
 };
 
-function readOrWriteHelp(fallbacks, open, name, options) {
+function readOrWriteHelp(fallbacks, open, name) {
     return open(name, (err, db) => {
         if (err) throw err;
         return db.collection(name).then(coll => coll.lockWith([name], names => {
@@ -88,16 +86,40 @@ function readOrWriteHelp(fallbacks, open, name, options) {
                     return result;
                 else if (_.isEmpty(fallbacks))
                     throw Error("Data file not found " + coll.filenameOf(name));
-                else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
-                    return fb[name](options).then(result => {
-                        return coll.writeTo(result.map(datum => _.extend({}, datum, {
-                            options: JSON.stringify(datum.options),
-                            properties: JSON.stringify(datum.properties)
-                        })), name).then(() => result);
-                    });
-                }), Promise.reject());
+                else return help(_.values(fallbacks)).then(result => {
+                    return coll.writeTo(result.map(datum => _.extend({}, datum, {
+                        options: JSON.stringify(datum.options),
+                        properties: JSON.stringify(datum.properties)
+                    })), name).then(() => result);
+                });
             });
         }));
+    });
+}
+
+function help(datasources) {
+    return Promise.all(_.map(datasources, datasource => {
+        return datasource.help();
+    })).then(helps => {
+        var groups = _.values(_.groupBy(_.flatten(helps), 'name'));
+        return groups.map(helps => helps.reduce((help, h) => {
+            var options = _.extend({}, h.options, help.options);
+            return {
+                name: help.name || h.name,
+                usage: help.usage || h.usage,
+                description: help.description || h.description,
+                properties: _.union(help.properties, h.properties),
+                options: _.mapObject(options, (option, name) => {
+                    if (option.values && h.options[name] && h.options[name].values) return _.defaults({
+                        values: _.compact(_.flatten([options.values, h.options[name].values], true))
+                    }, option);
+                    else if (option.values || h.options[name] && h.options[name].values) return _.defaults({
+                        values: options.values || h.options[name] && h.options[name].values
+                    }, option);
+                    else return option;
+                })
+            };
+        }, {}));
     });
 }
 
@@ -113,8 +135,8 @@ function readOrWriteResult(fallbacks, open, cmd, options) {
                 throw Error("Data file not found " + coll.filenameOf(name));
             else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
                 var datasource = config(['exchanges', options.exchange, 'datasources', source]);
-                if (!datasource || !_.contains(datasource.fetch, options.interval)) throw err;
-                var opt = _.defaults({}, options, _.omit(datasource, 'fetch'));
+                if (!datasource || !_.contains(config([source, 'fetch']), options.interval)) throw err;
+                var opt = _.defaults({}, options, datasource);
                 return fb[cmd](opt).then(result => {
                     return coll.writeTo(result, name).then(() => result);
                 });

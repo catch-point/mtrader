@@ -41,73 +41,113 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 module.exports = function() {
-    var datasources = createDatasources();
+    var datasources = promiseDatasources();
     var self = function(options) {
-        if (options.help || options.interval == 'help')
-            return help(datasources, options);
-        expect(options).to.be.like({
-            interval: /^\S+$/
+        return datasources.then(datasources => {
+            if (options.help || options.interval == 'help')
+                return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
+            var exchange = options.exchange;
+            var exchanges = config('exchanges');
+            if (exchange) expect(exchange).to.be.oneOf(_.keys(exchanges));
+            var opt = exchange ? _.extend(
+                _.omit(exchanges[exchange], 'datasources', 'label', 'description'),
+                options
+            ) : options;
+            var interval = options.interval;
+            switch(interval) {
+                case 'lookup': return lookup(datasources.lookup, opt);
+                case 'fundamental': return fundamental(datasources.fundamental, opt);
+                case 'year': return interday(datasources.year, opt);
+                case 'quarter': return interday(datasources.quarter, opt);
+                case 'month': return interday(datasources.month, opt);
+                case 'week': return interday(datasources.week, opt);
+                case 'day': return interday(datasources.day, opt);
+                default:
+                    if (interval && interval.charAt(0) == 'm' && _.isFinite(interval.substring(1)))
+                        return intraday(datasources[interval], opt);
+                    else if (options.minutes && _.isFinite(options.minutes))
+                        return intraday(datasources[interval], opt);
+                    else
+                        return Promise.reject(Error("Unknown interval " + interval));
+            }
         });
-        var exchange = options.exchange;
-        var exchanges = config('exchanges');
-        if (exchange) expect(exchange).to.be.oneOf(_.keys(exchanges));
-        var opt = exchange ? _.extend(
-            _.omit(exchanges[exchange], 'datasources', 'label', 'description'),
-            options
-        ) : options;
-        var interval = options.interval;
-        switch(interval) {
-            case 'lookup': return lookup(datasources, opt);
-            case 'fundamental': return fundamental(datasources, opt);
-            case 'year': return interday(datasources, opt);
-            case 'quarter': return interday(datasources, opt);
-            case 'month': return interday(datasources, opt);
-            case 'week': return interday(datasources, opt);
-            case 'day': return interday(datasources, opt);
-            default:
-                if (interval.charAt(0) == 'm' && _.isFinite(interval.substring(1)))
-                    return intraday(datasources, opt);
-                else
-                    return Promise.reject(Error("Unknown interval " + interval));
-        }
     };
-    self.close = close.bind(self, datasources);
+    self.close = () => datasources.then(datasources => {
+        close(_.uniq(_.flatten(_.values(datasources).map(_.values))));
+    });
     return self;
 };
 
-function createDatasources() {
-    return _.extend(
+/**
+ * hash of intervals -> exchange -> source
+ */
+function promiseDatasources() {
+    var sources = _.extend(
         config('files.enabled') ? {files: files()} : {},
         config('google.enabled') ? {google: google()} : {},
         config('yahoo.enabled') ? {yahoo: yahoo()} : {},
         config('iqfeed.enabled') ? {iqfeed: iqfeed()} : {}
     );
+    var ids = _.keys(sources);
+    return Promise.all(ids.map(id => sources[id].help()))
+      .then(result => result.reduce((datasources, help, i) => {
+        var id = ids[i];
+        return help.reduce((datasources, info) => {
+            if (info.name == 'interday' && info.options.interval.values) {
+                return info.options.interval.values.reduce((datasources, interval) => {
+                    return addSource(datasources, interval, info.options.exchange.values, sources[id]);
+                }, datasources);
+            } else if (info.name == 'intraday' && info.options.minutes.values) {
+                return info.options.minutes.values.reduce((datasources, minutes) => {
+                    var interval = 'm' + minutes;
+                    return addSource(datasources, interval, info.options.exchange.values, sources[id]);
+                }, datasources);
+            } else {
+                if (!info.options.exchange.values) throw Error("Missing exchange values for " + id);
+                return addSource(datasources, info.name, info.options.exchange.values, sources[id]);
+            }
+        }, datasources);
+    }, {}));
+}
+
+function addSource(datasources, interval, exchanges, source) {
+    datasources[interval] = exchanges.reduce((sources, exch) => {
+        if (!sources[exch]) sources[exch] = [];
+        sources[exch].push(source);
+        return sources;
+    }, datasources[interval] || {});
+    return datasources;
 }
 
 function close(datasources) {
-    try {
-        return Promise.all(_.map(datasources, datasource => datasource.close()));
-    } finally {
-        _.keys(datasources).forEach(key => delete datasources[key]);
-    }
+    return Promise.all(_.map(datasources, datasource => datasource.close()));
 }
 
-function help(datasources, options) {
+function help(datasources) {
     var exchangeOptions = _.map(config('exchanges'), _.keys);
-    var datasourcesOptions = _.map(config('exchanges'), exchange => _.map(exchange.datasources, _.keys));
-    var omitOptions = _.uniq(_.flatten([exchangeOptions, datasourcesOptions]));
     return Promise.all(_.map(datasources, datasource => {
-        return datasource.help(options);
+        return datasource.help();
     })).then(helps => {
         var groups = _.values(_.groupBy(_.flatten(helps), 'name'));
         return groups.map(helps => helps.reduce((help, h) => {
-            var lookupProperties = h.name == 'lookup' ? omitOptions : [];
+            var lookupProperties = h.name == 'lookup' ? exchangeOptions : [];
+            var options = _.extend({
+                interval: {values: h.name == 'lookup' || h.name == 'fundamental' ? [h.name] : []}
+            }, _.omit(h.options, exchangeOptions), help.options);
             return {
                 name: help.name || h.name,
-                usage: help.usage || h.usage,
+                usage: 'fetch(options)',
                 description: help.description || h.description,
                 properties: _.union(help.properties, h.properties, lookupProperties),
-                options: _.extend({}, help.options, _.omit(h.options, omitOptions))
+                options: _.mapObject(options, (option, name) => {
+                    if (option.values && h.options[name] && h.options[name].values) return _.defaults({
+                        values: _.compact(_.flatten([options.values, h.options[name].values], true))
+                    }, option);
+                    else if (option.values || h.options[name] && h.options[name].values) return _.defaults({
+                        values: options.values || h.options[name] && h.options[name].values
+                    }, option);
+                    else return option;
+                })
             };
         }, {}));
     });
@@ -117,22 +157,17 @@ function lookup(datasources, options) {
     expect(options).to.be.like({
         symbol: /^\S+$/
     });
-    var exchanges = _.keys(config('exchanges'));
     var exchange = options.exchange;
-    if (exchange) expect(exchange).to.be.oneOf(exchanges);
+    if (exchange) expect(exchange).to.be.oneOf(_.keys(datasources));
     var symbol = options.symbol.toUpperCase();
     var same = new RegExp('^' + symbol.replace(/\W/g, '\\W') + '$');
     var almost = new RegExp('\\b' + symbol.replace(/\W/g, '.*') + '\\b');
-    var sources = exchange ? getDatasources(datasources, options, 'lookup') :
-        _.object(_.uniq(_.flatten(exchanges.map(exchange => {
-            var opts = _.defaults({exchange: exchange}, options);
-            return _.keys(getDatasources(datasources, opts, 'lookup', true));
-        }))), []);
-    var results = _.map(sources, (source, id) => {
-        return datasources[id].lookup(_.defaults({
+    var sources = exchange ? datasources[exchange] : _.uniq(_.flatten(_.values(datasources)));
+    var results = _.map(sources, datasource => {
+        return datasource.lookup(_.defaults({
             symbol: symbol,
             exchange: exchange || undefined
-        }, options, source)).then(list => list.map(item => {
+        }, options)).then(list => list.map(item => {
             var same_item = item.symbol == symbol || item.symbol.match(same);
             return _.defaults({
                 symbol: same_item ? symbol : item.symbol,
@@ -171,12 +206,12 @@ function lookup(datasources, options) {
 function fundamental(datasources, options) {
     expect(options).to.be.like({
         symbol: /^\S+$/,
-        exchange: ex => expect(ex).to.be.oneOf(_.keys(config('exchanges')))
+        exchange: ex => expect(ex).to.be.oneOf(_.keys(datasources))
     });
     var now = moment();
     var error;
-    return _.map(getDatasources(datasources, options, 'fundamental'), (source, id) => {
-        return datasources[id].fundamental(_.defaults({}, source, options));
+    return datasources[options.exchange].map(datasource => {
+        return datasource.fundamental(options);
     }).reduce((promise, data) => promise.then(result => {
         return data.then(a => a.reduce((result,o) => _.defaults(result, o), result), err => {
             if (!error) error = err;
@@ -201,7 +236,7 @@ function interday(datasources, options) {
     expect(options).to.be.like({
         interval: /^\S+$/,
         symbol: /^\S+$/,
-        exchange: ex => expect(ex).to.be.oneOf(_.keys(config('exchanges'))),
+        exchange: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });
     var now = moment().tz(options.tz);
@@ -213,9 +248,8 @@ function interday(datasources, options) {
     var opts = _.defaults({
         begin: begin.format()
     }, options);
-    var sources = getDatasources(datasources, opts, opts.interval);
-    return _.reduce(sources, (promise, source, id) => promise.catch(err => {
-        return datasources[id].interday(_.defaults({}, source, opts)).then(result => {
+    return datasources[options.exchange].reduce((promise, datasource) => promise.catch(err => {
+        return datasource.interday(opts).then(result => {
             if (err && !_.isArray(err)) logger.debug("Fetch", opts.interval, "failed", err.stack);
             if (_.isArray(err) && err.length >= result.length)
                 return err;
@@ -244,21 +278,19 @@ function interday(datasources, options) {
 
 function intraday(datasources, options) {
     expect(options).to.be.like({
-        interval: /^m\d+$/,
         symbol: /^\S+$/,
-        exchange: ex => expect(ex).to.be.oneOf(_.keys(config('exchanges'))),
+        exchange: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });
     var now = moment().tz(options.tz);
     var opts = options.begin ? options : _.defaults({
         begin: moment(now).startOf('day').format()
     }, options);
-    var minutes = +opts.interval.substring(1);
-    var sources = getDatasources(datasources, opts, opts.interval);
-    return _.reduce(sources, (promise, source, id) => promise.catch(err => {
-        return datasources[id].intraday(_.defaults({
-            minutes: minutes
-        }, source, opts)).then(result => {
+    var minutes = opts.minutes || +opts.interval.substring(1);
+    return datasources[options.exchange].reduce((promise, datasource) => promise.catch(err => {
+        return datasource.intraday(_.defaults({
+            minutes: +minutes
+        }, opts)).then(result => {
             if (err) logger.debug("Fetch", minutes, "minutes failed", err);
             return result;
         }, err2 => {
@@ -276,16 +308,5 @@ function intraday(datasources, options) {
         }
         return results;
     });
-}
-
-function getDatasources(datasources, options, interval, optional) {
-    var exchange = options.exchange;
-    var sources = _.mapObject(_.pick(config(['exchanges', exchange, 'datasources']), (source, id) => {
-        return _.has(datasources, id) && (!interval || _.contains(source.fetch, interval))
-    }), source => _.omit(source, 'fetch'));
-    if (optional) return sources;
-    if (_.isEmpty(sources)) throw Error("No datasources available for " + interval
-        + " using " + _.keys(getDatasources(datasources, options, null, true)).join(', '));
-    return sources;
 }
 

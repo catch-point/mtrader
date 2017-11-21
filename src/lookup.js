@@ -56,8 +56,9 @@ module.exports = function(fetch) {
  * @returns a function that returns an object about the security in the given options
  */
 function fetchOptionsFactory(fetch, offline, read_only) {
+    var dir = getInfoDirname();
     var memoizeFirstLookup = _.memoize((symbol, exchange) => {
-        return readInfo(symbol, exchange, offline).catch(err => {
+        return readInfo(dir, symbol, exchange, offline).catch(err => {
             if (offline) throw err;
             else return fetch({
                 interval: 'lookup',
@@ -70,7 +71,7 @@ function fetchOptionsFactory(fetch, offline, read_only) {
                 else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
             }).then(info => {
                 if (read_only) return info;
-                else return saveInfo(symbol, exchange, info);
+                else return saveInfo(dir, symbol, exchange, info);
             });
         });
     }, (symbol, exchange) => {
@@ -103,9 +104,9 @@ function fetchOptionsFactory(fetch, offline, read_only) {
     };
 }
 
-function readInfo(symbol, exchange, offline) {
+function readInfo(dir, symbol, exchange, offline) {
     var yesterday = offline ? 0 : Date.now() - 24 *60 * 60 *1000;
-    var file = getInfoFileName(symbol, exchange);
+    var file = getInfoFileName(dir, symbol, exchange);
     return new Promise((cb, fail) => {
         fs.stat(file, (err, stats) => err ? fail(err) : cb(stats));
     }).then(stats => {
@@ -116,8 +117,8 @@ function readInfo(symbol, exchange, offline) {
     })).then(data => JSON.parse(data));
 }
 
-function saveInfo(symbol, exchange, info) {
-    var file = getInfoFileName(symbol, exchange);
+function saveInfo(dir, symbol, exchange, info) {
+    var file = getInfoFileName(dir, symbol, exchange);
     var data = JSON.stringify(info, null, '  ') + '\n';
     return mkdirp(path.dirname(file)).then(dir => new Promise((cb, fail) => {
         var part = partFor(file);
@@ -127,9 +128,13 @@ function saveInfo(symbol, exchange, info) {
     }));
 }
 
-function getInfoFileName(symbol, exchange) {
+function getInfoFileName(dir, symbol, exchange) {
     var name = exchange ? symbol + '.' + exchange : symbol;
-    return path.resolve(config('prefix'), 'var', safe(name), 'info.json');
+    return path.resolve(dir, safe(name), 'info.json');
+}
+
+function getInfoDirname() {
+    return config('var_dir') || path.resolve(config('prefix'), 'var');
 }
 
 function safe(segment) {

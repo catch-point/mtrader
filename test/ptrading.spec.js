@@ -68,7 +68,7 @@ describe("ptrading", function() {
           symbol: 'AABA',
           exchange: 'NASDAQ'
         }).should.eventually.be.like({
-            name: 'Altaba Inc',
+            name: /Altaba Inc/,
             eps: _.isFinite
         });
     });

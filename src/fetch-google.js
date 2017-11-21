@@ -38,7 +38,77 @@ const cache = require('./cache.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
+function help() {
+    var commonOptions = {
+        symbol: {
+            description: "Ticker symbol used by the exchange"
+        },
+        exchange: {
+            description: "Exchange market acronym",
+            values: _.keys(_.pick(config('exchanges'), exch => exch.datasources.google))
+        },
+        google_symbol: {
+            description: "Symbol used in the Google finance network"
+        }
+    };
+    var lookup = {
+        name: "lookup",
+        usage: "lookup(options)",
+        description: "Looks up existing symbol/exchange using the given symbol prefix using the Google network",
+        properties: ['symbol', 'google_symbol', 'exchange', 'name'],
+        options: commonOptions
+    };
+    var fundamental = {
+        name: "fundamental",
+        usage: "fundamental(options)",
+        description: "Details of a security on the Google network",
+        properties: ['t', 'e', 'name', 'id', 'sname', 'iname', 'hi52', 'lo52', 'eps', 'beta', 'instown', 'mc', 'shares', 'overview'],
+        options: commonOptions
+    };
+    var interday = {
+        name: "interday",
+        usage: "interday(options)",
+        description: "Historic data for a security on the Google network",
+        properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
+        options: _.extend({}, commonOptions, {
+            yahoo_symbol: {
+                description: "Symbol for security as used by The Yahoo! Network"
+            },
+            interval: {
+                usage: "year|quarter|month|week|day",
+                description: "The bar timeframe for the results",
+                values: _.intersection(["year", "quarter", "month", "week", "day"],config('google.interday'))
+            },
+            begin: {
+                example: "YYYY-MM-DD",
+                description: "Sets the earliest date (or dateTime) to retrieve"
+            },
+            end: {
+                example: "YYYY-MM-DD HH:MM:SS",
+                description: "Sets the latest dateTime to retrieve"
+            },
+            marketOpensAt: {
+                description: "Time of day that the exchange options"
+            },
+            marketClosesAt: {
+                description: "Time of day that the exchange closes"
+            },
+            tz: {
+                description: "Timezone of the exchange formatted using the identifier in the tz database"
+            }
+        })
+    };
+    return _.compact([
+        config('google.lookup') && lookup,
+        config('google.fundamental') && fundamental,
+        interday
+    ]);
+}
+
 module.exports = function() {
+    var helpInfo = help();
+    var exchanges = config('exchanges');
+    var symbol = google_symbol.bind(this, exchanges);
     var google = googleClient();
     var yahoo = _.mapObject(yahooClient(), (fn, name) => {
         if (!_.isFunction(fn) || name == 'close') return fn;
@@ -56,77 +126,16 @@ module.exports = function() {
                 }
             })));
         },
-        help(options) {
-            var commonOptions = {
-                symbol: {
-                    description: "Ticker symbol used by the exchange"
-                },
-                exchange: {
-                    description: "Exchange acronym"
-                },
-                google_symbol: {
-                    description: "Symbol used in the Google finance network"
-                },
-                e: {
-                    description: "Exchange code used in the Google finance network"
-                }
-            };
-            return Promise.resolve([{
-                name: "lookup",
-                usage: "lookup(options)",
-                description: "Looks up existing symbol/exchange using the given symbol prefix using the Google network",
-                properties: ['symbol', 'google_symbol', 'exchange', 'name'],
-                options: commonOptions
-            }, {
-                name: "fundamental",
-                usage: "fundamental(options)",
-                description: "Details of a security on the Google network",
-                properties: ['t', 'e', 'name', 'id', 'sname', 'iname', 'hi52', 'lo52', 'eps', 'beta', 'instown', 'mc', 'shares', 'overview'],
-                options: commonOptions
-            }, {
-                name: "interday",
-                usage: "interday(options)",
-                description: "Historic data for a security on the Google network",
-                properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
-                options: _.extend({}, commonOptions, {
-                    yahoo_symbol: {
-                        description: "Symbol for security as used by The Yahoo! Network"
-                    },
-                    yahooSuffix: {
-                        description: "Symbol prefix used in The Yahoo! Network"
-                    },
-                    interval: {
-                        usage: "year|quarter|month|week|day",
-                        description: "The bar timeframe for the results"
-                    },
-                    begin: {
-                        example: "YYYY-MM-DD",
-                        description: "Sets the earliest date (or dateTime) to retrieve"
-                    },
-                    end: {
-                        example: "YYYY-MM-DD HH:MM:SS",
-                        description: "Sets the latest dateTime to retrieve"
-                    },
-                    marketOpensAt: {
-                        description: "Time of day that the exchange options"
-                    },
-                    marketClosesAt: {
-                        description: "Time of day that the exchange closes"
-                    },
-                    tz: {
-                        description: "Timezone of the exchange formatted using the identifier in the tz database"
-                    }
-                })
-            }]);
+        help() {
+            return Promise.resolve(helpInfo);
         },
         lookup(options) {
-            var exchanges = config('exchanges');
-            return google.lookup(google_symbol(options)).then(rows => rows.map(row => {
+            return google.lookup(symbol(options)).then(rows => rows.map(row => {
                 var sources = options.exchange ? {[options.exchange]: options} :
                     _.pick(_.mapObject(exchanges, exchange =>
                         exchange.datasources.google
                     ), source =>
-                        source && source.e == row.e && _.contains(source.fetch, 'lookup')
+                        source && source.e == row.e
                     );
                 return {
                     symbol: row.symbol,
@@ -142,7 +151,7 @@ module.exports = function() {
                 marketClosesAt: _.isString,
                 tz: _.isString
             });
-            return google.fundamental(google_symbol(options)).then(security => [security]);
+            return google.fundamental(symbol(options)).then(security => [security]);
         },
         interday(options) {
             expect(options).to.be.like({
@@ -152,12 +161,16 @@ module.exports = function() {
                 marketClosesAt: _.isString,
                 tz: _.isString
             });
+            var opts = _.extend({
+                google_symbol: google_symbol(exchanges, options),
+                yahoo_symbol: yahoo_symbol(exchanges, options)
+            }, options);
             switch(options.interval) {
-                case 'year': return year(google, yahoo, options);
-                case 'quarter': return quarter(google, yahoo, options);
-                case 'month': return month(google, yahoo, options);
-                case 'week': return week(google, yahoo, options);
-                case 'day': return day(google, yahoo, options);
+                case 'year': return year(google, yahoo, opts);
+                case 'quarter': return quarter(google, yahoo, opts);
+                case 'month': return month(google, yahoo, opts);
+                case 'week': return week(google, yahoo, opts);
+                case 'day': return day(google, yahoo, opts);
                 default:
                     expect(options.interval).to.be.oneOf([
                         'year', 'quarter', 'month', 'week', 'day'
@@ -170,18 +183,18 @@ module.exports = function() {
     };
 };
 
-function google_symbol(options) {
+function google_symbol(exchanges, options) {
     if (options.google_symbol) {
         expect(options).to.be.like({
             google_symbol: /^\S+$/
         });
         return options.google_symbol;
-    } else if (options.e) {
+    } else if (exchanges[options.exchange] && exchanges[options.exchange].datasources.google) {
         expect(options).to.be.like({
-            symbol: /^\S+$/,
-            e: /^\S+$/
+            symbol: /^\S+$/
         });
-        return options.e + ':' + options.symbol;
+        var source = exchanges[options.exchange].datasources.google;
+        return source.e + ':' + options.symbol;
     } else {
         expect(options).to.be.like({
             symbol: /^\S+$/
@@ -190,17 +203,18 @@ function google_symbol(options) {
     }
 }
 
-function yahoo_symbol(options) {
+function yahoo_symbol(exchanges, options) {
     if (options.yahoo_symbol) {
         expect(options).to.be.like({
             yahoo_symbol: /^\S+$/
         });
         return options.yahoo_symbol;
-    } else {
+    } else if (exchanges[options.exchange] && exchanges[options.exchange].datasources.yahoo) {
         expect(options).to.be.like({
             symbol: /^\S+$/
         });
-        var suffix = options.yahooSuffix || '';
+        var source = exchanges[options.exchange].datasources.yahoo;
+        var suffix = source.yahooSuffix || '';
         if (!suffix && options.symbol.match(/^\w+$/))
             return options.symbol;
         else
@@ -210,6 +224,11 @@ function yahoo_symbol(options) {
                 .replace(/-PR./, '-P')
                 .replace(/\./g, '') +
                 suffix;
+    } else {
+        expect(options).to.be.like({
+            symbol: /^\S+$/
+        });
+        return options.symbol;
     }
 }
 
@@ -307,11 +326,11 @@ function day(google, yahoo, options) {
     var final = endOf('day', options.end || now, options);
     var decade = (Math.floor(moment.tz(options.begin, options.tz).year()/10)*10)+'-01-01';
     return Promise.all([
-        getPrices(google, google_symbol(options), options.begin, now, options.tz),
-        yahoo.split(yahoo_symbol(options), decade, options.tz),
-        yahoo.dividend(yahoo_symbol(options), decade, options.tz),
-        eod ? [] : google.intraday(google_symbol(options), 300),
-        eod ? [] : google.quote(google_symbol(options))
+        getPrices(google, options.google_symbol, options.begin, now, options.tz),
+        yahoo.split(options.yahoo_symbol, decade, options.tz),
+        yahoo.dividend(options.yahoo_symbol, decade, options.tz),
+        eod ? [] : google.intraday(options.google_symbol, 300),
+        eod ? [] : google.quote(options.google_symbol)
     ]).then(psdiq => {
         var prices = psdiq[0], split = psdiq[1], div = psdiq[2], intraday = psdiq[3], quote = psdiq[4];
         var bars = adjReverse(prices, split, div, options, (today, datum, date, splits, split, div) => ({
