@@ -35,18 +35,10 @@ const path = require('path');
 const process = require('process');
 const child_process = require('child_process');
 const commander = require('commander');
-const options = commander.options;
+const commander_options = commander.options;
 const commander_emit = commander.Command.prototype.emit.bind(commander);
 
-var listeners = [];
-var defaults = _.extend({
-    prefix: _.contains(process.argv, '--prefix') ?
-        process.argv[process.argv.indexOf('--prefix')+1] :
-        process.argv[1] ? path.resolve(process.argv[1], '../..') : ''
-}, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
-var stored = merge({}, loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json')), defaults);
-var session = _.contains(process.argv, '--load') ?
-    loadConfigFile(path.resolve(defaults.prefix, 'etc', process.argv[process.argv.indexOf('--load')+1] + '.json')) : {};
+var session = {};
 
 process.argv.forEach((arg, i, args) => {
     if (arg == '--set' && i < args.length -1) {
@@ -78,164 +70,178 @@ process.argv.forEach((arg, i, args) => {
     }
 });
 
-var config = module.exports = function(name, value) {
-    if (_.isUndefined(value)) {
-        var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
-        return get(merge({}, session, config.opts(),
-            readConfigFile(_.has(session, 'config') ? session.config : commander.config),
-            stored
-        ), jpath);
-    } else {
-        config.options(name, value);
-    }
-};
+module.exports = createInstance(session);
+module.exports.load();
 
 if (process.send) {
     process.on('message', msg => {
-        if (msg.cmd == 'config') {
-            config(msg.payload.name, msg.payload.value);
+        if (msg.cmd == 'config' && msg.payload.signal == 'SIGHUP') {
+            process.emit('SIGHUP');
+        } else if (msg.cmd == 'config') {
+            module.exports(msg.payload.name, msg.payload.value);
         }
     });
 }
 
-config.fork = function(modulePath, program) {
-    var pairs = program.options.filter(o => o.required || o.optional).map(o => o.name().replace('-', '_'));
-    var bools = _.reject(program.options, o => o.required || o.optional).map(o => o.name().replace('-', '_'));
-    var opts = config.opts();
-    var cfg = _.omit(config(), value => value == null);
-    var cfg_pairs = _.pick(_.pick(cfg, pairs), _.isString);
-    var cfg_bools = _.without(_.intersection(bools, _.keys(cfg)), 'version');
-    var cfg_other = _.difference(_.keys(cfg), pairs, bools)
-        .filter(key => _.has(session, key) || _.has(opts, key));
-    var arg_pairs = _.flatten(_.zip(
-        _.keys(cfg_pairs).map(option => '--' + option.replace('_', '-')),
-        _.values(cfg_pairs)
-    ));
-    var arg_bools = cfg_bools.map(option => (cfg[option] ? '--' : '--no-') + option.replace('_', '-'));
-    var arg_other = _.flatten(cfg_other.map(name => ['--set', name + '=' + JSON.stringify(cfg[name])]));
-    var args = arg_pairs.concat(arg_bools, arg_other);
-    var child = child_process.fork(modulePath, args);
-    config.addListener((name, value) => child.send({
-        cmd: 'config',
-        payload: {name: name, value: value}
-    }));
-    return child;
-};
+process.on('SIGHUP', () => {
+    module.exports.load();
+});
 
-config.configFilename = function() {
-    return path.resolve(config('prefix'), 'etc/ptrading.json');
-};
+function createInstance(session) {
+    var listeners = [];
+    var defaults = {}, stored = {}, loaded = {};
 
-config.opts = function() {
-    return options.reduce((result, opt) => {
-        var name = opt.name();
-        var prop = name.replace('-', '_');
-        var key = name.split('-').reduce((str, word) => {
-            return str + word[0].toUpperCase() + word.slice(1);
-        });
-        var value = name === 'version' ? commander._version : commander[key];
-        if (value != null && !name.startsWith('add-')) {
-            result[prop] = value;
+    var config = function(name, value) {
+        if (_.isUndefined(value)) {
+            var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
+            return get(merge({}, session, config.opts(), loaded, stored), jpath);
+        } else {
+            config.options(name, value);
         }
-        return result;
-    }, {});
+    };
+
+    config.load = function(filename) {
+        defaults = _.extend({
+            prefix: _.contains(process.argv, '--prefix') ?
+                process.argv[process.argv.indexOf('--prefix')+1] :
+                process.argv[1] ? path.resolve(process.argv[1], '../..') : ''
+        }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
+        stored = merge({}, loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json')), defaults);
+        var loadFile = filename || _.contains(process.argv, '--load') && process.argv[process.argv.indexOf('--load')+1] + '.json';
+        var config_dir = stored.config_dir ? stored.config_dir : path.resolve(defaults.prefix, 'etc');
+        loaded = loadFile ? loadConfigFile(path.resolve(config_dir, loadFile)) : {};
+        listeners.forEach(listener => listener(null, null, 'SIGHUP'));
+    };
+
+    config.fork = function(modulePath, program) {
+        var pairs = program.options.filter(o => o.required || o.optional).map(o => o.name().replace('-', '_'));
+        var bools = _.reject(program.options, o => o.required || o.optional).map(o => o.name().replace('-', '_'));
+        var opts = config.opts();
+        var cfg = _.omit(config(), value => value == null);
+        var cfg_pairs = _.pick(_.pick(cfg, pairs), _.isString);
+        var cfg_bools = _.without(_.intersection(bools, _.keys(cfg)), 'version');
+        var cfg_other = _.difference(_.keys(cfg), pairs, bools)
+            .filter(key => _.has(session, key) || _.has(opts, key));
+        var arg_pairs = _.flatten(_.zip(
+            _.keys(cfg_pairs).map(option => '--' + option.replace('_', '-')),
+            _.values(cfg_pairs)
+        ));
+        var arg_bools = cfg_bools.map(option => (cfg[option] ? '--' : '--no-') + option.replace('_', '-'));
+        var arg_other = _.flatten(cfg_other.map(name => ['--set', name + '=' + JSON.stringify(cfg[name])]));
+        var args = arg_pairs.concat(arg_bools, arg_other);
+        var child = child_process.fork(modulePath, args);
+        var fn = (name, value, signal) => child.connected && child.send({
+            cmd: 'config',
+            payload: {name, value, signal}
+        });
+        listeners.push(fn);
+        child.on('disconnect', () => {
+            var idx = listeners.indexOf(fn);
+            if (idx >= 0)
+                listeners.splice(idx, 1);
+        });
+        return child;
+    };
+
+    config.configFilename = function() {
+        return path.resolve(config('prefix'), 'etc/ptrading.json');
+    };
+
+    config.configDirname = function() {
+        return config('config_dir') || path.resolve(config('prefix'), 'etc');
+    };
+
+    config.opts = function() {
+        return commander_options.reduce((result, opt) => {
+            var name = opt.name();
+            var prop = name.replace('-', '_');
+            var key = name.split('-').reduce((str, word) => {
+                return str + word[0].toUpperCase() + word.slice(1);
+            });
+            var value = name === 'version' ? commander._version : commander[key];
+            if (value != null && !name.startsWith('add-')) {
+                result[prop] = value;
+            }
+            return result;
+        }, {});
+    }
+
+    config.options = function(name, value) {
+        var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
+        if (_.isUndefined(value)) {
+            return get(session, jpath);
+        } else if (assign(session, jpath, value)) {
+            listeners.forEach(listener => listener(name, value));
+        }
+    };
+
+    config.list = function() {
+        var dir = config.configDirname();
+        try {
+            fs.accessSync(dir, fs.R_OK);
+        } catch(e) {
+            return [];
+        }
+        return fs.readdirSync(dir)
+            .filter(name => name != 'ptrading.json' && name.indexOf('.json') == name.length - '.json'.length)
+            .map(name => name.substring(0, name.length - '.json'.length));
+    };
+
+    config.save = function(name, cfg) {
+        var file = path.resolve(config.configDirname(), name + '.json');
+        writeConfigFile(file, _.omit(cfg || session, _.isNull));
+    };
+
+    config.read = function(name) {
+        var file = path.resolve(config.configDirname(), name + '.json');
+        try {
+            fs.accessSync(file, fs.R_OK);
+        } catch(e) {
+            return false;
+        }
+        return JSON.parse(fs.readFileSync(file, 'utf-8'));
+    };
+
+    config.store = function(name, value) {
+        var jpath = _.isArray(name) ? name : name.split('.');
+        if (assign(session, jpath, _.isUndefined(value) ? null : value)) {
+            listeners.forEach(listener => listener(name, value));
+        }
+        var filename = config.configFilename();
+        var json = loadConfigFile(filename);
+        if (assign(json, jpath, value))
+            writeConfigFile(filename, json);
+    };
+
+    config.unset = function(name) {
+        var jpath = _.isArray(name) ? name : name.split('.');
+        var value = get(defaults, jpath);
+        if (assign(session, jpath, value || null)) {
+            listeners.forEach(listener => listener(name, value || null));
+        }
+        if (jpath.length == 1 && config.opts()[_.first(jpath)])
+            commander_emit(_.first(jpath), value);
+        var filename = config.configFilename();
+        var json = loadConfigFile(filename);
+        if (unset(json, jpath))
+            writeConfigFile(filename, json);
+    };
+
+    config.add = function(name, value) {
+        var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
+        assign(session, jpath, value);
+    };
+
+    config.remove = function(name) {
+        var jpath = _.isArray(name) ? name : name.split('.');
+        assign(session, jpath, undefined);
+        var filename = config.configFilename();
+        var json = loadConfigFile(filename);
+        if (unset(json, jpath))
+            writeConfigFile(filename, json);
+    };
+    return config;
 }
-
-config.options = function(name, value) {
-    var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
-    if (_.isUndefined(value)) {
-        return get(session, jpath);
-    } else if (assign(session, jpath, value)) {
-        listeners.forEach(listener => listener(name, value));
-    }
-};
-
-config.list = function() {
-    var dir = path.resolve(config('prefix'), 'etc');
-    try {
-        fs.accessSync(dir, fs.R_OK);
-    } catch(e) {
-        return [];
-    }
-    return fs.readdirSync(dir)
-        .filter(name => name != 'ptrading.json' && name.indexOf('.json') == name.length - '.json'.length)
-        .map(name => name.substring(0, name.length - '.json'.length));
-};
-
-config.save = function(name, cfg) {
-    var file = path.resolve(config('prefix'), 'etc', name + '.json');
-    writeConfigFile(file, _.omit(cfg || session, _.isNull));
-};
-
-config.read = function(name) {
-    var file = path.resolve(config('prefix'), 'etc', name + '.json');
-    try {
-        fs.accessSync(file, fs.R_OK);
-    } catch(e) {
-        return false;
-    }
-    return JSON.parse(fs.readFileSync(file, 'utf-8'));
-};
-
-config.load = function(name) {
-    var file = path.resolve(config('prefix'), 'etc', name + '.json');
-    try {
-        fs.accessSync(file, fs.R_OK);
-    } catch(e) {
-        return false;
-    }
-    session = JSON.parse(fs.readFileSync(file, 'utf-8'));
-    return true;
-};
-
-config.store = function(name, value) {
-    var jpath = _.isArray(name) ? name : name.split('.');
-    if (assign(session, jpath, _.isUndefined(value) ? null : value)) {
-        listeners.forEach(listener => listener(name, value));
-    }
-    var filename = config.configFilename();
-    var json = loadConfigFile(filename);
-    if (assign(json, jpath, value))
-        writeConfigFile(filename, json);
-};
-
-config.unset = function(name) {
-    var jpath = _.isArray(name) ? name : name.split('.');
-    var value = get(defaults, jpath);
-    if (assign(session, jpath, value || null)) {
-        listeners.forEach(listener => listener(name, value || null));
-    }
-    if (jpath.length == 1 && config.opts()[_.first(jpath)])
-        commander_emit(_.first(jpath), value);
-    var filename = config.configFilename();
-    var json = loadConfigFile(filename);
-    if (unset(json, jpath))
-        writeConfigFile(filename, json);
-};
-
-config.add = function(name, value) {
-    var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
-    assign(session, jpath, value);
-};
-
-config.remove = function(name) {
-    var jpath = _.isArray(name) ? name : name.split('.');
-    assign(session, jpath, undefined);
-    var filename = config.configFilename();
-    var json = loadConfigFile(filename);
-    if (unset(json, jpath))
-        writeConfigFile(filename, json);
-};
-
-config.addListener = function(fn) {
-    listeners.push(fn);
-};
-
-config.removeListener = function(fn) {
-    var idx = listeners.indexOf(fn);
-    if (idx >= 0)
-        listeners.splice(idx, 1);
-};
 
 function get(object, jpath) {
     if (_.isEmpty(jpath)) return object;
@@ -262,13 +268,6 @@ function merge(obj) {
     }
     return obj;
 };
-
-var readConfigFile = _.memoize(function(/* filenames */) {
-    if (_.isEmpty(arguments)) return {};
-    var filename = _.first(arguments);
-    if (filename) return loadConfigFile(filename);
-    return readConfigFile.apply(this, _.rest(arguments));
-});
 
 function loadConfigFile(filename) {
     try {

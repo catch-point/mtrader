@@ -43,27 +43,31 @@ describe("quote", function() {
     var tz = 'America/New_York';
     var fetch, quote;
     before(function() {
-        config('config', path.resolve(__dirname, 'etc/ptrading.json'));
+        config.load(path.resolve(__dirname, 'etc/ptrading.json'));
         config('prefix', createTempDir('quotes'));
-        config(['iqfeed','enabled'], false);
-        config(['google','enabled'], false);
-        config(['yahoo','enabled'], false);
-        config(['files','enabled'], true);
-        config(['files','dirname'], path.resolve(__dirname, 'var'));
+        config('iqfeed.enabled', false);
+        config('google.enabled', false);
+        config('yahoo.enabled', false);
+        config('files.enabled', true);
+    });
+    beforeEach(function() {
+        config('files.dirname', path.resolve(__dirname, 'var'));
         fetch = Fetch();
         quote = Quote(fetch);
     });
-    after(function() {
-        config.unset('prefix');
-        config.unset(['iqfeed','enabled']);
-        config.unset(['google','enabled']);
-        config.unset(['yahoo','enabled']);
-        config.unset(['files','enabled']);
-        config.unset(['files','dirname']);
+    afterEach(function() {
         return Promise.all([
             quote.close(),
             fetch.close()
         ]);
+    });
+    after(function() {
+        config.unset('prefix');
+        config.unset('iqfeed.enabled');
+        config.unset('google.enabled');
+        config.unset('yahoo.enabled');
+        config.unset('files.enabled');
+        config.unset('files.dirname');
     });
     it("should return daily", function() {
         return quote({
@@ -254,6 +258,10 @@ describe("quote", function() {
     });
     it("should update partial blocks", function() {
         config('files.dirname', path.resolve(__dirname, 'partial'));
+        fetch.close();
+        quote.close();
+        fetch = Fetch();
+        quote = Quote(fetch);
         return quote({
             columns: {
                 Date: 'DATE(day.ending)',
@@ -270,6 +278,10 @@ describe("quote", function() {
             _.last(partial).should.have.property('incomplete').that.is.ok;
         }).then(() => {
             config('files.dirname', path.resolve(__dirname, 'var'));
+            fetch.close();
+            quote.close();
+            fetch = Fetch();
+            quote = Quote(fetch);
             return quote({
                 columns: {
                     Date: 'DATE(day.ending)',
@@ -347,6 +359,10 @@ describe("quote", function() {
     });
     it("should fix incompatible partial blocks", function() {
         config('files.dirname', path.resolve(__dirname, 'partial'));
+        fetch.close();
+        quote.close();
+        fetch = Fetch();
+        quote = Quote(fetch);
         return quote({
             columns: {
                 Date: 'DATE(day.ending)',
@@ -363,6 +379,10 @@ describe("quote", function() {
             );
         }).then(() => {
             config('files.dirname', path.resolve(__dirname, 'var'));
+            fetch.close();
+            quote.close();
+            fetch = Fetch();
+            quote = Quote(fetch);
             return quote({
                 columns: {
                     Date: 'DATE(day.ending)',
@@ -790,6 +810,10 @@ describe("quote", function() {
     });
     it("should lookback to multiple partial blocks", function() {
         config('files.dirname', path.resolve(__dirname, 'partial'));
+        fetch.close();
+        quote.close();
+        fetch = Fetch();
+        quote = Quote(fetch);
         return quote({ // loads partial month and evals
             columns: {
                 Date: 'DATE(m240.ending)',
@@ -808,6 +832,10 @@ describe("quote", function() {
             _.last(partial).should.have.property('incomplete').that.is.ok;
         }).then(partial => {
             config('files.dirname', path.resolve(__dirname, 'var'));
+            fetch.close();
+            quote.close();
+            fetch = Fetch();
+            quote = Quote(fetch);
             return quote({ // loads rest of the month and computes prior expressions
                 columns: {
                     Date: 'DATE(m240.ending)',

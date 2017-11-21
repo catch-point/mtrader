@@ -70,10 +70,13 @@ function usage(command) {
         .option('--save <file>', "JSON file to write the result into");
 }
 
+var collections = {};
+process.on('SIGHUP', () => _.keys(collections).forEach(key=>delete collections[key]));
+
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var optimize = createInstance(program);
+        var optimize = createInstance(program, collections);
         process.on('SIGINT', () => optimize.close());
         process.on('SIGTERM', () => optimize.close());
         var name = program.args.join(' ');
@@ -92,13 +95,12 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = createInstance(usage(new commander.Command()));
+    module.exports = createInstance(usage(new commander.Command()), collections);
 }
 
-function createInstance(program) {
+function createInstance(program, collections) {
     var collect = require('./ptrading-collect.js');
     var optimize = Optimize(collect);
-    var collections = {};
     var promiseKeys = optimize({help: true})
         .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
     var promiseDefaults = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));

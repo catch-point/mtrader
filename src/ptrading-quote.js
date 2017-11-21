@@ -113,6 +113,11 @@ if (require.main === module) {
     var program = usage(new commander.Command());
     var workers = [];
     var stoppedWorkers = [];
+    module.exports = createInstance(fetch, program, workers, stoppedWorkers);
+    process.on('SIGHUP', () => stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length)));
+}
+
+function createInstance(fetch, program, workers, stoppedWorkers) {
     var queue = [];
     var quote = function(options) {
         var master = getMasterWorker(workers, options);
@@ -133,6 +138,10 @@ if (require.main === module) {
         });
     };
     var check_queue = function() {
+        if (_.isEmpty(workers)) {
+            loadWorkers(workers, stoppedWorkers, program, fetch, quote, check_queue);
+            if (_.isEmpty(workers)) throw Error("No workers available");
+        }
         stoppedWorkers.forEach(worker => {
             if (worker.stats.requests_sent == worker.stats.replies_rec) {
                 worker.disconnect();
@@ -145,31 +154,23 @@ if (require.main === module) {
             quote(item.options).then(item.resolve, item.reject);
         });
     };
-    workers.push.apply(workers, createWorkers(fetch, quote, program));
-    workers.forEach(worker => worker.on('message', check_queue).handle('stop', function() {
-        var idx = workers.indexOf(this);
-        if (idx >= 0) workers.splice(idx, 1);
-        stoppedWorkers.push(this);
-        check_queue();
-    }).once('disconnect', function() {
-        var idx = workers.indexOf(this);
-        if (idx >= 0) workers.splice(idx, 1)[0];
-        var sidx = stoppedWorkers.indexOf(this);
-        if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
-        logger.log("Worker", this.process.pid, "has disconnected");
-    }));
-    var promiseKeys = _.first(workers).request('quote', {help: true})
-        .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
-    var promiseDefaults = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
-    module.exports = function(options) {
-        return promiseKeys.then(keys => promiseDefaults.then(defaults => {
+    var promiseKeys;
+    var promiseDef;
+    var instance = function(options) {
+        if (!promiseKeys) {
+            check_queue();
+            promiseKeys = _.first(workers).request('quote', {help: true})
+                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseDef = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
+        }
+        return promiseKeys.then(keys => promiseDef.then(defaults => {
             return _.extend({}, defaults, _.pick(options, keys));
         })).then(options => new Promise((resolve, reject) => {
             queue.push({options, resolve, reject});
             check_queue();
         }));
     };
-    module.exports.close = function() {
+    instance.close = function() {
         queue.splice(0).forEach(item => {
             item.reject(Error("Collect is closing"));
         });
@@ -178,7 +179,27 @@ if (require.main === module) {
             stoppedWorkers.map(child => child.disconnect())
         ])).then(fetch.close);
     };
-    module.exports.shell = shell.bind(this, program.description(), module.exports);
+    instance.shell = shell.bind(this, program.description(), module.exports);
+    return instance;
+}
+
+function loadWorkers(workers, stoppedWorkers, program, fetch, quote, check) {
+    stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
+    workers.push.apply(workers, createWorkers(fetch, quote, program));
+    workers.forEach(worker => worker.on('message', check).handle('stop', function() {
+        var idx = workers.indexOf(this);
+        if (idx >= 0) workers.splice(idx, 1);
+        stoppedWorkers.push(this);
+        if (this.stats.requests_sent == this.stats.replies_rec) {
+            this.disconnect();
+        }
+    }).once('disconnect', function() {
+        var idx = workers.indexOf(this);
+        if (idx >= 0) workers.splice(idx, 1);
+        var sidx = stoppedWorkers.indexOf(this);
+        if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
+        logger.log("Worker", this.process.pid, "has disconnected");
+    }));
 }
 
 function createWorkers(fetch, quote, program) {

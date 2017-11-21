@@ -70,6 +70,10 @@ if (require.main === module) {
         var fetch = Fetch();
         process.on('SIGINT', () => fetch.close());
         process.on('SIGTERM', () => fetch.close());
+        process.on('SIGHUP', () => {
+            fetch.close();
+            fetch = Fetch();
+        });
         Promise.resolve().then(() => fetch(_.defaults({
             interval: interval,
             symbol: symbol,
@@ -84,6 +88,10 @@ if (require.main === module) {
         });
         var fetch = _.once(() => Fetch());
         process.on('disconnect', () => fetch().close());
+        process.on('SIGHUP', () => {
+            fetch().close();
+            fetch = _.once(() => Fetch());
+        });
     } else {
         program.help();
     }

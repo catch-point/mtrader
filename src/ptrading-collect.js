@@ -76,10 +76,18 @@ function usage(command) {
         .option('--transpose', "Swap the columns and rows");
 }
 
+var workers = [];
+var stoppedWorkers = [];
+var collections = {};
+
+process.on('SIGHUP', () => _.keys(collections).forEach(key=>delete collections[key]));
+process.on('SIGHUP', () => stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length)));
+
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var collect = createInstance(program);
+        var quote = require('./ptrading-quote.js');
+        var collect = createInstance(program, quote, collections, workers, stoppedWorkers);
         process.on('SIGINT', () => collect.close());
         process.on('SIGTERM', () => collect.close());
         var name = program.args.join(' ');
@@ -93,13 +101,12 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = createInstance(usage(new commander.Command()));
+    var quote = require('./ptrading-quote.js');
+    var prog = usage(new commander.Command());
+    module.exports = createInstance(prog, quote, collections, workers, stoppedWorkers);
 }
 
-function createInstance(program) {
-    var quote = require('./ptrading-quote.js');
-    var workers = [];
-    var stoppedWorkers = [];
+function createInstance(program, quote, collections, workers, stoppedWorkers) {
     var queue = [];
     var collect = function(options) {
         var loads = workers.map(w => {
@@ -120,6 +127,10 @@ function createInstance(program) {
         });
     };
     var check_queue = function() {
+        if (_.isEmpty(workers)) {
+            loadWorkers(workers, stoppedWorkers, program, quote, collect, check_queue);
+            if (_.isEmpty(workers)) throw Error("No workers available");
+        }
         stoppedWorkers.forEach(worker => {
             if (worker.stats.requests_sent == worker.stats.replies_rec) {
                 worker.disconnect();
@@ -132,26 +143,16 @@ function createInstance(program) {
             collect(item.options).then(item.resolve, item.reject);
         });
     };
-    workers.push.apply(workers, createWorkers(quote, collect, program));
-    workers.forEach(worker => worker.on('message', check_queue).handle('stop', function() {
-        var idx = workers.indexOf(this);
-        if (idx >= 0) workers.splice(idx, 1);
-        stoppedWorkers.push(this);
-        check_queue();
-    }).once('disconnect', function() {
-        var idx = workers.indexOf(this);
-        if (idx >= 0) workers.splice(idx, 1);
-        var sidx = stoppedWorkers.indexOf(this);
-        if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
-        logger.log("Worker", this.process.pid, "has disconnected");
-    }));
-    var collections = {};
-    config.addListener(name => name=='prefix' && _.keys(collections).forEach(key=>delete collections[key]));
-    var promiseKeys = _.first(workers).request('collect', {help: true})
-        .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
-    var promiseDefaults = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
+    var promiseKeys;
+    var promiseDef;
     var instance = function(options) {
-        return promiseKeys.then(keys => promiseDefaults.then(defaults => {
+        if (!promiseKeys) {
+            check_queue();
+            promiseKeys = _.first(workers).request('collect', {help: true})
+                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseDef = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
+        }
+        return promiseKeys.then(keys => promiseDef.then(defaults => {
             return _.extend({}, defaults, _.pick(options, keys));
         })).then(options => inlineCollections(collections, options))
           .then(options => new Promise((resolve, reject) => {
@@ -170,6 +171,25 @@ function createInstance(program) {
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;
+}
+
+function loadWorkers(workers, stoppedWorkers, program, quote, collect, check) {
+    stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
+    workers.push.apply(workers, createWorkers(quote, collect, program));
+    workers.forEach(worker => worker.on('message', check).handle('stop', function() {
+        var idx = workers.indexOf(this);
+        if (idx >= 0) workers.splice(idx, 1);
+        stoppedWorkers.push(this);
+        if (this.stats.requests_sent == this.stats.replies_rec) {
+            this.disconnect();
+        }
+    }).once('disconnect', function() {
+        var idx = workers.indexOf(this);
+        if (idx >= 0) workers.splice(idx, 1);
+        var sidx = stoppedWorkers.indexOf(this);
+        if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
+        logger.log("Worker", this.process.pid, "has disconnected");
+    }));
 }
 
 function createWorkers(quote, collect, program) {

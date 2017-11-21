@@ -54,16 +54,8 @@ module.exports = function() {
             'iqfeed' == fallback ? iqfeed() :
             null;
     });
-    var dirname = config('files.dirname') || path.resolve(config('prefix'), 'var/');
+    var dirname = config('files.dirname') || config('var_dir') || path.resolve(config('prefix'), 'var/');
     var store = Promise.resolve(storage(dirname));
-    config.addListener((name, value) => {
-        if (name == 'files.dirname') {
-            store = store.then(store => store.close()).then(() => storage(value));
-        } else if (name == 'prefix') {
-            var dir = config('files.dirname') || path.resolve(value, 'var/');
-            store = store.then(store => store.close()).then(() => storage(dir));
-        }
-    });
     var open = (name, cb) => store.then(store => store.open(name, cb));
     return {
         close() {

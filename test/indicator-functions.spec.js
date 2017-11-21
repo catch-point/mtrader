@@ -46,19 +46,19 @@ describe("indicator-functions", function(){
     var about = 0.01;
     var fetch, quote;
     before(function() {
-        config('config', path.resolve(__dirname, 'etc/ptrading.json'));
+        config.load(path.resolve(__dirname, 'etc/ptrading.json'));
         config('prefix', createTempDir('quotes'));
-        config(['iqfeed','enabled'], false);
-        config(['google','enabled'], false);
-        config(['yahoo','enabled'], false);
-        config(['files','enabled'], true);
-        config(['files','dirname'], path.resolve(__dirname, 'var'));
+        config('iqfeed.enabled', false);
+        config('google.enabled', false);
+        config('yahoo.enabled', false);
+        config('files.enabled', true);
+        config('files.dirname', path.resolve(__dirname, 'var'));
         fetch = Fetch();
         quote = Quote(fetch);
     });
     after(function() {
         config.unset('prefix');
-        config.unset(['files','dirname']);
+        config.unset('files.dirname');
         return Promise.all([
             quote.close(),
             fetch.close()

@@ -35,9 +35,9 @@ const _ = require('underscore');
 const config = require('./config.js');
 
 var relative = path.relative(process.cwd(), path.dirname(__filename));
-var silent = process.argv.some(arg => /^--silent$|^-\w*s/.test(arg)) || config('silent');
-var verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg)) || config('verbose');
-var debugging = !relative || relative == 'src' || process.argv.indexOf('--debug') >= 0 || config('debug');
+var silent = process.argv.some(arg => /^--silent$|^-\w*s/.test(arg));
+var verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg));
+var debugging = !relative || relative == 'src' || process.argv.indexOf('--debug') >= 0;
 
 var tty_colours = {
     black: '\x1b[30m',
@@ -58,14 +58,19 @@ var tty_colours = {
     dim_blue: '\x1b[2m\x1b[34m'
 };
 
-var colours = process.stderr.isTTY ? tty_colours :
-    _.extend(_.mapObject(tty_colours, _.constant('')), {reset: '\b'});
+var colours = process.stderr.isTTY ? tty_colours : _.mapObject(tty_colours, _.constant(''));
 
-var logger = module.exports = {
-    debug: !silent && debugging ? debug : nil,
-    log: !silent && verbosity ? verbose : nil,
-    info: !silent ? info : nil,
-    warn: !silent ? warn : nil,
+var logger = module.exports = cfg('silent', silent) ? {
+    debug: nil,
+    log: nil,
+    info: nil,
+    warn: nil,
+    error: error
+} : {
+    debug: cfg('debug', debugging) ? debug : nil,
+    log: cfg('verbose', verbosity) ? verbose : nil,
+    info: info,
+    warn: warn,
     error: error
 };
 
@@ -79,18 +84,23 @@ process.on('SIGINT', () => {
     logger.info = nil;
     logger.warn = nil;
     logger.error = nil;
+}).on('SIGHUP', () => {
+    if (cfg('silent', silent)) {
+        logger.log = nil;
+        logger.info = nil;
+        logger.warn = nil;
+    } else {
+        logger.debug = cfg('debug', debugging) ? debug: nil;
+        logger.log = cfg('verbose', verbosity) ? verbose : nil;
+        logger.info = info;
+        logger.warn = debug;
+    }
 });
 
-config.addListener((name, value) => {
-    if (name == 'debug')
-        logger.debug = value ? debug: nil;
-    if (name == 'verbose')
-        logger.log = value ? verbose : nil;
-    if (name == 'silent')
-        logger.info = !value ? info: nil;
-    if (name == 'silent')
-        logger.warn = !value ? debug : nil;
-});
+function cfg(name, def) {
+    var bool = config(name);
+    return bool == null ? def : bool;
+}
 
 function debug() {
     return logWithColour(colours.dim_blue, Array.prototype.slice.call(arguments, 0));
