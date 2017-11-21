@@ -37,7 +37,6 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
-const tabular = require('./tabular.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const Optimize = require('./optimize.js');
@@ -81,13 +80,8 @@ if (require.main === module) {
         process.on('SIGTERM', () => optimize.close());
         var name = program.args.join(' ');
         var options = readSignals(name);
-        optimize(options).then(result => new Promise(done => {
-            var output = JSON.stringify(result, null, ' ');
-            var writer = createWriteStream(config('save'));
-            writer.on('finish', done);
-            writer.write(output, 'utf-8');
-            writer.end();
-        })).catch(err => logger.error(err, err.stack))
+        optimize(options).then(result => output(result))
+          .catch(err => logger.error(err, err.stack))
           .then(() => optimize.close());
     } else if (process.send) {
         spawn();
@@ -162,6 +156,16 @@ function readSignals(name) {
     }, read, config.opts(), config.options());
 }
 
+function output(result) {
+    return new Promise(done => {
+        var output = JSON.stringify(result, null, ' ');
+        var writer = createWriteStream(config('save'));
+        writer.on('finish', done);
+        writer.write(output, 'utf-8');
+        writer.end();
+    });
+}
+
 function createWriteStream(outputFile) {
     if (outputFile) return fs.createWriteStream(outputFile);
     var delegate = process.stdout;
@@ -182,11 +186,11 @@ function shell(desc, optimize, app) {
     app.on('quit', () => optimize.close());
     app.on('exit', () => optimize.close());
     app.cmd('optimize', desc, (cmd, sh, cb) => {
-        optimize(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        optimize(config.options()).then(result => output(result)).then(() => sh.prompt(), cb);
     });
     app.cmd("optimize :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
         var options = readSignals(cmd.params.name);
-        optimize(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        optimize(options).then(result => output(result)).then(() => sh.prompt(), cb);
     });
 // help
 return optimize({help: true}).then(_.first).then(info => {

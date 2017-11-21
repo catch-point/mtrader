@@ -38,15 +38,14 @@ const spawn = require('child_process').spawn;
 const Writable = require('stream').Writable;
 const csv = require('fast-csv');
 const logger = require('./logger.js');
-const config = require('./config.js');
 
-module.exports = function(data) {
-    var filename = getOutputFile();
+module.exports = function(data, options) {
+    var filename = getOutputFile(options);
     return new Promise(finished => {
         var output = createWriteStream(filename);
         output.on('finish', finished);
-        var transpose = config('transpose') && config('transpose').toString() != 'false';
-        var reverse = config('reverse') && config('reverse').toString() != 'false';
+        var transpose = options.transpose && options.transpose.toString() != 'false';
+        var reverse = options.reverse && options.reverse.toString() != 'false';
         if (transpose) {
             var writer = csv.createWriteStream({
                 headers: false,
@@ -79,14 +78,14 @@ module.exports = function(data) {
             writer.end();
         }
     }).then(() => {
-        return launchOutput(filename);
+        return launchOutput(filename, options);
     });
 };
 
-function getOutputFile() {
-    var output = config('output');
+function getOutputFile(options) {
+    var output = options.output;
     if (output) return output;
-    else if (!config('launch')) return null;
+    else if (!options.launch) return null;
     var name = process.title.replace(/\W/g,'') + process.pid + Date.now().toString(16) + '.csv';
     return path.resolve(os.tmpdir(), name);
 }
@@ -107,8 +106,8 @@ function createWriteStream(outputFile) {
     return output;
 }
 
-function launchOutput(outputFile) {
-    var launch = config('launch');
+function launchOutput(outputFile, options) {
+    var launch = options.launch;
     if (!launch) return outputFile;
     var command = (_.isArray(launch) ? launch : launch.split(' ')).concat(outputFile);
     return new Promise((ready, exit) => {

@@ -37,7 +37,6 @@ const interrupt = require('./interrupt.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
 const quoting = require('./quoting-functions.js');
-const config = require('./config.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 

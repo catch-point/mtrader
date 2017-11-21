@@ -91,7 +91,7 @@ if (require.main === module) {
             symbol: symbol,
             exchange: exchange
         }, config.opts(), config.options())))
-        .then(result => tabular(result))
+        .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack))
         .then(() => quote.close())
         .then(() => fetch.close());
@@ -179,7 +179,7 @@ function createInstance(fetch, program, workers, stoppedWorkers) {
             stoppedWorkers.map(child => child.disconnect())
         ])).then(fetch.close);
     };
-    instance.shell = shell.bind(this, program.description(), module.exports);
+    instance.shell = shell.bind(this, program.description(), instance);
     return instance;
 }
 
@@ -287,7 +287,7 @@ function shell(desc, quote, app) {
         quote(_.defaults({
             symbol: symbol,
             exchange: exchange
-        }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     _.forEach(common.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));

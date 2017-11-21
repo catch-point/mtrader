@@ -92,7 +92,7 @@ if (require.main === module) {
         process.on('SIGTERM', () => collect.close());
         var name = program.args.join(' ');
         var options = readCollect(name);
-        collect(options).then(result => tabular(result))
+        collect(options).then(result => tabular(result, config()))
           .catch(err => logger.error(err, err.stack))
           .then(() => collect.close());
     } else if (process.send) {
@@ -303,11 +303,11 @@ function shell(desc, collect, app) {
     app.on('quit', () => collect.close());
     app.on('exit', () => collect.close());
     app.cmd('collect', desc, (cmd, sh, cb) => {
-        collect(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        collect(config.options()).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     app.cmd("collect :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
         var options = readCollect(cmd.params.name);
-        collect(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        collect(options).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     _.forEach(rolling.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));

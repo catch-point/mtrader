@@ -79,7 +79,7 @@ if (require.main === module) {
             symbol: symbol,
             exchange: exchange
         }, config.opts(), config.options())))
-        .then(result => tabular(result))
+        .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack))
         .then(() => fetch.close());
     } else if (process.send) {
@@ -120,7 +120,7 @@ function shell(desc, child, app) {
             interval: 'lookup',
             symbol: symbol,
             exchange: exchange
-        }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     // fundamental
     app.cmd('fundamental :symbol', "List fundamental information about security", (cmd, sh, cb) => {
@@ -131,7 +131,7 @@ function shell(desc, child, app) {
             interval: 'fundamental',
             symbol: symbol,
             exchange: exchange
-        }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     // fetch
     app.cmd('fetch :interval :symbol', desc, (cmd, sh, cb) => {
@@ -142,7 +142,7 @@ function shell(desc, child, app) {
             interval: cmd.params.interval,
             symbol: symbol,
             exchange: exchange
-        }, config.options())).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
 // help
 return child.request('fetch', {help: true}).then(info => _.indexBy(info, 'name')).then(info => {

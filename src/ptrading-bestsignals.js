@@ -37,7 +37,6 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
-const tabular = require('./tabular.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const Bestsignals = require('./bestsignals.js');
@@ -81,13 +80,8 @@ if (require.main === module) {
         process.on('SIGTERM', () => bestsignals.close());
         var name = program.args.join(' ');
         var options = readSignals(name);
-        bestsignals(options).then(result => new Promise(done => {
-            var output = JSON.stringify(result, null, ' ');
-            var writer = createWriteStream(config('save'));
-            writer.on('finish', done);
-            writer.write(output, 'utf-8');
-            writer.end();
-        })).catch(err => logger.error(err, err.stack))
+        bestsignals(options).then(result => output(result))
+          .catch(err => logger.error(err, err.stack))
           .then(() => bestsignals.close());
     } else if (process.send) {
         spawn();
@@ -162,6 +156,16 @@ function readSignals(name) {
     }, read, config.opts(), config.options());
 }
 
+function output(result) {
+    return new Promise(done => {
+        var output = JSON.stringify(result, null, ' ');
+        var writer = createWriteStream(config('save'));
+        writer.on('finish', done);
+        writer.write(output, 'utf-8');
+        writer.end();
+    });
+}
+
 function createWriteStream(outputFile) {
     if (outputFile) return fs.createWriteStream(outputFile);
     var delegate = process.stdout;
@@ -182,11 +186,11 @@ function shell(desc, bestsignals, app) {
     app.on('quit', () => bestsignals.close());
     app.on('exit', () => bestsignals.close());
     app.cmd('bestsignals', desc, (cmd, sh, cb) => {
-        bestsignals(config.options()).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        bestsignals(config.options()).then(result => output(result)).then(() => sh.prompt(), cb);
     });
     app.cmd("bestsignals :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
         var options = readSignals(cmd.params.name);
-        bestsignals(options).then(result => tabular(result)).then(() => sh.prompt(), cb);
+        bestsignals(options).then(result => output(result)).then(() => sh.prompt(), cb);
     });
 // help
 return bestsignals({help: true}).then(_.first).then(info => {

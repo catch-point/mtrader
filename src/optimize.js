@@ -36,7 +36,6 @@ const Alea = require('alea');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
-const config = require('./config.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 

@@ -33,7 +33,6 @@ const _ = require('underscore');
 const statkit = require("statkit");
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
-const config = require('./config.js');
 const expect = require('chai').expect;
 
 /**
