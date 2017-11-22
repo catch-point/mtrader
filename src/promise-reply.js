@@ -90,6 +90,11 @@ module.exports = function(process) {
                     in_reply_to: msg.id,
                     error: serializeError(err)
                 });
+            }).catch(err => {
+                if (process.connected) {
+                    logger.debug("Could not send", msg.cmd, "message to", process.pid, err, err.stack);
+                    process.disconnect();
+                }
             });
         } else if (msg.cmd == 'config') {
             stats.messages_rec++;
@@ -122,16 +127,20 @@ module.exports = function(process) {
         },
         send(cmd, payload) {
             stats.messages_sent++;
-            return new Promise(cb => process.send({
+            var connect = !process.connecting ? Promise.resolve() :
+                new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
+            return connect.then(() => new Promise(cb => process.send({
                 cmd: cmd,
                 payload: payload
             }, cb)).then(err => {
                 if (err) throw err;
-            });
+            }));
         },
         request(cmd, payload) {
             stats.requests_sent++;
-            return new Promise((response, error) => {
+            var connect = !process.connecting ? Promise.resolve() :
+                new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
+            return connect.then(() => new Promise((response, error) => {
                 var id = nextId(cmd);
                 queue.add(id, {
                     onresponse: response,
@@ -146,7 +155,7 @@ module.exports = function(process) {
                 }, err => {
                     if (err) error(err);
                 });
-            });
+            }));
         },
         handle(cmd, handler) {
             handlers[cmd] = handler;

@@ -29,24 +29,28 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const net = require('net');
+const ws = require('ws');
 const EventEmitter = require('events');
 const _ = require('underscore');
 const expect = require('chai').expect;
 const logger = require('./logger.js');
 const AssertionError = require('chai').AssertionError;
+const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
 
 const EOM = '\r\n\r\n';
 
+const PATH = '/ptrading/' + minor_version + '/workers';
+
 var remote = module.exports = function(socket, label) {
+    if (typeof socket == 'string' && ~socket.indexOf('://'))
+        return remote(new ws(socket), label || socket);
     if (typeof socket == 'string')
-        return remote(parseAddressPort(socket), label || socket);
-    else if (socket.port)
-        return remote(net.connect(socket.port, socket.address), label);
+        return remote(new ws('ws://' + socket + PATH), label || socket);
     var buf = '';
     var emitter = new EventEmitter();
-    socket.setEncoding('utf-8');
-    socket.on('data', data => {
+    socket.on('open', (code, reason) => {
+        emitter.emit('connect');
+    }).on('message', data => {
         try {
             var chunks = data.split('\r\n\r\n');
             if (buf) chunks[0] = buf + chunks[0];
@@ -57,37 +61,40 @@ var remote = module.exports = function(socket, label) {
             }
             chunks.forEach(chunk => emitter.emit('message', JSON.parse(chunk)));
         } catch(err) {
-            socket.end();
+            socket.close();
             emitter.emit('error', err);
         }
-    }).on('end', () => {
+    }).on('close', (code, reason) => {
         try {
             if (buf) emitter.emit('message', JSON.parse(buf));
         } catch(err) {
             emitter.emit('error', err);
         }
-        emitter.connected = false;
-    }).on('close', () => {
         emitter.emit('disconnect');
     }).on('error', err => {
         emitter.emit('error', err);
-    }).on('connect', () => {
-        emitter.pid = socket.remoteAddress + ':' + socket.remotePort;
     });
     emitter.remote = true;
-    emitter.connected = true;
     emitter.pid = label || '';
-    emitter.send = message => socket.write(JSON.stringify(message) + EOM);
-    emitter.disconnect = () => socket.end();
-    emitter.kill = () => socket.destroy();
-    return emitter;
+    emitter.send = (message, onerror) => socket.send(JSON.stringify(message) + EOM, onerror);
+    emitter.disconnect = () => socket.close();
+    emitter.kill = () => socket.terminate();
+    return _.extend(emitter, {
+        get connected() {
+            return socket.readyState == 1;
+        },
+        get connecting() {
+            return socket.readyState === 0;
+        }
+    });
 };
 
 function parseAddressPort(addr) {
     expect(addr).to.be.a('string');
     var port = addr.match(/:\d+$/) ? parseInt(addr.substring(addr.lastIndexOf(':')+1)) :
         addr.match(/^\d+$/) ? parseInt(addr) : 0;
-    var address = addr.match(/:\d+$/) ? addr.substring(0, addr.lastIndexOf(':')) :
+    var address = addr.match(/^\[.*\]:\d+$/) ? addr.substring(1, addr.lastIndexOf(':')-1) :
+        addr.match(/:\d+$/) ? addr.substring(0, addr.lastIndexOf(':')) :
         addr.match(/^\d+$/) ? null : addr;
     return {address, port};
 }

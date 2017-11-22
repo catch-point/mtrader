@@ -1,6 +1,6 @@
 {
   "name": "ptrading",
-  "version": "0.27.29",
+  "version": "0.28.29",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/ptrading.js",
   "dependencies": {
@@ -12,7 +12,8 @@
     "moment-timezone": "^0.5.9",
     "shell": "^0.3.2",
     "statkit": "^0.2.0",
-    "underscore": "^1.8.3"
+    "underscore": "^1.8.3",
+    "ws": "^3.3.2"
   },
   "devDependencies": {
     "chai-as-promised": "^6.0.0",

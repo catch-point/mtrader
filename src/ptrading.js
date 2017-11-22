@@ -31,8 +31,9 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const net = require('net');
+const http = require('http');
 const _ = require('underscore');
+const ws = require('ws');
 const shell = require('shell');
 const expect = require('chai').expect;
 const logger = require('./logger.js');
@@ -40,7 +41,9 @@ const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const shellError = require('./shell-error.js');
+const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
 
+const PATH = '/ptrading/' + minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
 
 var program = require('commander').version(require('../package.json').version)
@@ -63,6 +66,19 @@ var program = require('commander').version(require('../package.json').version)
     .option('--listen [address:port]', "Interface and TCP port to listen for jobs")
     .option('--stop', "Signals all remote workers to stop and shutdown");
 
+program.command('start').description("Start a headless service on the listen interface");
+program.command('stop').description("Stops a headless service using the listen interface").action(() => {
+    var address = config('listen');
+    if (!address) throw Error("Service listen address is required to stop service");
+    var worker = replyTo(remote(address))
+        .on('error', err => logger.error(err, err.stack));
+    return new Promise((stopped, abort) => {
+        process.on('SIGINT', abort);
+        process.on('SIGTERM', abort);
+        worker.handle('stop', stopped).request('stop').catch(abort);
+    }).catch(err => err && logger.error(err, err.stack)).then(() => worker.disconnect());
+});
+
 if (require.main === module) {
     if (process.argv.length > 2) {
         // don't call an executable if no command given
@@ -79,30 +95,7 @@ if (require.main === module) {
         });
         program.parse(process.argv);
     }
-    if (config('stop')) {
-        var remote_workers = _.flatten(_.compact(_.flatten([config('listen'), config('remote_workers')]))
-            .map(addr => addr.split(',')));
-        var remoteWorkers = remote_workers.map(address => {
-            return replyTo(remote(address))
-                .on('error', err => logger.error(err, err.stack));
-        });
-        Promise.all(remoteWorkers.map(worker => new Promise(stopped => {
-            worker.handle('stop', stopped).request('stop');
-        }).then(() => worker.disconnect()))).catch(err => logger.error(err, err.stack));
-    } else if (config('listen')) {
-        var ptrading = createInstance();
-        var server = listen(config('listen'), ptrading);
-        server.on('close', () => ptrading.close());
-        process.on('SIGINT', () => {
-            server.close();
-            server.clients.forEach(client => client.end());
-            ptrading.close();
-        }).on('SIGTERM', () => {
-            server.close();
-            server.clients.forEach(client => client.end());
-            ptrading.close();
-        });
-    } else if (_.isEmpty(program.args)) {
+    if (_.isEmpty(program.args)) {
         var app = new shell({isShell: true});
         var settings = {shell: app, introduction: true};
         app.configure(function(){
@@ -117,6 +110,17 @@ if (require.main === module) {
         ptrading.shell(app);
         process.on('SIGINT', () => app.quit());
         process.on('SIGTERM', () => app.quit());
+        if (config('listen')) {
+            var server = listen(config('listen'), ptrading);
+            app.on('quit', () => server.close());
+            app.on('exit', () => server.close());
+        }
+    } else if (config('listen') && !program.stop) {
+        var ptrading = createInstance();
+        var server = listen(config('listen'), ptrading);
+        process.on('SIGINT', () => ptrading.close())
+            .on('SIGTERM', () => ptrading.close());
+        server.on('close', () => ptrading.close());
     }
 } else {
     module.exports = createInstance();
@@ -173,13 +177,17 @@ function createInstance() {
 }
 
 function listen(address, ptrading) {
-    var clients = [];
-    var server = net.createServer({pauseOnConnect: true}, socket => {
-        clients.push(socket);
-        logger.log("Client", socket.remoteAddress, socket.remotePort, "connected");
-        var process = remote(socket).on('error', err => {
+    var server = http.createServer();
+    var wsserver = new ws.Server({server: server, path: PATH, clientTracking: true});
+    wsserver.on('connection', (ws, message) => {
+        var socket = message.socket;
+        var label = socket.remoteAddress + ':' + socket.remotePort
+        logger.log("Client", label, "connected");
+        var process = remote(ws, label).on('error', err => {
             logger.error(err, err.stack);
-            socket.end();
+            ws.close();
+        }).on('disconnect', () => {
+            logger.log("Client", label, "disconnected");
         });
         replyTo(process)
             .handle('lookup', ptrading.lookup)
@@ -192,17 +200,19 @@ function listen(address, ptrading) {
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
             .handle('stop', () => {
                 server.close();
-                clients.forEach(client => {
-                    if (!client.destroyed) client.write(JSON.stringify({cmd:'stop'}) + '\r\n\r\n');
+                wsserver.clients.forEach(client => {
+                    if (client.readyState <= 1) client.send(JSON.stringify({cmd:'stop'}) + '\r\n\r\n');
                 });
-          }).on('error', err => logger.error(err, err.stack))
-            .on('disconnect', () => {
-                clients.splice(clients.indexOf(socket), 1);
-                logger.log("Client", socket.remoteAddress, socket.remotePort, "disconnected");
             });
-        socket.resume();
     }).on('error', err => logger.error(err, err.stack))
-      .on('listening', () => logger.info("Server listening on port", server.address().port));
+      .on('listening', () => logger.info("Service listening on port", server.address().port));
+    server.once('close', () => logger.log("Service has closed", address));
+    var server_close = server.close;
+    server.close = () => {
+        server_close.call(server);
+        wsserver.clients.forEach(client => client.close());
+    };
+    process.on('SIGINT', () => server.close()).on('SIGTERM', () => server.close());
     if (address && typeof address == 'boolean') {
         server.listen();
     } else {
@@ -213,7 +223,6 @@ function listen(address, ptrading) {
             server.listen(addr.port);
         }
     }
-    server.clients = clients;
     return server;
 }
 
@@ -221,7 +230,8 @@ function parseAddressPort(addr) {
     expect(addr).to.be.a('string');
     var port = addr.match(/:\d+$/) ? parseInt(addr.substring(addr.lastIndexOf(':')+1)) :
         addr.match(/^\d+$/) ? parseInt(addr) : 0;
-    var address = addr.match(/:\d+$/) ? addr.substring(0, addr.lastIndexOf(':')) :
+    var address = addr.match(/^\[.*\]:\d+$/) ? addr.substring(1, addr.lastIndexOf(':')-1) :
+        addr.match(/:\d+$/) ? addr.substring(0, addr.lastIndexOf(':')) :
         addr.match(/^\d+$/) ? null : addr;
     return {address, port};
 }
