@@ -178,7 +178,7 @@ function createInstance() {
 
 function listen(address, ptrading) {
     var server = http.createServer();
-    var wsserver = new ws.Server({server: server, path: PATH, clientTracking: true});
+    var wsserver = new ws.Server({server: server, path: PATH, clientTracking: true, perMessageDeflate: true});
     wsserver.on('connection', (ws, message) => {
         var socket = message.socket;
         var label = socket.remoteAddress + ':' + socket.remotePort

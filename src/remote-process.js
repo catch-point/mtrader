@@ -49,6 +49,8 @@ var remote = module.exports = function(socket, label) {
     var buf = '';
     var emitter = new EventEmitter();
     socket.on('open', (code, reason) => {
+        emitter.connecting = false;
+        emitter.connected = true;
         emitter.emit('connect');
     }).on('message', data => {
         try {
@@ -70,6 +72,8 @@ var remote = module.exports = function(socket, label) {
         } catch(err) {
             emitter.emit('error', err);
         }
+        emitter.connecting = false;
+        emitter.connected = false;
         emitter.emit('disconnect');
     }).on('error', err => {
         emitter.emit('error', err);
