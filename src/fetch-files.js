@@ -42,17 +42,17 @@ const storage = require('./storage.js');
 
 module.exports = function() {
     var fallbacks = _.mapObject(_.object(
-            config('files.fallback') || _.compact([
-                config('google.enabled') && 'google',
-                config('yahoo.enabled') && 'yahoo',
-                config('iqfeed.enabled') && 'iqfeed'
+            config('fetch.files.fallback') || _.compact([
+                config('fetch.google.enabled') && 'google',
+                config('fetch.yahoo.enabled') && 'yahoo',
+                config('fetch.iqfeed.enabled') && 'iqfeed'
             ]), []), (nil, fallback) => {
         return 'google' == fallback ? google() :
             'yahoo' == fallback ? yahoo() :
             'iqfeed' == fallback ? iqfeed() :
             null;
     });
-    var dirname = config('files.dirname') || config('var_dir') || path.resolve(config('prefix'), 'var/');
+    var dirname = config('fetch.files.dirname') || path.resolve(config('prefix'), config('data_dir') || 'var');
     var store = Promise.resolve(storage(dirname));
     var open = (name, cb) => store.then(store => store.open(name, cb));
     return {

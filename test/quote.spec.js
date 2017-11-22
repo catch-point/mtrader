@@ -43,15 +43,11 @@ describe("quote", function() {
     var tz = 'America/New_York';
     var fetch, quote;
     before(function() {
-        config.load(path.resolve(__dirname, 'etc/ptrading.json'));
+        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('quotes'));
-        config('iqfeed.enabled', false);
-        config('google.enabled', false);
-        config('yahoo.enabled', false);
-        config('files.enabled', true);
     });
     beforeEach(function() {
-        config('files.dirname', path.resolve(__dirname, 'var'));
+        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
         fetch = Fetch();
         quote = Quote(fetch);
     });
@@ -60,14 +56,10 @@ describe("quote", function() {
             quote.close(),
             fetch.close()
         ]);
+        config.unset('fetch.files.dirname');
     });
     after(function() {
         config.unset('prefix');
-        config.unset('iqfeed.enabled');
-        config.unset('google.enabled');
-        config.unset('yahoo.enabled');
-        config.unset('files.enabled');
-        config.unset('files.dirname');
     });
     it("should return daily", function() {
         return quote({
@@ -257,7 +249,7 @@ describe("quote", function() {
         ]);
     });
     it("should update partial blocks", function() {
-        config('files.dirname', path.resolve(__dirname, 'partial'));
+        config('fetch.files.dirname', path.resolve(__dirname, 'partial'));
         fetch.close();
         quote.close();
         fetch = Fetch();
@@ -277,7 +269,7 @@ describe("quote", function() {
             _.first(partial).should.have.property('incomplete').that.is.not.ok;
             _.last(partial).should.have.property('incomplete').that.is.ok;
         }).then(() => {
-            config('files.dirname', path.resolve(__dirname, 'var'));
+            config('fetch.files.dirname', path.resolve(__dirname, 'data'));
             fetch.close();
             quote.close();
             fetch = Fetch();
@@ -358,7 +350,7 @@ describe("quote", function() {
         ]);
     });
     it("should fix incompatible partial blocks", function() {
-        config('files.dirname', path.resolve(__dirname, 'partial'));
+        config('fetch.files.dirname', path.resolve(__dirname, 'partial'));
         fetch.close();
         quote.close();
         fetch = Fetch();
@@ -378,7 +370,7 @@ describe("quote", function() {
                 {Date:"2016-12-08",Close:103.38,Change:1.36}
             );
         }).then(() => {
-            config('files.dirname', path.resolve(__dirname, 'var'));
+            config('fetch.files.dirname', path.resolve(__dirname, 'data'));
             fetch.close();
             quote.close();
             fetch = Fetch();
@@ -809,7 +801,7 @@ describe("quote", function() {
         ]);
     });
     it("should lookback to multiple partial blocks", function() {
-        config('files.dirname', path.resolve(__dirname, 'partial'));
+        config('fetch.files.dirname', path.resolve(__dirname, 'partial'));
         fetch.close();
         quote.close();
         fetch = Fetch();
@@ -831,7 +823,7 @@ describe("quote", function() {
             _.first(partial).should.have.property('incomplete').that.is.not.ok;
             _.last(partial).should.have.property('incomplete').that.is.ok;
         }).then(partial => {
-            config('files.dirname', path.resolve(__dirname, 'var'));
+            config('fetch.files.dirname', path.resolve(__dirname, 'data'));
             fetch.close();
             quote.close();
             fetch = Fetch();

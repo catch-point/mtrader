@@ -114,7 +114,7 @@ function createInstance(session) {
         }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
         stored = merge({}, loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json')), defaults);
         var loadedFrom = filename || loadedFrom || _.contains(process.argv, '--load') && process.argv[process.argv.indexOf('--load')+1] + '.json';
-        var config_dir = stored.config_dir ? stored.config_dir : path.resolve(defaults.prefix, 'etc');
+        var config_dir = path.resolve(defaults.prefix, stored.config_dir || 'etc');
         loaded = loadedFrom ? loadConfigFile(path.resolve(config_dir, loadedFrom)) : {};
         listeners.forEach(listener => listener(null, null, filename || true));
     };
@@ -154,7 +154,7 @@ function createInstance(session) {
     };
 
     config.configDirname = function() {
-        return config('config_dir') || path.resolve(config('prefix'), 'etc');
+        return path.resolve(config('prefix'), config('config_dir') || 'etc');
     };
 
     config.opts = function() {

@@ -44,13 +44,9 @@ describe("bestsignals", function() {
     this.timeout(60000);
     var fetch, quote, collect, optimize, bestsignals;
     before(function() {
-        config.load(path.resolve(__dirname, 'etc/ptrading.json'));
+        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('bestsignals'));
-        config('iqfeed.enabled', false);
-        config('google.enabled', false);
-        config('yahoo.enabled', false);
-        config('files.enabled', true);
-        config('files.dirname', path.resolve(__dirname, 'var'));
+        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
         fetch = Fetch();
         quote = Quote(fetch);
         collect = Collect(quote);
@@ -62,11 +58,7 @@ describe("bestsignals", function() {
     });
     after(function() {
         config.unset('prefix');
-        config.unset('iqfeed.enabled');
-        config.unset('google.enabled');
-        config.unset('yahoo.enabled');
-        config.unset('files.enabled');
-        config.unset('files.dirname');
+        config.unset('fetch.files.dirname');
         return Promise.all([
             bestsignals.close(),
             optimize.close(),

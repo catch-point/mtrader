@@ -66,19 +66,15 @@ describe("lookback-functions", function(){
     });
     var fetch, quote;
     before(function() {
-        config.load(path.resolve(__dirname, 'etc/ptrading.json'));
+        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('quotes'));
-        config('iqfeed.enabled', false);
-        config('google.enabled', false);
-        config('yahoo.enabled', false);
-        config('files.enabled', true);
-        config('files.dirname', path.resolve(__dirname, 'var'));
+        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
         fetch = Fetch();
         quote = Quote(fetch);
     });
     after(function() {
         config.unset('prefix');
-        config.unset('files.dirname');
+        config.unset('fetch.files.dirname');
         return Promise.all([
             quote.close(),
             fetch.close()

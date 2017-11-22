@@ -38,13 +38,12 @@ const createTempDir = require('./create-temp-dir.js');
 describe("ptrading", function() {
     this.timeout(60000);
     before(function() {
-        ptrading.config.load(path.resolve(__dirname, 'etc/ptrading.json'));
+        ptrading.config.load(path.resolve(__dirname, '../etc/ptrading.json'));
         ptrading.config('prefix', createTempDir('ptrading'));
         ptrading.config('iqfeed.enabled', false);
         ptrading.config('google.enabled', true);
         ptrading.config('yahoo.enabled', false);
         ptrading.config('files.enabled', false);
-        ptrading.config('files.dirname', path.resolve(__dirname, 'var'));
         process.emit('SIGHUP');
     });
     after(function() {
@@ -53,14 +52,11 @@ describe("ptrading", function() {
         ptrading.config.unset('google.enabled');
         ptrading.config.unset('yahoo.enabled');
         ptrading.config.unset('files.enabled');
-        ptrading.config.unset('files.dirname');
     });
     it("lookup", function() {
-        return ptrading.lookup({symbol: 'AABA'}).then(suggestions => {
-          suggestions.forEach(suggestion => {
+        return ptrading.lookup({symbol: 'AABA'}).then(_.first).then(suggestion => {
             suggestion.symbol.should.eql('AABA');
             suggestion.exchange.should.eql('NASDAQ');
-          });
         });
     });
     it("fundamental", function() {

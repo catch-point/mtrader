@@ -83,10 +83,10 @@ module.exports = function() {
  */
 function promiseDatasources() {
     var sources = _.extend(
-        config('files.enabled') ? {files: files()} : {},
-        config('google.enabled') ? {google: google()} : {},
-        config('yahoo.enabled') ? {yahoo: yahoo()} : {},
-        config('iqfeed.enabled') ? {iqfeed: iqfeed()} : {}
+        config('fetch.files.enabled') ? {files: files()} : {},
+        config('fetch.google.enabled') ? {google: google()} : {},
+        config('fetch.yahoo.enabled') ? {yahoo: yahoo()} : {},
+        config('fetch.iqfeed.enabled') ? {iqfeed: iqfeed()} : {}
     );
     var ids = _.keys(sources);
     return Promise.all(ids.map(id => sources[id].help()))

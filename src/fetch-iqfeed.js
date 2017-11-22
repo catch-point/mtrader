@@ -43,7 +43,7 @@ function help() {
         },
         exchange: {
             description: "Exchange market acronym",
-            values: _.keys(_.pick(config('exchanges'), exch => exch.datasources.iqfeed))
+            values: config('fetch.iqfeed.exchanges')
         },
         iqfeed_symbol: {
             description: "Symbol used in the DTN network"
@@ -93,7 +93,7 @@ function help() {
             interval: {
                 usage: "year|quarter|month|week|day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["year", "quarter", "month", "week", "day"],config('iqfeed.interday'))
+                values: _.intersection(["year", "quarter", "month", "week", "day"],config('fetch.iqfeed.interday'))
             },
         })
     };
@@ -105,28 +105,28 @@ function help() {
         options: _.extend(commonOptions, durationOptions, tzOptions, {
             minutes: {
                 description: "Number of minutes in a single bar length",
-                values: config('iqfeed.intraday')
+                values: config('fetch.iqfeed.intraday')
                     .filter(interval => /^m\d+$/.test(interval))
                     .map(interval => parseInt(interval.substring(1)))
             }
         })
     };
     return _.compact([
-        config('iqfeed.lookup') && lookup,
-        config('iqfeed.fundamental') && fundamental,
-        config('iqfeed.interday') && interday,
-        config('iqfeed.intraday') && intraday
+        config('fetch.iqfeed.lookup') && lookup,
+        config('fetch.iqfeed.fundamental') && fundamental,
+        config('fetch.iqfeed.interday') && interday,
+        config('fetch.iqfeed.intraday') && intraday
     ]);
 }
 
 module.exports = function() {
     var helpInfo = help();
-    var exchanges = config('exchanges');
+    var exchanges = _.pick(config('exchanges'), config('fetch.iqfeed.exchanges'));
     var symbol = iqfeed_symbol.bind(this, exchanges);
-    var launch = config('iqfeed.command');
+    var launch = config('fetch.iqfeed.command');
     var iqclient = iqfeed(
         _.isArray(launch) ? launch : launch && launch.split(' '),
-        config('iqfeed.productId'),
+        config('fetch.iqfeed.productId'),
         config('version')
     );
     return {

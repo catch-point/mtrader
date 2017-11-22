@@ -56,7 +56,7 @@ module.exports = function(fetch) {
  * @returns a function that returns an object about the security in the given options
  */
 function fetchOptionsFactory(fetch, offline, read_only) {
-    var dir = getInfoDirname();
+    var dir = path.resolve(config('prefix'), config('data_dir') || 'var');
     var memoizeFirstLookup = _.memoize((symbol, exchange) => {
         return readInfo(dir, symbol, exchange, offline).catch(err => {
             if (offline) throw err;
@@ -131,10 +131,6 @@ function saveInfo(dir, symbol, exchange, info) {
 function getInfoFileName(dir, symbol, exchange) {
     var name = exchange ? symbol + '.' + exchange : symbol;
     return path.resolve(dir, safe(name), 'info.json');
-}
-
-function getInfoDirname() {
-    return config('var_dir') || path.resolve(config('prefix'), 'var');
 }
 
 function safe(segment) {

@@ -44,7 +44,7 @@ function help() {
         },
         exchange: {
             description: "Exchange market acronym",
-            values: _.keys(_.pick(config('exchanges'), exch => exch.datasources.yahoo))
+            values: config('fetch.yahoo.exchanges')
         },
         yahoo_symbol: {
             description: "Symbol for security as used by The Yahoo! Network"
@@ -66,7 +66,7 @@ function help() {
             interval: {
                 usage: "year|quarter|month|week|day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["year", "quarter", "month", "week", "day"], config('yahoo.interday'))
+                values: _.intersection(["year", "quarter", "month", "week", "day"], config('fetch.yahoo.interday'))
             },
             begin: {
                 example: "YYYY-MM-DD",
@@ -87,12 +87,12 @@ function help() {
             }
         })
     };
-    return config('yahoo.lookup') ? [lookup, interday] : [interday];
+    return config('fetch.yahoo.lookup') ? [lookup, interday] : [interday];
 }
 
 module.exports = function() {
     var helpInfo = help();
-    var exchanges = config('exchanges');
+    var exchanges = _.pick(config('exchanges'), config('fetch.yahoo.exchanges'));
     var symbol = yahoo_symbol.bind(this, exchanges);
     var yahoo = _.mapObject(yahooClient(), (fn, name) => {
         if (!_.isFunction(fn) || name == 'close') return fn;

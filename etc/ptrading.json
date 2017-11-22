@@ -1,26 +1,33 @@
 {
   "description": "Configuration file for ptrading",
-  "files": {
-    "enabled": false,
-    "fallback": ["google", "yahoo", "iqfeed"]
-  },
-  "google": {
-    "enabled": true,
-    "lookup": true,
-    "fundamental": true,
-    "interday": ["year", "quarter", "month", "week", "day"]
-  },
-  "yahoo": {
-    "enabled": true,
-    "lookup": true,
-    "interday": ["year", "quarter", "month", "week", "day"]
-  },
-  "iqfeed": {
-    "enabled": false,
-    "lookup": true,
-    "fundamental": true,
-    "interday": ["year", "quarter", "month", "week", "day"],
-    "intraday": ["m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
+  "data_dir": "var",
+  "config_dir": "etc",
+  "fetch": {
+    "google": {
+      "enabled": true,
+      "lookup": true,
+      "fundamental": true,
+      "interday": ["year", "quarter", "month", "week", "day"],
+      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE"]
+    },
+    "yahoo": {
+      "enabled": true,
+      "lookup": true,
+      "interday": ["year", "quarter", "month", "week", "day"],
+      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV"]
+    },
+    "iqfeed": {
+      "enabled": false,
+      "lookup": true,
+      "fundamental": true,
+      "interday": ["year", "quarter", "month", "week", "day"],
+      "intraday": ["m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
+      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY"]
+    },
+    "remote": {
+      "enabled": false,
+      "location": "localhost:1880"
+    }
   },
   "exchanges": {
     "ARCA": {
@@ -133,6 +140,26 @@
         }
       }
     },
+    "LSE": {
+      "description": "The London Stock Exchange (LSE) is a stock exchange located in the City of London in the United Kingdom and the third-largest stock exchange in the world.",
+      "label": "London Stock Exchange",
+      "afterHoursClosesAt": "16:30:00",
+      "marketClosesAt": "16:30:00",
+      "marketOpensAt": "08:00:00",
+      "premarketOpensAt": "08:00:00",
+      "currency": "GBP",
+      "tz": "Europe/London",
+      "datasources": {
+        "google": {
+            "e": "LON"
+        },
+        "yahoo": {
+          "exchs": ["LSE"],
+          "marketLang": "en-GB",
+          "yahooSuffix": ".L"
+        }
+      }
+    },
     "TSX": {
       "label": "Toronto Stock Exchange",
       "description": "The Toronto Stock Exchange is the largest stock exchange in Canada, the third largest in North America and the seventh largest in the world by market capitalization. Based in Toronto, it is owned by and operated as a subsidiary of the TMX Group for the trading of senior equities.",
@@ -181,66 +208,6 @@
         }
       }
     },
-    "CAD": {
-      "description": "Forex Capital Markets trading using CAD as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "02:00:00",
-      "premarketOpensAt": "00:00:00",
-      "currency": "CAD",
-      "tz": "America/New_York",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "CAD.FXCM",
-          "listed_market": 74
-        }
-      }
-    },
-    "USD": {
-      "description": "Forex Capital Markets trading using USD as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "02:00:00",
-      "premarketOpensAt": "00:00:00",
-      "currency": "USD",
-      "tz": "America/New_York",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "USD.FXCM",
-          "listed_market": 74
-        }
-      }
-    },
-    "JPY": {
-      "description": "Forex Capital Markets trading using JPY as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "02:00:00",
-      "premarketOpensAt": "00:00:00",
-      "currency": "JPY",
-      "tz": "America/New_York",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "JPY.FXCM",
-          "listed_market": 74
-        }
-      }
-    },
-    "CHF": {
-      "description": "Forex Capital Markets trading using CHF as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "02:00:00",
-      "premarketOpensAt": "00:00:00",
-      "currency": "CHF",
-      "tz": "America/New_York",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "CHF.FXCM",
-          "listed_market": 74
-        }
-      }
-    },
     "GBP": {
       "description": "Forex Capital Markets trading using GBP as the quote currency.",
       "afterHoursClosesAt": "24:00:00",
@@ -286,23 +253,63 @@
         }
       }
     },
-    "LSE": {
-      "description": "The London Stock Exchange (LSE) is a stock exchange located in the City of London in the United Kingdom and the third-largest stock exchange in the world.",
-      "label": "London Stock Exchange",
-      "afterHoursClosesAt": "16:30:00",
-      "marketClosesAt": "16:30:00",
-      "marketOpensAt": "08:00:00",
-      "premarketOpensAt": "08:00:00",
-      "currency": "GBP",
-      "tz": "Europe/London",
+    "USD": {
+      "description": "Forex Capital Markets trading using USD as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "02:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "USD",
+      "tz": "America/New_York",
       "datasources": {
-        "google": {
-            "e": "LON"
-        },
-        "yahoo": {
-          "exchs": ["LSE"],
-          "marketLang": "en-GB",
-          "yahooSuffix": ".L"
+        "iqfeed": {
+          "dtnSuffix": "USD.FXCM",
+          "listed_market": 74
+        }
+      }
+    },
+    "CAD": {
+      "description": "Forex Capital Markets trading using CAD as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "02:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "CAD",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "CAD.FXCM",
+          "listed_market": 74
+        }
+      }
+    },
+    "CHF": {
+      "description": "Forex Capital Markets trading using CHF as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "02:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "CHF",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "CHF.FXCM",
+          "listed_market": 74
+        }
+      }
+    },
+    "JPY": {
+      "description": "Forex Capital Markets trading using JPY as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "02:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "JPY",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "JPY.FXCM",
+          "listed_market": 74
         }
       }
     }

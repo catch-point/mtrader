@@ -1,0 +1,22 @@
+{
+  "description": "Configuration test file for ptrading",
+  "fetch": {
+    "files": {
+      "enabled": true,
+      "fallback": ["google", "yahoo", "iqfeed"]
+    },
+    "google": {
+      "enabled": false,
+      "lookup": true,
+      "fundamental": true,
+      "interday": ["year", "quarter", "month", "week", "day"],
+      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE"]
+    },
+    "yahoo": {
+      "enabled": false,
+      "lookup": true,
+      "interday": ["year", "quarter", "month", "week", "day"],
+      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV"]
+    }
+  }
+}

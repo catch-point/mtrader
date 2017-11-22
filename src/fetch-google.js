@@ -45,7 +45,7 @@ function help() {
         },
         exchange: {
             description: "Exchange market acronym",
-            values: _.keys(_.pick(config('exchanges'), exch => exch.datasources.google))
+            values: config('fetch.google.exchanges')
         },
         google_symbol: {
             description: "Symbol used in the Google finance network"
@@ -77,7 +77,7 @@ function help() {
             interval: {
                 usage: "year|quarter|month|week|day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["year", "quarter", "month", "week", "day"],config('google.interday'))
+                values: _.intersection(["year", "quarter", "month", "week", "day"],config('fetch.google.interday'))
             },
             begin: {
                 example: "YYYY-MM-DD",
@@ -99,15 +99,15 @@ function help() {
         })
     };
     return _.compact([
-        config('google.lookup') && lookup,
-        config('google.fundamental') && fundamental,
+        config('fetch.google.lookup') && lookup,
+        config('fetch.google.fundamental') && fundamental,
         interday
     ]);
 }
 
 module.exports = function() {
     var helpInfo = help();
-    var exchanges = config('exchanges');
+    var exchanges = _.pick(config('exchanges'), config('fetch.google.exchanges'));
     var symbol = google_symbol.bind(this, exchanges);
     var google = googleClient();
     var yahoo = _.mapObject(yahooClient(), (fn, name) => {

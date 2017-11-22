@@ -38,13 +38,11 @@ const createTempDir = require('./create-temp-dir.js');
 describe("ptrading-collect", function() {
     this.timeout(1200000);
     before(function() {
-        ptrading.config.load(path.resolve(__dirname, 'etc/ptrading.json'));
         ptrading.config('prefix', createTempDir('ptrading'));
-        ptrading.config('iqfeed.enabled', false);
-        ptrading.config('google.enabled', true);
-        ptrading.config('yahoo.enabled', false);
-        ptrading.config('files.enabled', false);
-        ptrading.config('files.dirname', path.resolve(__dirname, 'var'));
+        ptrading.config('fetch.iqfeed.enabled', false);
+        ptrading.config('fetch.google.enabled', true);
+        ptrading.config('fetch.yahoo.enabled', false);
+        ptrading.config('fetch.files.enabled', false);
         process.emit('SIGHUP');
         ptrading.config.save('SPY', {
             portfolio: 'SPY.ARCA',
@@ -70,11 +68,10 @@ describe("ptrading-collect", function() {
     });
     after(function() {
         ptrading.config.unset('prefix');
-        ptrading.config.unset('iqfeed.enabled');
-        ptrading.config.unset('google.enabled');
-        ptrading.config.unset('yahoo.enabled');
-        ptrading.config.unset('files.enabled');
-        ptrading.config.unset('files.dirname');
+        ptrading.config.unset('fetch.iqfeed.enabled');
+        ptrading.config.unset('fetch.google.enabled');
+        ptrading.config.unset('fetch.yahoo.enabled');
+        ptrading.config.unset('fetch.files.enabled');
     });
     it("change", function() {
         return ptrading.collect({

@@ -42,12 +42,20 @@ describe("fetch", function() {
     var fetch;
     before(function() {
         config('prefix', __dirname);
-        config('files.dirname', path.resolve(__dirname, 'var'));
-        config.load(path.resolve(__dirname, 'etc/ptrading.json'));
+        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
+        config.load(path.resolve(__dirname, 'testdata.json'));
+        config('fetch.iqfeed.enabled', false);
+        config('fetch.google.enabled', true);
+        config('fetch.yahoo.enabled', true);
+        config('fetch.files.enabled', true);
         fetch = Fetch();
     });
     after(function() {
-        config.unset('files.dirname');
+        config.unset('fetch.files.dirname');
+        config.unset('fetch.iqfeed.enabled');
+        config.unset('fetch.google.enabled');
+        config.unset('fetch.yahoo.enabled');
+        config.unset('fetch.files.enabled');
         return fetch.close();
     });
     it("should find AABA", function() {
@@ -75,8 +83,7 @@ describe("fetch", function() {
             symbol: 'USD',
             exchange: 'CAD'
         }).should.eventually.be.like([{
-            symbol: 'USD',
-            yahoo_symbol: 'USDCAD=X'
+            symbol: 'USD'
         }]);
     });
     it("should return daily", function() {
