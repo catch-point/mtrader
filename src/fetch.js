@@ -37,6 +37,7 @@ const google = require('./fetch-google.js');
 const yahoo = require('./fetch-yahoo.js');
 const iqfeed = require('./fetch-iqfeed.js');
 const files = require('./fetch-files.js');
+const remote = require('./fetch-remote.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
@@ -86,7 +87,8 @@ function promiseDatasources() {
         config('fetch.files.enabled') ? {files: files()} : {},
         config('fetch.google.enabled') ? {google: google()} : {},
         config('fetch.yahoo.enabled') ? {yahoo: yahoo()} : {},
-        config('fetch.iqfeed.enabled') ? {iqfeed: iqfeed()} : {}
+        config('fetch.iqfeed.enabled') ? {iqfeed: iqfeed()} : {},
+        config('fetch.remote.enabled') ? {remote: remote()} : {}
     );
     var ids = _.keys(sources);
     return Promise.all(ids.map(id => sources[id].help()))
