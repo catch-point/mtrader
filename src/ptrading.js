@@ -76,12 +76,13 @@ program.command('start').description("Start a headless service on the listen int
 program.command('stop').description("Stops a headless service using the listen interface").action(() => {
     var address = config('listen');
     if (!address) throw Error("Service listen address is required to stop service");
-    var worker = replyTo(remote(address)).on('error', () => worker.disconnect());
+    var worker = replyTo(remote(address)).on('error', err => logger.debug(err, err.stack))
+        .on('error', () => worker.disconnect());
     return new Promise((stopped, abort) => {
         process.on('SIGINT', abort);
         process.on('SIGTERM', abort);
         worker.handle('stop', stopped).request('stop').catch(abort);
-    }).catch(err => worker.connected && err && logger.error(err, err.stack)).then(() => worker.disconnect());
+    }).catch(err => err && err.stack && logger.debug(err, err.stack)).then(() => worker.disconnect());
 });
 
 if (require.main === module) {
@@ -185,7 +186,7 @@ function createInstance() {
 function listen(address, ptrading) {
     var addr = parseLocation(address, false);
     var auth = addr.auth ? 'Basic ' + addr.auth.toString('base64') : undefined;
-    var server = addr.scheme == 'https:' || addr.scheme == 'wss:' ? https.createServer({
+    var server = addr.protocol == 'https:' || addr.protocol == 'wss:' ? https.createServer({
         key: readFileSync(config('tls.key_pem')),
         cert: readFileSync(config('tls.cert_pem')),
         ca: readFileSync(config('tls.ca_pem')),
@@ -233,14 +234,10 @@ function listen(address, ptrading) {
         wsserver.clients.forEach(client => client.close());
     };
     process.on('SIGINT', () => server.close()).on('SIGTERM', () => server.close());
-    if (address && typeof address == 'boolean') {
-        server.listen();
+    if (addr.hostname) {
+        server.listen(addr.port, addr.hostname);
     } else {
-        if (addr.address) {
-            server.listen(addr.port, addr.hostname);
-        } else {
-            server.listen(addr.port);
-        }
+        server.listen(addr.port);
     }
     return server;
 }
@@ -254,11 +251,11 @@ function parseLocation(location, secure) {
         ~location.indexOf('//') ? url.parse(location) :
         secure ? url.parse('wss://' + location) :
         url.parse('ws://' + location);
-    parsed.scheme = parsed.scheme || (secure ? 'wss:' : 'ws:');
+    parsed.protocol = parsed.protocol || (secure ? 'wss:' : 'ws:');
     parsed.port = parsed.port || (secure ? 443 : 80);
     parsed.hostname = parsed.hostname || 'localhost';
     parsed.host = parsed.host || (parsed.hostname + ':' + parsed.port);
-    parsed.href = parsed.href || (parsed.scheme + '//' + parsed.host);
+    parsed.href = parsed.href || (parsed.protocol + '//' + parsed.host);
     if (!parsed.path) parsed.href = parsed.href + DEFAULT_PATH;
     parsed.path = parsed.path || DEFAULT_PATH;
     return parsed;

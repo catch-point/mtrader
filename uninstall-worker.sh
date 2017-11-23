@@ -30,7 +30,8 @@
 #
 
 #
-# Usage: sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/uninstall-worker.sh)'
+# Usage:
+# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/uninstall-worker.sh)'
 #
 
 NAME=ptrading-worker

@@ -30,7 +30,8 @@
 #
 
 #
-# Usage: sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/install-worker.sh)'
+# Usage:
+# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/install-worker.sh)'
 #
 
 NAME=ptrading-worker
@@ -121,9 +122,9 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
     DEFAULT_PORT=1880
   fi
   if [ -z "$HOST" ]; then
-    read -p "Hostname (e.g. interface to listen on) [$HOSTNAME]:" HOST
+    read -p "Hostname (e.g. interface to listen on) [$(hostname -f |tr '[A-Z]' '[a-z]')]:" HOST
     if [ -z "$HOST" ]; then
-      HOST=$HOSTNAME
+      HOST=$(hostname -f |tr '[A-Z]' '[a-z]')
     fi
   fi
   if [ -z "$PORT" ]; then
