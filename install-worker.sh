@@ -111,7 +111,7 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
     DATA_DIR=var
   fi
   mkdir -p "$PREFIX/etc" "$PREFIX/$CONFIG_DIR" "$PREFIX/$DATA_DIR"
-  read -p "Common Name (e.g. server FQDN or YOUR name) []:" HOSTNAME
+  read -p "Host Name (e.g. interface to listen on) [localhost]:" HOSTNAME
   if [ -z "$HOSTNAME" ]; then
     HOSTNAME=localhost
   fi
@@ -126,6 +126,7 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
       PORT=1443
     fi
     if [ ! -f "$PREFIX/etc/ptrading-key.pem" ] ; then
+      echo "*** Use $HOSTNAME for the Common Name below for direct clients ***" 1>&2
       openssl genrsa -out "$PREFIX/etc/ptrading-key.pem" 2048
       chmod go-rwx "$PREFIX/etc/ptrading-key.pem"
       chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/ptrading-key.pem"
@@ -197,8 +198,7 @@ WorkingDirectory=$BASEDIR
 [Install]
 WantedBy=multi-user.target
 EOF
-  systemctl daemon-reload
-  systemctl start "$NAME"
+  systemctl enable --now "$NAME"
 elif [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
   systemctl restart "$NAME"
 fi
