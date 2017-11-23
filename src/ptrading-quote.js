@@ -213,7 +213,16 @@ function createWorkers(fetch, quote, program) {
         disconnect() {
             return this.request('disconnect');
         },
-        once: function() {},
+        on: function(message, listener) {
+            this.listener = listener;
+            return this;
+        },
+        once: function() {
+            return this;
+        },
+        handle: function() {
+            return this;
+        },
         stats: {
             requests_sent: 0,
             replies_rec: 0

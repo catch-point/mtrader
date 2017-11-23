@@ -95,11 +95,15 @@ if (require.main === module) {
 function createInstance(program, collections) {
     var optimize = require('./ptrading-optimize.js');
     var bestsignals = Bestsignals(optimize);
-    var promiseKeys = bestsignals({help: true})
-        .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
-    var promiseDefaults = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
+    var promiseKeys;
+    var promiseDef;
     var instance = function(options) {
-        return promiseKeys.then(keys => promiseDefaults.then(defaults => {
+        if (!promiseKeys) {
+            promiseKeys = bestsignals({help: true})
+                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseDef = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
+        }
+        return promiseKeys.then(keys => promiseDef.then(defaults => {
             return _.extend({}, defaults, _.pick(options, keys));
         })).then(options => {
             if (options.signalset || options.protfolio)

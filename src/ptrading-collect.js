@@ -218,6 +218,9 @@ function createWorkers(quote, collect, program) {
         once: function() {
             return this;
         },
+        handle: function() {
+            return this;
+        },
         stats: {
             requests_sent: 0,
             replies_rec: 0

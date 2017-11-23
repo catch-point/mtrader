@@ -66,7 +66,9 @@ var program = require('commander').version(require('../package.json').version)
     .option('--listen [address:port]', "Interface and TCP port to listen for jobs")
     .option('--stop', "Signals all remote workers to stop and shutdown");
 
-program.command('start').description("Start a headless service on the listen interface");
+program.command('start').description("Start a headless service on the listen interface").action(() => {
+    if (!config('listen')) throw Error("Service listen address is required to start service");
+});
 program.command('stop').description("Stops a headless service using the listen interface").action(() => {
     var address = config('listen');
     if (!address) throw Error("Service listen address is required to stop service");

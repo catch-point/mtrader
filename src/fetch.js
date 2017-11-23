@@ -42,8 +42,9 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 module.exports = function() {
-    var datasources = promiseDatasources();
+    var datasources;
     var self = function(options) {
+        datasources = datasources || promiseDatasources();
         return datasources.then(datasources => {
             if (options.help || options.interval == 'help')
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
@@ -73,7 +74,7 @@ module.exports = function() {
             }
         });
     };
-    self.close = () => datasources.then(datasources => {
+    self.close = () => Promise.resolve(datasources).then(datasources => {
         close(_.uniq(_.flatten(_.values(datasources).map(_.values))));
     });
     return self;
