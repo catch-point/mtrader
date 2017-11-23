@@ -33,6 +33,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const url = require('url');
 const http = require('http');
 const https = require('https');
 const _ = require('underscore');
@@ -75,7 +76,7 @@ program.command('start').description("Start a headless service on the listen int
 program.command('stop').description("Stops a headless service using the listen interface").action(() => {
     var address = config('listen');
     if (!address) throw Error("Service listen address is required to stop service");
-        var worker = replyTo(remote(address)).on('error', () => worker.disconnect());
+    var worker = replyTo(remote(address)).on('error', () => worker.disconnect());
     return new Promise((stopped, abort) => {
         process.on('SIGINT', abort);
         process.on('SIGTERM', abort);
@@ -119,8 +120,8 @@ if (require.main === module) {
             app.on('quit', () => server.close());
             app.on('exit', () => server.close());
         }
-    } else if (config('listen') && _.first(program.args) != 'stop'
-            && _.first(program.args) != 'config' && _.first(program.args) != 'fetch') {
+    } else if (config('listen') && !~['stop','config','fetch'].indexOf(program.args[0]) &&
+            !~['stop','config','fetch'].indexOf(program.args[0].name && program.args[0].name())) {
         var ptrading = createInstance();
         var server = listen(config('listen'), ptrading);
         process.on('SIGINT', () => ptrading.close())
@@ -182,7 +183,7 @@ function createInstance() {
 }
 
 function listen(address, ptrading) {
-    var addr = parseLocation(address, config('key_pem'));
+    var addr = parseLocation(address, false);
     var auth = addr.auth ? 'Basic ' + addr.auth.toString('base64') : undefined;
     var server = addr.scheme == 'https:' || addr.scheme == 'wss:' ? https.createServer({
         key: readFileSync(config('tls.key_pem')),

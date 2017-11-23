@@ -47,7 +47,7 @@ const DEFAULT_PATH = '/ptrading/' + minor_version + '/workers';
 
 var remote = module.exports = function(socket, label) {
     if (typeof socket == 'string' || typeof socket == 'number')
-        return remote(new ws(parseLocation(socket, true).href, {
+        return remote(new ws(parseLocation(socket, false).href, {
             key: readFileSync(config('tls.key_pem')),
             cert: readFileSync(config('tls.cert_pem')),
             ca: readFileSync(config('tls.ca_pem')),

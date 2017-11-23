@@ -111,6 +111,10 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
     DATA_DIR=var
   fi
   mkdir -p "$PREFIX/etc" "$PREFIX/$CONFIG_DIR" "$PREFIX/$DATA_DIR"
+  read -p "Common Name (e.g. server FQDN or YOUR name) []:" HOSTNAME
+  if [ -z "$HOSTNAME" ]; then
+    HOSTNAME=localhost
+  fi
   # generate certificates
   if [ -x "$(which openssl)" ]; then
     if [ -z "$PORT" -a "$(id -u)" = "0" ]; then
@@ -137,7 +141,7 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "data_dir": "$DATA_DIR",
-  "listen": "$PORT",
+  "listen": "wss://$HOSTNAME:$PORT",
   "tls": {
     "key_pem": "etc/ptrading-key.pem",
     "cert_pem": "etc/ptrading-cert.pem",
@@ -161,7 +165,7 @@ EOF
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "data_dir": "$DATA_DIR",
-  "listen": "$PORT",
+  "listen": "ws://$HOSTNAME:$PORT",
   "tls": {
     "request_cert": false,
     "reject_unauthorized": false

@@ -1,6 +1,6 @@
 {
   "name": "ptrading",
-  "version": "0.32.31",
+  "version": "0.32.32",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/ptrading.js",
   "dependencies": {
