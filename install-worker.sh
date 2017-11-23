@@ -111,22 +111,34 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
     DATA_DIR=var
   fi
   mkdir -p "$PREFIX/etc" "$PREFIX/$CONFIG_DIR" "$PREFIX/$DATA_DIR"
-  read -p "Host Name (e.g. interface to listen on) [localhost]:" HOSTNAME
-  if [ -z "$HOSTNAME" ]; then
-    HOSTNAME=localhost
+  if [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" -a -x "$(which openssl)" ]; then
+    DEFAULT_PORT=443
+  elif [ -z "$DEFAULT_PORT" -a -x "$(which openssl)" ]; then
+    DEFAULT_PORT=1443
+  elif [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" -a ]; then
+    DEFAULT_PORT=80
+  elif [ -z "$DEFAULT_PORT" -a ]; then
+    DEFAULT_PORT=1880
+  fi
+  if [ -z "$HOST" ]; then
+    read -p "Hostname (e.g. interface to listen on) [$HOSTNAME]:" HOST
+    if [ -z "$HOST" ]; then
+      HOST=$HOSTNAME
+    fi
+  fi
+  if [ -z "$PORT" ]; then
+    read -p "Port (e.g. port to listen on) [$DEFAULT_PORT]:" PORT
+    if [ -z "$PORT" ]; then
+      PORT=$DEFAULT_PORT
+    fi
+  fi
+  if [ "$(id -u)" = "0" -a "$PORT" -lt 1024 ]; then
+    setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
   fi
   # generate certificates
   if [ -x "$(which openssl)" ]; then
-    if [ -z "$PORT" -a "$(id -u)" = "0" ]; then
-      PORT=443
-      setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
-    elif [ "$(id -u)" = "0" -a "$PORT" -lt 1024 ]; then
-      setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
-    elif [ -z "$PORT" ]; then
-      PORT=1443
-    fi
     if [ ! -f "$PREFIX/etc/ptrading-key.pem" ] ; then
-      echo "*** Use $HOSTNAME for the Common Name below for direct clients ***" 1>&2
+      echo -e "\x1b[1m\x1b[33m*** Use $HOST:$PORT for the Common Name below for direct clients ***\x1b[0m" 1>&2
       openssl genrsa -out "$PREFIX/etc/ptrading-key.pem" 2048
       chmod go-rwx "$PREFIX/etc/ptrading-key.pem"
       chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/ptrading-key.pem"
@@ -142,7 +154,7 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "data_dir": "$DATA_DIR",
-  "listen": "wss://$HOSTNAME:$PORT",
+  "listen": "wss://$HOST:$PORT",
   "tls": {
     "key_pem": "etc/ptrading-key.pem",
     "cert_pem": "etc/ptrading-cert.pem",
@@ -153,20 +165,12 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
 }
 EOF
   else
-    if [ -z "$PORT" -a "$(id -u)" = "0" ]; then
-      PORT=80
-      setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
-    elif [ "$(id -u)" = "0" -a "$PORT" -lt 1024 ]; then
-      setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
-    elif [ -z "$PORT" ]; then
-      PORT=1880
-    fi
     cat > "$PREFIX/etc/ptrading.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "data_dir": "$DATA_DIR",
-  "listen": "ws://$HOSTNAME:$PORT",
+  "listen": "ws://$HOST:$PORT",
   "tls": {
     "request_cert": false,
     "reject_unauthorized": false

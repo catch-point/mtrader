@@ -51,7 +51,8 @@ var remote = module.exports = function(socket, label) {
             key: readFileSync(config('tls.key_pem')),
             cert: readFileSync(config('tls.cert_pem')),
             ca: readFileSync(config('tls.ca_pem')),
-            rejectUnauthorized: config('tls.reject_unauthorized')
+            rejectUnauthorized: config('tls.reject_unauthorized'),
+            agent: false
         }), label || socket);
     var buf = '';
     var emitter = new EventEmitter();
@@ -100,7 +101,7 @@ var remote = module.exports = function(socket, label) {
 };
 
 function readFileSync(filename) {
-    if (filename) return fs.readFileSync(path.resolve(config('prefix'), filename));
+    if (filename) return fs.readFileSync(path.resolve(config('prefix'), filename), {encoding: 'utf-8'});
 }
 
 function parseLocation(location, secure) {

@@ -246,7 +246,7 @@ function listen(address, ptrading) {
 }
 
 function readFileSync(filename) {
-    if (filename) return fs.readFileSync(path.resolve(config('prefix'), filename));
+    if (filename) return fs.readFileSync(path.resolve(config('prefix'), filename), {encoding: 'utf-8'});
 }
 
 function parseLocation(location, secure) {
