@@ -30,7 +30,7 @@
 #
 
 #
-# Usage: bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/uninstall-worker.sh)
+# Usage: sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/uninstall-worker.sh)'
 #
 
 NAME=ptrading-worker
@@ -48,6 +48,7 @@ fi
 # uninstall daemon
 if [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
   systemctl stop "$NAME"
+  journalctl -n 2 -u "$NAME"
   rm "/etc/systemd/system/$NAME.service"
   systemctl daemon-reload
 fi

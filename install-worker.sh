@@ -30,7 +30,7 @@
 #
 
 #
-# Usage: bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/install-worker.sh)
+# Usage: sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/install-worker.sh)'
 #
 
 NAME=ptrading-worker
@@ -138,9 +138,13 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
   "config_dir": "$CONFIG_DIR",
   "data_dir": "$DATA_DIR",
   "listen": "$PORT",
-  "key_pem": "etc/ptrading-key.pem",
-  "cert_pem": "etc/ptrading-cert.pem",
-  "ca_pem": "etc/ptrading-cert.pem"
+  "tls": {
+    "key_pem": "etc/ptrading-key.pem",
+    "cert_pem": "etc/ptrading-cert.pem",
+    "ca_pem": "etc/ptrading-cert.pem",
+    "request_cert": false,
+    "reject_unauthorized": false
+  }
 }
 EOF
   else
@@ -157,7 +161,11 @@ EOF
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "data_dir": "$DATA_DIR",
-  "listen": "$PORT"
+  "listen": "$PORT",
+  "tls": {
+    "request_cert": false,
+    "reject_unauthorized": false
+  }
 }
 EOF
   fi
@@ -192,7 +200,7 @@ elif [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
 fi
 
 if [ -f "/etc/systemd/system/$NAME.service" ]; then
-  echo "Use 'journalctl --follow -u $NAME' as root to see the output"
+  journalctl -n 2 -u "$NAME"
 else
   echo "Run '$PREFIX/bin/ptrading start' to start the service"
 fi

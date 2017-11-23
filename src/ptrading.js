@@ -69,21 +69,18 @@ var program = require('commander').version(require('../package.json').version)
     .option('--listen [address:port]', "Interface and TCP port to listen for jobs")
     .option('--stop', "Signals all remote workers to stop and shutdown");
 
-var stopping = false;
 program.command('start').description("Start a headless service on the listen interface").action(() => {
     if (!config('listen')) throw Error("Service listen address is required to start service");
 });
 program.command('stop').description("Stops a headless service using the listen interface").action(() => {
-    stopping = true;
     var address = config('listen');
     if (!address) throw Error("Service listen address is required to stop service");
-    var worker = replyTo(remote(address))
-        .on('error', err => logger.error(err, err.stack));
+        var worker = replyTo(remote(address)).on('error', () => worker.disconnect());
     return new Promise((stopped, abort) => {
         process.on('SIGINT', abort);
         process.on('SIGTERM', abort);
         worker.handle('stop', stopped).request('stop').catch(abort);
-    }).catch(err => err && logger.error(err, err.stack)).then(() => worker.disconnect());
+    }).catch(err => worker.connected && err && logger.error(err, err.stack)).then(() => worker.disconnect());
 });
 
 if (require.main === module) {
@@ -122,7 +119,8 @@ if (require.main === module) {
             app.on('quit', () => server.close());
             app.on('exit', () => server.close());
         }
-    } else if (config('listen') && !stopping) {
+    } else if (config('listen') && _.first(program.args) != 'stop'
+            && _.first(program.args) != 'config' && _.first(program.args) != 'fetch') {
         var ptrading = createInstance();
         var server = listen(config('listen'), ptrading);
         process.on('SIGINT', () => ptrading.close())
@@ -187,9 +185,11 @@ function listen(address, ptrading) {
     var addr = parseLocation(address, config('key_pem'));
     var auth = addr.auth ? 'Basic ' + addr.auth.toString('base64') : undefined;
     var server = addr.scheme == 'https:' || addr.scheme == 'wss:' ? https.createServer({
-        key: fs.readFileSync(path.resolve(config('prefix'), config('key_pem'))),
-        cert: fs.readFileSync(path.resolve(config('prefix'), config('cert_pem'))),
-        ca: fs.readFileSync(path.resolve(config('prefix'), config('ca_pem')))
+        key: readFileSync(config('tls.key_pem')),
+        cert: readFileSync(config('tls.cert_pem')),
+        ca: readFileSync(config('tls.ca_pem')),
+        requestCert: config('tls.request_cert'),
+        rejectUnauthorized: config('tls.reject_unauthorized')
     }) : http.createServer();
     var wsserver = new ws.Server({
         server: server, path: addr.path,
@@ -242,6 +242,10 @@ function listen(address, ptrading) {
         }
     }
     return server;
+}
+
+function readFileSync(filename) {
+    if (filename) return fs.readFileSync(path.resolve(config('prefix'), filename));
 }
 
 function parseLocation(location, secure) {

@@ -29,12 +29,15 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+const fs = require('fs');
+const path = require('path');
 const url = require('url');
 const ws = require('ws');
 const EventEmitter = require('events');
 const _ = require('underscore');
 const expect = require('chai').expect;
 const logger = require('./logger.js');
+const config = require('./ptrading-config.js');
 const AssertionError = require('chai').AssertionError;
 const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
 
@@ -44,7 +47,12 @@ const DEFAULT_PATH = '/ptrading/' + minor_version + '/workers';
 
 var remote = module.exports = function(socket, label) {
     if (typeof socket == 'string' || typeof socket == 'number')
-        return remote(new ws(parseLocation(socket, true).href), label || socket);
+        return remote(new ws(parseLocation(socket, true).href, {
+            key: readFileSync(config('tls.key_pem')),
+            cert: readFileSync(config('tls.cert_pem')),
+            ca: readFileSync(config('tls.ca_pem')),
+            rejectUnauthorized: config('tls.reject_unauthorized')
+        }), label || socket);
     var buf = '';
     var emitter = new EventEmitter();
     socket.on('open', (code, reason) => {
@@ -90,6 +98,10 @@ var remote = module.exports = function(socket, label) {
         }
     });
 };
+
+function readFileSync(filename) {
+    if (filename) return fs.readFileSync(path.resolve(config('prefix'), filename));
+}
 
 function parseLocation(location, secure) {
     var parsed = typeof location == 'number' || location.match(/^\d+$/) ? {port: +location} :
