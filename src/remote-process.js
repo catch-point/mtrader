@@ -29,6 +29,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+const url = require('url');
 const ws = require('ws');
 const EventEmitter = require('events');
 const _ = require('underscore');
@@ -39,13 +40,11 @@ const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$
 
 const EOM = '\r\n\r\n';
 
-const PATH = '/ptrading/' + minor_version + '/workers';
+const DEFAULT_PATH = '/ptrading/' + minor_version + '/workers';
 
 var remote = module.exports = function(socket, label) {
-    if (typeof socket == 'string' && ~socket.indexOf('://'))
-        return remote(new ws(socket), label || socket);
-    if (typeof socket == 'string')
-        return remote(new ws('ws://' + socket + PATH), label || socket);
+    if (typeof socket == 'string' || typeof socket == 'number')
+        return remote(new ws(parseLocation(socket, true).href), label || socket);
     var buf = '';
     var emitter = new EventEmitter();
     socket.on('open', (code, reason) => {
@@ -57,13 +56,12 @@ var remote = module.exports = function(socket, label) {
             var chunks = data.split('\r\n\r\n');
             if (buf) chunks[0] = buf + chunks[0];
             buf = chunks.pop();
-            if (_.isEmpty(chunks) && ~buf.indexOf(EOM)) {
+            if (_.isEmpty(chunks) && ~buf.lastIndexOf(EOM)) {
                 chunks = chunks.concat(buf.split(EOM));
                 buf = chunks.pop();
             }
             chunks.forEach(chunk => emitter.emit('message', JSON.parse(chunk)));
         } catch(err) {
-            socket.close();
             emitter.emit('error', err);
         }
     }).on('close', (code, reason) => {
@@ -93,12 +91,17 @@ var remote = module.exports = function(socket, label) {
     });
 };
 
-function parseAddressPort(addr) {
-    expect(addr).to.be.a('string');
-    var port = addr.match(/:\d+$/) ? parseInt(addr.substring(addr.lastIndexOf(':')+1)) :
-        addr.match(/^\d+$/) ? parseInt(addr) : 0;
-    var address = addr.match(/^\[.*\]:\d+$/) ? addr.substring(1, addr.lastIndexOf(':')-1) :
-        addr.match(/:\d+$/) ? addr.substring(0, addr.lastIndexOf(':')) :
-        addr.match(/^\d+$/) ? null : addr;
-    return {address, port};
+function parseLocation(location, secure) {
+    var parsed = typeof location == 'number' || location.match(/^\d+$/) ? {port: +location} :
+        ~location.indexOf('//') ? url.parse(location) :
+        secure ? url.parse('wss://' + location) :
+        url.parse('ws://' + location);
+    parsed.scheme = parsed.scheme || (secure ? 'wss:' : 'ws:');
+    parsed.port = parsed.port || (secure ? 443 : 80);
+    parsed.hostname = parsed.hostname || 'localhost';
+    parsed.host = parsed.host || (parsed.hostname + ':' + parsed.port);
+    parsed.href = parsed.href || (parsed.scheme + '//' + parsed.host);
+    if (!parsed.path) parsed.href = parsed.href + DEFAULT_PATH;
+    parsed.path = parsed.path || DEFAULT_PATH;
+    return parsed;
 }

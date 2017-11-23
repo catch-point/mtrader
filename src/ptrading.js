@@ -31,7 +31,10 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+const fs = require('fs');
+const path = require('path');
 const http = require('http');
+const https = require('https');
 const _ = require('underscore');
 const ws = require('ws');
 const shell = require('shell');
@@ -43,7 +46,7 @@ const config = require('./ptrading-config.js');
 const shellError = require('./shell-error.js');
 const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
 
-const PATH = '/ptrading/' + minor_version + '/workers';
+const DEFAULT_PATH = '/ptrading/' + minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
 
 var program = require('commander').version(require('../package.json').version)
@@ -66,10 +69,12 @@ var program = require('commander').version(require('../package.json').version)
     .option('--listen [address:port]', "Interface and TCP port to listen for jobs")
     .option('--stop', "Signals all remote workers to stop and shutdown");
 
+var stopping = false;
 program.command('start').description("Start a headless service on the listen interface").action(() => {
     if (!config('listen')) throw Error("Service listen address is required to start service");
 });
 program.command('stop').description("Stops a headless service using the listen interface").action(() => {
+    stopping = true;
     var address = config('listen');
     if (!address) throw Error("Service listen address is required to stop service");
     var worker = replyTo(remote(address))
@@ -117,7 +122,7 @@ if (require.main === module) {
             app.on('quit', () => server.close());
             app.on('exit', () => server.close());
         }
-    } else if (config('listen') && !program.stop) {
+    } else if (config('listen') && !stopping) {
         var ptrading = createInstance();
         var server = listen(config('listen'), ptrading);
         process.on('SIGINT', () => ptrading.close())
@@ -179,8 +184,20 @@ function createInstance() {
 }
 
 function listen(address, ptrading) {
-    var server = http.createServer();
-    var wsserver = new ws.Server({server: server, path: PATH, clientTracking: true, perMessageDeflate: true});
+    var addr = parseLocation(address, config('key_pem'));
+    var auth = addr.auth ? 'Basic ' + addr.auth.toString('base64') : undefined;
+    var server = addr.scheme == 'https:' || addr.scheme == 'wss:' ? https.createServer({
+        key: fs.readFileSync(path.resolve(config('prefix'), config('key_pem'))),
+        cert: fs.readFileSync(path.resolve(config('prefix'), config('cert_pem'))),
+        ca: fs.readFileSync(path.resolve(config('prefix'), config('ca_pem')))
+    }) : http.createServer();
+    var wsserver = new ws.Server({
+        server: server, path: addr.path,
+        clientTracking: true, perMessageDeflate: true,
+        verifyClient: auth ? info => {
+            return info.req.headers.authorization == auth;
+        } : undefined
+    });
     wsserver.on('connection', (ws, message) => {
         var socket = message.socket;
         var label = socket.remoteAddress + ':' + socket.remotePort
@@ -218,9 +235,8 @@ function listen(address, ptrading) {
     if (address && typeof address == 'boolean') {
         server.listen();
     } else {
-        var addr = parseAddressPort(address);
         if (addr.address) {
-            server.listen(addr.port, addr.address);
+            server.listen(addr.port, addr.hostname);
         } else {
             server.listen(addr.port);
         }
@@ -228,12 +244,17 @@ function listen(address, ptrading) {
     return server;
 }
 
-function parseAddressPort(addr) {
-    expect(addr).to.be.a('string');
-    var port = addr.match(/:\d+$/) ? parseInt(addr.substring(addr.lastIndexOf(':')+1)) :
-        addr.match(/^\d+$/) ? parseInt(addr) : 0;
-    var address = addr.match(/^\[.*\]:\d+$/) ? addr.substring(1, addr.lastIndexOf(':')-1) :
-        addr.match(/:\d+$/) ? addr.substring(0, addr.lastIndexOf(':')) :
-        addr.match(/^\d+$/) ? null : addr;
-    return {address, port};
+function parseLocation(location, secure) {
+    var parsed = typeof location == 'number' || location.match(/^\d+$/) ? {port: +location} :
+        ~location.indexOf('//') ? url.parse(location) :
+        secure ? url.parse('wss://' + location) :
+        url.parse('ws://' + location);
+    parsed.scheme = parsed.scheme || (secure ? 'wss:' : 'ws:');
+    parsed.port = parsed.port || (secure ? 443 : 80);
+    parsed.hostname = parsed.hostname || 'localhost';
+    parsed.host = parsed.host || (parsed.hostname + ':' + parsed.port);
+    parsed.href = parsed.href || (parsed.scheme + '//' + parsed.host);
+    if (!parsed.path) parsed.href = parsed.href + DEFAULT_PATH;
+    parsed.path = parsed.path || DEFAULT_PATH;
+    return parsed;
 }
