@@ -29,6 +29,10 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
+#
+# Usage: bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/uninstall-worker.sh)
+#
+
 NAME=ptrading-worker
 
 # Read configuration variable file if it is present
@@ -64,22 +68,44 @@ else
 fi
 
 # uninstall/upgrade software
-sudo -iu "$DAEMON_USER" npm uninstall ptrading -g
+PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
+if [ "$PREFIX" = "$BASEDIR" ]; then
+  sudo -iu "$DAEMON_USER" npm uninstall ptrading -g
+elif [ "$(id -u)" = "0" ]; then
+  npm uninstall ptrading -g
+elif [ ! -x "$(which ptrading)" ]; then
+  PREFIX=$(npm prefix)
+  npm uninstall ptrading
+fi
 
 # Remove configuration
-if [ -f "$BASEDIR/etc/ptrading.json" ]; then
-  rm "$BASEDIR/etc/ptrading.json"
-  # generate certificates
-  if [ -x "$(which openssl)" ]; then
-    rm "$BASEDIR/etc/key.pem" "$BASEDIR/etc/csr.pem" "$BASEDIR/etc/cert.pem"
+if [ -f "$PREFIX/etc/ptrading.json" ]; then
+  if [ "$PREFIX" = "$BASEDIR" ]; then
+    CONFIG_DIR=etc
+    DATA_DIR=var
+  elif [ "$PREFIX" = "/usr" ]; then
+    CONFIG_DIR=../etc/$NAME
+    DATA_DIR=../var/cache/$NAME
+  elif [ -d "$PREFIX/etc/$NAME" -o -d "$PREFIX/var/cache/$NAME" ]; then
+    CONFIG_DIR=etc/$NAME
+    DATA_DIR=var/cache/$NAME
+  else
+    CONFIG_DIR=etc
+    DATA_DIR=var
   fi
-  rm -rf "$BASEDIR/var"
+  rm "$PREFIX/etc/ptrading.json"
+  # remove generated certificates
+  if [ -x "$(which openssl)" ]; then
+    rm "$PREFIX/etc/ptrading-key.pem" "$PREFIX/etc/ptrading-csr.pem" "$PREFIX/etc/ptrading-cert.pem"
+  fi
+  rm -rf "$PREFIX/$DATA_DIR"
+  rmdir "$PREFIX/$CONFIG_DIR"
 fi
 
 # uninstall daemon user/group
 if [ "$(id -u)" = "0" ]; then
   if id "$DAEMON_USER" >/dev/null 2>&1 ; then
-    deluser "$DAEMON_USER"
+    deluser --remove-home "$DAEMON_USER"
   fi
   if grep -q "$DAEMON_GROUP" /etc/group ; then
       delgroup "$DAEMON_GROUP"

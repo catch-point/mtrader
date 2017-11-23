@@ -29,6 +29,10 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
+#
+# Usage: bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/install-worker.sh)
+#
+
 NAME=ptrading-worker
 
 # Read configuration variable file if it is present
@@ -45,11 +49,8 @@ fi
 if [ ! -x "$(which npm)" ]; then
   echo "node.js/npm is not installed" 1>&2
   if [ -x "$(which apt-get)" -a "$(id -u)" = "0" ]; then
-    read -p "Do you want to install it now? [Y/n]" yes
-    if [[ "$yes" =~ ^[Yy]?$ ]]; then
-      curl -sL https://deb.nodesource.com/setup_8.x | bash -
-      apt-get install nodejs
-    fi
+    curl -sL https://deb.nodesource.com/setup_8.x | bash -
+    apt-get install nodejs
   fi
 fi
 if [ ! -x "$(which npm)" ]; then
@@ -84,13 +85,32 @@ else
 fi
 
 # Install/upgrade software
-sudo -iu "$DAEMON_USER" npm install ptrading/ptrading -g
-EXEC=$(sudo -iu "$DAEMON_USER" npm prefix -g)/bin/ptrading
+PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
+if [ "$PREFIX" = "$BASEDIR" ]; then
+  sudo -iu "$DAEMON_USER" npm install ptrading/ptrading -g
+elif [ "$(id -u)" = "0" ]; then
+  npm install ptrading/ptrading -g
+elif [ ! -x "$(which ptrading)" ]; then
+  PREFIX=$(npm prefix)
+  npm install ptrading/ptrading
+fi
 
 # Setup configuration
-if [ ! -f "$BASEDIR/etc/ptrading.json" ]; then
-  mkdir -p "$BASEDIR/etc"
-  mkdir -p "$BASEDIR/var"
+if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
+  if [ "$PREFIX" = "$BASEDIR" ]; then
+    CONFIG_DIR=etc
+    DATA_DIR=var
+  elif [ "$PREFIX" = "/usr" ]; then
+    CONFIG_DIR=../etc/$NAME
+    DATA_DIR=../var/cache/$NAME
+  elif [ -d "$PREFIX/etc" -o -d "$PREFIX/var" ]; then
+    CONFIG_DIR=etc/$NAME
+    DATA_DIR=var/cache/$NAME
+  else
+    CONFIG_DIR=etc
+    DATA_DIR=var
+  fi
+  mkdir -p "$PREFIX/etc" "$PREFIX/$CONFIG_DIR" "$PREFIX/$DATA_DIR"
   # generate certificates
   if [ -x "$(which openssl)" ]; then
     if [ -z "$PORT" -a "$(id -u)" = "0" ]; then
@@ -101,25 +121,26 @@ if [ ! -f "$BASEDIR/etc/ptrading.json" ]; then
     elif [ -z "$PORT" ]; then
       PORT=1443
     fi
-    if [ ! -f "$BASEDIR/etc/key.pem" ] ; then
-      openssl genrsa -out "$BASEDIR/etc/key.pem" 2048
-      chmod go-rwx "$BASEDIR/etc/key.pem"
+    if [ ! -f "$PREFIX/etc/ptrading-key.pem" ] ; then
+      openssl genrsa -out "$PREFIX/etc/ptrading-key.pem" 2048
+      chmod go-rwx "$PREFIX/etc/ptrading-key.pem"
+      chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/ptrading-key.pem"
     fi
-    if [ ! -f "$BASEDIR/etc/csr.pem" ] ; then
-      openssl req -new -sha256 -key "$BASEDIR/etc/key.pem" -out "$BASEDIR/etc/csr.pem"
+    if [ ! -f "$PREFIX/etc/ptrading-csr.pem" ] ; then
+      openssl req -new -sha256 -key "$PREFIX/etc/ptrading-key.pem" -out "$PREFIX/etc/ptrading-csr.pem"
     fi
-    if [ ! -f "$BASEDIR/etc/cert.pem" ] ; then
-      openssl x509 -req -in "$BASEDIR/etc/csr.pem" -signkey "$BASEDIR/etc/key.pem" -out "$BASEDIR/etc/cert.pem"
+    if [ ! -f "$PREFIX/etc/cert.pem" ] ; then
+      openssl x509 -req -in "$PREFIX/etc/ptrading-csr.pem" -signkey "$PREFIX/etc/ptrading-key.pem" -out "$PREFIX/etc/ptrading-cert.pem"
     fi
-      cat > "$BASEDIR/etc/ptrading.json" << EOF
+      cat > "$PREFIX/etc/ptrading.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
-  "config_dir": "etc",
-  "data_dir": "var",
+  "config_dir": "$CONFIG_DIR",
+  "data_dir": "$DATA_DIR",
   "listen": "$PORT",
-  "key_pem": "etc/key.pem",
-  "cert_pem": "etc/cert.pem",
-  "ca_pem": "etc/cert.pem"
+  "key_pem": "etc/ptrading-key.pem",
+  "cert_pem": "etc/ptrading-cert.pem",
+  "ca_pem": "etc/ptrading-cert.pem"
 }
 EOF
   else
@@ -131,16 +152,16 @@ EOF
     elif [ -z "$PORT" ]; then
       PORT=1880
     fi
-    cat > "$BASEDIR/etc/ptrading.json" << EOF
+    cat > "$PREFIX/etc/ptrading.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
-  "config_dir": "etc",
-  "data_dir": "var",
+  "config_dir": "$CONFIG_DIR",
+  "data_dir": "$DATA_DIR",
   "listen": "$PORT"
 }
 EOF
   fi
-  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$BASEDIR/etc" "$BASEDIR/var"
+  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/$CONFIG_DIR" "$PREFIX/$DATA_DIR"
 fi
 
 # install daemon
@@ -151,9 +172,9 @@ Description=$NAME
 After=network.target
 
 [Service]
-ExecStart=$EXEC start
+ExecStart=$PREFIX/bin/ptrading start
 ExecReload=/bin/kill -HUP $MAINPID
-ExecStop=$EXEC stop
+ExecStop=$PREFIX/bin/ptrading stop
 Restart=always
 User=$DAEMON_USER
 Group=$DAEMON_GROUP
@@ -172,4 +193,6 @@ fi
 
 if [ -f "/etc/systemd/system/$NAME.service" ]; then
   echo "Use 'journalctl --follow -u $NAME' as root to see the output"
+else
+  echo "Run '$PREFIX/bin/ptrading start' to start the service"
 fi
