@@ -198,13 +198,14 @@ WorkingDirectory=$BASEDIR
 [Install]
 WantedBy=multi-user.target
 EOF
-  systemctl enable --now "$NAME"
+  systemctl enable "$NAME"
+  systemctl start "$NAME"
 elif [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
   systemctl restart "$NAME"
 fi
 
 if [ -f "/etc/systemd/system/$NAME.service" ]; then
-  journalctl -n 2 -u "$NAME"
+  systemctl status "$NAME"
 else
   echo "Run '$PREFIX/bin/ptrading start' to start the service"
 fi
