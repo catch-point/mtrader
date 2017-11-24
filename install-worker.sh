@@ -113,7 +113,7 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
   fi
   mkdir -p "$PREFIX/etc" "$PREFIX/$CONFIG_DIR" "$PREFIX/$DATA_DIR"
   if [ -z "$USERINFO" ]; then
-    USERINFO=$(nodejs -pe '[require("crypto").randomBytes(12)].map(rnd=>rnd.readUIntBE(0,6).toString(36)+":"+rnd.readUIntBE(6,6).toString(36)).toString()')
+    USERINFO=$(nodejs -pe '[require("crypto").randomBytes(4)].map(rnd=>rnd.readUIntBE(0,2).toString(36)+":"+rnd.readUIntBE(2,2).toString(36)).toString()')
   fi
   if [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" -a -x "$(which openssl)" ]; then
     DEFAULT_PORT=443
