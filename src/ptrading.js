@@ -185,7 +185,7 @@ function createInstance() {
 
 function listen(address, ptrading) {
     var addr = parseLocation(address, false);
-    var auth = addr.auth ? 'Basic ' + addr.auth.toString('base64') : undefined;
+    var auth = addr.auth ? 'Basic ' + new Buffer(addr.auth).toString('base64') : undefined;
     var server = addr.protocol == 'https:' || addr.protocol == 'wss:' ? https.createServer({
         key: readFileSync(config('tls.key_pem')),
         cert: readFileSync(config('tls.cert_pem')),
