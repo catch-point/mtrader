@@ -112,6 +112,9 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
     DATA_DIR=var
   fi
   mkdir -p "$PREFIX/etc" "$PREFIX/$CONFIG_DIR" "$PREFIX/$DATA_DIR"
+  if [ -z "$USERINFO" ]; then
+    USERINFO=$(nodejs -pe '[require("crypto").randomBytes(12)].map(rnd=>rnd.readUIntBE(0,6).toString(36)+":"+rnd.readUIntBE(6,6).toString(36)).toString()')
+  fi
   if [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" -a -x "$(which openssl)" ]; then
     DEFAULT_PORT=443
   elif [ -z "$DEFAULT_PORT" -a -x "$(which openssl)" ]; then
@@ -120,12 +123,6 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
     DEFAULT_PORT=80
   elif [ -z "$DEFAULT_PORT" -a ]; then
     DEFAULT_PORT=1880
-  fi
-  if [ -z "$HOST" ]; then
-    read -p "Hostname (e.g. interface to listen on) [$(hostname -f |tr '[A-Z]' '[a-z]')]:" HOST
-    if [ -z "$HOST" ]; then
-      HOST=$(hostname -f |tr '[A-Z]' '[a-z]')
-    fi
   fi
   if [ -z "$PORT" ]; then
     read -p "Port (e.g. port to listen on) [$DEFAULT_PORT]:" PORT
@@ -137,9 +134,9 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
     setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
   fi
   # generate certificates
-  if [ -x "$(which openssl)" ]; then
+  if [ -x "$(which openssl)" -a "$PORT" != 80 ]; then
     if [ ! -f "$PREFIX/etc/ptrading-key.pem" ] ; then
-      echo -e "\x1b[1m\x1b[33m*** Use $HOST:$PORT for the Common Name below for direct clients ***\x1b[0m" 1>&2
+      echo -e "\x1b[1m\x1b[33m*** Use FQDN as the Common Name below for direct clients ***\x1b[0m" 1>&2
       openssl genrsa -out "$PREFIX/etc/ptrading-key.pem" 2048
       chmod go-rwx "$PREFIX/etc/ptrading-key.pem"
       chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/ptrading-key.pem"
@@ -150,12 +147,19 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
     if [ ! -f "$PREFIX/etc/cert.pem" ] ; then
       openssl x509 -req -in "$PREFIX/etc/ptrading-csr.pem" -signkey "$PREFIX/etc/ptrading-key.pem" -out "$PREFIX/etc/ptrading-cert.pem"
     fi
-      cat > "$PREFIX/etc/ptrading.json" << EOF
+    AUTHORITY=$(openssl x509 -inform PEM -in "$PREFIX/etc/ptrading-cert.pem" -text |grep Subject |grep CN= |sed 's/.*CN=//')
+    if [ -z "$HOST" ]; then
+      read -p "Hostname (e.g. interface to listen on) [$AUTHORITY]:" HOST
+      if [ -z "$HOST" ]; then
+        HOST=$AUTHORITY
+      fi
+    fi
+    cat > "$PREFIX/etc/ptrading.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "data_dir": "$DATA_DIR",
-  "listen": "wss://$HOST:$PORT",
+  "listen": "wss://$USERINFO@$HOST:$PORT",
   "tls": {
     "key_pem": "etc/ptrading-key.pem",
     "cert_pem": "etc/ptrading-cert.pem",
@@ -166,12 +170,18 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
 }
 EOF
   else
+    if [ -z "$HOST" ]; then
+      read -p "Hostname (e.g. interface to listen on) [$(hostname -f |tr '[A-Z]' '[a-z]')]:" HOST
+      if [ -z "$HOST" ]; then
+        HOST=$(hostname -f |tr '[A-Z]' '[a-z]')
+      fi
+    fi
     cat > "$PREFIX/etc/ptrading.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "data_dir": "$DATA_DIR",
-  "listen": "ws://$HOST:$PORT",
+  "listen": "ws://$USERINFO@$HOST:$PORT",
   "tls": {
     "request_cert": false,
     "reject_unauthorized": false
