@@ -127,7 +127,7 @@ function close(datasources) {
 }
 
 function help(datasources) {
-    var exchangeOptions = _.map(config('exchanges'), _.keys);
+    var exchangeOptions = _.uniq(_.flatten(_.map(config('exchanges'), _.keys), true));
     return Promise.all(_.map(datasources, datasource => {
         return datasource.help();
     })).then(helps => {
@@ -139,7 +139,7 @@ function help(datasources) {
             }, _.omit(h.options, exchangeOptions), help.options);
             return {
                 name: help.name || h.name,
-                usage: 'fetch(options)',
+                usage: help.usage,
                 description: help.description || h.description,
                 properties: _.union(help.properties, h.properties, lookupProperties),
                 options: _.mapObject(options, (option, name) => {
@@ -152,7 +152,15 @@ function help(datasources) {
                     else return option;
                 })
             };
-        }, {}));
+        }, {
+            usage: 'fetch(options)',
+            options:{
+                label: {
+                    usage: '<name>',
+                    description: "Identifier used in logging messages"
+                }
+            }
+        }));
     });
 }
 

@@ -89,6 +89,7 @@ function help(fetch) {
             description: "Formats historic data into provided columns",
             properties: variables,
             options: _.extend({}, _.omit(downstream, help.lookup.properties), {
+                label: downstream.label,
                 symbol: downstream.symbol,
                 exchange: downstream.exchange,
                 begin: downstream.begin,

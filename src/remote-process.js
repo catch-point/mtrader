@@ -87,7 +87,10 @@ var remote = module.exports = function(socket, label) {
     });
     emitter.remote = true;
     emitter.pid = label || '';
-    emitter.send = (message, onerror) => socket.send(JSON.stringify(message) + EOM, onerror);
+    emitter.send = (message, onerror) => {
+        logger.log(message.payload && message.payload.label || message.cmd, label);
+        return socket.send(JSON.stringify(message) + EOM, onerror);
+    };
     emitter.disconnect = () => socket.close();
     emitter.kill = () => socket.terminate();
     return _.extend(emitter, {
