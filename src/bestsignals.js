@@ -135,13 +135,13 @@ function bestsignal(optimize, signal, options) {
         variables: _.defaults(signal_variable, options.variables),
         parameter_values: _.object(pnames, pvalues)
     }, options))
-      .then(solutions => solutions.map((solution, i) => ({
+      .then(solutions => solutions.map((solution, i) => _.defaults({
         score: solution.score,
         signals: [signal],
         variables: options.variables,
         parameters: solution.parameters,
         parameter_values: _.object(pnames, pvalues)
-    })));
+    }, options)));
 }
 
 /**

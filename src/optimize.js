@@ -80,10 +80,6 @@ function help(collect) {
             description: "Searches possible parameter values to find a higher score",
             properties: ['score', 'parameters'],
             options: _.extend({}, help.options, {
-                label: {
-                    usage: '<name>',
-                    description: "Identifier used in logging messages"
-                },
                 signal_count: {
                     usage: '<number of results>',
                     description: "Number of solutions to include in result"
@@ -95,6 +91,10 @@ function help(collect) {
                 sample_count: {
                     usage: '<number of samples>',
                     description: "Number of samples to search before searching the entire date range (begin-end)"
+                },
+                sample_termination: {
+                    usage: 'PT1M',
+                    description: "Amount of time spent searching for sample solutions"
                 },
                 eval_validity: {
                     usage: '<expression>',
@@ -131,12 +131,12 @@ function optimize(collect, prng, options) {
     var pnames = _.keys(options.parameter_values);
     var pvalues = pnames.map(name => options.parameter_values[name]);
     return searchParameters(collect, prng, pnames, count, options)
-      .then(solutions => solutions.map((solution, i) => _.defaults({
+      .then(solutions => solutions.map((solution, i) => ({
         score: solution.score,
         parameters: _.object(pnames,
             solution.pindex.map((idx, i) => pvalues[i][idx])
         )
-    }, options))).then(results => {
+    }))).then(results => {
         if (options.signal_count) return results;
         else return _.first(results);
     });
@@ -217,7 +217,7 @@ function sampleSolutions(collect, prng, pnames, space, count, options) {
         var pvalues = pnames.map(name => options.parameter_values[name]);
     var size = options.population_size ||
         Math.max(_.max(pvalues.map(_.size)), count * 2, MIN_POPULATION);
-    var termination = options.termination &&
+    var termination = options.sample_termination || options.termination &&
         moment.duration(moment.duration(options.termination).asMilliseconds()/3).toISOString();
     var optionset = _.range(count).map(() => {
         var periodBegin = moment(begin).add(Math.round(prng() * period_units), unit);
@@ -271,6 +271,34 @@ function initialPopulation(prng, pnames, space, count, options) {
 }
 
 /**
+ * Creates the fitness function for a set of parameter values
+ */
+function fitness(collect, options, pnames) {
+    var pvalues = pnames.map(name => options.parameter_values[name]);
+    var score_column = getScoreColumn(options);
+    return function(candidate) {
+        var parameters = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
+        var picked = ['portfolio', 'columns', 'variables', 'parameters', 'filter', 'precedence', 'order', 'pad_leading', 'reset_every', 'tail'];
+        var opts = _.defaults({
+            tail: 1,
+            transient: true, // don't persist parameter values
+            label: (options.label ? options.label + ' ' : '') + candidate.pindex.map((idx,i) => {
+                return options.parameter_values[pnames[i]][idx];
+            }).join(','),
+            portfolio: [_.pick(options, picked)],
+            columns: {[score_column]: options.eval_score},
+            parameters: parameters
+        }, _.omit(options, picked));
+        return collect(opts)
+          .then(_.last).then(_.property(score_column)).then(score => {
+            return _.extend(candidate, {
+                score: score
+            });
+        });
+    };
+}
+
+/**
  * Cycles between candidate selection and mutation until the score of the best/worst selected solution is the same for `stale` number of iterations
  */
 function adapt(selection, mutation, pnames, terminateAt, stale, options, population, stats) {
@@ -292,31 +320,6 @@ function adapt(selection, mutation, pnames, terminateAt, stale, options, populat
             mtime: Date.now()
         });
     });
-}
-
-/**
- * Creates the fitness function for a set of parameter values
- */
-function fitness(collect, options, pnames) {
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var score_column = getScoreColumn(options);
-    return function(candidate) {
-        var parameters = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
-        var picked = ['portfolio', 'columns', 'variables', 'parameters', 'filter', 'precedence', 'order', 'pad_leading', 'reset_every'];
-        var opts = _.defaults({
-            tail: 1,
-            transient: true, // don't persist parameter values
-            portfolio: [_.pick(options, picked)],
-            columns: {[score_column]: options.eval_score},
-            parameters: parameters
-        }, _.omit(options, picked));
-        return collect(opts)
-          .then(_.last).then(_.property(score_column)).then(score => {
-            return _.extend(candidate, {
-                score: score
-            });
-        });
-    };
 }
 
 /**
