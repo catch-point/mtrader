@@ -228,11 +228,14 @@ function getReferences(variables) {
     var follow = _.clone(references);
     while (_.reduce(follow, (more, reference, name) => {
         if (!reference.length) return more;
-        follow[name] = _.uniq(_.flatten(reference.map(ref => ref == name ? [] : follow[ref]), true));
+        var followed = _.uniq(_.flatten(reference.map(ref => follow[ref]), true));
+        var cont = more || follow[name].length != followed.length ||
+            followed.length != _.intersection(follow[name], followed).length;
+        follow[name] = followed;
         references[name] = reference.reduce((union, ref) => {
             return _.union(union, references[ref]);
         }, references[name]);
-        return more || follow[name].length;
+        return cont;
     }, false));
     return references;
 }

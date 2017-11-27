@@ -39,7 +39,7 @@ const rolling = require('./rolling-functions.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 
-const MIN_POPULATION = 8;
+const MIN_POPULATION = 2;
 
 /**
  * Given possible parameter_values, searches for better parameter values
@@ -155,6 +155,7 @@ function searchParameters(collect, prng, pnames, count, options) {
         sampleSolutions(collect, prng, pnames, space, count, options) :
         initialPopulation(prng, pnames, space, count, options);
     return Promise.resolve(createPopulation).then(population => {
+        logger.debug("Initial population of", population.length, options.label || '\b');
         var fitnessFn = fitness(collect, options, pnames);
         var selectionFn = selection.bind(this, fitnessFn, Math.floor(_.size(population)/2));
         var mutationFn = mutation.bind(this, prng, _.size(population), pvalues, space);

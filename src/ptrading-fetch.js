@@ -95,6 +95,8 @@ if (require.main === module) {
     } else {
         program.help();
     }
+} else if (config('workers') == 0) {
+    module.exports = Fetch();
 } else {
     var program = usage(new commander.Command());
     var child = replyTo(config.fork(module.filename, program));

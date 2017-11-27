@@ -266,10 +266,11 @@ function checkCircularVariableReference(fields, options) {
 }
 
 /**
- * Returns an array of variable names used by at least one of variables/criteria/precedence/filter/order
+ * Returns an array of variable names used by at least one of columns/criteria/precedence/filter/order
  */
 function getUsedColumns(columns, options) {
-    var variables = _.defaults({}, columns, options.columns, options.variables);
+    var itSelf = (v, k) => v==k;
+    var variables = _.defaults(_.omit(columns, itSelf), _.omit(options.columns, itSelf), options.variables);
     var exprs = _.flatten(_.compact([
         options.criteria, options.precedence, options.filter, options.order
     ]), true);
@@ -314,11 +315,14 @@ function getReferences(variables, includeRolling) {
     var follow = _.clone(references);
     while (_.reduce(follow, (more, reference, name) => {
         if (!reference.length) return more;
-        follow[name] = _.uniq(_.flatten(reference.map(ref => ref == name ? [] : follow[ref]), true));
+        var followed = _.uniq(_.flatten(reference.map(ref => ref == name ? [] : follow[ref]), true));
+        var cont = more || follow[name].length != followed.length ||
+            followed.length != _.intersection(follow[name], followed).length;
+        follow[name] = followed;
         references[name] = reference.reduce((union, ref) => {
             return _.union(union, references[ref]);
         }, references[name]);
-        return more || follow[name].length;
+        return cont;
     }, false));
     return references;
 };
@@ -328,7 +332,7 @@ function getReferences(variables, includeRolling) {
  */
 function getPortfolio(portfolio, options) {
     var opts = _.omit(options, [
-        'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading'
+        'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading', 'tail', 'head'
     ]);
     var array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :

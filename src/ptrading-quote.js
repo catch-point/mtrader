@@ -38,7 +38,6 @@ const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const Quote = require('./quote.js');
-const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const expect = require('chai').expect;
@@ -66,7 +65,6 @@ function usage(command) {
         .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")
         .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero for an interval to be included in the result")
         .option('-o, --offline', "Disable data updates")
-        .option('--workers <numOfWorkers>', 'Number of workers to spawn')
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
@@ -111,86 +109,114 @@ if (require.main === module) {
 } else {
     var fetch = require('./ptrading-fetch.js');
     var program = usage(new commander.Command());
-    var workers = [];
-    var stoppedWorkers = [];
-    module.exports = createInstance(fetch, program, workers, stoppedWorkers);
-    process.on('SIGHUP', () => stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length)));
+    module.exports = createInstance(fetch, program);
+    process.on('SIGHUP', () => module.exports.reload());
 }
 
-function createInstance(fetch, program, workers, stoppedWorkers) {
+function createInstance(fetch, program) {
+    var promiseKeys;
+    var promiseDef;
+    var instance = function(options) {
+        if (!promiseKeys) {
+            promiseKeys = direct({help: true})
+                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseDef = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
+        }
+        return promiseKeys.then(keys => promiseDef.then(defaults => {
+            return _.extend({}, defaults, _.pick(options, keys));
+        })).then(options => {
+            if (options.help || _.isEmpty(queue.getWorkers()))
+                return direct(options);
+            else return queue(options);
+        });
+    };
+    instance.close = function() {
+        queue.close().then(fetch.close);
+    };
+    instance.shell = shell.bind(this, program.description(), instance);
+    instance.reload = () => {
+        queue.reset();
+    };
+    var direct = Quote(fetch);
+    var queue = createQueue(createWorkers.bind(this, program, fetch, instance));
+    return instance;
+}
+
+function createQueue(createWorkers) {
     var queue = [];
+    var workers = [];
+    var stoppedWorkers = [];
     var quote = function(options) {
         var master = getMasterWorker(workers, options);
         var slave = chooseSlaveWorker(workers, master, options);
-        var opts = slave.process.remote || slave == master ? options :
+        var opts = slave == master ? options :
             _.extend({read_only: true}, options);
         return slave.request('quote', opts).catch(err => {
-            if (slave.process.remote && options.read_only != false) {
-                logger.debug("Quote", slave.process.pid, err, err.stack);
-            } else {
-                if (!err || !err.message) throw err;
-                else if (!~err.message.indexOf('read_only')) throw err;
-                else if (!opts.read_only || _.has(options, 'read_only')) throw err;
-                else if (slave == getMasterWorker(workers, options)) throw err;
-            }
+            if (!err || !err.message) throw err;
+            else if (!~err.message.indexOf('read_only')) throw err;
+            else if (!opts.read_only || _.has(options, 'read_only')) throw err;
+            else if (slave == getMasterWorker(workers, options)) throw err;
             logger.debug("Retrying", options.label || '\b', "using master node", master.process.pid);
             return quote(_.extend({read_only: false}, options)); // retry using master
         });
     };
     var check_queue = function() {
         if (_.isEmpty(workers)) {
-            loadWorkers(workers, stoppedWorkers, program, fetch, quote, check_queue);
+            registerWorkers(createWorkers(), workers, stoppedWorkers, check_queue);
             if (_.isEmpty(workers)) throw Error("No workers available");
         }
         stoppedWorkers.forEach(worker => {
-            if (worker.stats.requests_sent == worker.stats.replies_rec) {
+            if (!load(worker)) {
                 worker.disconnect();
             }
         });
-        var spare = workers.reduce((capacity, worker) => {
-            return capacity + (worker.count || 1) - worker.stats.requests_sent + worker.stats.replies_rec;
-        }, 0);
+        var spare = workers.length - workers.filter(load).length;
         queue.splice(0, spare).forEach(item => {
             quote(item.options).then(item.resolve, item.reject);
         });
     };
-    var promiseKeys;
-    var promiseDef;
-    var instance = function(options) {
-        if (!promiseKeys) {
-            check_queue();
-            promiseKeys = _.first(workers).request('quote', {help: true})
-                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
-            promiseDef = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
-        }
-        return promiseKeys.then(keys => promiseDef.then(defaults => {
-            return _.extend({}, defaults, _.pick(options, keys));
-        })).then(options => new Promise((resolve, reject) => {
+    return _.extend(function(options) {
+        return new Promise((resolve, reject) => {
             queue.push({options, resolve, reject});
             check_queue();
-        }));
-    };
-    instance.close = function() {
-        queue.splice(0).forEach(item => {
-            item.reject(Error("Collect is closing"));
         });
-        return Promise.all(_.flatten([
-            workers.map(child => child.disconnect()),
-            stoppedWorkers.map(child => child.disconnect())
-        ])).then(fetch.close);
-    };
-    instance.shell = shell.bind(this, program.description(), instance);
-    return instance;
+    }, {
+        getWorkers() {
+            if (_.isEmpty(workers)) {
+                registerWorkers(createWorkers(), workers, stoppedWorkers, check_queue);
+            }
+            return workers.slice(0);
+        },
+        reset() {
+            stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
+        },
+        close() {
+            queue.splice(0).forEach(item => {
+                item.reject(Error("Quote is closing"));
+            });
+            return Promise.all(_.flatten([
+                workers.map(child => child.disconnect()),
+                stoppedWorkers.map(child => child.disconnect())
+            ]));
+        }
+    });
 }
 
-function loadWorkers(workers, stoppedWorkers, program, fetch, quote, check) {
+function load(worker) {
+    var stats = worker.stats.quote;
+    if (!stats || !stats.requests_sent) return 0;
+    else if (!stats.replies_rec) return stats.requests_sent;
+    else return stats.requests_sent - stats.replies_rec;
+}
+
+function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
     stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
-    workers.push.apply(workers, createWorkers(fetch, quote, program));
+    workers.push.apply(workers, newWorkers);
     workers.forEach(worker => worker.on('message', check).handle('stop', function() {
         var idx = workers.indexOf(this);
         if (idx >= 0) workers.splice(idx, 1);
         stoppedWorkers.push(this);
-        if (this.stats.requests_sent == this.stats.replies_rec) {
+        if (!load(this)) {
             this.disconnect();
         }
     }).once('disconnect', function() {
@@ -202,53 +228,16 @@ function loadWorkers(workers, stoppedWorkers, program, fetch, quote, check) {
     }));
 }
 
-function createWorkers(fetch, quote, program) {
-    var signal = config('workers') == 0 && !config('remote_workers');
-    if (signal) return [{
-        request: ((quote, cmd, payload) => {
-            if (cmd == 'fetch') return fetch(payload);
-            else if (cmd == 'quote') return quote(payload);
-            else if (cmd == 'disconnect') return quote.close();
-        }).bind(this, Quote(fetch)),
-        disconnect() {
-            return this.request('disconnect');
-        },
-        on: function(message, listener) {
-            this.listener = listener;
-            return this;
-        },
-        once: function() {
-            return this;
-        },
-        handle: function() {
-            return this;
-        },
-        stats: {
-            requests_sent: 0,
-            replies_rec: 0
-        },
-        process: process
-    }];
-    var prime = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
-    var size = _.isFinite(config('workers')) ? config('workers') :
+function createWorkers(program, fetch, quote) {
+    var prime = [0,1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
+    var size = _.isFinite(config('quote_workers')) ? +config('quote_workers') :
+        _.isFinite(config('workers')) && config('workers') == 0 ? 0 :
         prime[_.sortedIndex(prime, WORKER_COUNT)] || WORKER_COUNT;
-    var local = _.range(size).map(() => {
-        return replyTo(config.fork(module.filename, program))
-          .handle('fetch', payload => fetch(payload));
+    logger.debug("Launching", size, "quote workers");
+    return _.range(size).map(() => {
+        var worker = replyTo(config.fork(module.filename, program));
+        return worker.handle('fetch', payload => fetch(payload));
     });
-    var remote_workers = _.flatten(_.compact(_.flatten([config('remote_workers')]))
-        .map(addr => addr.split(',')));
-    if (_.isEmpty(remote_workers)) return local;
-    var remoteWorkers = remote_workers.map(address => {
-        return replyTo(remote(address))
-            .on('error', err => logger.warn(err.message || err));
-    });
-    remoteWorkers.forEach(worker => {
-        worker.request('worker_count')
-            .then(count => worker.count = count)
-            .catch(err => logger.debug(err, err.stack));
-    });
-    return local.concat(remoteWorkers);
 };
 
 function getMasterWorker(workers, options) {
@@ -256,11 +245,9 @@ function getMasterWorker(workers, options) {
     var name = options.help ? 'help' : options.exchange ?
         options.symbol + '.' + options.exchange : options.symbol;
     expect(workers).to.be.an('array').and.not.empty;
-    var local = workers.filter(worker => !worker.process.remote);
-    var pool = _.isEmpty(local) ? workers : local; // use local workers as masters
-    var capacity = pool.reduce((capacity, worker) => capacity + (worker.count || 1), 0);
+    var capacity = workers.length;
     var number = (hashCode(name) % capacity + capacity) % capacity;
-    return pool.find(worker => (number-= worker.count || 1) < 0);
+    return workers[number];
 }
 
 function chooseSlaveWorker(workers, master, options) {
@@ -268,9 +255,7 @@ function chooseSlaveWorker(workers, master, options) {
         return master; // write requested
     if (!options.end || moment.tz(options.end, options.tz).valueOf() >= Date.now())
         return master; // latest data requested
-    var loads = workers.map(w => {
-        return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
-    });
+    var loads = workers.map(load);
     var light = _.min(loads);
     if (loads[workers.indexOf(master)] == light) return master; // master is available
     else return workers[loads.indexOf(light)]; // use available slave

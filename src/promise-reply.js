@@ -43,14 +43,7 @@ module.exports = function(process) {
     };
     var ondisconnect = [];
     var queue = createQueue(onquit, process.pid);
-    var stats = {
-        messages_sent: 0,
-        requests_sent: 0,
-        replies_sent: 0,
-        messages_rec: 0,
-        requests_rec: 0,
-        replies_rec: 0
-    };
+    var stats = {};
     process.on('disconnect', () => {
         try {
             queue.close();
@@ -60,7 +53,7 @@ module.exports = function(process) {
         }
     }).on('message', msg => {
         if (msg.cmd && msg.cmd.indexOf('reply_to_') === 0 && queue.has(msg.in_reply_to)) {
-            stats.replies_rec++;
+            inc(stats, msg.cmd.substring('reply_to_'.length), 'replies_rec');
             var pending = queue.remove(msg.in_reply_to);
             try {
                 if (!_.has(msg, 'error'))
@@ -77,15 +70,15 @@ module.exports = function(process) {
                 return pending.onerror(err);
             }
         } else if (handlers[msg.cmd]) {
-            stats.requests_rec++;
+            inc(stats, msg.cmd, 'requests_rec');
             new Promise(cb => cb(handlers[msg.cmd].call(self, msg.payload))).then(response => {
-                if (msg.id && process.connected) ++stats.replies_sent && process.send({
+                if (msg.id && process.connected) inc(stats, msg.cmd, 'replies_sent') && process.send({
                     cmd: 'reply_to_' + msg.cmd,
                     in_reply_to: msg.id,
                     payload: response
                 });
             }, err => {
-                if (msg.id && process.connected) ++stats.replies_sent && process.send({
+                if (msg.id && process.connected) inc(stats, msg.cmd, 'replies_sent') && process.send({
                     cmd: 'reply_to_' + msg.cmd,
                     in_reply_to: msg.id,
                     error: serializeError(err)
@@ -97,9 +90,9 @@ module.exports = function(process) {
                 }
             });
         } else if (msg.cmd == 'config') {
-            stats.messages_rec++;
+            inc(stats, msg.cmd, 'messages_rec');
         } else {
-            stats.messages_rec++;
+            inc(stats, msg.cmd || 'unknown', 'messages_rec');
             logger.debug("Unknown message", msg);
         }
     });
@@ -126,7 +119,7 @@ module.exports = function(process) {
             return this;
         },
         send(cmd, payload) {
-            stats.messages_sent++;
+            inc(stats, cmd, 'messages_sent');
             var connect = !process.connecting ? Promise.resolve() :
                 new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
             return connect.then(() => new Promise(cb => process.send({
@@ -137,7 +130,7 @@ module.exports = function(process) {
             }));
         },
         request(cmd, payload) {
-            stats.requests_sent++;
+            inc(stats, cmd, 'requests_sent');
             var connect = !process.connecting ? Promise.resolve() :
                 new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
             return connect.then(() => new Promise((response, error) => {
@@ -197,6 +190,11 @@ process.on('SIGINT', () => {
         logger.warn('Unhandled Rejection', reason && reason.message || reason || p, reason && reason.stack || '');
     }
 });
+
+function inc(stats, cmd, opt) {
+    stats[cmd] = stats[cmd] || {};
+    return stats[cmd][opt] = (stats[cmd][opt] || 0) + 1;
+}
 
 function createQueue(onquit, pid) {
     var outstanding = {};

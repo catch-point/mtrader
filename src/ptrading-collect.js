@@ -76,18 +76,12 @@ function usage(command) {
         .option('--transpose', "Swap the columns and rows");
 }
 
-var workers = [];
-var stoppedWorkers = [];
-var collections = {};
-
-process.on('SIGHUP', () => _.keys(collections).forEach(key=>delete collections[key]));
-process.on('SIGHUP', () => stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length)));
-
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
         var quote = require('./ptrading-quote.js');
-        var collect = createInstance(program, quote, collections, workers, stoppedWorkers);
+        var collect = createInstance(program, quote);
+        process.on('SIGHUP', () => collect.reload());
         process.on('SIGINT', () => collect.close());
         process.on('SIGTERM', () => collect.close());
         var name = program.args.join(' ');
@@ -103,84 +97,143 @@ if (require.main === module) {
 } else {
     var quote = require('./ptrading-quote.js');
     var prog = usage(new commander.Command());
-    module.exports = createInstance(prog, quote, collections, workers, stoppedWorkers);
+    module.exports = createInstance(prog, quote);
+    process.on('SIGHUP', () => module.exports.reload());
 }
 
-function createInstance(program, quote, collections, workers, stoppedWorkers) {
-    var queue = [];
-    var collect = function(options) {
-        var loads = workers.map(w => {
-            return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
-        });
-        var worker = workers[loads.indexOf(_.min(loads))];
-        return worker.request('collect', options).catch(err => {
-            if (!worker.process.remote) throw err;
-            var loads = workers.map(w => {
-                if (w.process.remote) return Infinity;
-                return (w.stats.requests_sent - w.stats.replies_rec)/(w.count || 1) || 0;
-            });
-            var local = workers[loads.indexOf(_.min(loads))];
-            if (!local) throw err;
-            logger.debug("Collect", worker.process.pid, err, err.stack);
-            logger.debug("Retrying", options.label || '\b', "using local node", local.process.pid);
-            return local.request('collect', options);
-        });
-    };
-    var check_queue = function() {
-        if (_.isEmpty(workers)) {
-            loadWorkers(workers, stoppedWorkers, program, quote, collect, check_queue);
-            if (_.isEmpty(workers)) throw Error("No workers available");
-        }
-        stoppedWorkers.forEach(worker => {
-            if (worker.stats.requests_sent == worker.stats.replies_rec) {
-                worker.disconnect();
-            }
-        });
-        var spare = workers.reduce((capacity, worker) => {
-            return capacity + (worker.count || 1) - worker.stats.requests_sent + worker.stats.replies_rec;
-        }, 0);
-        queue.splice(0, spare).forEach(item => {
-            collect(item.options).then(item.resolve, item.reject);
-        });
-    };
+function createInstance(program, quote) {
     var promiseKeys;
     var promiseDef;
     var instance = function(options) {
         if (!promiseKeys) {
-            check_queue();
-            promiseKeys = _.first(workers).request('collect', {help: true})
+            promiseKeys = direct({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
             promiseDef = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
         }
         return promiseKeys.then(keys => promiseDef.then(defaults => {
             return _.extend({}, defaults, _.pick(options, keys));
-        })).then(options => inlineCollections(collections, options))
-          .then(options => new Promise((resolve, reject) => {
-            queue.push({options, resolve, reject});
-            check_queue();
-        }));
+        })).then(options => inlineCollections(collections, options)).then(options => {
+            if (_.isEmpty(local.getWorkers()) && _.isEmpty(remote.getWorkers())) return direct(options);
+            else if (options.help || isSplitting(options)) return direct(options);
+            else if (options.reset_every || isLeaf(options)) return remote(options);
+            else if (_.isEmpty(local.getWorkers())) return remote(options);
+            else return local(options);
+        });
     };
     instance.close = function() {
-        queue.splice(0).forEach(item => {
-            item.reject(Error("Collect is closing"));
-        });
-        return Promise.all(_.flatten([
-            workers.map(child => child.disconnect()),
-            stoppedWorkers.map(child => child.disconnect())
-        ])).then(quote.close).then(collect.close);
+        return remote.close().then(local.close, local.close).then(direct.close).then(quote.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
+    instance.reload = () => {
+        _.keys(collections).forEach(key=>delete collections[key]);
+        local.reset();
+        remote.reset();
+    };
+    var collections = {};
+    var direct = Collect(quote, instance);
+    var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
+    var local = createQueue(localWorkers);
+    var remote = createQueue(collect => {
+        return local.getWorkers().concat(createRemoteWorkers());
+    }, (err, options, worker) => {
+        if (!worker.process.remote) throw err;
+        logger.debug("Collect", options.label || '\b', worker.process.pid, err, err.stack);
+        return local(options).catch(e => {
+            throw err;
+        });
+    });
     return instance;
 }
 
-function loadWorkers(workers, stoppedWorkers, program, quote, collect, check) {
-    stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
-    workers.push.apply(workers, createWorkers(quote, collect, program));
+function isSplitting(options) {
+    if (!options.reset_every) return false;
+    var reset_every = moment.duration(options.reset_every);
+    var begin = moment(options.begin);
+    var end = moment(options.end || options.now);
+    return begin.add(reset_every).isBefore(end);
+}
+
+function isLeaf(options) {
+    if (!options.portfolio) return false;
+    var portfolio = _.isArray(options.portfolio) ? options.portfolio : [options.portfolio];
+    return portfolio.every(_.isString);
+}
+
+function createQueue(createWorkers, onerror) {
+    var queue = [];
+    var workers = [];
+    var stoppedWorkers = [];
+    var run = function(options) {
+        var loads = workers.map(load);
+        var worker = workers[loads.indexOf(_.min(loads))];
+        return worker.request('collect', options).catch(err => {
+            if (!onerror) throw err;
+            else return onerror(err, options, worker);
+        });
+    };
+    var check_queue = function() {
+        if (_.isEmpty(workers)) {
+            registerWorkers(createWorkers(), workers, stoppedWorkers, check_queue);
+            if (_.isEmpty(workers)) throw Error("No workers available");
+        }
+        stoppedWorkers.forEach(worker => {
+            if (!load(worker)) {
+                worker.disconnect();
+            }
+        });
+        var spare = workers.reduce((capacity, worker) => {
+            return capacity + Math.max((worker.count || 1) * (1 - load(worker)), 0);
+        }, 0);
+        queue.splice(0, spare).forEach(item => {
+            run(item.options).then(item.resolve, item.reject);
+        });
+        if (queue.length) {
+            logger.debug("Queued", queue.length, "collect", _.first(queue).options.label || '\b',
+                workers.map(w => (load(w) * 100) + '%').join(' '));
+        }
+    };
+    return _.extend(function(options) {
+        return new Promise((resolve, reject) => {
+            queue.push({options, resolve, reject});
+            check_queue();
+        });
+    },{
+        getWorkers() {
+            if (_.isEmpty(workers)) {
+                registerWorkers(createWorkers(), workers, stoppedWorkers, check_queue);
+            }
+            return workers.slice(0);
+        },
+        reset() {
+            stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
+        },
+        close() {
+            queue.splice(0).forEach(item => {
+                item.reject(Error("Collect is closing"));
+            });
+            return Promise.all(_.flatten([
+                workers.map(child => child.disconnect()),
+                stoppedWorkers.map(child => child.disconnect())
+            ])).then(quote.close);
+        }
+    });
+}
+
+function load(worker) {
+    var stats = worker.stats.collect;
+    if (!stats || !stats.requests_sent) return 0;
+    var outstanding = stats.requests_sent - (stats.replies_rec || 0);
+    var subcollecting = (stats.requests_rec || 0) - (stats.replies_sent || 0);
+    return Math.max((outstanding - subcollecting) / (worker.count || 1), 0) || 0;
+}
+
+function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
+    workers.push.apply(workers, newWorkers);
     workers.forEach(worker => worker.on('message', check).handle('stop', function() {
         var idx = workers.indexOf(this);
         if (idx >= 0) workers.splice(idx, 1);
         stoppedWorkers.push(this);
-        if (this.stats.requests_sent == this.stats.replies_rec) {
+        if (!load(this)) {
             this.disconnect();
         }
     }).once('disconnect', function() {
@@ -192,49 +245,17 @@ function loadWorkers(workers, stoppedWorkers, program, quote, collect, check) {
     }));
 }
 
-function createWorkers(quote, collect, program) {
-    var single = config('workers') == 0 && !config('remote_workers');
-    if (single) return [{
-        request: _.partial(function(collect, cmd, payload) {
-            return (cmd == 'quote' ? quote(payload) :
-                cmd == 'collect' ? collect(payload) :
-                cmd == 'disconnect' ? quote.close() :
-                Promise.reject(Error("Unknown cmd " + cmd))
-            ).then(result => {
-                this.listener();
-                return result;
-            }, err => {
-                this.listener();
-                throw err;
-            });
-        }, Collect(quote)),
-        disconnect() {
-            return this.request('disconnect');
-        },
-        on: function(message, listener) {
-            this.listener = listener;
-            return this;
-        },
-        once: function() {
-            return this;
-        },
-        handle: function() {
-            return this;
-        },
-        stats: {
-            requests_sent: 0,
-            replies_rec: 0
-        },
-        process: process
-    }];
-    var local = _.range(config('workers') || WORKER_COUNT).map(() => {
+function createLocalWorkers(program, quote, collect) {
+    return _.range(config('workers') || WORKER_COUNT).map(() => {
         return replyTo(config.fork(module.filename, program))
           .handle('quote', payload => quote(payload))
           .handle('collect', payload => collect(payload));
     });
+}
+
+function createRemoteWorkers() {
     var remote_workers = _.flatten(_.compact(_.flatten([config('remote_workers')]))
         .map(addr => addr.split(',')));
-    if (_.isEmpty(remote_workers)) return local;
     var remoteWorkers = remote_workers.map(address => {
         return replyTo(remote(address))
             .on('error', err => logger.warn(err.message || err));
@@ -244,7 +265,7 @@ function createWorkers(quote, collect, program) {
             .then(count => worker.count = count)
             .catch(err => logger.debug(err, err.stack));
     });
-    return local.concat(remoteWorkers);
+    return remoteWorkers;
 }
 
 function spawn() {
@@ -262,18 +283,21 @@ function spawn() {
 }
 
 function inlineCollections(collections, options, avoid) {
-    if (!options)
+    if (!options) {
         return options;
-    else if (_.isArray(options))
-        return options.map(item => inlineCollections(collections, item, avoid));
-    else if (_.isObject(options) && options.portfolio)
-        return _.defaults({
-            portfolio: inlineCollections(collections, options.portfolio, avoid)
-        }, options);
-    else if (_.isObject(options))
+    } else if (_.isArray(options)) {
+        var inlined = options.map(item => inlineCollections(collections, item, avoid));
+        if (inlined.every((item, i) => item == options[i])) return options;
+        else return inlined;
+    } else if (_.isObject(options) && options.portfolio) {
+        var inlined = inlineCollections(collections, options.portfolio, avoid);
+        if (inlined == options) return options;
+        else return _.defaults({portfolio: inlined}, options);
+    } else if (_.isObject(options)) {
         return options;
-    else if (_.contains(avoid, options))
+    } else if (_.contains(avoid, options)) {
         throw Error("Cycle profile detected: " + avoid + " -> " + options);
+    }
     if (_.isEmpty(collections)) {
         _.extend(collections, _.object(config.list(), []));
     }

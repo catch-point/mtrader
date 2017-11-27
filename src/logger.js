@@ -54,8 +54,7 @@ var tty_colours = {
     underscore: '\x1b[4m',
     blink: '\x1b[5m',
     reverse: '\x1b[7m',
-    hidden: '\x1b[8m',
-    dim_blue: '\x1b[2m\x1b[34m'
+    hidden: '\x1b[8m'
 };
 
 var colours = process.stderr.isTTY ? tty_colours : _.mapObject(tty_colours, _.constant(''));
@@ -103,7 +102,7 @@ function cfg(name, def) {
 }
 
 function debug() {
-    return logWithColour(colours.dim_blue, Array.prototype.slice.call(arguments, 0));
+    return logWithColour(colours.blue, Array.prototype.slice.call(arguments, 0));
 }
 
 function verbose() {
