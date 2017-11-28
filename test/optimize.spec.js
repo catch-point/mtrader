@@ -302,6 +302,7 @@ describe("optimize", function() {
                 slow_len: 26,
                 signal_len: 9
             },
+            population_size: 8,
             parameter_values: {
                 fast_len: [3,5,9,12],
                 slow_len: [10,26,35],

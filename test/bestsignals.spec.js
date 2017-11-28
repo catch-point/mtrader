@@ -99,7 +99,7 @@ describe("bestsignals", function() {
             signals: ['ema_cross'],
             parameters: {
                 fast_len: 50,
-                slow_len: 150
+                slow_len: 80
             }
         });
     });
@@ -181,6 +181,7 @@ describe("bestsignals", function() {
                     fast_len: 50,
                     slow_len: 200
                 },
+                population_size: 8,
                 parameter_values: {
                     fast_len: [1,5,10,15,20,25,50],
                     slow_len: [20,25,50,80,100,150,200]

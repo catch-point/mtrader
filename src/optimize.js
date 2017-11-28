@@ -40,6 +40,7 @@ const logger = require('./logger.js');
 const expect = require('chai').expect;
 
 const MIN_POPULATION = 2;
+const MAX_POPULATION = 8;
 
 /**
  * Given possible parameter_values, searches for better parameter values
@@ -150,16 +151,17 @@ function searchParameters(collect, prng, pnames, count, options) {
         moment().add(moment.duration(options.termination)).valueOf()
     var space = createSearchSpace(pnames, options);
     var pvalues = pnames.map(name => options.parameter_values[name]);
-    var staleAfter = _.max(pvalues.map(_.size));
+    var size = options.population_size || Math.max(
+        Math.min(Math.ceil(pvalues.map(_.size).reduce((a,b)=>a+b)/2), MAX_POPULATION),
+        _.max(pvalues.map(_.size)), count * 2, MIN_POPULATION);
     var createPopulation = options.sample_duration || options.sample_count ?
-        sampleSolutions(collect, prng, pnames, space, count, options) :
-        initialPopulation(prng, pnames, space, count, options);
+        sampleSolutions(collect, prng, pnames, space, size, options) :
+        initialPopulation(prng, pnames, space, size, options);
     return Promise.resolve(createPopulation).then(population => {
         logger.debug("Initial population of", population.length, options.label || '\b');
         var fitnessFn = fitness(collect, options, pnames);
-        var selectionFn = selection.bind(this, fitnessFn, Math.floor(_.size(population)/2));
-        var mutationFn = mutation.bind(this, prng, _.size(population), pvalues, space);
-        return adapt(selectionFn, mutationFn, pnames, terminateAt, staleAfter, options, population);
+        var mutationFn = mutation.bind(this, prng, pvalues, space);
+        return adapt(fitnessFn, mutationFn, pnames, terminateAt, options, population, size);
     }).then(solutions => {
         return _.sortBy(solutions, 'score').slice(-count).reverse();
     });
@@ -202,7 +204,7 @@ function createSearchSpace(pnames, options) {
 /**
  * Creates an initial population from the best result of a set of sample periods
  */
-function sampleSolutions(collect, prng, pnames, space, count, options) {
+function sampleSolutions(collect, prng, pnames, space, size, options) {
     var begin = moment(options.begin);
     var end = moment(options.end || options.now);
     if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
@@ -216,8 +218,6 @@ function sampleSolutions(collect, prng, pnames, space, count, options) {
     if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.sample_duration);
     var period_units = period.subtract(duration).as(unit);
         var pvalues = pnames.map(name => options.parameter_values[name]);
-    var size = options.population_size ||
-        Math.max(_.max(pvalues.map(_.size)), count * 2, MIN_POPULATION);
     var termination = options.sample_termination || options.termination &&
         moment.duration(moment.duration(options.termination).asMilliseconds()/3).toISOString();
     var optionset = _.range(count).map(() => {
@@ -247,19 +247,21 @@ function sampleSolutions(collect, prng, pnames, space, count, options) {
         if (!_.isEmpty(parameters) && space.add(seed)) {
             population.push(seed);
         }
-        if (population.length >= size) return population;
-        else return mutation(prng, size, pvalues, space, population, 0);
+        var mutate = mutation(prng, pvalues, space, population);
+        for (var i=0; i/2<size && population.length < size; i++) {
+            var mutant = mutate();
+            if (mutant) population.push(mutant);
+        }
+        return population;
     });
 }
 
 /**
  * Creates a random initial population, but also includes the default parameters.
  */
-function initialPopulation(prng, pnames, space, count, options) {
+function initialPopulation(prng, pnames, space, size, options) {
     var parameters = _.pick(options.parameters, pnames);
     var pvalues = pnames.map(name => options.parameter_values[name]);
-    var size = options.population_size ||
-        Math.max(_.max(_.map(pvalues, _.size)), count * 2, MIN_POPULATION);
     var population = [];
     if (!_.isEmpty(parameters)) {
         var seed = {
@@ -268,7 +270,12 @@ function initialPopulation(prng, pnames, space, count, options) {
         population.push(seed);
         space.add(seed);
     }
-    return mutation(prng, size, pvalues, space, population, 0);
+    var mutate = mutation(prng, pvalues, space, population);
+    for (var i=0; i/2<size && population.length < size; i++) {
+        var mutant = mutate();
+        if (mutant) population.push(mutant);
+    }
+    return population;
 }
 
 /**
@@ -302,57 +309,75 @@ function fitness(collect, options, pnames) {
 /**
  * Cycles between candidate selection and mutation until the score of the best/worst selected solution is the same for `stale` number of iterations
  */
-function adapt(selection, mutation, pnames, terminateAt, stale, options, population, stats) {
-    return selection(population).then(solutions => {
-        var best = _.first(solutions);
-        var worst = _.last(solutions);
-        var strength = stats && stats.high == best.score && stats.low == worst.score ?
-            stats.strength + 1 : 0;
-        if (stats) logger.log("Optimize", options.label || '\b', options.begin, "G" + stats.generation, "P" + population.length, "M" + stats.strength, best.pindex.map((idx,i) => {
-            return options.parameter_values[pnames[i]][idx];
-        }).join(','), ':', best.score);
-        if (strength >= stale || terminateAt && terminateAt < Date.now()) return solutions;
-        var candidates = mutation(solutions, strength);
-        return adapt(selection, mutation, pnames, terminateAt, stale, options, candidates, {
-            high: best.score,
-            low: worst.score,
-            strength: strength,
-            generation: stats ? stats.generation + 1 : 1,
-            mtime: Date.now()
+function adapt(fitness, mutation, pnames, terminateAt, options, population, size) {
+    var maxEliteSize = Math.ceil(size/2);
+    var best;
+    var elite = []; // elite solutions best one last
+    var solutions = []; // unsorted solutions with a score
+    var candidates = population.slice(0); // solutions without a score
+    var mutate = mutation(population);
+    var strength = 0;
+    var counter = 0;
+    var until = Promise.resolve();
+    var rank = candidate => {
+        return fitness(candidate).then(solution => {
+            candidates.splice(candidates.indexOf(candidate), 1);
+            solutions.push(solution);
+        }).then(() => {
+            if (!solutions.length) return;
+            var population = elite.concat(solutions);
+            var top = _.sortBy(population, 'score').slice(-maxEliteSize);
+            var additions = _.difference(top, elite);
+            if (additions.length) {
+                best = _.last(top);
+                elite = top;
+                logger.log("Optimize", options.label || '\b', options.begin,
+                  "G" + Math.floor(counter/(size - maxEliteSize)),
+                  "P" + (elite.length+candidates.length),
+                  "M" + Math.round(strength),
+                  best.pindex.map((idx,i) => {
+                    return options.parameter_values[pnames[i]][idx];
+                }).join(','), ':', best.score);
+                strength = 0;
+                mutate = mutation(elite, strength);
+            } else {
+                strength += solutions.length/(size - maxEliteSize);
+                mutate = mutation(elite, strength);
+            }
+            counter += solutions.length;
+            if (strength < size && (!terminateAt || terminateAt > Date.now())) {
+                var ranking = [];
+                for (var i=0; i/2<size && elite.length+candidates.length<size; i++) {
+                    var mutant = mutate(additions[i]);
+                    if (mutant) {
+                        candidates.push(mutant);
+                        ranking.push(rank(mutant));
+                    }
+                }
+                until = until.then(() => Promise.all(ranking));
+            }
+            solutions.splice(0, solutions.length);
         });
+    };
+    until = until.then(() => Promise.all(candidates.map(rank)));
+    var wait = promise => promise.then(() => {
+        if (promise != until) return wait(until);
+        else return elite;
     });
-}
-
-/**
- * Determines the score of the population and returns the best size solutions
- */
-function selection(fitness, size, population) {
-    var candidates = [];
-    var elite = [];
-    population.forEach(candidate => {
-        if (_.has(candidate, 'score')) {
-            elite.push(candidate);
-        } else {
-            candidates.push(candidate);
-        }
-    });
-    return Promise.all(candidates.map(fitness))
-      .then(solutions => {
-        return _.sortBy(elite.concat(solutions), 'score').slice(-Math.ceil(size)).reverse();
-    });
+    return wait(until);
 }
 
 /**
  * Takes the solutions and adds mutated candidates using the gaussian distribution of the solution set
  */
-function mutation(prng, size, pvalues, space, solutions, strength) {
+function mutation(prng, pvalues, space, solutions, strength) {
     var empty = _.isEmpty(solutions);
     var one = solutions.length == 1;
     var mutations = pvalues.map((values,i) => {
         var vals = empty || one ? _.range(values.length) : _.map(solutions, sol => sol.pindex[i]);
         var avg = one ? solutions[0].pindex[i] : vals.reduce((a,b) => a + b) / vals.length;
         var stdev = vals.length>2 && statkit.std(vals) || 0.5;
-        var window = Math.min(stdev + strength, Math.ceil(values.length/2));
+        var window = Math.min(stdev + (strength || 0), Math.ceil(values.length/2));
         return function(value) {
             var val = arguments.length ? value : avg;
             var target = statkit.norminv(prng()) * window + val;
@@ -361,21 +386,15 @@ function mutation(prng, size, pvalues, space, solutions, strength) {
                 Math.ceil(values.length * 2 - abs) - 1 : Math.floor(abs);
         };
     });
-    var population = solutions;
-    solutions.forEach(solution => {
-        var mutated = {pindex: mutations.map((fn, i) => fn(solution.pindex[i]))};
-        if (space.add(mutated)) {
-            population.push(mutated);
+    return function(solution) {
+        if (solution) {
+            var mutated = {pindex: mutations.map((fn, i) => fn(solution.pindex[i]))};
+            if (space.add(mutated)) return mutated;
         }
-    });
-    var target = size + strength;
-    for (var i=0; i<target && _.size(population) < target; i++) {
         var candidate = {pindex: mutations.map(fn => fn())};
-        if (space.add(candidate)) {
-            population.push(candidate);
-        }
-    }
-    return population;
+        if (space.add(candidate)) return candidate;
+        else return null;
+    };
 }
 
 /**
