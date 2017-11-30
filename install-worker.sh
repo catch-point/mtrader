@@ -224,7 +224,7 @@ elif [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
   systemctl restart "$NAME"
 fi
 
-if [ -f "/etc/systemd/system/$NAME.service" -a "`tty`" != "not a tty" ]; then
+if [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" -a "`tty`" != "not a tty" ]; then
   systemctl status "$NAME"
 elif [ "`tty`" != "not a tty" ]; then
   echo "Run '$PREFIX/bin/ptrading start' to start the service"
