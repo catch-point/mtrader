@@ -49,7 +49,8 @@ function usage(command) {
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
-        .option('--debug', "Include details about what the system is working on")
+        .option('-x, --debug', "Include details about what the system is working on")
+        .option('-X, --no-debug', "Hide details about what the system is working on")
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--load <identifier>', "Read the given session settings")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
@@ -157,7 +158,7 @@ function readSignals(name) {
         filter: _.compact(_.flatten([config('filter'), read.filter], true)),
         precedence: _.compact(_.flatten([config('precedence'), read.precedence], true)),
         order: _.compact(_.flatten([config('order'), read.order], true))
-    }, read, config.opts(), config.options());
+    }, config.opts(), config.options(), read);
 }
 
 function output(result) {
@@ -165,7 +166,7 @@ function output(result) {
         var output = JSON.stringify(result, null, ' ');
         var writer = createWriteStream(config('save'));
         writer.on('finish', done);
-        writer.write(output, 'utf-8');
+        if (output) writer.write(output, 'utf-8');
         writer.end();
     });
 }

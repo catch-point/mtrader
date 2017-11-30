@@ -36,7 +36,9 @@ const AssertionError = require('chai').AssertionError;
 module.exports = function(process) {
     var seq = 0;
     var handlers = {};
+    var quitting = false;
     var onquit = error => {
+        quitting = true;
         _.compact(queue.keys().map(id => queue.remove(id))).forEach(pending => {
             pending.onerror(error);
         });
@@ -91,7 +93,7 @@ module.exports = function(process) {
             });
         } else if (msg.cmd == 'config') {
             inc(stats, msg.cmd, 'messages_rec');
-        } else {
+        } else if (!quitting) {
             inc(stats, msg.cmd || 'unknown', 'messages_rec');
             logger.debug("Unknown message", msg);
         }

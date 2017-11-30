@@ -37,7 +37,8 @@ const config = require('./config.js');
 var relative = path.relative(process.cwd(), path.dirname(__filename));
 var silent = process.argv.some(arg => /^--silent$|^-\w*s/.test(arg));
 var verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg));
-var debugging = !relative || relative == 'src' || process.argv.indexOf('--debug') >= 0;
+var debugging = !relative || relative == 'src' || process.argv.some(arg => /^--debug$|^-\w*x/.test(arg));
+var noDebugging = process.argv.indexOf('-X') >= 0 || process.argv.indexOf('--no-debug') >= 0;
 
 var tty_colours = {
     black: '\x1b[30m',
@@ -66,7 +67,7 @@ var logger = module.exports = cfg('silent', silent) ? {
     warn: nil,
     error: error
 } : {
-    debug: cfg('debug', debugging) ? debug : nil,
+    debug: cfg('debug', debugging && !noDebugging) ? debug : nil,
     log: cfg('verbose', verbosity) ? verbose : nil,
     info: info,
     warn: warn,
@@ -89,7 +90,7 @@ process.on('SIGINT', () => {
         logger.info = nil;
         logger.warn = nil;
     } else {
-        logger.debug = cfg('debug', debugging) ? debug: nil;
+        logger.debug = cfg('debug', debugging && !noDebugging) ? debug: nil;
         logger.log = cfg('verbose', verbosity) ? verbose : nil;
         logger.info = info;
         logger.warn = debug;

@@ -53,7 +53,8 @@ function usage(command) {
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-s, --silent', "Include less information about what the system is doing")
-        .option('--debug', "Include details about what the system is working on")
+        .option('-x, --debug', "Include details about what the system is working on")
+        .option('-X, --no-debug', "Hide details about what the system is working on")
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--load <identifier>', "Read the given session settings")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
@@ -115,6 +116,7 @@ function createInstance(program, quote) {
         })).then(options => inlineCollections(collections, options)).then(options => {
             if (_.isEmpty(local.getWorkers()) && _.isEmpty(remote.getWorkers())) return direct(options);
             else if (options.help || isSplitting(options)) return direct(options);
+            else if (_.isEmpty(remote.getWorkers())) return local(options);
             else if (options.reset_every || isLeaf(options)) return remote(options);
             else if (_.isEmpty(local.getWorkers())) return remote(options);
             else return local(options);
@@ -133,9 +135,7 @@ function createInstance(program, quote) {
     var direct = Collect(quote, instance);
     var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
     var local = createQueue(localWorkers);
-    var remote = createQueue(collect => {
-        return local.getWorkers().concat(createRemoteWorkers());
-    }, (err, options, worker) => {
+    var remote = createQueue(createRemoteWorkers, (err, options, worker) => {
         if (!worker.process.remote) throw err;
         logger.debug("Collect", options.label || '\b', worker.process.pid, err, err.stack);
         return local(options).catch(e => {
@@ -187,7 +187,7 @@ function createQueue(createWorkers, onerror) {
         queue.splice(0, spare).forEach(item => {
             run(item.options).then(item.resolve, item.reject);
         });
-        if (queue.length) {
+        if (queue.length && spare) {
             logger.debug("Queued", queue.length, "collect", _.first(queue).options.label || '\b',
                 workers.map(w => (load(w) * 100) + '%').join(' '));
         }
@@ -323,7 +323,7 @@ function readCollect(name) {
         filter: _.compact(_.flatten([config('filter'), read.filter], true)),
         precedence: _.compact(_.flatten([config('precedence'), read.precedence], true)),
         order: _.compact(_.flatten([config('order'), read.order], true))
-    }, read, config.opts(), config.options());
+    }, config.opts(), config.options(), read);
 }
 
 function shell(desc, collect, app) {

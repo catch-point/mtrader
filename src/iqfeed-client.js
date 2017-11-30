@@ -53,7 +53,6 @@ module.exports = function(command, productId, productVersion) {
             return admin();
         },
         close() {
-            adminPromise && logger.debug("Disconnecting iqfeed");
             return Promise.all([
                 adminPromise ? admin().then(closeSocket).then(() => adminPromise = null) : Promise.resolve(),
                 lookup('close'),
