@@ -113,7 +113,11 @@ function parseLocation(location, secure) {
         secure ? url.parse('wss://' + location) :
         url.parse('ws://' + location);
     parsed.protocol = parsed.protocol || (secure ? 'wss:' : 'ws:');
-    parsed.port = parsed.port || (secure ? 443 : 80);
+    parsed.port = parsed.port || (
+        parsed.protocol == 'ws:' || parsed.protocol == 'http:' ? 80 :
+        parsed.protocol == 'wss:' || parsed.protocol == 'https:' ? 443 :
+        secure ? 443 : 80
+    );
     parsed.hostname = parsed.hostname || 'localhost';
     parsed.host = parsed.host || (parsed.hostname + ':' + parsed.port);
     parsed.href = parsed.href || (parsed.protocol + '//' + parsed.host);
