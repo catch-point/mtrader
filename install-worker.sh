@@ -51,7 +51,7 @@ if [ ! -x "$(which npm)" ]; then
   echo "node.js/npm is not installed" 1>&2
   if [ -x "$(which apt-get)" -a "$(id -u)" = "0" ]; then
     curl -sL https://deb.nodesource.com/setup_8.x | bash -
-    apt-get install nodejs
+    apt-get install -y nodejs
   fi
 fi
 if [ ! -x "$(which npm)" ]; then
@@ -115,26 +115,23 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
   if [ -z "$USERINFO" ]; then
     USERINFO=$(nodejs -pe '[require("crypto").randomBytes(4)].map(rnd=>rnd.readUIntBE(0,2).toString(36)+":"+rnd.readUIntBE(2,2).toString(36)).toString()')
   fi
-  if [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" -a -x "$(which openssl)" ]; then
+  if [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" -a -x "$(which openssl)" -a "`tty`" != "not a tty" ]; then
     DEFAULT_PORT=443
-  elif [ -z "$DEFAULT_PORT" -a -x "$(which openssl)" ]; then
+  elif [ -z "$DEFAULT_PORT" -a -x "$(which openssl)" -a "`tty`" != "not a tty" ]; then
     DEFAULT_PORT=1443
   elif [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" -a ]; then
     DEFAULT_PORT=80
   elif [ -z "$DEFAULT_PORT" -a ]; then
     DEFAULT_PORT=1880
   fi
-  if [ -z "$PORT" ]; then
+  if [ -z "$PORT" -a "`tty`" != "not a tty" ]; then
     read -p "Port (e.g. port to listen on) [$DEFAULT_PORT]:" PORT
-    if [ -z "$PORT" ]; then
-      PORT=$DEFAULT_PORT
-    fi
   fi
-  if [ "$(id -u)" = "0" -a "$PORT" -lt 1024 ]; then
-    setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
+  if [ -z "$PORT" ]; then
+    PORT=$DEFAULT_PORT
   fi
   # generate certificates
-  if [ -x "$(which openssl)" -a "$PORT" != 80 ]; then
+  if [ -x "$(which openssl)" -a "`tty`" != "not a tty" -a "$PORT" != 80 -a "$PORT" != 1880 ]; then
     if [ ! -f "$PREFIX/etc/ptrading-key.pem" ] ; then
       echo -e "\x1b[1m\x1b[33m*** Use FQDN as the Common Name below for direct clients ***\x1b[0m" 1>&2
       openssl genrsa -out "$PREFIX/etc/ptrading-key.pem" 2048
@@ -154,6 +151,7 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
         HOST=$AUTHORITY
       fi
     fi
+    echo "Add \"remote_workers\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"] to client etc/ptrading.json file"
     cat > "$PREFIX/etc/ptrading.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
@@ -176,6 +174,7 @@ EOF
         HOST=$(hostname -f |tr '[A-Z]' '[a-z]')
       fi
     fi
+    echo "Add \"remote_workers\":[\"ws://$USERINFO@$HOST:$PORT\"] to client etc/ptrading.json file"
     cat > "$PREFIX/etc/ptrading.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
@@ -190,6 +189,12 @@ EOF
 EOF
   fi
   chown -R "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/$CONFIG_DIR" "$PREFIX/$DATA_DIR"
+elif [ -z "$PORT" ]; then
+  PORT=$(nodejs -pe "JSON.parse(require('fs').readFileSync('$PREFIX/etc/ptrading.json',{encoding:'utf-8'})).listen.replace(/.*:(\d+)([/]|$)/,'\$1').replace(/^wss:.*$|^https:.*$/,'443').replace(/^ws:.*$|^http:.*$/,'80')")
+fi
+
+if [ "$(id -u)" = "0" -a "$PORT" -lt 1024 ]; then
+  setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
 fi
 
 # install daemon
@@ -219,8 +224,8 @@ elif [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
   systemctl restart "$NAME"
 fi
 
-if [ -f "/etc/systemd/system/$NAME.service" ]; then
+if [ -f "/etc/systemd/system/$NAME.service" -a "`tty`" != "not a tty" ]; then
   systemctl status "$NAME"
-else
+elif [ "`tty`" != "not a tty" ]; then
   echo "Run '$PREFIX/bin/ptrading start' to start the service"
 fi
