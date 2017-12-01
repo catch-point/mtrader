@@ -119,9 +119,9 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
     DEFAULT_PORT=443
   elif [ -z "$DEFAULT_PORT" -a -x "$(which openssl)" -a "`tty`" != "not a tty" ]; then
     DEFAULT_PORT=1443
-  elif [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" -a ]; then
+  elif [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" ]; then
     DEFAULT_PORT=80
-  elif [ -z "$DEFAULT_PORT" -a ]; then
+  elif [ -z "$DEFAULT_PORT" ]; then
     DEFAULT_PORT=1880
   fi
   if [ -z "$PORT" -a "`tty`" != "not a tty" ]; then
