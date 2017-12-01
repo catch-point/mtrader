@@ -38,7 +38,7 @@ var relative = path.relative(process.cwd(), path.dirname(__filename));
 var silent = process.argv.some(arg => /^--silent$|^-\w*s/.test(arg));
 var verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg));
 var debugging = !relative || relative == 'src' || process.argv.some(arg => /^--debug$|^-\w*x/.test(arg));
-var noDebugging = process.argv.indexOf('-X') >= 0 || process.argv.indexOf('--no-debug') >= 0;
+var noDebugging = process.argv.some(arg => /^-\w*X/.test(arg));
 
 var tty_colours = {
     black: '\x1b[30m',

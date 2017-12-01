@@ -132,7 +132,8 @@ function createInstance(session) {
             _.keys(cfg_pairs).map(option => '--' + option.replace('_', '-')),
             _.values(cfg_pairs)
         ));
-        var arg_bools = cfg_bools.map(option => (cfg[option] ? '--' : '--no-') + option.replace('_', '-'));
+        var arg_bools = cfg_bools.map(option => option.replace('_', '-'))
+            .map(opt => (opt.charAt(0) == '-' ? '' : cfg[opt] ? '--' : '--no-') + opt);
         var arg_other = _.flatten(cfg_other.map(name => ['--set', name + '=' + JSON.stringify(cfg[name])]));
         var args = arg_pairs.concat(arg_bools, arg_other);
         var child = child_process.fork(modulePath, args);
