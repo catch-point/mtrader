@@ -86,7 +86,8 @@ function getOutputFile(options) {
     var output = options.output;
     if (output) return output;
     else if (!options.launch) return null;
-    var name = process.title.replace(/\W/g,'') + process.pid + Date.now().toString(16) + '.csv';
+    var name = process.title.replace(/.*\//,'').replace(/\W/g,'') +
+        process.pid + Date.now().toString(16) + '.csv';
     return path.resolve(os.tmpdir(), name);
 }
 
