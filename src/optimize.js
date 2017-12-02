@@ -134,7 +134,7 @@ function optimize(collect, prng, options) {
     var pvalues = pnames.map(name => options.parameter_values[name]);
     return searchParameters(collect, prng, pnames, count, options).then(solutions => {
         var duration = moment.duration(_.max(_.pluck(solutions, 'foundAt')) - started);
-        logger.log("Found optimal", options.label || '\b', "solutions in", duration.humanize());
+        logger.log("Found local extremum", options.label || '\b', "in about", duration.humanize());
         return solutions.map((solution, i) => ({
             score: solution.score,
             parameters: _.object(pnames,
@@ -315,6 +315,7 @@ function fitness(collect, options, pnames) {
  */
 function adapt(fitness, mutation, pnames, terminateAt, options, population, size) {
     var maxEliteSize = Math.max(options.signal_count || 1, Math.floor(size/2));
+    var generation = size - maxEliteSize || 1;
     var elite = []; // elite solutions best one last
     var solutions = []; // unsorted solutions with a score
     var candidates = population.slice(0); // solutions without a score
@@ -330,10 +331,10 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
             var population = elite.concat(solutions);
             var top = _.sortBy(population, 'score').slice(-maxEliteSize);
             var additions = _.difference(top, elite);
-            if (additions.length || counter % (size - maxEliteSize || 1) === 0) {
+            if (additions.length || counter % generation === 0) {
                 var best = _.last(top);
                 logger.log("Optimize", options.label || '\b', options.begin,
-                  "G" + Math.floor(counter/(size - maxEliteSize || 1)),
+                  "G" + Math.floor(counter/generation),
                   "P" + (elite.length+candidates.length),
                   "M" + Math.round(strength * pnames.length),
                   best.pindex.map((idx,i) => {
@@ -345,22 +346,25 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
                 additions.forEach(solution => solution.foundAt = now);
                 elite = top;
                 strength = 0;
-            } else {
-                strength += solutions.length/size/pnames.length;
+            }
+            if (!terminateAt || terminateAt > Date.now()) {
+                var ranking = [];
+                while (!ranking.length && strength/2 < generation/pnames.length) {
+                    var mutate = mutation(elite, strength);
+                    for (var i=0; i/2<size && elite.length+candidates.length<size; i++) {
+                        var mutant = mutate(additions[i], _.last(elite));
+                        if (mutant) {
+                            candidates.push(mutant);
+                            ranking.push(rank(mutant));
+                        }
+                    }
+                    strength += solutions.length/generation/pnames.length;
+                }
+                if (ranking.length) {
+                    until = until.then(() => Promise.all(ranking));
+                }
             }
             counter += solutions.length;
-            if (strength < size/pnames.length && (!terminateAt || terminateAt > Date.now())) {
-                var ranking = [];
-                var mutate = mutation(elite, strength);
-                for (var i=0; i/2<size && elite.length+candidates.length<size; i++) {
-                    var mutant = mutate(additions[i], _.last(elite));
-                    if (mutant) {
-                        candidates.push(mutant);
-                        ranking.push(rank(mutant));
-                    }
-                }
-                until = until.then(() => Promise.all(ranking));
-            }
             solutions.splice(0, solutions.length);
         });
     };

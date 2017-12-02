@@ -309,11 +309,7 @@ describe("optimize", function() {
                 signal_len: [2,5,9,16]
             }
         }).should.eventually.be.like({
-            parameters: {
-                fast_len: 3,
-                slow_len: 35,
-                signal_len: 5
-            }
+            score: 1.336956395
         });
     });
     it("should find best mean reversion bollinger parameters by sampling periods", function() {

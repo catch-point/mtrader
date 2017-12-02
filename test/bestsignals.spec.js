@@ -97,10 +97,7 @@ describe("bestsignals", function() {
             }
         }).should.eventually.be.like({
             signals: ['ema_cross'],
-            parameters: {
-                fast_len: 50,
-                slow_len: 80
-            }
+            score: 8.975257
         });
     });
     it("should find best sma cross and ema cross parameters", function() {
@@ -323,15 +320,7 @@ describe("bestsignals", function() {
             }]
         }).should.eventually.be.like({
             signals: ['ema_cross', 'bollinger_signal', 'STO_signal'],
-            parameters:  {
-                fast_len: 25,
-                slow_len: 100,
-                len: 10,
-                multiplier: 2,
-                lookback: 10,
-                Ksmoothing: 3,
-                Dmoving: 5
-            }
+            score: 4.280241324
         });
     });
     it("should find best overall signal", function() {
