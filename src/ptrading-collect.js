@@ -165,7 +165,10 @@ function createQueue(createWorkers, onerror) {
     var stoppedWorkers = [];
     var run = function(options) {
         var loads = workers.map(load);
-        var worker = workers[loads.indexOf(_.min(loads))];
+        var min = _.min(loads);
+        var avail = _.reject(loads.map((load, idx) => load == min ? idx : null), _.isNull);
+        var idx = avail.length == 1 ? 0 : Math.floor(Math.random() * avail.length);
+        var worker = workers[avail[idx]];
         return worker.request('collect', options).catch(err => {
             if (!onerror) throw err;
             else return onerror(err, options, worker);
