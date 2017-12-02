@@ -1,0 +1,28 @@
+{
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 1,
+   "head": [
+    {
+     "symbol": "AABA",
+     "google_symbol": "NASDAQ:AABA",
+     "exchange": "NASDAQ",
+     "name": "Altaba Inc"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "AABA",
+     "google_symbol": "NASDAQ:AABA",
+     "exchange": "NASDAQ",
+     "name": "Altaba Inc"
+    }
+   ],
+   "updatedAt": "2017-12-02T00:40:16.272Z",
+   "properties": {},
+   "createdAt": "2017-12-02T00:40:16.272Z"
+  }
+ ]
+}

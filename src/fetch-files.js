@@ -134,9 +134,12 @@ function readOrWriteResult(fallbacks, open, cmd, options) {
             else if (_.isEmpty(fallbacks))
                 throw Error("Data file not found " + coll.filenameOf(name));
             else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
-                var datasource = config(['exchanges', options.exchange, 'datasources', source]);
-                if (!datasource || !_.contains(config([source, 'fetch']), options.interval)) throw err;
-                var opt = _.defaults({}, options, datasource);
+                if (!(options.interval == 'lookup' && config(['fetch', source, 'lookup'])) &&
+                        !(options.interval == 'fundamental' && config(['fetch', source, 'fundamental'])) &&
+                        !_.contains(config(['fetch', source, 'interday']), options.interval) &&
+                        !_.contains(config(['fetch', source, 'intraday']), options.interval))
+                    throw (err || Error("No fallback available for " + options.interval));
+                var opt = _.defaults({}, options);
                 return fb[cmd](opt).then(result => {
                     return coll.writeTo(result, name).then(() => result);
                 });

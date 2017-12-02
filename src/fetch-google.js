@@ -161,7 +161,7 @@ module.exports = function() {
                 marketClosesAt: _.isString,
                 tz: _.isString
             });
-            var opts = _.extend({
+            var opts = _.defaults({}, {
                 google_symbol: google_symbol(exchanges, options),
                 yahoo_symbol: yahoo_symbol(exchanges, options)
             }, options);

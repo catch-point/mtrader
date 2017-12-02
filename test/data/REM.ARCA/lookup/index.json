@@ -1,0 +1,40 @@
+{
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 2,
+   "head": [
+    {
+     "symbol": "REMX",
+     "google_symbol": "NYSEARCA:REMX",
+     "exchange": "ARCA",
+     "name": "Market Vectors Rare Earth Strat Met ETF"
+    },
+    {
+     "symbol": "REML",
+     "google_symbol": "NYSEARCA:REML",
+     "exchange": "ARCA",
+     "name": "Credit Suisse AG Credit Suisse X-Links Monthly Pay 2xLeveraged Mortgage REIT Exchange Traded Notes (ETNs) due July 11, 2036"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "REMX",
+     "google_symbol": "NYSEARCA:REMX",
+     "exchange": "ARCA",
+     "name": "Market Vectors Rare Earth Strat Met ETF"
+    },
+    {
+     "symbol": "REML",
+     "google_symbol": "NYSEARCA:REML",
+     "exchange": "ARCA",
+     "name": "Credit Suisse AG Credit Suisse X-Links Monthly Pay 2xLeveraged Mortgage REIT Exchange Traded Notes (ETNs) due July 11, 2036"
+    }
+   ],
+   "updatedAt": "2017-12-01T23:54:07.837Z",
+   "properties": {},
+   "createdAt": "2017-12-01T23:54:07.837Z"
+  }
+ ]
+}
