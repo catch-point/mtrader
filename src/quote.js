@@ -495,7 +495,7 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
     if (options.offline) return Promise.resolve(blocks);
     else return collection.lockWith(blocks, blocks => {
         var version = getStorageVersion(collection);
-        return fetchBlocks(fetch, fields, options, collection, version, stop, blocks);
+        return fetchBlocks(fetch, fields, options, collection, version, stop.format(), blocks);
     });
 }
 
@@ -674,7 +674,7 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
             return; // empty blocks are complete
         if (_.first(tail).incomplete)
             return fetchComplete(block, last);
-        if (i < blocks.length -1 || stop && _.last(tail).ending <= stop.format())
+        if (i < blocks.length -1 || _.last(tail).ending <= stop || _.last(tail).asof <= stop)
             return fetchPartial(block, _.first(tail).ending).catch(error => {
                 if (stop) logger.debug("Need to fetch", _.last(tail).ending);
                 throw Error("Fetch failed try using the offline flag " + error.message);

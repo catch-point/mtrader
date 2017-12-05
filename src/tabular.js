@@ -40,6 +40,7 @@ const csv = require('fast-csv');
 const logger = require('./logger.js');
 
 module.exports = function(data, options) {
+    if (_.isEmpty(data)) return logger.info("Empty result, not writing", options.output || '');
     var filename = getOutputFile(options);
     return new Promise(finished => {
         var output = createWriteStream(filename);
