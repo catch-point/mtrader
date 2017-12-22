@@ -100,7 +100,7 @@ function createInstance(session) {
     var config = function(name, value) {
         if (_.isUndefined(value)) {
             var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
-            return get(merge({}, session, config.opts(), loaded, stored), jpath);
+            return get(merge({}, session, config.opts(), loaded, stored, defaults), jpath);
         } else {
             config.options(name, value);
         }
@@ -112,9 +112,10 @@ function createInstance(session) {
                 process.argv[process.argv.indexOf('--prefix')+1] :
                 process.argv[1] ? path.resolve(process.argv[1], '../..') : ''
         }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
-        stored = merge({}, loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json')), defaults);
-        var loadedFrom = filename || loadedFrom || _.contains(process.argv, '--load') && process.argv[process.argv.indexOf('--load')+1] + '.json';
-        var config_dir = path.resolve(defaults.prefix, stored.config_dir || 'etc');
+        stored = loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json'));
+        loadedFrom = filename || loadedFrom || _.contains(process.argv, '--load') &&
+                process.argv[process.argv.indexOf('--load')+1] + '.json';
+        var config_dir = path.resolve(defaults.prefix, stored.config_dir || defaults.config_dir || 'etc');
         loaded = loadedFrom ? loadConfigFile(path.resolve(config_dir, loadedFrom)) : {};
         listeners.forEach(listener => listener(null, null, filename || true));
     };

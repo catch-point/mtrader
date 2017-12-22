@@ -52,7 +52,7 @@ const expect = require('chai').use(like).expect;
 module.exports = function(fetch) {
     var promiseHelp;
     var lookup = Lookup(fetch);
-    var store = storage(path.resolve(config('prefix'), config('data_dir') || 'var'));
+    var store = storage(path.resolve(config('prefix'), config('cache_dir') || 'var/cache'));
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(fetch);
         if (options.help) return promiseHelp;

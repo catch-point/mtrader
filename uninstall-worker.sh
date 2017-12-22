@@ -80,27 +80,33 @@ elif [ ! -x "$(which ptrading)" ]; then
   npm uninstall ptrading
 fi
 
-# Remove configuration
-if [ -f "$PREFIX/etc/ptrading.json" ]; then
+# Check if certbot was installed
+if [ -x "$PREFIX/bin/certbot-auto" ]; then
+  rm "$PREFIX/bin/certbot-auto"
+fi
+
+if [ -z "$CONFIG_DIR" ]; then
   if [ "$PREFIX" = "$BASEDIR" ]; then
     CONFIG_DIR=etc
-    DATA_DIR=var
+    CACHE_DIR=var/cache
   elif [ "$PREFIX" = "/usr" ]; then
     CONFIG_DIR=../etc/$NAME
-    DATA_DIR=../var/cache/$NAME
-  elif [ -d "$PREFIX/etc/$NAME" -o -d "$PREFIX/var/cache/$NAME" ]; then
+    CACHE_DIR=../var/cache/$NAME
+  elif [ -d "$PREFIX/etc" -o -d "$PREFIX/var" ]; then
     CONFIG_DIR=etc/$NAME
-    DATA_DIR=var/cache/$NAME
+    CACHE_DIR=var/cache/$NAME
   else
     CONFIG_DIR=etc
-    DATA_DIR=var
+    CACHE_DIR=var/cache
   fi
-  rm "$PREFIX/etc/ptrading.json"
+fi
+
+# Remove configuration
+if [ -f "$PREFIX/etc/ptrading.json" ]; then
+  rm -f "$PREFIX/etc/ptrading.json" "$PREFIX/bin/certbot-pre-$NAME" "$PREFIX/bin/certbot-post-$NAME" "$PREFIX/bin/uninstall-$NAME"
   # remove generated certificates
-  if [ -x "$(which openssl)" ]; then
-    rm "$PREFIX/etc/ptrading-key.pem" "$PREFIX/etc/ptrading-csr.pem" "$PREFIX/etc/ptrading-cert.pem"
-  fi
-  rm -rf "$PREFIX/$DATA_DIR"
+  rm -f "$PREFIX/etc/ptrading-privkey.pem" "$PREFIX/etc/ptrading-chain.pem" "$PREFIX/etc/ptrading-fullchain.pem" "$PREFIX/etc/ptrading-crt.pem" "$PREFIX/etc/ptrading-dh.pem" "$PREFIX/etc/ptrading-cert.pem" "$PREFIX/etc/ptrading-ca.pem" "$PREFIX/etc/ptrading-csr.pem"
+  rm -rf "$PREFIX/$CACHE_DIR"
   rmdir "$PREFIX/$CONFIG_DIR"
 fi
 

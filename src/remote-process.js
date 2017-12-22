@@ -49,9 +49,21 @@ var remote = module.exports = function(socket, label) {
     if (typeof socket == 'string' || typeof socket == 'number')
         return remote(new ws(parseLocation(socket, false).href, {
             key: readFileSync(config('tls.key_pem')),
+            passphrase: readBase64FileSync(config('tls.passphrase_base64')),
             cert: readFileSync(config('tls.cert_pem')),
             ca: readFileSync(config('tls.ca_pem')),
-            rejectUnauthorized: config('tls.reject_unauthorized'),
+            crl: readFileSync(config('tls.crl_pem')),
+            ciphers: config('tls.ciphers'),
+            honorCipherOrder: config('tls.honorCipherOrder'),
+            ecdhCurve: config('tls.ecdhCurve'),
+            dhparam: readFileSync(config('tls.dhparam_pem')),
+            secureProtocol: config('tls.secureProtocol'),
+            secureOptions: config('tls.secureOptions'),
+            handshakeTimeout: config('tls.handshakeTimeout'),
+            requestCert: config('tls.requestCert'),
+            rejectUnauthorized: config('tls.rejectUnauthorized'),
+            NPNProtocols: config('tls.NPNProtocols'),
+            ALPNProtocols: config('tls.ALPNProtocols'),
             agent: false
         }), label || socket);
     var buf = '';
@@ -103,8 +115,15 @@ var remote = module.exports = function(socket, label) {
     });
 };
 
+function readBase64FileSync(filename) {
+    if (filename) return Buffer.from(readFileSync(filename), 'base64').toString();
+}
+
 function readFileSync(filename) {
-    if (filename) return fs.readFileSync(path.resolve(config('prefix'), filename), {encoding: 'utf-8'});
+    if (filename) {
+        var file = path.resolve(config('prefix'), filename);
+        return fs.readFileSync(file, {encoding: 'utf-8'});
+    }
 }
 
 function parseLocation(location, secure) {

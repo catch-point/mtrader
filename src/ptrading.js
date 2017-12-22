@@ -189,10 +189,21 @@ function listen(address, ptrading) {
     var auth = addr.auth ? 'Basic ' + new Buffer(addr.auth).toString('base64') : undefined;
     var server = addr.protocol == 'https:' || addr.protocol == 'wss:' ? https.createServer({
         key: readFileSync(config('tls.key_pem')),
+        passphrase: readBase64FileSync(config('tls.passphrase_base64')),
         cert: readFileSync(config('tls.cert_pem')),
         ca: readFileSync(config('tls.ca_pem')),
-        requestCert: config('tls.request_cert'),
-        rejectUnauthorized: config('tls.reject_unauthorized')
+        crl: readFileSync(config('tls.crl_pem')),
+        ciphers: config('tls.ciphers'),
+        honorCipherOrder: config('tls.honorCipherOrder'),
+        ecdhCurve: config('tls.ecdhCurve'),
+        dhparam: readFileSync(config('tls.dhparam_pem')),
+        secureProtocol: config('tls.secureProtocol'),
+        secureOptions: config('tls.secureOptions'),
+        handshakeTimeout: config('tls.handshakeTimeout'),
+        requestCert: config('tls.requestCert'),
+        rejectUnauthorized: config('tls.rejectUnauthorized'),
+        NPNProtocols: config('tls.NPNProtocols'),
+        ALPNProtocols: config('tls.ALPNProtocols')
     }) : http.createServer();
     var wsserver = new ws.Server({
         server: server, path: addr.path,
@@ -240,11 +251,29 @@ function listen(address, ptrading) {
     } else {
         server.listen(addr.port);
     }
+    if (config('forward80') && addr.port == 443) {
+        http.createServer(function(req, res) {
+            res.writeHead(308, {"Location": "https://" + req.headers['host'] + req.url});
+            res.end();
+        }).listen(80);
+    } else if (config('forward80') && addr.port != 80) {
+        http.createServer(function(req, res) {
+            res.writeHead(308, {"Location": "https://" + req.headers['host'] + ':' + addr.port + req.url});
+            res.end();
+        }).listen(80);
+    }
     return server;
 }
 
+function readBase64FileSync(filename) {
+    if (filename) return Buffer.from(readFileSync(filename), 'base64').toString();
+}
+
 function readFileSync(filename) {
-    if (filename) return fs.readFileSync(path.resolve(config('prefix'), filename), {encoding: 'utf-8'});
+    if (filename) {
+        var file = path.resolve(config('prefix'), filename);
+        return fs.readFileSync(file, {encoding: 'utf-8'});
+    }
 }
 
 function parseLocation(location, secure) {
@@ -258,7 +287,7 @@ function parseLocation(location, secure) {
         parsed.protocol == 'wss:' || parsed.protocol == 'https:' ? 443 :
         secure ? 443 : 80
     );
-    parsed.hostname = parsed.hostname || 'localhost';
+    parsed.hostname = parsed.hostname || '';
     parsed.host = parsed.host || (parsed.hostname + ':' + parsed.port);
     parsed.href = parsed.href || (parsed.protocol + '//' + parsed.host);
     if (!parsed.path) parsed.href = parsed.href + DEFAULT_PATH;

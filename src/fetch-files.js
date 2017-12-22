@@ -52,7 +52,7 @@ module.exports = function() {
             'iqfeed' == fallback ? iqfeed() :
             null;
     });
-    var dirname = config('fetch.files.dirname') || path.resolve(config('prefix'), config('data_dir') || 'var');
+    var dirname = config('fetch.files.dirname') || path.resolve(config('prefix'), config('cache_dir') || 'var/cache');
     var store = Promise.resolve(storage(dirname));
     var open = (name, cb) => store.then(store => store.open(name, cb));
     return {

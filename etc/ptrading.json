@@ -1,6 +1,6 @@
 {
   "description": "Configuration file for ptrading",
-  "data_dir": "var",
+  "cache_dir": "var/cache",
   "config_dir": "etc",
   "fetch": {
     "google": {
