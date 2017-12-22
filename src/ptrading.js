@@ -251,17 +251,6 @@ function listen(address, ptrading) {
     } else {
         server.listen(addr.port);
     }
-    if (config('forward80') && addr.port == 443) {
-        http.createServer(function(req, res) {
-            res.writeHead(308, {"Location": "https://" + req.headers['host'] + req.url});
-            res.end();
-        }).listen(80);
-    } else if (config('forward80') && addr.port != 80) {
-        http.createServer(function(req, res) {
-            res.writeHead(308, {"Location": "https://" + req.headers['host'] + ':' + addr.port + req.url});
-            res.end();
-        }).listen(80);
-    }
     return server;
 }
 

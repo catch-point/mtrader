@@ -171,7 +171,7 @@ fi
 
 if [ -z "$HOST" -a ! -f "$PREFIX/etc/ptrading.json" ]; then
   if [ -z "$HOST" -a "`tty`" != "not a tty" ]; then
-    read -p "Interface to listen on []:" HOST
+    read -p "Interface to listen on (leave blank for all) []:" HOST
   fi
 fi
 
@@ -188,14 +188,6 @@ elif [ -z "$PORT" ]; then
   fi
   if [ -z "$PORT" ]; then
     PORT=$DEFAULT_PORT
-  fi
-fi
-
-if [ -z "$FORWARD80" ]; then
-  if [ "$PORT" = 443 ]; then
-    FORWARD80=true
-  else
-    FORWARD80=false
   fi
 fi
 
@@ -268,7 +260,6 @@ EOF
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "listen": "wss://$USERINFO@$HOST:$PORT",
-  "forward80": $FORWARD80,
   "tls": {
     "key_pem": "etc/ptrading-privkey.pem",
     "cert_pem": "etc/ptrading-fullchain.pem",
@@ -315,7 +306,6 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ] && [[ "$PORT" != *8* ]]; then
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "listen": "wss://$USERINFO@$HOST:$PORT",
-  "forward80": $FORWARD80,
   "tls": {
     "key_pem": "etc/ptrading-privkey.pem",
     "cert_pem": "etc/ptrading-cert.pem",
