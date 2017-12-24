@@ -38,12 +38,12 @@ const promiseThrottle = require('./throttle.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
-module.exports = function(command, productId, productVersion) {
+module.exports = function(command, env, productId, productVersion) {
     if (command) expect(command).to.be.an('array');
     var adminPromise;
     var admin = function(){
         return adminPromise = promiseSocket(adminPromise,
-            promiseNewAdminSocket.bind(this, 9300, command, productId, productVersion));
+            promiseNewAdminSocket.bind(this, 9300, command, env, productId, productVersion));
     };
     var lookup = historical(admin);
     var throttled = promiseThrottle(lookup, 2);
@@ -451,13 +451,14 @@ function promiseNewLevel1Socket(blacklist, watching, port, retry) {
     });
 }
 
-function promiseNewAdminSocket(port, command, productId, productVersion) {
+function promiseNewAdminSocket(port, command, env, productId, productVersion) {
     return openSocket(port).catch(err => {
         if (command && err.code == 'ECONNREFUSED') {
             // try launching command first
             return new Promise((ready, exit) => {
                 logger.debug("launching", command);
                 var p = spawn(_.first(command), _.rest(command), {
+                    env: env,
                     detached: true,
                     stdio: 'ignore'
                 }).on('error', exit).on('exit', code => {

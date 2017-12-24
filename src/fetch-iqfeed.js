@@ -126,6 +126,7 @@ module.exports = function() {
     var launch = config('fetch.iqfeed.command');
     var iqclient = iqfeed(
         _.isArray(launch) ? launch : launch && launch.split(' '),
+        config('fetch.iqfeed.env'),
         config('fetch.iqfeed.productId'),
         config('version')
     );
