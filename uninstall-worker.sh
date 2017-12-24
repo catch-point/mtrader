@@ -105,7 +105,7 @@ fi
 if [ -f "$PREFIX/etc/ptrading.json" ]; then
   rm -f "$PREFIX/etc/ptrading.json" "$PREFIX/bin/certbot-pre-$NAME" "$PREFIX/bin/certbot-post-$NAME" "$PREFIX/bin/uninstall-$NAME"
   # remove generated certificates
-  rm -f "$PREFIX/etc/ptrading-privkey.pem" "$PREFIX/etc/ptrading-chain.pem" "$PREFIX/etc/ptrading-fullchain.pem" "$PREFIX/etc/ptrading-crt.pem" "$PREFIX/etc/ptrading-dh.pem" "$PREFIX/etc/ptrading-cert.pem" "$PREFIX/etc/ptrading-ca.pem" "$PREFIX/etc/ptrading-csr.pem"
+  rm -f "$PREFIX/etc/ptrading-privkey.pem" "$PREFIX/etc/ptrading-fullchain.pem" "$PREFIX/etc/ptrading-crt.pem" "$PREFIX/etc/ptrading-dh.pem" "$PREFIX/etc/ptrading-cert.pem" "$PREFIX/etc/ptrading-ca.pem" "$PREFIX/etc/ptrading-csr.pem"
   rm -rf "$PREFIX/$CACHE_DIR"
   rmdir "$PREFIX/$CONFIG_DIR"
 fi

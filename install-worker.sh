@@ -195,6 +195,15 @@ if [ "$(id -u)" = "0" -a "$PORT" -lt 1024 ]; then
   setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
 fi
 
+if [ "`tty`" == "not a tty" ]; then
+  CERTBOT_OPTS="-n --agree-tos --register-unsafely-without-email"
+fi
+
+# Renew signed certificate
+if [ -f "/etc/letsencrypt/live/$NAME/privkey.pem" -a -n "$CERTBOT" ]; then
+  $CERTBOT renew --standalone --cert-name "$NAME" --pre-hook "$PREFIX/bin/certbot-pre-$NAME" --post-hook "$PREFIX/bin/certbot-post-$NAME" $CERTBOT_OPTS
+fi
+
 # Request signed certificate
 if [ ! -f "$PREFIX/etc/ptrading.json" -a -n "$CERTBOT" ] && [[ "$PORT" != *8* ]]; then
   if [ ! -f "$PREFIX/bin/certbot-pre-$NAME" ]; then
@@ -237,22 +246,15 @@ fi
 EOF
     chmod a+x "$PREFIX/bin/certbot-post-$NAME"
   fi
-  if [ "`tty`" == "not a tty" ]; then
-    SILENCE="-n --agree-tos --register-unsafely-without-email"
-  fi
-  $CERTBOT certonly -d "$DOMAINS" --standalone --cert-name "$NAME" --pre-hook "$PREFIX/bin/certbot-pre-$NAME" --post-hook "$PREFIX/bin/certbot-post-$NAME" $SILENCE
-  if [ -f "/etc/letsencrypt/live/$NAME/chain.pem" ]; then
-    cp "/etc/letsencrypt/live/$NAME/privkey.pem" "$PREFIX/etc/ptrading-privkey.pem"
-    cp "/etc/letsencrypt/live/$NAME/chain.pem" "$PREFIX/etc/ptrading-chain.pem"
-    cp "/etc/letsencrypt/live/$NAME/fullchain.pem" "$PREFIX/etc/ptrading-fullchain.pem"
-    chmod go-rwx "$PREFIX/etc/ptrading-privkey.pem"
+  $CERTBOT certonly -d "$DOMAINS" --standalone --cert-name "$NAME" --pre-hook "$PREFIX/bin/certbot-pre-$NAME" --post-hook "$PREFIX/bin/certbot-post-$NAME" $CERTBOT_OPTS
+  if [ -f "/etc/letsencrypt/live/$NAME/privkey.pem" ]; then
     if [ ! -f "$PREFIX/etc/ptrading-crt.pem" ] ; then
       touch "$PREFIX/etc/ptrading-crt.pem"
     fi
     if [ ! -f "$PREFIX/etc/ptrading-dh.pem" ]; then
       openssl dhparam -outform PEM -out "$PREFIX/etc/ptrading-dh.pem" 2048
     fi
-    chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/ptrading-privkey.pem" "$PREFIX/etc/ptrading-chain.pem" "$PREFIX/etc/ptrading-fullchain.pem" "$PREFIX/etc/ptrading-crt.pem" "$PREFIX/etc/ptrading-dh.pem"
+    chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/ptrading-privkey.pem" "$PREFIX/etc/ptrading-fullchain.pem" "$PREFIX/etc/ptrading-crt.pem" "$PREFIX/etc/ptrading-dh.pem"
     echo "Add \"remote_workers\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"] to client's etc/ptrading.json"
     cat > "$PREFIX/etc/ptrading.json" << EOF
 {
@@ -263,7 +265,6 @@ EOF
   "tls": {
     "key_pem": "etc/ptrading-privkey.pem",
     "cert_pem": "etc/ptrading-fullchain.pem",
-    "ca_pem": "etc/ptrading-chain.pem",
     "crt_pem": "etc/ptrading-crt.pem",
     "honorCipherOrder": true,
     "ecdhCurve": "prime256v1",
@@ -339,7 +340,7 @@ EOF
 fi
 
 if [ "$(id -u)" = "0" ]; then
-  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/$CONFIG_DIR" "$PREFIX/$CACHE_DIR"
+  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/$CONFIG_DIR" "$PREFIX/$CACHE_DIR" "$PREFIX/etc/ptrading.json"
 fi
 
 # install daemon

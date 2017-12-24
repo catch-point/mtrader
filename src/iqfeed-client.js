@@ -464,6 +464,7 @@ function promiseNewAdminSocket(port, command, productId, productVersion) {
                     if (code) exit(Error("Process exitted with code " + code));
                     else ready();
                 }).unref();
+                ready();
             }).then(() => openSocket(port)).catch(err => {
                 if (err.code == 'ECONNREFUSED')
                     return new Promise(cb => _.delay(cb, 1000))
