@@ -67,12 +67,12 @@ var functions = module.exports.functions = {
             var start = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
             if (!start.isValid()) return null;
             var d = Math.min(start.isoWeekday()-1,4) + days(context);
-            var wk = d > 0 ? Math.floor(d /5) : Math.ceil(d /5);
+            var wk = Math.floor(d /5);
             var wd = d - wk *5 +1;
             return start.add(wk, 'weeks').isoWeekday(wd).format();
         };
     }, {
-        description: "The number of workdays (Mon-Fri) since 1970-01-01"
+        description: "The date before or after a specified number of workdays (Mon-Fri)"
     }),
     /* The number of days since 1899-12-31 */
     DATEVALUE: _.extend((opts, ending, tz) => {

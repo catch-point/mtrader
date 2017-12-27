@@ -140,6 +140,11 @@ describe("common-functions", function(){
         var WORKDAY2 = parser.parse('WORKDAY(day.ending,2)');
         var WORKDAY4 = parser.parse('WORKDAY(day.ending,4)');
         var WORKDAY5 = parser.parse('WORKDAY(day.ending,5)');
+        var WORKDAY_1 = parser.parse('WORKDAY(day.ending,-1)');
+        var WORKDAY_2 = parser.parse('WORKDAY(day.ending,-2)');
+        var WORKDAY_4 = parser.parse('WORKDAY(day.ending,-4)');
+        var WORKDAY_5 = parser.parse('WORKDAY(day.ending,-5)');
+        var WORKDAY_6 = parser.parse('WORKDAY(day.ending,-6)');
         it("DAY0", function(){
             expect(
                 DAY({"day.ending":"2015-07-18T00:00:00-04:00"})
@@ -186,6 +191,13 @@ describe("common-functions", function(){
                 WORKDAY1({"day.ending":"2015-07-15T00:00:00-04:00"})
             );
         });
+        it("WORKDAY_1", function(){
+            expect(
+                WORKDAY_1({"day.ending":"2015-07-16T00:00:00-04:00"})
+            ).to.equal(
+                WORKDAY0({"day.ending":"2015-07-15T00:00:00-04:00"})
+            );
+        });
         it("WORKDAY2", function(){
             expect(
                 WORKDAY2({"day.ending":"2015-07-16T00:00:00-04:00"})
@@ -198,6 +210,13 @@ describe("common-functions", function(){
                 WORKDAY0({"day.ending":"2015-07-16T00:00:00-04:00"})
             ).to.equal(
                 WORKDAY2({"day.ending":"2015-07-14T00:00:00-04:00"})
+            );
+        });
+        it("WORKDAY_2", function(){
+            expect(
+                WORKDAY_2({"day.ending":"2015-07-16T00:00:00-04:00"})
+            ).to.equal(
+                WORKDAY0({"day.ending":"2015-07-14T00:00:00-04:00"})
             );
         });
         it("WORKDAY4", function(){
@@ -214,6 +233,13 @@ describe("common-functions", function(){
                 WORKDAY4({"day.ending":"2015-07-10T00:00:00-04:00"})
             );
         });
+        it("WORKDAY_4", function(){
+            expect(
+                WORKDAY_4({"day.ending":"2015-07-16T00:00:00-04:00"})
+            ).to.equal(
+                WORKDAY0({"day.ending":"2015-07-10T00:00:00-04:00"})
+            );
+        });
         it("WORKDAY5", function(){
             expect(
                 WORKDAY5({"day.ending":"2015-07-16T00:00:00-04:00"})
@@ -226,6 +252,20 @@ describe("common-functions", function(){
                 WORKDAY0({"day.ending":"2015-07-16T00:00:00-04:00"})
             ).to.equal(
                 WORKDAY5({"day.ending":"2015-07-09T00:00:00-04:00"})
+            );
+        });
+        it("WORKDAY_5", function(){
+            expect(
+                WORKDAY_5({"day.ending":"2015-07-16T00:00:00-04:00"})
+            ).to.equal(
+                WORKDAY0({"day.ending":"2015-07-09T00:00:00-04:00"})
+            );
+        });
+        it("WORKDAY_6", function(){
+            expect(
+                WORKDAY_6({"day.ending":"2015-07-17T00:00:00-04:00"})
+            ).to.equal(
+                WORKDAY0({"day.ending":"2015-07-09T00:00:00-04:00"})
             );
         });
     });

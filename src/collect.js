@@ -81,7 +81,7 @@ function help(quote) {
             usage: 'collect(options)',
             description: "Evaluates columns using historic security data",
             properties: help.properties,
-            options: _.extend({}, _.omit(help.options, ['symbol','exchange']), {
+            options: _.extend({}, _.omit(help.options, ['symbol','exchange','pad_begin','pad_end']), {
                 portfolio: {
                     usage: 'symbol.exchange,..',
                     description: "Sets the set of securities or nested protfolios to collect data on"
@@ -99,8 +99,8 @@ function help(quote) {
                     description: "The order that the output should be sorted by. A comma separated list of expressions can be provided and each may be wrapped in a DESC function to indicate the order should be reversed."
                 },
                 pad_leading: {
-                    usage: '<number of bars>',
-                    description: "Sets the number of additional rows to to compute as a warmup, but not included in the result"
+                    usage: '<number of workdays>',
+                    description: "Number of workdays (Mon-Fri) to processes before the result (as a warm up)"
                 },
                 reset_every: {
                     usage: 'P1Y',
@@ -145,16 +145,13 @@ function collect(quote, callCollect, fields, options) {
     var optionset = segments.map((segment, i, segments) => {
         if (segments.length == 1) return options;
         else if (i === 0) return _.defaults({
-            begin: options.begin, end: segments[i+1],
-            pad_begin: options.pad_begin, pad_end: 0
+            begin: options.begin, end: segments[i+1]
         }, options);
         else if (i < segments.length -1) return _.defaults({
-            begin: segment, end: segments[i+1],
-            pad_begin: 0, pad_end: 0
+            begin: segment, end: segments[i+1]
         }, options);
         else return _.defaults({
-            begin: segment, end: options.end,
-            pad_begin: 0, pad_end: options.pad_end
+            begin: segment, end: options.end
         }, options);
     });
     return Promise.all(optionset.map(opts => callCollect(opts))).then(dataset => {
@@ -184,7 +181,8 @@ function collectDuration(quote, callCollect, fields, options) {
     return Promise.all(portfolio.map((opts, idx) => {
         var index = '#' + idx.toString() + (options.columns[options.indexCol] ?
             '.' + JSON.parse(options.columns[options.indexCol]).substring(1) : '');
-        var pad_begin = (options.pad_begin || 0) + (options.pad_leading || 0);
+        var begin = !options.pad_leading ? options.begin :
+            common('WORKDAY', [_.constant(options.begin), _.constant(-options.pad_leading)], options)();
         if (opts.portfolio) {
             var parser = Parser({
                 variable(name){
@@ -206,7 +204,7 @@ function collectDuration(quote, callCollect, fields, options) {
                     [options.temporalCol]: 'DATETIME(ending)'
                 }),
                 filter: _.flatten(_.compact(filter), true),
-                pad_begin: (opts.pad_begin || 0) + pad_begin,
+                begin: opts.begin || begin,
                 order: _.flatten(_.compact(['DATETIME(ending)', opts.order]), true),
                 parameters: _.defaults({}, options.parameters, opts.parameters, params)
             }, opts));
@@ -219,7 +217,7 @@ function collectDuration(quote, callCollect, fields, options) {
                     [options.temporalCol]: 'DATETIME(ending)'
                 }, simpleColumns),
                 criteria: criteria,
-                pad_begin: pad_begin,
+                begin: begin,
                 parameters: _.defaults({}, options.parameters, defaults)
             }, opts));
         }
@@ -228,8 +226,7 @@ function collectDuration(quote, callCollect, fields, options) {
         return collectDataset(dataset, parser, columns, options);
     }).then(collection => {
         var begin = moment(options.begin).toISOString();
-        var idx = _.sortedIndex(collection, {[options.temporalCol]: begin}, options.temporalCol);
-        var start = idx - (options.pad_begin || 0);
+        var start = _.sortedIndex(collection, {[options.temporalCol]: begin}, options.temporalCol);
         if (start <= 0) return collection;
         else return collection.slice(start);
     }).then(collection => collection.reduce((result, points) => {
@@ -332,7 +329,7 @@ function getReferences(variables, includeRolling) {
  */
 function getPortfolio(portfolio, options) {
     var opts = _.omit(options, [
-        'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading', 'pad_begin', 'tail', 'head'
+        'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading', 'tail', 'head'
     ]);
     var array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :

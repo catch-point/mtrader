@@ -61,8 +61,7 @@ describe("collect", function() {
     it("count", function() {
         return collect({
           portfolio: 'AABA.NASDAQ,IBM.NYSE',
-          pad_begin: 10,
-          begin: "2017-01-13",
+          begin: "2016-12-29",
           end: "2017-01-14",
           columns: {
               symbol: 'symbol',
@@ -89,8 +88,7 @@ describe("collect", function() {
     it("should handle literal column values that override variables", function() {
         return collect({
           portfolio: 'AABA.NASDAQ,IBM.NYSE',
-          pad_begin: 10,
-          begin: "2017-01-13",
+          begin: "2016-12-29",
           end: "2017-01-14",
           columns: {
               symbol: 'symbol',
@@ -320,7 +318,7 @@ describe("collect", function() {
     it("max correl trades", function() {
         return collect({
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
-          pad_leading: 11,
+          pad_leading: 12,
           begin: "2016-11-30",
           end: "2016-12-01",
           variables: {

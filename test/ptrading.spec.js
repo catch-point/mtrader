@@ -46,6 +46,9 @@ describe("ptrading", function() {
         ptrading.config('files.enabled', false);
         process.emit('SIGHUP');
     });
+    beforeEach(function() {
+        ptrading.optimize.seed(27644437);
+    });
     after(function() {
         ptrading.config.unset('prefix');
         ptrading.config.unset('iqfeed.enabled');
@@ -111,8 +114,7 @@ describe("ptrading", function() {
     it("collect change", function() {
         return ptrading.collect({
           portfolio: 'AABA.NASDAQ,IBM.NYSE',
-          pad_begin: 10,
-          begin: "2017-01-13",
+          begin: "2016-12-29",
           end: "2017-01-14",
           columns: {
               symbol: 'symbol',
