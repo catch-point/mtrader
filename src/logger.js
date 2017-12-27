@@ -35,7 +35,7 @@ const _ = require('underscore');
 const config = require('./config.js');
 
 var relative = path.relative(process.cwd(), path.dirname(__filename));
-var silent = process.argv.some(arg => /^--silent$|^-\w*s/.test(arg));
+var quiet = process.argv.some(arg => /^--quiet$|^-\w*q/.test(arg));
 var verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg));
 var debugging = !relative || relative == 'src' || process.argv.some(arg => /^--debug$|^-\w*x/.test(arg));
 var noDebugging = process.argv.some(arg => /^-\w*X/.test(arg));
@@ -60,7 +60,7 @@ var tty_colours = {
 
 var colours = process.stderr.isTTY ? tty_colours : _.mapObject(tty_colours, _.constant(''));
 
-var logger = module.exports = cfg('silent', silent) ? {
+var logger = module.exports = cfg('quiet', quiet) ? {
     debug: nil,
     log: nil,
     info: nil,
@@ -85,7 +85,7 @@ process.on('SIGINT', () => {
     logger.warn = nil;
     logger.error = nil;
 }).on('SIGHUP', () => {
-    if (cfg('silent', silent)) {
+    if (cfg('quiet', quiet)) {
         logger.log = nil;
         logger.info = nil;
         logger.warn = nil;

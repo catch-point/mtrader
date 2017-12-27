@@ -52,7 +52,7 @@ function usage(command) {
         .description("Quotes historical data for the given symbol")
         .usage('<symbol.exchange> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
-        .option('-s, --silent', "Include less information about what the system is doing")
+        .option('-q, --quiet', "Include less information about what the system is doing")
         .option('-x, --debug', "Include details about what the system is working on")
         .option('-X', "Hide details about what the system is working on")
         .option('--prefix <dirname>', "Path where the program files are stored")
