@@ -97,29 +97,50 @@ if (require.main === module) {
         program.help();
     }
 } else if (config('workers') == 0) {
-    module.exports = Fetch();
+    var fetch;
+    module.exports = function(options) {
+        if (!fetch) fetch = Fetch();
+        return fetch(options);
+    };
+    module.exports.close = function() {
+        if (fetch) try {
+            return fetch.close();
+        } finally {
+            fetch = null;
+        } else return Promise.resolve();
+    };
+    process.on('SIGINT', module.exports.close);
 } else {
     var program = usage(new commander.Command());
-    var child = replyTo(config.fork(module.filename, program));
+    var child;
     module.exports = function(options) {
+        if (!child) {
+            child = replyTo(config.fork(module.filename, program));
+            module.exports.process = child.process;
+        }
         return child.request('fetch', options);
     };
-    module.exports.process = child.process;
     module.exports.close = function() {
-        return child.disconnect();
+        if (child) try {
+            return child.disconnect();
+        } finally {
+            child = null;
+        } else return Promise.resolve();
     };
-    module.exports.shell = shell.bind(this, program.description(), child);
+    module.exports.shell = shell.bind(this, program.description(), module.exports);
+    process.on('SIGINT', module.exports.close);
+    process.on('SIGTERM', module.exports.close);
 }
 
-function shell(desc, child, app) {
-    app.on('quit', () => child.disconnect());
-    app.on('exit', () => child.disconnect());
+function shell(desc, fetch, app) {
+    app.on('quit', () => fetch.close());
+    app.on('exit', () => fetch.close());
     // lookup
     app.cmd('lookup :symbol', "List securities with similar symbols", (cmd, sh, cb) => {
         var s = cmd.params.symbol;
         var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
-        child.request('fetch', _.defaults({
+        fetch(_.defaults({
             interval: 'lookup',
             symbol: symbol,
             exchange: exchange
@@ -130,7 +151,7 @@ function shell(desc, child, app) {
         var s = cmd.params.symbol;
         var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
-        child.request('fetch', _.defaults({
+        fetch(_.defaults({
             interval: 'fundamental',
             symbol: symbol,
             exchange: exchange
@@ -141,14 +162,14 @@ function shell(desc, child, app) {
         var s = cmd.params.symbol;
         var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
-        child.request('fetch', _.defaults({
+        fetch(_.defaults({
             interval: cmd.params.interval,
             symbol: symbol,
             exchange: exchange
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
 // help
-return child.request('fetch', {help: true}).then(info => _.indexBy(info, 'name')).then(info => {
+return fetch({help: true}).then(info => _.indexBy(info, 'name')).then(info => {
 help(app, 'lookup', `
   Usage: lookup :symbol
 

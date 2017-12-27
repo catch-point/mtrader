@@ -112,6 +112,8 @@ if (require.main === module) {
     var program = usage(new commander.Command());
     module.exports = createInstance(fetch, program);
     process.on('SIGHUP', () => module.exports.reload());
+    process.on('SIGINT', () => module.exports.reset().then(_.noop, err => logger.warn("Quote reset", err)));
+    process.on('SIGTERM', () => module.exports.close());
 }
 
 function createInstance(fetch, program) {
@@ -136,10 +138,17 @@ function createInstance(fetch, program) {
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = () => {
-        queue.reset();
+        queue.reload();
+    };
+    instance.reset = () => {
+        try {
+            return queue.close();
+        } finally {
+            queue = createQueue(createWorkers.bind(this, program, fetch));
+        }
     };
     var direct = Quote(fetch);
-    var queue = createQueue(createWorkers.bind(this, program, fetch, instance));
+    var queue = createQueue(createWorkers.bind(this, program, fetch));
     return instance;
 }
 
@@ -188,7 +197,7 @@ function createQueue(createWorkers) {
             }
             return workers.slice(0);
         },
-        reset() {
+        reload() {
             stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
         },
         close() {
@@ -229,7 +238,7 @@ function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
     }));
 }
 
-function createWorkers(program, fetch, quote) {
+function createWorkers(program, fetch) {
     var prime = [0,1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
     var size = _.isFinite(config('quote_workers')) ? +config('quote_workers') :
         _.isFinite(config('workers')) && config('workers') == 0 ? 0 :

@@ -100,6 +100,8 @@ if (require.main === module) {
     var prog = usage(new commander.Command());
     module.exports = createInstance(prog, quote);
     process.on('SIGHUP', () => module.exports.reload());
+    process.on('SIGINT', () => module.exports.reset().then(_.noop, err => logger.warn("Collect reset", err)));
+    process.on('SIGTERM', () => module.exports.close());
 }
 
 function createInstance(program, quote) {
@@ -128,20 +130,30 @@ function createInstance(program, quote) {
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = () => {
         _.keys(collections).forEach(key=>delete collections[key]);
-        local.reset();
-        remote.reset();
+        local.reload();
+        remote.reload();
+    };
+    instance.reset = () => {
+        _.keys(collections).forEach(key=>delete collections[key]);
+        try {
+            return Promise.all([local.close(), remote.close()]);
+        } finally {
+            local = createQueue(localWorkers);
+            remote = createQueue(createRemoteWorkers, onerror);
+        }
     };
     var collections = {};
     var direct = Collect(quote, instance);
     var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
-    var local = createQueue(localWorkers);
-    var remote = createQueue(createRemoteWorkers, (err, options, worker) => {
+    var onerror = (err, options, worker) => {
         if (!worker.process.remote) throw err;
         logger.debug("Collect", options.label || '\b', worker.process.pid, err, err.stack);
         return local(options).catch(e => {
             throw err;
         });
-    });
+    };
+    var local = createQueue(localWorkers);
+    var remote = createQueue(createRemoteWorkers, onerror);
     return instance;
 }
 
@@ -207,7 +219,7 @@ function createQueue(createWorkers, onerror) {
             }
             return workers.slice(0);
         },
-        reset() {
+        reload() {
             stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
         },
         close() {

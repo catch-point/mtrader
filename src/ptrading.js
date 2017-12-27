@@ -119,6 +119,8 @@ if (require.main === module) {
         process.on('SIGTERM', () => app.quit());
         if (config('listen')) {
             var server = listen(config('listen'), ptrading);
+            process.on('SIGINT', () => server.close());
+            process.on('SIGTERM', () => server.close());
             app.on('quit', () => server.close());
             app.on('exit', () => server.close());
         }
@@ -126,8 +128,10 @@ if (require.main === module) {
             !~['stop','config','fetch'].indexOf(program.args[0].name && program.args[0].name())) {
         var ptrading = createInstance();
         var server = listen(config('listen'), ptrading);
-        process.on('SIGINT', () => ptrading.close())
-            .on('SIGTERM', () => ptrading.close());
+        process.on('SIGINT', () => server.close());
+        process.on('SIGTERM', () => server.close());
+        process.on('SIGINT', () => ptrading.close());
+        process.on('SIGTERM', () => ptrading.close());
         server.on('close', () => ptrading.close());
     }
 } else {
@@ -245,7 +249,6 @@ function listen(address, ptrading) {
         server_close.call(server);
         wsserver.clients.forEach(client => client.close());
     };
-    process.on('SIGINT', () => server.close()).on('SIGTERM', () => server.close());
     if (addr.hostname) {
         server.listen(addr.port, addr.hostname);
     } else {
