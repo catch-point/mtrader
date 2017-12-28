@@ -232,7 +232,7 @@ function collectDuration(quote, callCollect, fields, options) {
     }).then(collection => collection.reduce((result, points) => {
         var filter = getOrderBy(options.filter, columns, options);
         var objects = _.values(points).filter(_.isObject)
-            .filter(point => !filter.find(criteria => criteria.by && !point[criteria.by]));
+            .filter(point => !filter.find(criteria => criteria.by && !criteria.by(point)));
         if (!_.isEmpty(objects)) result.push.apply(result, objects);
         return result;
     }, [])).then(result => {
@@ -382,10 +382,25 @@ function parseNeededColumns(fields, options) {
         }
         return variables;
     }, {});
-    var filterOrder = _.difference(normalizer.parseCriteriaList(_.flatten(_.compact([
+    var filterOrder = normalizer.parseCriteriaList(_.flatten(_.compact([
         options.filter, options.order
-    ]), true)), _.keys(needed), _.keys(variables));
-    return result.concat(_.zip(filterOrder, filterOrder));
+    ]), true));
+    var isVariablePresent = Parser({
+        constant(value) {
+            return false;
+        },
+        variable(name) {
+            return true;
+        },
+        expression(expr, name, args) {
+            return args.find(_.identity) || false;
+        }
+    }).parse;
+    var neededFilterOrder = filterOrder.filter(expr => {
+        if (needed[expr] || variables[expr]) return false;
+        else return isVariablePresent(expr);
+    });
+    return result.concat(_.zip(neededFilterOrder, neededFilterOrder));
 }
 
 /**
@@ -673,15 +688,21 @@ function getOrderBy(expr, columns, options) {
     return Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
-            return {};
+            return {by: _.constant(value)};
         },
         variable(name) {
-            return {by: name};
+            // column name might not be needed
+            return {by: ctx => ctx[name] || ctx[columns[name]]};
         },
         expression(expr, name, args) {
             if (name == 'DESC') return {desc: true, by: _.first(args).by};
             else if (name == 'ASC') return {desc: false, by:  _.first(args).by};
-            else return {by: expr};
+            var fargs = args.map(arg => arg.by);
+            var fn = common(name, fargs, options);
+            var fail = ctx => {
+                throw Error("Only common functions can be used here: " + expr);
+            };
+            return {by: ctx => _.has(ctx, expr) ? ctx[expr] : fn ? fn(ctx) : fail()};
         }
     }).parseCriteriaList(expr);
 }
@@ -713,8 +734,8 @@ function sortBy(array, order) {
     if (_.isEmpty(order)) return array;
     else return array.sort((left, right) => {
         return order.reduce((r, o) => {
-            var a = left[o.by];
-            var b = right[o.by];
+            var a = o.by(left);
+            var b = o.by(right);
             if (r != 0 || a === b) {
                 return r;
             } else if (!o.desc) {

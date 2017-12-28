@@ -125,10 +125,11 @@ describe("collect", function() {
               symbol: 'symbol',
               date: 'DATE(ending)',
               Price: 'day.close',
-              Weight: 'MIN(0.5/CVAR(5, 60, day.close), 100)'
+              Weight: 'MIN(0.5/CVAR(5, 60, day.close), 100)',
+              profitFactor: 'MAX(PF(120,day.adj_close),PF(200,day.adj_close))'
           },
           criteria: 'SUMPREC("Weight")+Weight <= 100',
-          precedence: 'DESC(MAX(PF(120,day.adj_close),PF(200,day.adj_close)))'
+          precedence: 'DESC(profitFactor)'
         }).should.eventually.be.like([
             {symbol:"XLF",date:"2016-12-01",Price:22.9,Weight:2.7401},
             {symbol:"XLE",date:"2016-12-01",Price:74.61,Weight:17.1398},

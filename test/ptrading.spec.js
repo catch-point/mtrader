@@ -46,9 +46,6 @@ describe("ptrading", function() {
         ptrading.config('files.enabled', false);
         process.emit('SIGHUP');
     });
-    beforeEach(function() {
-        ptrading.optimize.seed(27644437);
-    });
     after(function() {
         ptrading.config.unset('prefix');
         ptrading.config.unset('iqfeed.enabled');
