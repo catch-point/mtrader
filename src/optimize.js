@@ -113,7 +113,7 @@ function help(collect) {
                     usage: '<number of candidates>',
                     description: "Number of candidates to test and mutate together"
                 },
-                termination: {
+                optimize_termination: {
                     usage: 'PT5M',
                     description: "Amount of time spent searching for a solution before the best yet is used"
                 }
@@ -151,8 +151,8 @@ function optimize(collect, prng, options) {
  * Searches the parameter values returning count results
  */
 function searchParameters(collect, prng, pnames, count, options) {
-    var terminateAt = options.termination &&
-        moment().add(moment.duration(options.termination)).valueOf()
+    var terminateAt = options.optimize_termination &&
+        moment().add(moment.duration(options.optimize_termination)).valueOf()
     var space = createSearchSpace(pnames, options);
     var pvalues = pnames.map(name => options.parameter_values[name]);
     var size = options.population_size || Math.max(
@@ -222,8 +222,8 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
     if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.sample_duration);
     var period_units = period.subtract(duration).as(unit);
         var pvalues = pnames.map(name => options.parameter_values[name]);
-    var termination = options.sample_termination || options.termination &&
-        moment.duration(moment.duration(options.termination).asMilliseconds()/3).toISOString();
+    var termination = options.sample_termination || options.optimize_termination &&
+        moment.duration(moment.duration(options.optimize_termination).asMilliseconds()/3).toISOString();
     var optionset = _.range(count).map(() => {
         var periodBegin = moment(begin).add(Math.round(prng() * period_units), unit);
         var periodEnd = moment(periodBegin).add(duration);
@@ -232,7 +232,7 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
             periodBegin = moment(end).subtract(duration);
         }
         return _.defaults({
-            termination: termination,
+            optimize_termination: termination,
             begin: periodBegin.format(), end: periodEnd.format()
         }, _.omit(options, ['sample_duration', 'sample_count']));
     });
