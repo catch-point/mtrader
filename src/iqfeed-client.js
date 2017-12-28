@@ -251,6 +251,11 @@ function historical(ready) {
         return lookupPromise = promiseSocket(lookupPromise, function(){
             return ready().then(function(){
                 return promiseNewLookupSocket(blacklist, pending, 9100, lookup);
+            }, err => { // not ready, aborting
+                _.each(pending.splice(0, pending.length), item => {
+                    item.error(err);
+                });
+                throw err;
             });
         });
     };
