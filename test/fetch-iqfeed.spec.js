@@ -38,8 +38,14 @@ describe("fetch-iqfeed", function() {
     this.timeout(10000);
     var tz = 'America/New_York';
     var client = iqfeed();
+    before(function() {
+        return client.open().catch(err => {
+            client = null;
+            this.skip();
+        });
+    });
     after(function() {
-        return client.close();
+        if (client) return client.close();
     });
     it("should find IBM", function() {
         return client.lookup({symbol:'IBM', listed_market:7}).should.eventually.be.like(results => _.some(results, like({

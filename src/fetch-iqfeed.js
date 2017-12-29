@@ -131,8 +131,11 @@ module.exports = function() {
         config('version')
     );
     return {
+        open() {
+            return iqclient.open();
+        },
         close() {
-            iqclient.close();
+            return iqclient.close();
         },
         help() {
             return Promise.resolve(helpInfo);
