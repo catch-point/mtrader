@@ -35,6 +35,7 @@ const statkit = require("statkit");
 const Alea = require('alea');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
+const lookback = require('./lookback-functions.js');
 const rolling = require('./rolling-functions.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
@@ -288,12 +289,13 @@ function initialPopulation(prng, pnames, space, size, options) {
 function fitness(collect, options, pnames) {
     var pvalues = pnames.map(name => options.parameter_values[name]);
     var score_column = getScoreColumn(options);
+    var transient = isLookbackParameter(pnames, options);
     return function(candidate) {
         var parameters = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
         var picked = ['portfolio', 'columns', 'variables', 'parameters', 'filter', 'precedence', 'order', 'pad_leading', 'reset_every', 'tail', 'transient'];
         var opts = _.defaults({
             tail: 1,
-            transient: true, // don't persist parameter values
+            transient: transient,
             label: (options.label ? options.label + ' ' : '') + candidate.pindex.map((idx,i) => {
                 return options.parameter_values[pnames[i]][idx];
             }).join(','),
@@ -443,4 +445,36 @@ function getScoreColumn(options) {
         throw Error("Must have eval_score options set or a score column");
     }
     return score_column;
+}
+
+/**
+ * Checks if any of the parameters are used in lookback functions.
+ * Lookback functions are aggressively cached by quote.js unless transient flag is set.
+ */
+function isLookbackParameter(pnames, options) {
+    var parser = Parser({
+        constant(value) {
+            return {};
+        },
+        variable(name) {
+            return {variables:[name]};
+        },
+        expression(expr, name, args) {
+            var lookbacks = lookback.has(name) && [name];
+            return args.reduce((memo, arg) => {
+                var lookbackParams = lookbacks && _.intersection(pnames, arg.variables);
+                return {
+                    variables: _.union(memo.variables, arg.variables),
+                    lookbacks: _.union(lookbacks, memo.lookbacks, arg.lookbacks),
+                    lookbackParams: _.union(lookbackParams, memo.lookbackParams, arg.lookbackParams)
+                };
+            }, {});
+        }
+    });
+    var lookbackParams = _.uniq(_.flatten(_.compact(parser.parse(_.flatten(_.compact([
+        _.values(options.columns), _.values(options.variables),
+        options.criteria, options.filter, options.precedence, options.order
+    ]))).map(item => item.lookbackParams))));
+    if (lookbackParams.length) return true; // don't persist parameter values
+    else return false;
 }

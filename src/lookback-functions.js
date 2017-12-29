@@ -63,6 +63,10 @@ module.exports = function(name, args, options) {
     });
 };
 
+module.exports.has = function(name) {
+    return !!functions[name];
+};
+
 var functions = module.exports.functions = {
     /* Offset value N periods ago */
     OFFSET(opts, n_periods, calc) {
