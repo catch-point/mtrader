@@ -1,12 +1,13 @@
 {
   "name": "ptrading",
-  "version": "0.36.45",
+  "version": "0.37.45",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/ptrading.js",
   "dependencies": {
     "alea": "0.0.9",
     "chai": "^3.5.0",
     "commander": "^2.9.0",
+    "d3-format": "^1.2.1",
     "diff": "^3.1.0",
     "fast-csv": "^2.3.0",
     "moment-timezone": "^0.5.9",

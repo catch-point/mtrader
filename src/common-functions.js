@@ -31,6 +31,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const d3 = require('d3-format');
 const periods = require('./periods.js');
 const expect = require('chai').expect;
 
@@ -73,6 +74,25 @@ var functions = module.exports.functions = {
         };
     }, {
         description: "The date before or after a specified number of workdays (Mon-Fri)"
+    }),
+    EDATE: _.extend((opts, start_date, duration, tz) => {
+        return context => {
+            var date = moment(start_date(context)).tz(tz ? tz(context) : opts.tz);
+            var dur = duration(context);
+            var d = _.isFinite(dur) ? moment.duration(+dur, 'months') : moment.duration(dur);
+            return date.add(d).format();
+        };
+    }, {
+        description: "Returns a date that is the indicated duration or number of months before or after a specified date (the start_date)"
+    }),
+    TEXT: _.extend((opts, value, format, tz) => {
+        return context => {
+            var val = value(context);
+            if (_.isFinite(val)) return d3.format(format(context))(+val);
+            else return moment(val).tz(tz ? tz(context) : opts.tz).format(format(context));
+        };
+    }, {
+        description: "Converts numbers and dates to text in the given format"
     }),
     /* The number of days since 1899-12-31 */
     DATEVALUE: _.extend((opts, ending, tz) => {

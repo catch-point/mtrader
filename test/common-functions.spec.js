@@ -369,4 +369,86 @@ describe("common-functions", function(){
             })).to.equal(-6);
         });
     });
+    describe("EDATE", function() {
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, {tz: 'America/New_York'});
+            }
+        });
+        var EDATE = parser.parse('EDATE(date, duration)');
+        it("1", function() {
+            expect(EDATE({date: "2015-01-11", duration: 1})).to.have.string("2015-02-11");
+        });
+        it("-1", function() {
+            expect(EDATE({date: "2015-01-11", duration: -1})).to.have.string("2014-12-11");
+        });
+        it("2", function() {
+            expect(EDATE({date: "2015-01-11", duration: 2})).to.have.string("2015-03-11");
+        });
+        it("-P15D", function() {
+            expect(EDATE({date: "2010-02-08", duration: "-P15D"})).to.have.string("2010-01-24");
+        });
+        it("P30D", function() {
+            expect(EDATE({date: "2010-02-08", duration: "P30D"})).to.have.string("2010-03-10");
+        });
+        it("-P15D", function() {
+            expect(EDATE({date: "2010-03-10", duration: "-P15D"})).to.have.string("2010-02-23");
+        });
+        it("P3Y", function() {
+            expect(EDATE({date: "2009-06-09", duration: "P3Y"})).to.have.string("2012-06-09");
+        });
+        it("-P5Y", function() {
+            expect(EDATE({date: "2009-09-02", duration: "-P5Y"})).to.have.string("2004-09-02");
+        });
+        it("P25Y", function() {
+            expect(EDATE({date: "2010-12-10", duration: "P25Y"})).to.have.string("2035-12-10");
+        });
+        it("P3Y1M5D", function() {
+            expect(EDATE({date: "2009-06-09", duration: "P3Y1M5D"})).to.have.string("2012-07-14");
+        });
+        it("P1Y7M5D", function() {
+            expect(EDATE({date: "2009-06-09", duration: "P1Y7M5D"})).to.have.string("2011-01-14");
+        });
+    });
+    describe("TEXT", function() {
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, {tz: 'America/New_York'});
+            }
+        });
+        var TEXT = parser.parse('TEXT(val, pat)');
+        it("$,.2f", function() {
+            expect(TEXT({val: 1234.56, pat: "$,.2f"})).to.equal("$1,234.56");
+        });
+        it(".1%", function() {
+            expect(TEXT({val: 0.285, pat: ".1%"})).to.equal("28.5%");
+        });
+        it.skip(".2E", function() {
+            expect(TEXT({val: 12200000, pat: ".2E"})).to.equal("1.22E+07");
+        });
+        it("07", function() {
+            expect(TEXT({val: 1234, pat: "07"})).to.equal("0001234");
+        });
+        it("MM/DD/YY", function() {
+            expect(TEXT({val: "2012-03-14T13:29:00-04:00", pat: "MM/DD/YY"})).to.equal("03/14/12");
+        });
+        it("dddd", function() {
+            expect(TEXT({val: "2012-03-14T13:29:00-04:00", pat: "dddd"})).to.equal("Wednesday");
+        });
+        it("h:mm A", function() {
+            expect(TEXT({val: "2012-03-14T13:29:00-04:00", pat: "h:mm A"})).to.equal("1:29 PM");
+        });
+    });
 });
