@@ -447,12 +447,15 @@ function getDayLength(opts) {
         afterHoursClosesAt: /^\d\d:\d\d(:00)?$/,
         tz: /^\S+\/\S+$/
     });
+    if (opts.premarketOpensAt == opts.afterHoursClosesAt)
+        return 24 * 60 * 60 * 1000 / preiods(opts).millis;
     var opens = moment.tz('2010-03-01T' + opts.premarketOpensAt, opts.tz);
     var closes = moment.tz('2010-03-01T' + opts.afterHoursClosesAt, opts.tz);
     if (!opens.isValid())
         throw Error("Invalid premarketOpensAt: " + opts.premarketOpensAt);
     if (!closes.isValid())
         throw Error("Invalid afterHoursClosesAt: " + opts.afterHoursClosesAt);
+    if (closes.isBefore(opens)) closes.add(1, 'days');
     return periods(opts).diff(closes, opens) * 2; // extra for after hours activity
 }
 
