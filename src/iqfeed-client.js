@@ -252,7 +252,9 @@ function historical(ready) {
             return ready().then(function(){
                 return promiseNewLookupSocket(blacklist, pending, 9100, lookup);
             }, err => { // not ready, aborting
-                _.each(pending.splice(0, pending.length), item => {
+                var deleted = pending;
+                pending = {};
+                _.each(deleted, item => {
                     item.error(err);
                 });
                 throw err;

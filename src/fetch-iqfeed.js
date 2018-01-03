@@ -214,6 +214,17 @@ module.exports = function() {
             });
             expect(options.tz).to.match(/^\S+\/\S+$/);
             return intraday(iqclient, symbol(options), options);
+        },
+        rollday(options) {
+            expect(options).to.be.like({
+                interval: _.isString,
+                minutes: _.isFinite,
+                symbol: /^\S+$/,
+                begin: Boolean,
+                tz: _.isString
+            });
+            expect(options.tz).to.match(/^\S+\/\S+$/);
+            return rollday(iqclient, options.interval, symbol(options), options);
         }
     };
 };
@@ -280,7 +291,6 @@ function quarter(iqclient, symbol, options) {
 }
 
 function month(iqclient, symbol, options) {
-    var now = moment().tz(options.tz);
     return iqclient.month(symbol,
         options.begin, options.end,
         options.marketClosesAt, options.tz
@@ -292,11 +302,10 @@ function month(iqclient, symbol, options) {
         close: parseFloat(datum.Close),
         volume: parseFloat(datum.Period_Volume),
         open_interest: parseFloat(datum.Open_Interest)
-    }))).then(bars => includeIntraday(iqclient, bars, 'month', now, symbol, options));
+    }))).then(bars => includeIntraday(iqclient, bars, 'month', symbol, options));
 }
 
 function week(iqclient, symbol, options) {
-    var now = moment().tz(options.tz);
     return iqclient.week(symbol,
         options.begin, options.end,
         options.marketClosesAt, options.tz
@@ -308,11 +317,10 @@ function week(iqclient, symbol, options) {
         close: parseFloat(datum.Close),
         volume: parseFloat(datum.Period_Volume),
         open_interest: parseFloat(datum.Open_Interest)
-    }))).then(bars => includeIntraday(iqclient, bars, 'week', now, symbol, options));
+    }))).then(bars => includeIntraday(iqclient, bars, 'week', symbol, options));
 }
 
 function day(iqclient, symbol, options) {
-    var now = moment().tz(options.tz);
     return iqclient.day(symbol,
         options.begin, options.end,
         options.marketClosesAt, options.tz
@@ -324,7 +332,7 @@ function day(iqclient, symbol, options) {
         close: parseFloat(datum.Close),
         volume: parseFloat(datum.Period_Volume),
         open_interest: parseFloat(datum.Open_Interest)
-    }))).then(bars => includeIntraday(iqclient, bars, 'day', now, symbol, options));
+    }))).then(bars => includeIntraday(iqclient, bars, 'day', symbol, options));
 }
 
 function intraday(iqclient, symbol, options) {
@@ -342,42 +350,68 @@ function intraday(iqclient, symbol, options) {
     })).filter(result => result.close > 0 && result.close < 10000 && result.volume >= 0));
 }
 
-function includeIntraday(iqclient, bars, interval, now, symbol, options) {
+function includeIntraday(iqclient, bars, interval, symbol, options) {
+    var now = moment(options.now).tz(options.tz);
     if (now.days() === 6 || !bars.length) return bars;
     var tz = options.tz;
     var opensAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketOpensAt, tz);
-    if (options.end && moment.tz(options.end, tz).isBefore(opensAt)) return bars;
     var closesAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, tz);
-    if (now.isBefore(opensAt) || now.isAfter(closesAt)) return bars;
-    return intraday(iqclient, symbol, {
-        minutes: 30,
-        begin: opensAt,
-        end: closesAt,
+    if (opensAt.isBefore(closesAt) && now.isBefore(opensAt)) return bars;
+    if (now.isAfter(closesAt) || !closesAt.isAfter(_.last(bars).ending)) return bars;
+    var end = moment(options.end || now).tz(options.tz);
+    return rollday(iqclient, interval, symbol, _.defaults({
+        minutes: 60,
+        begin: _.last(bars).ending,
+        end: end.format(),
         tz: tz
-    }).then(intraday => {
-        if (_.isEmpty(intraday)) return bars;
-        var merging = _.last(bars).ending >= _.last(intraday).ending;
-        var today = intraday.reduce((today, bar) => _.extend(today, {
-            ending: today.ending || endOf(interval, _.last(intraday).ending, options),
+    }, options)).then(intraday => intraday.reduce((bars, bar) => {
+        if (bar.ending > _.last(bars).ending) bars.push(bar);
+        return bars;
+    }, bars));
+}
+
+function rollday(iqclient, interval, symbol, options) {
+    var asof = moment().tz(options.tz).format();
+    return intraday(iqclient, symbol, options).then(bars => bars.reduce((days, bar) => {
+        var merging = days.length && _.last(days).ending >= bar.ending;
+        if (!merging && isBeforeOpen(bar.ending, options)) return days;
+        var today = merging ? days.pop() : {};
+        days.push({
+            ending: today.ending || endOf(interval, bar.ending, options),
             open: today.open || bar.open,
             high: Math.max(today.high || 0, bar.high),
             low: today.low && today.low < bar.low ? today.low : bar.low,
             close: bar.close,
             volume: bar.total_volume,
-            asof: now.format(),
+            asof: asof,
             incomplete: true
-        }), merging ? _.clone(bars.pop()) : {});
-        bars.push(today);
-        return bars;
-    });
+        });
+        return days;
+    }, []));
 }
 
 function endOf(unit, date, options) {
-    var ending = moment.tz(date, options.tz).endOf(unit);
-    if (!ending.isValid()) throw Error("Invalid date " + date);
-    if (ending.days() === 0) ending.subtract(2, 'days');
-    else if (ending.days() == 6) ending.subtract(1, 'days');
-    var closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
-    if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
+    var start = moment.tz(date, options.tz);
+    if (!start.isValid()) throw Error("Invalid date " + date);
+    var ending = moment(start).endOf(unit);
+    var days = 0;
+    do {
+        if (ending.days() === 0) ending.subtract(2, 'days');
+        else if (ending.days() == 6) ending.subtract(1, 'days');
+        var closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
+        if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
+        if (closes.isBefore(start)) ending = moment(start).add(++days, 'days').endOf(unit);
+    } while (closes.isBefore(start));
     return closes.format();
+}
+
+function isBeforeOpen(ending, options) {
+    var time = ending.substring(11, 19);
+    if (options.marketOpensAt < options.marketClosesAt) {
+        return time > options.marketClosesAt || time < options.marketOpensAt;
+    } else if (options.marketClosesAt < options.marketOpensAt) {
+        return time > options.marketClosesAt && time < options.marketOpensAt;
+    } else {
+        return false; // 24 hour market
+    }
 }

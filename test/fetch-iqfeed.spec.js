@@ -56,7 +56,7 @@ describe("fetch-iqfeed", function() {
     it("should find USD/CAD details", function() {
         return client.fundamental({
             symbol:'USDCAD.FXCM', 
-            marketOpensAt: '02:00:00', marketClosesAt: '17:00:00', tz: tz
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like([{
             symbol: 'USDCAD.FXCM',
             listed_market: "74",
@@ -67,8 +67,8 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'day',
             symbol: 'USDCAD.FXCM',
-            begin: moment.tz('2014-01-01', tz), end: moment.tz('2014-02-01', tz),
-            marketOpensAt: '02:00:00', marketClosesAt: '17:00:00', tz: tz
+            begin: '2014-01-01', end: '2014-02-01',
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like([
             {ending:'2014-01-02T17:00:00-05:00',high:1.06770,low:1.05874,open:1.06321,close:1.06680},
             {ending:'2014-01-03T17:00:00-05:00',high:1.06709,low:1.06013,open:1.06676,close:1.06312},
@@ -98,8 +98,8 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'week',
             symbol: 'USDCAD.FXCM',
-            begin: moment.tz('2014-01-06', tz),
-            marketOpensAt: '02:00:00', marketClosesAt: '17:00:00', tz: tz
+            begin: moment.tz('2014-01-05', tz),
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
             {ending:'2014-01-10T17:00:00-05:00',high:1.09451,low:1.06076,open:1.06313,close:1.08947},
             {ending:'2014-01-17T17:00:00-05:00',high:1.09904,low:1.08416,open:1.08996,close:1.09617},
@@ -112,7 +112,7 @@ describe("fetch-iqfeed", function() {
             interval: 'month',
             symbol: 'USDCAD.FXCM',
             begin: moment.tz('2014-01-01', tz),
-            marketOpensAt: '02:00:00', marketClosesAt: '17:00:00', tz: tz
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like(results => results.slice(0, 12).should.be.like([
             {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.05874,open:1.06321,close:1.11251},
             {ending:'2014-02-28T17:00:00-05:00',high:1.11935,low:1.09092,open:1.11070,close:1.10640},
@@ -133,7 +133,7 @@ describe("fetch-iqfeed", function() {
             interval: 'quarter',
             symbol: 'USDCAD.FXCM',
             begin: moment.tz('2014-01-01', tz),
-            marketOpensAt: '02:00:00', marketClosesAt: '17:00:00', tz: tz
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
             {ending:'2014-03-31T17:00:00-04:00',high:1.12775,low:1.05874,open:1.06321,close:1.10482},
             {ending:'2014-06-30T17:00:00-04:00',high:1.10693,low:1.06455,open:1.10480,close:1.06679},
@@ -146,7 +146,7 @@ describe("fetch-iqfeed", function() {
             interval: 'year',
             symbol: 'USDCAD.FXCM',
             begin: moment.tz('2014-01-01', tz),
-            marketOpensAt: '02:00:00', marketClosesAt: '17:00:00', tz: tz
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like(results => results.slice(0, 1).should.be.like([
             {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.05874,open:1.06321,close:1.16123}
         ]));
@@ -211,5 +211,98 @@ describe("fetch-iqfeed", function() {
             {ending:'2014-03-03T10:50:00-05:00',high:1.10814,low:1.10755,open:1.10755,close:1.10794},
             {ending:'2014-03-03T11:00:00-05:00',high:1.10798,low:1.10694,open:1.10793,close:1.10789}
         ]);
+    });
+    it("should estimate daily", function() {
+        return client.rollday({
+            minutes: 60,
+            interval: 'day',
+            symbol: 'USDCAD.FXCM',
+            begin: moment.tz('2014-01-01', tz), end: moment.tz('2014-02-01', tz),
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+        }).should.eventually.be.like([
+            {ending:'2014-01-02T17:00:00-05:00',high:1.06770,low:1.05874,open:1.06321,close:1.06680},
+            {ending:'2014-01-03T17:00:00-05:00',high:1.06709,low:1.06013,open:1.06676,close:1.06312},
+            {ending:'2014-01-06T17:00:00-05:00',high:1.06798,low:1.06076,open:1.06313,close:1.06543},
+            {ending:'2014-01-07T17:00:00-05:00',high:1.07805,low:1.06467,open:1.06541,close:1.07658},
+            {ending:'2014-01-08T17:00:00-05:00',high:1.08292,low:1.07600,open:1.07658,close:1.08169},
+            {ending:'2014-01-09T17:00:00-05:00',high:1.08736,low:1.08159,open:1.08169,close:1.08429},
+            {ending:'2014-01-10T17:00:00-05:00',high:1.09451,low:1.08361,open:1.08429,close:1.08947},
+            {ending:'2014-01-13T17:00:00-05:00',high:1.09283,low:1.08416,open:1.08996,close:1.08611},
+            {ending:'2014-01-14T17:00:00-05:00',high:1.09578,low:1.08577,open:1.08615,close:1.09466},
+            {ending:'2014-01-15T17:00:00-05:00',high:1.09904,low:1.09193,open:1.09466,close:1.09351},
+            {ending:'2014-01-16T17:00:00-05:00',high:1.09618,low:1.09041,open:1.09351,close:1.09301},
+            {ending:'2014-01-17T17:00:00-05:00',high:1.09829,low:1.09251,open:1.09301,close:1.09617},
+            {ending:'2014-01-20T17:00:00-05:00',high:1.09712,low:1.09285,open:1.09597,close:1.09434},
+            {ending:'2014-01-21T17:00:00-05:00',high:1.10179,low:1.09382,open:1.09436,close:1.09651},
+            {ending:'2014-01-22T17:00:00-05:00',high:1.10909,low:1.09525,open:1.09651,close:1.10866},
+            {ending:'2014-01-23T17:00:00-05:00',high:1.11729,low:1.10811,open:1.10866,close:1.10996},
+            {ending:'2014-01-24T17:00:00-05:00',high:1.11364,low:1.10498,open:1.10999,close:1.10788},
+            {ending:'2014-01-27T17:00:00-05:00',high:1.11165,low:1.10308,open:1.10600,close:1.11136},
+            {ending:'2014-01-28T17:00:00-05:00',high:1.11761,low:1.10773,open:1.11140,close:1.11507},
+            {ending:'2014-01-29T17:00:00-05:00',high:1.11860,low:1.11014,open:1.11507,close:1.11668},
+            {ending:'2014-01-30T17:00:00-05:00',high:1.11994,low:1.11498,open:1.11666,close:1.11578},
+            {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.10867,open:1.11578,close:1.11251}
+        ]);
+    });
+    it("should estimate weekly", function() {
+        return client.rollday({
+            minutes: 60,
+            interval: 'week',
+            symbol: 'USDCAD.FXCM',
+            begin: '2014-01-05', end: '2014-02-01',
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+        }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
+            {ending:'2014-01-10T17:00:00-05:00',high:1.09451,low:1.06076,open:1.06313,close:1.08947},
+            {ending:'2014-01-17T17:00:00-05:00',high:1.09904,low:1.08416,open:1.08996,close:1.09617},
+            {ending:'2014-01-24T17:00:00-05:00',high:1.11729,low:1.09285,open:1.09597,close:1.10788},
+            {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.10308,open:1.10600,close:1.11251}
+        ]));
+    });
+    it("should estimate monthly", function() {
+        return client.rollday({
+            minutes: 60,
+            interval: 'month',
+            symbol: 'USDCAD.FXCM',
+            begin: '2014-01-01', end: '2015-01-01',
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+        }).should.eventually.be.like(results => results.slice(0, 12).should.be.like([
+            {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.05874,open:1.06321,close:1.11251},
+            {ending:'2014-02-28T17:00:00-05:00',high:1.11935,low:1.09092,open:1.11070,close:1.10640},
+            {ending:'2014-03-31T17:00:00-04:00',high:1.12775,low:1.09543,open:1.10708,close:1.10482},
+            {ending:'2014-04-30T17:00:00-04:00',high:1.10693,low:1.08570,open:1.10480,close:1.09598},
+            {ending:'2014-05-30T17:00:00-04:00',high:1.10055,low:1.08133,open:1.09597,close:1.08397},
+            {ending:'2014-06-30T17:00:00-04:00',high:1.09595,low:1.06455,open:1.08358,close:1.06679},
+            {ending:'2014-07-31T17:00:00-04:00',high:1.09286,low:1.06195,open:1.06679,close:1.09039},
+            {ending:'2014-08-29T17:00:00-04:00',high:1.09967,low:1.08097,open:1.09039,close:1.08731},
+            {ending:'2014-09-30T17:00:00-04:00',high:1.12185,low:1.08197,open:1.08710,close:1.11942},
+            {ending:'2014-10-31T17:00:00-04:00',high:1.13843,low:1.10704,open:1.11943,close:1.12661},
+            {ending:'2014-11-28T17:00:00-05:00',high:1.14655,low:1.11896,open:1.12827,close:1.14119},
+            {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.13120,open:1.14272,close:1.16123}
+        ]));
+    });
+    it("should estimate quarter", function() {
+        return client.rollday({
+            minutes: 60,
+            interval: 'quarter',
+            symbol: 'USDCAD.FXCM',
+            begin: '2014-01-01', end: '2015-01-01',
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+        }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
+            {ending:'2014-03-31T17:00:00-04:00',high:1.12775,low:1.05874,open:1.06321,close:1.10482},
+            {ending:'2014-06-30T17:00:00-04:00',high:1.10693,low:1.06455,open:1.10480,close:1.06679},
+            {ending:'2014-09-30T17:00:00-04:00',high:1.12185,low:1.06195,open:1.06679,close:1.11942},
+            {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.10704,open:1.11943,close:1.16123}
+        ]));
+    });
+    it("should estimate year", function() {
+        return client.rollday({
+            minutes: 60,
+            interval: 'year',
+            symbol: 'USDCAD.FXCM',
+            begin: '2014-01-01', end: '2015-01-01',
+            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+        }).should.eventually.be.like(results => results.slice(0, 1).should.be.like([
+            {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.05874,open:1.06321,close:1.16123}
+        ]));
     });
 });

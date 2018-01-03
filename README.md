@@ -120,7 +120,7 @@ ptrading.optimize({
     portfolio: 'SPY.ARCA',
     begin: '2000-01-01',
     end: '2010-01-01',
-    termination: 'PT5M',
+    optimize_termination: 'PT5M',
     eval_validity: 'fast_len<slow_len',
     eval_score: 'gain/pain',
     columns: {
@@ -151,7 +151,7 @@ ptrading.bestsignals({
     portfolio: 'SPY.ARCA',
     begin: '2000-01-01',
     end: '2010-01-01',
-    termination: 'PT5M',
+    optimize_termination: 'PT5M',
     eval_validity: 'fast_len<slow_len',
     eval_score: 'gain/pain',
     columns: {
