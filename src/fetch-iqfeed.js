@@ -357,14 +357,15 @@ function includeIntraday(iqclient, bars, interval, symbol, options) {
     var opensAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketOpensAt, tz);
     var closesAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, tz);
     if (opensAt.isBefore(closesAt) && now.isBefore(opensAt)) return bars;
-    if (now.isAfter(closesAt) || !closesAt.isAfter(_.last(bars).ending)) return bars;
+    if (!closesAt.isAfter(_.last(bars).ending)) return bars;
     var end = moment(options.end || now).tz(options.tz);
     return rollday(iqclient, interval, symbol, _.defaults({
-        minutes: 60,
+        minutes: 30,
         begin: _.last(bars).ending,
         end: end.format(),
         tz: tz
     }, options)).then(intraday => intraday.reduce((bars, bar) => {
+        if (_.last(bars).incomplete) return bars;
         if (bar.ending > _.last(bars).ending) bars.push(bar);
         return bars;
     }, bars));

@@ -214,7 +214,7 @@ describe("fetch-iqfeed", function() {
     });
     it("should estimate daily", function() {
         return client.rollday({
-            minutes: 60,
+            minutes: 30,
             interval: 'day',
             symbol: 'USDCAD.FXCM',
             begin: moment.tz('2014-01-01', tz), end: moment.tz('2014-02-01', tz),
@@ -246,7 +246,7 @@ describe("fetch-iqfeed", function() {
     });
     it("should estimate weekly", function() {
         return client.rollday({
-            minutes: 60,
+            minutes: 30,
             interval: 'week',
             symbol: 'USDCAD.FXCM',
             begin: '2014-01-05', end: '2014-02-01',
@@ -260,7 +260,7 @@ describe("fetch-iqfeed", function() {
     });
     it("should estimate monthly", function() {
         return client.rollday({
-            minutes: 60,
+            minutes: 30,
             interval: 'month',
             symbol: 'USDCAD.FXCM',
             begin: '2014-01-01', end: '2015-01-01',
@@ -282,7 +282,7 @@ describe("fetch-iqfeed", function() {
     });
     it("should estimate quarter", function() {
         return client.rollday({
-            minutes: 60,
+            minutes: 30,
             interval: 'quarter',
             symbol: 'USDCAD.FXCM',
             begin: '2014-01-01', end: '2015-01-01',
@@ -296,7 +296,7 @@ describe("fetch-iqfeed", function() {
     });
     it("should estimate year", function() {
         return client.rollday({
-            minutes: 60,
+            minutes: 30,
             interval: 'year',
             symbol: 'USDCAD.FXCM',
             begin: '2014-01-01', end: '2015-01-01',
