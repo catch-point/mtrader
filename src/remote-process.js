@@ -39,8 +39,9 @@ const expect = require('chai').expect;
 const logger = require('./logger.js');
 const config = require('./ptrading-config.js');
 const AssertionError = require('chai').AssertionError;
-const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
+const version = require('../package.json').version;
 
+const minor_version = version.replace(/^(\d+\.\d+).*$/,'$1.0');
 const EOM = '\r\n\r\n';
 
 const DEFAULT_PATH = '/ptrading/' + minor_version + '/workers';
@@ -64,6 +65,7 @@ var remote = module.exports = function(socket, label) {
             rejectUnauthorized: config('tls.rejectUnauthorized'),
             NPNProtocols: config('tls.NPNProtocols'),
             ALPNProtocols: config('tls.ALPNProtocols'),
+            headers: {'User-Agent': 'ptrading/' + version},
             agent: false
         }), label || socket);
     var buf = '';
@@ -94,6 +96,12 @@ var remote = module.exports = function(socket, label) {
         emitter.connecting = false;
         emitter.connected = false;
         emitter.emit('disconnect');
+    }).on('unexpected-response', (request, response) => {
+        if (response.statusCode == 400) {
+            emitter.emit('error', Error(`Version mismatch ${response.headers.server} with ${label}`));
+        } else {
+            emitter.emit('error', Error("unexpected server response (" + response.statusCode + ")"));
+        }
     }).on('error', err => {
         emitter.emit('error', err);
     });
@@ -140,7 +148,12 @@ function parseLocation(location, secure) {
     parsed.hostname = parsed.hostname || 'localhost';
     parsed.host = parsed.host || (parsed.hostname + ':' + parsed.port);
     parsed.href = parsed.href || (parsed.protocol + '//' + parsed.host);
-    if (!parsed.path) parsed.href = parsed.href + DEFAULT_PATH;
-    parsed.path = parsed.path || DEFAULT_PATH;
+    if (parsed.path == '/' && !parsed.hash && location.charAt(location.length-1) != '/') {
+        parsed.path = DEFAULT_PATH;
+        parsed.href = parsed.href + DEFAULT_PATH.substring(1);
+    } else if (!parsed.path && !parsed.hash) {
+        parsed.path = DEFAULT_PATH;
+        parsed.href = parsed.href + DEFAULT_PATH;
+    }
     return parsed;
 }

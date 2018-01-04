@@ -45,8 +45,9 @@ const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const shellError = require('./shell-error.js');
-const minor_version = require('../package.json').version.replace(/^(\d+\.\d+).*$/,'$1.0');
+const version = require('../package.json').version;
 
+const minor_version = version.replace(/^(\d+\.\d+).*$/,'$1.0');
 const DEFAULT_PATH = '/ptrading/' + minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
 
@@ -117,19 +118,15 @@ if (require.main === module) {
         ptrading.shell(app);
         process.on('SIGINT', () => app.quit());
         process.on('SIGTERM', () => app.quit());
+        app.on('quit', () => ptrading.close());
+        app.on('exit', () => ptrading.close());
         if (config('listen')) {
-            var server = listen(config('listen'), ptrading);
-            process.on('SIGINT', () => server.close());
-            process.on('SIGTERM', () => server.close());
-            app.on('quit', () => server.close());
-            app.on('exit', () => server.close());
+            ptrading.listen(config('listen'));
         }
     } else if (config('listen') && !~['stop','config','fetch'].indexOf(program.args[0]) &&
             !~['stop','config','fetch'].indexOf(program.args[0].name && program.args[0].name())) {
         var ptrading = createInstance();
-        var server = listen(config('listen'), ptrading);
-        process.on('SIGINT', () => server.close());
-        process.on('SIGTERM', () => server.close());
+        var server = ptrading.listen(config('listen'));
         process.on('SIGINT', () => ptrading.close());
         process.on('SIGTERM', () => ptrading.close());
         server.on('close', () => ptrading.close());
@@ -155,6 +152,7 @@ function createInstance() {
     var collect = require('./ptrading-collect.js');
     var optimize = require('./ptrading-optimize.js');
     var bestsignals = require('./ptrading-bestsignals.js');
+    var servers = [];
     return {
         config: config,
         lookup(options) {
@@ -173,7 +171,11 @@ function createInstance() {
         optimize: optimize,
         bestsignals: bestsignals,
         close() {
-            return bestsignals.close();
+            return Promise.all(servers.map(server => {
+                return new Promise(cb => server.close(cb));
+            })).then(() => {
+                bestsignals.close();
+            });
         },
         shell(app) {
             Promise.all([
@@ -184,11 +186,22 @@ function createInstance() {
                 optimize.shell(app),
                 bestsignals.shell(app)
             ]).catch(err => console.error("Could not complete shell setup", err));
+        },
+        listen(address) {
+            var server = listen(this, address);
+            server.once('close', () => {
+                var idx = servers.indexOf(server);
+                if (idx >= 0) {
+                    servers.splice(idx, 1);
+                }
+            });
+            servers.push(server);
+            return server;
         }
     };
 }
 
-function listen(address, ptrading) {
+function listen(ptrading, address) {
     var addr = parseLocation(address, false);
     var auth = addr.auth ? 'Basic ' + new Buffer(addr.auth).toString('base64') : undefined;
     var server = addr.protocol == 'https:' || addr.protocol == 'wss:' ? https.createServer({
@@ -209,12 +222,40 @@ function listen(address, ptrading) {
         NPNProtocols: config('tls.NPNProtocols'),
         ALPNProtocols: config('tls.ALPNProtocols')
     }) : http.createServer();
+    server.on('upgrade', (request, socket, head) => {
+        if (wsserver.shouldHandle(request)) return;
+        else if (socket.writable) {
+            var msg = `Try using ptrading/${version}\r\n`;
+            socket.write(
+                `HTTP/1.1 400 ${http.STATUS_CODES[400]}\r\n` +
+                `Server: ptrading/${version}\r\n` +
+                'Connection: close\r\n' +
+                'Content-type: text/plain\r\n' +
+                `Content-Length: ${Buffer.byteLength(msg)}\r\n` +
+                '\r\n' +
+                msg
+            );
+            socket.destroy();
+        }
+    });
+    server.on('request', (request, response) => {
+        response.setHeader('Server', 'ptrading/' + version);
+        if (wsserver.shouldHandle(request)) return;
+        var msg = `Try using ptrading/${version}\r\n`;
+        response.statusCode = 404;
+        response.setHeader('Content-Type', 'text/plain');
+        response.setHeader('Content-Length', Buffer.byteLength(msg));
+        response.end(msg);
+    });
     var wsserver = new ws.Server({
         server: server, path: addr.path,
         clientTracking: true, perMessageDeflate: true,
         verifyClient: auth ? info => {
             return info.req.headers.authorization == auth;
         } : undefined
+    });
+    wsserver.on('headers', (headers, request) => {
+        headers.push('Server: ptrading/' + version);
     });
     wsserver.on('connection', (ws, message) => {
         var socket = message.socket;
@@ -236,19 +277,18 @@ function listen(address, ptrading) {
             .handle('bestsignals', ptrading.bestsignals)
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
             .handle('stop', () => {
-                server.close();
-                wsserver.clients.forEach(client => {
-                    if (client.readyState <= 1) client.send(JSON.stringify({cmd:'stop'}) + '\r\n\r\n');
-                });
+                try {
+                    var stop = JSON.stringify({cmd:'stop'}) + '\r\n\r\n';
+                    wsserver.clients.forEach(client => {
+                        if (client.readyState == 1) client.send(stop);
+                    });
+                } finally {
+                    server.close();
+                }
             });
     }).on('error', err => logger.error(err, err.stack))
       .on('listening', () => logger.info("Service listening on port", server.address().port));
     server.once('close', () => logger.log("Service has closed", address));
-    var server_close = server.close;
-    server.close = () => {
-        server_close.call(server);
-        wsserver.clients.forEach(client => client.close());
-    };
     if (addr.hostname) {
         server.listen(addr.port, addr.hostname);
     } else {
@@ -282,7 +322,12 @@ function parseLocation(location, secure) {
     parsed.hostname = parsed.hostname || '';
     parsed.host = parsed.host || (parsed.hostname + ':' + parsed.port);
     parsed.href = parsed.href || (parsed.protocol + '//' + parsed.host);
-    if (!parsed.path) parsed.href = parsed.href + DEFAULT_PATH;
-    parsed.path = parsed.path || DEFAULT_PATH;
+    if (parsed.path == '/' && !parsed.hash && location.charAt(location.length-1) != '/') {
+        parsed.path = DEFAULT_PATH;
+        parsed.href = parsed.href + DEFAULT_PATH.substring(1);
+    } else if (!parsed.path && !parsed.hash) {
+        parsed.path = DEFAULT_PATH;
+        parsed.href = parsed.href + DEFAULT_PATH;
+    }
     return parsed;
 }
