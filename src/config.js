@@ -46,11 +46,7 @@ process.argv.forEach((arg, i, args) => {
         var name = _.first(pair);
         var str = _.rest(pair).join('=');
         if (name && str) {
-            var chr = str.charAt(0);
-            var value = chr == '{' || chr == '"' || chr == '[' ||
-                str == 'true' || str == 'false' || _.isFinite(str) ?
-                JSON.parse(str) : str;
-            session[name] = value;
+            session[name] = parse(str);
         }
     } else if (arg.startsWith('--add-') && i < args.length -1) {
         var map = arg.substring('--add-'.length).replace(/s?$/,'s');
@@ -58,14 +54,10 @@ process.argv.forEach((arg, i, args) => {
         var name = _.first(pair);
         var str = _.rest(pair).join('=');
         if (map && name && str) {
-            var chr = str.charAt(0);
-            var value = chr == '{' || chr == '"' || chr == '[' ||
-                str == 'true' || str == 'false' || _.isFinite(str) ?
-                JSON.parse(str) : str;
             if (!session[map]) {
                 session[map] = {};
             }
-            session[map][name] = value;
+            session[map][name] = parse(str);
         }
     }
 });
@@ -98,6 +90,7 @@ function createInstance(session) {
     var loadedFrom, loaded = {};
 
     var config = function(name, value) {
+        if (name == 'remote_workers') console.log("config", config.opts());
         if (_.isUndefined(value)) {
             var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
             return get(merge({}, session, config.opts(), loaded, stored, defaults), jpath);
@@ -108,14 +101,12 @@ function createInstance(session) {
 
     config.load = function(filename) {
         defaults = _.extend({
-            prefix: _.contains(process.argv, '--prefix') ?
-                process.argv[process.argv.indexOf('--prefix')+1] :
-                process.argv[1] ? path.resolve(process.argv[1], '../..') : ''
+            prefix: opt('prefix', process.argv[1] ? path.resolve(process.argv[1], '../..') : '')
         }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
         stored = loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json'));
-        loadedFrom = filename || loadedFrom || _.contains(process.argv, '--load') &&
-                process.argv[process.argv.indexOf('--load')+1] + '.json';
-        var config_dir = path.resolve(defaults.prefix, stored.config_dir || defaults.config_dir || 'etc');
+        loadedFrom = filename || loadedFrom || opt('load');
+        var default_config_dir = path.resolve(defaults.prefix, defaults.default_config_dir);
+        var config_dir = opt('config_dir') || stored.config_dir || defaults.config_dir || default_config_dir;
         loaded = loadedFrom ? loadConfigFile(path.resolve(config_dir, loadedFrom)) : {};
         listeners.forEach(listener => listener(null, null, filename || true));
     };
@@ -156,7 +147,7 @@ function createInstance(session) {
     };
 
     config.configDirname = function() {
-        return path.resolve(config('prefix'), config('config_dir') || 'etc');
+        return opt('config_dir') || config('config_dir') || path.resolve(config('prefix'), config('default_config_dir'));
     };
 
     config.opts = function() {
@@ -168,7 +159,7 @@ function createInstance(session) {
             });
             var value = name === 'version' ? commander._version : commander[key];
             if (value != null && !name.startsWith('add-')) {
-                result[prop] = value;
+                result[prop] = parse(value);
             }
             return result;
         }, {});
@@ -242,6 +233,24 @@ function createInstance(session) {
             writeConfigFile(filename, json);
     };
     return config;
+}
+
+function opt(name, defaultValue) {
+    var opt = '--' + name.replace('_', '-');
+    var idx = process.argv.indexOf(opt)+1;
+    var value = idx && process.argv[idx];
+    return value || process.argv.reduce((value, arg) => {
+        return arg.indexOf(opt) === 0 && arg.charAt(opt.length) == '=' ?
+            arg.substring(opt.length +1) : value;
+    }, defaultValue);
+}
+
+function parse(str) {
+    if (!str || !_.isString(str)) return str;
+    var chr = str.charAt(0);
+    return chr == '{' || chr == '"' || chr == '[' ||
+        str == 'true' || str == 'false' || _.isFinite(str) ?
+        JSON.parse(str) : str;
 }
 
 function get(object, jpath) {

@@ -131,19 +131,19 @@ fi
 # Setup configuration
 if [ -z "$CONFIG_DIR" ]; then
   if [ "$PREFIX" = "$BASEDIR" ]; then
-    CONFIG_DIR=etc
-    CACHE_DIR=var/cache
+    CONFIG_DIR=$PREFIX/etc
+    CACHE_DIR=$PREFIX/var/cache
   elif [ "$PREFIX" = "/usr" ]; then
-    CONFIG_DIR=../etc/$NAME
-    CACHE_DIR=../var/cache/$NAME
+    CONFIG_DIR=/etc/$NAME
+    CACHE_DIR=/var/cache/$NAME
   elif [ -d "$PREFIX/etc" -o -d "$PREFIX/var" ]; then
-    CONFIG_DIR=etc/$NAME
-    CACHE_DIR=var/cache/$NAME
+    CONFIG_DIR=$PREFIX/etc/$NAME
+    CACHE_DIR=$PREFIX/var/cache/$NAME
   else
-    CONFIG_DIR=etc
-    CACHE_DIR=var/cache
+    CONFIG_DIR=$PREFIX/etc
+    CACHE_DIR=$PREFIX/var/cache
   fi
-  mkdir -p "$PREFIX/etc" "$PREFIX/$CONFIG_DIR" "$PREFIX/$CACHE_DIR"
+  mkdir -p "$PREFIX/etc" "$CONFIG_DIR" "$CACHE_DIR"
 fi
 
 if [ -z "$USERINFO" ]; then
@@ -340,7 +340,7 @@ EOF
 fi
 
 if [ "$(id -u)" = "0" ]; then
-  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/$CONFIG_DIR" "$PREFIX/$CACHE_DIR" "$PREFIX/etc/ptrading.json"
+  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$CONFIG_DIR" "$CACHE_DIR" "$PREFIX/etc/ptrading.json"
 fi
 
 # install daemon

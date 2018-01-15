@@ -52,6 +52,8 @@ function usage(command) {
         .option('-x, --debug', "Include details about what the system is working on")
         .option('-X', "Hide details about what the system is working on")
         .option('--prefix <dirname>', "Path where the program files are stored")
+        .option('--config-dir <dirname>', "Directory where stored sessions are kept")
+        .option('--cache-dir <dirname>', "Directory where processed data is kept")
         .option('--load <identifier>', "Read the given session settings")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('--end <dateTime>', "ISO dateTime of the ending point")
@@ -63,6 +65,8 @@ function usage(command) {
         .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")
         .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
+        .option('--reset-every <Duration>', "Duration of time to reset rolling variables (ex. P1Y)")
+        .option('--solution-count <number>', "Number of solutions to include in result")
         .option('-o, --offline', "Disable data updates")
         .option('--workers <numOfWorkers>', 'Number of workers to spawn')
         .option('--remote-workers <host:port,..>', "List of host:port addresses to connect to")
@@ -158,7 +162,7 @@ function readSignals(name) {
         filter: _.compact(_.flatten([config('filter'), read.filter], true)),
         precedence: _.compact(_.flatten([config('precedence'), read.precedence], true)),
         order: _.compact(_.flatten([config('order'), read.order], true))
-    }, read, config.opts(), config.options());
+    }, config.opts(), config.options(), read);
 }
 
 function output(result) {
@@ -166,7 +170,7 @@ function output(result) {
         var output = JSON.stringify(result, null, ' ');
         var writer = createWriteStream(config('save'));
         writer.on('finish', done);
-        writer.write(output, 'utf-8');
+        if (output) writer.write(output, 'utf-8');
         writer.end();
     });
 }

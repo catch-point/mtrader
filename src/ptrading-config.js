@@ -44,6 +44,8 @@ if (require.main === module) {
         .option('-x, --debug', "Include details about what the system is working on")
         .option('-X', "Hide details about what the system is working on")
         .option('--prefix <dirname>', "Path where the program files are stored")
+        .option('--config-dir <dirname>', "Directory where stored sessions are kept")
+        .option('--cache-dir <dirname>', "Directory where processed data is kept")
         .option('--load <identifier>', "Read the given session settings")
         .option('--save <identifier>', "Modify the settings in the given stored session")
         .parse(process.argv);

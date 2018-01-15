@@ -235,7 +235,7 @@ describe("optimize", function() {
             portfolio: 'SPY.ARCA',
             begin: '2016-07-01',
             end: '2016-10-01',
-            signal_count: 2,
+            solution_count: 2,
             eval_score: 'gain/pain',
             columns: {
                 date: 'DATE(ending)',

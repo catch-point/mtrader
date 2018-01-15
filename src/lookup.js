@@ -56,7 +56,7 @@ module.exports = function(fetch) {
  * @returns a function that returns an object about the security in the given options
  */
 function fetchOptionsFactory(fetch, offline, read_only) {
-    var dir = path.resolve(config('prefix'), config('cache_dir') || 'var/cache');
+    var dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     var memoizeFirstLookup = _.memoize((symbol, exchange) => {
         return readInfo(dir, symbol, exchange, offline).catch(err => {
             if (offline) throw err;

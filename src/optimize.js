@@ -82,7 +82,7 @@ function help(collect) {
             description: "Searches possible parameter values to find a higher score",
             properties: ['score', 'parameters'],
             options: _.extend({}, help.options, {
-                signal_count: {
+                solution_count: {
                     usage: '<number of results>',
                     description: "Number of solutions to include in result"
                 },
@@ -130,7 +130,7 @@ function optimize(collect, prng, options) {
     expect(options).to.have.property('parameter_values');
     expect(options).to.have.property('eval_score');
     var started = Date.now();
-    var count = options.signal_count || 1;
+    var count = options.solution_count || 1;
     var pnames = _.keys(options.parameter_values);
     var pvalues = pnames.map(name => options.parameter_values[name]);
     return searchParameters(collect, prng, pnames, count, options).then(solutions => {
@@ -143,7 +143,7 @@ function optimize(collect, prng, options) {
             )
         }));
     }).then(results => {
-        if (options.signal_count) return results;
+        if (options.solution_count) return results;
         else return _.first(results);
     });
 }
@@ -316,7 +316,7 @@ function fitness(collect, options, pnames) {
  * Cycles between candidate selection and mutation until the score of the best/worst selected solution is the same for `stale` number of iterations
  */
 function adapt(fitness, mutation, pnames, terminateAt, options, population, size) {
-    var maxEliteSize = Math.max(options.signal_count || 1, Math.floor(size/2));
+    var maxEliteSize = Math.max(options.solution_count || 1, Math.floor(size/2));
     var generation = size - maxEliteSize || 1;
     var elite = []; // elite solutions best one last
     var solutions = []; // unsorted solutions with a score
