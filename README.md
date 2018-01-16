@@ -175,10 +175,10 @@ ptrading.bestsignals({
         slow_len: [20,25,50,80,100,150,200]
     }
 }).then(best => {
-    console.log(best.signals, best.parameters);
+    console.log(best.variables.signal, best.parameters);
 });
 /*
-[ 'sma_cross' ] { fast_len: 50, slow_len: 200 }
+'sma_cross' { fast_len: 50, slow_len: 200 }
 */
 
 // close down helper threads

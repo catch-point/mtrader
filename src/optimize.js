@@ -135,7 +135,7 @@ function optimize(collect, prng, options) {
     var pvalues = pnames.map(name => options.parameter_values[name]);
     return searchParameters(collect, prng, pnames, count, options).then(solutions => {
         var duration = moment.duration(_.max(_.pluck(solutions, 'foundAt')) - started);
-        logger.log("Found local extremum", options.label || '\b', "in about", duration.humanize());
+        logger.log("Found local extremum", options.label || '\b', "in", duration.humanize());
         return solutions.map((solution, i) => ({
             score: solution.score,
             parameters: _.object(pnames,

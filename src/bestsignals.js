@@ -106,7 +106,13 @@ function bestsignals(optimize, options) {
             var count = options.solution_count || 1;
             return _.sortBy(signals, 'score').slice(-count).reverse();
         });
-    })).then(_.flatten).then(signals => formatSignals(signals, options));
+    })).then(_.flatten).then(signals => {
+        var count = options.solution_count || 1;
+        return _.sortBy(signals, 'score').slice(-count).reverse();
+    }).then(signals => formatSignals(signals, options)).then(solutions => {
+        if (options.solution_count) return solutions;
+        else return _.first(solutions);
+    });
 }
 
 /**
@@ -128,17 +134,17 @@ function getSignalSets(options) {
 function bestsignal(optimize, signal, options) {
     var pnames = getParameterNames(signal, options);
     var pvalues = pnames.map(name => options.parameter_values[name]);
-    var signal_variable = {[options.signal_variable || 'signal']: signal};
+    var signal_variable = options.signal_variable || 'signal';
     return optimize(_.defaults({
         label: (options.label ? options.label + ' ' : '') + signal,
         solution_count: options.solution_count || 1,
-        variables: _.defaults(signal_variable, options.variables),
+        variables: _.defaults({[signal_variable]: signal}, options.variables),
         parameter_values: _.object(pnames, pvalues)
     }, options))
       .then(solutions => solutions.map((solution, i) => _.defaults({
         score: solution.score,
-        signals: [signal],
-        variables: options.variables,
+        signal_variable: signal_variable,
+        variables: _.defaults({[signal_variable]: signal}, options.variables),
         parameters: solution.parameters,
         parameter_values: _.object(pnames, pvalues)
     }, options)));
@@ -176,14 +182,14 @@ function formatSignals(signalsets, options) {
             conflicts.push(name);
         values[name] = value;
         return values;
-    }, values), {});
-    var signals = signalsets.map((signalset, i) => {
-        var signal = _.first(signalset.signals);
+    }, values), _.defaults({}, options.variables, options.parameters));
+    return signalsets.map((signalset, i) => {
+        var signal = signalset.signal_variable;
         var vars = _.extend({}, signalset.variables, signalset.parameters);
         var cnames = _.intersection(_.keys(vars), conflicts);
         var references = getReferences(vars);
-        var local = _.isEmpty(signalset.signals) ? _.keys(references) : [signal].concat(references[signal]);
-        var overlap = local.filter(name => ~cnames.indexOf(name) ||
+        var local = [signal].concat(references[signal]);
+        var overlap = references[signal].filter(name => ~cnames.indexOf(name) ||
             ~shared.indexOf(name) && _.intersection(cnames, references[name]).length);
         var id = _.isEmpty(overlap) ? '' : (i + 10).toString(16).toUpperCase();
         var replacement = _.object(overlap, overlap.map(name => name + id));
@@ -191,19 +197,11 @@ function formatSignals(signalsets, options) {
         var rename = (object, value, name) => _.extend(object, {[replacement[name] || name]: value});
         return {
             score: signalset.score,
-            signals: signalset.signals.map(signal => replacement[signal] || signal),
+            signal_variable: signalset.signal_variable,
             variables: replacer(_.pick(signalset.variables, local)),
             parameters: _.reduce(_.pick(signalset.parameters, local), rename, {}),
             parameter_values: _.reduce(_.pick(signalset.parameter_values, local), rename, {})
         };
-    });
-    var extend2 = (a, b) => _.extend(a, b);
-    return _.extend(_.clone(options), {
-        score: _.max(_.pluck(signals, 'score')),
-        signals: _.flatten(_.pluck(signals, 'signals'), true),
-        variables: _.defaults(_.pluck(signals, 'variables').reduce(extend2, {}), options.variables),
-        parameters: _.defaults(_.pluck(signals, 'parameters').reduce(extend2, {}), options.parameters),
-        parameter_values: _.defaults(_.pluck(signals, 'parameter_values').reduce(extend2, {}), options.parameter_values),
     });
 }
 

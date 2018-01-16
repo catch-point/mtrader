@@ -96,15 +96,18 @@ describe("bestsignals", function() {
                 }
             }
         }).should.eventually.be.like({
-            signals: ['ema_cross'],
+            variables: {
+                signal: 'ema_cross'
+            },
             score: 8.975257
         });
     });
-    it("should find best sma cross and ema cross parameters", function() {
+    it("should find best two sma cross and ema cross parameters", function() {
         return bestsignals({
             portfolio: 'SPY.ARCA',
             begin: '2015-01-01',
             end: '2015-12-31',
+            solution_count: 2,
             signal_variable: 'signal',
             eval_validity: 'fast_len<slow_len',
             eval_score: 'gain',
@@ -141,19 +144,25 @@ describe("bestsignals", function() {
                     slow_len: [20,25,50,80,100,150,200]
                 }
             }]
-        }).should.eventually.be.like({
-            signals: ['sma_cross', 'ema_cross'],
+        }).should.eventually.be.like([{
             variables: {
-                sma_cross: 'SMA(fast_lenA,day.adj_close)>SMA(slow_lenA,day.adj_close)',
-                ema_cross: 'EMA(fast_lenB,day.adj_close)>EMA(slow_lenB,day.adj_close)'
+                signal: 'sma_crossA',
+                sma_crossA: 'SMA(fast_lenA,day.adj_close)>SMA(slow_len,day.adj_close)'
             },
             parameters: {
                 fast_lenA: 15,
-                slow_lenA: 25,
-                fast_lenB: 20,
-                slow_lenB: 50
+                slow_len: 25
             }
-        });
+        }, {
+            variables: {
+                signal: 'sma_crossB',
+                sma_crossB: 'SMA(fast_lenB,day.adj_close)>SMA(slow_len,day.adj_close)'
+            },
+            parameters: {
+                fast_lenB: 20,
+                slow_len: 25
+            }
+        }]);
     });
     it("should find best counter trend cross parameters", function() {
         return bestsignals({
@@ -185,8 +194,8 @@ describe("bestsignals", function() {
                 }
             }
         }).should.eventually.be.like({
-            signals: ['sma_cross'],
             variables: {
+                signal: 'sma_cross',
                 sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))'
             },
             parameters: {
@@ -233,29 +242,41 @@ describe("bestsignals", function() {
                     Dmoving: [3,5]
                 }
             }
-        }).should.eventually.be.like({
-            signals: ['STO_signalA', 'STO_signalB'],
+        }).should.eventually.be.like([{
             variables: {
+                signal: 'STO_signalA',
                 STO_signalA: 'SIGN(K-DA)',
+                STO: 'CHANGE(day.adj_close,LOWEST(lookback,day.low),HIGHEST(lookback,day.high)-LOWEST(lookback,day.low))',
+                K: 'SMA(Ksmoothing,STO)',
+                DA: 'SMA(DmovingA,K)'
+            },
+            parameters: {
+                lookback: 20,
+                Ksmoothing: 7,
+                DmovingA: 5
+            }
+        }, {
+            variables: {
+                signal: 'STO_signalB',
                 STO_signalB: 'SIGN(K-DB)',
                 STO: 'CHANGE(day.adj_close,LOWEST(lookback,day.low),HIGHEST(lookback,day.high)-LOWEST(lookback,day.low))',
                 K: 'SMA(Ksmoothing,STO)',
-                DA: 'SMA(DmovingA,K)',
                 DB: 'SMA(DmovingB,K)'
             },
             parameters: {
                 lookback: 20,
                 Ksmoothing: 7,
-                DmovingA: 5,
                 DmovingB: 3
             }
-        });
+        }]);
     });
     it("should find best signal parameters for each", function() {
         return bestsignals({
             portfolio: 'SPY.ARCA',
             begin: '2016-07-01',
             end: '2016-12-31',
+            solution_count: 2,
+            population_size: 8,
             signal_variable: 'signal',
             eval_score: 'gain/pain',
             columns: {
@@ -318,10 +339,20 @@ describe("bestsignals", function() {
                     Dmoving: [3,5]
                 }
             }]
-        }).should.eventually.be.like({
-            signals: ['ema_cross', 'bollinger_signal', 'STO_signal'],
-            score: 4.280241324
-        });
+        }).should.eventually.be.like([{
+            score: 4.280241324,
+            variables: {
+                signal: 'bollinger_signal',
+            },
+            parameters: { multiplier: 2, len: 10 }
+        },
+        {
+            score: 2.095973972,
+            variables: {
+                signal: 'STO_signal'
+            },
+            parameters: { Ksmoothing: 3, lookback: 10, Dmoving: 5 }
+        }]);
     });
     it("should find best overall signal", function() {
         return bestsignals({
@@ -375,7 +406,9 @@ describe("bestsignals", function() {
                 }
             }]
         }).should.eventually.be.like({
-            signals: ['bollinger_signal'],
+            variables: {
+                signal: 'bollinger_signal'
+            },
             parameters: {
                 len: 10,
                 multiplier: 2,
