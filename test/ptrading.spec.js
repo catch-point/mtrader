@@ -224,6 +224,7 @@ describe("ptrading", function() {
             end: '2016-12-31',
             signal_variable: 'signal',
             eval_score: 'gain/pain',
+            solution_count: 2,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -236,18 +237,24 @@ describe("ptrading", function() {
                 drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
             },
             signalset: ['TREND', 'MEANREVERSION', 'RELATIVESTRENGTH']
-        }).should.eventually.be.like({
-            signals: ['ema_cross', 'bollinger_signal', 'STO_signal'],
+        }).should.eventually.be.like([{
+            variables: {
+                signal: 'STO_signalA'
+            },
             parameters:  {
-                fast_len: isFinite,
-                slow_len: isFinite,
-                len: 10,
-                multiplier: 2,
-                lookback: 10,
-                Ksmoothing: 5,
-                Dmoving: 3
+                lookbackA: 10,
+                KsmoothingA: 5,
+                DmovingA: 3
             }
-        });
+        }, {
+            variables: {
+                signal: 'bollinger_signalB'
+            },
+            parameters:  {
+                lenB: 10,
+                multiplierB: 2
+            }
+        }]);
     });
 });
 

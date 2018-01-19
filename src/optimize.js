@@ -157,7 +157,7 @@ function searchParameters(collect, prng, pnames, count, options) {
     var space = createSearchSpace(pnames, options);
     var pvalues = pnames.map(name => options.parameter_values[name]);
     var size = options.population_size || Math.max(
-        Math.min(Math.ceil(pvalues.map(_.size).reduce((a,b)=>a+b)/2), MAX_POPULATION),
+        Math.min(Math.ceil(pvalues.map(_.size).reduce((a,b)=>a+b,0)/2), MAX_POPULATION),
         _.max(pvalues.map(_.size)), count * 2, MIN_POPULATION);
     var createPopulation = options.sample_duration || options.sample_count ?
         sampleSolutions(collect, prng, pnames, space, size, options) :
@@ -196,13 +196,11 @@ function createSearchSpace(pnames, options) {
     });
     var validity = parser.parseCriteriaList(options.eval_validity);
     var invalid = ctx => !!validity.find(fn => !fn(ctx));
-    return {
-        add(candidate) {
-            var key = candidate.pindex.join(',');
-            if (hash[key] || invalid(candidate.pindex)) return false;
-            hash[key] = candidate;
-            return true;
-        }
+    return candidate => {
+        var key = candidate.pindex.join(',');
+        if (hash[key] || invalid(candidate.pindex)) return false;
+        hash[key] = candidate;
+        return true;
     };
 }
 
@@ -243,14 +241,14 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
         var parameters = _.pick(options.parameters, pnames);
         var population = results.reduce((population, sols) => sols.reduce((population, solution) => {
             var candidate = {pindex: solution.pindex};
-            if (space.add(candidate)) {
+            if (space(candidate)) {
                 population.push(candidate);
             }
             return population;
         }, population), []);
         var seed = _.isEmpty(parameters) ? null :
             {pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))};
-        if (seed && space.add(seed)) {
+        if (seed && space(seed)) {
             population.push(seed);
         }
         var mutate = mutation(prng, pvalues, space, population);
@@ -272,7 +270,7 @@ function initialPopulation(prng, pnames, space, size, options) {
     var seed = _.isEmpty(parameters) ? null : {
         pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))
     };
-    if (seed && space.add(seed)) {
+    if (seed && space(seed)) {
         population.push(seed);
     }
     var mutate = mutation(prng, pvalues, space);
@@ -351,9 +349,9 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
             }
             if (!terminateAt || terminateAt > Date.now()) {
                 var ranking = [];
-                while (!ranking.length && strength/2 < generation/pnames.length) {
+                while (!ranking.length && strength < generation/pnames.length*2) {
                     var mutate = mutation(elite, strength);
-                    for (var i=0; i/2<size && elite.length+candidates.length<size; i++) {
+                    for (var i=0; i<size*2 && elite.length+candidates.length<size; i++) {
                         var mutant = mutate(additions[i], _.last(elite));
                         if (mutant) {
                             candidates.push(mutant);
@@ -401,11 +399,11 @@ function mutation(prng, pvalues, space, solutions, strength) {
         var result = solutions.reduce((result, solution) => {
             if (result || !solution) return result;
             var mutated = {pindex: mutations.map((fn, i) => fn(solution.pindex[i]))};
-            if (space.add(mutated)) return mutated;
+            if (space(mutated)) return mutated;
         }, null);
         if (result) return result;
         var candidate = {pindex: mutations.map(fn => fn())};
-        if (space.add(candidate)) return candidate;
+        if (space(candidate)) return candidate;
         else return null;
     };
 }

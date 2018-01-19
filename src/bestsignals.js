@@ -96,8 +96,8 @@ function help(optimize) {
  */
 function bestsignals(optimize, options) {
     return Promise.all(getSignalSets(options).map(options => {
-        var signals = _.isString(options.signals) ?
-            options.signals.split(',') : options.signals;
+        var signals = _.isString(options.signals) ? options.signals.split(',') :
+            _.isEmpty(options.signals) ? ['signal'] :options.signals;
         expect(options).to.have.property('parameter_values');
         expect(options).to.have.property('signals');
         return Promise.all(signals.map(signal => {
@@ -109,8 +109,8 @@ function bestsignals(optimize, options) {
     })).then(_.flatten).then(signals => {
         var count = options.solution_count || 1;
         return _.sortBy(signals, 'score').slice(-count).reverse();
-    }).then(signals => formatSignals(signals, options)).then(solutions => {
-        if (options.solution_count) return solutions;
+    }).then(solutions => {
+        if (options.solution_count) return formatSignals(solutions, options);
         else return _.first(solutions);
     });
 }
@@ -174,15 +174,18 @@ function getParameterNames(signal, options) {
  * Merges signal results with options
  */
 function formatSignals(signalsets, options) {
-    var conflicts = [], shared = [];
+    var conflicts = _.uniq(_.flatten(_.map(signalsets, set => _.keys(set.parameter_values))));
+    var fixed = _.extend({}, options.parameters, options.variables);
     signalsets.reduce((values, signalset) => _.reduce(_.extend({}, signalset.variables, signalset.parameters), (values, value, name) => {
-        if (_.has(values, name) && !~shared.indexOf(name))
-            shared.push(name);
         if (values[name] != value && _.has(values, name) && !~conflicts.indexOf(name))
             conflicts.push(name);
         values[name] = value;
         return values;
-    }, values), _.defaults({}, options.variables, options.parameters));
+    }, values), fixed);
+    var base = conflicts.reduce((base, name) => {
+        while (_.has(fixed, name + (base + 10).toString(16).toUpperCase())) base++;
+        return base;
+    }, 0);
     return signalsets.map((signalset, i) => {
         var signal = signalset.signal_variable;
         var vars = _.extend({}, signalset.variables, signalset.parameters);
@@ -190,8 +193,8 @@ function formatSignals(signalsets, options) {
         var references = getReferences(vars);
         var local = [signal].concat(references[signal]);
         var overlap = references[signal].filter(name => ~cnames.indexOf(name) ||
-            ~shared.indexOf(name) && _.intersection(cnames, references[name]).length);
-        var id = _.isEmpty(overlap) ? '' : (i + 10).toString(16).toUpperCase();
+            _.intersection(cnames, references[name]).length);
+        var id = _.isEmpty(overlap) ? '' : (base + i + 10).toString(16).toUpperCase();
         var replacement = _.object(overlap, overlap.map(name => name + id));
         var replacer = createReplacer(replacement);
         var rename = (object, value, name) => _.extend(object, {[replacement[name] || name]: value});

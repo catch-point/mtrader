@@ -89,10 +89,36 @@ describe("optimize", function() {
                 slow_len: [20,25,50,80,100,150,200]
             }
         }).should.eventually.be.like({
+            score: 18.713364,
             parameters: {
                 fast_len: 15,
                 slow_len: 25
             }
+        });
+    });
+    it("should score without parameters", function() {
+        return optimize({
+            portfolio: 'SPY.ARCA',
+            begin: '2015-01-01',
+            end: '2015-12-31',
+            eval_validity: 'fast_len<slow_len',
+            eval_score: 'gain',
+            columns: {
+                date: 'DATE(ending)',
+                change: 'close - PREV("close")',
+                close: 'day.adj_close',
+                gain: 'PREC("gain") + change * PREV("sma_cross")'
+            },
+            variables: {
+                sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))'
+            },
+            parameters: {
+                fast_len: 15,
+                slow_len: 25
+            },
+            parameter_values: {}
+        }).should.eventually.be.like({
+            score: 18.713364
         });
     });
     it("should find best counter trend sma cross parameters", function() {

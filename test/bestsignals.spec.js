@@ -102,6 +102,30 @@ describe("bestsignals", function() {
             score: 8.975257
         });
     });
+    it("should score without signals", function() {
+        return bestsignals({
+            portfolio: 'SPY.ARCA',
+            begin: '2016-10-01',
+            end: '2016-12-31',
+            eval_score: 'gain',
+            columns: {
+                date: 'DATE(ending)',
+                change: 'close - PREV("close")',
+                close: 'day.adj_close',
+                gain: 'PREC("gain") + change * PREV("sma_cross")'
+            },
+            signals: [],
+            variables: {
+                sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))'
+            },
+            parameters: {
+                fast_len: 50,
+                slow_len: 200
+            }
+        }).should.eventually.be.like({
+            score: 8.975257
+        });
+    });
     it("should find best two sma cross and ema cross parameters", function() {
         return bestsignals({
             portfolio: 'SPY.ARCA',
@@ -147,20 +171,20 @@ describe("bestsignals", function() {
         }).should.eventually.be.like([{
             variables: {
                 signal: 'sma_crossA',
-                sma_crossA: 'SMA(fast_lenA,day.adj_close)>SMA(slow_len,day.adj_close)'
+                sma_crossA: 'SMA(fast_lenA,day.adj_close)>SMA(slow_lenA,day.adj_close)'
             },
             parameters: {
                 fast_lenA: 15,
-                slow_len: 25
+                slow_lenA: 25
             }
         }, {
             variables: {
                 signal: 'sma_crossB',
-                sma_crossB: 'SMA(fast_lenB,day.adj_close)>SMA(slow_len,day.adj_close)'
+                sma_crossB: 'SMA(fast_lenB,day.adj_close)>SMA(slow_lenB,day.adj_close)'
             },
             parameters: {
                 fast_lenB: 20,
-                slow_len: 25
+                slow_lenB: 25
             }
         }]);
     });
@@ -245,27 +269,27 @@ describe("bestsignals", function() {
         }).should.eventually.be.like([{
             variables: {
                 signal: 'STO_signalA',
-                STO_signalA: 'SIGN(K-DA)',
-                STO: 'CHANGE(day.adj_close,LOWEST(lookback,day.low),HIGHEST(lookback,day.high)-LOWEST(lookback,day.low))',
-                K: 'SMA(Ksmoothing,STO)',
-                DA: 'SMA(DmovingA,K)'
+                STO_signalA: 'SIGN(KA-DA)',
+                STOA: 'CHANGE(day.adj_close,LOWEST(lookbackA,day.low),HIGHEST(lookbackA,day.high)-LOWEST(lookbackA,day.low))',
+                KA: 'SMA(KsmoothingA,STOA)',
+                DA: 'SMA(DmovingA,KA)'
             },
             parameters: {
-                lookback: 20,
-                Ksmoothing: 7,
+                lookbackA: 20,
+                KsmoothingA: 7,
                 DmovingA: 5
             }
         }, {
             variables: {
                 signal: 'STO_signalB',
-                STO_signalB: 'SIGN(K-DB)',
-                STO: 'CHANGE(day.adj_close,LOWEST(lookback,day.low),HIGHEST(lookback,day.high)-LOWEST(lookback,day.low))',
-                K: 'SMA(Ksmoothing,STO)',
-                DB: 'SMA(DmovingB,K)'
+                STO_signalB: 'SIGN(KB-DB)',
+                STOB: 'CHANGE(day.adj_close,LOWEST(lookbackB,day.low),HIGHEST(lookbackB,day.high)-LOWEST(lookbackB,day.low))',
+                KB: 'SMA(KsmoothingB,STOB)',
+                DB: 'SMA(DmovingB,KB)'
             },
             parameters: {
-                lookback: 20,
-                Ksmoothing: 7,
+                lookbackB: 20,
+                KsmoothingB: 7,
                 DmovingB: 3
             }
         }]);
@@ -342,16 +366,16 @@ describe("bestsignals", function() {
         }).should.eventually.be.like([{
             score: 4.280241324,
             variables: {
-                signal: 'bollinger_signal',
+                signal: 'bollinger_signalA',
             },
-            parameters: { multiplier: 2, len: 10 }
+            parameters: { multiplierA: 2, lenA: 10 }
         },
         {
             score: 2.095973972,
             variables: {
-                signal: 'STO_signal'
+                signal: 'STO_signalB'
             },
-            parameters: { Ksmoothing: 3, lookback: 10, Dmoving: 5 }
+            parameters: { KsmoothingB: 3, lookbackB: 10, DmovingB: 5 }
         }]);
     });
     it("should find best overall signal", function() {

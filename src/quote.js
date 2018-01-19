@@ -256,7 +256,9 @@ function createParser(fields, cached, options) {
             expect(interval).to.be.oneOf(periods.values);
             var lname = name.substring(name.indexOf('.')+1);
             return _.extend(ctx => {
-                var obj = _.last(ctx)[interval];
+                if (!ctx.length) return undefined;
+                var last = ctx[ctx.length -1];
+                var obj = last[interval];
                 return obj ? obj[lname] : undefined;
             }, {
                 intervals: [interval]
