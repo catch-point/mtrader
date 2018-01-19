@@ -219,7 +219,7 @@ describe("fetch-yahoo", function() {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
         }).should.eventually.be.like([
-            {ending:'2016-09-14T16:00:00-04:00',open:23.88,close:23.82,adj_close:19.22},
+            {ending:'2016-09-14T16:00:00-04:00',open:23.88,close:23.82,adj_close:19.25},
             {ending:'2016-09-15T16:00:00-04:00',open:23.77,close:23.96,adj_close:19.3},
             {ending:'2016-09-16T16:00:00-04:00',open:23.75,close:23.62,adj_close:19.18},
             {ending:'2016-09-19T16:00:00-04:00',open:19.18,close:19.31,adj_close:19.31},
@@ -306,27 +306,27 @@ describe("fetch-yahoo", function() {
             end: '2016-11-30',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).should.eventually.be.like([
-            {ending:"2016-11-01T16:00:00-04:00",close:10.32,adj_close:37.873424,split:1,dividend:0},
-            {ending:"2016-11-02T16:00:00-04:00",close:10.3,adj_close:37.800026,split:1,dividend:0},
-            {ending:"2016-11-03T16:00:00-04:00",close:10.35,adj_close:37.983521,split:1,dividend:0},
-            {ending:"2016-11-04T16:00:00-04:00",close:10.43,adj_close:38.277113,split:1,dividend:0},
-            {ending:"2016-11-07T16:00:00-05:00",close:42.02,adj_close:38.552356,split:0.25,dividend:0},
-            {ending:"2016-11-08T16:00:00-05:00",close:42.22,adj_close:38.735851,split:1,dividend:0},
-            {ending:"2016-11-09T16:00:00-05:00",close:41.95,adj_close:38.488132,split:1,dividend:0},
-            {ending:"2016-11-10T16:00:00-05:00",close:41.39,adj_close:37.974345,split:1,dividend:0},
-            {ending:"2016-11-11T16:00:00-05:00",close:41.71,adj_close:38.267937,split:1,dividend:0},
-            {ending:"2016-11-14T16:00:00-05:00",close:41.43,adj_close:38.011044,split:1,dividend:0},
-            {ending:"2016-11-15T16:00:00-05:00",close:41.74,adj_close:38.295462,split:1,dividend:0},
-            {ending:"2016-11-16T16:00:00-05:00",close:41.75,adj_close:38.304637,split:1,dividend:0},
-            {ending:"2016-11-17T16:00:00-05:00",close:41.85,adj_close:38.396385,split:1,dividend:0},
-            {ending:"2016-11-18T16:00:00-05:00",close:42.02,adj_close:38.552356,split:1,dividend:0},
-            {ending:"2016-11-21T16:00:00-05:00",close:42.42,adj_close:38.919347,split:1,dividend:0},
-            {ending:"2016-11-22T16:00:00-05:00",close:42.79,adj_close:39.258813,split:1,dividend:0},
-            {ending:"2016-11-23T16:00:00-05:00",close:42.3,adj_close:38.80925,split:1,dividend:0},
-            {ending:"2016-11-25T16:00:00-05:00",close:42.6,adj_close:39.084493,split:1,dividend:0},
-            {ending:"2016-11-28T16:00:00-05:00",close:42.82,adj_close:39.286338,split:1,dividend:0},
-            {ending:"2016-11-29T16:00:00-05:00",close:43.22,adj_close:39.653329,split:1,dividend:0},
-            {ending:"2016-11-30T16:00:00-05:00",close:42.63,adj_close:39.112018,split:1,dividend:0}
+            {ending:"2016-11-01T16:00:00-04:00",close:10.32,adj_close:36.71164,split:1,dividend:0},
+            {ending:"2016-11-02T16:00:00-04:00",close:10.3,adj_close:36.640493,split:1,dividend:0},
+            {ending:"2016-11-03T16:00:00-04:00",close:10.35,adj_close:36.818359,split:1,dividend:0},
+            {ending:"2016-11-04T16:00:00-04:00",close:10.43,adj_close:37.102945,split:1,dividend:0},
+            {ending:"2016-11-07T16:00:00-05:00",close:42.02,adj_close:37.369745,split:0.25,dividend:0},
+            {ending:"2016-11-08T16:00:00-05:00",close:42.22,adj_close:37.547611,split:1,dividend:0},
+            {ending:"2016-11-09T16:00:00-05:00",close:41.95,adj_close:37.307491,split:1,dividend:0},
+            {ending:"2016-11-10T16:00:00-05:00",close:41.39,adj_close:36.809465,split:1,dividend:0},
+            {ending:"2016-11-11T16:00:00-05:00",close:41.71,adj_close:37.094051,split:1,dividend:0},
+            {ending:"2016-11-14T16:00:00-05:00",close:41.43,adj_close:36.845038,split:1,dividend:0},
+            {ending:"2016-11-15T16:00:00-05:00",close:41.74,adj_close:37.120731,split:1,dividend:0},
+            {ending:"2016-11-16T16:00:00-05:00",close:41.75,adj_close:37.129624,split:1,dividend:0},
+            {ending:"2016-11-17T16:00:00-05:00",close:41.85,adj_close:37.218557,split:1,dividend:0},
+            {ending:"2016-11-18T16:00:00-05:00",close:42.02,adj_close:37.369743,split:1,dividend:0},
+            {ending:"2016-11-21T16:00:00-05:00",close:42.42,adj_close:37.725476,split:1,dividend:0},
+            {ending:"2016-11-22T16:00:00-05:00",close:42.79,adj_close:38.054529,split:1,dividend:0},
+            {ending:"2016-11-23T16:00:00-05:00",close:42.3,adj_close:37.618756,split:1,dividend:0},
+            {ending:"2016-11-25T16:00:00-05:00",close:42.6,adj_close:37.885556,split:1,dividend:0},
+            {ending:"2016-11-28T16:00:00-05:00",close:42.82,adj_close:38.081209,split:1,dividend:0},
+            {ending:"2016-11-29T16:00:00-05:00",close:43.22,adj_close:38.436942,split:1,dividend:0},
+            {ending:"2016-11-30T16:00:00-05:00",close:42.63,adj_close:37.912236,split:1,dividend:0}
         ]);
     });
 });
