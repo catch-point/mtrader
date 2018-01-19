@@ -422,11 +422,15 @@ var functions = module.exports.functions = {
         };
     },
     /* Multiplication */
-    PRODUCT: _.extend(function(opts) {
-        var numbers = _.rest(arguments);
-        return context => numbers.reduce((product, num) => {
-            return precision(product * num(context));
-        }, 1);
+    PRODUCT: _.extend(function(opts, a, b) {
+        if (arguments.length == 3) {
+            return context => precision(a(context) * b(context));
+        } else {
+            var numbers = _.rest(arguments);
+            return context => numbers.reduce((product, num) => {
+                return precision(product * num(context));
+            }, 1);
+        }
     }, {
         args: "numbers..."
     }),
@@ -459,7 +463,7 @@ _.forEach(functions, fn => {
 
 function precision(number) {
     if (!_.isNumber(number)) return number;
-    var result = parseFloat(number.toPrecision(10));
+    var result = Math.round(number * 10000000000) / 10000000000;
     if (isFinite(result)) return result;
     else return null;
 }

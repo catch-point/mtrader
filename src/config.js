@@ -90,7 +90,6 @@ function createInstance(session) {
     var loadedFrom, loaded = {};
 
     var config = function(name, value) {
-        if (name == 'remote_workers') console.log("config", config.opts());
         if (_.isUndefined(value)) {
             var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
             return get(merge({}, session, config.opts(), loaded, stored, defaults), jpath);

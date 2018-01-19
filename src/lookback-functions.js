@@ -463,9 +463,12 @@ function getValues(size, calc, bars) {
     if (!bars) return [];
     var n = calc.warmUpLength +1;
     var m = Math.min(size, bars.length);
-    return _.range(bars.length - m, bars.length).map(i => {
-        return calc(bars.slice(Math.max(i - n + 1, 0), i + 1));
-    });
+    var values = new Array(m);
+    var start = bars.length - m;
+    for (var i=start; i<bars.length; i++) {
+        values[i - start] = calc(bars.slice(Math.max(i - n + 1, 0), i + 1));
+    }
+    return values;
 }
 
 function sum(values) {

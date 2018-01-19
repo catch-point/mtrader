@@ -247,7 +247,7 @@ function createParser(fields, cached, options) {
         },
         variable(name) {
             if (_.contains(['symbol', 'exchange', 'ending'], name))
-                return _.compose(_.property(name), _.last);
+                return ctx => _.last(ctx)[name];
             else if (!~name.indexOf('.') && ~fields.indexOf(name))
                 return _.constant(options[name]);
             else if (!~name.indexOf('.'))
@@ -255,7 +255,10 @@ function createParser(fields, cached, options) {
             var interval = name.substring(0, name.indexOf('.'));
             expect(interval).to.be.oneOf(periods.values);
             var lname = name.substring(name.indexOf('.')+1);
-            return _.extend(_.compose(_.property(lname), _.property(interval), _.last), {
+            return _.extend(ctx => {
+                var obj = _.last(ctx)[interval];
+                return obj ? obj[lname] : undefined;
+            }, {
                 intervals: [interval]
             });
         },
@@ -266,7 +269,10 @@ function createParser(fields, cached, options) {
             if (!fn) throw Error("Unknown function: " + name);
             var interval =_.first(fn.intervals);
             if (!_.contains(cached[interval], expr)) return fn;
-            else return _.extend(_.compose(_.property(expr), _.property(interval), _.last), {
+            else return _.extend(ctx => {
+                var obj = _.last(ctx)[interval];
+                return obj ? obj[expr] : undefined;
+            }, {
                 intervals: fn.intervals
             });
         }

@@ -607,11 +607,11 @@ function createParser(quote, dataset, columns, cached, options) {
             if (columns[name] && name!=columns[name])
                 return pCols[name] = pCols[name] || parser.parse(columns[name]);
             // [{"USD.CAD": {"close": 1.00}}]
-            else return _.compose(_.property(name), _.last, _.values, _.last);
+            else return ctx => _.last(_.values(_.last(ctx)))[name];
         },
         expression(expr, name, args) {
             if (_.contains(cached, expr))
-                return _.compose(_.property(expr), _.last, _.values, _.last);
+                return ctx => _.last(_.values(_.last(ctx)))[expr];
             else return Promise.all(args).then(args => {
                 var fn = common(name, args, options) ||
                     rolling(name, args, options) ||
@@ -662,12 +662,16 @@ function promiseColumns(parser, columns, options) {
     return Promise.all(_.values(map))
       .then(values => _.object(_.keys(map), values))
       .then(columns => {
-        if (!columns[options.indexCol]) return columns;
+        var indexCol = options.indexCol;
+        var symbolCol = options.symbolCol;
+        var exchangeCol = options.exchangeCol;
+        var temporalCol = options.temporalCol;
+        if (!columns[indexCol]) return columns;
         // nested collect pass through these columns as-is
-        columns[options.indexCol] = _.compose(_.property(options.indexCol), _.last, _.values, _.last)
-        columns[options.symbolCol] = _.compose(_.property(options.symbolCol), _.last, _.values, _.last)
-        columns[options.exchangeCol] = _.compose(_.property(options.exchangeCol), _.last, _.values, _.last)
-        columns[options.temporalCol] = _.compose(_.property(options.temporalCol), _.last, _.values, _.last)
+        columns[indexCol] = ctx => _.last(_.values(_.last(ctx)))[indexCol];
+        columns[symbolCol] = ctx => _.last(_.values(_.last(ctx)))[symbolCol];
+        columns[exchangeCol] = ctx => _.last(_.values(_.last(ctx)))[exchangeCol];
+        columns[temporalCol] = ctx => _.last(_.values(_.last(ctx)))[temporalCol];
         return columns;
     });
 }
