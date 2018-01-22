@@ -85,6 +85,10 @@ else
   fi
 fi
 
+if [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
+  systemctl stop "$NAME"
+fi
+
 # Install/upgrade software
 PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
 if [ "$PREFIX" = "$BASEDIR" ]; then
@@ -365,13 +369,13 @@ WorkingDirectory=$BASEDIR
 WantedBy=multi-user.target
 EOF
   systemctl enable "$NAME"
-  systemctl start "$NAME"
-elif [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
-  systemctl restart "$NAME"
 fi
 
 if [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" -a "`tty`" != "not a tty" ]; then
+  systemctl start "$NAME"
   systemctl status "$NAME"
+elif [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
+  systemctl start "$NAME"
 elif [ "`tty`" != "not a tty" ]; then
   echo "Run '$PREFIX/bin/ptrading start' to start the service"
 fi
