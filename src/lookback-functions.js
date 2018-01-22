@@ -110,7 +110,7 @@ var functions = module.exports.functions = {
             }
             return 0;
         }, {
-            warmUpLength: n + calc.warmUpLength - 1
+            warmUpLength: n + calc.warmUpLength
         });
     }, {
         description: "If the prior different value was higher then the current value then return 1, if the prior different value was lower then the current value then return -1, if all prior values within numberOfPeriods was the same then return 0.",
