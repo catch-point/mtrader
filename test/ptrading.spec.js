@@ -239,20 +239,20 @@ describe("ptrading", function() {
             signalset: ['TREND', 'MEANREVERSION', 'RELATIVESTRENGTH']
         }).should.eventually.be.like([{
             variables: {
-                signal: 'STO_signalA'
+                signal: 'STO_signal'
             },
             parameters:  {
-                lookbackA: 10,
-                KsmoothingA: 5,
-                DmovingA: 3
+                lookback: 10,
+                Ksmoothing: 5,
+                Dmoving: 3
             }
         }, {
             variables: {
-                signal: 'bollinger_signalB'
+                signal: 'bollinger_signal'
             },
             parameters:  {
-                lenB: 10,
-                multiplierB: 2
+                len: 10,
+                multiplier: 2
             }
         }]);
     });

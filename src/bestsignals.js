@@ -109,8 +109,9 @@ function bestsignals(optimize, options) {
     })).then(_.flatten).then(signals => {
         var count = options.solution_count || 1;
         return _.sortBy(signals, 'score').slice(-count).reverse();
-    }).then(solutions => {
-        if (options.solution_count) return formatSignals(solutions, options);
+    }).then(solutions => solutions.map(solution => formatSignal(solution, options)))
+      .then(solutions => {
+        if (options.solution_count) return solutions;
         else return _.first(solutions);
     });
 }
@@ -173,39 +174,18 @@ function getParameterNames(signal, options) {
 /**
  * Merges signal results with options
  */
-function formatSignals(signalsets, options) {
-    var conflicts = _.uniq(_.flatten(_.map(signalsets, set => _.keys(set.parameter_values))));
-    var fixed = _.extend({}, options.parameters, options.variables);
-    signalsets.reduce((values, signalset) => _.reduce(_.extend({}, signalset.variables, signalset.parameters), (values, value, name) => {
-        if (values[name] != value && _.has(values, name) && !~conflicts.indexOf(name))
-            conflicts.push(name);
-        values[name] = value;
-        return values;
-    }, values), fixed);
-    var base = conflicts.reduce((base, name) => {
-        while (_.has(fixed, name + (base + 10).toString(16).toUpperCase())) base++;
-        return base;
-    }, 0);
-    return signalsets.map((signalset, i) => {
-        var signal = signalset.signal_variable;
-        var vars = _.extend({}, signalset.variables, signalset.parameters);
-        var cnames = _.intersection(_.keys(vars), conflicts);
-        var references = getReferences(vars);
-        var local = [signal].concat(references[signal]);
-        var overlap = references[signal].filter(name => ~cnames.indexOf(name) ||
-            _.intersection(cnames, references[name]).length);
-        var id = _.isEmpty(overlap) ? '' : (base + i + 10).toString(16).toUpperCase();
-        var replacement = _.object(overlap, overlap.map(name => name + id));
-        var replacer = createReplacer(replacement);
-        var rename = (object, value, name) => _.extend(object, {[replacement[name] || name]: value});
-        return {
-            score: signalset.score,
-            signal_variable: signalset.signal_variable,
-            variables: replacer(_.pick(signalset.variables, local)),
-            parameters: _.reduce(_.pick(signalset.parameters, local), rename, {}),
-            parameter_values: _.reduce(_.pick(signalset.parameter_values, local), rename, {})
-        };
-    });
+function formatSignal(signalset, options) {
+    var signal = signalset.signal_variable;
+    var vars = _.extend({}, signalset.variables, signalset.parameters);
+    var references = getReferences(vars);
+    var local = [signal].concat(references[signal]);
+    return {
+        score: signalset.score,
+        signal_variable: signalset.signal_variable,
+        variables: _.pick(signalset.variables, local),
+        parameters: _.pick(signalset.parameters, local),
+        parameter_values: _.pick(signalset.parameter_values, local)
+    };
 }
 
 /**
@@ -239,29 +219,4 @@ function getReferences(variables) {
         return cont;
     }, false));
     return references;
-}
-
-/**
- * Returns a function that takes an expression and rewrites replacing variables in replacement hash
- */
-function createReplacer(replacement) {
-    var parser = Parser();
-    var map = name => replacement[name] || name;
-    var replacer = Parser({
-        variable(name) {
-            return map(name);
-        },
-        expression(expr, name, args) {
-            if (!rolling.has(name)) return name + '(' + args.join(',') + ')';
-            var margs = args.map(arg => {
-                if (!_.isString(arg) || '"' != arg.charAt(0)) return arg;
-                return JSON.stringify(parser.parse(replacer.parse(JSON.parse(arg))));
-            });
-            return name + '(' + margs.join(',') + ')';
-        }
-    });
-    return function(expr) {
-        var parsed = parser.parse(replacer.parse(expr));
-        return _.object(_.keys(parsed).map(map), _.values(parsed));
-    };
 }

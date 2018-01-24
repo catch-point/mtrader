@@ -200,6 +200,8 @@ function serialize(expr) {
                 return serialize(arg);
             else if (i===0 && aop.priority == operator.priority)
                 return serialize(arg); // 1 * 2 / 3 or 1 + 2 - 3
+            else if (aop == operator)
+                return serialize(arg); // 1 != 2 AND 3 != 4 AND 5
             else return '(' + serialize(arg) + ')';
         });
         if (exprs.length == 1) return operator.op + exprs[0];

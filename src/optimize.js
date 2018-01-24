@@ -222,7 +222,7 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
     var period_units = period.subtract(duration).as(unit);
         var pvalues = pnames.map(name => options.parameter_values[name]);
     var termination = options.sample_termination || options.optimize_termination &&
-        moment.duration(moment.duration(options.optimize_termination).asMilliseconds()/3).toISOString();
+        moment.duration(moment.duration(options.optimize_termination).asSeconds()/3000).toISOString();
     var optionset = _.range(count).map(() => {
         var periodBegin = moment(begin).add(Math.round(prng() * period_units), unit);
         var periodEnd = moment(periodBegin).add(duration);
@@ -287,7 +287,8 @@ function initialPopulation(prng, pnames, space, size, options) {
 function fitness(collect, options, pnames) {
     var pvalues = pnames.map(name => options.parameter_values[name]);
     var score_column = getScoreColumn(options);
-    var transient = isLookbackParameter(pnames, options);
+    var transient = _.isBoolean(options.transient) ? options.transient :
+        isLookbackParameter(pnames, options);
     return function(candidate) {
         var parameters = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
         var picked = ['portfolio', 'columns', 'variables', 'parameters', 'filter', 'precedence', 'order', 'pad_leading', 'reset_every', 'tail', 'transient'];
