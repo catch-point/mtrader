@@ -70,6 +70,8 @@ function usage(command) {
         .option('-o, --offline', "Disable data updates")
         .option('--workers <numOfWorkers>', 'Number of workers to spawn')
         .option('--remote-workers <host:port,..>', "List of host:port addresses to connect to")
+        .option('--solution-count <number>', "Number of solutions to include in result")
+        .option('--termination <Duration>', "Amount of time spent searching for a solution before the best yet is used")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--save <file>', "JSON file to write the result into");
 }

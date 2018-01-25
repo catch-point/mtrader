@@ -72,7 +72,7 @@ function help(optimize) {
             name: 'bestsignals',
             usage: 'bestsignals(options)',
             description: "Searches possible signal parameters to find the highest score",
-            properties: ['signals'].concat(help.properties),
+            properties: ['signal_variable', 'variables', 'parameter_values', 'eval_validity'].concat(help.properties),
             options: _.extend({}, help.options, {
                 signals: {
                     usage: '[<variable name>,..]',
@@ -126,6 +126,7 @@ function getSignalSets(options) {
         variables: _.defaults({}, signalset.variables, options.variables),
         parameters: _.defaults({}, signalset.parameters, options.parameters),
         parameter_values: _.defaults({}, signalset.parameter_values, options.parameter_values),
+        eval_validity: _.compact(_.flatten([options.eval_validity, signalset.eval_validity]))
     }, signalset, options));
 }
 
@@ -172,7 +173,7 @@ function getParameterNames(signal, options) {
 }
 
 /**
- * Merges signal results with options
+ * Identifies and returns only relevant signal variables in result
  */
 function formatSignal(signalset, options) {
     var signal = signalset.signal_variable;
@@ -184,7 +185,8 @@ function formatSignal(signalset, options) {
         signal_variable: signalset.signal_variable,
         variables: _.pick(signalset.variables, local),
         parameters: _.pick(signalset.parameters, local),
-        parameter_values: _.pick(signalset.parameter_values, local)
+        parameter_values: _.pick(signalset.parameter_values, local),
+        eval_validity: _.difference(_.compact(_.flatten([signalset.eval_validity])), _.compact(_.flatten([options.eval_validity])))
     };
 }
 

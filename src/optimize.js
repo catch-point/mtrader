@@ -57,7 +57,8 @@ module.exports = function(collect) {
             var fields = _.first(help).properties;
             var opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
                 tz: moment.tz.guess(),
-                now: Date.now()
+                now: Date.now(),
+                optimize_termination: options.termination
             });
             return optimize(collect, prng, opts);
         });
@@ -117,6 +118,10 @@ function help(collect) {
                 optimize_termination: {
                     usage: 'PT5M',
                     description: "Amount of time spent searching for a solution before the best yet is used"
+                },
+                termination: {
+                    usage: 'PT5M',
+                    description: "Amount of time spent searching for a solution before the best yet is used"
                 }
             })
         }];
@@ -153,7 +158,7 @@ function optimize(collect, prng, options) {
  */
 function searchParameters(collect, prng, pnames, count, options) {
     var terminateAt = options.optimize_termination &&
-        moment().add(moment.duration(options.optimize_termination)).valueOf()
+        moment().add(moment.duration(options.optimize_termination)).valueOf();
     var space = createSearchSpace(pnames, options);
     var pvalues = pnames.map(name => options.parameter_values[name]);
     var size = options.population_size || Math.max(
