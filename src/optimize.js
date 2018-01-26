@@ -122,6 +122,10 @@ function help(collect) {
                 termination: {
                     usage: 'PT5M',
                     description: "Amount of time spent searching for a solution before the best yet is used"
+                },
+                amend: {
+                    usage: 'true|false',
+                    description: "If the result should include option properties from the input"
                 }
             })
         }];
@@ -146,6 +150,12 @@ function optimize(collect, prng, options) {
             parameters: _.object(pnames,
                 solution.pindex.map((idx, i) => pvalues[i][idx])
             )
+        }));
+    }).then(results => {
+        if (!options.amend) return results;
+        return results.map(solution => _.defaults({
+            score: solution.score,
+            parameters: _.defaults({}, solution.parameters, options.parameters)
         }));
     }).then(results => {
         if (options.solution_count) return results;

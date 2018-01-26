@@ -109,8 +109,10 @@ function bestsignals(optimize, options) {
     })).then(_.flatten).then(signals => {
         var count = options.solution_count || 1;
         return _.sortBy(signals, 'score').slice(-count).reverse();
-    }).then(solutions => solutions.map(solution => formatSignal(solution, options)))
-      .then(solutions => {
+    }).then(solutions => {
+        if (options.amend) return solutions;
+        return solutions.map(solution => formatSignal(solution, options));
+    }).then(solutions => {
         if (options.solution_count) return solutions;
         else return _.first(solutions);
     });
@@ -139,6 +141,7 @@ function bestsignal(optimize, signal, options) {
     var signal_variable = options.signal_variable || 'signal';
     return optimize(_.defaults({
         label: (options.label ? options.label + ' ' : '') + signal,
+        amend: false,
         solution_count: options.solution_count || 1,
         variables: _.defaults({[signal_variable]: signal}, options.variables),
         parameter_values: _.object(pnames, pvalues)

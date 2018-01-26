@@ -73,6 +73,7 @@ function usage(command) {
         .option('--solution-count <number>', "Number of solutions to include in result")
         .option('--termination <Duration>', "Amount of time spent searching for a solution before the best yet is used")
         .option('--signalset <identifier,..>', "Comma separated signal set names")
+        .option('--amend', "If the result should include option properties from the input")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--save <file>', "JSON file to write the result into");
 }
