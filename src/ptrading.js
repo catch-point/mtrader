@@ -251,7 +251,8 @@ function listen(ptrading, address) {
     });
     var wsserver = new ws.Server({
         server: server, path: addr.path,
-        clientTracking: true, perMessageDeflate: true,
+        clientTracking: true,
+        perMessageDeflate: config('tls.perMessageDeflate')!=null ? config('tls.perMessageDeflate') : true,
         verifyClient: auth ? info => {
             return info.req.headers.authorization == auth;
         } : undefined

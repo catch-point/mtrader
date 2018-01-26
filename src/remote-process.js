@@ -65,6 +65,7 @@ var remote = module.exports = function(socket, label) {
             rejectUnauthorized: config('tls.rejectUnauthorized'),
             NPNProtocols: config('tls.NPNProtocols'),
             ALPNProtocols: config('tls.ALPNProtocols'),
+            perMessageDeflate: config('tls.perMessageDeflate')!=null ? config('tls.perMessageDeflate') : true,
             headers: {'User-Agent': 'ptrading/' + version},
             agent: false
         }), label || socket);

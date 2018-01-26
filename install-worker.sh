@@ -323,7 +323,8 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ] && [[ "$PORT" != *8* ]]; then
     "secureOptions": $SECURE_OPTIONS,
     "handshakeTimeout": 1000,
     "requestCert": false,
-    "rejectUnauthorized": true
+    "rejectUnauthorized": true,
+    "perMessageDeflate": true
   }
 }
 EOF
