@@ -46,6 +46,21 @@ if [ "`tty`" != "not a tty" ]; then
   VERBOSE="yes"
 fi
 
+# resolve links - $0 may be a softlink
+PRG="$0"
+
+while [ -h "$PRG" ] ; do
+  ls=`ls -ld "$PRG"`
+  link=`expr "$ls" : '.*-> \(.*\)$'`
+  if expr "$link" : '/.*' > /dev/null; then
+    PRG="$link"
+  else
+    PRG=`dirname "$PRG"`/"$link"
+  fi
+done
+
+PRGDIR=$(cd `dirname "$PRG"`;pwd)
+
 # uninstall daemon
 if [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
   systemctl stop "$NAME"
@@ -69,8 +84,13 @@ else
   BASEDIR=$(eval echo ~$DAEMON_USER)
 fi
 
+if [ -z "$PREFIX" -a -x "$PRGDIR/ptrading" ]; then
+  PREFIX = "$PRGDIR/.."
+elif [ -z "$PREFIX" ]; then
+  PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
+fi
+
 # uninstall/upgrade software
-PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
 if [ "$PREFIX" = "$BASEDIR" ]; then
   sudo -iu "$DAEMON_USER" npm uninstall ptrading -g
 elif [ "$(id -u)" = "0" ]; then

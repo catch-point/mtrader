@@ -70,8 +70,17 @@ var remote = module.exports = function(socket, label) {
             agent: false
         }), label || socket);
     var buf = '';
+    var timeout = config('tls.timeout');
     var emitter = new EventEmitter();
-    socket.on('open', (code, reason) => {
+    socket.on('open', () => {
+        if (timeout) {
+            // remove handshakeTimeout event handler
+            socket._socket.removeAllListeners('timeout');
+            socket._socket.setTimeout(timeout/2);
+            var pings = 0;
+            socket._socket.on('timeout', () => pings++ ? socket.close() : socket.ping());
+            socket._socket.on('pong', () => ping--);
+        }
         emitter.connecting = false;
         emitter.connected = true;
         emitter.emit('connect');
@@ -109,7 +118,7 @@ var remote = module.exports = function(socket, label) {
     emitter.remote = true;
     emitter.pid = label || '';
     emitter.send = (message, onerror) => {
-        logger.log(message.payload && message.payload.label || message.cmd, label);
+        logger.debug(message.payload && message.payload.label || message.cmd, label);
         return socket.send(JSON.stringify(message) + EOM, onerror);
     };
     emitter.disconnect = () => socket.close();

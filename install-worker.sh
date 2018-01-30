@@ -276,6 +276,7 @@ EOF
     "secureProtocol": "SSLv23_method",
     "secureOptions": $SECURE_OPTIONS,
     "handshakeTimeout": 1000,
+    "timeout": 30000,
     "requestCert": false,
     "rejectUnauthorized": true
   }
@@ -322,6 +323,7 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ] && [[ "$PORT" != *8* ]]; then
     "secureProtocol": "SSLv23_method",
     "secureOptions": $SECURE_OPTIONS,
     "handshakeTimeout": 1000,
+    "timeout": 30000,
     "requestCert": false,
     "rejectUnauthorized": true,
     "perMessageDeflate": true
