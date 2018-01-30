@@ -136,7 +136,7 @@ describe("ptrading", function() {
         ]);
     });
     it("optimize SMA", function() {
-        ptrading.optimize.seed(27644437);
+        ptrading.seed(27644437);
         return ptrading.optimize({
             portfolio: 'SPY.ARCA',
             begin: '2000-01-01',
@@ -166,7 +166,7 @@ describe("ptrading", function() {
         });
     });
     it("should find best signal parameters for each", function() {
-        ptrading.optimize.seed(27644437);
+        ptrading.seed(27644437);
         ptrading.config.save('TREND', {
             signals: ['sma_cross','ema_cross'],
             variables: {

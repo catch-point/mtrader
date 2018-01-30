@@ -59,6 +59,7 @@ var program = require('commander').version(require('../package.json').version)
     .command('collect [identifier]', "Collects historic portfolio data")
     .command('optimize [identifier]', "Optimizes the parameter values in the given portfolio")
     .command('bestsignals [identifier]', "Determines the best signals for the given portfolio")
+    .command('strategize [identifier]', "Modifies a strategy looking for improvements")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-q, --quiet', "Include less information about what the system is doing")
     .option('-x, --debug', "Include details about what the system is working on")
@@ -154,6 +155,7 @@ function createInstance() {
     var collect = require('./ptrading-collect.js');
     var optimize = require('./ptrading-optimize.js');
     var bestsignals = require('./ptrading-bestsignals.js');
+    var strategize = require('./ptrading-strategize.js');
     var servers = [];
     return {
         config: config,
@@ -172,11 +174,16 @@ function createInstance() {
         collect: collect,
         optimize: optimize,
         bestsignals: bestsignals,
+        strategize: strategize,
+        seed(number) {
+            optimize.seed(number);
+            strategize.seed(number);
+        },
         close() {
             return Promise.all(servers.map(server => {
                 return new Promise(cb => server.close(cb));
             })).then(() => {
-                bestsignals.close();
+                strategize.close();
             });
         },
         shell(app) {
@@ -186,7 +193,8 @@ function createInstance() {
                 quote.shell(app),
                 collect.shell(app),
                 optimize.shell(app),
-                bestsignals.shell(app)
+                bestsignals.shell(app),
+                strategize.shell(app)
             ]).catch(err => console.error("Could not complete shell setup", err));
         },
         listen(address) {
@@ -204,6 +212,7 @@ function createInstance() {
 }
 
 function listen(ptrading, address) {
+    var timeout = config('tls.timeout');
     var addr = parseLocation(address, false);
     var auth = addr.auth ? 'Basic ' + new Buffer(addr.auth).toString('base64') : undefined;
     var server = addr.protocol == 'https:' || addr.protocol == 'wss:' ? https.createServer({
@@ -262,6 +271,10 @@ function listen(ptrading, address) {
     });
     wsserver.on('connection', (ws, message) => {
         var socket = message.socket;
+        if (timeout) {
+            socket.setTimeout(timeout);
+            socket.on('timeout', () => ws.ping());
+        }
         var label = socket.remoteAddress + ':' + socket.remotePort
         logger.log("Client", label, "connected");
         var process = remote(ws, label).on('error', err => {
@@ -278,6 +291,7 @@ function listen(ptrading, address) {
             .handle('collect', ptrading.collect)
             .handle('optimize', ptrading.optimize)
             .handle('bestsignals', ptrading.bestsignals)
+            .handle('strategize', ptrading.strategize)
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
             .handle('stop', () => {
                 try {
@@ -292,6 +306,11 @@ function listen(ptrading, address) {
     }).on('error', err => logger.error(err, err.stack))
       .on('listening', () => logger.info("Service listening on port", server.address().port));
     server.once('close', () => logger.log("Service has closed", address));
+    var server_close = server.close;
+    server.close = () => {
+        server_close.call(server);
+        wsserver.clients.forEach(client => client.close());
+    };
     if (addr.hostname) {
         server.listen(addr.port, addr.hostname);
     } else {
