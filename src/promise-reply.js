@@ -42,6 +42,7 @@ module.exports = function(process) {
         _.compact(queue.keys().map(id => queue.remove(id))).forEach(pending => {
             pending.onerror(error);
         });
+        if (process.connected) process.disconnect();
     };
     var ondisconnect = [];
     var queue = createQueue(onquit, process.pid);
@@ -106,7 +107,7 @@ module.exports = function(process) {
         },
         disconnect() {
             return new Promise(disconnected => {
-                if (!process.connected) disconnected();
+                if (!process.connected) return disconnected();
                 ondisconnect.push(disconnected);
                 return process.disconnect();
             });
