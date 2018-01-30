@@ -34,6 +34,7 @@ const fs = require('fs');
 const path = require('path');
 const process = require('process');
 const child_process = require('child_process');
+const merge = require('./merge.js');
 const commander = require('commander');
 const commander_options = commander.options;
 const commander_emit = commander.Command.prototype.emit.bind(commander);
@@ -46,7 +47,7 @@ process.argv.forEach((arg, i, args) => {
         var name = _.first(pair);
         var str = _.rest(pair).join('=');
         if (name && str) {
-            session[name] = parse(str);
+            assign(session, name.split('.'), parse(str));
         }
     } else if (arg.startsWith('--add-') && i < args.length -1) {
         var map = arg.substring('--add-'.length).replace(/s?$/,'s');
@@ -92,7 +93,7 @@ function createInstance(session) {
     var config = function(name, value) {
         if (_.isUndefined(value)) {
             var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
-            return get(merge({}, session, config.opts(), loaded, stored, defaults), jpath);
+            return get(merge({}, defaults, stored, loaded, config.opts(), session), jpath);
         } else {
             config.options(name, value);
         }
@@ -258,24 +259,6 @@ function get(object, jpath) {
     var last = _.last(jpath);
     var cfg = get(object, initial);
     return _.property(last)(cfg);
-};
-
-function merge(obj) {
-    var length = arguments.length;
-    if (length < 2 || obj == null) return obj;
-    for (var index = 1; index < length; index++) {
-        var source = arguments[index],
-        keys = _.allKeys(source),
-        l = keys.length;
-        for (var i = 0; i < l; i++) {
-            var key = keys[i];
-            if (obj[key] === void 0)
-                obj[key] = source[key];
-            else if (_.isObject(obj[key]) && !_.isArray(obj[key]))
-                obj[key] = merge({}, obj[key], source[key]);
-        }
-    }
-    return obj;
 };
 
 function loadConfigFile(filename) {
