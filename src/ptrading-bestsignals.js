@@ -36,6 +36,7 @@ const Writable = require('stream').Writable;
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
+const merge = require('./merge.js');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
@@ -66,6 +67,9 @@ function usage(command) {
         .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('--reset-every <Duration>', "Duration of time to reset rolling variables (ex. P1Y)")
+        .option('--head <number>', "Limits the rows in the result to the given first few")
+        .option('--tail <number>', "Include the given last few rows in the result")
+        .option('--eval-score <expression>', "Expression that determines the score for a sample")
         .option('--solution-count <number>', "Number of solutions to include in result")
         .option('-o, --offline', "Disable data updates")
         .option('--workers <numOfWorkers>', 'Number of workers to spawn')
@@ -88,8 +92,11 @@ if (require.main === module) {
         process.on('SIGINT', () => bestsignals.close());
         process.on('SIGTERM', () => bestsignals.close());
         var name = program.args.join(' ');
-        var options = readSignals(name);
-        bestsignals(options).then(result => output(result))
+        var read = readSignals(name);
+        var options = mergeSignals(read);
+        bestsignals(options)
+          .then(result => config('amend') ? mergeSignalSets(read, result) : result)
+          .then(result => output(result))
           .catch(err => logger.error(err, err.stack))
           .then(() => bestsignals.close());
     } else if (process.send) {
@@ -157,8 +164,13 @@ function inlineCollections(collections, options, avoid) {
 }
 
 function readSignals(name) {
-    var read = name ? config.read(name) : {};
+    if (!name) return {};
+    var read = config.read(name);
     if (!read) throw Error("Could not read " + name + " settings");
+    return read;
+}
+
+function mergeSignals(read) {
     return _.defaults({
         label: name,
         parameters: _.defaults({}, config('parameters'), read.parameters),
@@ -169,6 +181,15 @@ function readSignals(name) {
         precedence: _.compact(_.flatten([config('precedence'), read.precedence], true)),
         order: _.compact(_.flatten([config('order'), read.order], true))
     }, config.opts(), config.options(), read);
+}
+
+function mergeSignalSets(read, result) {
+    var merged = merge({}, read, result);
+    if (_.isArray(merged.signalset))
+        merged.signalset = merged.signalset.map(signalset => signalset.name || signalset);
+    if (read.eval_validity && result.eval_validity)
+        merged.eval_validity = _.flatten([read.eval_validity, result.eval_validity])
+    return merged;
 }
 
 function output(result) {

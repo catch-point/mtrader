@@ -101,7 +101,7 @@ function help(collect) {
                 },
                 eval_validity: {
                     usage: '<expression>',
-                    description: "Simple expression that invalidates candidates by returning 0 or null"
+                    description: "Expression (or array) that invalidates candidates by returning 0 or null"
                 },
                 eval_score: {
                     usage: '<expression>',
@@ -122,10 +122,6 @@ function help(collect) {
                 termination: {
                     usage: 'PT5M',
                     description: "Amount of time spent searching for a solution before the best yet is used"
-                },
-                amend: {
-                    usage: 'true|false',
-                    description: "If the result should include option properties from the input"
                 }
             })
         }];
@@ -144,7 +140,7 @@ function optimize(collect, prng, options) {
     var pvalues = pnames.map(name => options.parameter_values[name]);
     return searchParameters(collect, prng, pnames, count, options).then(solutions => {
         var duration = moment.duration(_.max(_.pluck(solutions, 'foundAt')) - started);
-        logger.log("Found local extremum", options.label || '\b', "in", duration.humanize());
+        logger.log("Found local extremum", options.label || '\b', "in", solutions[0].pindex.map((idx, i) => pvalues[i][idx]).join(','), duration.humanize(), solutions[0].score);
         return solutions.map((solution, i) => ({
             score: solution.score,
             parameters: _.object(pnames,
@@ -152,7 +148,6 @@ function optimize(collect, prng, options) {
             )
         }));
     }).then(results => {
-        if (!options.amend) return results;
         return results.map(solution => _.defaults({
             score: solution.score,
             parameters: _.defaults({}, solution.parameters, options.parameters)
@@ -349,7 +344,7 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
             var additions = _.difference(top, elite);
             if (additions.length || counter % generation === 0) {
                 var best = _.last(top);
-                logger.log("Optimize", options.label || '\b', options.begin,
+                logger.debug("Optimize", options.label || '\b', options.begin,
                   "G" + Math.floor(counter/generation),
                   "P" + (elite.length+candidates.length),
                   "M" + Math.round(strength * pnames.length),

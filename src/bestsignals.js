@@ -95,7 +95,7 @@ function help(optimize) {
  * Searches possible signal parameters to determine the best score for a date range
  */
 function bestsignals(optimize, options) {
-    return Promise.all(getSignalSets(options).map(options => {
+    return Promise.all(getSignalSets(options).map((options, set) => {
         var signals = _.isString(options.signals) ? options.signals.split(',') :
             _.isEmpty(options.signals) ? ['signal'] :options.signals;
         expect(options).to.have.property('parameter_values');
@@ -105,12 +105,16 @@ function bestsignals(optimize, options) {
         })).then(_.flatten).then(signals => {
             var count = options.solution_count || 1;
             return _.sortBy(signals, 'score').slice(-count).reverse();
+        }).then(signals => {
+            if (!options.signalset) return signals;
+            var signalset = _.isArray(options.signalset) ?
+                [options.signalset[set]] : options.signalset;
+            return signals.map(signal => _.extend({}, signal, {signalset}));
         });
     })).then(_.flatten).then(signals => {
         var count = options.solution_count || 1;
         return _.sortBy(signals, 'score').slice(-count).reverse();
     }).then(solutions => {
-        if (options.amend) return solutions;
         return solutions.map(solution => formatSignal(solution, options));
     }).then(solutions => {
         if (options.solution_count) return solutions;
@@ -141,7 +145,6 @@ function bestsignal(optimize, signal, options) {
     var signal_variable = options.signal_variable || 'signal';
     return optimize(_.defaults({
         label: (options.label ? options.label + ' ' : '') + signal,
-        amend: false,
         solution_count: options.solution_count || 1,
         variables: _.defaults({[signal_variable]: signal}, options.variables),
         parameter_values: _.object(pnames, pvalues)
@@ -189,7 +192,8 @@ function formatSignal(signalset, options) {
         variables: _.pick(signalset.variables, local),
         parameters: _.pick(signalset.parameters, local),
         parameter_values: _.pick(signalset.parameter_values, local),
-        eval_validity: _.difference(_.compact(_.flatten([signalset.eval_validity])), _.compact(_.flatten([options.eval_validity])))
+        eval_validity: _.difference(_.compact(_.flatten([signalset.eval_validity])), _.compact(_.flatten([options.eval_validity]))),
+        signalset: signalset.signalset
     };
 }
 

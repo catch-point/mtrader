@@ -70,6 +70,8 @@ function usage(command) {
         .option('--criteria <expression>', "Conditional expression that must evaluate to a non-zero to be retained in the result")
         .option('--precedence <expression>', "Indicates the order in which securities should be checked fore inclusion in the result")
         .option('--reset-every <Duration>', "Duration of time to reset rolling variables (ex. P1Y)")
+        .option('--head <number>', "Limits the rows in the result to the given first few")
+        .option('--tail <number>', "Include the given last few rows in the result")
         .option('-o, --offline', "Disable data updates")
         .option('--workers <numOfWorkers>', "Number of workers to spawn")
         .option('--remote-workers <host:port,..>', "List of host:port addresses to connect to")
