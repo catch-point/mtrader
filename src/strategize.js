@@ -214,6 +214,10 @@ function nextSignal(queue, prng, evaluate, parser, base, options) {
     if (queue.length) return Promise.resolve(queue.pop());
     var strategy = options.variables[options.strategy_variable];
     var signal_var = options.signal_variable;
+    if (!strategy || signal_var == strategy) { // initial signal
+        queue.unshift.apply(queue, invert(signal_var).reverse());
+        return Promise.resolve(queue.pop());
+    }
     var disjunction = parser(strategy);
     var conjunctions = disjunction.conjunctions;
     var extra = !(countChanges(base, disjunction) >= options.max_changes);
@@ -229,8 +233,8 @@ function nextSignal(queue, prng, evaluate, parser, base, options) {
                 return invert(signal_var).map(signal_var => {
                     return spliceExpr(conjunctions, conjIdx, 0, signal_var).join(' OR ');
                 });
-            if (contributions.length > 1 && contributions[conjIdx] <= 0) // drop signal
-                return [spliceExpr(conjunctions, conjIdx, 1).join(' OR ')];
+            if (contributions.length > 1 && contributions[conjIdx] <= (options.signal_cost || 0))
+                return [spliceExpr(conjunctions, conjIdx, 1).join(' OR ')]; // drop signal
             var conjunction = conjunctions[conjIdx];
             if (!extra && _.isEmpty(conjunction.comparisons)) // change signal
                 return invert(signal_var).map(signal_var => {
