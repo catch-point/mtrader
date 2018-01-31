@@ -56,7 +56,8 @@ module.exports = function(bestsignals) {
                 now: Date.now(),
                 variables: {},
                 strategy_variable: 'strategy',
-                signal_variable: 'signal'
+                signal_variable: 'signal',
+                signal_cost: 0
             });
             return strategize(bestsignals, prng, opts);
         });
@@ -124,9 +125,17 @@ function strategize(bestsignals, prng, options) {
     var nextSignalFn = nextSignal.bind(this, [], prng, evaluateFn, parser, base);
     var terminateCondition = options.termination ?
         attempts => attempts >= 1000 || Date.now()>terminateAt : attempts => attempts >= 1000;
-    return Promise.all(_.range(options.concurrent_strategies || 1).map(() => {
-        return search(bestsignalFn, nextSignalFn, terminateCondition, history, options, 0)
-    })).then(results => _.last(_.sortBy(results, 'score')))
+    var strategy = options.variables[options.strategy_variable];
+    return Promise.resolve(!strategy || strategy == options.signal_variable ? {} :
+        evaluateFn(strategy, options).then(score => { // evaluate base strategy
+            var cost = getReferences(strategy).length * options.signal_cost;
+            return {score, cost};
+        })
+    ).then(scoreCost => _.extend(scoreCost, options)).then(options => {
+        return Promise.all(_.range(options.concurrent_strategies || 1).map(() => {
+            return search(bestsignalFn, nextSignalFn, terminateCondition, history, options, 0)
+        }));
+    }).then(results => _.last(_.sortBy(results, 'score')))
       .then(best => combine(history, best, options))
       .then(best => {
         var strategy = best.variables[best.strategy_variable];
@@ -144,7 +153,7 @@ function search(bestsignal, nextSignal, terminateCondition, history, options, at
       .then(solution => {
         var merged = history[options.strategy_variable] || options;
         if (solution.revisited || _.has(merged, 'score') &&
-                solution.score - (solution.cost || 0) <= merged.score - (merged.cost || 0)) {
+                solution.score - solution.cost <= merged.score - merged.cost) {
             if (!solution.revisited) // keep going
                 return search(bestsignal, nextSignal, terminateCondition, history, merged, 0);
             if (!terminateCondition(attempts))
@@ -178,7 +187,7 @@ function bestsignal(scores, bestsignals, terminateAt, history, signal_strategy, 
             [options.strategy_variable]: signal_strategy
         }, options.variables)
     }, options)).then(best => {
-        var cost = getReferences(signal_strategy).length * options.signal_cost || 0;
+        var cost = getReferences(signal_strategy).length * options.signal_cost;
         return merge({
             variables:{
                 [options.strategy_variable]: signal_strategy
@@ -220,26 +229,22 @@ function nextSignal(queue, prng, evaluate, parser, base, options) {
     }
     var disjunction = parser(strategy);
     var conjunctions = disjunction.conjunctions;
-    var extra = !(countChanges(base, disjunction) >= options.max_changes);
+    var nomore = countChanges(base, disjunction) >= options.max_changes;
     return Promise.resolve(_.has(options, 'score') ? options.score : evaluate(strategy, options))
       .then(baseScore => {
         return Promise.all(conjunctions.map((conj, conjIdx) => {
             var withoutIt = spliceExpr(conjunctions, conjIdx, 1).join(' OR ');
-            return evaluate(withoutIt, options);
+            return withoutIt ? evaluate(withoutIt, options) : baseScore;
         })).then(scores => scores.map(score => baseScore - score))
           .then(contributions => {
-            var conjIdx = chooseContribution(prng, contributions, extra);
+            var conjIdx = chooseContribution(prng, contributions, nomore);
             if (conjIdx >= conjunctions.length) // add signal
                 return invert(signal_var).map(signal_var => {
                     return spliceExpr(conjunctions, conjIdx, 0, signal_var).join(' OR ');
                 });
-            if (contributions.length > 1 && contributions[conjIdx] <= (options.signal_cost || 0))
+            if (contributions.length > 1 && contributions[conjIdx] <= options.signal_cost)
                 return [spliceExpr(conjunctions, conjIdx, 1).join(' OR ')]; // drop signal
             var conjunction = conjunctions[conjIdx];
-            if (!extra && _.isEmpty(conjunction.comparisons)) // change signal
-                return invert(signal_var).map(signal_var => {
-                    return spliceExpr(conjunctions, conjIdx, 1, signal_var).join(' OR ');
-                });
             var comparisons = conjunction.comparisons;
             var signal = conjunction.signal;
             return Promise.all(conjunction.comparisons.map((cmp, j) => {
@@ -248,10 +253,9 @@ function nextSignal(queue, prng, evaluate, parser, base, options) {
                 return evaluate(withoutIt, options);
             })).then(scores => scores.map(score => baseScore - score))
               .then(contributions => { // change comparator
-                var cmpIdx = chooseContribution(prng, contributions, true);
-                if (!extra && cmpIdx >= comparisons.length) { // change signal
-                    return invert(signal_var);
-                } else if (contributions.length > 1 && cmpIdx < contributions.length) { // drop comparison
+                var cmpIdx = chooseContribution(prng, contributions);
+                if (cmpIdx < contributions.length && contributions[cmpIdx] <= options.signal_cost) {
+                    // drop comparison
                     return [spliceExpr(comparisons, cmpIdx, 1).concat(signal.expr).join(' AND ')];
                 } else {
                     return listComparators(options).map(comparator => {
@@ -349,7 +353,7 @@ function createParser(options) {
 /**
  * Randomly returns an index from the given an array of contribution amounts
  */
-function chooseContribution(prng, contributions, extra) {
+function chooseContribution(prng, contributions, nomore) {
     var t = 1.5;
     if (!contributions.length) return 1;
     var items = contributions.map((contrib, i) => ({
@@ -359,7 +363,7 @@ function chooseContribution(prng, contributions, extra) {
     var byContrib = _.sortBy(items, 'contrib');
     byContrib.forEach((it, i) => it.w = Math.pow(i + 1, -t));
     var weights = _.sortBy(byContrib, 'p').map(it => it.w);
-    if (extra) {
+    if (!nomore) {
         weights.push(Math.pow(weights.length +2, -t));
     }
     var target = prng() * weights.reduce((a,b) => a + b);
@@ -418,6 +422,7 @@ function combine(history, best, options) {
     var replacement = {};
     var result = variables.reduce((combined, variable) => {
         var solution = history[variable];
+        if (!solution) return combined; // not created here
         var formatted = formatSolution(solution, merge({}, options, combined));
         replacement[variable] = formatted.solution_variable;
         return merge({}, combined, _.omit(formatted, 'solution_variable', 'signal_variable'));
