@@ -182,7 +182,7 @@ function mergeSignals(read) {
 
 function output(result) {
     return new Promise(done => {
-        var output = JSON.stringify(result, null, ' ');
+        var output = JSON.stringify(result, null, ' ') + '\n';
         var writer = createWriteStream(config('save'));
         writer.on('finish', done);
         if (output) writer.write(output, 'utf-8');
