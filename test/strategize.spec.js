@@ -77,7 +77,7 @@ describe("strategize", function() {
             begin: '2016-10-01',
             end: '2016-12-31',
             strategy_variable: 'strategy',
-            max_changes: 1,
+            max_signals: 1,
             eval_score: 'profit',
             columns: {
                 date: 'DATE(ending)',
@@ -118,9 +118,8 @@ describe("strategize", function() {
             begin: '2011-01-01',
             end: '2011-12-31',
             strategy_variable: 'strategy',
-            max_changes: 2,
+            max_signals: 2,
             population_size: 4,
-            concurrent_strategies: 1,
             signal_cost: 1,
             eval_score: 'profit',
             columns: {
@@ -162,9 +161,8 @@ describe("strategize", function() {
             begin: '2011-01-01',
             end: '2011-12-31',
             strategy_variable: 'strategy',
-            max_changes: 3,
+            max_signals: 3,
             population_size: 4,
-            concurrent_strategies: 1,
             eval_score: 'profit',
             transient: false,
             columns: {
@@ -189,10 +187,10 @@ describe("strategize", function() {
             }]
         }).should.eventually.be.like({
             variables: {
-                strategy: '-1*trendA OR trendB!=-1*trendC AND -1*trendC OR trendC'
+                strategy: '-1*trendA OR trendB!=-1*trendC AND -1*trendC'
             },
             parameters: { trend_lenA: 5, trend_lenB: 150, trend_lenC: 50 },
-            score: 37.911194
+            score: 34.095606
         });
     });
 });
