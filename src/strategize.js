@@ -143,7 +143,7 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, signal
         var used = empty? [] : _.intersection(getReferences(latest.variables[strategy_var]), _.keys(signals));
         if (drop) { // drop under performing leg
             var drop_expr = spliceExpr(strategy.legs, idx, 1).join(' OR ');
-            var drop_signals = _.extend({}, signals, {[strategy_var]: merge({variables:{}}, latest, {
+            var drop_signals = _.extend({}, signals, {[strategy_var]: merge(latest, {
                 score: latestScore - contributions[idx],
                 variables:{[strategy_var]: drop_expr}
             })});
@@ -154,13 +154,13 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, signal
             optimized[idx] = true;
             // if every leg has already been optimized
             if (optimized.length > strategy.legs.length && _.every(optimized))
-                return merge({[strategy_var]:{}}, signals, {[strategy_var]:{score:latestScore}});
+                return merge(signals, {[strategy_var]:{score:latestScore}});
             return next(signals, options, optimized);
         } else { // optimize leg
             var leg_var = options.leg_variable; // move leg into temporary variable
             var other_signals = empty ? [] : idx >= strategy.legs.length ? used :
                 _.difference(used, getReferences(strategy.legs[idx].expr));
-            var opts = merge({variables:{}}, latest, {
+            var opts = merge(latest, {
                 strategy_variable: leg_var,
                 max_signals: options.max_signals && options.max_signals - other_signals.length,
                 variables: {
@@ -178,7 +178,7 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, signal
                 var best = leg_signals[leg_var];
                 var new_leg = best.variables[leg_var];
                 var new_expr = spliceExpr(strategy.legs, idx, 1, new_leg).join(' OR ');
-                leg_signals[strategy_var] = merge({variables:{}}, best, {
+                leg_signals[strategy_var] = merge(best, {
                     strategy_variable: strategy_var,
                     max_signals: options.max_signals,
                     variables: {
@@ -231,7 +231,7 @@ function search(bestsignal, moreStrategies, terminateAt, signals, options, attem
                 return signals;
         } else {
             var formatted = formatSolution(solution, latest, signals, '_');
-            var improved = merge({}, latest, formatted);
+            var improved = merge(latest, formatted);
             var next_signals = _.defaults({
                 [formatted.solution_variable]: solution,
                 [strategy_var]: improved
@@ -459,9 +459,9 @@ function combine(signals, options) {
         var solution = signals[variable];
         if (!solution || strategy_var == variable)
             return combined; // not created here or leg variable
-        var formatted = formatSolution(solution, merge({}, options, combined));
+        var formatted = formatSolution(solution, merge(options, combined));
         replacement[variable] = formatted.solution_variable;
-        return merge({}, combined, _.omit(formatted, 'solution_variable', 'signal_variable'));
+        return merge(combined, _.omit(formatted, 'solution_variable', 'signal_variable'));
     }, {});
     var combined_strategy = Parser({substitutions:replacement}).parse(best.variables[strategy_var]);
     return merge(result, {

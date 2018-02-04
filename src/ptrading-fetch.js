@@ -50,7 +50,7 @@ function usage(command) {
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--config-dir <dirname>', "Directory where stored sessions are kept")
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
-        .option('--load <identifier>', "Read the given session settings")
+        .option('--load <filename>', "Read the given session settings")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('--end <dateTime>', "ISO dateTime of the ending point")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
@@ -81,7 +81,7 @@ if (require.main === module) {
             interval: interval,
             symbol: symbol,
             exchange: exchange
-        }, config.opts(), config.options())))
+        }, config.options())))
         .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack))
         .then(() => fetch.close());

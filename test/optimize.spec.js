@@ -374,7 +374,7 @@ describe("optimize", function() {
             parameters: {
                 len: 10,
                 multiplier: 2
-            },
+            }
         });
     });
 });

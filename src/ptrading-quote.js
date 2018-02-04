@@ -58,7 +58,7 @@ function usage(command) {
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--config-dir <dirname>', "Directory where stored sessions are kept")
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
-        .option('--load <identifier>', "Read the given session settings")
+        .option('--load <filename>', "Read the given session settings")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('--end <dateTime>', "ISO dateTime of the ending point")
         .option('--pad-begin <number>', "Number of bars before begin dateTime")
@@ -91,7 +91,7 @@ if (require.main === module) {
         Promise.resolve().then(() => quote(_.defaults({
             symbol: symbol,
             exchange: exchange
-        }, config.opts(), config.options())))
+        }, config.options())))
         .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack))
         .then(() => quote.close())
@@ -120,16 +120,12 @@ if (require.main === module) {
 
 function createInstance(fetch, program) {
     var promiseKeys;
-    var promiseDef;
     var instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = direct({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
-            promiseDef = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
         }
-        return promiseKeys.then(keys => promiseDef.then(defaults => {
-            return _.extend({}, defaults, _.pick(options, keys));
-        })).then(options => {
+        return promiseKeys.then(keys => _.pick(options, keys)).then(options => {
             if (options.help || _.isEmpty(queue.getWorkers()))
                 return direct(options);
             else return queue(options);

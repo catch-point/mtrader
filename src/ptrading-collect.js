@@ -58,7 +58,7 @@ function usage(command) {
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--config-dir <dirname>', "Directory where stored sessions are kept")
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
-        .option('--load <identifier>', "Read the given session settings")
+        .option('--load <filename>', "Read the given session settings")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('--end <dateTime>', "ISO dateTime of the ending point")
         .option('--pad-begin <number>', "Number of bars before begin dateTime")
@@ -111,16 +111,14 @@ if (require.main === module) {
 
 function createInstance(program, quote) {
     var promiseKeys;
-    var promiseDef;
     var instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = direct({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
-            promiseDef = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
         }
-        return promiseKeys.then(keys => promiseDef.then(defaults => {
-            return _.extend({}, defaults, _.pick(options, keys));
-        })).then(options => inlineCollections(collections, options)).then(options => {
+        return promiseKeys.then(keys => _.pick(options, keys))
+          .then(options => inlineCollections(collections, options))
+          .then(options => {
             if (_.isEmpty(local.getWorkers()) && _.isEmpty(remote.getWorkers())) return direct(options);
             else if (options.help || isSplitting(options)) return direct(options);
             else if (_.isEmpty(remote.getWorkers())) return local(options);
@@ -343,7 +341,7 @@ function readCollect(name) {
         filter: _.compact(_.flatten([config('filter'), read.filter], true)),
         precedence: _.compact(_.flatten([config('precedence'), read.precedence], true)),
         order: _.compact(_.flatten([config('order'), read.order], true))
-    }, config.opts(), config.options(), read);
+    }, config.options(), read);
 }
 
 function shell(desc, collect, app) {

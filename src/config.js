@@ -93,7 +93,7 @@ function createInstance(session) {
     var config = function(name, value) {
         if (_.isUndefined(value)) {
             var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
-            return get(merge({}, defaults, stored, loaded, config.opts(), session), jpath);
+            return get(merge(defaults, stored, loaded, commander_opts(), session), jpath);
         } else {
             config.options(name, value);
         }
@@ -114,7 +114,7 @@ function createInstance(session) {
     config.fork = function(modulePath, program) {
         var pairs = program.options.filter(o => o.required || o.optional).map(o => o.name().replace('-', '_'));
         var bools = _.reject(program.options, o => o.required || o.optional).map(o => o.name().replace('-', '_'));
-        var opts = config.opts();
+        var opts = commander_opts();
         var cfg = _.omit(config(), value => value == null);
         var cfg_pairs = _.pick(_.pick(cfg, pairs), _.isString);
         var cfg_bools = _.without(_.intersection(bools, _.keys(cfg)), 'version');
@@ -150,25 +150,10 @@ function createInstance(session) {
         return opt('config_dir') || config('config_dir') || path.resolve(config('prefix'), config('default_config_dir'));
     };
 
-    config.opts = function() {
-        return commander_options.reduce((result, opt) => {
-            var name = opt.name();
-            var prop = name.replace('-', '_');
-            var key = name.split('-').reduce((str, word) => {
-                return str + word[0].toUpperCase() + word.slice(1);
-            });
-            var value = name === 'version' ? commander._version : commander[key];
-            if (value != null && !name.startsWith('add-')) {
-                result[prop] = parse(value);
-            }
-            return result;
-        }, {});
-    }
-
     config.options = function(name, value) {
         var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
         if (_.isUndefined(value)) {
-            return get(session, jpath);
+            return get(merge(loaded, commander_opts(), session), jpath);
         } else if (assign(session, jpath, value)) {
             listeners.forEach(listener => listener(name, value));
         }
@@ -233,6 +218,21 @@ function createInstance(session) {
             writeConfigFile(filename, json);
     };
     return config;
+}
+
+function commander_opts() {
+    return commander_options.reduce((result, opt) => {
+        var name = opt.name();
+        var prop = name.replace('-', '_');
+        var key = name.split('-').reduce((str, word) => {
+            return str + word[0].toUpperCase() + word.slice(1);
+        });
+        var value = name === 'version' ? commander._version : commander[key];
+        if (value != null && !name.startsWith('add-')) {
+            result[prop] = parse(value);
+        }
+        return result;
+    }, {});
 }
 
 function opt(name, defaultValue) {

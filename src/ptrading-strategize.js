@@ -55,7 +55,7 @@ function usage(command) {
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--config-dir <dirname>', "Directory where stored sessions are kept")
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
-        .option('--load <identifier>', "Read the given session settings")
+        .option('--load <filename>', "Read the given session settings")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('--end <dateTime>', "ISO dateTime of the ending point")
         .option('--pad-begin <number>', "Number of bars before begin dateTime")
@@ -115,16 +115,12 @@ function createInstance(program, collections) {
     var bestsignals = require('./ptrading-bestsignals.js');
     var strategize = Strategize(bestsignals);
     var promiseKeys;
-    var promiseDef;
     var instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = strategize({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
-            promiseDef = promiseKeys.then(k => _.pick(_.defaults({}, config.opts(), config.options()), k));
         }
-        return promiseKeys.then(keys => promiseDef.then(defaults => {
-            return _.extend({}, defaults, _.pick(options, keys));
-        })).then(options => {
+        return promiseKeys.then(keys => _.pick(options, keys)).then(options => {
             if (options.signalset || options.protfolio)
                 return strategize(inlineCollections(collections, options));
             else return strategize(options);
@@ -182,11 +178,11 @@ function mergeSignals(read) {
         filter: _.compact(_.flatten([config('filter'), read.filter], true)),
         precedence: _.compact(_.flatten([config('precedence'), read.precedence], true)),
         order: _.compact(_.flatten([config('order'), read.order], true))
-    }, config.opts(), config.options(), read);
+    }, config.options(), read);
 }
 
 function mergeSignalSets(read, result) {
-    var merged = merge({}, read, result);
+    var merged = merge(read, result);
     if (_.isArray(merged.signalset))
         merged.signalset = merged.signalset.map(signalset => signalset.name || signalset);
     if (read.eval_validity && result.eval_validity)

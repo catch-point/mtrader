@@ -32,19 +32,20 @@
 const _ = require('underscore');
 
 /**
- * Recursively merges object properties into the first parameter
+ * Recursively merges object properties together into a new object
  */
-module.exports = function merge(obj) {
+module.exports = function merge() {
     var length = arguments.length;
-    if (length < 2 || obj == null) return obj;
-    for (var index = 1; index < length; index++) {
+    var obj = {};
+    if (length < 1) return obj;
+    for (var index = 0; index < length; index++) {
         var source = arguments[index],
         keys = _.allKeys(source),
         l = keys.length;
         for (var i = 0; i < l; i++) {
             var key = keys[i];
             if (_.isObject(obj[key]) && !_.isArray(obj[key]))
-                obj[key] = merge({}, obj[key], source[key]);
+                obj[key] = merge(obj[key], source[key]);
             else
                 obj[key] = source[key];
         }
