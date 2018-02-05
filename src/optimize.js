@@ -140,7 +140,7 @@ function optimize(collect, prng, options) {
     var pvalues = pnames.map(name => options.parameter_values[name]);
     return searchParameters(collect, prng, pnames, count, options).then(solutions => {
         var duration = moment.duration(_.max(_.pluck(solutions, 'foundAt')) - started);
-        logger.log("Found local extremum", options.label || '\b', "in", solutions[0].pindex.map((idx, i) => pvalues[i][idx]).join(','), duration.humanize(), solutions[0].score);
+        if (!_.isEmpty(solutions)) logger.log("Found local extremum", options.label || '\b', solutions[0].pindex.map((idx, i) => pvalues[i][idx]).join(','), "in", duration.humanize(), solutions[0].score);
         return solutions.map((solution, i) => ({
             score: solution.score,
             parameters: _.object(pnames,
@@ -284,10 +284,11 @@ function initialPopulation(prng, pnames, space, size, options) {
         population.push(seed);
     }
     var mutate = mutation(prng, pvalues, space);
-    for (var i=0; i/2<size && population.length < size; i++) {
+    for (var i=0; i<size*2 && population.length < size; i++) {
         var mutant = mutate(seed);
         if (mutant) population.push(mutant);
     }
+    if (population.length === 0) throw Error("Could not create population for " + options.label);
     return population;
 }
 
@@ -342,7 +343,8 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
             var population = elite.concat(solutions);
             var top = _.sortBy(population, 'score').slice(-maxEliteSize);
             var additions = _.difference(top, elite);
-            if (additions.length || counter % generation === 0) {
+            var better = _.difference(_.pluck(top, 'score'), _.pluck(elite, 'score')).length;
+            if (better || counter % generation === 0) {
                 var best = _.last(top);
                 logger.debug("Optimize", options.label || '\b', options.begin,
                   "G" + Math.floor(counter/generation),
@@ -352,7 +354,7 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
                     return options.parameter_values[pnames[i]][idx];
                 }).join(','), ':', best.score);
             }
-            if (additions.length) {
+            if (better) {
                 var now = Date.now();
                 additions.forEach(solution => solution.foundAt = now);
                 elite = top;

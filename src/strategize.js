@@ -112,11 +112,12 @@ function help(bestsignals) {
  * Initializes strategy search and formats results
  */
 function strategize(bestsignals, prng, options) {
+    var now = Date.now();
     var parser = createParser();
     var signals = {[options.strategy_variable]: options};
     var evaluateFn = evaluate.bind(this, bestsignals, {});
     var terminateAt = options.termination && moment().add(moment.duration(options.termination)).valueOf();
-    return strategizeLegs(bestsignals, evaluateFn, prng, parser, terminateAt, signals, options, [])
+    return strategizeLegs(bestsignals, evaluateFn, prng, parser, terminateAt, now, signals, options, [])
       .then(signals => combine(signals, options)).then(best => {
         var strategy = best.variables[best.strategy_variable];
         logger.info("Strategize", strategy, best.score);
@@ -124,9 +125,9 @@ function strategize(bestsignals, prng, options) {
     });
 }
 
-function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, signals, options, optimized) {
+function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, started, signals, options, optimized) {
     if (Date.now() > terminateAt) return signals; // times up
-    var next = strategizeLegs.bind(this, bestsignals, evaluate, prng, parser, terminateAt);
+    var next = strategizeLegs.bind(this, bestsignals, evaluate, prng, parser, terminateAt, started);
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
     var strategy = parser(latest.variables[strategy_var]);
@@ -147,7 +148,8 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, signal
                 score: latestScore - contributions[idx],
                 variables:{[strategy_var]: drop_expr}
             })});
-            logger.log("Strategize", drop_expr, latestScore - contributions[idx]);
+            var elapse = moment.duration(Date.now() - started).humanize();
+            logger.log("Strategize", drop_expr, "after", elapse, latestScore - contributions[idx]);
             return next(drop_signals, options, []);
         } else if (optimized[idx] || idx >= contributions.length &&
                 options.max_signals && options.max_signals <= used.length) {
@@ -191,7 +193,8 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, signal
                 var next_signals = better ? leg_signals : signals;
                 var next_optimized = better ? [] : optimized;
                 next_optimized[idx] = true;
-                if (better) logger.log("Strategize", new_expr, best.score);
+                var elapse = better && moment.duration(Date.now() - started).humanize();
+                if (better) logger.log("Strategize", new_expr, "after", elapse, best.score);
                 return next(next_signals, options, next_optimized);
             });
         }
@@ -489,17 +492,17 @@ function formatSolution(solution, options, signals, suffix) {
     var reuse = _.findKey(_.mapObject(_.pick(signals, item => {
         return item.variables[item.signal_variable] == solution.variables[signal];
     }), item => _.pick(item, 'parameters', 'signalset')), _.isEqual.bind(_, _.pick(solution, 'parameters', 'signalset')));
-    var id = reuse && reuse.indexOf(solution.variables[signal] + (suffix || '')) === 0 ?
-            reuse.substring((solution.variables[signal] + (suffix || '')).length) :
-            conflicts.reduce((id, name) => {
-        while (_.has(fixed, name + (suffix || '') + id.toString(36).toUpperCase())) id++;
-        return id;
-    }, 10);
     var references = getReferences(values);
     var local = [signal].concat(references[signal]);
     var overlap = references[signal].filter(name => ~conflicts.indexOf(name) ||
         _.intersection(conflicts, references[name]).length);
-    var id = _.isEmpty(overlap) ? '' : (suffix || '') + id.toString(36).toUpperCase();
+    var id_num = reuse && reuse.indexOf(solution.variables[signal] + (suffix || '')) === 0 ?
+            reuse.substring((solution.variables[signal] + (suffix || '')).length) :
+            overlap.reduce((id_num, name) => {
+        while (_.has(fixed, name + (suffix || '') + id_num.toString(36).toUpperCase())) id_num++;
+        return id_num;
+    }, 10);
+    var id = _.isEmpty(overlap) ? '' : (suffix || '') + id_num.toString(36).toUpperCase();
     var replacement = _.object(overlap, overlap.map(name => name + id));
     var replacer = createReplacer(replacement);
     var rename = (object, value, name) => _.extend(object, {[replacement[name] || name]: value});
