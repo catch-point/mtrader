@@ -219,7 +219,7 @@ function createQueue(onquit, pid) {
                     if (!_.isEmpty(labels))
                         logger.info("Still processing", labels.join(' and '), "from process", pid);
                     _.reject(marked, 'logged').forEach(pending => {
-                        logger.debug("Waiting on", pid, "for", label(pending), pending.payload);
+                        logger.trace("Waiting on", pid, "for", label(pending), pending.payload);
                         pending.logged = true;
                     });
                     _.forEach(outstanding, pending => {

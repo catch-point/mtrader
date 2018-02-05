@@ -150,7 +150,7 @@ function createInstance(program, quote) {
     var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
     var onerror = (err, options, worker) => {
         if (!worker.process.remote) throw err;
-        logger.debug("Collect", options.label || '\b', worker.process.pid, err, err.stack);
+        logger.trace("Collect", options.label || '\b', worker.process.pid, err, err.stack);
         return local(options).catch(e => {
             throw err;
         });
@@ -206,7 +206,7 @@ function createQueue(createWorkers, onerror) {
             run(item.options).then(item.resolve, item.reject);
         });
         if (queue.length && spare) {
-            logger.debug("Queued", queue.length, "collect", _.first(queue).options.label || '\b',
+            logger.trace("Queued", queue.length, "collect", _.first(queue).options.label || '\b',
                 workers.map(w => (load(w) * 100) + '%').join(' '));
         }
     };

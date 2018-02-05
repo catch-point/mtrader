@@ -153,6 +153,9 @@ function help(fetch) {
  * that each pass the given criteria and are within the begin/end range.
  */
 function quote(fetch, store, fields, options) {
+    if (options.columns) expect(options.columns).not.to.have.property('length'); // not array like
+    if (options.variables) expect(options.variables).not.to.have.property('length'); // not array like
+    if (options.parameters) expect(options.parameters).not.to.have.property('length'); // not array like
     var exprMap = parseWarmUpMap(fields, options);
     var cached = _.mapObject(exprMap, _.keys);
     var intervals = periods.sort(_.keys(exprMap));

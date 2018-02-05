@@ -61,12 +61,14 @@ var tty_colours = {
 var colours = process.stderr.isTTY ? tty_colours : _.mapObject(tty_colours, _.constant(''));
 
 var logger = module.exports = cfg('quiet', quiet) ? {
+    trace: nil,
     debug: nil,
     log: nil,
     info: nil,
     warn: nil,
     error: error
 } : {
+    trace: cfg('trace', false) ? trace : nil,
     debug: cfg('debug', debugging && !noDebugging) ? debug : nil,
     log: cfg('verbose', verbosity) ? verbose : nil,
     info: info,
@@ -90,6 +92,7 @@ process.on('SIGINT', () => {
         logger.info = nil;
         logger.warn = nil;
     } else {
+        logger.trace = cfg('trace', false) ? trace : nil;
         logger.debug = cfg('debug', debugging && !noDebugging) ? debug: nil;
         logger.log = cfg('verbose', verbosity) ? verbose : nil;
         logger.info = info;
@@ -100,6 +103,10 @@ process.on('SIGINT', () => {
 function cfg(name, def) {
     var bool = config(name);
     return bool == null ? def : bool;
+}
+
+function trace() {
+    return logWithColour(colours.magenta, Array.prototype.slice.call(arguments, 0));
 }
 
 function debug() {
