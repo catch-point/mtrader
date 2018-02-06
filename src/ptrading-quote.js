@@ -37,6 +37,7 @@ const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
+const interrupt = require('./interrupt.js');
 const Quote = require('./quote.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
@@ -154,6 +155,7 @@ function createQueue(createWorkers) {
     var queue = [];
     var workers = [];
     var stoppedWorkers = [];
+    var check = interrupt(true);
     var quote = function(options) {
         var master = getMasterWorker(workers, options);
         var slave = chooseSlaveWorker(workers, master, options);
@@ -164,6 +166,7 @@ function createQueue(createWorkers) {
             else if (!~err.message.indexOf('read_only')) throw err;
             else if (!opts.read_only || _.has(options, 'read_only')) throw err;
             else if (slave == getMasterWorker(workers, options)) throw err;
+            else if (check()) throw err;
             logger.debug("Retrying", options.label || '\b', "using master node", master.process.pid);
             return quote(_.extend({read_only: false}, options)); // retry using master
         });

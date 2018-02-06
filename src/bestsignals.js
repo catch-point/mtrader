@@ -144,7 +144,7 @@ function bestsignal(optimize, signal, options) {
     var pvalues = pnames.map(name => options.parameter_values[name]);
     var signal_variable = options.signal_variable || 'signal';
     return optimize(_.defaults({
-        label: (options.label ? options.label + ' ' : '') + signal,
+        label: signal + (options.label ? ' ' + options.label : ''),
         solution_count: options.solution_count || 1,
         variables: _.defaults({[signal_variable]: signal}, options.variables),
         parameter_values: _.object(pnames, pvalues)
