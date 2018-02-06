@@ -257,7 +257,8 @@ function bestsignal(bestsignals, terminateAt, scores, signal_strategy, latest) {
     if (scores[signal_strategy])
         return scores[signal_strategy].then(score => ({score, revisited: true}));
     var token = signal_strategy.split(' ').find(token => ~token.indexOf(latest.signal_variable));
-    var label = token ? token.replace(latest.signal_variable, latest.label || '') : options.label;
+    var sign = token && token.replace(latest.signal_variable, '');
+    var label = (sign ? sign + ' ' : '') + latest.label;
     var optimize_termination = latest.optimize_termination || terminateAt &&
         moment.duration(Math.floor((terminateAt - Date.now())/1000)*1000).toISOString() || undefined;
     var promise = bestsignals(_.defaults({

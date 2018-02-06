@@ -128,7 +128,10 @@ function bestsignals(optimize, options) {
 function getSignalSets(options) {
     var signalset = _.isArray(options.signalset) ? options.signalset :
         _.isObject(options.signalset) ? [options.signalset] : [options];
+    var label = options.label && signalset.label ?
+        options.label + ' ' + signalset.label : options.label || signalset.label;
     return signalset.map(signalset => _.defaults({
+        label: label,
         variables: _.defaults({}, signalset.variables, options.variables),
         parameters: _.defaults({}, signalset.parameters, options.parameters),
         parameter_values: _.defaults({}, signalset.parameter_values, options.parameter_values),
