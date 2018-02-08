@@ -140,7 +140,8 @@ function optimize(collect, prng, options) {
     var pvalues = pnames.map(name => options.parameter_values[name]);
     return searchParameters(collect, prng, pnames, count, options).then(solutions => {
         var duration = moment.duration(_.max(_.pluck(solutions, 'foundAt')) - started);
-        if (!_.isEmpty(solutions)) logger.log("Found local extremum", options.label || '\b', solutions[0].pindex.map((idx, i) => pvalues[i][idx]).join(','), "in", duration.humanize(), solutions[0].score);
+        if (!_.isEmpty(solutions) && solutions[0].pindex.length)
+            logger.log("Found local extremum", options.label || '\b', solutions[0].pindex.map((idx, i) => pvalues[i][idx]).join(','), "in", duration.humanize(), solutions[0].score);
         return solutions.map((solution, i) => ({
             score: solution.score,
             parameters: _.object(pnames,
@@ -173,7 +174,8 @@ function searchParameters(collect, prng, pnames, count, options) {
         sampleSolutions(collect, prng, pnames, space, size, options) :
         initialPopulation(prng, pnames, space, size, options);
     return Promise.resolve(createPopulation).then(population => {
-        logger.debug("Initial population of", population.length, options.label || '\b');
+        if (population.length > 1)
+            logger.debug("Initial population of", population.length, options.label || '\b');
         var fitnessFn = fitness(collect, options, pnames);
         var mutationFn = mutation.bind(this, prng, pvalues, space);
         return adapt(fitnessFn, mutationFn, pnames, terminateAt, options, population, size);
@@ -346,7 +348,8 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
             var better = _.difference(_.pluck(top, 'score'), _.pluck(elite, 'score')).length;
             if (better || counter % generation === 0) {
                 var best = _.last(top);
-                logger.debug("Optimize", options.label || '\b', options.begin,
+                if (best.pindex.length) logger.debug("Optimize",
+                  options.label || '\b', options.begin,
                   "G" + Math.floor(counter/generation),
                   "P" + (elite.length+candidates.length),
                   "M" + Math.round(strength * pnames.length),
