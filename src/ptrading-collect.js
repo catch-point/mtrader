@@ -37,6 +37,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
+const interrupt = require('./interrupt.js');
 const tabular = require('./tabular.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
@@ -111,6 +112,7 @@ if (require.main === module) {
 
 function createInstance(program, quote) {
     var promiseKeys;
+    var check = interrupt(true);
     var instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = direct({help: true})
@@ -149,7 +151,7 @@ function createInstance(program, quote) {
     var direct = Collect(quote, instance);
     var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
     var onerror = (err, options, worker) => {
-        if (!worker.process.remote) throw err;
+        if (!worker.process.remote || check()) throw err;
         logger.trace("Collect", options.label || '\b', worker.process.pid, err, err.stack);
         return local(options).catch(e => {
             throw err;

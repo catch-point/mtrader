@@ -40,10 +40,11 @@ process.on('SIGINT', () => {
     interrupted++;
 });
 
-module.exports = function(returnBoolean) {
+module.exports = function(returnValue) {
     var base = interrupted;
-    if (returnBoolean) return () => base != interrupted;
-    else return () => {
+    if (arguments.length) return () => {
+        if (base != interrupted) return returnValue;
+    }; else return () => {
         if (base != interrupted) throw Error(signal);
     };
 }
