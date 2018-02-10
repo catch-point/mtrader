@@ -126,6 +126,7 @@ function strategize(bestsignals, prng, options) {
 }
 
 function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, started, signals, options, optimized) {
+    var label = options.label || '\b';
     if (Date.now() > terminateAt) return signals; // times up
     var next = strategizeLegs.bind(this, bestsignals, evaluate, prng, parser, terminateAt, started);
     var signal_cost = options.signal_cost;
@@ -141,10 +142,10 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, starte
         return evaluate(withoutIt, latest).then(score => latestScore - score);
     })).then(contributions => {
         if (latestScore && !_.has(latest, 'score'))
-            logger.log("Strategize base", options.label || '\b', latest.variables[strategy_var], latestScore);
+            logger.log("Strategize", label, "base", latest.variables[strategy_var], latestScore);
         var idx = empty ? contributions.length : chooseContribution(prng, contributions);
         var drop = idx < contributions.length && contributions[idx] <= signal_cost;
-        var used = empty? [] : _.intersection(getReferences(latest.variables[strategy_var]), _.keys(signals));
+        var used = empty ? [] : getReferences(latest.variables[strategy_var]);
         if (drop) { // drop under performing leg
             var drop_expr = spliceExpr(strategy.legs, idx, 1).join(' OR ');
             var drop_signals = _.extend({}, signals, {[strategy_var]: merge(latest, {
@@ -152,7 +153,7 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, starte
                 variables:{[strategy_var]: drop_expr}
             })});
             var elapse = moment.duration(Date.now() - started).humanize();
-            logger.log("Strategize", drop_expr, "after", elapse, latestScore - contributions[idx]);
+            logger.log("Strategize", label, drop_expr, "after", elapse, latestScore - contributions[idx]);
             return next(drop_signals, options, []);
         } else if (optimized[idx] || idx >= contributions.length &&
                 options.max_signals && options.max_signals <= used.length) {
@@ -201,9 +202,9 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, starte
                     (replacing || best.score >= latestScore + signal_cost || after_cost < before_cost);
                 var next_signals = better ? leg_signals : signals;
                 var next_optimized = better ? [] : optimized;
-                next_optimized[idx] = scratch;
+                next_optimized[idx] = scratch || strategy.legs.length == 1;
                 var elapse = better && moment.duration(Date.now() - started).humanize();
-                if (better) logger.log("Strategize", new_expr, "after", elapse, best.score);
+                if (better) logger.log("Strategize", label, new_expr, "after", elapse, best.score);
                 return next(next_signals, options, next_optimized);
             });
         }
@@ -249,7 +250,7 @@ function search(bestsignal, moreStrategies, terminateAt, signals, options, attem
                 [strategy_var]: improved
             }, signals);
             var strategy = improved.variables[strategy_var];
-            logger.log("Strategize leg", strategy, solution.score);
+            logger.log("Strategize", options.label || '\b', "leg", strategy, solution.score);
             return search(bestsignal, moreStrategies, terminateAt, next_signals, options, 0);
         }
     });
