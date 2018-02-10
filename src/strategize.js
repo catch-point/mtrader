@@ -189,13 +189,13 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, starte
                 var best = leg_signals[leg_var];
                 var new_leg = best.variables[leg_var];
                 var new_expr = spliceExpr(strategy.legs, idx, 1, new_leg).join(' OR ');
-                leg_signals[strategy_var] = merge(best, {
+                leg_signals[strategy_var] = _.defaults({
                     strategy_variable: strategy_var,
                     max_signals: options.max_signals,
-                    variables: {
+                    variables: _.defaults({
                         [strategy_var]: new_expr
-                    }
-                });
+                    }, _.omit(best.variables, leg_var))
+                },  best);
                 var before_cost = empty ? 0 : getReferences(strategy.expr).length * signal_cost;
                 var after_cost = getReferences(new_expr).length * signal_cost;
                 var better = empty || best.score - after_cost > latestScore - before_cost &&

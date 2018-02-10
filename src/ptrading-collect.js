@@ -191,25 +191,32 @@ function createQueue(createWorkers, onerror) {
             else return onerror(err, options, worker);
         });
     };
+    var checking = false;
     var check_queue = function() {
-        if (_.isEmpty(workers)) {
-            registerWorkers(createWorkers(), workers, stoppedWorkers, check_queue);
-            if (_.isEmpty(workers)) throw Error("No workers available");
-        }
-        stoppedWorkers.forEach(worker => {
-            if (!load(worker)) {
-                worker.disconnect();
+        if (checking) return;
+        else checking = true;
+        try {
+            if (_.isEmpty(workers)) {
+                registerWorkers(createWorkers(check_queue), workers, stoppedWorkers, check_queue);
+                if (_.isEmpty(workers)) throw Error("No workers available");
             }
-        });
-        var spare = workers.reduce((capacity, worker) => {
-            return capacity + Math.max((worker.count || 1) * (1 - load(worker)), 0);
-        }, 0);
-        queue.splice(0, spare).forEach(item => {
-            run(item.options).then(item.resolve, item.reject);
-        });
-        if (queue.length && spare) {
-            logger.trace("Queued", queue.length, "collect", _.first(queue).options.label || '\b',
-                workers.map(w => (load(w) * 100) + '%').join(' '));
+            stoppedWorkers.forEach(worker => {
+                if (!load(worker)) {
+                    worker.disconnect();
+                }
+            });
+            var spare = workers.reduce((capacity, worker) => {
+                return capacity + Math.max((worker.count || 1) * (1 - load(worker)), 0);
+            }, 0);
+            queue.splice(0, spare).forEach(item => {
+                run(item.options).then(item.resolve, item.reject);
+            });
+            if (queue.length && spare) {
+                logger.trace("Queued", queue.length, "collect", _.first(queue).options.label || '\b',
+                    workers.map(w => (load(w) * 100) + '%').join(' '));
+            }
+        } finally {
+            checking = false;
         }
     };
     return _.extend(function(options) {
@@ -220,7 +227,7 @@ function createQueue(createWorkers, onerror) {
     },{
         getWorkers() {
             if (_.isEmpty(workers)) {
-                registerWorkers(createWorkers(), workers, stoppedWorkers, check_queue);
+                registerWorkers(createWorkers(check_queue), workers, stoppedWorkers, check_queue);
             }
             return workers.slice(0);
         },
@@ -273,17 +280,22 @@ function createLocalWorkers(program, quote, collect) {
     });
 }
 
-function createRemoteWorkers() {
+function createRemoteWorkers(check_queue) {
     var remote_workers = _.flatten(_.compact(_.flatten([config('remote_workers')]))
         .map(addr => addr.split(',')));
     var remoteWorkers = remote_workers.map(address => {
         return replyTo(remote(address))
             .on('error', err => logger.warn(err.message || err));
     });
-    remoteWorkers.forEach(worker => {
-        worker.request('worker_count')
-            .then(count => worker.count = count)
-            .catch(err => logger.debug(err, err.stack));
+    Promise.all(remoteWorkers.map(worker => worker.request('worker_count').catch(err => err)))
+      .then(counts => {
+        var errors = counts.filter((count, i) => {
+            if (!isFinite(count)) return count;
+            else remoteWorkers[i].count = count;
+        });
+        if (errors.length) throw errors[0];
+    }).catch(err => logger.debug(err, err.stack)).then(() => {
+        if (_.some(remoteWorkers, worker => worker.count > 1)) check_queue();
     });
     return remoteWorkers;
 }
