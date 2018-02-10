@@ -614,7 +614,7 @@ function createParser(quote, dataset, columns, cached, options) {
                 return ctx => _.last(_.values(_.last(ctx)))[expr];
             else return Promise.all(args).then(args => {
                 var fn = common(name, args, options) ||
-                    rolling(name, args, options) ||
+                    rolling(expr, name, args, options) ||
                     external(expr, name, args);
                 if (fn) return fn;
                 else return () => {

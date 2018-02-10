@@ -38,9 +38,21 @@ const logger = require('./logger.js');
 /**
  * These functions operate of an array of securities at the corresponding points in time.
  */
-module.exports = function(name, args, options) {
-    if (functions[name])
-        return functions[name].apply(this, [options].concat(args));
+module.exports = function(expr, name, args, options) {
+    if (functions[name]) {
+        var columnName = Parser({
+            constant(value) {
+                return value;
+            },
+            variable(name) {
+                return name;
+            },
+            expression(expr, name, args) {
+                return args[0] || '';
+            }
+        }).parse(expr);
+        return functions[name].apply(this, [options, columnName].concat(args));
+    }
 };
 
 module.exports.has = function(name) {
@@ -86,9 +98,8 @@ module.exports.getVariables = function(expr) {
 };
 
 var functions = module.exports.functions = {
-    PREC: _.extend((options, columnName, defaultValue) => {
+    PREC: _.extend((options, name, columnExpr, defaultValue) => {
         return positions => {
-            var name = columnName(positions);
             var keys = _.keys(_.pick(_.last(positions), _.isObject));
             var previously = positions[positions.length -2];
             if (keys.length > 1)
@@ -104,8 +115,7 @@ var functions = module.exports.functions = {
         args: "columnName, defaultValue",
         description: "Returns the value of columnName from the preceeding retained value"
     }),
-    COUNTPREC: _.extend((options, columnName, numberOfIntervals, criteria) => {
-        var name = columnName && columnName();
+    COUNTPREC: _.extend((options, name, columnExpr, numberOfIntervals, criteria) => {
         var condition = name && parseCriteria(name, criteria, options);
         return positions => {
             var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
@@ -121,8 +131,7 @@ var functions = module.exports.functions = {
         args: "[columnName, [numberOfIntervals, [criteria]]]",
         description: "Counts the number of retained values that preceed this value"
     }),
-    SUMPREC: _.extend((options, columnName, numberOfIntervals, criteria) => {
-        var name = columnName();
+    SUMPREC: _.extend((options, name, columnExpr, numberOfIntervals, criteria) => {
         var condition = parseCriteria(name, criteria, options);
         return positions => {
             var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
@@ -137,8 +146,7 @@ var functions = module.exports.functions = {
         args: "columnName, [numberOfIntervals, [criteria]]",
         description: "Returns the sum of all numeric values that preceed this"
     }),
-    MAXPREC: _.extend((options, columnName, numberOfIntervals, criteria) => {
-        var name = columnName();
+    MAXPREC: _.extend((options, name, columnExpr, numberOfIntervals, criteria) => {
         var condition = parseCriteria(name, criteria, options);
         return positions => {
             var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
@@ -153,8 +161,22 @@ var functions = module.exports.functions = {
         args: "columnName, [numberOfIntervals, [criteria]]",
         description: "Returns the maximum of all numeric values that preceed this"
     }),
-    LOOKUP: _.extend((options, columnName, criteria) => {
-        var name = columnName();
+    MINPREC: _.extend((options, name, columnExpr, numberOfIntervals, criteria) => {
+        var condition = parseCriteria(name, criteria, options);
+        return positions => {
+            var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
+            var len = positions.length -1;
+            var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
+            }), true);
+            var values = _.pluck(_.initial(bars).filter(condition), name);
+            return values.filter(_.isFinite).reduce((a, b) => Math.min(a, b), 0);
+        };
+    }, {
+        args: "columnName, [numberOfIntervals, [criteria]]",
+        description: "Returns the minimum of all numeric values that preceed this"
+    }),
+    LOOKUP: _.extend((options, name, columnExpr, criteria) => {
         var condition = parseCriteria(name, criteria, options);
         return positions => {
             for (var p=positions.length-1; p>=0; p--) {
@@ -169,9 +191,8 @@ var functions = module.exports.functions = {
         args: "columnName, criteria",
         description: "Returns the value of columnName of a row that matches criteria"
     }),
-    PREV: _.extend((options, columnName, defaultValue) => {
+    PREV: _.extend((options, name, columnExpr, defaultValue) => {
         return positions => {
-            var name = columnName(positions);
             var key = _.last(_.keys(_.last(positions)));
             for (var i=positions.length-2; i>=0; i--) {
                 var previously = positions[i];
@@ -184,8 +205,7 @@ var functions = module.exports.functions = {
         args: "columnName, defaultValue",
         description: "Returns the value of columnName from the previous retained value for this security"
     }),
-    COUNTPREV: _.extend((options, columnName, numberOfValues, criteria) => {
-        var name = columnName && columnName();
+    COUNTPREV: _.extend((options, name, columnExpr, numberOfValues, criteria) => {
         var condition = name && parseCriteria(name, criteria, options);
         return positions => {
             if (positions.length < 2) return 0;
@@ -201,8 +221,7 @@ var functions = module.exports.functions = {
         args: "[columnName, [numberOfValues, [criteria]]]",
         description: "Returns the sum of columnName values from the previous numberOfValues retained"
     }),
-    SUMPREV: _.extend((options, columnName, numberOfValues, criteria) => {
-        var name = columnName();
+    SUMPREV: _.extend((options, name, columnExpr, numberOfValues, criteria) => {
         var condition = parseCriteria(name, criteria, options);
         return positions => {
             if (positions.length < 2) return 0;
@@ -217,8 +236,7 @@ var functions = module.exports.functions = {
         args: "columnName, [numberOfValues, [criteria]]",
         description: "Returns the sum of columnName values from the previous numberOfValues retained"
     }),
-    MAXPREV: _.extend((options, columnName, numberOfValues, criteria) => {
-        var name = columnName();
+    MAXPREV: _.extend((options, name, columnExpr, numberOfValues, criteria) => {
         var condition = parseCriteria(name, criteria, options);
         return positions => {
             if (positions.length < 2) return 0;
@@ -232,6 +250,108 @@ var functions = module.exports.functions = {
     }, {
         args: "columnName, [numberOfValues, [criteria]]",
         description: "Returns the maximum of columnName values from the previous numberOfValues retained"
+    }),
+    MINPREV: _.extend((options, name, columnExpr, numberOfValues, criteria) => {
+        var condition = parseCriteria(name, criteria, options);
+        return positions => {
+            if (positions.length < 2) return 0;
+            var num = numberOfValues ? numberOfValues(positions) : 0;
+            var key = _.last(_.keys(_.last(positions)));
+            var len = positions.length -1;
+            var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            var values = _.pluck(previous.filter(condition), name);
+            return values.filter(_.isFinite).reduce((a, b) => Math.min(a, b), 0);
+        };
+    }, {
+        args: "columnName, [numberOfValues, [criteria]]",
+        description: "Returns the minimum of columnName values from the previous numberOfValues retained"
+    }),
+    COUNTTOTAL: _.extend((options, name, columnExpr) => {
+        return positions => {
+            var bars = _.flatten(positions.map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
+            }), true);
+            if (!name) return bars.length;
+            var values = _.pluck(_.initial(bars), name);
+            values.push(columnExpr(positions));
+            return values.filter(val => val === 0 || val).length;
+        };
+    }, {
+        args: "[column]",
+        description: "Counts the number of retained values"
+    }),
+    SUMTOTAL: _.extend((options, name, columnExpr) => {
+        return positions => {
+            var bars = _.flatten(positions.map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
+            }), true);
+            var values = _.pluck(_.initial(bars), name);
+            values.push(columnExpr(positions));
+            return values.filter(_.isFinite).reduce((a, b) => a + b, 0);
+        };
+    }, {
+        args: "column",
+        description: "Returns the sum of all numeric values"
+    }),
+    MINTOTAL: _.extend((options, name, columnExpr) => {
+        return positions => {
+            var bars = _.flatten(positions.map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
+            }), true);
+            var values = _.pluck(_.initial(bars), name);
+            values.push(columnExpr(positions));
+            return _.first(_.sortBy(values));
+        };
+    }, {
+        args: "column",
+        description: "Returns the minimum of all numeric values"
+    }),
+    MAXTOTAL: _.extend((options, name, columnExpr) => {
+        return positions => {
+            var bars = _.flatten(positions.map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
+            }), true);
+            var values = _.pluck(_.initial(bars), name);
+            values.push(columnExpr(positions));
+            return _.last(_.sortBy(values));
+        };
+    }, {
+        args: "column",
+        description: "Returns the maximum of all numeric values"
+    }),
+    MEDIANTOTAL: _.extend((options, name, columnExpr) => {
+        return positions => {
+            var bars = _.flatten(positions.map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
+            }), true);
+            var values = _.pluck(_.initial(bars), name);
+            values.push(columnExpr(positions));
+            var sorted = _.sortBy(values);
+            if (sorted.length == 1) return sorted[0];
+            else if (sorted.length % 2 == 1) return sorted[(sorted.length-1) / 2];
+            else return (sorted[sorted.length/2-1] + sorted[sorted.length/2])/2;
+        };
+    }, {
+        args: "column",
+        description: "Returns the median of a set of numbers. In a set containing an uneven number of values, the median will be the number in the middle of the set and in a set containing an even number of values, it will be the mean of the two values in the middle of the set."
+    }),
+    STDEVTOTAL: _.extend((options, name, columnExpr) => {
+        return positions => {
+            var bars = _.flatten(positions.map(positions => {
+                return _.values(positions).filter(ctx => _.isObject(ctx));
+            }), true);
+            var values = _.pluck(_.initial(bars), name);
+            values.push(columnExpr(positions));
+            var avg = values.reduce((a,b)=>a+b,0) / values.length;
+            var sd = Math.sqrt(values.map(function(num){
+                var diff = num - avg;
+                return diff * diff;
+            }).reduce((a,b)=>a+b,0) / Math.max(values.length,1));
+            return sd || 1;
+        };
+    }, {
+        args: "column",
+        description: "Estimates the standard deviation based on all numeric values"
     })
 };
 

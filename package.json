@@ -1,6 +1,6 @@
 {
   "name": "ptrading",
-  "version": "0.47.56",
+  "version": "0.47.57",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/ptrading.js",
   "dependencies": {
@@ -21,7 +21,8 @@
     "mocha": "^3.1.2"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "inspect": "mocha --debug-brk --inspect"
   },
   "repository": {
     "type": "git",

@@ -116,7 +116,109 @@ describe("collect", function() {
             {symbol:'AABA',date:"2017-01-13",close:42.27,change:0.38}
         ]);
     });
-    it("sum", function() {
+    it("range", function() {
+        return collect({
+          portfolio: 'IBM.NYSE',
+          begin: "2016-12-29",
+          end: "2017-01-14",
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              close: 'day.close',
+              change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))',
+              min: 'MINTOTAL(day.low)',
+              max: 'MAXTOTAL(day.high)'
+          }
+        }).should.eventually.be.like([
+            {symbol:"IBM",date:"2016-12-29",close:166.6,change:0.25,min:166,max:166.99},
+            {symbol:"IBM",date:"2016-12-30",close:165.99,change:-0.37,min:165.5,max:166.99},
+            {symbol:"IBM",date:"2017-01-03",close:167.19,change:0.72,min:165.5,max:167.87},
+            {symbol:"IBM",date:"2017-01-04",close:169.26,change:1.24,min:165.5,max:169.87},
+            {symbol:"IBM",date:"2017-01-05",close:168.7,change:-0.33,min:165.5,max:169.87},
+            {symbol:"IBM",date:"2017-01-06",close:169.53,change:0.49,min:165.5,max:169.92},
+            {symbol:"IBM",date:"2017-01-09",close:167.65,change:-1.11,min:165.5,max:169.92},
+            {symbol:"IBM",date:"2017-01-10",close:165.52,change:-1.27,min:165.34,max:169.92},
+            {symbol:"IBM",date:"2017-01-11",close:167.75,change:1.35,min:165.34,max:169.92},
+            {symbol:"IBM",date:"2017-01-12",close:167.95,change:0.12,min:165.34,max:169.92},
+            {symbol:"IBM",date:"2017-01-13",close:167.34,change:-0.36,min:165.34,max:169.92}
+        ]);
+    });
+    it("median", function() {
+        return collect({
+          portfolio: 'IBM.NYSE',
+          begin: "2016-12-29",
+          end: "2017-01-14",
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              close: 'day.close',
+              median: 'MEDIANTOTAL(close)'
+          }
+        }).should.eventually.be.like([
+            {symbol:"IBM",date:"2016-12-29",close:166.6,median:166.6},
+            {symbol:"IBM",date:"2016-12-30",close:165.99,median:166.295},
+            {symbol:"IBM",date:"2017-01-03",close:167.19,median:166.6},
+            {symbol:"IBM",date:"2017-01-04",close:169.26,median:166.895},
+            {symbol:"IBM",date:"2017-01-05",close:168.7,median:167.19},
+            {symbol:"IBM",date:"2017-01-06",close:169.53,median:167.945},
+            {symbol:"IBM",date:"2017-01-09",close:167.65,median:167.65},
+            {symbol:"IBM",date:"2017-01-10",close:165.52,median:167.42},
+            {symbol:"IBM",date:"2017-01-11",close:167.75,median:167.65},
+            {symbol:"IBM",date:"2017-01-12",close:167.95,median:167.7},
+            {symbol:"IBM",date:"2017-01-13",close:167.34,median:167.65}
+        ]);
+    });
+    it("average", function() {
+        return collect({
+          portfolio: 'IBM.NYSE',
+          begin: "2016-12-29",
+          end: "2017-01-14",
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              close: 'day.close',
+              average: 'SUMTOTAL(close)/COUNTTOTAL(close)'
+          }
+        }).should.eventually.be.like([
+            {symbol:"IBM",date:"2016-12-29",close:166.6,average:166.6},
+            {symbol:"IBM",date:"2016-12-30",close:165.99,average:166.295},
+            {symbol:"IBM",date:"2017-01-03",close:167.19,average:166.593},
+            {symbol:"IBM",date:"2017-01-04",close:169.26,average:167.26},
+            {symbol:"IBM",date:"2017-01-05",close:168.7,average:167.548},
+            {symbol:"IBM",date:"2017-01-06",close:169.53,average:167.8783},
+            {symbol:"IBM",date:"2017-01-09",close:167.65,average:167.8457},
+            {symbol:"IBM",date:"2017-01-10",close:165.52,average:167.555},
+            {symbol:"IBM",date:"2017-01-11",close:167.75,average:167.576},
+            {symbol:"IBM",date:"2017-01-12",close:167.95,average:167.614},
+            {symbol:"IBM",date:"2017-01-13",close:167.34,average:167.5891}
+        ]);
+    });
+    it("expected", function() {
+        return collect({
+          portfolio: 'IBM.NYSE',
+          begin: "2016-12-29",
+          end: "2017-01-14",
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              close: 'day.close',
+              expected: 'SUMTOTAL(close)/COUNTTOTAL(close)-STDEVTOTAL(close)'
+          }
+        }).should.eventually.be.like([
+            {symbol:"IBM",date:"2016-12-29",close:166.6,expected:165.6},
+            {symbol:"IBM",date:"2016-12-30",close:165.99,expected:165.99},
+            {symbol:"IBM",date:"2017-01-03",close:167.19,expected:166.103},
+            {symbol:"IBM",date:"2017-01-04",close:169.26,expected:166.03},
+            {symbol:"IBM",date:"2017-01-05",close:168.7,expected:166.306},
+            {symbol:"IBM",date:"2017-01-06",close:169.53,expected:166.525},
+            {symbol:"IBM",date:"2017-01-09",close:167.65,expected:166.590},
+            {symbol:"IBM",date:"2017-01-10",close:165.52,expected:166.151},
+            {symbol:"IBM",date:"2017-01-11",close:167.75,expected:166.252},
+            {symbol:"IBM",date:"2017-01-12",close:167.95,expected:166.352},
+            {symbol:"IBM",date:"2017-01-13",close:167.34,expected:166.383}
+        ]);
+    });
+    it("sumprec", function() {
         return collect({
           portfolio: 'XLE.ARCA,XLF.ARCA,XLK.ARCA,XLV.ARCA,XLY.ARCA',
           begin: "2016-12-01",
@@ -138,6 +240,28 @@ describe("collect", function() {
             {symbol:"XLV",date:"2016-12-01",Price:68.25,Weight:22.4790}
         ]);
     });
+    it("sumtotal", function() {
+        return collect({
+          portfolio: 'XLE.ARCA,XLF.ARCA,XLK.ARCA,XLV.ARCA,XLY.ARCA',
+          begin: "2016-12-01",
+          end: "2016-12-02",
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              Price: 'day.close',
+              Weight: 'MIN(0.5/CVAR(5, 60, day.close), 100)',
+              profitFactor: 'MAX(PF(120,day.adj_close),PF(200,day.adj_close))'
+          },
+          criteria: 'SUMTOTAL(Weight) <= 100',
+          precedence: 'DESC(profitFactor)'
+        }).should.eventually.be.like([
+            {symbol:"XLF",date:"2016-12-01",Price:22.9,Weight:2.7401},
+            {symbol:"XLE",date:"2016-12-01",Price:74.61,Weight:17.1398},
+            {symbol:"XLK",date:"2016-12-01",Price:46.52,Weight:26.1815},
+            {symbol:"XLY",date:"2016-12-01",Price:81.89,Weight:26.0778},
+            {symbol:"XLV",date:"2016-12-01",Price:68.25,Weight:22.4790}
+        ]);
+    });
     it("balance", function() {
         return collect({
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
@@ -147,7 +271,7 @@ describe("collect", function() {
               cor: 'MAXCORREL(60,day.adj_close)',
               risk: 'CVAR(5, 60, day.adj_close)',
               weight: 'IF(cor<0.75 AND SUMPREC("weight")<=95, MIN(0.5/risk,100-SUMPREC("weight")), 0)',
-              target: 'FLOOR(100000*(weight + SUMPREV("weight",2))/300/day.close)',
+              target: 'FLOOR(100000*(weight + SUMPREV(weight,2))/300/day.close)',
               shares: 'IF(ABS(target-PREV("position"))<50,0,target-PREV("position"))',
               proceeds: '-shares * price',
               commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))',
