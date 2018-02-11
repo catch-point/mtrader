@@ -34,6 +34,7 @@ const moment = require('moment-timezone');
 const statkit = require("statkit");
 const Alea = require('alea');
 const merge = require('./merge.js');
+const interrupt = require('./interrupt.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
@@ -127,6 +128,7 @@ function strategize(bestsignals, prng, options) {
 
 function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, started, signals, options, optimized) {
     var label = options.label || '\b';
+    var check = interrupt(true);
     if (Date.now() > terminateAt) return signals; // times up
     var next = strategizeLegs.bind(this, bestsignals, evaluate, prng, parser, terminateAt, started);
     var signal_cost = options.signal_cost;
@@ -146,7 +148,9 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, starte
         var idx = empty ? contributions.length : chooseContribution(prng, contributions);
         var drop = idx < contributions.length && contributions[idx] <= signal_cost;
         var used = empty ? [] : getReferences(latest.variables[strategy_var]);
-        if (drop) { // drop under performing leg
+        if (check()) { // interrupt
+            return merge(signals, {[strategy_var]:{score:latestScore}});
+        } else if (drop) { // drop under performing leg
             var drop_expr = spliceExpr(strategy.legs, idx, 1).join(' OR ');
             var drop_signals = _.extend({}, signals, {[strategy_var]: merge(latest, {
                 score: latestScore - contributions[idx],
@@ -183,8 +187,7 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, starte
                 opts.score = latestScore;
                 opts.cost = getReferences(strategy.legs[idx].expr).length * signal_cost;
             }
-            var leg_signals = _.extend({}, signals, {[leg_var]: opts});
-            return strategizeLeg(bestsignals, prng, parser, terminateAt, leg_signals, opts)
+            return strategizeLeg(bestsignals, prng, parser, terminateAt, signals, opts)
               .then(leg_signals => {
                 var best = leg_signals[leg_var];
                 var new_leg = best.variables[leg_var];
@@ -205,41 +208,49 @@ function strategizeLegs(bestsignals, evaluate, prng, parser, terminateAt, starte
                 next_optimized[idx] = scratch || strategy.legs.length == 1;
                 var elapse = better && moment.duration(Date.now() - started).humanize();
                 if (better) logger.log("Strategize", label, new_expr, "after", elapse, best.score);
-                return next(next_signals, options, next_optimized);
+                if (check()) return next_signals;
+                else return next(next_signals, options, next_optimized);
             });
         }
     }));
 }
 
-function strategizeLeg(bestsignals, prng, parser, terminateAt, signals, options) {
+/**
+ * Recursively tests incremental solutions to improve the score
+ * @return the best solution found as a hash of signals making up the solution
+ */
+function strategizeLeg(bestsignals, prng, parser, terminateAt, signals, latest) {
     var scores = {};
     var bestsignalFn = bestsignal.bind(this, bestsignals, terminateAt, scores);
     var evaluateFn = evaluate.bind(this, bestsignals, scores);
-    var strategy_var = options.strategy_variable;
-    var latest = signals[strategy_var];
+    var strategy_var = latest.strategy_variable;
     var strategy = latest.variables[strategy_var];
-    var moreStrategiesFn = moreStrategies.bind(this, prng, evaluateFn, parser, options.max_signals);
-    var empty = !strategy || strategy == options.signal_variable;
-    return search(bestsignalFn, moreStrategiesFn, terminateAt, signals, options, 0);
+    var moreStrategiesFn = moreStrategies.bind(this, prng, evaluateFn, parser, latest.max_signals);
+    var empty = !strategy || strategy == latest.signal_variable;
+    var leg_signals = _.extend({}, signals, {[strategy_var]: latest});
+    var next = search.bind(this, bestsignalFn, moreStrategiesFn, terminateAt);
+    return next(next, leg_signals, latest, 0);
 }
 
 /**
- * Recursively tests solutions to improve the score, returning the best solution found
+ * Recursively tests solutions to improve the score
+ * @return the best solution found
  */
-function search(bestsignal, moreStrategies, terminateAt, signals, options, attempts) {
+function search(bestsignal, moreStrategies, terminateAt, next, signals, options, attempts) {
     if (Date.now() > terminateAt) return signals; // times up
+    var check = interrupt(true);
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
-    return moreStrategies(signals[strategy_var])
+    return moreStrategies(latest)
       .then(strategies => Promise.all(strategies.map(st => bestsignal(st, latest))))
       .then(solutions => _.last(_.sortBy(solutions, sol => sol.score - sol.cost)))
       .then(solution => {
         if (!solution || solution.revisited || latest.variables[strategy_var] && _.has(latest, 'score') &&
                 solution.score - solution.cost <= latest.score - latest.cost) {
             if (solution && !solution.revisited) // keep going
-                return search(bestsignal, moreStrategies, terminateAt, signals, options, 0);
+                return next(next, signals, options, 0);
             if (attempts < 100)
-                return search(bestsignal, moreStrategies, terminateAt, signals, options, ++attempts);
+                return next(next, signals, options, ++attempts);
             else // stop after too many attempts to find something new
                 return signals;
         } else {
@@ -251,7 +262,7 @@ function search(bestsignal, moreStrategies, terminateAt, signals, options, attem
             }, signals);
             var strategy = improved.variables[strategy_var];
             logger.log("Strategize", options.label || '\b', "leg", strategy, solution.score);
-            return search(bestsignal, moreStrategies, terminateAt, next_signals, options, 0);
+            return next(next, next_signals, options, 0);
         }
     });
 }
@@ -262,8 +273,9 @@ function search(bestsignal, moreStrategies, terminateAt, signals, options, attem
 function bestsignal(bestsignals, terminateAt, scores, signal_strategy, latest) {
     if (scores[signal_strategy])
         return scores[signal_strategy].then(score => ({score, revisited: true}));
-    var token = signal_strategy.split(' ').find(token => ~token.indexOf(latest.signal_variable));
-    var sign = token && token.replace(latest.signal_variable, '');
+    var regex = new RegExp('\\b' + latest.signal_variable + '\\b','g');
+    var token = signal_strategy.split(' ').find(token => regex.exec(token));
+    var sign = token && token.replace(regex, '');
     var label = sign && latest.label ? sign + ' ' + latest.label : sign || latest.label;
     var optimize_termination = latest.optimize_termination || terminateAt &&
         moment.duration(Math.floor((terminateAt - Date.now())/1000)*1000).toISOString() || undefined;
@@ -533,7 +545,7 @@ function formatSolution(solution, options, signals, suffix) {
         strategy_variable: solution.strategy_variable,
         variables: replacer(_.defaults({
             [solution.strategy_variable]: strategy
-        }, _.omit(_.pick(solution.variables, local), signal))),
+        }, _.omit(_.pick(solution.variables, local), signal, options.leg_variable))),
         parameters: _.reduce(_.pick(solution.parameters, local), rename, {}),
         parameter_values: _.reduce(_.pick(solution.parameter_values, local), rename, {}),
         eval_validity: _.compact(_.flatten([options.eval_validity, eval_validity]))

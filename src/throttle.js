@@ -42,8 +42,14 @@ module.exports = function(fn, limit) {
     return function(/* arguments */) {
         var context = this;
         var args = arguments;
-        return new Promise(function(callback){
-            queue.push(callback);
+        return new Promise(function(callback, abort){
+            queue.push(() => {
+                var idx = pending.indexOf(abort);
+                if (idx < 0) return next();
+                delete pending[idx];
+                callback();
+            });
+            pending.push(abort);
             next();
         }).then(function(){
             return fn.apply(context, args);
@@ -58,3 +64,16 @@ module.exports = function(fn, limit) {
         });
     };
 };
+
+var pending = [];
+process.on('SIGINT', () => {
+    var err = Error('SIGINT');
+    pending.splice(0).forEach(task => {
+        task(Promise.reject(err));
+    });
+}).on('SIGTERM', () => {
+    var err = Error('SIGTERM');
+    pending.splice(0).forEach(task => {
+        task(Promise.reject(err));
+    });
+});
