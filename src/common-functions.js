@@ -289,15 +289,23 @@ var functions = module.exports.functions = {
             return Math.random();
         };
     },
-    MAX(opts) {
+    MAX(opts, a, b) {
         var numbers = _.rest(arguments);
-        return context => {
+        if (numbers.length == 2) return context => {
+            var a1 = a(context);
+            var b1 = b(context);
+            return a1 > b1 || b1 == null ? a1 : b1;
+        }; else return context => {
             return _.max(numbers.map(num => num(context)));
         };
     },
-    MIN(opts, expression) {
+    MIN(opts, a, b) {
         var numbers = _.rest(arguments);
-        return context => {
+        if (numbers.length == 2) return context => {
+            var a1 = a(context);
+            var b1 = b(context);
+            return a1 < b1 || b1 == null ? a1 : b1;
+        }; else return context => {
             return _.min(numbers.map(num => num(context)));
         };
     },

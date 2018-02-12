@@ -154,8 +154,9 @@ var functions = module.exports.functions = {
             var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var values = _.pluck(_.initial(bars).filter(condition), name);
-            return values.filter(_.isFinite).reduce((a, b) => Math.max(a, b), 0);
+            var values = _.pluck(_.initial(bars).filter(condition), name).filter(_.isFinite);
+            if (values.length) return values.reduce((a, b) => Math.max(a, b));
+            else return null;
         };
     }, {
         args: "columnName, [numberOfIntervals, [criteria]]",
@@ -169,8 +170,9 @@ var functions = module.exports.functions = {
             var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var values = _.pluck(_.initial(bars).filter(condition), name);
-            return values.filter(_.isFinite).reduce((a, b) => Math.min(a, b), 0);
+            var values = _.pluck(_.initial(bars).filter(condition), name).filter(_.isFinite);
+            if (values.length) return values.reduce((a, b) => Math.min(a, b));
+            else return null;
         };
     }, {
         args: "columnName, [numberOfIntervals, [criteria]]",
@@ -244,8 +246,9 @@ var functions = module.exports.functions = {
             var key = _.last(_.keys(_.last(positions)));
             var len = positions.length -1;
             var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
-            var values = _.pluck(previous.filter(condition), name);
-            return values.filter(_.isFinite).reduce((a, b) => Math.max(a, b), 0);
+            var values = _.pluck(previous.filter(condition), name).filter(_.isFinite);
+            if (values.length) return values.reduce((a, b) => Math.max(a, b));
+            else return null;
         };
     }, {
         args: "columnName, [numberOfValues, [criteria]]",
@@ -259,8 +262,9 @@ var functions = module.exports.functions = {
             var key = _.last(_.keys(_.last(positions)));
             var len = positions.length -1;
             var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
-            var values = _.pluck(previous.filter(condition), name);
-            return values.filter(_.isFinite).reduce((a, b) => Math.min(a, b), 0);
+            var values = _.pluck(previous.filter(condition), name).filter(_.isFinite);
+            if (values.length) return values.reduce((a, b) => Math.min(a, b));
+            else return null;
         };
     }, {
         args: "columnName, [numberOfValues, [criteria]]",
