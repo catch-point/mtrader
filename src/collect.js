@@ -195,7 +195,7 @@ function collectDuration(quote, callCollect, fields, options) {
             var columns = parser.parse(simpleColumns);
             var used = getUsedColumns(columns, opts);
             var filter = [opts.filter, parser.parse(criteria)];
-            var params = _.omit(defaults, _.keys(opts.columns));
+            var params = _.omit(defaults, _.keys(opts.columns).concat(_.keys(opts.variables)));
             return callCollect(_.defaults({
                 columns: _.extend(columns, _.pick(opts.columns, used), {
                     [options.indexCol]: JSON.stringify(index),

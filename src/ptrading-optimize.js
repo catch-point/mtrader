@@ -92,7 +92,7 @@ if (require.main === module) {
         process.on('SIGTERM', () => optimize.close());
         var name = program.args.join(' ');
         var read = readSignals(name);
-        var options = mergeSignals(name);
+        var options = mergeSignals(read);
         optimize(options)
           .then(result => config('amend') ? merge(read, result) : result)
           .then(result => output(result))

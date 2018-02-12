@@ -121,7 +121,7 @@ function strategize(bestsignals, prng, options) {
     return strategizeLegs(bestsignals, evaluateFn, prng, parser, terminateAt, now, signals, options, [])
       .then(signals => combine(signals, options)).then(best => {
         var strategy = best.variables[best.strategy_variable];
-        logger.info("Strategize", strategy, best.score);
+        logger.info("Strategize", options.label || '\b', strategy, best.score);
         return best;
     });
 }
@@ -514,7 +514,7 @@ function formatSolution(solution, options, signals, suffix) {
         if (fixed[name] != value && _.has(fixed, name))
             conflicts.push(name);
         return conflicts;
-    }, _.keys(solution.parameter_values));
+    }, _.keys(solution.parameters));
     var reuse = _.findKey(_.mapObject(_.pick(signals, item => {
         return item.variables[item.signal_variable] == solution.variables[signal];
     }), item => _.pick(item, 'parameters', 'signalset')), _.isEqual.bind(_, _.pick(solution, 'parameters', 'signalset')));
@@ -546,9 +546,7 @@ function formatSolution(solution, options, signals, suffix) {
         variables: replacer(_.defaults({
             [solution.strategy_variable]: strategy
         }, _.omit(_.pick(solution.variables, local), signal, options.leg_variable))),
-        parameters: _.reduce(_.pick(solution.parameters, local), rename, {}),
-        parameter_values: _.reduce(_.pick(solution.parameter_values, local), rename, {}),
-        eval_validity: _.compact(_.flatten([options.eval_validity, eval_validity]))
+        parameters: _.reduce(_.pick(solution.parameters, local), rename, {})
     };
 }
 

@@ -108,7 +108,6 @@ describe("strategize", function() {
                 fast_lenA: 25,
                 slow_lenA: 100
             },
-            eval_validity: ['fast_lenA<slow_lenA'],
             score: 14.186871
         });
     });

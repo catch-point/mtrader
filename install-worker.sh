@@ -275,8 +275,8 @@ EOF
     "dhparam_pem": "etc/ptrading-dh.pem",
     "secureProtocol": "SSLv23_method",
     "secureOptions": $SECURE_OPTIONS,
-    "handshakeTimeout": 1000,
-    "timeout": 30000,
+    "handshakeTimeout": 10000,
+    "timeout": 600000,
     "requestCert": false,
     "rejectUnauthorized": true
   }
@@ -322,8 +322,8 @@ if [ ! -f "$PREFIX/etc/ptrading.json" ] && [[ "$PORT" != *8* ]]; then
     "dhparam_pem": "etc/ptrading-dh.pem",
     "secureProtocol": "SSLv23_method",
     "secureOptions": $SECURE_OPTIONS,
-    "handshakeTimeout": 1000,
-    "timeout": 30000,
+    "handshakeTimeout": 10000,
+    "timeout": 600000,
     "requestCert": false,
     "rejectUnauthorized": true,
     "perMessageDeflate": true
