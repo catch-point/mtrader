@@ -487,6 +487,7 @@ describe("collect", function() {
               cvar: 'IF(symbol="USD" AND exchange="CAD", CVAR(5,60,day.close))',
               usd_cad_cvar: 'MAXPREC("cvar", 1, "symbol=\'USD\' AND exchange=\'CAD\'")'
           },
+          pad_leading: 1,
           // USD.CAD day.ending is an hour after SPY.ARCA day.ending, so
           // the previous USD.CAD day.close is used
           filter: 'exchange=IF(usd_cad_cvar<0.01,"ARCA","TSX")'

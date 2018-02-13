@@ -427,7 +427,8 @@ describe("bestsignals", function() {
                     lookback: [7,10,14,20,28,50],
                     Ksmoothing: [1,3,5,7],
                     Dmoving: [3,5]
-                }
+                },
+                pad_leading: 10
             }]
         }).should.eventually.be.like({
             variables: {
@@ -436,7 +437,8 @@ describe("bestsignals", function() {
             parameters: {
                 len: 10,
                 multiplier: 2,
-            }
+            },
+            pad_leading: 10
         });
     });
 });

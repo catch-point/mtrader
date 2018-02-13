@@ -189,15 +189,16 @@ function formatSignal(signalset, options) {
     var vars = _.extend({}, signalset.variables, signalset.parameters);
     var references = getReferences(vars);
     var local = [signal].concat(references[signal]);
-    return {
+    return _.omit({
         score: signalset.score,
         signal_variable: signalset.signal_variable,
         variables: _.pick(signalset.variables, local),
         parameters: _.pick(signalset.parameters, local),
         parameter_values: _.pick(signalset.parameter_values, local),
+        pad_leading: signalset.pad_leading,
         eval_validity: _.difference(_.compact(_.flatten([signalset.eval_validity])), _.compact(_.flatten([options.eval_validity]))),
         signalset: signalset.signalset
-    };
+    }, value => value == null);
 }
 
 /**

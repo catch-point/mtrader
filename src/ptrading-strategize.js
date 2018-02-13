@@ -186,7 +186,9 @@ function mergeSignalSets(read, result) {
     if (_.isArray(merged.signalset))
         merged.signalset = merged.signalset.map(signalset => signalset.name || signalset);
     if (read.eval_validity && result.eval_validity)
-        merged.eval_validity = _.flatten([read.eval_validity, result.eval_validity])
+        merged.eval_validity = _.flatten([read.eval_validity, result.eval_validity]);
+    if (read.pad_leading && result.pad_leading)
+        merged.pad_leading = Math.max(read.pad_leading, result.pad_leading);
     return merged;
 }
 

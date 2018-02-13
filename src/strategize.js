@@ -489,6 +489,7 @@ function combine(signals, options) {
         if (!solution || strategy_var == variable)
             return combined; // not created here or leg variable
         var formatted = formatSolution(solution, merge(options, combined));
+        delete formatted.variables[formatted.strategy_variable];
         replacement[variable] = formatted.solution_variable;
         return merge(combined, _.omit(formatted, 'solution_variable', 'signal_variable'));
     }, {});
@@ -537,7 +538,7 @@ function formatSolution(solution, options, signals, suffix) {
     }});
     var strategy = parser.parse(solution.variables[solution.strategy_variable]);
     var eval_validity = replacer(_.compact(_.flatten([solution.eval_validity])));
-    return {
+    return _.omit({
         score: solution.score,
         cost: solution.cost,
         signal_variable: signal,
@@ -546,8 +547,10 @@ function formatSolution(solution, options, signals, suffix) {
         variables: replacer(_.defaults({
             [solution.strategy_variable]: strategy
         }, _.omit(_.pick(solution.variables, local), signal, options.leg_variable))),
-        parameters: _.reduce(_.pick(solution.parameters, local), rename, {})
-    };
+        parameters: _.reduce(_.pick(solution.parameters, local), rename, {}),
+        pad_leading: !options.pad_leading || solution.pad_leading > options.pad_leading ?
+            solution.pad_leading : undefined,
+    }, value => value == null);
 }
 
 /**

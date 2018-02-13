@@ -143,16 +143,15 @@ function collect(quote, callCollect, fields, options) {
     if (segments.length < 2) // only one period
         return collectDuration(quote, callCollect, fields, options);
     var optionset = segments.map((segment, i, segments) => {
-        if (segments.length == 1) return options;
-        else if (i === 0) return _.defaults({
+        if (i === 0) return _.defaults({
             begin: options.begin, end: segments[i+1]
-        }, options);
+        }, _.omit(options, 'reset_every'));
         else if (i < segments.length -1) return _.defaults({
             begin: segment, end: segments[i+1]
-        }, options);
+        }, _.omit(options, 'reset_every'));
         else return _.defaults({
             begin: segment, end: options.end
-        }, options);
+        }, _.omit(options, 'reset_every'));
     });
     return Promise.all(optionset.map(opts => callCollect(opts))).then(dataset => {
         return _.flatten(dataset, true);

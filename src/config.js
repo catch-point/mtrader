@@ -183,7 +183,11 @@ function createInstance(session) {
         } catch(e) {
             return false;
         }
-        return JSON.parse(fs.readFileSync(file, 'utf-8'));
+        try {
+            return JSON.parse(fs.readFileSync(file, 'utf-8'));
+        } catch(e) {
+            throw Error("Could not parse " + file + ": " + e.message);
+        }
     };
 
     config.store = function(name, value) {
