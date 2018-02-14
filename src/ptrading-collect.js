@@ -124,7 +124,7 @@ function createInstance(program, quote) {
             if (_.isEmpty(local.getWorkers()) && _.isEmpty(remote.getWorkers())) return direct(options);
             else if (options.help || isSplitting(options)) return direct(options);
             else if (_.isEmpty(remote.getWorkers())) return local(options);
-            else if (options.reset_every || isLeaf(options)) return remote(options);
+            else if (!options.reset_every || isLeaf(options)) return remote(options);
             else if (_.isEmpty(local.getWorkers())) return remote(options);
             else return local(options);
         });
