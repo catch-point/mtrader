@@ -350,7 +350,7 @@ describe("optimize", function() {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
                 close: 'day.adj_close',
-                proceeds: 'change * PREV("signal")',
+                proceeds: 'IF(ending > BEGIN(), change * PREV("signal"))',
                 gain: 'PREC("gain") + proceeds',
                 pain: 'drawdown'
             },
@@ -369,11 +369,13 @@ describe("optimize", function() {
             parameter_values: {
                 len: [5,10,15,20,25,50],
                 multiplier: [1,2,3]
-            }
+            },
+            pad_leading: 100
         }).should.eventually.be.like({
+            score: 1.873,
             parameters: {
                 len: 10,
-                multiplier: 2
+                multiplier: 1
             }
         });
     });

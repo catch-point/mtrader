@@ -54,12 +54,36 @@ module.exports.has = function(name) {
 
 var functions = module.exports.functions = {
     NOW: _.extend((opts, tz) => {
+        var now = moment(opts.now).tz(opts.tz).format();
         return context => {
-            return moment(opts.now).tz(tz ? tz(context) : opts.tz).format();
+            if (!tz || tz == opts.tz) return now;
+            else return moment(opts.now).tz(tz(context)).format();
         };
     }, {
         description: "The local date and time at the point the function was executed",
         seeAlso: ['DATE', 'TIME'],
+        sideEffect: true
+    }),
+    BEGIN: _.extend((opts, tz) => {
+        var begin = moment(opts.begin).tz(opts.tz).format();
+        return context => {
+            if (!tz || tz == opts.tz) return begin;
+            else return moment(opts.begin).tz(tz(context)).format();
+        };
+    }, {
+        description: "The local date and time collecting began",
+        seeAlso: ['NOW', 'END'],
+        sideEffect: true
+    }),
+    END: _.extend((opts, tz) => {
+        var end = moment(opts.end || opts.now).tz(opts.tz).format();
+        return context => {
+            if (!tz || tz == opts.tz) return end;
+            else return moment(opts.end || opts.now).tz(tz(context)).format();
+        };
+    }, {
+        description: "The local date and time collecting will end",
+        seeAlso: ['NOW', 'BEGIN'],
         sideEffect: true
     }),
     /* Add d workdays to the date */
