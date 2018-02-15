@@ -1328,5 +1328,40 @@ describe("collect", function() {
             {date:"2016-12-02",symbol:"XLV",price:68.41,weight:0}
         ]);
     });
+    it("should split date on reset_every", function() {
+        return collect({
+          portfolio: {
+              portfolio: 'IBM.NYSE',
+              tail: 1,
+              columns: {
+                  symbol: 'symbol',
+                  date: 'DATE(ending)',
+                  close: 'day.close'
+              }
+          },
+          begin: "2016-01-01",
+          end: "2017-01-01",
+          reset_every: 'P4W',
+          columns: {
+              symbol: 'symbol',
+              date: 'date',
+              close: 'close'
+          }
+        }).should.eventually.be.like([
+            {symbol:"IBM",date:"2016-01-28",close:122.22},
+            {symbol:"IBM",date:"2016-02-25",close:134.5},
+            {symbol:"IBM",date:"2016-03-24",close:147.95},
+            {symbol:"IBM",date:"2016-04-21",close:149.3},
+            {symbol:"IBM",date:"2016-05-19",close:144.93},
+            {symbol:"IBM",date:"2016-06-16",close:151.06},
+            {symbol:"IBM",date:"2016-07-14",close:160.28},
+            {symbol:"IBM",date:"2016-08-11",close:163.53},
+            {symbol:"IBM",date:"2016-09-08",close:159},
+            {symbol:"IBM",date:"2016-10-06",close:156.88},
+            {symbol:"IBM",date:"2016-11-03",close:152.37},
+            {symbol:"IBM",date:"2016-12-01",close:159.82},
+            {symbol:"IBM",date:"2016-12-30",close:165.99}
+        ]);
+    });
 });
 

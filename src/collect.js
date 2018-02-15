@@ -134,10 +134,11 @@ function collect(quote, callCollect, fields, options) {
     if (!end.isValid()) throw Error("Invalid end date: " + options.end);
     var segments = [options.begin];
     if (duration) {
-        begin.add(duration);
-        while (begin.isBefore(end)) {
-            segments.push(begin.format());
-            begin.add(duration);
+        var start = begin.add(duration);
+        var stop = end.subtract(duration.asMilliseconds()*0.9, 'milliseconds');
+        while (start.isBefore(stop)) {
+            segments.push(start.format());
+            start.add(duration);
         }
     }
     if (segments.length < 2) // only one period

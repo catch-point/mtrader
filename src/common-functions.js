@@ -206,7 +206,7 @@ var functions = module.exports.functions = {
             return date.day()+1;
         };
     }, {
-        description: "Day of week as a number (1-7)",
+        description: "Day of week (Sun-Sat) as a number (1-7)",
         seeAlso: ['YEAR', 'MONTH', 'DATE', 'TIME']
     }),
     /* Month of Year as a number (1-12) */
