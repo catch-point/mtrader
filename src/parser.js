@@ -329,7 +329,7 @@ function parseExpressionList(str) {
             var expr = parseExpression();
             expect(')');
             return expr;
-        } else if (isLetter(peek())) {
+        } else if (isLetter(peek()) || peek() == '_') {
             return parseVariableOrCall();
         } else if (isNumber(peek()) || peek() == '-') {
             return parseNumber();

@@ -57,8 +57,8 @@ module.exports = function(bestsignals) {
                 now: Date.now(),
                 variables: {},
                 strategy_variable: 'strategy',
-                leg_variable: chooseVariable('leg', options.variables),
-                signal_variable: chooseVariable('signal', options.variables),
+                leg_variable: chooseVariable('leg', options),
+                signal_variable: chooseVariable('signal', options),
                 signal_cost: 0
             });
             return strategize(bestsignals, prng, opts);
@@ -615,9 +615,12 @@ function createReplacer(replacement) {
     };
 }
 
-function chooseVariable(prefix, hash) {
-    if (!hash || !hash[prefix]) return prefix;
+function chooseVariable(prefix, options) {
+    var references = getReferences(merge(options.columns, options.variables));
+    var portfolioCols = _.flatten(_.flatten([options.portfolio]).map(portfolio => _.keys(portfolio.columns)));
+    var variables = _.uniq(_.keys(references).concat(_.flatten(_.values(references)), portfolioCols));
+    if (!~variables.indexOf(prefix)) return prefix;
     var i = 0;
-    while (hash[prefix + i]) i++;
+    while (~variables.indexOf(prefix + i)) i++;
     return prefix + i;
 }

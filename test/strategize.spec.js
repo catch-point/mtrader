@@ -111,6 +111,54 @@ describe("strategize", function() {
             score: 14.186871
         });
     });
+    it("should avoid comflicting variables", function() {
+        return strategize({
+            portfolio: {
+                portfolio: 'SPY.ARCA',
+                columns: {
+                    date: 'DATE(ending)',
+                    close: 'day.adj_close',
+                    signal: '0'
+                }
+            },
+            begin: '2016-10-01',
+            end: '2016-12-31',
+            strategy_variable: 'strategy',
+            max_signals: 1,
+            eval_score: 'profit',
+            description: "The variable signal should not be used by strategize and always be zero",
+            columns: {
+                date: 'date',
+                _change: 'close - PREV("close")',
+                close: 'close',
+                profit: 'PREC("profit") + _change * PREV("strategy") - 100 * signal'
+            },
+            signalset: {
+                signals: ['sma_cross'],
+                variables: {
+                    sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))'
+                },
+                parameters: {
+                    fast_len: 50,
+                    slow_len: 200
+                },
+                parameter_values: {
+                    fast_len: [1,5,10,15,20,25,50],
+                    slow_len: [20,25,50,80,100,150,200]
+                },
+                eval_validity: 'fast_len < slow_len'
+            }
+        }).should.eventually.be.like({
+            variables: {
+                strategy: '-1*sma_crossA'
+            },
+            parameters: {
+                fast_lenA: 25,
+                slow_lenA: 100
+            },
+            score: 14.186871
+        });
+    });
     it("should find complex strategy", function() {
         return strategize({
             portfolio: 'SPY.ARCA',
