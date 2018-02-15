@@ -146,7 +146,8 @@ function inlineCollections(collections, options, avoid) {
     if (_.isEmpty(collections)) {
         _.extend(collections, _.object(config.list(), []));
     }
-    if (!collections[options] && _.has(collections, options)) {
+    if (collections[options]) return collections[options];
+    else if (_.has(collections, options) || ~options.indexOf('.json') || ~options.indexOf('/')) {
         var cfg = config.read(options);
         if (cfg) collections[options] = inlineCollections(collections, _.extend({
             label: options,

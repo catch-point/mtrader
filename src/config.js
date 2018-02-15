@@ -166,22 +166,32 @@ function createInstance(session) {
         } catch(e) {
             return [];
         }
+        var l = '.json'.length;
         return fs.readdirSync(dir)
-            .filter(name => name != 'ptrading.json' && name.indexOf('.json') == name.length - '.json'.length)
+            .filter(name => name != 'ptrading.json' && name.lastIndexOf('.json') == name.length - l)
             .map(name => name.substring(0, name.length - '.json'.length));
     };
 
     config.save = function(name, cfg) {
-        var file = path.resolve(config.configDirname(), name + '.json');
+        if (!name) throw Error("No name given");
+        var l = '.json'.length;
+        var filename = name.lastIndexOf('.json') != name.length - l ?
+            name + '.json' : name;
+        var file = path.resolve(config.configDirname(), filename);
         writeConfigFile(file, _.omit(cfg || session, _.isNull));
     };
 
     config.read = function(name) {
-        var file = path.resolve(config.configDirname(), name + '.json');
+        var file = path.resolve(config.configDirname(), name);
         try {
             fs.accessSync(file, fs.R_OK);
         } catch(e) {
-            return false;
+            file = path.resolve(config.configDirname(), name + '.json');
+            try {
+                fs.accessSync(file, fs.R_OK);
+            } catch(e) {
+                return false;
+            }
         }
         try {
             return JSON.parse(fs.readFileSync(file, 'utf-8'));
