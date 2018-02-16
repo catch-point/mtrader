@@ -32,6 +32,7 @@
 const path = require('path');
 const _ = require('underscore');
 const ptrading = require('../src/ptrading.js');
+const readCallSave = require('../src/read-call-save.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
@@ -183,7 +184,7 @@ describe("ptrading-collect", function() {
         }).should.eventually.be.like(expected));
     });
     it("should call nested collect", function() {
-        return ptrading.collect({
+        return readCallSave({
             portfolio: 'SPY',
             columns: {
                 date: 'DATE(day.ending)',
@@ -191,7 +192,7 @@ describe("ptrading-collect", function() {
             },
             begin: '2017-01-01',
             end: '2017-01-31'
-        }).should.eventually.be.like([
+        }).then(ptrading.collect).should.eventually.be.like([
             {date:"2017-01-03",close:225.24},
             {date:"2017-01-04",close:226.58},
             {date:"2017-01-05",close:226.4},

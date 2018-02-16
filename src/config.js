@@ -107,7 +107,7 @@ function createInstance(session) {
         loadedFrom = filename || loadedFrom || opt('load');
         var default_config_dir = path.resolve(defaults.prefix, defaults.default_config_dir);
         var config_dir = opt('config_dir') || stored.config_dir || defaults.config_dir || default_config_dir;
-        loaded = loadedFrom ? loadConfigFile(path.resolve(config_dir, loadedFrom)) : {};
+        loaded = loadedFrom ? loadConfigFile(config.resolve(config_dir, loadedFrom)) : {};
         if (loadedFrom && _.isEmpty(loaded))
             console.error("Could not load anything from", loadedFrom);
         listeners.forEach(listener => listener(null, null, filename || true));
@@ -171,7 +171,7 @@ function createInstance(session) {
         var l = '.json'.length;
         return fs.readdirSync(dir)
             .filter(name => name != 'ptrading.json' && name.lastIndexOf('.json') == name.length - l)
-            .map(name => name.substring(0, name.length - '.json'.length));
+            .map(name => name.substring(0, name.length - l));
     };
 
     config.save = function(name, cfg) {
@@ -179,22 +179,30 @@ function createInstance(session) {
         var l = '.json'.length;
         var filename = name.lastIndexOf('.json') != name.length - l ?
             name + '.json' : name;
-        var file = path.resolve(config.configDirname(), filename);
+        var file = config.resolve(filename);
         writeConfigFile(file, _.omit(cfg || session, _.isNull));
     };
 
-    config.read = function(name) {
-        var file = path.resolve(config.configDirname(), name);
+    config.resolve = function(name) {
+        var paths = [config.configDirname()].concat(_.toArray(arguments));
+        var file = path.resolve.apply(path, paths);
         try {
             fs.accessSync(file, fs.R_OK);
         } catch(e) {
-            file = path.resolve(config.configDirname(), name + '.json');
+            paths[paths.length-1] = paths[paths.length-1] + '.json';
+            var jsonFile = path.resolve.apply(path, paths);
             try {
-                fs.accessSync(file, fs.R_OK);
+                fs.accessSync(jsonFile, fs.R_OK);
+                return jsonFile;
             } catch(e) {
-                return false;
+                // couldn't find it
             }
         }
+        return file;
+    };
+
+    config.read = function(name) {
+        var file = config.resolve.apply(this, arguments);
         try {
             return JSON.parse(fs.readFileSync(file, 'utf-8'));
         } catch(e) {

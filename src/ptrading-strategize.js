@@ -36,13 +36,13 @@ const Writable = require('stream').Writable;
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
-const merge = require('./merge.js');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const Strategize = require('./strategize.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
+const readCallSave = require('./read-call-save.js');
 
 function usage(command) {
     return command.version(require('../package.json').version)
@@ -85,21 +85,14 @@ function usage(command) {
         .option('--save <file>', "JSON file to write the result into");
 }
 
-var collections = {};
-process.on('SIGHUP', () => _.keys(collections).forEach(key=>delete collections[key]));
-
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var strategize = createInstance(program, collections);
+        var strategize = createInstance(program);
         process.on('SIGINT', () => strategize.close());
         process.on('SIGTERM', () => strategize.close());
         var name = program.args.join(' ');
-        var read = readSignals(name);
-        var options = mergeSignals(read);
-        strategize(options)
-          .then(result => config('amend') ? mergeSignalSets(read, result) : result)
-          .then(result => output(result))
+        readCallSave(name, strategize, config('save'))
           .catch(err => logger.error(err, err.stack))
           .then(() => strategize.close());
     } else if (process.send) {
@@ -108,10 +101,10 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = createInstance(usage(new commander.Command()), collections);
+    module.exports = createInstance(usage(new commander.Command()));
 }
 
-function createInstance(program, collections) {
+function createInstance(program) {
     var bestsignals = require('./ptrading-bestsignals.js');
     var strategize = Strategize(bestsignals);
     var promiseKeys;
@@ -120,11 +113,7 @@ function createInstance(program, collections) {
             promiseKeys = strategize({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
         }
-        return promiseKeys.then(keys => _.pick(options, keys)).then(options => {
-            if (options.signalset || options.protfolio)
-                return strategize(inlineCollections(collections, options));
-            else return strategize(options);
-        });
+        return promiseKeys.then(keys => _.pick(options, keys)).then(strategize);
     };
     instance.seed = strategize.seed;
     instance.close = function() {
@@ -134,100 +123,16 @@ function createInstance(program, collections) {
     return instance;
 }
 
-function inlineCollections(collections, options, avoid) {
-    if (!options)
-        return options;
-    else if (_.isArray(options))
-        return options.map(item => inlineCollections(collections, item, avoid));
-    else if (_.isObject(options) && (options.portfolio || options.signalset))
-        return _.defaults({
-            portfolio: inlineCollections(collections, options.portfolio, avoid),
-            signalset: inlineCollections(collections, options.signalset, avoid)
-        }, options);
-    else if (_.isObject(options))
-        return options;
-    else if (_.contains(avoid, options))
-        throw Error("Cycle profile detected: " + avoid + " -> " + options);
-    if (_.isEmpty(collections)) {
-        _.extend(collections, _.object(config.list(), []));
-    }
-    if (collections[options]) return collections[options];
-    else if (_.has(collections, options) || ~options.indexOf('.json') || ~options.indexOf('/')) {
-        var cfg = config.read(options);
-        if (cfg) collections[options] = inlineCollections(collections, _.extend({
-            label: options,
-        }, cfg), _.flatten(_.compact([avoid, options]), true));
-    }
-    if (collections[options]) return collections[options];
-    else return options;
-}
-
-function readSignals(name) {
-    if (!name) return {};
-    var read = config.read(name);
-    if (!read) throw Error("Could not read " + name + " settings");
-    return read;
-}
-
-function mergeSignals(read) {
-    return _.defaults({
-        label: name,
-        parameters: _.defaults({}, config('parameters'), read.parameters),
-        columns: _.extend({}, read.columns, config('columns')),
-        variables: _.defaults({}, config('variables'), read.variables),
-        criteria: _.compact(_.flatten([config('criteria'), read.criteria], true)),
-        filter: _.compact(_.flatten([config('filter'), read.filter], true)),
-        precedence: _.compact(_.flatten([config('precedence'), read.precedence], true)),
-        order: _.compact(_.flatten([config('order'), read.order], true))
-    }, config.options(), read);
-}
-
-function mergeSignalSets(read, result) {
-    var merged = merge(read, result);
-    if (_.isArray(merged.signalset))
-        merged.signalset = merged.signalset.map(signalset => signalset.name || signalset);
-    if (read.eval_validity && result.eval_validity)
-        merged.eval_validity = _.flatten([read.eval_validity, result.eval_validity]);
-    if (read.pad_leading && result.pad_leading)
-        merged.pad_leading = Math.max(read.pad_leading, result.pad_leading);
-    return merged;
-}
-
-function output(result) {
-    return new Promise(done => {
-        var output = JSON.stringify(result, null, ' ') + '\n';
-        var writer = createWriteStream(config('save'));
-        writer.on('finish', done);
-        if (output) writer.write(output, 'utf-8');
-        writer.end();
-    });
-}
-
-function createWriteStream(outputFile) {
-    if (outputFile) return fs.createWriteStream(outputFile);
-    var delegate = process.stdout;
-    var output = Object.create(Writable.prototype);
-    output.cork = delegate.cork.bind(delegate);
-    output.end = function(chunk) {
-        if (chunk) delegate.write.apply(delegate, arguments);
-        delegate.uncork();
-        output.emit('finish');
-    };
-    output.setDefaultEncoding = encoding => delegate.setDefaultEncoding(encoding);
-    output.uncork = delegate.uncork.bind(delegate);
-    output.write = delegate.write.bind(delegate);
-    return output;
-}
-
 function shell(desc, strategize, app) {
     app.on('quit', () => strategize.close());
     app.on('exit', () => strategize.close());
     app.cmd('strategize', desc, (cmd, sh, cb) => {
-        strategize(config.options()).then(result => output(result)).then(() => sh.prompt(), cb);
+        readCallSave(null, strategize, config('save'))
+          .then(() => sh.prompt(), cb);
     });
     app.cmd("strategize :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
-        var options = readSignals(cmd.params.name);
-        strategize(options).then(result => output(result)).then(() => sh.prompt(), cb);
+        readCallSave(cmd.params.name, strategize, config('save'))
+          .then(() => sh.prompt(), cb);
     });
 // help
 return strategize({help: true}).then(_.first).then(info => {

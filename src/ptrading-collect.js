@@ -45,6 +45,7 @@ const config = require('./ptrading-config.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
+const readCallSave = require('./read-call-save.js');
 
 const WORKER_COUNT = require('os').cpus().length;
 
@@ -92,8 +93,8 @@ if (require.main === module) {
         process.on('SIGINT', () => collect.close());
         process.on('SIGTERM', () => collect.close());
         var name = program.args.join(' ');
-        var options = readCollect(name);
-        collect(options).then(result => tabular(result, config()))
+        readCallSave(name, collect)
+          .then(result => tabular(result, config()))
           .catch(err => logger.error(err, err.stack))
           .then(() => collect.close());
     } else if (process.send) {
@@ -119,7 +120,6 @@ function createInstance(program, quote) {
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
         }
         return promiseKeys.then(keys => _.pick(options, keys))
-          .then(options => inlineCollections(collections, options))
           .then(options => {
             if (_.isEmpty(local.getWorkers()) && _.isEmpty(remote.getWorkers())) return direct(options);
             else if (options.help || isSplitting(options)) return direct(options);
@@ -134,12 +134,10 @@ function createInstance(program, quote) {
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = () => {
-        _.keys(collections).forEach(key=>delete collections[key]);
         local.reload();
         remote.reload();
     };
     instance.reset = () => {
-        _.keys(collections).forEach(key=>delete collections[key]);
         try {
             return Promise.all([local.close(), remote.close()]);
         } finally {
@@ -147,7 +145,6 @@ function createInstance(program, quote) {
             remote = createQueue(createRemoteWorkers, onerror);
         }
     };
-    var collections = {};
     var direct = Collect(quote, instance);
     var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
     var onerror = (err, options, worker) => {
@@ -314,60 +311,16 @@ function spawn() {
     process.on('SIGTERM', () => collect().close());
 }
 
-function inlineCollections(collections, options, avoid) {
-    if (!options) {
-        return options;
-    } else if (_.isArray(options)) {
-        var inlined = options.map(item => inlineCollections(collections, item, avoid));
-        if (inlined.every((item, i) => item == options[i])) return options;
-        else return inlined;
-    } else if (_.isObject(options) && options.portfolio) {
-        var inlined = inlineCollections(collections, options.portfolio, avoid);
-        if (inlined == options) return options;
-        else return _.defaults({portfolio: inlined}, options);
-    } else if (_.isObject(options)) {
-        return options;
-    } else if (_.contains(avoid, options)) {
-        throw Error("Cycle profile detected: " + avoid + " -> " + options);
-    }
-    if (_.isEmpty(collections)) {
-        _.extend(collections, _.object(config.list(), []));
-    }
-    if (collections[options]) return collections[options];
-    else if (_.has(collections, options) || ~options.indexOf('.json') || ~options.indexOf('/')) {
-        var cfg = config.read(options);
-        if (cfg) collections[options] = inlineCollections(collections, _.extend({
-            label: options,
-        }, cfg), _.flatten(_.compact([avoid, options]), true));
-    }
-    if (collections[options]) return collections[options];
-    else return options;
-}
-
-function readCollect(name) {
-    var read = name ? config.read(name) : {};
-    if (!read) throw Error("Could not read " + name + " settings");
-    return _.defaults({
-        label: name,
-        parameters: _.defaults({}, config('parameters'), read.parameters),
-        columns: _.extend({}, read.columns, config('columns')),
-        variables: _.defaults({}, config('variables'), read.variables),
-        criteria: _.compact(_.flatten([config('criteria'), read.criteria], true)),
-        filter: _.compact(_.flatten([config('filter'), read.filter], true)),
-        precedence: _.compact(_.flatten([config('precedence'), read.precedence], true)),
-        order: _.compact(_.flatten([config('order'), read.order], true))
-    }, config.options(), read);
-}
-
 function shell(desc, collect, app) {
     app.on('quit', () => collect.close());
     app.on('exit', () => collect.close());
     app.cmd('collect', desc, (cmd, sh, cb) => {
-        collect(config.options()).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
+        readCallSave(null, config.options())
+          .then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     app.cmd("collect :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
-        var options = readCollect(cmd.params.name);
-        collect(options).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
+        readCallSave(cmd.params.name, collect)
+          .then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     _.forEach(rolling.functions, (fn, name) => {
         help(app, name, functionHelp(name, fn));

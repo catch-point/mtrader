@@ -32,6 +32,7 @@
 const path = require('path');
 const _ = require('underscore');
 const ptrading = require('../src/ptrading.js');
+const readCallSave = require('../src/read-call-save.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
@@ -218,7 +219,7 @@ describe("ptrading", function() {
                 Dmoving: [3,5]
             }
         });
-        return ptrading.bestsignals({
+        ptrading.config.save('BEST', {
             portfolio: 'SPY.ARCA',
             begin: '2016-07-01',
             end: '2016-12-31',
@@ -237,7 +238,8 @@ describe("ptrading", function() {
                 drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
             },
             signalset: ['TREND', 'MEANREVERSION', 'RELATIVESTRENGTH']
-        }).should.eventually.be.like([{
+        });
+        readCallSave('BEST', ptrading.bestsignals).should.eventually.be.like([{
             variables: {
                 signal: 'STO_signal'
             },
