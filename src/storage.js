@@ -39,7 +39,7 @@ const interrupt = require('./interrupt.js');
 const debounce = require('./debounce.js');
 const cache = require('./cache.js');
 
-module.exports = function(dirname) {
+module.exports = _.extend(function(dirname) {
     var cachedDatabases = cache(openDatabase.bind(this, dirname), require('os').cpus().length*2);
     return {
         open(name, cb) {
@@ -49,7 +49,11 @@ module.exports = function(dirname) {
             return cachedDatabases.close();
         }
     };
-};
+}, {
+    _readMetadata: readMetadata,
+    _renameMetadata: renameMetadata,
+    _mergeMetadata: mergeMetadata
+});
 
 function openDatabase(dir, name) {
     var dirname = path.resolve(dir, safe(name));
@@ -223,13 +227,15 @@ function readMetadata(dirname) {
     var filename = path.resolve(dirname, 'index.json');
     return new Promise((present, absent) => {
         fs.access(filename, fs.R_OK, err => err ? absent(err) : present(dirname));
-    }).then(present => {
+    }).then(present => new Promise((ready, error) => {
+        fs.stat(filename, (err, stats) => err ? error(err) : ready(stats));
+    })).then(stats => {
         return new Promise((ready, error) => {
-            fs.readFile(filename, (err, data) => {
+            fs.readFile(filename, 'utf-8', (err, data) => {
                 if (err) error(err);
                 else ready(data);
             });
-        }).then(JSON.parse);
+        }).then(JSON.parse).then(metadata => _.extend(metadata, {mtime: stats.mtime}));
     }, absent => {
         if (absent.code != 'ENOENT') logger.error("Could not read", filename, absent);
         else return {};
@@ -237,7 +243,7 @@ function readMetadata(dirname) {
         if (!_.isArray(metadata.tables))
             metadata.tables = [];
         return metadata;
-    });
+    }).catch(error => logger.error("Could not read", dirname, error.message));
 }
 
 function writeMetadata(dirname, metadata) {
@@ -250,14 +256,61 @@ function writeMetadata(dirname, metadata) {
                 else ready();
             });
         });
-    }).then(() => {
-        return new Promise((ready, error) => {
-            fs.rename(part, filename, err => {
-                if (err) error(err);
-                else ready();
+    }).then(() => renameMetadata(part, filename, metadata));
+}
+
+function renameMetadata(part, filename, metadata) {
+    return new Promise(cb => {
+        fs.stat(filename, (err, stats) => err ? cb() : cb(stats))
+    }).then(stats => {
+        if (stats && metadata.mtime && stats.mtime.valueOf() > metadata.mtime.valueOf())
+            return mergeMetadata(part, filename, metadata);
+    }).then(() => new Promise((ready, error) => {
+        fs.rename(part, filename, err => {
+            if (err) error(err);
+            else ready();
+        });
+    }));
+}
+
+function mergeMetadata(part, filename, metadata) {
+    var collpath = path.dirname(filename);
+    return readMetadata(collpath).then(target => {
+        var tables = metadata.tables;
+        target.tables.forEach(entry => {
+            var idx = _.sortedIndex(tables, entry, 'id');
+            if (tables[idx] && tables[idx].id == entry.id) {
+                if (tables[idx].updatedAt < entry.updatedAt) {
+                    tables[idx] = _.extend(tables[idx], entry);
+                }
+            } else {
+                tables.splice(idx, 0, entry);
+            }
+        });
+        var absent = tables.filter(entry => {
+            var idx = _.sortedIndex(target.tables, entry, 'id');
+            return !target.tables[idx] || target.tables[idx].id != entry.id;
+        });
+        return Promise.all(absent.map(entry => new Promise(cb => {
+            var filename = path.resolve(collpath, entry.id + '.csv');
+            fs.access(filename, fs.R_OK, err => err ? cb(false) : cb(true));
+        }))).then(ok => {
+            absent.filter((entry, i) => !ok[i]).forEach(entry => {
+                var idx = _.sortedIndex(tables, entry, 'id');
+                if (tables[idx] && tables[idx].id == entry.id) {
+                    tables.splice(idx, 1);
+                }
+            });
+            return _.extend(metadata, target, {
+                tables: tables
             });
         });
-    });
+    }).then(merged => new Promise((ready, error) => {
+        fs.writeFile(part, JSON.stringify(merged, null, ' '), err => {
+            if (err) error(err);
+            else ready();
+        });
+    }));
 }
 
 function readTable(filename, size) {
