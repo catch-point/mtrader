@@ -119,7 +119,7 @@ function createInstance(session) {
         var opts = commander_opts();
         var cfg = _.omit(config(), value => value == null);
         var cfg_pairs = _.pick(_.pick(cfg, pairs), _.isString);
-        var cfg_bools = _.without(_.intersection(bools, _.keys(cfg)), 'version');
+        var cfg_bools = _.without(_.intersection(bools, _.keys(cfg)), 'version').filter(b => cfg[b]);
         var cfg_other = _.difference(_.keys(cfg), pairs, bools)
             .filter(key => _.has(session, key) || _.has(opts, key));
         var arg_pairs = _.flatten(_.zip(
@@ -127,7 +127,7 @@ function createInstance(session) {
             _.values(cfg_pairs)
         ));
         var arg_bools = cfg_bools.map(option => option.replace('_', '-'))
-            .map(opt => (opt.charAt(0) == '-' ? '' : cfg[opt] ? '--' : '--no-') + opt);
+            .map(opt => (opt.charAt(0) == '-' ? '' : '--') + opt);
         var arg_other = _.flatten(cfg_other.map(name => ['--set', name + '=' + JSON.stringify(cfg[name])]));
         var args = arg_pairs.concat(arg_bools, arg_other);
         var child = child_process.fork(modulePath, args);

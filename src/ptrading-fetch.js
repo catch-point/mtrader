@@ -73,10 +73,6 @@ if (require.main === module) {
         var fetch = Fetch();
         process.on('SIGINT', () => fetch.close());
         process.on('SIGTERM', () => fetch.close());
-        process.on('SIGHUP', () => {
-            fetch.close();
-            fetch = Fetch();
-        });
         Promise.resolve().then(() => fetch(_.defaults({
             interval: interval,
             symbol: symbol,

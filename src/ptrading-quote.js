@@ -221,7 +221,6 @@ function load(worker) {
 }
 
 function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
-    stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
     workers.push.apply(workers, newWorkers);
     workers.forEach(worker => worker.on('message', check).handle('stop', function() {
         var idx = workers.indexOf(this);
