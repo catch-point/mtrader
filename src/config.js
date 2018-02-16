@@ -108,6 +108,8 @@ function createInstance(session) {
         var default_config_dir = path.resolve(defaults.prefix, defaults.default_config_dir);
         var config_dir = opt('config_dir') || stored.config_dir || defaults.config_dir || default_config_dir;
         loaded = loadedFrom ? loadConfigFile(path.resolve(config_dir, loadedFrom)) : {};
+        if (loadedFrom && _.isEmpty(loaded))
+            console.error("Could not load anything from", loadedFrom);
         listeners.forEach(listener => listener(null, null, filename || true));
     };
 
