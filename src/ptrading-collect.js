@@ -124,7 +124,7 @@ function createInstance(program, quote) {
             if (_.isEmpty(local.getWorkers()) && _.isEmpty(remote.getWorkers())) return direct(options);
             else if (options.help || isSplitting(options)) return direct(options);
             else if (_.isEmpty(remote.getWorkers())) return local(options);
-            else if (!options.reset_every || isLeaf(options)) return remote(options);
+            else if (options.reset_every || isLeaf(options)) return remote(options);
             else if (_.isEmpty(local.getWorkers())) return remote(options);
             else return local(options);
         });
@@ -164,13 +164,13 @@ function isSplitting(options) {
     var reset_every = moment.duration(options.reset_every);
     var begin = moment(options.begin);
     var end = moment(options.end || options.now);
-    return begin.add(reset_every).isBefore(end);
+    return begin.add(reset_every.asMilliseconds()*1.1, 'milliseconds').isBefore(end);
 }
 
 function isLeaf(options) {
     if (!options.portfolio) return false;
     var portfolio = _.isArray(options.portfolio) ? options.portfolio : [options.portfolio];
-    return portfolio.every(_.isString);
+    return portfolio.some(_.isString);
 }
 
 function createQueue(createWorkers, onerror) {
@@ -193,12 +193,12 @@ function createQueue(createWorkers, onerror) {
         if (checking) return;
         else checking = true;
         try {
-            if (_.isEmpty(workers)) {
+            if (_.isEmpty(workers) && queue.length) {
                 registerWorkers(createWorkers(check_queue), workers, stoppedWorkers, check_queue);
                 if (_.isEmpty(workers)) throw Error("No workers available");
             }
             stoppedWorkers.forEach(worker => {
-                if (!load(worker)) {
+                if (idle(worker)) {
                     worker.disconnect();
                 }
             });
@@ -210,7 +210,7 @@ function createQueue(createWorkers, onerror) {
             });
             if (queue.length && spare) {
                 logger.trace("Queued", queue.length, "collect", _.first(queue).options.label || '\b',
-                    workers.map(w => (load(w) * 100) + '%').join(' '));
+                    workers.map(w => (w.count || 1) * load(w)).join(' '));
             }
         } finally {
             checking = false;
@@ -230,6 +230,7 @@ function createQueue(createWorkers, onerror) {
         },
         reload() {
             stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
+            check_queue();
         },
         close() {
             queue.splice(0).forEach(item => {
@@ -241,6 +242,12 @@ function createQueue(createWorkers, onerror) {
             ])).then(quote.close);
         }
     });
+}
+
+function idle(worker) {
+    var stats = worker.stats.collect;
+    if (!stats || !stats.requests_sent) return true;
+    return stats.requests_sent == (stats.replies_rec || 0);
 }
 
 function load(worker) {
@@ -257,7 +264,7 @@ function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
         var idx = workers.indexOf(this);
         if (idx >= 0) workers.splice(idx, 1);
         stoppedWorkers.push(this);
-        if (!load(this)) {
+        if (idle(this)) {
             this.disconnect();
         }
     }).once('disconnect', function() {

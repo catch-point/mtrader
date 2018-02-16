@@ -172,7 +172,7 @@ function createQueue(createWorkers) {
         });
     };
     var check_queue = function() {
-        if (_.isEmpty(workers)) {
+        if (_.isEmpty(workers) && queue.length) {
             registerWorkers(createWorkers(), workers, stoppedWorkers, check_queue);
             if (_.isEmpty(workers)) throw Error("No workers available");
         }
@@ -200,6 +200,7 @@ function createQueue(createWorkers) {
         },
         reload() {
             stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
+            check_queue();
         },
         close() {
             queue.splice(0).forEach(item => {

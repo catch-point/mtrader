@@ -146,13 +146,13 @@ function collect(quote, callCollect, fields, options) {
     var optionset = segments.map((segment, i, segments) => {
         if (i === 0) return _.defaults({
             begin: options.begin, end: segments[i+1]
-        }, _.omit(options, 'reset_every'));
+        }, options);
         else if (i < segments.length -1) return _.defaults({
             begin: segment, end: segments[i+1]
-        }, _.omit(options, 'reset_every'));
+        }, options);
         else return _.defaults({
             begin: segment, end: options.end
-        }, _.omit(options, 'reset_every'));
+        }, options);
     });
     return Promise.all(optionset.map(opts => callCollect(opts))).then(dataset => {
         return _.flatten(dataset, true);

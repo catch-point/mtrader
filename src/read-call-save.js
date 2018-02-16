@@ -61,7 +61,7 @@ function inlineCollections(collections, base, options, avoid) {
         return _.omit(_.defaults({
             portfolio: inlineCollections(collections, base, options.portfolio, avoid),
             signalset: inlineCollections(collections, base, options.signalset, avoid)
-        }, options), _.isEmpty);
+        }, options), val => val == null || _.isObject(val) && _.isEmpty(val));
     else if (_.isObject(options))
         return options;
     else if (_.contains(avoid, options))

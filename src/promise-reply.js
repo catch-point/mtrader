@@ -50,7 +50,7 @@ module.exports = function(process) {
     process.on('disconnect', () => {
         try {
             queue.close();
-            onquit(Error("Disconnecting"));
+            onquit(Error("Disconnecting " + process.pid));
         } finally {
             ondisconnect.forEach(fn => fn());
         }
