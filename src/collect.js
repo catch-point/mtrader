@@ -256,9 +256,12 @@ function collectDuration(quote, callCollect, fields, options) {
  */
 function checkCircularVariableReference(fields, options) {
     var variables = _.extend({}, _.omit(options.columns, fields), options.variables);
-    _.each(getReferences(variables), (reference, name) => {
-        if (_.contains(reference, name) && variables[name] != name)
-            throw Error("Circular variable reference " + name + ": " + variables[name]);
+    var references = getReferences(variables);
+    _.each(references, (reference, name) => {
+        if (_.contains(reference, name) && variables[name] != name) {
+            var path = _.sortBy(_.keys(references).filter(n => _.contains(references[n], n) && _.contains(references[n], name)));
+            throw Error("Circular variable reference " + path.join(',') + ": " + variables[name]);
+        }
     });
 }
 

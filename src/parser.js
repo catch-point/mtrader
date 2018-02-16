@@ -69,7 +69,13 @@ module.exports = function(handlers) {
             else if (_.isArray(expr))
                 return expr.map(value => parseExpression(value, subs, _handlers));
             else if (_.isObject(expr) && !_.isFunction(expr) && _.allKeys(expr).every(k=>_.has(expr,k)))
-                return _.mapObject(expr, value => parseExpression(value, subs, _handlers));
+                return _.mapObject(expr, (value, name) => {
+                    try {
+                        return parseExpression(value, subs, _handlers);
+                    } catch(e) {
+                        throw Error("Could not parse property " + name + ". " + e.message);
+                    }
+                });
             else
                 expect(expr).to.be.ok.and.a('string');
         },
@@ -226,7 +232,7 @@ function parseExpressionList(str) {
         if (peek()) expect("end of input");
         return expressions;
     } catch (e) {
-        throw Error("Could not parse \"" + str + "\". " + e.stack);
+        throw Error("Could not parse \"" + str + "\". " + e.message);
     }
 
     function parseExpression() {
