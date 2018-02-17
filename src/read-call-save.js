@@ -29,6 +29,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+const fs = require('fs');
 const path = require('path');
 const _ = require('underscore');
 const merge = require('./merge.js');
