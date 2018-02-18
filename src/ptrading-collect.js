@@ -149,8 +149,11 @@ function createInstance(program, quote) {
     var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
     var onerror = (err, options, worker) => {
         if (!worker.process.remote || check()) throw err;
-        logger.trace("Collect", options.label || '\b', worker.process.pid, err, err.stack);
-        return local(options).catch(e => {
+        logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err, err.stack);
+        if (worker.connected) remote.stopWorker(worker);
+        if (remote.countConnectedWorkers()) return remote(options);
+        else if (!local.countConnectedWorkers()) throw err;
+        else return local(options).catch(e => {
             throw err;
         });
     };
@@ -222,11 +225,23 @@ function createQueue(createWorkers, onerror) {
             check_queue();
         });
     },{
+        countConnectedWorkers() {
+            return workers.filter(worker => worker.connected).length;
+        },
         getWorkers() {
             if (_.isEmpty(workers)) {
                 registerWorkers(createWorkers(check_queue), workers, stoppedWorkers, check_queue);
             }
             return workers.slice(0);
+        },
+        stopWorker(worker) {
+            var idx = workers.indexOf(worker);
+            if (idx >= 0) workers.splice(idx, 1);
+            if (idle(worker)) {
+                worker.disconnect();
+            } else if (worker.connected) {
+                stoppedWorkers.push(worker);
+            }
         },
         reload() {
             stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
@@ -263,9 +278,10 @@ function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
     workers.forEach(worker => worker.on('message', check).handle('stop', function() {
         var idx = workers.indexOf(this);
         if (idx >= 0) workers.splice(idx, 1);
-        stoppedWorkers.push(this);
         if (idle(this)) {
             this.disconnect();
+        } else if (this.connected) {
+            stoppedWorkers.push(this);
         }
     }).once('disconnect', function() {
         var idx = workers.indexOf(this);
@@ -277,7 +293,8 @@ function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
 }
 
 function createLocalWorkers(program, quote, collect) {
-    return _.range(config('workers') || WORKER_COUNT).map(() => {
+    var count = _.isFinite(config('workers')) ? config('workers') : WORKER_COUNT;
+    return _.range(count).map(() => {
         return replyTo(config.fork(module.filename, program))
           .handle('quote', payload => quote(payload))
           .handle('collect', payload => collect(payload));
@@ -289,6 +306,7 @@ function createRemoteWorkers(check_queue) {
         .map(addr => addr.split(',')));
     var remoteWorkers = remote_workers.map(address => {
         return replyTo(remote(address))
+            .on('connect', () => logger.log("Worker", this.process.pid, "is connected"))
             .on('error', err => logger.warn(err.message || err));
     });
     Promise.all(remoteWorkers.map(worker => worker.request('worker_count').catch(err => err)))
