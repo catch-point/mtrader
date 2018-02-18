@@ -1,6 +1,6 @@
 // tabular.js
 /*
- *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -38,15 +38,36 @@ const spawn = require('child_process').spawn;
 const Writable = require('stream').Writable;
 const csv = require('fast-csv');
 const logger = require('./logger.js');
+const interrupt = require('./interrupt.js');
 
 module.exports = function(data, options) {
     if (_.isEmpty(data)) return logger.info("Empty result, not writing", options.output || '');
+    var check = interrupt();
     var filename = getOutputFile(options);
-    return new Promise(finished => {
+    var transpose = options.transpose && options.transpose.toString() != 'false';
+    var reverse = options.reverse && options.reverse.toString() != 'false';
+    var append = filename && options.append && options.append.toString() != 'false';
+    if (transpose && append) throw Error("Cannot append to a transposed file");
+    return Promise.resolve(append ? new Promise(cb => {
+        fs.access(filename, fs.R_OK, err => err ? cb(false) : cb(true));
+    }).then(present => new Promise((ready, error) => {
+        var objects = [];
+        if (!present) return objects;
+        csv.fromStream(fs.createReadStream(filename), {headers : true, ignoreEmpty: true})
+            .on('error', error)
+            .on('data', function(data) {
+                try {
+                    check();
+                    objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value));
+                } catch (e) {
+                    this.emit('error', e);
+                }
+            })
+            .on('end', () => ready(objects));
+    })).then(existing => reverse ? existing.reverse().concat(data) : existing.concat(data)) : data)
+      .then(data => new Promise(finished => {
         var output = createWriteStream(filename);
         output.on('finish', finished);
-        var transpose = options.transpose && options.transpose.toString() != 'false';
-        var reverse = options.reverse && options.reverse.toString() != 'false';
         if (transpose) {
             var writer = csv.createWriteStream({
                 headers: false,
@@ -78,7 +99,7 @@ module.exports = function(data, options) {
             else writer.write(data);
             writer.end();
         }
-    }).then(() => {
+    })).then(() => {
         return launchOutput(filename, options);
     });
 };
