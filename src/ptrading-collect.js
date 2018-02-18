@@ -150,8 +150,10 @@ function createInstance(program, quote) {
     var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
     var onerror = (err, options, worker) => {
         if (!worker.process.remote || check()) throw err;
-        logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err, err.stack);
-        if (worker.connected) remote.stopWorker(worker);
+        if (worker.connected) {
+            remote.stopWorker(worker);
+            logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err);
+        }
         if (remote.countConnectedWorkers()) return remote(options);
         else if (!local.countConnectedWorkers()) throw err;
         else return local(options).catch(e => {
@@ -276,7 +278,7 @@ function load(worker) {
 
 function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
     workers.push.apply(workers, newWorkers);
-    workers.forEach(worker => worker.on('message', check).handle('stop', function() {
+    newWorkers.forEach(worker => worker.on('message', check).handle('stop', function() {
         var idx = workers.indexOf(this);
         if (idx >= 0) workers.splice(idx, 1);
         if (idle(this)) {
@@ -289,7 +291,6 @@ function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
         if (idx >= 0) workers.splice(idx, 1);
         var sidx = stoppedWorkers.indexOf(this);
         if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
-        logger.log("Worker", this.process.pid, "has disconnected");
     }));
 }
 
@@ -307,7 +308,8 @@ function createRemoteWorkers(check_queue) {
         .map(addr => addr.split(',')));
     var remoteWorkers = remote_workers.map(address => {
         return replyTo(remote(address))
-            .on('connect', () => logger.log("Worker", this.process.pid, "is connected"))
+            .on('connect', function() {logger.log("Worker", this.process.pid, "is connected");})
+            .on('disconnect', function() {logger.log("Worker", this.process.pid, "has disconnected");})
             .on('error', err => logger.warn(err.message || err));
     });
     Promise.all(remoteWorkers.map(worker => worker.request('worker_count').catch(err => err)))
