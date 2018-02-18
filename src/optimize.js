@@ -304,13 +304,15 @@ function fitness(collect, options, pnames) {
         isLookbackParameter(pnames, options);
     return function(candidate) {
         var parameters = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
+        var label = pnames.length ? (options.label ? options.label + ' ' : '') +
+                candidate.pindex.map((idx,i) => {
+            return options.parameter_values[pnames[i]][idx];
+        }).join(',') : options.label;
         var picked = ['portfolio', 'columns', 'variables', 'parameters', 'filter', 'precedence', 'order', 'pad_leading', 'reset_every', 'tail', 'transient'];
         var opts = _.defaults({
             tail: 1,
             transient: transient,
-            label: (options.label ? options.label + ' ' : '') + candidate.pindex.map((idx,i) => {
-                return options.parameter_values[pnames[i]][idx];
-            }).join(','),
+            label: label,
             portfolio: [_.pick(options, picked)],
             columns: {[score_column]: options.eval_score},
             parameters: parameters
