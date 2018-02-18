@@ -236,7 +236,7 @@ function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
         if (idx >= 0) workers.splice(idx, 1);
         var sidx = stoppedWorkers.indexOf(this);
         if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
-        logger.log("Worker", this.process.pid, "has disconnected");
+        logger.trace("Worker", this.process.pid, "has disconnected");
     }));
 }
 
