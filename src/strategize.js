@@ -252,7 +252,7 @@ function search(bestsignal, moreStrategies, terminateAt, next, signals, options,
             if (attempts < 100)
                 return next(next, signals, options, ++attempts);
             else // stop after too many attempts to find something new
-                return signals;
+                return Promise.resolve(signals);
         } else {
             var formatted = formatSolution(solution, latest, signals, '_');
             var improved = merge(latest, formatted);
