@@ -52,7 +52,7 @@ module.exports = function(data, options) {
         fs.access(filename, fs.R_OK, err => err ? cb(false) : cb(true));
     }).then(present => new Promise((ready, error) => {
         var objects = [];
-        if (!present) return objects;
+        if (!present) return ready(objects);
         csv.fromStream(fs.createReadStream(filename), {headers : true, ignoreEmpty: true})
             .on('error', error)
             .on('data', function(data) {
