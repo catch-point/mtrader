@@ -1340,7 +1340,7 @@ describe("collect", function() {
               }
           },
           begin: "2016-01-01",
-          end: "2017-01-01",
+          end: "2016-12-31",
           reset_every: 'P4W',
           columns: {
               symbol: 'symbol',
