@@ -170,7 +170,7 @@ function isSplitting(options) {
     var reset_every = moment.duration(options.reset_every);
     var begin = moment(options.begin);
     var end = moment(options.end || options.now);
-    return begin.add(reset_every.asMilliseconds()*1.1, 'milliseconds').isBefore(end);
+    return begin.add(reset_every.asMilliseconds()*1.05, 'milliseconds').isBefore(end);
 }
 
 function isLeaf(options) {

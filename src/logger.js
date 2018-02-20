@@ -87,13 +87,15 @@ process.on('SIGINT', () => {
     logger.warn = nil;
     logger.error = nil;
 }).on('SIGHUP', () => {
-    logger.trace = cfg('trace', false) ? trace : nil;
-    logger.debug = cfg('debug', debugging && !noDebugging) ? debug: nil;
     if (cfg('quiet', quiet)) {
+        logger.trace = nil;
+        logger.debug = nil;
         logger.log = nil;
         logger.info = nil;
         logger.warn = nil;
     } else {
+        logger.trace = cfg('trace', false) ? trace : nil;
+        logger.debug = cfg('debug', debugging && !noDebugging) ? debug: nil;
         logger.log = cfg('verbose', verbosity) ? verbose : nil;
         logger.info = info;
         logger.warn = warn;

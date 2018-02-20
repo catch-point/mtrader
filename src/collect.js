@@ -135,7 +135,7 @@ function collect(quote, callCollect, fields, options) {
     var segments = [options.begin];
     if (duration) {
         var start = begin.add(duration);
-        var stop = end.subtract(duration.asMilliseconds()*0.9, 'milliseconds');
+        var stop = end.subtract(duration.asMilliseconds()*0.95, 'milliseconds');
         while (start.isBefore(stop)) {
             segments.push(start.format());
             start.add(duration);
