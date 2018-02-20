@@ -126,7 +126,8 @@ function bestsignals(optimize, options) {
  * List of signal sets that each should be search independently
  */
 function getSignalSets(options) {
-    var signalset = _.isArray(options.signalset) ? options.signalset :
+    var signalset = _.isEmpty(options.signalset) ? [options] :
+        _.isArray(options.signalset) ? options.signalset :
         _.isObject(options.signalset) ? [options.signalset] : [options];
     var label = options.label && signalset.label ?
         options.label + ' ' + signalset.label : options.label || signalset.label;
