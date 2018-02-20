@@ -37,10 +37,10 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
-const interrupt = require('./interrupt.js');
 const tabular = require('./tabular.js');
-const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
+const workerQueue = require('./worker-queue.js');
+const remote = require('./remote-workers.js');
 const config = require('./ptrading-config.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
@@ -114,7 +114,6 @@ if (require.main === module) {
 
 function createInstance(program, quote) {
     var promiseKeys;
-    var check = interrupt(true);
     var instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = direct({help: true})
@@ -122,46 +121,31 @@ function createInstance(program, quote) {
         }
         return promiseKeys.then(keys => _.pick(options, keys))
           .then(options => {
-            if (_.isEmpty(local.getWorkers()) && _.isEmpty(remote.getWorkers())) return direct(options);
+            if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (options.help || isSplitting(options)) return direct(options);
-            else if (_.isEmpty(remote.getWorkers())) return local(options);
-            else if (options.reset_every || isLeaf(options)) return remote(options);
-            else if (_.isEmpty(local.getWorkers())) return remote(options);
+            else if (!remote.hasWorkers()) return local(options);
+            else if (options.reset_every || isLeaf(options)) return remote.collect(options);
+            else if (!local.hasWorkers()) return remote.collect(options);
             else return local(options);
         });
     };
     instance.close = function() {
-        return remote.close().then(local.close, local.close).then(direct.close).then(quote.close);
+        return local.close().then(direct.close).then(quote.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = () => {
         local.reload();
-        remote.reload();
     };
     instance.reset = () => {
         try {
-            return Promise.all([local.close(), remote.close()]);
+            return local.close();
         } finally {
             local = createQueue(localWorkers);
-            remote = createQueue(createRemoteWorkers, onerror);
         }
     };
     var direct = Collect(quote, instance);
     var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
-    var onerror = (err, options, worker) => {
-        if (!worker.process.remote || check()) throw err;
-        if (worker.connected) {
-            remote.stopWorker(worker);
-            logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err);
-        }
-        if (remote.countConnectedWorkers()) return remote(options);
-        else if (!local.countConnectedWorkers()) throw err;
-        else return local(options).catch(e => {
-            throw err;
-        });
-    };
     var local = createQueue(localWorkers);
-    var remote = createQueue(createRemoteWorkers, onerror);
     return instance;
 }
 
@@ -180,118 +164,12 @@ function isLeaf(options) {
 }
 
 function createQueue(createWorkers, onerror) {
-    var queue = [];
-    var workers = [];
-    var stoppedWorkers = [];
-    var run = function(options) {
-        var loads = workers.map(load);
-        var min = _.min(loads);
-        var avail = _.reject(loads.map((load, idx) => load == min ? idx : null), _.isNull);
-        var idx = avail.length == 1 ? 0 : Math.floor(Math.random() * avail.length);
-        var worker = workers[avail[idx]];
+    return workerQueue(createWorkers, (worker, options) => {
         return worker.request('collect', options).catch(err => {
             if (!onerror) throw err;
             else return onerror(err, options, worker);
         });
-    };
-    var checking = false;
-    var check_queue = function() {
-        if (checking) return;
-        else checking = true;
-        try {
-            if (_.isEmpty(workers) && queue.length) {
-                registerWorkers(createWorkers(check_queue), workers, stoppedWorkers, check_queue);
-                if (_.isEmpty(workers)) throw Error("No workers available");
-            }
-            stoppedWorkers.forEach(worker => {
-                if (idle(worker)) {
-                    worker.disconnect();
-                }
-            });
-            var spare = workers.reduce((capacity, worker) => {
-                return capacity + Math.max((worker.count || 1) * (1 - load(worker)), 0);
-            }, 0);
-            queue.splice(0, spare).forEach(item => {
-                run(item.options).then(item.resolve, item.reject);
-            });
-            if (queue.length && spare) {
-                logger.trace("Queued", queue.length, "collect", _.first(queue).options.label || '\b',
-                    workers.map(w => (w.count || 1) * load(w)).join(' '));
-            }
-        } finally {
-            checking = false;
-        }
-    };
-    return _.extend(function(options) {
-        return new Promise((resolve, reject) => {
-            queue.push({options, resolve, reject});
-            check_queue();
-        });
-    },{
-        countConnectedWorkers() {
-            return workers.filter(worker => worker.connected).length;
-        },
-        getWorkers() {
-            if (_.isEmpty(workers)) {
-                registerWorkers(createWorkers(check_queue), workers, stoppedWorkers, check_queue);
-            }
-            return workers.slice(0);
-        },
-        stopWorker(worker) {
-            var idx = workers.indexOf(worker);
-            if (idx >= 0) workers.splice(idx, 1);
-            if (idle(worker)) {
-                worker.disconnect();
-            } else if (worker.connected) {
-                stoppedWorkers.push(worker);
-            }
-        },
-        reload() {
-            stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
-            check_queue();
-        },
-        close() {
-            queue.splice(0).forEach(item => {
-                item.reject(Error("Collect is closing"));
-            });
-            return Promise.all(_.flatten([
-                workers.map(child => child.disconnect()),
-                stoppedWorkers.map(child => child.disconnect())
-            ])).then(quote.close);
-        }
     });
-}
-
-function idle(worker) {
-    var stats = worker.stats.collect;
-    if (!stats || !stats.requests_sent) return true;
-    return stats.requests_sent == (stats.replies_rec || 0);
-}
-
-function load(worker) {
-    var stats = worker.stats.collect;
-    if (!stats || !stats.requests_sent) return 0;
-    var outstanding = stats.requests_sent - (stats.replies_rec || 0);
-    var subcollecting = (stats.requests_rec || 0) - (stats.replies_sent || 0);
-    return Math.max((outstanding - subcollecting) / (worker.count || 1), 0) || 0;
-}
-
-function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
-    workers.push.apply(workers, newWorkers);
-    newWorkers.forEach(worker => worker.on('message', check).handle('stop', function() {
-        var idx = workers.indexOf(this);
-        if (idx >= 0) workers.splice(idx, 1);
-        if (idle(this)) {
-            this.disconnect();
-        } else if (this.connected) {
-            stoppedWorkers.push(this);
-        }
-    }).once('disconnect', function() {
-        var idx = workers.indexOf(this);
-        if (idx >= 0) workers.splice(idx, 1);
-        var sidx = stoppedWorkers.indexOf(this);
-        if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
-    }));
 }
 
 function createLocalWorkers(program, quote, collect) {
@@ -301,28 +179,6 @@ function createLocalWorkers(program, quote, collect) {
           .handle('quote', payload => quote(payload))
           .handle('collect', payload => collect(payload));
     });
-}
-
-function createRemoteWorkers(check_queue) {
-    var remote_workers = _.flatten(_.compact(_.flatten([config('remote_workers')]))
-        .map(addr => addr.split(',')));
-    var remoteWorkers = remote_workers.map(address => {
-        return replyTo(remote(address))
-            .on('connect', function() {logger.log("Worker", this.process.pid, "is connected");})
-            .on('disconnect', function() {logger.log("Worker", this.process.pid, "has disconnected");})
-            .on('error', err => logger.warn(err.message || err));
-    });
-    Promise.all(remoteWorkers.map(worker => worker.request('worker_count').catch(err => err)))
-      .then(counts => {
-        var errors = counts.filter((count, i) => {
-            if (!isFinite(count)) return count;
-            else remoteWorkers[i].count = count;
-        });
-        if (errors.length) throw errors[0];
-    }).catch(err => logger.debug(err, err.stack)).then(() => {
-        if (_.some(remoteWorkers, worker => worker.count > 1)) check_queue();
-    });
-    return remoteWorkers;
 }
 
 function spawn() {

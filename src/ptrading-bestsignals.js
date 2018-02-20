@@ -92,8 +92,6 @@ if (require.main === module) {
         readCallSave(name, bestsignals, config('save'))
           .catch(err => logger.error(err, err.stack))
           .then(() => bestsignals.close());
-    } else if (process.send) {
-        spawn();
     } else {
         program.help();
     }

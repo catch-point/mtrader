@@ -38,6 +38,7 @@ const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const interrupt = require('./interrupt.js');
+const workerQueue = require('./worker-queue.js');
 const Quote = require('./quote.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
@@ -153,91 +154,23 @@ function createInstance(fetch, program) {
 }
 
 function createQueue(createWorkers) {
-    var queue = [];
-    var workers = [];
-    var stoppedWorkers = [];
     var check = interrupt(true);
-    var quote = function(options) {
-        var master = getMasterWorker(workers, options);
-        var slave = chooseSlaveWorker(workers, master, options);
+    var queue = workerQueue(createWorkers, (worker, options) => {
+        var master = getMasterWorker(queue.getWorkers(), options);
+        var slave = chooseSlaveWorker(queue.getWorkers(), master, options);
         var opts = slave == master ? options :
             _.extend({read_only: true}, options);
         return slave.request('quote', opts).catch(err => {
             if (!err || !err.message) throw err;
             else if (!~err.message.indexOf('read_only')) throw err;
             else if (!opts.read_only || _.has(options, 'read_only')) throw err;
-            else if (slave == getMasterWorker(workers, options)) throw err;
+            else if (slave == getMasterWorker(queue.getWorkers(), options)) throw err;
             else if (check()) throw err;
             logger.debug("Retrying", options.label || '\b', "using master node", master.process.pid);
-            return quote(_.extend({read_only: false}, options)); // retry using master
+            return queue(_.extend({read_only: false}, options)); // retry using master
         });
-    };
-    var check_queue = function() {
-        if (_.isEmpty(workers) && queue.length) {
-            registerWorkers(createWorkers(), workers, stoppedWorkers, check_queue);
-            if (_.isEmpty(workers)) throw Error("No workers available");
-        }
-        stoppedWorkers.forEach(worker => {
-            if (!load(worker)) {
-                worker.disconnect();
-            }
-        });
-        var spare = workers.length - workers.filter(load).length;
-        queue.splice(0, spare).forEach(item => {
-            quote(item.options).then(item.resolve, item.reject);
-        });
-    };
-    return _.extend(function(options) {
-        return new Promise((resolve, reject) => {
-            queue.push({options, resolve, reject});
-            check_queue();
-        });
-    }, {
-        getWorkers() {
-            if (_.isEmpty(workers)) {
-                registerWorkers(createWorkers(), workers, stoppedWorkers, check_queue);
-            }
-            return workers.slice(0);
-        },
-        reload() {
-            stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
-            check_queue();
-        },
-        close() {
-            queue.splice(0).forEach(item => {
-                item.reject(Error("Quote is closing"));
-            });
-            return Promise.all(_.flatten([
-                workers.map(child => child.disconnect()),
-                stoppedWorkers.map(child => child.disconnect())
-            ]));
-        }
     });
-}
-
-function load(worker) {
-    var stats = worker.stats.quote;
-    if (!stats || !stats.requests_sent) return 0;
-    else if (!stats.replies_rec) return stats.requests_sent;
-    else return stats.requests_sent - stats.replies_rec;
-}
-
-function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
-    workers.push.apply(workers, newWorkers);
-    workers.forEach(worker => worker.on('message', check).handle('stop', function() {
-        var idx = workers.indexOf(this);
-        if (idx >= 0) workers.splice(idx, 1);
-        stoppedWorkers.push(this);
-        if (!load(this)) {
-            this.disconnect();
-        }
-    }).once('disconnect', function() {
-        var idx = workers.indexOf(this);
-        if (idx >= 0) workers.splice(idx, 1);
-        var sidx = stoppedWorkers.indexOf(this);
-        if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
-        logger.trace("Worker", this.process.pid, "has disconnected");
-    }));
+    return queue;
 }
 
 function createWorkers(program, fetch) {
@@ -271,6 +204,13 @@ function chooseSlaveWorker(workers, master, options) {
     var light = _.min(loads);
     if (loads[workers.indexOf(master)] == light) return master; // master is available
     else return workers[loads.indexOf(light)]; // use available slave
+}
+
+function load(worker) {
+    var stats = worker.stats;
+    if (!stats || !stats.requests_sent) return 0;
+    else if (!stats.replies_rec) return stats.requests_sent;
+    else return stats.requests_sent - stats.replies_rec;
 }
 
 function hashCode(str){

@@ -95,8 +95,6 @@ if (require.main === module) {
         readCallSave(name, strategize, config('save'))
           .catch(err => logger.error(err, err.stack))
           .then(() => strategize.close());
-    } else if (process.send) {
-        spawn();
     } else {
         program.help();
     }

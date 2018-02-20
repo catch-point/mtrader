@@ -195,8 +195,7 @@ process.on('SIGINT', () => {
 });
 
 function inc(stats, cmd, opt) {
-    stats[cmd] = stats[cmd] || {};
-    return stats[cmd][opt] = (stats[cmd][opt] || 0) + 1;
+    return stats[opt] = (stats[opt] || 0) + 1;
 }
 
 function createQueue(onquit, pid) {
