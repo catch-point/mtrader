@@ -37,6 +37,7 @@ module.exports = function(createWorkers, execTask) {
     var workers = [];
     var stoppedWorkers = [];
     var run = function() {
+        if (closed) throw Error("Workers have closed");
         var loads = workers.map(load);
         var min = _.min(loads);
         var avail = _.reject(loads.map((load, idx) => load == min ? idx : null), _.isNull);
@@ -44,6 +45,7 @@ module.exports = function(createWorkers, execTask) {
         var worker = workers[avail[idx]];
         return execTask.apply(this, [worker].concat(_.toArray(arguments)));
     };
+    var closed = false;
     var checking = false;
     var check_queue = function() {
         if (checking) return;
@@ -106,6 +108,7 @@ module.exports = function(createWorkers, execTask) {
             check_queue();
         },
         close() {
+            closed = true;
             queue.splice(0).forEach(item => {
                 item.reject(Error("Workers are closing"));
             });

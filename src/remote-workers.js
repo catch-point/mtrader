@@ -37,45 +37,71 @@ const workerQueue = require('./worker-queue.js');
 const logger = require('./logger.js');
 const config = require('./ptrading-config.js');
 
-process.on('SIGHUP', () => module.exports.reload());
-process.on('SIGINT', () => module.exports.close());
-process.on('SIGTERM', () => module.exports.close());
+process.on('SIGHUP', () => instance && instance.reload());
+process.on('SIGINT', () => instance && instance.close());
+process.on('SIGTERM', () => instance && instance.close());
 
-var check = interrupt(true);
+var instance;
+var instanceCount = 0;
 
-module.exports = _.extend(workerQueue(createRemoteWorkers, (worker, cmd, options) => {
-    return worker.request(cmd, options).catch(err => {
-        if (check()) throw err;
-        if (worker.connected) {
-            remote.stopWorker(worker);
-            logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err);
-        }
-        if (module.exports.getWorkers().length) return module.exports(cmd, options);
-        else throw err;
-    });
-}), {
-    fetch(options) {
-        return module.exports('fetch', options);
-    },
-    quote(options) {
-        return module.exports('quote', options);
-    },
-    collect(options) {
-        return module.exports('collect', options);
-    },
-    optimize(options) {
-        return module.exports('optimize', options);
-    },
-    bestsignals(options) {
-        return module.exports('bestsignals', options);
-    },
-    strategize(options) {
-        return module.exports('strategize', options);
+module.exports = function() {
+    instanceCount++;
+    if (!instance) {
+        instance = createInstance();
+        var close = instance.close;
+        instance.close = function() {
+            if (instance == this && --instanceCount) return Promise.resolve(); // still in use
+            try {
+                return close.apply(this);
+            } finally {
+                if (instance == this) instance = null;
+            }
+        };
     }
-});
+    return instance;
+};
+
+function createInstance() {
+    var check = interrupt(true);
+    var queue = workerQueue(createRemoteWorkers, (worker, cmd, options) => {
+        return worker.request(cmd, options).catch(err => {
+            if (check()) throw err;
+            if (worker.connected) {
+                queue.stopWorker(worker);
+                logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err);
+            }
+            if (queue.getWorkers().length) return queue(cmd, options);
+            else throw err;
+        });
+    });
+    var reload = queue.reload;
+    return _.extend(queue, {
+        reload() {
+            check = interrupt(true);
+            return reload.apply(queue);
+        },
+        fetch(options) {
+            return queue('fetch', options);
+        },
+        quote(options) {
+            return queue('quote', options);
+        },
+        collect(options) {
+            return queue('collect', options);
+        },
+        optimize(options) {
+            return queue('optimize', options);
+        },
+        bestsignals(options) {
+            return queue('bestsignals', options);
+        },
+        strategize(options) {
+            return queue('strategize', options);
+        }
+    });
+}
 
 function createRemoteWorkers(check_queue) {
-    check = interrupt(true);
     var remote_workers = _.flatten(_.compact(_.flatten([config('remote_workers')]))
         .map(addr => addr.split(',')));
     var remoteWorkers = remote_workers.map(address => {

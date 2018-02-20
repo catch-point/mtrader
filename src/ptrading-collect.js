@@ -40,7 +40,7 @@ const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const replyTo = require('./promise-reply.js');
 const workerQueue = require('./worker-queue.js');
-const remote = require('./remote-workers.js');
+const Remote = require('./remote-workers.js');
 const config = require('./ptrading-config.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
@@ -130,22 +130,25 @@ function createInstance(program, quote) {
         });
     };
     instance.close = function() {
-        return local.close().then(direct.close).then(quote.close);
+        return remote.close().then(local.close, local.close).then(direct.close).then(quote.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = () => {
         local.reload();
+        remote.reload();
     };
     instance.reset = () => {
         try {
-            return local.close();
+            return Promise.all([local.close(), remote.close()]);
         } finally {
             local = createQueue(localWorkers);
+            remote = Remote();
         }
     };
     var direct = Collect(quote, instance);
     var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
     var local = createQueue(localWorkers);
+    var remote = Remote();
     return instance;
 }
 
