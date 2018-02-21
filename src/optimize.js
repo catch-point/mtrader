@@ -149,11 +149,6 @@ function optimize(collect, prng, options) {
             )
         }));
     }).then(results => {
-        return results.map(solution => _.defaults({
-            score: solution.score,
-            parameters: _.defaults({}, solution.parameters, options.parameters)
-        }));
-    }).then(results => {
         if (options.solution_count) return results;
         else return _.first(results);
     });
