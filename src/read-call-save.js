@@ -31,6 +31,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const Writable = require('stream').Writable;
 const _ = require('underscore');
 const merge = require('./merge.js');
 const logger = require('./logger.js');
@@ -50,7 +51,7 @@ module.exports = function(read, call, save) {
     var amend = save && config('amend');
     return !call ? Promise.resolve(inlineOptions) : call(inlineOptions)
       .then(result => amend ? mergeSignalSets(original, result) : result)
-      .then(result => save ? output(result, save) : result);
+      .then(result => arguments.length>2 ? output(result, save) : result);
 };
 
 function inlineCollections(collections, base, options, avoid) {
