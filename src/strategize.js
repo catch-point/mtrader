@@ -150,15 +150,15 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
         var cost = empty ? 0 : getReferences(strategy.expr).length * options.signal_cost;
         var msignals = merge(signals, {[strategy_var]:{score:latestScore, cost}});
         if (check()) return msignals;
-        else return Promise.all(contributions.concat(null).map((contrib, idx) => { // fork
-            return strategizeContribs(searchFn, started, msignals, strategy, contrib, idx, options, optimized, (signals, optimized) => {
-                if (check()) return signals; // interrupt
-                else if (Date.now() > termAt) return signals; // times up
-                else if (_.isEqual(signals, msignals)) return signals; // no change
-                else return self(_.clone(scores), signals, optimized); // keep going
-            });
-        })).then(signalset => { // join
-            return _.last(_.sortBy(signalset, signals => signals[strategy_var].score));
+        else return Promise.all(contributions.concat(null).map((contrib, idx) => {
+            return strategizeContribs(searchFn, started, msignals, strategy, contrib, idx, options, optimized, (signals, optimized) => ({signals, optimized}));
+        })).then(signalset => {
+            return _.last(_.sortBy(signalset, set => set.signals[strategy_var].score));
+        }).then(set => {
+            if (check()) return set.signals; // interrupt
+            else if (Date.now() > termAt) return set.signals; // times up
+            else if (_.isEqual(set.signals, msignals)) return set.signals; // no change
+            else return self(_.clone(scores), set.signals, set.optimized); // keep going
         });
     }));
 }
