@@ -61,7 +61,7 @@ module.exports = function(createWorkers, execTask) {
                 }
             });
             var spare = workers.reduce((capacity, worker) => {
-                return capacity + Math.max((worker.count || 1) * (1 - load(worker)), 0);
+                return capacity + Math.max(Math.ceil((worker.count || 1) * (1 - load(worker))), 0);
             }, 0);
             queue.splice(0, spare).forEach(item => {
                 run.apply(item.self, item.args).then(item.resolve, item.reject);
@@ -130,7 +130,7 @@ function load(worker) {
     var stats = worker.stats;
     if (!stats || !stats.requests_sent) return 0;
     var outstanding = stats.requests_sent - (stats.replies_rec || 0);
-    var subcollecting = (stats.requests_rec || 0) - (stats.replies_sent || 0);
+    var subcollecting = (stats.requests_rec || 0) > (stats.replies_sent || 0) ? 0.5 : 0;
     return Math.max((outstanding - subcollecting) / (worker.count || 1), 0) || 0;
 }
 
