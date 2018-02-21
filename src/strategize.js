@@ -151,14 +151,18 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
         var msignals = merge(signals, {[strategy_var]:{score:latestScore, cost}});
         if (check()) return msignals;
         else return Promise.all(contributions.concat(null).map((contrib, idx) => {
-            return strategizeContribs(searchFn, started, msignals, strategy, contrib, idx, options, optimized, (signals, optimized) => ({signals, optimized}));
+            return strategizeContribs(searchFn, msignals, strategy, contrib, idx, options, optimized);
         })).then(signalset => {
             return _.last(_.sortBy(signalset, set => set.signals[strategy_var].score));
         }).then(set => {
             if (check()) return set.signals; // interrupt
             else if (Date.now() > termAt) return set.signals; // times up
             else if (_.isEqual(set.signals, msignals)) return set.signals; // no change
-            else return self(_.clone(scores), set.signals, set.optimized); // keep going
+            var best = set.signals[strategy_var];
+            var new_expr = best.variables[strategy_var];
+            var elapse = moment.duration(Date.now() - started).humanize();
+            logger.log("Strategize", label, new_expr, "after", elapse, best.score);
+            return self(_.clone(scores), set.signals, set.optimized); // keep going
         });
     }));
 }
@@ -166,7 +170,7 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
 /**
  * Given a strategy leg contribution tries to find a better strategy for given leg index
  */
-function strategizeContribs(searchLeg, started, signals, strategy, contrib, idx, options, optimized, cb) {
+function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options, optimized) {
     var label = options.label || '\b';
     var signal_cost = options.signal_cost;
     var strategy_var = options.strategy_variable;
@@ -180,15 +184,13 @@ function strategizeContribs(searchLeg, started, signals, strategy, contrib, idx,
             score: latest.score - contrib,
             variables:{[strategy_var]: drop_expr}
         })});
-        var elapse = moment.duration(Date.now() - started).humanize();
-        logger.log("Strategize", label, drop_expr, "after", elapse, latest.score - contrib);
-        return cb(drop_signals, []);
+        return {signals: drop_signals, optimized: []};
     } else if (optimized[idx]) {
-        return cb(signals, optimized);
+        return {signals, optimized};
     } else if (idx >= strategy.legs.length && options.max_signals && options.max_signals <= used.length) {
         var next_optimized = optimized.slice(0);
         next_optimized[idx] = true; // cannot add more signal legs
-        return cb(signals, next_optimized);
+        return {signals, optimized: next_optimized};
     } else {
         // replace leg if strategy is empty, idx points to new leg,
         // leg is only one signal, or leg was already partially optimized
@@ -204,9 +206,7 @@ function strategizeContribs(searchLeg, started, signals, strategy, contrib, idx,
             var next_signals = better ? leg_signals : signals;
             var next_optimized = better ? [] : optimized.slice(0);
             next_optimized[idx] = scratch || strategy.legs.length == 1;
-            var elapse = better && moment.duration(Date.now() - started).humanize();
-            if (better) logger.log("Strategize", label, new_expr, "after", elapse, best.score);
-            return cb(next_signals, next_optimized);
+            return {signals: next_signals, optimized: next_optimized};
         });
     }
 }
@@ -234,11 +234,11 @@ function strategizeLeg(searchLeg, signals, strategy, idx, scratch, options) {
         opts.score = latest.score;
         opts.cost = getReferences(strategy.legs[idx].expr).length * options.signal_cost;
     }
-    return searchLeg(signals, opts).then(leg_signals => {
-        var best = leg_signals[leg_var];
+    return searchLeg(signals, opts).then(leg_signals => _.mapObject(leg_signals, (best, name) => {
+        if (signals[name] && name != leg_var) return best;
         var new_leg = best.variables[leg_var];
         var new_expr = spliceExpr(strategy.legs, idx, 1, new_leg).join(' OR ');
-        leg_signals[strategy_var] = _.defaults({
+        return _.defaults({
             cost: getReferences(new_expr).length * options.signal_cost,
             strategy_variable: strategy_var,
             max_signals: options.max_signals,
@@ -246,8 +246,9 @@ function strategizeLeg(searchLeg, signals, strategy, idx, scratch, options) {
                 [strategy_var]: new_expr
             }, _.omit(best.variables, leg_var))
         },  best);
-        return leg_signals;
-    });
+    })).then(leg_signals => _.defaults({
+        [strategy_var]: leg_signals[leg_var]
+    }, _.omit(leg_signals, leg_var)));
 }
 
 /**
