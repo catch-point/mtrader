@@ -181,12 +181,16 @@ var instances = [];
 process.on('SIGINT', () => {
     var error = Error('SIGINT');
     instances.forEach(queue => {
-        queue.onquit(error);
+        queue.abort(error);
     });
 }).on('SIGTERM', () => {
     var error = Error('SIGTERM');
     instances.forEach(queue => {
-        queue.onquit(error);
+        queue.abort(error);
+    });
+}).on('SIGHUP', () => {
+    instances.forEach(queue => {
+        queue.reload();
     });
 }).on('unhandledRejection', (reason, p) => {
     if (!reason || reason.message!='SIGINT' && reason.message!='SIGTERM' && reason.message!='Disconnecting') {
@@ -201,9 +205,7 @@ function inc(stats, cmd, opt) {
 function createQueue(onquit, pid) {
     var outstanding = {};
     var closed = false;
-    var queue = {onquit: onquit, outstanding: outstanding};
-    instances.push(queue);
-    return {
+    var queue = {
         add(id, pending) {
             if (closed) throw Error("Disconnected");
             outstanding[id] = _.extend({}, pending);
@@ -244,6 +246,14 @@ function createQueue(onquit, pid) {
         keys() {
             return _.keys(outstanding);
         },
+        abort(err) {
+            return onquit(err);
+        },
+        reload() {
+            _.filter(outstanding, 'logged').forEach(pending => {
+                logger.trace("Waiting on", pid, "for", label(pending), pending.payload);
+            });
+        },
         close() {
             closed = true;
             var idx = instances.indexOf(queue);
@@ -256,6 +266,8 @@ function createQueue(onquit, pid) {
             }
         }
     };
+    instances.push(queue);
+    return queue;
 }
 
 function label(pending) {

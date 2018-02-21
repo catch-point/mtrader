@@ -71,8 +71,6 @@ if (process.send) {
         if (msg.cmd == 'config' && msg.payload.loadFile) {
             if (_.isString(msg.payload.loadFile))
                 module.exports.load(msg.payload.loadFile);
-            else
-                process.emit('SIGHUP');
         } else if (msg.cmd == 'config' && msg.payload.unset) {
             module.exports.unset(msg.payload.name);
         } else if (msg.cmd == 'config') {
