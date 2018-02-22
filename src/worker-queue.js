@@ -94,6 +94,9 @@ module.exports = function(createWorkers, execTask) {
             }
             return workers.slice(0);
         },
+        getStoppedWorkers() {
+            return stoppedWorkers.slice(0);
+        },
         stopWorker(worker) {
             var idx = workers.indexOf(worker);
             if (idx >= 0) workers.splice(idx, 1);

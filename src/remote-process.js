@@ -98,14 +98,15 @@ var remote = module.exports = function(socket, label) {
             emitter.emit('error', err);
         }
     }).on('close', (code, reason) => {
+        emitter.connecting = false;
+        emitter.connected = false;
         try {
             if (buf) emitter.emit('message', JSON.parse(buf));
         } catch(err) {
             emitter.emit('error', err);
+        } finally {
+            emitter.emit('disconnect');
         }
-        emitter.connecting = false;
-        emitter.connected = false;
-        emitter.emit('disconnect');
     }).on('unexpected-response', (request, response) => {
         if (response.statusCode == 400) {
             emitter.emit('error', Error(`Version mismatch ${response.headers.server} with ${label}`));

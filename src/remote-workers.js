@@ -70,15 +70,22 @@ function createInstance() {
                 queue.stopWorker(worker);
                 logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err);
             }
-            if (queue.getWorkers().length) return queue(cmd, options);
-            else throw err;
+            var workers = queue.getWorkers();
+            if (!workers.length || workers.length < 2 && _.first(workers).pid == worker.pid) throw err;
+            else return queue(cmd, options);
         });
     });
     var reload = queue.reload;
     return _.extend(queue, {
         reload() {
             check = interrupt(true);
-            return reload.apply(queue);
+            try {
+                return reload.apply(queue);
+            } finally {
+                if (queue.getWorkers().length > 1) {
+                    queue.getStoppedWorkers().forEach(worker => worker.disconnect());
+                }
+            }
         },
         fetch(options) {
             return queue('fetch', options);
