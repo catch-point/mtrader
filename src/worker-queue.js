@@ -130,7 +130,7 @@ function load(worker) {
     var stats = worker.stats;
     if (!stats || !stats.requests_sent) return 0;
     var outstanding = stats.requests_sent - (stats.replies_rec || 0);
-    var subcollecting = (stats.requests_rec || 0) > (stats.replies_sent || 0) ? 0.5 : 0;
+    var subcollecting = (stats.requests_rec || 0) - (stats.replies_sent || 0);
     return Math.max((outstanding - subcollecting) / (worker.count || 1), 0) || 0;
 }
 
