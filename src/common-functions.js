@@ -359,33 +359,25 @@ var functions = module.exports.functions = {
     /* Less than or Equal to */
     NOT_GREATER_THAN(opts, lhs, rhs) {
         return context => {
-            var a = lhs(context);
-            var b = rhs(context);
-            return a <= b && a != null && b != null ? 1 : 0;
+            return lhs(context) <= rhs(context) ? 1 : 0;
         };
     },
     /* Greater than or Equal to */
     NOT_LESS_THAN(opts, lhs, rhs) {
         return context => {
-            var a = lhs(context);
-            var b = rhs(context);
-            return a >= b && a != null && b != null ? 1 : 0;
+            return lhs(context) >= rhs(context) ? 1 : 0;
         };
     },
     /* Less than */
     LESS_THAN(opts, lhs, rhs) {
         return context => {
-            var a = lhs(context);
-            var b = rhs(context);
-            return a < b && a != null && b != null ? 1 : 0;
+            return lhs(context) < rhs(context) ? 1 : 0;
         };
     },
     /* Greater than */
     GREATER_THAN(opts, lhs, rhs) {
         return context => {
-            var a = lhs(context);
-            var b = rhs(context);
-            return a > b && a != null && b != null ? 1 : 0;
+            return lhs(context) > rhs(context) ? 1 : 0;
         };
     },
     /* Not */
