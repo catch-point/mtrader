@@ -103,9 +103,7 @@ function createInstance(session) {
         }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
         stored = loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json'));
         loadedFrom = filename || loadedFrom || opt('load');
-        var default_config_dir = path.resolve(defaults.prefix, defaults.default_config_dir);
-        var config_dir = opt('config_dir') || stored.config_dir || defaults.config_dir || default_config_dir;
-        loaded = loadedFrom ? loadConfigFile(config.resolve(config_dir, loadedFrom)) : {};
+        loaded = loadedFrom ? loadConfigFile(config.resolve(loadedFrom)) : {};
         if (loadedFrom && _.isEmpty(loaded))
             console.error("Could not load anything from", loadedFrom);
         listeners.forEach(listener => listener(null, null, filename || true));
@@ -174,29 +172,28 @@ function createInstance(session) {
 
     config.save = function(name, cfg) {
         if (!name) throw Error("No name given");
-        var l = '.json'.length;
-        var filename = name.lastIndexOf('.json') != name.length - l ?
-            name + '.json' : name;
-        var file = config.resolve(filename);
+        var file = config.resolve(name);
         writeConfigFile(file, _.omit(cfg || session, _.isNull));
     };
 
     config.resolve = function(name) {
-        var paths = [config.configDirname()].concat(_.toArray(arguments));
-        var file = path.resolve.apply(path, paths);
+        var args = _.toArray(arguments);
+        var filename = _.last(args) + '.json';
+        var loc = path.resolve(config.configDirname(), filename);
         try {
-            fs.accessSync(file, fs.R_OK);
+            fs.accessSync(loc, fs.R_OK);
+            return loc;
         } catch(e) {
-            paths[paths.length-1] = paths[paths.length-1] + '.json';
-            var jsonFile = path.resolve.apply(path, paths);
-            try {
-                fs.accessSync(jsonFile, fs.R_OK);
-                return jsonFile;
-            } catch(e) {
-                // couldn't find it
-            }
+            // not a config name, maybe a file?
         }
-        return file;
+        try {
+            var file = path.resolve.apply(path, args);
+            fs.accessSync(file, fs.R_OK);
+            return file;
+        } catch(e) {
+            // couldn't find it
+        }
+        return args.length == 1 && !~args[0].lastIndexOf('.json') ? loc : file;
     };
 
     config.read = function(name) {

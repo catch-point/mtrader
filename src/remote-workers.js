@@ -65,14 +65,19 @@ function createInstance() {
     var check = interrupt(true);
     var queue = workerQueue(createRemoteWorkers, (worker, cmd, options) => {
         return worker.request(cmd, options).catch(err => {
-            if (check()) throw err;
+            if (check() || err.again) throw err;
             if (worker.connected) {
                 queue.stopWorker(worker);
                 logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err);
+            } else {
+                logger.debug("Worker failed to process ", options.label || '\b', worker.process.pid, err);
             }
             var workers = queue.getWorkers();
             if (!workers.length || workers.length < 2 && _.first(workers).pid == worker.pid) throw err;
-            else return queue(cmd, options);
+            else return queue(cmd, options).catch(err2 => {
+                err2.again = err;
+                throw err2;
+            });
         });
     });
     var reload = queue.reload;
