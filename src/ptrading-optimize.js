@@ -86,9 +86,9 @@ if (require.main === module) {
         var optimize = createInstance(program);
         process.on('SIGINT', () => optimize.close());
         process.on('SIGTERM', () => optimize.close());
-        var name = program.args.join(' ');
-        readCallSave(name, optimize, config('save'))
-          .catch(err => logger.error(err, err.stack))
+        Promise.all(program.args.map(name => {
+            return readCallSave(name, optimize, config('save'));
+        })).catch(err => logger.error(err, err.stack))
           .then(() => optimize.close());
     } else {
         program.help();

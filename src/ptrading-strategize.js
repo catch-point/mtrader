@@ -90,9 +90,9 @@ if (require.main === module) {
         var strategize = createInstance(program);
         process.on('SIGINT', () => strategize.close());
         process.on('SIGTERM', () => strategize.close());
-        var name = program.args.join(' ');
-        readCallSave(name, strategize, config('save'))
-          .catch(err => logger.error(err, err.stack))
+        Promise.all(program.args.map(name => {
+            return readCallSave(name, strategize, config('save'));
+        })).catch(err => logger.error(err, err.stack))
           .then(() => strategize.close());
     } else {
         program.help();

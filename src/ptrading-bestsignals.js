@@ -87,9 +87,9 @@ if (require.main === module) {
         var bestsignals = createInstance(program);
         process.on('SIGINT', () => bestsignals.close());
         process.on('SIGTERM', () => bestsignals.close());
-        var name = program.args.join(' ');
-        readCallSave(name, bestsignals, config('save'))
-          .catch(err => logger.error(err, err.stack))
+        Promise.all(program.args.map(name => {
+            return readCallSave(name, bestsignals, config('save'));
+        })).catch(err => logger.error(err, err.stack))
           .then(() => bestsignals.close());
     } else {
         program.help();

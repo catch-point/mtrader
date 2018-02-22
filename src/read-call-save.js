@@ -48,10 +48,10 @@ module.exports = function(read, call, save) {
     var inlineOriginal = inlineCollections(collections, dir, original, [read]);
     var options = mergeSignals(inlineOriginal, _.isString(read) ? read : '');
     var inlineOptions = inlineCollections(collections, '.', options, [read]);
-    var amend = save && config('amend');
+    var amend = arguments.length>2 && config('amend');
     return !call ? Promise.resolve(inlineOptions) : call(inlineOptions)
       .then(result => amend ? mergeSignalSets(original, result) : result)
-      .then(result => arguments.length>2 ? output(result, save) : result);
+      .then(result => arguments.length>2 ? output(result, save || amend && file) : result);
 };
 
 function inlineCollections(collections, base, options, avoid) {
