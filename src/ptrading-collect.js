@@ -133,10 +133,9 @@ function createInstance(program, quote) {
         return remote.close().then(local.close, local.close).then(direct.close).then(quote.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
-    instance.reload = () => {
+    instance.reload = _.debounce(() => {
         local.reload();
-        remote.reload();
-    };
+    }, 100);
     instance.reset = () => {
         try {
             return Promise.all([local.close(), remote.close()]);

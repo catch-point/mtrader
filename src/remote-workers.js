@@ -72,8 +72,8 @@ function createInstance() {
             } else {
                 logger.debug("Worker failed to process ", options.label || '\b', worker.process.pid, err);
             }
-            var workers = queue.getWorkers();
-            if (!workers.length || workers.length < 2 && _.first(workers).pid == worker.pid) throw err;
+            var addresses = getRemoteWorkerAddresses();
+            if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.pid) throw err;
             else return queue(cmd, options).catch(err2 => {
                 err2.again = err;
                 throw err2;
@@ -82,16 +82,16 @@ function createInstance() {
     });
     var reload = queue.reload;
     return _.extend(queue, {
-        reload() {
+        reload: _.debounce(function() {
             check = interrupt(true);
             try {
                 return reload.apply(queue);
             } finally {
-                if (queue.getWorkers().length > 1) {
+                if (getRemoteWorkerAddresses().length > 1) {
                     queue.getStoppedWorkers().forEach(worker => worker.disconnect());
                 }
             }
-        },
+        }, 100),
         fetch(options) {
             return queue('fetch', options);
         },
@@ -114,8 +114,7 @@ function createInstance() {
 }
 
 function createRemoteWorkers(check_queue) {
-    var remote_workers = _.flatten(_.compact(_.flatten([config('remote_workers')]))
-        .map(addr => addr.split(',')));
+    var remote_workers = getRemoteWorkerAddresses();
     var remoteWorkers = remote_workers.map(address => {
         return replyTo(remote(address))
             .on('connect', function() {logger.log("Worker", this.process.pid, "is connected");})
@@ -133,4 +132,9 @@ function createRemoteWorkers(check_queue) {
         if (_.some(remoteWorkers, worker => worker.count > 1)) check_queue();
     });
     return remoteWorkers;
+}
+
+function getRemoteWorkerAddresses() {
+    return _.flatten(_.compact(_.flatten([config('remote_workers')]))
+        .map(addr => addr.split(',')));
 }
