@@ -39,6 +39,7 @@ const commander = require('commander');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const replyTo = require('./promise-reply.js');
+const interrupt = require('./interrupt.js');
 const workerQueue = require('./worker-queue.js');
 const Remote = require('./remote-workers.js');
 const config = require('./ptrading-config.js');
@@ -88,8 +89,9 @@ function usage(command) {
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
+        var fetch = require('./ptrading-fetch.js');
         var quote = require('./ptrading-quote.js');
-        var collect = createInstance(program, quote);
+        var collect = createInstance(program, fetch, quote);
         process.on('SIGHUP', () => collect.reload());
         process.on('SIGINT', () => collect.close());
         process.on('SIGTERM', () => collect.close());
@@ -104,15 +106,16 @@ if (require.main === module) {
         program.help();
     }
 } else {
+    var fetch = require('./ptrading-fetch.js');
     var quote = require('./ptrading-quote.js');
     var prog = usage(new commander.Command());
-    module.exports = createInstance(prog, quote);
+    module.exports = createInstance(prog, fetch, quote);
     process.on('SIGHUP', () => module.exports.reload());
     process.on('SIGINT', () => module.exports.reset().then(_.noop, err => logger.warn("Collect reset", err)));
     process.on('SIGTERM', () => module.exports.close());
 }
 
-function createInstance(program, quote) {
+function createInstance(program, fetch, quote) {
     var promiseKeys;
     var instance = function(options) {
         if (!promiseKeys) {
@@ -130,7 +133,11 @@ function createInstance(program, quote) {
         });
     };
     instance.close = function() {
-        return remote.close().then(local.close, local.close).then(direct.close).then(quote.close);
+        return remote.close()
+          .then(local.close, local.close)
+          .then(direct.close)
+          .then(quote.close)
+          .then(fetch.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = _.debounce(() => {
@@ -145,7 +152,7 @@ function createInstance(program, quote) {
         }
     };
     var direct = Collect(quote, instance);
-    var localWorkers = createLocalWorkers.bind(this, program, quote, instance);
+    var localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance);
     var local = createQueue(localWorkers);
     var remote = Remote();
     return instance;
@@ -174,10 +181,11 @@ function createQueue(createWorkers, onerror) {
     });
 }
 
-function createLocalWorkers(program, quote, collect) {
+function createLocalWorkers(program, fetch, quote, collect) {
     var count = _.isFinite(config('workers')) ? config('workers') : WORKER_COUNT;
     return _.range(count).map(() => {
         return replyTo(config.fork(module.filename, program))
+          .handle('fetch', payload => fetch(payload))
           .handle('quote', payload => quote(payload))
           .handle('collect', payload => collect(payload));
     });
@@ -187,14 +195,38 @@ function spawn() {
     var parent = replyTo(process).handle('collect', payload => {
         return collect()(payload);
     });
-    var collect = _.once(() => Collect(function(options) {
-        return parent.request('quote', options);
-    }, function(options) {
-        return parent.request('collect', options);
-    }));
-    process.on('disconnect', () => collect().close());
-    process.on('SIGINT', () => collect().close());
-    process.on('SIGTERM', () => collect().close());
+    var quote = require('./quote.js')(callFetch.bind(this, parent));
+    var quoteFn = createSlaveQuote(quote, parent);
+    var collect = _.once(() => Collect(quoteFn, callCollect.bind(this, parent)));
+    process.on('disconnect', () => collect().close().then(quote.close));
+    process.on('SIGINT', () => collect().close().then(quote.close));
+    process.on('SIGTERM', () => collect().close().then(quote.close));
+}
+
+function createSlaveQuote(quote, parent) {
+    var check = interrupt(true);
+    return function(options) {
+        if (_.has(options, 'read_only') && !options.read_only)
+            return parent.request('quote', options); // write requested
+        if (!options.end || moment.tz(options.end, options.tz).valueOf() >= Date.now())
+            return parent.request('quote', options); // latest data requested
+        var opts = _.extend({read_only: true}, options);
+        return quote(opts).catch(err => {
+            if (!err || !err.message) throw err;
+            else if (!~err.message.indexOf('read_only')) throw err;
+            else if (check()) throw err;
+            logger.trace("Quoting", options.label || '\b', "from parent node", parent.process.pid);
+            return parent.request('quote', _.extend({read_only: false}, options)); // retry using master
+        });
+    };
+}
+
+function callFetch(parent, options) {
+    return parent.request('fetch', options);
+}
+
+function callCollect(parent, options) {
+    return parent.request('collect', options);
 }
 
 function shell(desc, collect, app) {
