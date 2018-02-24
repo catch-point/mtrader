@@ -110,6 +110,8 @@ var remote = module.exports = function(socket, label) {
     }).on('unexpected-response', (request, response) => {
         if (response.statusCode == 400) {
             emitter.emit('error', Error(`Version mismatch ${response.headers.server} with ${label}`));
+        } else if (response.statusCode == 401) {
+            emitter.emit('error', Error(`Wrong credentials ${label}`));
         } else {
             emitter.emit('error', Error("unexpected server response (" + response.statusCode + ")"));
         }

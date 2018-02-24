@@ -31,6 +31,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const interrupt = require('./interrupt.js');
 const config = require('./config.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
@@ -47,27 +48,45 @@ module.exports = function() {
             }, err => {});
         },
         help() {
-            return Fetch().then(fetch => fetch.request('fetch', {help: true}));
+            return fetch({help: true});
         },
         lookup(options) {
-            return Fetch().then(fetch => fetch.request('fetch', options));
+            return fetch(options);
         },
         fundamental(options) {
-            return Fetch().then(fetch => fetch.request('fetch', options));
+            return fetch(options);
         },
         interday(options) {
-            return Fetch().then(fetch => fetch.request('fetch', options));
+            return fetch(options);
         },
         intraday(options) {
-            return Fetch().then(fetch => fetch.request('fetch', options));
+            return fetch(options);
         }
     };
+
+    function fetch(options, interrupted, delayed) {
+        var check = interrupted || interrupt(true);
+        var delay = (delayed || 500) *2;
+        return Fetch().then(client => client.request('fetch', options).catch(err => {
+            if (check() || delay > 5000 || !err || !err.message || !~err.message.indexOf('connect'))
+                throw err;
+            // connection error wait and try again
+            client.connectionError = true;
+            return new Promise(cb => _.delay(cb, delay).then(() => {
+                if (check()) throw err;
+                else return fetch(options, check, delay).catch(e2 => {
+                    throw err;
+                });
+            }));
+        }));
+    }
 
     function Fetch() {
         return promiseFetch = promiseFetch.catch(err => {
             return {connected: false};
         }).then(fetch => {
-            if (fetch.connected) return fetch;
+            if (fetch.connectionError) fetch.disconnect();
+            else if (fetch.connected) return fetch;
             return replyTo(remote(config('fetch.remote.location')));
         });
     }
