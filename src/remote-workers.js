@@ -80,6 +80,9 @@ function createInstance() {
             });
         });
     });
+    var disconnectStoppedWorkers = _.debounce(() => {
+        return queue.getStoppedWorkers().forEach(worker => worker.disconnect());
+    }, 500);
     var reload = queue.reload;
     return _.extend(queue, {
         reload: _.debounce(function() {
@@ -87,8 +90,8 @@ function createInstance() {
             try {
                 return reload.apply(queue);
             } finally {
-                if (getRemoteWorkerAddresses().length > 1) {
-                    queue.getStoppedWorkers().forEach(worker => worker.disconnect());
+                if (getRemoteWorkerAddresses().length > 1 && queue.getStoppedWorkers().length) {
+                    disconnectStoppedWorkers();
                 }
             }
         }, 100),

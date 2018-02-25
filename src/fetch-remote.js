@@ -72,12 +72,12 @@ module.exports = function() {
                 throw err;
             // connection error wait and try again
             client.connectionError = true;
-            return new Promise(cb => _.delay(cb, delay).then(() => {
+            return new Promise(cb => _.delay(cb, delay)).then(() => {
                 if (check()) throw err;
                 else return fetch(options, check, delay).catch(e2 => {
                     throw err;
                 });
-            }));
+            });
         }));
     }
 
