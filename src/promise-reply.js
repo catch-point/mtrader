@@ -193,7 +193,7 @@ process.on('SIGINT', () => {
         queue.reload();
     });
 }).on('unhandledRejection', (reason, p) => {
-    if (!reason || reason.message!='SIGINT' && reason.message!='SIGTERM' && reason.message!='Disconnecting') {
+    if (!reason || reason.message!='SIGINT' && reason.message!='SIGTERM' && !~reason.message.indexOf('Disconnecting') && !~reason.message.indexOf("Workers have closed")) {
         logger.warn('Unhandled Rejection', reason && reason.message || reason || p, reason && reason.stack || '');
     }
 });

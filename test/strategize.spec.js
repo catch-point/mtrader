@@ -240,5 +240,55 @@ describe("strategize", function() {
             score: 34.095606
         });
     });
+    it("should reuse existing variable", function() {
+        return strategize({
+            portfolio: 'SPY.ARCA',
+            begin: '2016-10-01',
+            end: '2016-12-31',
+            strategy_variable: 'strategy',
+            max_signals: 1,
+            eval_score: 'profit',
+            columns: {
+                date: 'DATE(ending)',
+                change: 'close - PREV("close")',
+                close: 'day.adj_close',
+                profit: 'PREC("profit") + change * PREV("strategy")'
+            },
+            variables: {
+                sma_crossA: 'SIGN(SMA(fast_lenA,day.adj_close)-SMA(slow_lenA,day.adj_close))',
+                sma_crossB: 'SIGN(SMA(fast_lenB,day.adj_close)-SMA(slow_lenB,day.adj_close))'
+            },
+            parameters: {
+                fast_lenA: 50,
+                slow_lenA: 200,
+                fast_lenB: 25,
+                slow_lenB: 100
+            },
+            signalset: {
+                signals: ['sma_cross'],
+                variables: {
+                    sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))'
+                },
+                parameters: {
+                    fast_len: 50,
+                    slow_len: 200
+                },
+                parameter_values: {
+                    fast_len: [1,5,10,15,20,25,50],
+                    slow_len: [20,25,50,80,100,150,200]
+                },
+                eval_validity: 'fast_len < slow_len'
+            }
+        }).should.eventually.be.like({
+            variables: {
+                strategy: '-1*sma_crossB'
+            },
+            parameters: {
+                fast_lenB: 25,
+                slow_lenB: 100
+            },
+            score: 14.186871
+        });
+    });
 });
 

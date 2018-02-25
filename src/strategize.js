@@ -115,11 +115,22 @@ function help(bestsignals) {
 function strategize(bestsignals, prng, options) {
     var now = Date.now();
     var parser = createParser();
-    var signals = {[options.strategy_variable]: options};
     var termAt = options.termination && moment().add(moment.duration(options.termination)).valueOf();
-    return strategizeLegs(bestsignals, prng, parser, termAt, now, options, {}, signals, [])
-      .then(signals => combine(signals, options)).then(best => {
-        var strategy = best.variables[best.strategy_variable];
+    var strategize = strategizeLegs.bind(this, bestsignals, prng, parser, termAt, now);
+    var strategy_var = options.strategy_variable;
+    var complex = parser(options.variables[strategy_var] || '').legs.length > 1;
+    // if complex then scratch strategy to begin with
+    var initial = complex ? merge(options, {variables:{[strategy_var]: ''}}) : options;
+    return strategize(options, {}, {[strategy_var]: initial}, [])
+      .then(signals => combine(signals, options))
+      .then(best => {
+        if (!complex || best.variables[strategy_var] == options.variables[strategy_var]) return best;
+        // if complex then compare best (from scratch) to better (incremental from base)
+        else return strategize(options, {}, {[strategy_var]: options}, [])
+          .then(signals => combine(signals, options))
+          .then(better => best.score > better.score ? best : better);
+    }).then(best => {
+        var strategy = best.variables[strategy_var];
         logger.info("Strategize", options.label || '\b', strategy, best.score);
         return best;
     });
@@ -203,10 +214,12 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options,
             var new_expr = best.variables[strategy_var];
             var better = empty || best.score - best.cost > latest.score - latest.cost &&
                 (replacing || best.score >= latest.score + signal_cost || best.cost < latest.cost);
-            var next_signals = better ? leg_signals : signals;
-            var next_optimized = better ? [] : optimized.slice(0);
-            next_optimized[idx] = scratch || strategy.legs.length == 1;
-            return {signals: next_signals, optimized: next_optimized};
+            var next_optimized = optimized.slice(0);
+            next_optimized[idx] = scratch;
+            if (better) return {signals: leg_signals, optimized: next_optimized}; // improved
+            else if (next_optimized[idx]) return {signals, optimized: next_optimized}; // already optimized
+            // could not improve existing strategy leg, try replacing it from scratch
+            return strategizeContribs(searchLeg, signals, strategy, contrib, idx, options, next_optimized);
         });
     }
 }
@@ -290,7 +303,7 @@ function search(bestsignal, moreStrategies, terminateAt, next, signals, options,
             else // stop after too many attempts to find something new
                 return Promise.resolve(signals);
         } else {
-            var formatted = formatSolution(solution, latest, signals, '_');
+            var formatted = formatSolution(solution, latest, '_');
             var improved = merge(latest, formatted);
             var next_signals = _.defaults({
                 [formatted.solution_variable]: solution,
@@ -544,7 +557,45 @@ function combine(signals, options) {
 /**
  * Renames solution results to avoid variables already in options
  */
-function formatSolution(solution, options, signals, suffix) {
+function formatSolution(solution, options, suffix) {
+    var parser = createReplacer({});
+    var signal = solution.variables[solution.signal_variable];
+    var existing = _.keys(options.variables)
+        .filter(name => name.indexOf(signal) === 0)
+        .map(name => name.substring(signal.length));
+    var formatted = existing.reduce((already, id) => {
+        if (already) return already;
+        var formatted = formatSolutionWithId(solution, options, id);
+        if (signalConflicts(parser, formatted, options)) return null;
+        else return formatted;
+    }, null);
+    if (formatted) return formatted; // reuse existing signal
+    for (var id_num=10; id_num < 100; id_num++) {
+        var id = (suffix || '') + id_num.toString(36).toUpperCase();
+        if (!~existing.indexOf(id)) {
+            var formatted = formatSolutionWithId(solution, options, id);
+            if (!signalConflicts(parser, formatted, options)) return formatted;
+        }
+    }
+    throw Error(`Could not determine reasonable signal name for ${signal}`);
+}
+
+/**
+ * Checks if the solutions have conflicting variable/parameter names
+ */
+function signalConflicts(parser, s1, s2) {
+    var params = _.intersection(_.keys(s1.parameters), _.keys(s2.parameters));
+    var vars = _.intersection(_.keys(s1.variables), _.keys(s2.variables));
+    var varnames = _.without(vars, s1.strategy_variable);
+    var cmp = (a, b) => name => a[name] != b[name] && parser(a[name]) != parser(b[name]);
+    return params.find(cmp(s1.parameters, s2.parameters)) ||
+        varnames.find(cmp(s1.variables, s2.variables));
+}
+
+/**
+ * Renames solution result variables to has the given id as a suffix
+ */
+function formatSolutionWithId(solution, options, id) {
     var signal = solution.signal_variable;
     var fixed = _.extend({}, options.parameters, options.variables);
     var values = _.extend({}, solution.variables, solution.parameters);
@@ -553,20 +604,10 @@ function formatSolution(solution, options, signals, suffix) {
             conflicts.push(name);
         return conflicts;
     }, _.keys(solution.parameters));
-    var reuse = _.findKey(_.mapObject(_.pick(signals, item => {
-        return item.variables[item.signal_variable] == solution.variables[signal];
-    }), item => _.pick(item, 'parameters', 'signalset')), _.isEqual.bind(_, _.pick(solution, 'parameters', 'signalset')));
     var references = getReferences(values);
     var local = [signal].concat(references[signal]);
     var overlap = references[signal].filter(name => ~conflicts.indexOf(name) ||
         _.intersection(conflicts, references[name]).length);
-    var id_num = reuse && reuse.indexOf(solution.variables[signal] + (suffix || '')) === 0 ?
-            reuse.substring((solution.variables[signal] + (suffix || '')).length) :
-            overlap.reduce((id_num, name) => {
-        while (_.has(fixed, name + (suffix || '') + id_num.toString(36).toUpperCase())) id_num++;
-        return id_num;
-    }, 10);
-    var id = _.isEmpty(overlap) ? '' : (suffix || '') + id_num.toString(36).toUpperCase();
     var replacement = _.object(overlap, overlap.map(name => name + id));
     var replacer = createReplacer(replacement);
     var rename = (object, value, name) => _.extend(object, {[replacement[name] || name]: value});
@@ -575,15 +616,16 @@ function formatSolution(solution, options, signals, suffix) {
     }});
     var strategy = parser.parse(solution.variables[solution.strategy_variable]);
     var eval_validity = replacer(_.compact(_.flatten([solution.eval_validity])));
+    var variables = _.omit(_.pick(solution.variables, local), signal, options.leg_variable)
     return _.omit({
         score: solution.score,
         cost: solution.cost,
         signal_variable: signal,
-        solution_variable: replacement[solution.variables[signal]],
+        solution_variable: replacement[solution.variables[signal]] || solution.variables[signal],
         strategy_variable: solution.strategy_variable,
-        variables: replacer(_.defaults({
+        variables: replacer(_.extend(variables, {
             [solution.strategy_variable]: strategy
-        }, _.omit(_.pick(solution.variables, local), signal, options.leg_variable))),
+        })),
         parameters: _.reduce(_.pick(solution.parameters, local), rename, {}),
         pad_leading: !options.pad_leading || solution.pad_leading > options.pad_leading ?
             solution.pad_leading : undefined,
@@ -647,7 +689,7 @@ function createReplacer(replacement) {
     });
     return function(expr) {
         var parsed = parser.parse(replacer.parse(expr));
-        if (_.isArray(expr)) return parsed;
+        if (_.isArray(expr) || _.isString(expr)) return parsed;
         return _.object(_.keys(parsed).map(map), _.values(parsed));
     };
 }
