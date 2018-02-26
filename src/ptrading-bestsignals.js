@@ -72,8 +72,6 @@ function usage(command) {
         .option('--eval-score <expression>', "Expression that determines the score for a sample")
         .option('--solution-count <number>', "Number of solutions to include in result")
         .option('-o, --offline', "Disable data updates")
-        .option('--workers <numOfWorkers>', 'Number of workers to spawn')
-        .option('--remote-workers <host:port,..>', "List of host:port addresses to connect to")
         .option('--solution-count <number>', "Number of solutions to include in result")
         .option('--termination <Duration>', "Amount of time spent searching for a solution before the best yet is used")
         .option('--signalset <identifier,..>', "Comma separated signal set names")

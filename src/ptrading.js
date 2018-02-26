@@ -69,8 +69,6 @@ var program = require('commander').version(require('../package.json').version)
     .option('--cache-dir <dirname>', "Directory where processed data is kept")
     .option('--load <filename>', "Read the given session settings")
     .option('-o, --offline', "Disable data updates")
-    .option('--workers <numOfWorkers>', 'Number of workers to spawn')
-    .option('--remote-workers <host:port,..>', "List of host:port addresses to connect to")
     .option('--set <name=value>', "Name=Value pairs to be used in session")
     .option('--listen [address:port]', "Interface and TCP port to listen for jobs")
     .option('--stop', "Signals all remote workers to stop and shutdown");

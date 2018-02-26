@@ -124,11 +124,13 @@ function createRemoteWorkers(check_queue) {
             .on('disconnect', function() {logger.log("Worker", this.process.pid, "has disconnected");})
             .on('error', err => logger.warn(err.message || err));
     });
+    var nice = config('nice');
     Promise.all(remoteWorkers.map(worker => worker.request('worker_count').catch(err => err)))
       .then(counts => {
         var errors = counts.filter((count, i) => {
             if (!isFinite(count)) return count;
-            else remoteWorkers[i].count = count;
+            else if (!nice || !_.isFinite(nice)) remoteWorkers[i].count = count;
+            else remoteWorkers[i].count = Math.ceil(count * (1 - nice/100));
         });
         if (errors.length) throw errors[0];
     }).catch(err => logger.debug(err, err.stack)).then(() => {

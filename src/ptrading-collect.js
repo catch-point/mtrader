@@ -77,8 +77,6 @@ function usage(command) {
         .option('--head <number>', "Limits the rows in the result to the given first few")
         .option('--tail <number>', "Include the given last few rows in the result")
         .option('-o, --offline', "Disable data updates")
-        .option('--workers <numOfWorkers>', "Number of workers to spawn")
-        .option('--remote-workers <host:port,..>', "List of host:port addresses to connect to")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
