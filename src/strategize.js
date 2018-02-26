@@ -125,6 +125,7 @@ function strategize(bestsignals, prng, options) {
       .then(better => {
         if (better.variables[strategy_var] != options.variables[strategy_var]) return better;
         else if (strategy.legs.length <= 1) return better;
+        else if (!restartSearch(prng, getReferences(options.variables[strategy_var]).length)) return better;
         // if complex then try creating strategy from scratch
         var initial = merge(options, {variables:{[strategy_var]: ''}});
         return strategize(options, {}, {[strategy_var]: initial}, [])
@@ -173,6 +174,12 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
             if (check()) return set.signals; // interrupt
             else if (Date.now() > termAt) return set.signals; // times up
             else if (_.every(set.optimized)) return set.signals; // every leg has been optimized
+            if (_.isEqual(set.signals, msignals)) {
+                var complexity = strategy.legs.map((leg, i) => {
+                    return set.optimized[i] ? 0 : getReferences(leg.expr).length;
+                }).reduce((a,b)=>a+b,0);
+                if (!restartSearch(prng, complexity)) return set.signals;
+            }
             var best = set.signals[strategy_var];
             var new_expr = best.variables[strategy_var];
             var elapse = moment.duration(Date.now() - started).humanize();
@@ -280,14 +287,14 @@ function searchLeg(bestsignals, prng, parser, terminateAt, signals, latest) {
     var empty = !strategy || strategy == latest.signal_variable;
     var leg_signals = _.extend({}, signals, {[strategy_var]: latest});
     var next = search.bind(this, bestsignalFn, moreStrategiesFn, terminateAt);
-    return next(next, leg_signals, latest, 0);
+    return next(next, leg_signals, latest);
 }
 
 /**
  * Recursively tests solutions to improve the score
  * @return the best solution found
  */
-function search(bestsignal, moreStrategies, terminateAt, next, signals, options, attempts) {
+function search(bestsignal, moreStrategies, terminateAt, next, signals, options) {
     if (Date.now() > terminateAt) return signals; // times up
     var check = interrupt(true);
     var strategy_var = options.strategy_variable;
@@ -298,12 +305,7 @@ function search(bestsignal, moreStrategies, terminateAt, next, signals, options,
       .then(solution => {
         if (!solution || solution.revisited || latest.variables[strategy_var] && _.has(latest, 'score') &&
                 solution.score - solution.cost <= latest.score - latest.cost) {
-            if (solution && !solution.revisited) // keep going
-                return next(next, signals, options, 0);
-            if (attempts < 100)
-                return next(next, signals, options, ++attempts);
-            else // stop after too many attempts to find something new
-                return Promise.resolve(signals);
+            return Promise.resolve(signals);
         } else {
             var formatted = formatSolution(solution, latest, '_');
             var improved = merge(latest, formatted);
@@ -313,7 +315,7 @@ function search(bestsignal, moreStrategies, terminateAt, next, signals, options,
             }, signals);
             var strategy = improved.variables[strategy_var];
             logger.log("Strategize", options.label || '\b', "leg", strategy, solution.score);
-            return next(next, next_signals, options, 0);
+            return next(next, next_signals, options);
         }
     });
 }
@@ -465,21 +467,35 @@ function createParser() {
 }
 
 /**
+ * Exponentially less likely to return true as complexity increases
+ */
+function restartSearch(prng, complexity) {
+    return choose(prng, complexity) == complexity;
+}
+
+/**
  * Randomly returns an index from the given an array of contribution amounts
  */
-function chooseContribution(prng, contributions, nomore) {
-    var t = 1.5;
-    if (!contributions.length) return 1;
+function chooseContribution(prng, contributions) {
     var items = contributions.map((contrib, i) => ({
         p: i,
         contrib: contrib
     }));
     var byContrib = _.sortBy(items, 'contrib');
-    byContrib.forEach((it, i) => it.w = Math.pow(i + 1, -t));
-    var weights = _.sortBy(byContrib, 'p').map(it => it.w);
-    if (!nomore) {
-        weights.push(Math.pow(weights.length +2, -t));
-    }
+    var idx = choose(prng, byContrib.length);
+    if (byContrib[idx]) return byContrib[idx].p;
+    else return idx;
+}
+
+/**
+ * Randomly returns a number between 0 and max (inclusive).
+ * The distribution is exponentially weighted to 0
+ */
+function choose(prng, max) {
+    var t = 1.5;
+    if (max < 1) return 0;
+    var weights = _.range(max).map(i => Math.pow(i + 1, -t));
+    weights.push(Math.pow(weights.length +2, -t));
     var target = prng() * weights.reduce((a,b) => a + b);
     for (var i=0; i<weights.length; i++) {
         if (target < weights[i]) return i;
