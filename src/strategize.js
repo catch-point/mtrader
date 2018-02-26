@@ -118,17 +118,18 @@ function strategize(bestsignals, prng, options) {
     var termAt = options.termination && moment().add(moment.duration(options.termination)).valueOf();
     var strategize = strategizeLegs.bind(this, bestsignals, prng, parser, termAt, now);
     var strategy_var = options.strategy_variable;
-    var complex = parser(options.variables[strategy_var] || '').legs.length > 1;
-    // if complex then scratch strategy to begin with
-    var initial = complex ? merge(options, {variables:{[strategy_var]: ''}}) : options;
-    return strategize(options, {}, {[strategy_var]: initial}, [])
+    var strategy = parser(options.variables[strategy_var] || '');
+    var optimized = new Array(strategy.legs.length+1);
+    return strategize(options, {}, {[strategy_var]: options}, optimized)
       .then(signals => combine(signals, options))
-      .then(best => {
-        if (!complex || best.variables[strategy_var] == options.variables[strategy_var]) return best;
-        // if complex then compare best (from scratch) to better (incremental from base)
-        else return strategize(options, {}, {[strategy_var]: options}, [])
+      .then(better => {
+        if (better.variables[strategy_var] != options.variables[strategy_var]) return better;
+        else if (strategy.legs.length <= 1) return better;
+        // if complex then try creating strategy from scratch
+        var initial = merge(options, {variables:{[strategy_var]: ''}});
+        return strategize(options, {}, {[strategy_var]: initial}, [])
           .then(signals => combine(signals, options))
-          .then(better => best.score > better.score ? best : better);
+          .then(best => best.score > better.score ? best : better);
     }).then(best => {
         var strategy = best.variables[strategy_var];
         logger.info("Strategize", options.label || '\b', strategy, best.score);
@@ -164,11 +165,14 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
         else return Promise.all(contributions.concat(null).map((contrib, idx) => {
             return strategizeContribs(searchFn, msignals, strategy, contrib, idx, options, optimized);
         })).then(signalset => {
-            return _.last(_.sortBy(signalset, set => set.signals[strategy_var].score));
+            var different = signalset.filter(set => !_.isEqual(set.signals, msignals));
+            var set = _.last(_.sortBy(different, set => set.signals[strategy_var].score));
+            if (set) return set;
+            return {signals: msignals, optimized: signalset.map((set, i) => set.optimized[i])};
         }).then(set => {
             if (check()) return set.signals; // interrupt
             else if (Date.now() > termAt) return set.signals; // times up
-            else if (_.isEqual(set.signals, msignals)) return set.signals; // no change
+            else if (_.every(set.optimized)) return set.signals; // every leg has been optimized
             var best = set.signals[strategy_var];
             var new_expr = best.variables[strategy_var];
             var elapse = moment.duration(Date.now() - started).humanize();
@@ -195,7 +199,7 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options,
             score: latest.score - contrib,
             variables:{[strategy_var]: drop_expr}
         })});
-        return {signals: drop_signals, optimized: []};
+        return {signals: drop_signals, optimized: new Array(strategy.legs.length)};
     } else if (optimized[idx]) {
         return {signals, optimized};
     } else if (idx >= strategy.legs.length && options.max_signals && options.max_signals <= used.length) {
@@ -214,12 +218,10 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options,
             var new_expr = best.variables[strategy_var];
             var better = empty || best.score - best.cost > latest.score - latest.cost &&
                 (replacing || best.score >= latest.score + signal_cost || best.cost < latest.cost);
-            var next_optimized = optimized.slice(0);
+            var next_signals = better ? leg_signals : signals;
+            var next_optimized = better ? new Array(Math.max(idx+2, optimized.length)) : optimized.slice(0);
             next_optimized[idx] = scratch;
-            if (better) return {signals: leg_signals, optimized: next_optimized}; // improved
-            else if (next_optimized[idx]) return {signals, optimized: next_optimized}; // already optimized
-            // could not improve existing strategy leg, try replacing it from scratch
-            return strategizeContribs(searchLeg, signals, strategy, contrib, idx, options, next_optimized);
+            return {signals: next_signals, optimized: next_optimized};
         });
     }
 }
