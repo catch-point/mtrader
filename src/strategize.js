@@ -118,19 +118,21 @@ function strategize(bestsignals, prng, options) {
     var termAt = options.termination && moment().add(moment.duration(options.termination)).valueOf();
     var strategize = strategizeLegs.bind(this, bestsignals, prng, parser, termAt, now);
     var strategy_var = options.strategy_variable;
-    var strategy = parser(options.variables[strategy_var] || '');
+    var expr = options.variables[strategy_var] || '';
+    var strategy = parser(expr);
+    var initialScores = {};
     var optimized = new Array(strategy.legs.length+1);
-    return strategize(options, {}, {[strategy_var]: options}, optimized)
-      .then(signals => combine(signals, options))
-      .then(better => {
-        if (better.variables[strategy_var] != options.variables[strategy_var]) return better;
-        else if (strategy.legs.length <= 1) return better;
-        else if (!restartSearch(prng, getReferences(options.variables[strategy_var]).length)) return better;
-        // if complex then try creating strategy from scratch
-        var initial = merge(options, {variables:{[strategy_var]: ''}});
-        return strategize(options, {}, {[strategy_var]: initial}, [])
-          .then(signals => combine(signals, options))
-          .then(best => best.score > better.score ? best : better);
+    // if complex then also try creating strategy from scratch at the same time
+    var initial = merge(options, {variables:{[strategy_var]: ''}});
+    var searchScratch = strategy.legs.length > 1 && restartSearch(prng, getReferences(expr).length);
+    var fromBase = strategize(options, initialScores, {[strategy_var]: options}, optimized);
+    var fromScratch = searchScratch && strategize(options, initialScores, {[strategy_var]: initial}, [null]);
+    return Promise.all(_.compact([fromBase, fromScratch]))
+      .then(array => array.map(signals => combine(signals, options)))
+      .then(pair => {
+        if (pair.length == 1) return pair[0];
+        if (pair[0].score - pair[0].cost > pair[1].score - pair[1].cost - options.signal_cost) return pair[0];
+        else return pair[1]; // fromScratch has a noticeable improvement
     }).then(best => {
         var strategy = best.variables[strategy_var];
         logger.info("Strategize", options.label || '\b', strategy, best.score);
