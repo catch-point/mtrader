@@ -315,7 +315,7 @@ function fitness(collect, options, pnames) {
         return collect(opts)
           .then(_.last).then(_.property(score_column)).then(score => {
             return _.extend(candidate, {
-                score: score
+                score: score || 0
             });
         });
     };
