@@ -59,7 +59,8 @@ module.exports = function(bestsignals) {
                 strategy_variable: 'strategy',
                 leg_variable: chooseVariable('leg', options),
                 signal_variable: chooseVariable('signal', options),
-                signal_cost: 0
+                signal_cost: 0,
+                cost_of_change: 0
             });
             return strategize(bestsignals, prng, opts);
         });
@@ -92,6 +93,10 @@ function help(bestsignals) {
                     usage: '<number>',
                     description: "Minimum amount the score must increase by before adding another signal"
                 },
+                cost_of_change: {
+                    usage: '<number>',
+                    description: "Minimum amount the score must increase by to replacing an existing strategy"
+                },
                 max_signals: {
                     usage: '<number>',
                     description: "Maximum amount of signals to add to strategy"
@@ -122,17 +127,18 @@ function strategize(bestsignals, prng, options) {
     var strategy = parser(expr);
     var initialScores = {};
     var optimized = new Array(strategy.legs.length+1);
-    // if complex then also try creating strategy from scratch at the same time
-    var initial = merge(options, {variables:{[strategy_var]: ''}});
-    var searchScratch = strategy.legs.length > 1 && restartSearch(prng, getReferences(expr).length);
-    var fromBase = strategize(options, initialScores, {[strategy_var]: options}, optimized);
-    var fromScratch = searchScratch && strategize(options, initialScores, {[strategy_var]: initial}, [null]);
-    return Promise.all(_.compact([fromBase, fromScratch]))
-      .then(array => array.map(signals => combine(signals, options)))
-      .then(pair => {
-        if (pair.length == 1) return pair[0];
-        if (pair[0].score - pair[0].cost > pair[1].score - pair[1].cost - options.signal_cost) return pair[0];
-        else return pair[1]; // fromScratch has a noticeable improvement
+    return strategize(options, initialScores, {[strategy_var]: options}, optimized)
+      .then(signals => combine(signals, options))
+      .then(better => {
+        if (better.variables[strategy_var] != options.variables[strategy_var]) return better;
+        else if (strategy.legs.length <= 1) return better;
+        else if (!restartSearch(prng, getReferences(expr).length)) return better;
+        // if complex then try creating strategy from scratch
+        var change = options.cost_of_change;
+        var initial = merge(options, {variables:{[strategy_var]: ''}});
+        return strategize(options, initialScores, {[strategy_var]: initial}, [null])
+          .then(signals => combine(signals, options))
+          .then(best => best.score - change > better.score ? best : better);
     }).then(best => {
         var strategy = best.variables[strategy_var];
         logger.info("Strategize", options.label || '\b', strategy, best.score);
@@ -187,6 +193,11 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
             var elapse = moment.duration(Date.now() - started).humanize();
             logger.log("Strategize", label, new_expr, "after", elapse, best.score);
             return self(_.clone(scores), set.signals, set.optimized); // keep going
+        }).then(signals => {
+            var best = signals[strategy_var];
+            if (empty) return signals;
+            else if (latestScore < best.score - options.cost_of_change) return signals;
+            else return msignals; // best was not significantly better
         });
     }));
 }
