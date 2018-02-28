@@ -344,7 +344,12 @@ describe("optimize", function() {
             begin: '2013-01-01',
             end: '2016-12-31',
             sample_duration: 'P1Y',
-            eval_score: '(gain + SUMPREC("gain", 5))/(pain + SUMPREC("pain", 5))',
+            tail: 1,
+            eval_score: 'SUMTOTAL(annual)/SUMTOTAL(pain)',
+            eval_variables: {
+                days: 'DAYS(date, began)',
+                annual: 'gain*364/days'
+            },
             reset_every: 'P1Y',
             columns: {
                 date: 'DATE(ending)',
@@ -352,7 +357,8 @@ describe("optimize", function() {
                 close: 'day.adj_close',
                 proceeds: 'IF(ending > BEGIN(), change * PREV("signal"))',
                 gain: 'PREC("gain") + proceeds',
-                pain: 'drawdown'
+                pain: 'drawdown',
+                began: 'BEGIN()'
             },
             variables: {
                 peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
@@ -372,10 +378,10 @@ describe("optimize", function() {
             },
             pad_leading: 100
         }).should.eventually.be.like({
-            score: 1.873,
+            score: 1.68,
             parameters: {
                 len: 10,
-                multiplier: 1
+                multiplier: 2
             }
         });
     });

@@ -103,6 +103,12 @@ function help(collect) {
                     usage: '<expression>',
                     description: "Expression (or array) that invalidates candidates by returning 0 or null"
                 },
+                eval_variables: {
+                    type: 'map',
+                    usage: '<expression>',
+                    description: "Variable used to help compute the eval_score. The expression can be any combination of field, constants, and function calls connected by an operator or operators.",
+                    seeAlso: ['expression', 'common-functions', 'lookback-functions', 'indicator-functions', 'rolling-functions']
+                },
                 eval_score: {
                     usage: '<expression>',
                     description: "Expression that determines the score for a sample"
@@ -310,6 +316,7 @@ function fitness(collect, options, pnames) {
             label: label,
             portfolio: [_.pick(options, picked)],
             columns: {[score_column]: options.eval_score},
+            variables: options.eval_variables,
             parameters: parameters
         }, _.omit(options, picked));
         return collect(opts)
