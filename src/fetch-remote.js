@@ -35,7 +35,6 @@ const interrupt = require('./interrupt.js');
 const config = require('./config.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
-const cache = require('./cache.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 

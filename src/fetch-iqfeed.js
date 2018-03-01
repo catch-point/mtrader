@@ -32,6 +32,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const config = require('./config.js');
+const cache = require('./cache.js');
 const iqfeed = require('./iqfeed-client.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
@@ -130,12 +131,18 @@ module.exports = function() {
         config('fetch.iqfeed.productId'),
         config('version')
     );
+    var lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_market) => {
+        return symbol + ' ' + listed_market;
+    }, 100);
     return {
         open() {
             return iqclient.open();
         },
         close() {
-            return iqclient.close();
+            return Promise.all([
+                lookupCached.close(),
+                iqclient.close()
+            ]);
         },
         help() {
             return Promise.resolve(helpInfo);
@@ -146,32 +153,7 @@ module.exports = function() {
                 exch => exch.datasources.iqfeed
             ), val => val);
             if (_.isEmpty(exchs)) return Promise.resolve([]);
-            return iqclient.lookup(symbol(options), options.listed_market).then(rows => rows.map(row => {
-                var sym = row.symbol;
-                var sources = _.pick(exchs, ds => {
-                    if (ds.listed_market != row.listed_market) return false;
-                    var prefix = ds && ds.dtnPrefix || '';
-                    var suffix = ds && ds.dtnSuffix || '';
-                    var startsWith = !prefix || sym.indexOf(prefix) === 0;
-                    var endsWith = !suffix || sym.indexOf(suffix) == sym.length - suffix.length;
-                    return startsWith && endsWith;
-                });
-                var ds = _.find(sources);
-                var prefix = ds && ds.dtnPrefix || '';
-                var suffix = ds && ds.dtnSuffix || '';
-                var startsWith = prefix && sym.indexOf(prefix) === 0;
-                var endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
-                var symbol = startsWith && endsWith ?
-                    sym.substring(prefix.length, sym.length - prefix.length - suffix.length) :
-                    startsWith ? sym.substring(prefix.length) :
-                    endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
-                return {
-                    symbol: symbol,
-                    iqfeed_symbol: row.symbol,
-                    exchange: _.first(_.keys(sources)),
-                    name: row.name
-                };
-            })).then(rows => rows.filter(row => row.exchange));
+            else return lookupCached(exchs, symbol(options), options.listed_market);
         },
         fundamental(options) {
             expect(options).to.be.like({
@@ -252,6 +234,35 @@ function iqfeed_symbol(exchanges, options) {
         });
         return options.symbol;
     }
+}
+
+function lookup(iqclient, exchs, symbol, listed_market) {
+    return iqclient.lookup(symbol, listed_market).then(rows => rows.map(row => {
+        var sym = row.symbol;
+        var sources = _.pick(exchs, ds => {
+            if (ds.listed_market != row.listed_market) return false;
+            var prefix = ds && ds.dtnPrefix || '';
+            var suffix = ds && ds.dtnSuffix || '';
+            var startsWith = !prefix || sym.indexOf(prefix) === 0;
+            var endsWith = !suffix || sym.indexOf(suffix) == sym.length - suffix.length;
+            return startsWith && endsWith;
+        });
+        var ds = _.find(sources);
+        var prefix = ds && ds.dtnPrefix || '';
+        var suffix = ds && ds.dtnSuffix || '';
+        var startsWith = prefix && sym.indexOf(prefix) === 0;
+        var endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
+        var symbol = startsWith && endsWith ?
+            sym.substring(prefix.length, sym.length - prefix.length - suffix.length) :
+            startsWith ? sym.substring(prefix.length) :
+            endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
+        return {
+            symbol: symbol,
+            iqfeed_symbol: row.symbol,
+            exchange: _.first(_.keys(sources)),
+            name: row.name
+        };
+    })).then(rows => rows.filter(row => row.exchange));
 }
 
 function year(iqclient, symbol, options) {
