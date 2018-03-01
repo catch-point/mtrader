@@ -158,9 +158,6 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
         var label = options.label || '\b';
         if (latestScore && !_.has(latest, 'score'))
             logger.log("Strategize", label, "base", latest.variables[strategy_var], latestScore);
-        if (isolations) contributions.forEach((contrib, i) => {
-            logger.debug("Strategize", label, strategy.legs[i].expr, contrib);
-        });
         var self = strategizeLegs.bind(this, bestsignals, prng, parser, termAt, started, options);
         var searchFn = searchLeg.bind(this, bestsignals, prng, parser, termAt);
         var used = empty ? [] : getReferences(strategy.expr);
@@ -169,13 +166,21 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
         if (check()) return msignals;
         var full = options.max_signals && options.max_signals <= used.length;
         var contribs = optimized ? contributions.filter((c,i)=>!optimized[i]) : contributions;
-        var ic = chooseContribution(prng, contribs, full);
+        var ic = chooseContribution(prng, contribs, full ? 0 : 1);
         var idx = optimized ? _.range(contributions.length+1).filter(i=>!optimized[i])[ic] : ic;
         var contrib = contributions[idx];
+        if (idx < strategy.legs.length)
+            logger.debug("Strategize", label, "contrib", strategy.legs[idx].expr, contrib);
         return strategizeContribs(searchFn, msignals, strategy, contrib, idx, options)
           .then(signals => {
             var better = signals[strategy_var];
             var new_expr = better.variables[strategy_var];
+            if (!new_expr && !empty) {
+                logger.warn("Strategize", options.label || '\b', "failed to make sense of", latest_expr);
+                return self(_.clone(scores), signals);
+            } else if (!new_expr) {
+                throw Error(`Strategize ${options.label} failed to come up with a strategy`);
+            }
             // if strategy was empty, recursively find the best before stopping
             if (empty) return self(_.clone(scores), signals, [true, full]);
             if (optimized) {
@@ -189,6 +194,7 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
             }
             if (latestScore < better.score - options.cost_of_change) return signals;
             else if (strategy.legs.length > parser(new_expr).legs.length) return signals;
+            else if (cost > better.cost && latestScore - cost < better.score - better.cost) return signals;
             else return msignals; // better was not significantly so
         });
     }));
@@ -210,6 +216,8 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options)
             variables:{[strategy_var]: drop_expr}
         })});
         return Promise.resolve(drop_signals);
+    } else if (!empty && options.max_signals && options.max_signals <= getReferences(strategy.expr).length) {
+        return Promise.resolve(signals); // strategy is full
     } else {
         // replace leg if strategy is empty, idx points to new leg, or leg is only one signal
         var replacing = idx < strategy.legs.length;
@@ -273,13 +281,16 @@ function searchLeg(bestsignals, prng, parser, terminateAt, signals, latest) {
     var check = interrupt(true);
     var bestsignalFn = bestsignal.bind(this, bestsignals, terminateAt, {});
     var evaluateFn = evaluate.bind(this, bestsignals, {});
+    var max_signals = latest.max_signals;
     var strategy_var = latest.strategy_variable;
     var strategy = latest.variables[strategy_var];
-    var moreStrategiesFn = moreStrategies.bind(this, prng, evaluateFn, parser, latest.max_signals);
+    var moreStrategiesFn = moreStrategies.bind(this, prng, evaluateFn, parser, max_signals);
     var empty = !strategy || strategy == latest.signal_variable;
     var leg_signals = _.extend({}, signals, {[strategy_var]: latest});
     var attempts = 0;
     var cb = next_signals => {
+        var next_expr = next_signals[strategy_var].variables[strategy_var];
+        if (max_signals && max_signals < getReferences(next_expr).length) return leg_signals;
         if (!empty || attempts > 100 || check()) return next_signals;
         attempts = _.isEqual(next_signals, leg_signals) ? attempts + 1 : 0;
         leg_signals = next_signals;
@@ -393,23 +404,31 @@ function moreStrategies(prng, evaluate, parser, max_signals, latest) {
     return Promise.all(isolations.map(isolation => evaluate(isolation, latest)))
       .then(scores => scores.map(score => latest.score - score))
       .then(contributions => { // change comparator
-        contributions.forEach((contrib, i) => {
-            logger.debug("Strategize", "contrib", comparisons[i].expr, contrib);
-        });
-        var cmpIdx = chooseContribution(prng, contributions);
+        var room = max_signals && max_signals > getReferences(strategy.expr).length ? 1 : 0;
+        var canReplaceReference = comparisons.length ? 1 : 0;
+        var cmpIdx = chooseContribution(prng, contributions, room + canReplaceReference);
+        if (cmpIdx < comparisons.length)
+            logger.debug("Strategize", latest.label || '\b', "contrib",
+                comparisons[cmpIdx].expr, contributions[cmpIdx]);
         if (cmpIdx < contributions.length && contributions[cmpIdx] <= latest.signal_cost) {
             // drop comparison
             return [spliceExpr(comparisons, cmpIdx, 1).concat(signal.expr).join(' AND ')];
+        } else if (cmpIdx > comparisons.length) { // replace reference signal
+            var needle = signal.variable || signal.expr;
+            return [
+                createReplacer({[needle]: signal_var})(leg.expr),
+                comparisons.map(cmp => cmp.expr).map(expr => {
+                    return expr
+                        .replace(new RegExp('-1\\*' + needle + '\\b','g'), signal_var)
+                        .replace(new RegExp('\\b' + needle + '\\b','g'), '-1*' + signal_var)
+                }).concat('-1*' + signal_var).join(' AND ')
+            ];
         } else { // add or replace comparison
             return listComparators(latest).map(comparator => {
                 var expr = comparator(signal_var, signal.variable || signal.expr);
                 return spliceExpr(comparisons, cmpIdx, 1, expr).concat(signal.expr).join(' AND ');
             });
         }
-    }).then(strategies => {
-        var variables = getReferences(strategies[0]);
-        if (max_signals && variables.length > max_signals) return [];
-        else return strategies;
     });
 }
 
@@ -476,26 +495,29 @@ function createParser() {
 /**
  * Randomly returns an index from the given an array of contribution amounts
  */
-function chooseContribution(prng, contributions, exclusive) {
+function chooseContribution(prng, contributions, extra) {
     var items = contributions.map((contrib, i) => ({
         p: i,
         contrib: contrib
     }));
     var byContrib = _.sortBy(items, 'contrib');
-    var idx = choose(prng, byContrib.length, exclusive);
+    var idx = choose(prng, byContrib.length, extra);
     if (byContrib[idx]) return byContrib[idx].p;
     else return idx;
 }
 
 /**
- * Randomly returns a number between 0 and max (inclusive).
+ * Randomly returns a number between 0 and max+extra (exclusive), but extra defaults to 1.
  * The distribution is exponentially weighted to 0
+ * @param extra number of additional values beyond max (defaults to 1)
  */
-function choose(prng, max, exclusive) {
+function choose(prng, max, extra) {
     var t = 1.5;
     if (max < 1) return 0;
     var weights = _.range(max).map(i => Math.pow(i + 1, -t));
-    if (!exclusive) {
+    if (_.isNumber(extra)) {
+        weights = weights.concat(_.range(extra).map(i => Math.pow(weights.length +2 +i, -t)));
+    } else {
         weights.push(Math.pow(weights.length +2, -t));
     }
     var target = prng() * weights.reduce((a,b) => a + b);
@@ -551,6 +573,7 @@ function invert(variable) {
 function combine(signals, options) {
     var strategy_var = options.strategy_variable;
     var best = signals[strategy_var];
+    if (!best.variables[strategy_var]) return null;
     var variables = getReferences(best.variables)[strategy_var];
     var used = _.intersection(variables, _.keys(signals));
     var replacement = {};
