@@ -332,7 +332,7 @@ function getReferences(variables, includeRolling) {
  */
 function getPortfolio(portfolio, options) {
     var opts = _.omit(options, [
-        'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading', 'tail', 'head'
+        'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading', 'tail', 'head', 'begin'
     ]);
     var array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :

@@ -70,7 +70,7 @@ function createInstance() {
                 queue.stopWorker(worker);
                 logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err);
             } else {
-                logger.debug("Worker failed to process ", options.label || '\b', worker.process.pid, err);
+                logger.trace("Worker failed to process ", options.label || '\b', worker.process.pid, err);
             }
             var addresses = getRemoteWorkerAddresses();
             if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.pid) throw err;
