@@ -58,6 +58,7 @@ module.exports = function(collect) {
             var opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
                 tz: moment.tz.guess(),
                 now: Date.now(),
+                parameter_values: {},
                 optimize_termination: options.termination
             });
             return optimize(collect, prng, opts);
