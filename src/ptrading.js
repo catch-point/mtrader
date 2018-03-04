@@ -51,7 +51,7 @@ const minor_version = version.replace(/^(\d+\.\d+).*$/,'$1.0');
 const DEFAULT_PATH = '/ptrading/' + minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
 
-var program = require('commander').version(require('../package.json').version)
+var program = require('commander')
     .description(require('../package.json').description)
     .command('config <name> [value]', "View or change stored options")
     .command('fetch <interval> <symbol.exchange>', "Fetches remote data for the given symbol")
@@ -60,6 +60,7 @@ var program = require('commander').version(require('../package.json').version)
     .command('optimize [identifier]', "Optimizes the parameter values in the given portfolio")
     .command('bestsignals [identifier]', "Determines the best signals for the given portfolio")
     .command('strategize [identifier]', "Modifies a strategy looking for improvements")
+    .option('-V, --version', "Output the version number(s)")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-q, --quiet', "Include less information about what the system is doing")
     .option('-x, --debug', "Include details about what the system is working on")
@@ -87,6 +88,20 @@ program.command('stop').description("Stops a headless service using the listen i
         worker.handle('stop', stopped).request('stop').catch(abort);
     }).catch(err => err && err.stack && logger.debug(err, err.stack)).then(() => worker.disconnect());
 });
+var program_args_version = false;
+program.on('option:version', function() {
+    program_args_version = true;
+    process.stdout.write(version + '\n');
+    if (config('remote_workers')) {
+        var Remote = require('./remote-workers.js');
+        var remote = Remote();
+        remote.version().then(remote_version => {
+            _.forEach(remote_version, (worker_version, worker) => {
+                process.stdout.write(`${worker_version} ${worker}` + '\n');
+            });
+        }).then(remote.close);
+    }
+});
 
 if (require.main === module) {
     if (process.argv.length > 2) {
@@ -104,7 +119,7 @@ if (require.main === module) {
         });
         program.parse(process.argv);
     }
-    if (_.isEmpty(program.args)) {
+    if (!program_args_version && _.isEmpty(program.args)) {
         var app = new shell({isShell: true});
         var settings = {shell: app, introduction: true};
         app.configure(function(){
@@ -124,8 +139,9 @@ if (require.main === module) {
         if (config('listen')) {
             ptrading.listen(config('listen'));
         }
-    } else if (config('listen') && !~['stop','config','fetch'].indexOf(program.args[0]) &&
-            !~['stop','config','fetch'].indexOf(program.args[0].name && program.args[0].name())) {
+    } else if (!program_args_version && config('listen') &&
+            !~['stop','config','fetch','version'].indexOf(program.args[0]) &&
+            !~['stop','config','fetch','version'].indexOf(program.args[0].name && program.args[0].name())) {
         var ptrading = createInstance();
         var server = ptrading.listen(config('listen'));
         process.on('SIGINT', () => ptrading.close());
@@ -290,6 +306,7 @@ function listen(ptrading, address) {
             .handle('optimize', ptrading.optimize)
             .handle('bestsignals', ptrading.bestsignals)
             .handle('strategize', ptrading.strategize)
+            .handle('version', () => version)
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
             .handle('stop', () => {
                 try {

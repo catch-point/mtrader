@@ -106,6 +106,13 @@ module.exports = function(createWorkers, execTask) {
                 stoppedWorkers.push(worker);
             }
         },
+        all: function() {
+            var self = this;
+            var args = _.toArray(arguments);
+            return Promise.all(this.getWorkers().map(worker => {
+                return run.apply(self, args);
+            }));
+        },
         reload() {
             stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
             check_queue();

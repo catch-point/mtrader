@@ -93,9 +93,16 @@ module.exports = function(process) {
                 }
             });
         } else if (msg.cmd == 'config') {
-            inc(stats, msg.cmd, 'messages_rec');
-        } else if (!quitting) {
+            // handled by config.js
+        } else if (!quitting && msg.cmd && msg.id && msg.cmd.indexOf('reply_to_') != 0 && process.connected) {
             inc(stats, msg.cmd || 'unknown', 'messages_rec');
+            logger.debug("Unhandled message command", msg);
+            inc(stats, msg.cmd, 'replies_sent') && process.send({
+                cmd: 'reply_to_' + msg.cmd,
+                in_reply_to: msg.id,
+                error: serializeError(Error("Unhandled message command"))
+            });
+        } else if (!quitting) {
             logger.debug("Unknown message", msg);
         }
     });

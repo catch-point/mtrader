@@ -66,15 +66,16 @@ function createInstance() {
     var queue = workerQueue(createRemoteWorkers, (worker, cmd, options) => {
         return worker.request(cmd, options).catch(err => {
             if (check() || err.again) throw err;
-            if (worker.connected) {
-                queue.stopWorker(worker);
-                logger.warn("Worker failed to process ", options.label || '\b', worker.process.pid, err);
-            } else {
-                logger.trace("Worker failed to process ", options.label || '\b', worker.process.pid, err);
-            }
+            if (worker.connected) queue.stopWorker(worker);
             var addresses = getRemoteWorkerAddresses();
-            if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.pid) throw err;
-            else return queue(cmd, options).catch(err2 => {
+            if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.process.pid) {
+                throw err;
+            } else if (worker.connected) {
+                logger.warn("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
+            } else {
+                logger.trace("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
+            }
+            return queue(cmd, options).catch(err2 => {
                 err2.again = err;
                 throw err2;
             });
@@ -112,6 +113,12 @@ function createInstance() {
         },
         strategize(options) {
             return queue('strategize', options);
+        },
+        version() {
+            return queue.all('version').then(versions => {
+                var workers = queue.getWorkers();
+                return _.object(workers.map(worker => worker.process.pid), versions);
+            });
         }
     });
 }
