@@ -169,9 +169,11 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
         var ic = chooseContribution(prng, contribs, full ? 0 : 1);
         var idx = optimized ? _.range(contributions.length+1).filter(i=>!optimized[i])[ic] : ic;
         var contrib = contributions[idx];
+        var scratch = idx >= strategy.legs.length || !strategy.legs[idx].comparisons.length ||
+                optimized && optimized[idx] === false; // or leg was already partially optimized
         if (idx < strategy.legs.length)
             logger.debug("Strategize", label, "contrib", strategy.legs[idx].expr, contrib);
-        return strategizeContribs(searchFn, msignals, strategy, contrib, idx, options)
+        return strategizeContribs(searchFn, msignals, strategy, contrib, idx, scratch, options)
           .then(signals => {
             var better = signals[strategy_var];
             var new_expr = better.variables[strategy_var];
@@ -184,9 +186,10 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
             // if strategy was empty, recursively find the best before stopping
             if (empty) return self(_.clone(scores), signals, [true, full]);
             if (optimized) {
-                var next_optimized = _.isEqual(signals, msignals) ? optimized.slice(0) : [];
+                var next_optimized = _.isEqual(signals, msignals) ? optimized.slice(0) :
+                    new Array(Math.max(idx+2, contributions.length+1));
                 next_optimized[contributions.length] = full;
-                next_optimized[idx] = true;
+                next_optimized[idx] = scratch;
                 if (_.every(next_optimized)) return signals;
                 var elapse = moment.duration(Date.now() - started).humanize();
                 logger.log("Strategize", label, new_expr, "after", elapse, better.score);
@@ -203,7 +206,7 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
 /**
  * Given a strategy leg contribution tries to find a better strategy for given leg index
  */
-function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options) {
+function strategizeContribs(searchLeg, signals, strategy, contrib, idx, scratch, options) {
     var label = options.label || '\b';
     var signal_cost = options.signal_cost;
     var strategy_var = options.strategy_variable;
@@ -216,12 +219,9 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options)
             variables:{[strategy_var]: drop_expr}
         })});
         return Promise.resolve(drop_signals);
-    } else if (!empty && options.max_signals && options.max_signals <= getReferences(strategy.expr).length) {
-        return Promise.resolve(signals); // strategy is full
     } else {
         // replace leg if strategy is empty, idx points to new leg, or leg is only one signal
         var replacing = idx < strategy.legs.length;
-        var scratch = empty || !replacing || !strategy.legs[idx].comparisons.length;
         return strategizeLeg(searchLeg, signals, strategy, idx, scratch, options)
           .then(leg_signals => {
             var best = leg_signals[strategy_var];
@@ -507,18 +507,16 @@ function chooseContribution(prng, contributions, extra) {
 }
 
 /**
- * Randomly returns a number between 0 and max+extra (exclusive), but extra defaults to 1.
+ * Randomly returns a number between 0 and max+extra (exclusive)
  * The distribution is exponentially weighted to 0
- * @param extra number of additional values beyond max (defaults to 1)
+ * @param extra number of additional values beyond max
  */
 function choose(prng, max, extra) {
     var t = 1.5;
     if (max < 1) return 0;
     var weights = _.range(max).map(i => Math.pow(i + 1, -t));
-    if (_.isNumber(extra)) {
+    if (extra) {
         weights = weights.concat(_.range(extra).map(i => Math.pow(weights.length +2 +i, -t)));
-    } else {
-        weights.push(Math.pow(weights.length +2, -t));
     }
     var target = prng() * weights.reduce((a,b) => a + b);
     for (var i=0; i<weights.length; i++) {
