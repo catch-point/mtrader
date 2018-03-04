@@ -46,7 +46,7 @@ module.exports = function(command, env, productId, productVersion) {
             promiseNewAdminSocket.bind(this, 9300, command, env, productId, productVersion));
     };
     var lookup = historical(admin);
-    var throttled = promiseThrottle(lookup, 2);
+    var throttled = promiseThrottle(lookup, 10);
     var level1 = watch(admin);
     return {
         open() {
@@ -82,7 +82,7 @@ module.exports = function(command, env, productId, productVersion) {
                 type: 'fundamental',
                 symbol: symbol
             });
-        }, 100),
+        }, 10),
         summary(symbol, update){
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             if (update) expect(update).to.be.a('function');
