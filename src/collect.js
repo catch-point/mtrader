@@ -129,17 +129,29 @@ function collect(quote, callCollect, fields, options) {
     var duration = options.reset_every && moment.duration(options.reset_every);
     var begin = moment(options.begin);
     var end = moment(options.end || options.now);
-    if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.reset_every);
     if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
     if (!end.isValid()) throw Error("Invalid end date: " + options.end);
-    var segments = [options.begin];
-    if (duration) {
+    var segments = [];
+    if (!options.reset_every) {
+        segments.push(options.begin);
+    } else if (duration && duration.asMilliseconds()>0) {
+        segments.push(options.begin);
         var start = begin.add(duration);
         var stop = end.subtract(duration.asMilliseconds()*0.05, 'milliseconds');
         while (start.isBefore(stop)) {
             segments.push(start.format());
             start.add(duration);
         }
+    } else if (duration && duration.asMilliseconds()<=0) {
+        var start = end.add(duration);
+        var stop = begin.subtract(duration.asMilliseconds()*0.05, 'milliseconds');
+        while (start.isAfter(stop)) {
+            segments.unshift(start.format());
+            start.add(duration);
+        }
+        segments.unshift(options.begin);
+    } else {
+        throw Error("Invalid duration: " + options.reset_every);
     }
     if (segments.length < 2) // only one period
         return collectDuration(quote, callCollect, fields, options);

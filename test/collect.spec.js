@@ -1363,5 +1363,40 @@ describe("collect", function() {
             {symbol:"IBM",date:"2016-12-30",close:165.99}
         ]);
     });
+    it("should split backwards on reset_every", function() {
+        return collect({
+          portfolio: {
+              portfolio: 'IBM.NYSE',
+              tail: 1,
+              columns: {
+                  symbol: 'symbol',
+                  date: 'DATE(ending)',
+                  close: 'day.close'
+              }
+          },
+          begin: "2016-01-01",
+          end: "2016-12-31",
+          reset_every: '-P4W',
+          columns: {
+              symbol: 'symbol',
+              date: 'date',
+              close: 'close'
+          }
+        }).should.eventually.be.like([
+            { symbol: 'IBM', date: '2016-01-29', close: 124.79 },
+            { symbol: 'IBM', date: '2016-02-26', close: 132.03 },
+            { symbol: 'IBM', date: '2016-03-24', close: 147.95 },
+            { symbol: 'IBM', date: '2016-04-22', close: 148.5 },
+            { symbol: 'IBM', date: '2016-05-20', close: 147.25 },
+            { symbol: 'IBM', date: '2016-06-17', close: 151.99 },
+            { symbol: 'IBM', date: '2016-07-15', close: 159.78 },
+            { symbol: 'IBM', date: '2016-08-12', close: 161.95 },
+            { symbol: 'IBM', date: '2016-09-09', close: 155.69 },
+            { symbol: 'IBM', date: '2016-10-07', close: 155.67 },
+            { symbol: 'IBM', date: '2016-11-04', close: 152.43 },
+            { symbol: 'IBM', date: '2016-12-02', close: 160.02 },
+            { symbol: 'IBM', date: '2016-12-30', close: 165.99 }
+        ]);
+    });
 });
 

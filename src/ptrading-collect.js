@@ -116,7 +116,9 @@ if (require.main === module) {
 
 function createInstance(program, fetch, quote) {
     var promiseKeys;
+    var closed = false;
     var instance = function(options) {
+        if (closed) throw Error("Collect is closed");
         if (!promiseKeys) {
             promiseKeys = direct({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
@@ -132,6 +134,7 @@ function createInstance(program, fetch, quote) {
         });
     };
     instance.close = function() {
+        closed = true;
         return remote.close()
           .then(local.close, local.close)
           .then(direct.close)
@@ -162,7 +165,7 @@ function isSplitting(options) {
     var reset_every = moment.duration(options.reset_every);
     var begin = moment(options.begin);
     var end = moment(options.end || options.now);
-    return begin.add(reset_every.asMilliseconds()*1.5, 'milliseconds').isBefore(end);
+    return begin.add(Math.abs(reset_every.asMilliseconds())*1.5, 'milliseconds').isBefore(end);
 }
 
 function isLeaf(options) {
