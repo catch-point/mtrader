@@ -166,13 +166,14 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
         if (check()) return msignals;
         var full = options.max_signals && options.max_signals <= used.length;
         var contribs = optimized ? contributions.filter((c,i)=>!optimized[i]) : contributions;
+        if (!contribs.length && full) return msignals;
         var ic = chooseContribution(prng, contribs, full ? 0 : 1);
         var idx = optimized ? _.range(contributions.length+1).filter(i=>!optimized[i])[ic] : ic;
         var contrib = contributions[idx];
         var scratch = idx >= strategy.legs.length || !strategy.legs[idx].comparisons.length ||
                 optimized && optimized[idx] === false; // or leg was already partially optimized
         if (idx < strategy.legs.length)
-            logger.debug("Strategize", label, "contrib", strategy.legs[idx].expr, contrib);
+            logger.trace("Strategize", label, "contrib", strategy.legs[idx].expr, contrib);
         return strategizeContribs(searchFn, msignals, strategy, contrib, idx, scratch, options)
           .then(signals => {
             var better = signals[strategy_var];
@@ -290,7 +291,6 @@ function searchLeg(bestsignals, prng, parser, terminateAt, signals, latest) {
     var attempts = 0;
     var cb = next_signals => {
         var next_expr = next_signals[strategy_var].variables[strategy_var];
-        if (max_signals && max_signals < getReferences(next_expr).length) return leg_signals;
         if (!empty || attempts > 100 || check()) return next_signals;
         attempts = _.isEqual(next_signals, leg_signals) ? attempts + 1 : 0;
         leg_signals = next_signals;
@@ -429,6 +429,10 @@ function moreStrategies(prng, evaluate, parser, max_signals, latest) {
                 return spliceExpr(comparisons, cmpIdx, 1, expr).concat(signal.expr).join(' AND ');
             });
         }
+    }).then(strategies => {
+        var variables = getReferences(strategies[0]);
+        if (max_signals && variables.length > max_signals) return [];
+        else return strategies;
     });
 }
 
@@ -513,7 +517,7 @@ function chooseContribution(prng, contributions, extra) {
  */
 function choose(prng, max, extra) {
     var t = 1.5;
-    if (max < 1) return 0;
+    if (max+extra < 1) return 0;
     var weights = _.range(max).map(i => Math.pow(i + 1, -t));
     if (extra) {
         weights = weights.concat(_.range(extra).map(i => Math.pow(weights.length +2 +i, -t)));
