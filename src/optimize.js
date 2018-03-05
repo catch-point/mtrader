@@ -182,7 +182,7 @@ function searchParameters(collect, prng, pnames, count, options) {
         var mutationFn = mutation.bind(this, prng, pvalues, space);
         return adapt(fitnessFn, mutationFn, pnames, terminateAt, options, population, size);
     }).then(solutions => {
-        return _.sortBy(solutions, 'score').slice(-count).reverse();
+        return _.sortBy(solutions.reverse(), 'score').slice(-count).reverse();
     });
 }
 
@@ -347,7 +347,7 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
             solutions.push(solution);
         }).then(() => {
             if (!solutions.length) return;
-            var population = elite.concat(solutions);
+            var population = solutions.concat(elite);
             var top = _.sortBy(population, 'score').slice(-maxEliteSize);
             var additions = _.difference(top, elite);
             var better = _.difference(_.pluck(top, 'score'), _.pluck(elite, 'score')).length;
