@@ -93,11 +93,14 @@ fi
 PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
 if [ "$PREFIX" = "$BASEDIR" ]; then
   sudo -iu "$DAEMON_USER" npm install ptrading/ptrading -g
+  sudo -iu "$DAEMON_USER" npm --depth 9999 update ptrading/ptrading -g
 elif [ "$(id -u)" = "0" ]; then
   npm install ptrading/ptrading -g
+  npm --depth 9999 update ptrading/ptrading -g
 elif [ ! -x "$(which ptrading)" ]; then
   PREFIX=$(npm prefix)
   npm install ptrading/ptrading
+  npm --depth 9999 update ptrading/ptrading
 fi
 
 if [ ! -x "$PREFIX/bin/uninstall-$NAME" ]; then
