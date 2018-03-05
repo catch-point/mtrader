@@ -180,7 +180,7 @@ function quote(fetch, store, fields, options) {
  */
 function parseWarmUpMap(fields, options) {
     var exprs = _.compact(_.flatten([
-        _.values(options.columns), options.criteria
+        _.compact(_.values(options.columns)), options.criteria
     ]));
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
@@ -295,9 +295,13 @@ function getVariables(fields, options) {
         if (~fields.indexOf(name))
             return _.isString(val) || _.isNumber(val);
     }), val => JSON.stringify(val));
-    var nulls = _.mapObject(_.pick(options.parameters, _.isNull), val => "NULL()");
+    var nulls = _.mapObject(_.pick(options.parameters, _.isNull), val => 'NULL()');
     var cols = _.omit(options.columns, fields);
-    return _.defaults({}, options.variables, params, nulls, cols, opts);
+    return _.mapObject(_.defaults({}, options.variables, params, nulls, cols, opts), valOrNull);
+}
+
+function valOrNull(value) {
+    return value == null || value == '' ? 'NULL()' : value;
 }
 
 /**
@@ -642,7 +646,7 @@ function formatColumns(fields, points, options) {
         _.reduce(fieldCols, (map, fieldCols) => {
             return _.defaults(map, _.object(_.values(fieldCols), _.values(fieldCols)));
         }, {});
-    var map = createParser(fields, props, options).parse(columns);
+    var map = createParser(fields, props, options).parse(_.mapObject(columns, valOrNull));
     return points.map(point => _.mapObject(map, expr => expr([point])));
 }
 

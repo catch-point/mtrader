@@ -323,7 +323,7 @@ function getReferences(variables, includeRolling) {
                 return rolling.getVariables(expr);
             else return _.uniq(_.flatten(args, true));
         }
-    }).parse(variables);
+    }).parse(_.mapObject(variables, valOrNull));
     var follow = _.clone(references);
     while (_.reduce(follow, (more, reference, name) => {
         if (!reference.length) return more;
@@ -337,7 +337,11 @@ function getReferences(variables, includeRolling) {
         return cont;
     }, false));
     return references;
-};
+}
+
+function valOrNull(value) {
+    return value == null || value == '' ? 'NULL()' : value;
+}
 
 /**
  * Parses a comma separated list into symbol/exchange pairs.
@@ -370,7 +374,7 @@ function getPortfolio(portfolio, options) {
 function parseNeededColumns(fields, options) {
     var varnames = getVariables(fields, options);
     var normalizer = createNormalizeParser(varnames, options);
-    var columns = _.mapObject(options.columns, expr => normalizer.parse(expr));
+    var columns = _.mapObject(options.columns, expr => normalizer.parse(expr || 'NULL()'));
     var conflicts = _.intersection(_.keys(_.omit(columns, (v, k) => v==k)),
         _.union(fields, _.keys(options.variables))
     );
@@ -450,13 +454,13 @@ function getVariables(fields, options) {
         }
     });
     var exprs = parser.parseCriteriaList(_.flatten(_.compact([
-        _.values(options.columns),
+        _.compact(_.values(options.columns)),
         options.criteria, options.filter, options.precedence
     ]), true));
     var more_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
     while (more_vars.length) {
         var old_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
-        var additional = parser.parseCriteriaList(_.values(_.pick(options.variables, more_vars)));
+        var additional = parser.parseCriteriaList(_.compact(_.values(_.pick(options.variables, more_vars))));
         exprs = exprs.concat(additional);
         var new_vars = _.uniq(_.flatten(additional.map(_.keys), true));
         more_vars = _.difference(new_vars, old_vars);
@@ -486,7 +490,7 @@ function getSubstitutions(variables, options) {
     var params = _.mapObject(_.pick(options.parameters, val => {
         return _.isString(val) || _.isNumber(val) || _.isNull(val);
     }), val => stringify(val));
-    return _.defaults(_.omit(options.variables, variables), params);
+    return _.mapObject(_.defaults(_.omit(options.variables, variables), params), valOrNull);
 }
 
 /**

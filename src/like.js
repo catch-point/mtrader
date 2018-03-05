@@ -37,7 +37,11 @@ module.exports = function() {
 };
 
 function like(expected) {
-    if (_.isFunction(expected)) {
+    if (_.isNull(expected)) {
+        return _.isNull;
+    } else if (_.isUndefined(expected)) {
+        return _.isUndefined;
+    } else if (_.isFunction(expected)) {
         return expected;
     } else if (_.isFunction(expected.test)) { // like RegEx
         return expected.test.bind(expected);

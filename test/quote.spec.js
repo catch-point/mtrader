@@ -483,6 +483,41 @@ describe("quote", function() {
             {symbol:'IBM',exchange:'NYSE',Date:'2010-01-29',Close:122.39,Change:-1.0989}
         ]);
     });
+    it("should serialize empty columns as empty strings", function() {
+        return quote({
+            symbol: 'IBM',
+            exchange: 'NYSE',
+            begin: moment.tz('2010-01-04', tz),
+            end: moment.tz('2010-01-30', tz),
+            columns: {
+                symbol: 'symbol',
+                exchange: 'exchange',
+                Date: 'DATE(ending)',
+                Close: 'day.close',
+                Nothing: ''
+            }
+        }).should.eventually.be.like([
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-04',Close:132.45,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-05',Close:130.85,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-06',Close:130,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-07',Close:129.55,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-08',Close:130.85,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-11',Close:129.48,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-12',Close:130.51,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-13',Close:130.23,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-14',Close:132.31,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-15',Close:131.78,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-19',Close:134.14,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-20',Close:130.25,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-21',Close:129,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-22',Close:125.5,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-25',Close:126.12,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-26',Close:125.75,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-27',Close:126.33,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-28',Close:123.75,Nothing:null},
+            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-29',Close:122.39,Nothing:null}
+        ]);
+    });
     it("should combine intervals", function() {
         return quote({
             columns: {
