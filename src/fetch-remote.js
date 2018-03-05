@@ -67,7 +67,8 @@ module.exports = function() {
         var check = interrupted || interrupt(true);
         var delay = (delayed || 500) *2;
         return Fetch().then(client => client.request('fetch', options).catch(err => {
-            if (check() || delay > 5000 || !err || !err.message || !~err.message.indexOf('connect'))
+            if (check() || delay > 5000 || !err || !err.message ||
+                    !~err.message.indexOf('connect') && !~err.message.indexOf('timed out'))
                 throw err;
             // connection error wait and try again
             client.connectionError = true;
