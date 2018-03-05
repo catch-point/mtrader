@@ -44,7 +44,7 @@ const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
 
 function usage(command) {
-    return command.version(require('../package.json').version)
+    return command.version(require('./version.js').version)
         .description("Modifies a strategy looking for improvements")
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")

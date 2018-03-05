@@ -50,7 +50,7 @@ const indicator = require('./indicator-functions.js');
 const WORKER_COUNT = require('os').cpus().length;
 
 function usage(command) {
-    return command.version(require('../package.json').version)
+    return command.version(require('./version.js').version)
         .description("Quotes historical data for the given symbol")
         .usage('<symbol.exchange> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")

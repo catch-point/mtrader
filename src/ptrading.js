@@ -45,14 +45,13 @@ const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
 const shellError = require('./shell-error.js');
-const version = require('../package.json').version;
+const version = require('./version.js');
 
-const minor_version = version.replace(/^(\d+\.\d+).*$/,'$1.0');
-const DEFAULT_PATH = '/ptrading/' + minor_version + '/workers';
+const DEFAULT_PATH = '/ptrading/' + version.minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
 
 var program = require('commander')
-    .description(require('../package.json').description)
+    .description(version.description)
     .command('config <name> [value]', "View or change stored options")
     .command('fetch <interval> <symbol.exchange>', "Fetches remote data for the given symbol")
     .command('quote <symbol.exchange>', "Historic information of a security")
@@ -306,7 +305,7 @@ function listen(ptrading, address) {
             .handle('optimize', ptrading.optimize)
             .handle('bestsignals', ptrading.bestsignals)
             .handle('strategize', ptrading.strategize)
-            .handle('version', () => version)
+            .handle('version', () => version.toString())
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
             .handle('stop', () => {
                 try {

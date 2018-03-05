@@ -36,7 +36,7 @@ const logger = require('./logger.js');
 const config = require('./config.js');
 
 if (require.main === module) {
-    var program = require('commander').version(require('../package.json').version)
+    var program = require('commander').version(require('./version.js').version)
         .description("View or change stored options")
         .usage('<name> [value] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")

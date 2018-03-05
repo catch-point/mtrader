@@ -39,12 +39,11 @@ const expect = require('chai').expect;
 const logger = require('./logger.js');
 const config = require('./ptrading-config.js');
 const AssertionError = require('chai').AssertionError;
-const version = require('../package.json').version;
+const version = require('./version.js');
 
-const minor_version = version.replace(/^(\d+\.\d+).*$/,'$1.0');
 const EOM = '\r\n\r\n';
 
-const DEFAULT_PATH = '/ptrading/' + minor_version + '/workers';
+const DEFAULT_PATH = '/ptrading/' + version.minor_version + '/workers';
 
 var remote = module.exports = function(socket, label) {
     if (typeof socket == 'string' || typeof socket == 'number')
