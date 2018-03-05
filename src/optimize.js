@@ -149,6 +149,8 @@ function optimize(collect, prng, options) {
         var duration = moment.duration(_.max(_.pluck(solutions, 'foundAt')) - started);
         if (!_.isEmpty(solutions) && solutions[0].pindex.length)
             logger.log("Found local extremum", options.label || '\b', solutions[0].pindex.map((idx, i) => pvalues[i][idx]).join(','), "in", duration.humanize(), solutions[0].score);
+        else
+            logger.debug("Evaluated", options.label || '\b', solutions[0].score);
         return solutions.map((solution, i) => ({
             score: solution.score,
             parameters: _.object(pnames,

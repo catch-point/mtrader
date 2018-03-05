@@ -125,8 +125,7 @@ function strategize(bestsignals, prng, options) {
     var strategy_var = options.strategy_variable;
     var expr = options.variables[strategy_var] || '';
     var strategy = parser(expr);
-    var initialScores = {};
-    return strategize(options, initialScores, {[strategy_var]: options})
+    return strategize(options, {[strategy_var]: options})
       .then(signals => combine(signals, options))
       .then(best => {
         var strategy = best.variables[strategy_var];
@@ -136,65 +135,44 @@ function strategize(bestsignals, prng, options) {
 }
 
 /**
- * Tries to find a better strategy
+ * Tries to find an similar, but better strategy
  */
-function strategizeLegs(bestsignals, prng, parser, termAt, started, options, scores, signals, optimized) {
+function strategizeLegs(bestsignals, prng, parser, termAt, started, options, signals) {
     var check = interrupt(true);
+    var scores = {};
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
     var latest_expr = latest.variables[strategy_var];
+    var searchFn = searchLeg.bind(this, bestsignals, prng, parser, termAt);
     var strategy = parser(latest_expr == options.signal_variable ? '' : latest_expr);
-    var empty = !strategy.legs.length;
+    if (!strategy.legs.length)
+        return strategizeAll(bestsignals, searchFn, parser, started, options, scores, signals, [false]);
     var isolations = strategy.legs.length > 1 && strategy.legs.map((leg, i) => {
         return spliceExpr(strategy.legs, i, 1).join(' OR ');
     });
-    return Promise.resolve(empty ? undefined : _.has(latest, 'score') ?
-            latest.score : evaluate(bestsignals, scores, strategy.expr, latest))
-      .then(latestScore => Promise.all(empty ? [] : strategy.legs.map((leg, i) => {
+    return Promise.resolve(evaluate(bestsignals, scores, strategy.expr, latest))
+      .then(latestScore => Promise.all(strategy.legs.map((leg, i) => {
         if (strategy.legs.length == 1) return latestScore;
         var withoutIt = isolations[i];
         return evaluate(bestsignals, scores, withoutIt, latest).then(score => latestScore - score);
     })).then(contributions => {
-        var label = options.label || '\b';
-        if (latestScore && !_.has(latest, 'score'))
-            logger.log("Strategize", label, "base", latest.variables[strategy_var], latestScore);
-        var self = strategizeLegs.bind(this, bestsignals, prng, parser, termAt, started, options);
-        var searchFn = searchLeg.bind(this, bestsignals, prng, parser, termAt);
-        var used = empty ? [] : getReferences(strategy.expr);
-        var cost = empty ? 0 : used.length * options.signal_cost;
-        var msignals = merge(signals, {[strategy_var]:{score:latestScore, cost}});
         if (check()) return msignals;
+        var label = options.label || '\b';
+        logger.log("Strategize", label, "base", latest.variables[strategy_var], latestScore);
+        var used = getReferences(strategy.expr);
+        var cost = used.length * options.signal_cost;
+        var msignals = merge(signals, {[strategy_var]:{score:latestScore, cost}});
         var full = options.max_signals && options.max_signals <= used.length;
-        var contribs = optimized ? contributions.filter((c,i)=>!optimized[i]) : contributions;
-        if (!contribs.length && full) return msignals;
-        var ic = chooseContribution(prng, contribs, full ? 0 : 1);
-        var idx = optimized ? _.range(contributions.length+1).filter(i=>!optimized[i])[ic] : ic;
-        var contrib = contributions[idx];
-        var scratch = idx >= strategy.legs.length || !strategy.legs[idx].comparisons.length ||
-                optimized && optimized[idx] === false; // or leg was already partially optimized
+        var idx = chooseContribution(prng, contributions, full ? 0 : 1);
         if (idx < strategy.legs.length)
-            logger.trace("Strategize", label, "contrib", strategy.legs[idx].expr, contrib);
-        return strategizeContribs(searchFn, msignals, strategy, contrib, idx, scratch, options)
+            logger.trace("Strategize", label, "contrib", strategy.legs[idx].expr, contributions[idx]);
+        return strategizeContribs(searchFn, msignals, strategy, contributions[idx], idx, options)
           .then(signals => {
             var better = signals[strategy_var];
             var new_expr = better.variables[strategy_var];
-            if (!new_expr && !empty) {
+            if (!new_expr) {
                 logger.warn("Strategize", options.label || '\b', "failed to make sense of", latest_expr);
-                return self(_.clone(scores), signals);
-            } else if (!new_expr) {
-                throw Error(`Strategize ${options.label} failed to come up with a strategy`);
-            }
-            // if strategy was empty, recursively find the best before stopping
-            if (empty) return self(_.clone(scores), signals, [true, full]);
-            if (optimized) {
-                var next_optimized = _.isEqual(signals, msignals) ? optimized.slice(0) :
-                    new Array(Math.max(idx+2, contributions.length+1));
-                next_optimized[contributions.length] = full;
-                next_optimized[idx] = scratch;
-                if (_.every(next_optimized)) return signals;
-                var elapse = moment.duration(Date.now() - started).humanize();
-                logger.log("Strategize", label, new_expr, "after", elapse, better.score);
-                return self(_.clone(scores), signals, next_optimized);
+                return strategizeAll(bestsignals, searchFn, parser, started, options, scores, signals, [false]);
             }
             if (latestScore < better.score - options.cost_of_change) return signals;
             else if (strategy.legs.length > parser(new_expr).legs.length) return signals;
@@ -205,9 +183,59 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sco
 }
 
 /**
+ * Recursively tries to find the best strategy, until no more improvements can be made
+ */
+function strategizeAll(bestsignals, searchLeg, parser, started, options, scores, msignals, exhausted) {
+    var check = interrupt(true);
+    var strategy_var = options.strategy_variable;
+    var latest = msignals[strategy_var];
+    var latest_expr = latest.variables[strategy_var];
+    var strategy = parser(latest_expr == options.signal_variable ? '' : latest_expr);
+    var isolations = strategy.legs.length > 1 && strategy.legs.map((leg, i) => {
+        return spliceExpr(strategy.legs, i, 1).join(' OR ');
+    });
+    return Promise.all(_.range(strategy.legs.length+1).map(idx => {
+        if (exhausted[idx]) return {signals: msignals, exhausted}; // already exhausted
+        return Promise.resolve(!strategy.legs.length ? 0 : strategy.legs.length == 1 ? latest.score :
+            evaluate(bestsignals, scores, isolations[idx], latest).then(score => latest.score - score))
+          .then(contrib => strategizeContribs(searchLeg, msignals, strategy, contrib, idx, options))
+          .then(signals => {
+            var same = _.isEqual(signals, msignals);
+            var new_expr = same ? latest_expr : signals[strategy_var].variables[strategy_var];
+            var new_strategy = same ? strategy : parser(new_expr);
+            var next_exhausted = same ? exhausted.slice(0) : new Array(new_strategy.legs.length+1);
+            if (new_strategy.legs.length >= strategy.legs.length) {
+                next_exhausted[idx] = same; // legs was not dropped
+            }
+            if (idx < new_strategy.legs.length) {
+                var used = new_expr ? getReferences(new_expr) : [];
+                var full = options.max_signals && options.max_signals <= used.length;
+                next_exhausted[new_strategy.legs.length] = full;
+            }
+            return {signals, exhausted: next_exhausted};
+        });
+    })).then(all => {
+        var different = all.filter(se => !_.isEqual(se.signals, msignals));
+        var se = _.last(_.sortBy(different, se => se.signals[strategy_var].score));
+        if (se) return se;
+        return {signals: msignals, exhausted: all.map((se, i) => se.exhausted[i])};
+    }).then(se => {
+        var {signals, exhausted} = se;
+        var better = signals[strategy_var];
+        var new_expr = better.variables[strategy_var];
+        if (!new_expr)
+            throw Error(`Strategize ${options.label} failed to come up with a strategy`);
+        if (_.every(exhausted)) return signals;
+        var elapse = moment.duration(Date.now() - started).humanize();
+        logger.log("Strategize", options.label || '\b', new_expr, "after", elapse, better.score);
+        return strategizeAll(bestsignals, searchLeg, parser, started, options, scores, signals, exhausted);
+    });
+}
+
+/**
  * Given a strategy leg contribution tries to find a better strategy for given leg index
  */
-function strategizeContribs(searchLeg, signals, strategy, contrib, idx, scratch, options) {
+function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options) {
     var label = options.label || '\b';
     var signal_cost = options.signal_cost;
     var strategy_var = options.strategy_variable;
@@ -223,7 +251,7 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, scratch,
     } else {
         // replace leg if strategy is empty, idx points to new leg, or leg is only one signal
         var replacing = idx < strategy.legs.length;
-        return strategizeLeg(searchLeg, signals, strategy, idx, scratch, options)
+        return strategizeLeg(searchLeg, signals, strategy, idx, options)
           .then(leg_signals => {
             var best = leg_signals[strategy_var];
             var new_expr = best.variables[strategy_var];
@@ -237,11 +265,12 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, scratch,
 /**
  * Isolates the strategy leg as a strategy to search for a better solution
  */
-function strategizeLeg(searchLeg, signals, strategy, idx, scratch, options) {
+function strategizeLeg(searchLeg, signals, strategy, idx, options) {
     var leg_var = options.leg_variable; // move leg into temporary variable
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
     var empty = !strategy.legs.length;
+    var scratch = idx >= strategy.legs.length;
     var used = empty ? [] : getReferences(latest.variables[strategy_var]);
     var other_signals = empty || idx >= strategy.legs.length ? used :
         _.difference(used, getReferences(strategy.legs[idx].expr));
@@ -290,8 +319,10 @@ function searchLeg(bestsignals, prng, parser, terminateAt, signals, latest) {
     var leg_signals = _.extend({}, signals, {[strategy_var]: latest});
     var attempts = 0;
     var cb = next_signals => {
-        var next_expr = next_signals[strategy_var].variables[strategy_var];
-        if (!empty || attempts > 100 || check()) return next_signals;
+        var best = next_signals[strategy_var];
+        var next_expr = best.variables[strategy_var];
+        var better = (empty ? 0 : latest.score) < best.score - latest.signal_cost;
+        if (better || attempts > 100 || check()) return next_signals;
         attempts = _.isEqual(next_signals, leg_signals) ? attempts + 1 : 0;
         leg_signals = next_signals;
         return next(next_signals, latest, cb);
@@ -339,7 +370,6 @@ function search(bestsignal, moreStrategies, terminateAt, signals, options, cb) {
 function bestsignal(bestsignals, terminateAt, scores, signal_strategy, latest) {
     if (scores[signal_strategy])
         return scores[signal_strategy].then(score => ({score, revisited: true}));
-    logger.debug("bestsignal", signal_strategy);
     var regex = new RegExp('\\b' + latest.signal_variable + '\\b','g');
     var token = signal_strategy.split(' ').find(token => regex.exec(token));
     var sign = token && token.replace(regex, '');
