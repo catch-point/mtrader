@@ -77,7 +77,7 @@ describe("strategize", function() {
             begin: '2016-10-01',
             end: '2016-12-31',
             strategy_variable: 'strategy',
-            max_signals: 1,
+            max_operands: 1,
             eval_score: 'profit',
             columns: {
                 date: 'DATE(ending)',
@@ -124,7 +124,7 @@ describe("strategize", function() {
             begin: '2016-10-01',
             end: '2016-12-31',
             strategy_variable: 'strategy',
-            max_signals: 1,
+            max_operands: 1,
             eval_score: 'profit',
             description: "The variable signal should not be used by strategize and always be zero",
             columns: {
@@ -165,9 +165,9 @@ describe("strategize", function() {
             begin: '2011-01-01',
             end: '2011-12-31',
             strategy_variable: 'strategy',
-            max_signals: 2,
+            max_operands: 2,
             population_size: 4,
-            signal_cost: 1,
+            disjunction_cost: 1,
             eval_score: 'profit',
             columns: {
                 date: 'DATE(ending)',
@@ -208,7 +208,7 @@ describe("strategize", function() {
             begin: '2011-01-01',
             end: '2011-12-31',
             strategy_variable: 'strategy',
-            max_signals: 3,
+            max_operands: 3,
             population_size: 4,
             eval_score: 'profit',
             transient: false,
@@ -246,7 +246,7 @@ describe("strategize", function() {
             begin: '2016-10-01',
             end: '2016-12-31',
             strategy_variable: 'strategy',
-            max_signals: 1,
+            max_operands: 1,
             eval_score: 'profit',
             columns: {
                 date: 'DATE(ending)',
