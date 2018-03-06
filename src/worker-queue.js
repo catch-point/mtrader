@@ -117,6 +117,9 @@ module.exports = function(createWorkers, execTask) {
             stoppedWorkers.push.apply(stoppedWorkers, workers.splice(0, workers.length));
             check_queue();
         },
+        isClosed() {
+            return closed;
+        },
         close() {
             closed = true;
             queue.splice(0).forEach(item => {

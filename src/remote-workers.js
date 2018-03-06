@@ -65,7 +65,7 @@ function createInstance() {
     var check = interrupt(true);
     var queue = workerQueue(createRemoteWorkers, (worker, cmd, options) => {
         return worker.request(cmd, options).catch(err => {
-            if (check() || err.again) throw err;
+            if (check() || queue.isClosed() || options && options.remote_failed) throw err;
             if (worker.connected) queue.stopWorker(worker);
             var addresses = getRemoteWorkerAddresses();
             if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.process.pid) {
@@ -75,10 +75,7 @@ function createInstance() {
             } else {
                 logger.trace("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
             }
-            return queue(cmd, options).catch(err2 => {
-                err2.again = err;
-                throw err2;
-            });
+            return queue(cmd, _.defaults({remote_failed: true}, options));
         });
     });
     var disconnectStoppedWorkers = _.debounce(() => {
