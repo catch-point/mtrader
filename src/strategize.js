@@ -60,7 +60,7 @@ module.exports = function(bestsignals) {
                 leg_variable: chooseVariable('leg', options),
                 signal_variable: chooseVariable('signal', options),
                 signal_cost: 0,
-                cost_of_change: 0
+                disjunction_cost: 0
             });
             return strategize(bestsignals, prng, opts);
         });
@@ -93,9 +93,9 @@ function help(bestsignals) {
                     usage: '<number>',
                     description: "Minimum amount the score must increase by before adding another signal"
                 },
-                cost_of_change: {
+                disjunction_cost: {
                     usage: '<number>',
-                    description: "Minimum amount the score must increase by to replacing an existing strategy"
+                    description: "Minimum amount the score must increase by to add another 'OR' condition"
                 },
                 max_signals: {
                     usage: '<number>',
@@ -160,7 +160,7 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sig
         var label = options.label || '\b';
         logger.log("Strategize", label, "base", latest.variables[strategy_var], latestScore);
         var used = getReferences(strategy.expr);
-        var cost = used.length * options.signal_cost;
+        var cost = used.length * options.signal_cost + (strategy.legs.length-1) * options.disjunction_cost;
         var msignals = merge(signals, {[strategy_var]:{score:latestScore, cost}});
         var full = options.max_signals && options.max_signals <= used.length;
         var idx = chooseContribution(prng, contributions, full ? 0 : 1);
@@ -174,9 +174,7 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sig
                 logger.warn("Strategize", options.label || '\b', "failed to make sense of", latest_expr);
                 return strategizeAll(bestsignals, searchFn, parser, started, options, scores, signals, [false]);
             }
-            if (latestScore < better.score - options.cost_of_change) return signals;
-            else if (strategy.legs.length > parser(new_expr).legs.length) return signals;
-            else if (cost > better.cost && latestScore - cost < better.score - better.cost) return signals;
+            if (latestScore - cost < better.score - better.cost) return signals;
             else return msignals; // better was not significantly so
         });
     }));
@@ -216,7 +214,10 @@ function strategizeAll(bestsignals, searchLeg, parser, started, options, scores,
         });
     })).then(all => {
         var different = all.filter(se => !_.isEqual(se.signals, msignals));
-        var se = _.last(_.sortBy(different, se => se.signals[strategy_var].score));
+        var se = _.last(_.sortBy(different, se => {
+            var better = se.signals[strategy_var];
+            return better.score - better.cost;
+        }));
         if (se) return se;
         return {signals: msignals, exhausted: all.map((se, i) => se.exhausted[i])};
     }).then(se => {
@@ -238,13 +239,17 @@ function strategizeAll(bestsignals, searchLeg, parser, started, options, scores,
 function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options) {
     var label = options.label || '\b';
     var signal_cost = options.signal_cost;
+    var disjunction_cost = options.disjunction_cost;
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
     var empty = !strategy.legs.length;
-    if (idx < strategy.legs.length && contrib <= signal_cost) { // drop under performing leg
+    if (idx < strategy.legs.length && contrib <= disjunction_cost) { // drop under performing leg
         var drop_expr = spliceExpr(strategy.legs, idx, 1).join(' OR ');
+        var disjunctions = Math.max(strategy.legs.length-2, 0);
+        var count = drop_expr ? getReferences(drop_expr).length : 0;
         var drop_signals = _.extend({}, signals, {[strategy_var]: merge(latest, {
             score: latest.score - contrib,
+            cost: count * signal_cost + disjunctions * disjunction_cost,
             variables:{[strategy_var]: drop_expr}
         })});
         return Promise.resolve(drop_signals);
@@ -255,8 +260,7 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options)
           .then(leg_signals => {
             var best = leg_signals[strategy_var];
             var new_expr = best.variables[strategy_var];
-            var better = empty || best.score - best.cost > latest.score - latest.cost &&
-                (replacing || best.score >= latest.score + signal_cost || best.cost < latest.cost);
+            var better = empty || best.score - best.cost > latest.score - latest.cost;
             return better ? leg_signals : signals;
         });
     }
@@ -290,8 +294,11 @@ function strategizeLeg(searchLeg, signals, strategy, idx, options) {
         if (signals[name] && name != leg_var) return best;
         var new_leg = best.variables[leg_var];
         var new_expr = spliceExpr(strategy.legs, idx, 1, new_leg).join(' OR ');
+        var count = getReferences(new_expr).length;
+        var disjunctions = Math.max(idx, strategy.legs.length-1);
+        var cost = count * options.signal_cost + disjunctions * options.disjunction_cost;
         return _.defaults({
-            cost: getReferences(new_expr).length * options.signal_cost,
+            cost: cost,
             strategy_variable: strategy_var,
             max_signals: options.max_signals,
             variables: _.defaults({
@@ -312,6 +319,7 @@ function searchLeg(bestsignals, prng, parser, terminateAt, signals, latest) {
     var bestsignalFn = bestsignal.bind(this, bestsignals, terminateAt, {});
     var evaluateFn = evaluate.bind(this, bestsignals, {});
     var max_signals = latest.max_signals;
+    var disjunction_cost = latest.disjunction_cost;
     var strategy_var = latest.strategy_variable;
     var strategy = latest.variables[strategy_var];
     var moreStrategiesFn = moreStrategies.bind(this, prng, evaluateFn, parser, max_signals);
@@ -321,7 +329,8 @@ function searchLeg(bestsignals, prng, parser, terminateAt, signals, latest) {
     var cb = next_signals => {
         var best = next_signals[strategy_var];
         var next_expr = best.variables[strategy_var];
-        var better = (empty ? 0 : latest.score) < best.score - latest.signal_cost;
+        var better = empty ? best.score > best.cost + disjunction_cost :
+            latest.score - latest.cost < best.score - best.cost;
         if (better || attempts > 100 || check()) return next_signals;
         attempts = _.isEqual(next_signals, leg_signals) ? attempts + 1 : 0;
         leg_signals = next_signals;
@@ -384,7 +393,9 @@ function bestsignal(bestsignals, terminateAt, scores, signal_strategy, latest) {
             [latest.strategy_variable]: signal_strategy
         }, latest.variables)
     }, latest)).then(best => {
-        var cost = getReferences(signal_strategy).length * latest.signal_cost;
+        var count = getReferences(signal_strategy).length;
+        var disjunctions = (signal_strategy.split(' OR ').length-1);
+        var cost = count * latest.signal_cost + disjunctions * latest.disjunction_cost;
         return merge({
             variables:{
                 [latest.strategy_variable]: signal_strategy
