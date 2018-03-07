@@ -202,6 +202,49 @@ describe("strategize", function() {
             score: 30.280018
         });
     });
+    it("should find complex conjunction strategy", function() {
+        return strategize({
+            portfolio: 'SPY.ARCA',
+            begin: '2011-01-01',
+            end: '2011-12-31',
+            strategy_variable: 'strategy',
+            max_operands: 2,
+            population_size: 4,
+            no_disjunctions: true,
+            eval_score: 'profit',
+            columns: {
+                date: 'DATE(ending)',
+                change: 'close - PREV("close")',
+                close: 'day.adj_close',
+                profit: 'PREC("profit") + change * PREV("strategy")'
+            },
+            signalset: [{
+                signals: ['trend'],
+                variables: {
+                    trend: "IF(high=low, high, 0)",
+                    high: "DIRECTION(trend_len,highest)",
+                    low: "DIRECTION(trend_len,lowest)",
+                    highest: "HIGHEST(trend_len,day.high*scale)",
+                    lowest: "LOWEST(trend_len,day.low*scale)",
+                    scale: "day.adj_close/day.close"
+                },
+                parameters: {
+                    trend_len: 50,
+                },
+                parameter_values: {
+                    trend_len: [5,10,20,50]
+                }
+            }]
+        }).should.eventually.be.like({
+            variables: {
+                strategy: 'trendA!=0 AND -1*trendB'
+            },
+            parameters: {
+                trend_lenA: 20, trend_lenB: 5
+            },
+            score: 22.554602
+        });
+    });
     it("should find dip buying opportunities", function() {
         return strategize({
             portfolio: 'SPY.ARCA',
@@ -238,6 +281,45 @@ describe("strategize", function() {
             },
             parameters: { trend_lenA: 5, trend_lenB: 150, trend_lenC: 50 },
             score: 34.095606
+        });
+    });
+    it("should find dip buying disjunction opportunities", function() {
+        return strategize({
+            portfolio: 'SPY.ARCA',
+            begin: '2011-01-01',
+            end: '2011-12-31',
+            strategy_variable: 'strategy',
+            max_operands: 3,
+            no_conjunctions: true,
+            population_size: 4,
+            eval_score: 'profit',
+            transient: false,
+            columns: {
+                date: 'DATE(ending)',
+                change: 'close - PREV("close")',
+                close: 'day.adj_close',
+                profit: 'PREC("profit") + change * PREV("strategy")'
+            },
+            signalset: [{
+                signals: ['trend'],
+                variables: {
+                    trend: "IF(high=low, high, 0)",
+                    high: "DIRECTION(trend_len,highest)",
+                    low: "DIRECTION(trend_len,lowest)",
+                    highest: "HIGHEST(trend_len,day.high*scale)",
+                    lowest: "LOWEST(trend_len,day.low*scale)",
+                    scale: "day.adj_close/day.close"
+                },
+                parameter_values: {
+                    trend_len: [5,50,150]
+                }
+            }]
+        }).should.eventually.be.like({
+            variables: {
+                strategy: '-1*trendA OR -1*trendB OR trendC'
+            },
+            parameters: { trend_lenA: 5, trend_lenB: 50, trend_lenC: 150 },
+            score: 31.630024
         });
     });
     it("should reuse existing variable", function() {
