@@ -174,7 +174,7 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sig
         var idx = chooseContribution(prng, contribs, full ? 0 : 1);
         if (idx < strategy.legs.length)
             logger.trace("Strategize", label, "contrib", strategy.legs[idx].expr, contribs[idx]);
-        return strategizeContribs(searchFn.bind(this, {}), msignals, strategy, contribs[idx], idx, options)
+        return strategizeContribs(searchFn.bind(this, 1, {}), msignals, strategy, contribs[idx], idx, options)
           .then(signals => {
             var better = signals[strategy_var];
             var new_expr = better.variables[strategy_var];
@@ -204,7 +204,7 @@ function strategizeAll(bestsignals, searchLeg, parser, started, options, scores,
     var leg_count = Math.max(strategy.legs.length+(options.conjunctions_only?0:1),1);
     return Promise.all(_.range(leg_count).map(idx => {
         if (state.exhausted[idx]) return state;
-        var searchLegFn = searchLeg.bind(this, state.scores[idx] = state.scores[idx] || {});
+        var searchLegFn = searchLeg.bind(this, 100, state.scores[idx] = state.scores[idx] || {});
         return Promise.resolve(!strategy.legs.length ? 0 : strategy.legs.length == 1 ? latest.score :
             evaluate(bestsignals, scores, isolations[idx], latest).then(score => latest.score - score))
           .then(contrib => strategizeContribs(searchLegFn, state.signals, strategy, contrib, idx, options))
@@ -324,7 +324,7 @@ function strategizeLeg(searchLeg, signals, strategy, idx, options) {
  * Recursively tests incremental solutions to improve the score
  * @return the best solution found as a hash of signals making up the solution
  */
-function searchLeg(bestsignals, prng, parser, terminateAt, scores, signals, latest) {
+function searchLeg(bestsignals, prng, parser, terminateAt, max_attempts, scores, signals, latest) {
     var check = interrupt(true);
     _.defaults(scores, {bestsignal: {}, evaluate: {}});
     var bestsignalFn = bestsignal.bind(this, bestsignals, terminateAt, scores.bestsignal);
@@ -336,13 +336,13 @@ function searchLeg(bestsignals, prng, parser, terminateAt, scores, signals, late
     var moreStrategiesFn = moreStrategies.bind(this, prng, evaluateFn, parser, max_operands);
     var empty = !strategy || strategy == latest.signal_variable;
     var leg_signals = _.extend({}, signals, {[strategy_var]: latest});
-    var attempts = 0;
+    var attempts = 1;
     var cb = next_signals => {
         var best = next_signals[strategy_var];
         var next_expr = best.variables[strategy_var];
         var better = empty ? best.score > best.cost + disjunction_cost :
             latest.score - latest.cost < best.score - best.cost;
-        if (better || attempts > 100 || check()) return next_signals;
+        if (better || attempts >= max_attempts || check()) return next_signals;
         attempts = _.isEqual(next_signals, leg_signals) ? attempts + 1 : 0;
         leg_signals = next_signals;
         return next(next_signals, latest, cb);
