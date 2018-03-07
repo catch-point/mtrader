@@ -210,7 +210,7 @@ describe("strategize", function() {
             strategy_variable: 'strategy',
             max_operands: 2,
             population_size: 4,
-            no_disjunctions: true,
+            conjunctions_only: true,
             eval_score: 'profit',
             columns: {
                 date: 'DATE(ending)',
@@ -290,7 +290,7 @@ describe("strategize", function() {
             end: '2011-12-31',
             strategy_variable: 'strategy',
             max_operands: 3,
-            no_conjunctions: true,
+            disjunctions_only: true,
             population_size: 4,
             eval_score: 'profit',
             transient: false,

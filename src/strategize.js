@@ -89,21 +89,21 @@ function help(bestsignals) {
                     usage: '<variable name>',
                     description: "The variable name to use when testing various strategies"
                 },
-                no_conjunctions: {
-                    usage: 'true',
-                    description: "If more conjunctions are prohibited (no 'AND' operators)"
-                },
                 conjunction_cost: {
                     usage: '<number>',
                     description: "Minimum amount the score must increase by before adding 'AND' operator"
                 },
-                no_disjunctions: {
+                conjunctions_only: {
                     usage: 'true',
                     description: "If more disjunctions are prohibited (no 'OR' operators)"
                 },
                 disjunction_cost: {
                     usage: '<number>',
                     description: "Minimum amount the score must increase by to add another 'OR' operator"
+                },
+                disjunctions_only: {
+                    usage: 'true',
+                    description: "If more conjunctions are prohibited (no 'AND' operators)"
                 },
                 max_operands: {
                     usage: '<number>',
@@ -169,7 +169,7 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sig
         logger.log("Strategize", label, "base", latest.variables[strategy_var], latestScore);
         var cost = getStrategyCost(strategy.expr, options);
         var msignals = merge(signals, {[strategy_var]:{score:latestScore, cost}});
-        var full = options.no_disjunctions || options.max_operands &&
+        var full = options.conjunctions_only || options.max_operands &&
             options.max_operands <= countOperands(strategy.expr);
         var idx = chooseContribution(prng, contribs, full ? 0 : 1);
         if (idx < strategy.legs.length)
@@ -201,7 +201,7 @@ function strategizeAll(bestsignals, searchLeg, parser, started, options, scores,
     var isolations = strategy.legs.length > 1 && strategy.legs.map((leg, i) => {
         return spliceExpr(strategy.legs, i, 1).join(' OR ');
     });
-    var leg_count = Math.max(strategy.legs.length+(options.no_disjunctions?0:1),1);
+    var leg_count = Math.max(strategy.legs.length+(options.conjunctions_only?0:1),1);
     return Promise.all(_.range(leg_count).map(idx => {
         if (state.exhausted[idx]) return state;
         var searchLegFn = searchLeg.bind(this, state.scores[idx] = state.scores[idx] || {});
@@ -219,7 +219,7 @@ function strategizeAll(bestsignals, searchLeg, parser, started, options, scores,
                 next_scores[idx] = state.scores[idx];
             }
             if (idx < new_strategy.legs.length) {
-                var full = options.no_disjunctions || options.max_operands &&
+                var full = options.conjunctions_only || options.max_operands &&
                     options.max_operands <= countOperands(new_expr);
                 next_exhausted[new_strategy.legs.length] = full;
             }
@@ -466,7 +466,7 @@ function moreStrategies(prng, evaluate, parser, max_operands, latest) {
     return Promise.all(isolations.map(isolation => evaluate(isolation, latest)))
       .then(scores => scores.map(score => latest.score - score))
       .then(contributions => { // change comparator
-        var room = !latest.no_conjunctions && max_operands &&
+        var room = !latest.disjunctions_only && max_operands &&
             max_operands > countOperands(strategy.expr);
         var cmpIdx = chooseContribution(prng, contributions, room ? 2 : 1);
         if (cmpIdx < comparisons.length)
