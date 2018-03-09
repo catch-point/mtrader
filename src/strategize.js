@@ -258,11 +258,12 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options)
     var latest = signals[strategy_var];
     var empty = !strategy.legs.length;
     if (idx < strategy.legs.length && strategy.legs.length > 1 && contrib <= options.disjunction_cost) {
-        // drop under performing leg
         var drop_expr = spliceExpr(strategy.legs, idx, 1).join(' OR ');
+        var drop_cost = getStrategyCost(drop_expr, options);
+        // drop under performing leg
         var drop_signals = _.extend({}, signals, {[strategy_var]: merge(latest, {
             score: latest.score - contrib,
-            cost: getStrategyCost(drop_expr, options),
+            cost: drop_cost,
             variables:{[strategy_var]: drop_expr}
         })});
         return Promise.resolve(drop_signals);
@@ -292,6 +293,9 @@ function strategizeLeg(searchLeg, signals, strategy, idx, options) {
     var operands = idx < strategy.legs.length ? countOperands(strategy.legs[idx].expr) : 0;
     var other_operands = empty ? 0 : countOperands(strategy.expr) - operands;
     var opts = merge(latest, {
+        score: latest.score || 0,
+        cost: scratch ? 0 : getStrategyCost(strategy.legs[idx].expr, options),
+        disjunction_cost: empty ? 0 : options.disjunction_cost,
         strategy_variable: leg_var,
         max_operands: options.max_operands && options.max_operands - other_operands,
         variables: {
@@ -299,10 +303,6 @@ function strategizeLeg(searchLeg, signals, strategy, idx, options) {
             [leg_var]: scratch ? '' : strategy.legs[idx].expr
         }
     });
-    if (!scratch) {
-        opts.score = latest.score;
-        opts.cost = getStrategyCost(opts.variables[leg_var], options);
-    }
     return searchLeg(signals, opts).then(leg_signals => _.mapObject(leg_signals, (best, name) => {
         if (signals[name] && name != leg_var) return best;
         var new_leg = best.variables[leg_var];
@@ -330,7 +330,6 @@ function searchLeg(bestsignals, prng, parser, terminateAt, max_attempts, scores,
     var bestsignalFn = bestsignal.bind(this, bestsignals, terminateAt, scores.bestsignal);
     var evaluateFn = evaluate.bind(this, bestsignals, scores.evaluate);
     var max_operands = latest.max_operands;
-    var disjunction_cost = latest.disjunction_cost;
     var strategy_var = latest.strategy_variable;
     var strategy = latest.variables[strategy_var];
     var moreStrategiesFn = moreStrategies.bind(this, prng, evaluateFn, parser, max_operands);
@@ -340,6 +339,7 @@ function searchLeg(bestsignals, prng, parser, terminateAt, max_attempts, scores,
     var cb = next_signals => {
         var best = next_signals[strategy_var];
         var next_expr = best.variables[strategy_var];
+        var disjunction_cost = latest.disjunction_cost;
         var better = empty ? best.score > best.cost + disjunction_cost :
             latest.score - latest.cost < best.score - best.cost;
         if (better || attempts >= max_attempts || check()) return next_signals;
@@ -417,12 +417,18 @@ function bestsignal(bestsignals, terminateAt, scores, signal_strategy, latest) {
     return promise;
 }
 
+/**
+ * Counts the conjunctions and disjunctions multiplying them by their cost
+ */
 function getStrategyCost(strategy_expr, options) {
     var disjunctions = strategy_expr.split(' OR ').length -1;
     var conjunctions = strategy_expr.split(' AND ').length -1;
     return disjunctions * options.disjunction_cost + conjunctions * options.conjunction_cost;
 }
 
+/**
+ * Counts the number of operands between OR/AND operators
+ */
 function countOperands(strategy_expr) {
     return strategy_expr.split(' OR ').reduce((count, operand) => {
         return count + operand.split(' AND ').length;
@@ -466,13 +472,14 @@ function moreStrategies(prng, evaluate, parser, max_operands, latest) {
     return Promise.all(isolations.map(isolation => evaluate(isolation, latest)))
       .then(scores => scores.map(score => latest.score - score))
       .then(contributions => { // change comparator
+        var contrib = contributions[cmpIdx];
         var room = !latest.disjunctions_only && max_operands &&
             max_operands > countOperands(strategy.expr);
         var cmpIdx = chooseContribution(prng, contributions, room ? 2 : 1);
         if (cmpIdx < comparisons.length)
             logger.debug("Strategize", latest.label || '\b', "contrib",
-                comparisons[cmpIdx].expr, contributions[cmpIdx]);
-        if (cmpIdx < contributions.length && contributions[cmpIdx] <= latest.conjunction_cost) {
+                comparisons[cmpIdx].expr, contrib);
+        if (cmpIdx < contributions.length && contrib <= latest.conjunction_cost) {
             // drop comparison
             return [spliceExpr(comparisons, cmpIdx, 1).concat(signal.expr).join(' AND ')];
         } else if (cmpIdx > comparisons.length || !room && cmpIdx == comparisons.length) {
@@ -798,6 +805,9 @@ function createReplacer(replacement) {
     };
 }
 
+/**
+ * Chooses a variable name based on prefix that is not already used
+ */
 function chooseVariable(prefix, options) {
     var references = getReferences(merge(options.columns, options.variables));
     var portfolioCols = _.flatten(_.flatten([options.portfolio]).map(portfolio => _.keys(portfolio.columns)));
