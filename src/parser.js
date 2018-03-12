@@ -183,18 +183,18 @@ const operators = {
     NEGATIVE: {op: '-', priority: 1},
     NOT: {op: '!', priority: 1},
     MOD: {op: '%', priority: 2},
-    DIVIDE: {op: '/', priority: 2},
-    PRODUCT: {op: '*', priority: 2},
-    SUBTRACT: {op: '-', priority: 3},
-    ADD: {op: '+', priority: 3},
+    DIVIDE: {op: '/', priority: 2, associative: false},
+    PRODUCT: {op: '*', priority: 2, associative: true},
+    SUBTRACT: {op: '-', priority: 3, associative: false},
+    ADD: {op: '+', priority: 3, associative: true},
     GREATER_THAN: {op: '>', priority: 4},
     LESS_THAN: {op: '<', priority: 4},
     NOT_LESS_THAN: {op: '>=', priority: 4},
     NOT_GREATER_THAN: {op: '<=', priority: 4},
     NOT_EQUAL: {op: '!=', priority: 4},
     EQUALS: {op: '=', priority: 4},
-    AND: {op: ' AND ', priority: 5},
-    OR: {op: ' OR ', priority: 6}
+    AND: {op: ' AND ', priority: 5, associative: true},
+    OR: {op: ' OR ', priority: 6, associative: true}
 };
 
 function serialize(expr) {
@@ -204,9 +204,9 @@ function serialize(expr) {
             var aop = operators[_.first(arg)];
             if (!_.isArray(arg) || !aop || aop.priority < operator.priority)
                 return serialize(arg);
-            else if (i===0 && aop.priority == operator.priority)
+            else if (aop.priority == operator.priority && operator.associative)
                 return serialize(arg); // 1 * 2 / 3 or 1 + 2 - 3
-            else if (aop == operator)
+            else if (aop == operator && operator.associative)
                 return serialize(arg); // 1 != 2 AND 3 != 4 AND 5
             else return '(' + serialize(arg) + ')';
         });

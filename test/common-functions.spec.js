@@ -119,6 +119,11 @@ describe("common-functions", function(){
         it("XOR1", function() {
             expect(parser.parse('XOR(1, 1, 0, 1)')()).to.equal(1);
         });
+        it("should reformat", function() {
+            expect(parser.parse("4/(1/2)*(1/2)")()).to.equal(4);
+            expect(Parser().parse("4/(1/2)*(1/2)")).to.equal("4/(1/2)*1/2");
+            expect(parser.parse(Parser().parse("4/(1/2)*(1/2)"))()).to.equal(4);
+        });
     });
     describe("WORKDATE", function(){
         var parser = Parser({

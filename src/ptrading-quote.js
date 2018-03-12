@@ -178,7 +178,7 @@ function createWorkers(program, fetch) {
     var size = _.isFinite(config('quote_workers')) ? +config('quote_workers') :
         _.isFinite(config('workers')) && config('workers') == 0 ? 0 :
         prime[_.sortedIndex(prime, WORKER_COUNT)] || WORKER_COUNT;
-    logger.debug("Launching", size, "quote workers");
+    if (size) logger.debug("Launching", size, "quote workers");
     return _.range(size).map(() => {
         var worker = replyTo(config.fork(module.filename, program));
         return worker.handle('fetch', payload => fetch(payload));
