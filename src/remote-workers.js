@@ -70,12 +70,15 @@ function createInstance() {
             var addresses = getRemoteWorkerAddresses();
             if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.process.pid) {
                 throw err;
-            } else if (worker.connected) {
-                logger.warn("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
-            } else {
-                logger.trace("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
             }
-            return queue(cmd, _.defaults({remote_failed: true}, options));
+            return new Promise(cb => _.delay(cb, 1000)).then(() => {
+                if (worker.connected) {
+                    logger.warn("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
+                } else {
+                    logger.trace("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
+                }
+                return queue(cmd, _.defaults({remote_failed: true}, options));
+            });
         });
     });
     var disconnectStoppedWorkers = _.debounce(() => {
@@ -121,12 +124,18 @@ function createInstance() {
 }
 
 function createRemoteWorkers(check_queue) {
+    var queue = this;
     var remote_workers = getRemoteWorkerAddresses();
     var remoteWorkers = remote_workers.map(address => {
-        return replyTo(remote(address))
-            .on('connect', function() {logger.log("Worker", this.process.pid, "is connected");})
-            .on('disconnect', function() {logger.log("Worker", this.process.pid, "has disconnected");})
-            .on('error', err => logger.warn(err.message || err));
+        return replyTo(remote(address)).on('connect', function() {
+            if (!queue.getStoppedWorkers().find(w => w.connected && w.process.pid == this.process.pid))
+                logger.log("Worker", this.process.pid, "is connected");
+        }).on('disconnect', function() {
+            if (queue.getConnectedWorkers().find(w => w!=this && w.process.pid == this.process.pid))
+                logger.debug("Worker", this.process.pid, "has reconnected");
+            else
+                logger.log("Worker", this.process.pid, "has disconnected");
+        }).on('error', err => logger.warn(err.message || err));
     });
     var nice = config('nice');
     Promise.all(remoteWorkers.map(worker => worker.request('worker_count').catch(err => err)))

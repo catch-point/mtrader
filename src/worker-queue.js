@@ -52,7 +52,7 @@ module.exports = function(createWorkers, execTask) {
         else checking = true;
         try {
             if (_.isEmpty(workers) && queue.length) {
-                registerWorkers(createWorkers(check_queue), workers, stoppedWorkers, check_queue);
+                registerWorkers(createWorkers.call(self, check_queue), workers, stoppedWorkers, check_queue);
                 if (_.isEmpty(workers)) throw Error("No workers available");
             }
             stoppedWorkers.forEach(worker => {
@@ -74,7 +74,7 @@ module.exports = function(createWorkers, execTask) {
             checking = false;
         }
     };
-    return _.extend(function() {
+    var self = _.extend(function() {
         var self = this;
         var args = _.toArray(arguments);
         return new Promise((resolve, reject) => {
@@ -88,9 +88,12 @@ module.exports = function(createWorkers, execTask) {
         countConnectedWorkers() {
             return workers.filter(worker => worker.connected).length;
         },
+        getConnectedWorkers() {
+            return workers.concat(stoppedWorkers).filter(worker => worker.connected);
+        },
         getWorkers() {
             if (_.isEmpty(workers)) {
-                registerWorkers(createWorkers(check_queue), workers, stoppedWorkers, check_queue);
+                registerWorkers(createWorkers.call(self, check_queue), workers, stoppedWorkers, check_queue);
             }
             return workers.slice(0);
         },
@@ -131,6 +134,7 @@ module.exports = function(createWorkers, execTask) {
             ]));
         }
     });
+    return self;
 }
 
 function idle(worker) {
