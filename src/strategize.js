@@ -171,7 +171,7 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sig
         var msignals = merge(signals, {[strategy_var]:{score:latestScore, cost}});
         var full = options.conjunctions_only || options.max_operands &&
             options.max_operands <= countOperands(strategy.expr);
-        var idx = chooseContribution(prng, contribs, full ? 0 : 1);
+        var idx = chooseContribution(prng, options.disjunction_cost, contribs, full ? 0 : 1);
         if (idx < strategy.legs.length)
             logger.trace("Strategize", label, "contrib", strategy.legs[idx].expr, contribs[idx]);
         return strategizeContribs(searchFn.bind(this, 1, {}), msignals, strategy, contribs[idx], idx, options)
@@ -472,10 +472,10 @@ function moreStrategies(prng, evaluate, parser, max_operands, latest) {
     return Promise.all(isolations.map(isolation => evaluate(isolation, latest)))
       .then(scores => scores.map(score => latest.score - score))
       .then(contributions => { // change comparator
-        var contrib = contributions[cmpIdx];
         var room = !latest.disjunctions_only && max_operands &&
             max_operands > countOperands(strategy.expr);
-        var cmpIdx = chooseContribution(prng, contributions, room ? 2 : 1);
+        var cmpIdx = chooseContribution(prng, latest.conjunction_cost, contributions, room ? 2 : 1);
+        var contrib = contributions[cmpIdx];
         if (cmpIdx < comparisons.length)
             logger.debug("Strategize", latest.label || '\b', "contrib",
                 comparisons[cmpIdx].expr, contrib);
@@ -563,14 +563,16 @@ function createParser() {
 }
 
 /**
- * Randomly returns an index from the given an array of contribution amounts
+ * Randomly returns an index from the given an array of contribution amounts,
+ * unless minimum contribution is less than threshold, in which case return 0
  */
-function chooseContribution(prng, contributions, extra) {
+function chooseContribution(prng, threshold, contributions, extra) {
     var items = contributions.map((contrib, i) => ({
         p: i,
         contrib: contrib
     }));
     var byContrib = _.sortBy(items, 'contrib');
+    if (byContrib.length && byContrib[0].contrib < threshold) return 0;
     var idx = choose(prng, byContrib.length, extra);
     if (byContrib[idx]) return byContrib[idx].p;
     else return idx;
