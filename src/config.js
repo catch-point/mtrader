@@ -157,6 +157,15 @@ function createInstance(session) {
         }
     };
 
+    config.session = function(name, value) {
+        var jpath = _.isArray(name) ? name : _.isUndefined(name) ? [] : name.split('.');
+        if (_.isUndefined(value)) {
+            return get(session, jpath);
+        } else if (assign(session, jpath, value)) {
+            listeners.forEach(listener => listener(name, value));
+        }
+    };
+
     config.list = function() {
         var dir = config.configDirname();
         try {

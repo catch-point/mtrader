@@ -35,7 +35,7 @@ const replyTo = require('./promise-reply.js');
 const remote = require('./remote-process.js');
 const workerQueue = require('./worker-queue.js');
 const logger = require('./logger.js');
-const config = require('./ptrading-config.js');
+const config = require('./config.js');
 
 process.on('SIGHUP', () => instance && instance.reload());
 process.on('SIGINT', () => instance && instance.close());

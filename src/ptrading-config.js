@@ -34,6 +34,8 @@
 const _ = require('underscore');
 const logger = require('./logger.js');
 const config = require('./config.js');
+const merge = require('./merge.js');
+const readCallSave = require('./read-call-save.js');
 
 if (require.main === module) {
     var program = require('commander').version(require('./version.js').version)
@@ -52,11 +54,16 @@ if (require.main === module) {
     if (program.args.length) {
         try {
             var name = _.first(program.args);
-            var value = _.rest(program.args).join(' ');
-            if (program.save && program.args.length > 1) {
-                config.load(program.save);
-                config.options(name, value);
-                config.save(program.save);
+            var str = _.rest(program.args).join(' ');
+            var chr = str.charAt(0);
+            var value = chr == '{' || chr == '"' || chr == '[' ||
+                str == 'true' || str == 'false' || _.isFinite(str) ?
+                JSON.parse(str) : str;
+            if (config('save') && program.args.length > 1) {
+                readCallSave(config('save'), data => {
+                    config.session(name, value);
+                    return merge(config.read(config('save')), config.session());
+                }, config('save')).catch(err => logger.error(err, err.stack));
             } else if (program.args.length > 1) {
                 config.store(name, value);
             } else {

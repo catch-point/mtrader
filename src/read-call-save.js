@@ -35,7 +35,7 @@ const Writable = require('stream').Writable;
 const _ = require('underscore');
 const merge = require('./merge.js');
 const logger = require('./logger.js');
-const config = require('./ptrading-config.js');
+const config = require('./config.js');
 
 var collections = {};
 process.on('SIGHUP', () => _.keys(collections).forEach(key=>delete collections[key]));
@@ -49,7 +49,7 @@ module.exports = function(read, call, save) {
     var options = mergeSignals(inlineOriginal, _.isString(read) ? read : '');
     var inlineOptions = inlineCollections(collections, '.', options, [read]);
     var amend = arguments.length>2 && config('amend');
-    return !call ? Promise.resolve(inlineOptions) : call(inlineOptions)
+    return Promise.resolve(!call ? inlineOptions : call(inlineOptions))
       .then(result => amend ? mergeSignalSets(original, result) : result)
       .then(result => arguments.length>2 ? output(result, save || amend && file) : result);
 };

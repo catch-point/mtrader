@@ -37,7 +37,7 @@ const EventEmitter = require('events');
 const _ = require('underscore');
 const expect = require('chai').expect;
 const logger = require('./logger.js');
-const config = require('./ptrading-config.js');
+const config = require('./config.js');
 const AssertionError = require('chai').AssertionError;
 const version = require('./version.js');
 
