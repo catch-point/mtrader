@@ -288,7 +288,7 @@ function serializeError(err) {
         if (err && _.isFunction(err.toJSON))
             return err.toJSON();
     } catch (e) {
-        console.error(e, e.stack);
+        console.error("Could not serialize error", e, e.stack);
     }
     if (err && err.stack)
         return err.stack;
