@@ -45,7 +45,6 @@ describe("fetch", function() {
         config('fetch.files.dirname', path.resolve(__dirname, 'data'));
         config.load(path.resolve(__dirname, 'testdata.json'));
         config('fetch.iqfeed.enabled', false);
-        config('fetch.google.enabled', true);
         config('fetch.yahoo.enabled', true);
         config('fetch.files.enabled', true);
         fetch = Fetch();
@@ -53,7 +52,6 @@ describe("fetch", function() {
     after(function() {
         config.unset('fetch.files.dirname');
         config.unset('fetch.iqfeed.enabled');
-        config.unset('fetch.google.enabled');
         config.unset('fetch.yahoo.enabled');
         config.unset('fetch.files.enabled');
         return fetch.close();

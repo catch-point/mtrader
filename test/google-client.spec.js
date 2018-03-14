@@ -34,7 +34,7 @@ const moment = require('moment-timezone');
 const like = require('./should-be-like.js');
 const googleClient = require('../src/google-client.js');
 
-describe("google-client", function() {
+describe.skip("google-client", function() {
     this.timeout(10000);
     var tz = 'America/New_York';
     var client = googleClient();

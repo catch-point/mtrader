@@ -42,15 +42,13 @@ describe("ptrading", function() {
         ptrading.config.load(path.resolve(__dirname, '../etc/ptrading.json'));
         ptrading.config('prefix', createTempDir('ptrading'));
         ptrading.config('iqfeed.enabled', false);
-        ptrading.config('google.enabled', true);
-        ptrading.config('yahoo.enabled', false);
+        ptrading.config('yahoo.enabled', true);
         ptrading.config('files.enabled', false);
         process.emit('SIGHUP');
     });
     after(function() {
         ptrading.config.unset('prefix');
         ptrading.config.unset('iqfeed.enabled');
-        ptrading.config.unset('google.enabled');
         ptrading.config.unset('yahoo.enabled');
         ptrading.config.unset('files.enabled');
     });
@@ -60,7 +58,7 @@ describe("ptrading", function() {
             suggestion.exchange.should.eql('NASDAQ');
         });
     });
-    it("fundamental", function() {
+    it.skip("fundamental", function() {
         return ptrading.fundamental({
           symbol: 'AABA',
           exchange: 'NASDAQ'

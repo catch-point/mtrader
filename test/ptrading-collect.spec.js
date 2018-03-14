@@ -41,8 +41,7 @@ describe("ptrading-collect", function() {
     before(function() {
         ptrading.config('prefix', createTempDir('ptrading'));
         ptrading.config('fetch.iqfeed.enabled', false);
-        ptrading.config('fetch.google.enabled', true);
-        ptrading.config('fetch.yahoo.enabled', false);
+        ptrading.config('fetch.yahoo.enabled', true);
         ptrading.config('fetch.files.enabled', false);
         process.emit('SIGHUP');
         ptrading.config.save('SPY', {
@@ -70,7 +69,6 @@ describe("ptrading-collect", function() {
     after(function() {
         ptrading.config.unset('prefix');
         ptrading.config.unset('fetch.iqfeed.enabled');
-        ptrading.config.unset('fetch.google.enabled');
         ptrading.config.unset('fetch.yahoo.enabled');
         ptrading.config.unset('fetch.files.enabled');
     });

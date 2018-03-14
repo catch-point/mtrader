@@ -4,15 +4,16 @@
   "default_config_dir": "etc",
   "fetch": {
     "google": {
-      "enabled": true,
+      "enabled": false,
       "lookup": true,
       "fundamental": true,
       "interday": ["year", "quarter", "month", "week", "day"],
       "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE"]
     },
     "yahoo": {
-      "enabled": false,
+      "enabled": true,
       "lookup": true,
+      "fundamental": false,
       "interday": ["year", "quarter", "month", "week", "day"],
       "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV"]
     },
