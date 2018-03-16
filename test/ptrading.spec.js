@@ -237,7 +237,15 @@ describe("ptrading", function() {
             },
             signalset: ['TREND', 'MEANREVERSION', 'RELATIVESTRENGTH']
         });
-        readCallSave('BEST', ptrading.bestsignals).should.eventually.be.like([{
+        return readCallSave('BEST', ptrading.bestsignals).should.eventually.be.like([{
+            variables: {
+                signal: 'bollinger_signal'
+            },
+            parameters:  {
+                len: 10,
+                multiplier: 2
+            }
+        }, {
             variables: {
                 signal: 'STO_signal'
             },
@@ -245,14 +253,6 @@ describe("ptrading", function() {
                 lookback: 10,
                 Ksmoothing: 5,
                 Dmoving: 3
-            }
-        }, {
-            variables: {
-                signal: 'bollinger_signal'
-            },
-            parameters:  {
-                len: 10,
-                multiplier: 2
             }
         }]);
     });

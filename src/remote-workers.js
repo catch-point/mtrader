@@ -65,7 +65,9 @@ function createInstance() {
     var check = interrupt(true);
     var queue = workerQueue(createRemoteWorkers, (worker, cmd, options) => {
         return worker.request(cmd, options).catch(err => {
-            if (check() || queue.isClosed() || options && options.remote_failed) throw err;
+            if (check() || queue.isClosed() || !err || !err.message) throw err;
+            else if (options && options.remote_failed) throw err;
+            var stillConnected = !!worker.connected && !~err.message.indexOf('Disconnecting');
             if (worker.connected) queue.stopWorker(worker);
             var addresses = getRemoteWorkerAddresses();
             if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.process.pid) {
@@ -77,7 +79,7 @@ function createInstance() {
                 } else {
                     logger.trace("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
                 }
-                return queue(cmd, _.defaults({remote_failed: true}, options));
+                return queue(cmd, _.defaults({remote_failed: stillConnected}, options));
             });
         });
     });
