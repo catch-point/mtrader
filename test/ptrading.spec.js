@@ -252,7 +252,7 @@ describe("ptrading", function() {
             parameters:  {
                 lookback: 10,
                 Ksmoothing: 5,
-                Dmoving: 3
+                Dmoving: 5
             }
         }]);
     });

@@ -257,27 +257,22 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options)
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
     var empty = !strategy.legs.length;
-    if (idx < strategy.legs.length && strategy.legs.length > 1 && contrib <= options.disjunction_cost) {
-        var drop_expr = spliceExpr(strategy.legs, idx, 1).join(' OR ');
-        var drop_cost = getStrategyCost(drop_expr, options);
-        // drop under performing leg
-        var drop_signals = _.extend({}, signals, {[strategy_var]: merge(latest, {
+    return strategizeLeg(searchLeg, signals, strategy, idx, options)
+      .then(leg_signals => {
+        var best = leg_signals[strategy_var];
+        var new_expr = best.variables[strategy_var];
+        var better = empty || best.score - best.cost > latest.score - latest.cost;
+        var better_contrib = better ? best.score - latest.score + contrib : contrib;
+        var drop = idx < strategy.legs.length && strategy.legs.length > 1 &&
+            better_contrib < options.disjunction_cost;
+        var drop_expr = drop && spliceExpr(strategy.legs, idx, 1).join(' OR ');
+        if (drop) return _.extend({}, signals, {[strategy_var]: merge(latest, {
             score: latest.score - contrib,
-            cost: drop_cost,
+            cost: getStrategyCost(drop_expr, options),
             variables:{[strategy_var]: drop_expr}
         })});
-        return Promise.resolve(drop_signals);
-    } else {
-        // replace leg if strategy is empty, idx points to new leg, or leg is only one signal
-        var replacing = idx < strategy.legs.length;
-        return strategizeLeg(searchLeg, signals, strategy, idx, options)
-          .then(leg_signals => {
-            var best = leg_signals[strategy_var];
-            var new_expr = best.variables[strategy_var];
-            var better = empty || best.score - best.cost > latest.score - latest.cost;
-            return better ? leg_signals : signals;
-        });
-    }
+        return better ? leg_signals : signals;
+    });
 }
 
 /**
@@ -475,30 +470,34 @@ function moreStrategies(prng, evaluate, parser, max_operands, latest) {
         var room = !latest.disjunctions_only && max_operands &&
             max_operands > countOperands(strategy.expr);
         var cmpIdx = chooseContribution(prng, latest.conjunction_cost, contributions, room ? 2 : 1);
-        var contrib = contributions[cmpIdx];
-        if (cmpIdx < comparisons.length)
-            logger.debug("Strategize", latest.label || '\b', "contrib",
-                comparisons[cmpIdx].expr, contrib);
-        if (cmpIdx < contributions.length && contrib <= latest.conjunction_cost) {
-            // drop comparison
-            return [spliceExpr(comparisons, cmpIdx, 1).concat(signal.expr).join(' AND ')];
-        } else if (cmpIdx > comparisons.length || !room && cmpIdx == comparisons.length) {
-            // replace reference signal
-            var needle = signal.variable || signal.expr;
-            return [
-                createReplacer({[needle]: signal_var})(leg.expr),
-                leg.expr.replace(new RegExp('-1\\*' + needle + '\\b','g'), signal_var)
-                        .replace(new RegExp('\\b' + needle + '\\b','g'), '-1*' + signal_var)
-            ];
-        } else { // add or replace comparison
-            return listComparators(latest).map(comparator => {
-                var expr = comparator(signal_var, signal.variable || signal.expr);
-                return spliceExpr(comparisons, cmpIdx, 1, expr).concat(signal.expr).join(' AND ');
-            });
-        }
-    }).then(strategies => {
-        if (max_operands && countOperands(strategies[0]) > max_operands) return [];
-        else return strategies;
+        return Promise.resolve(contributions[cmpIdx]).then(contrib => {
+            if (cmpIdx < comparisons.length)
+                logger.debug("Strategize", latest.label || '\b', "contrib",
+                    comparisons[cmpIdx].expr, contrib);
+            if (cmpIdx > comparisons.length || !room && cmpIdx == comparisons.length) {
+                // replace reference signal
+                var needle = signal.variable || signal.expr;
+                return [
+                    createReplacer({[needle]: signal_var})(leg.expr),
+                    leg.expr.replace(new RegExp('-1\\*' + needle + '\\b','g'), signal_var)
+                            .replace(new RegExp('\\b' + needle + '\\b','g'), '-1*' + signal_var)
+                ];
+            } else { // add or replace comparison
+                return listComparators(latest).map(comparator => {
+                    var expr = comparator(signal_var, signal.variable || signal.expr);
+                    return spliceExpr(comparisons, cmpIdx, 1, expr).concat(signal.expr).join(' AND ');
+                });
+            }
+        }).then(strategies => {
+            if (max_operands && countOperands(strategies[0]) > max_operands) return [];
+            else return strategies;
+        }).then(strategies => {
+            if (cmpIdx < contributions.length && contributions[cmpIdx] < latest.conjunction_cost) {
+                var dropped = spliceExpr(comparisons, cmpIdx, 1).concat(signal.expr).join(' AND ');
+                return strategies.concat(dropped); // also try dropping the under performing comparison
+            }
+            return strategies;
+        });
     });
 }
 
