@@ -51,8 +51,7 @@ module.exports = function(optimize) {
         else return promiseHelp.then(help => {
             var fields = _.first(help).properties;
             var opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
-                tz: moment.tz.guess(),
-                now: Date.now()
+                tz: moment.tz.guess()
             });
             return bestsignals(optimize, opts);
         });

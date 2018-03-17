@@ -33,7 +33,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const config = require('./config.js');
 const yahooClient = require('./yahoo-client.js');
-const cache = require('./cache.js');
+const cache = require('./memoize-cache.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 

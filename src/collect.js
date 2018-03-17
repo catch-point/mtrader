@@ -59,8 +59,7 @@ module.exports = function(quote, collectFn) {
                 symbolCol: '$symbol',
                 exchangeCol: '$exchange',
                 temporalCol: '$temporal',
-                tz: moment.tz.guess(),
-                now: Date.now()
+                tz: moment.tz.guess()
             });
             return collect(quote, collectFn || self, fields, opts);
         });

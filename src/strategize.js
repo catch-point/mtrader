@@ -54,7 +54,6 @@ module.exports = function(bestsignals) {
             var fields = _.first(help).properties;
             var opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
                 tz: moment.tz.guess(),
-                now: Date.now(),
                 variables: {},
                 strategy_variable: 'strategy',
                 leg_variable: chooseVariable('leg', options),

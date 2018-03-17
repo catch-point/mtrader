@@ -37,7 +37,7 @@ const expect = require('chai').expect;
 const logger = require('./logger.js');
 const interrupt = require('./interrupt.js');
 const debounce = require('./debounce.js');
-const cache = require('./cache.js');
+const cache = require('./memoize-cache.js');
 
 module.exports = _.extend(function(dirname) {
     var cachedDatabases = cache(openDatabase.bind(this, dirname), require('os').cpus().length*2);

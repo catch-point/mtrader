@@ -1,4 +1,4 @@
-// cache.js
+// memoize-cache.js
 /*
  *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
  *
