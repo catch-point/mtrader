@@ -132,6 +132,7 @@ function createRemoteWorkers(check_queue) {
         return replyTo(remote(address)).on('connect', function() {
             if (!queue.getStoppedWorkers().find(w => w.connected && w.process.pid == this.process.pid))
                 logger.log("Worker", this.process.pid, "is connected");
+            if (queue.isClosed()) this.disconnect();
         }).on('disconnect', function() {
             if (queue.getConnectedWorkers().find(w => w!=this && w.process.pid == this.process.pid))
                 logger.debug("Worker", this.process.pid, "has reconnected");
@@ -147,7 +148,7 @@ function createRemoteWorkers(check_queue) {
             else if (!nice || !_.isFinite(nice)) remoteWorkers[i].count = count;
             else remoteWorkers[i].count = Math.ceil(count * (1 - nice/100));
         });
-        if (errors.length) throw errors[0];
+        if (errors.length && !queue.isClosed()) throw errors[0];
     }).catch(err => logger.debug(err, err.stack)).then(() => {
         if (_.some(remoteWorkers, worker => worker.count > 1)) check_queue();
     });

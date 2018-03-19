@@ -58,8 +58,7 @@ module.exports = function(func, wait) {
             clearTimeout(timeout);
             result = func.apply(context, args);
         }
-        if (result && result.then)
-            return result;
+        return Promise.resolve(result);
     };
     return self;
   };

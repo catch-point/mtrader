@@ -42,6 +42,7 @@ const replyTo = require('./promise-reply.js');
 const interrupt = require('./interrupt.js');
 const workerQueue = require('./worker-queue.js');
 const Remote = require('./remote-workers.js');
+const Cache = require('./disk-cache.js');
 const config = require('./ptrading-config.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
@@ -117,16 +118,18 @@ if (require.main === module) {
 function createInstance(program, fetch, quote) {
     var promiseKeys;
     var closed = false;
+    var inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
     var instance = function(options) {
         if (closed) throw Error("Collect is closed");
         if (!promiseKeys) {
             promiseKeys = direct({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
         }
-        return promiseKeys.then(keys => _.pick(options, keys))
+        return promiseKeys.then(keys => trimOptions(keys, options))
           .then(options => {
-            if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
-            else if (options.help || isSplitting(options)) return direct(options);
+            if (options.help || isSplitting(options)) return direct(options);
+            else if (cache && inPast(options)) return cache(options);
+            else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (!remote.hasWorkers()) return local(options);
             else if (options.reset_every || isLeaf(options)) return remote.collect(options);
             else if (!local.hasWorkers()) return remote.collect(options);
@@ -139,25 +142,60 @@ function createInstance(program, fetch, quote) {
           .then(local.close, local.close)
           .then(direct.close)
           .then(quote.close)
-          .then(fetch.close);
+          .then(fetch.close)
+          .then(() => cache && cache.close());
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = _.debounce(() => {
         local.reload();
+        inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
+        return Promise.resolve(cache ? cache.close() : null).then(() => {
+            cache = _.isFinite(config('collect_cache_size')) && createCache(direct, local, remote);
+        });
     }, 100);
     instance.reset = () => {
         try {
-            return Promise.all([local.close(), remote.close()]);
+            return Promise.all([local.close(), remote.close(), cache && cache.close()]);
         } finally {
             local = createQueue(localWorkers);
             remote = Remote();
+            if (_.isFinite(config('collect_cache_size'))) cache = createCache(direct, local, remote);
         }
     };
     var direct = Collect(quote, instance);
     var localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance);
     var local = createQueue(localWorkers);
     var remote = Remote();
+    var cache = _.isFinite(config('collect_cache_size')) && createCache(direct, local, remote);
     return instance;
+}
+
+function trimOptions(keys, options) {
+    if (!_.isObject(options)) return options;
+    var array = _.isArray(options.portfolio) ? options.portfolio :
+        _.isString(options.portfolio) ? options.portfolio.split(',') :
+        [options.portfolio];
+    return _.extend(_.pick(options, keys), {
+        portfolio: array.map(portfolio => trimOptions(keys, portfolio))
+    });
+}
+
+function createCache(direct, local, remote) {
+    var collect_cache_size = config('collect_cache_size');
+    var cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    var dir = path.resolve(cache_dir, 'collect');
+    return Cache(dir, function(options) {
+        if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
+        else if (options.help || isSplitting(options)) return direct(options);
+        else if (!remote.hasWorkers()) return local(options);
+        else if (options.reset_every || isLeaf(options)) return remote.collect(options);
+        else if (!local.hasWorkers()) return remote.collect(options);
+        else return local(options);
+    }, collect_cache_size);
+}
+
+function beforeTimestamp(past, options) {
+    return options.end && moment(options.end).valueOf() < past;
 }
 
 function isSplitting(options) {

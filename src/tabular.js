@@ -53,7 +53,7 @@ module.exports = function(data, options) {
     }).then(present => new Promise((ready, error) => {
         var objects = [];
         if (!present) return ready(objects);
-        csv.fromStream(fs.createReadStream(filename), {headers : true, ignoreEmpty: true})
+        csv.fromStream(fs.createReadStream(filename).on('error', error), {headers : true, ignoreEmpty: true})
             .on('error', error)
             .on('data', function(data) {
                 try {
@@ -65,8 +65,8 @@ module.exports = function(data, options) {
             })
             .on('end', () => ready(objects));
     })).then(existing => reverse ? existing.reverse().concat(data) : existing.concat(data)) : data)
-      .then(data => new Promise(finished => {
-        var output = createWriteStream(filename);
+      .then(data => new Promise((finished, error) => {
+        var output = createWriteStream(filename).on('error', error);
         output.on('finish', finished);
         if (transpose) {
             var writer = csv.createWriteStream({

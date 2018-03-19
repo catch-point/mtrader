@@ -157,8 +157,7 @@ function help(datasources) {
             options:{
                 label: {
                     usage: '<name>',
-                    description: "Identifier used in logging messages",
-                    insignificant: true
+                    description: "Identifier used in logging messages"
                 }
             }
         }));
