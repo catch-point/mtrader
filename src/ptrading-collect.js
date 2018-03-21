@@ -143,30 +143,33 @@ function createInstance(program, fetch, quote) {
           .then(direct.close)
           .then(quote.close)
           .then(fetch.close)
-          .then(() => cache && cache.close());
+          .then(cache.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = _.debounce(() => {
         local.reload();
         inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
-        return Promise.resolve(cache ? cache.close() : null).then(() => {
-            cache = _.isFinite(config('collect_cache_size')) && createCache(direct, local, remote);
-        });
+        try {
+            cache.close().catch(err => logger.warn("Could not reset collect cache", err));
+        } finally {
+            cache = createCache(direct, local, remote);
+        }
     }, 100);
     instance.reset = () => {
         try {
-            return Promise.all([local.close(), remote.close(), cache && cache.close()]);
+            return Promise.all([local.close(), remote.close(), cache && cache.close()])
+              .catch(err => logger.warn("Could not reset collect", err));
         } finally {
             local = createQueue(localWorkers);
             remote = Remote();
-            if (_.isFinite(config('collect_cache_size'))) cache = createCache(direct, local, remote);
+            cache = createCache(direct, local, remote);
         }
     };
     var direct = Collect(quote, instance);
     var localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance);
     var local = createQueue(localWorkers);
     var remote = Remote();
-    var cache = _.isFinite(config('collect_cache_size')) && createCache(direct, local, remote);
+    var cache = createCache(direct, local, remote);
     return instance;
 }
 

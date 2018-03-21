@@ -62,7 +62,7 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
         seq: Math.floor(Math.random() * Math.pow(8, 8))
     });
     var promiseInitialCount = countEntries(cache)
-        .catch(err => logger.error("Could not initialize cache", err));
+        .catch(err => !cache.closed && logger.error("Could not initialize cache", err));
     var debounced = debounce(function(){
         cache.prefix = Date.now().toString(36);
         return sweep.apply(this, arguments);
