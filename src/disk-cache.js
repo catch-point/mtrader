@@ -231,9 +231,11 @@ function lock(cache, cb) {
  */
 function flock(cache, cb) {
     var lock_file = path.resolve(cache.baseDir, ".~lock.pid");
-    return mkdirp(cache.baseDir).then(() => aquireLock(cache, lock_file).then(cb)
-      .then(result => deleteFile(cache.baseDir, lock_file).then(() => result),
-            error => deleteFile(cache.baseDir, lock_file).then(() => {
+    var cleanup = () => deleteFile(cache.baseDir, lock_file);
+    return mkdirp(cache.baseDir).then(() => aquireLock(cache, lock_file))
+      .then(() => Promise.resolve(cb())
+      .then(result => cleanup().then(() => result),
+            error => cleanup().then(() => {
         throw error;
     })));
 }
@@ -277,7 +279,8 @@ function aquireLock(cache, lock_file) {
 function attemptLock(lock_file) {
     return new Promise((locked, notlocked) => {
         fs.writeFile(lock_file, process.pid, {flag:'wx'}, err => err ? notlocked(err) : locked());
-    }).catch(notlocked => new Promise((ready, error) => {
+    }).catch(werr => new Promise((ready, error) => {
+        logger.trace("Could not aquire lock", werr);
         fs.readFile(lock_file, 'utf8', (err, data) => err ? error(err) : ready(data));
     }).then(pid => {
         if (pid) process.kill(pid, 0);

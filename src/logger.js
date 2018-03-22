@@ -104,7 +104,10 @@ process.on('SIGINT', () => {
 
 function cfg(name, def) {
     var bool = config(name);
-    return bool == null ? def : bool;
+    if (bool) return bool;
+    var idx = process.argv.find((arg, i, args) => arg.indexOf(name) === 0 && args[i-1] == '--set');
+    if (idx > 0) return process.argv[idx] == name + '=true';
+    return def;
 }
 
 function trace() {
