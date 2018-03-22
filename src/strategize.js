@@ -330,18 +330,19 @@ function searchLeg(bestsignals, prng, parser, terminateAt, max_attempts, scores,
     var empty = !strategy || strategy == latest.signal_variable;
     var leg_signals = _.extend({}, signals, {[strategy_var]: latest});
     var attempts = 1;
+    var next = search.bind(this, bestsignalFn, moreStrategiesFn);
     var cb = next_signals => {
         var best = next_signals[strategy_var];
         var next_expr = best.variables[strategy_var];
         var disjunction_cost = latest.disjunction_cost;
         var better = empty ? best.score > best.cost + disjunction_cost :
             latest.score - latest.cost < best.score - best.cost;
-        if (better || attempts >= max_attempts || check()) return next_signals;
+        if (better || attempts >= max_attempts || check() || Date.now() > terminateAt)
+            return Promise.resolve(next_signals);
         attempts = _.isEqual(next_signals, leg_signals) ? attempts + 1 : 0;
         leg_signals = next_signals;
         return next(next_signals, latest, cb);
     };
-    var next = search.bind(this, bestsignalFn, moreStrategiesFn, terminateAt);
     return next(leg_signals, latest, cb);
 }
 
@@ -349,8 +350,7 @@ function searchLeg(bestsignals, prng, parser, terminateAt, max_attempts, scores,
  * Recursively tests solutions to improve the score
  * @return the best solution found
  */
-function search(bestsignal, moreStrategies, terminateAt, signals, options, cb) {
-    if (Date.now() > terminateAt) return signals; // times up
+function search(bestsignal, moreStrategies, signals, options, cb) {
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
     return moreStrategies(latest)
