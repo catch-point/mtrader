@@ -57,6 +57,7 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
         pending: {},
         baseDir: baseDir,
         closed: false,
+        full: false,
         locker: Promise.resolve(),
         prefix: Date.now().toString(36),
         seq: Math.floor(Math.random() * Math.pow(8, 8))
@@ -65,7 +66,7 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
         .catch(err => !cache.closed && logger.error("Could not initialize cache", err));
     var debounced = debounce(function(){
         cache.prefix = Date.now().toString(36);
-        return sweep.apply(this, arguments);
+        return sweep.apply(this, arguments).catch(err => logger.debug(err.message));
     }, 10000);
     return _.extend(function(options) {
         var opts = _.omit(options, _.isUndefined);
@@ -73,7 +74,9 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
         expect(hash).to.be.a('string');
         return getResult(cache, hash, opts, fn, options, result => {
             promiseInitialCount.then(initialCount => {
-                if (maxPoolSize && initialCount + cache.added - cache.removed > maxPoolSize) {
+                if (maxPoolSize && initialCount + cache.added - cache.removed > 2*maxPoolSize) {
+                    debounced.close();
+                } else if (maxPoolSize && initialCount + cache.added - cache.removed > maxPoolSize) {
                     debounced(cache, initialCount, poolSize);
                 } else if (!maxPoolSize && cache.added > cache.removed) {
                     debounced(cache, initialCount, poolSize);
@@ -90,9 +93,7 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
             cache.emit('close');
             return promiseInitialCount.then(initialCount => {
                 debounced(cache, initialCount, poolSize);
-                return debounced.close().catch(err => {
-                    logger.debug(err.message);
-                }).then(() => {
+                return debounced.close().then(() => {
                     if (cache.hit) {
                         var util = Math.round(100 * cache.hit / (cache.hit + cache.miss));
                         logger.debug("Cache utilization", util + '%');
@@ -178,17 +179,17 @@ function sweep(cache, initialCount, poolSize) {
             access: cache.hit + cache.miss
         });
         if (poolSize && count > poolSize)
-            return mark(cache, initialCount, poolSize);
+            return mark(cache, count, poolSize);
         if (!poolSize && access && added > removed)
-            return mark(cache, initialCount, Math.min(access, Math.max(initialCount, added)));
+            return mark(cache, count, Math.min(access, Math.max(initialCount, added)));
     });
 }
 
 /**
  * Marks the oldest cache entries for removal
  */
-function mark(cache, initialCount, poolSize) {
-    var size = initialCount + cache.added - cache.removed - poolSize;
+function mark(cache, count, poolSize) {
+    var size = count - poolSize;
     if (size <= 0) return Promise.resolve();
     return reduceEntries(cache, (oldest, entry) => {
         if (oldest.length < size || entry.age > _.first(oldest).age) {
