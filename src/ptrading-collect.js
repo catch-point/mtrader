@@ -143,14 +143,14 @@ function createInstance(program, fetch, quote) {
           .then(direct.close)
           .then(quote.close)
           .then(fetch.close)
-          .then(cache.close);
+          .then(() => cache && cache.close());
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = _.debounce(() => {
         local.reload();
         inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
         try {
-            cache.close().catch(err => logger.warn("Could not reset collect cache", err));
+            cache && cache.close().catch(err => logger.warn("Could not reset collect cache", err));
         } finally {
             cache = createCache(direct, local, remote);
         }
@@ -185,6 +185,7 @@ function trimOptions(keys, options) {
 
 function createCache(direct, local, remote) {
     var collect_cache_size = config('collect_cache_size');
+    if (!_.isFinite(config('collect_cache_size'))) return null;
     var cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     var dir = path.resolve(cache_dir, 'collect');
     return Cache(dir, function(options) {
