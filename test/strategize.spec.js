@@ -102,7 +102,7 @@ describe("strategize", function() {
             }
         }).should.eventually.be.like({
             variables: {
-                strategy: '-1*sma_crossA'
+                strategy: '-sma_crossA'
             },
             parameters: {
                 fast_lenA: 25,
@@ -150,7 +150,7 @@ describe("strategize", function() {
             }
         }).should.eventually.be.like({
             variables: {
-                strategy: '-1*sma_crossA'
+                strategy: '-sma_crossA'
             },
             parameters: {
                 fast_lenA: 25,
@@ -194,7 +194,7 @@ describe("strategize", function() {
             }]
         }).should.eventually.be.like({
             variables: {
-                strategy: '-1*trendA OR -1*trendB'
+                strategy: '-trendA OR -trendB'
             },
             parameters: {
                 trend_lenA: 5, trend_lenB: 50,
@@ -237,7 +237,7 @@ describe("strategize", function() {
             }]
         }).should.eventually.be.like({
             variables: {
-                strategy: 'trendA!=0 AND -1*trendB'
+                strategy: 'trendA!=0 AND -trendB'
             },
             parameters: {
                 trend_lenA: 20, trend_lenB: 5
@@ -277,7 +277,7 @@ describe("strategize", function() {
             }]
         }).should.eventually.be.like({
             variables: {
-                strategy: '-1*trendA OR trendB!=-1*trendC AND -1*trendC'
+                strategy: '-trendA OR trendB!=-trendC AND -trendC'
             },
             parameters: { trend_lenA: 5, trend_lenB: 150, trend_lenC: 50 },
             score: 34.095606
@@ -316,7 +316,7 @@ describe("strategize", function() {
             }]
         }).should.eventually.be.like({
             variables: {
-                strategy: '-1*trendA OR -1*trendB OR trendC'
+                strategy: '-trendA OR -trendB OR trendC'
             },
             parameters: { trend_lenA: 5, trend_lenB: 50, trend_lenC: 150 },
             score: 31.630024
@@ -363,7 +363,7 @@ describe("strategize", function() {
             }
         }).should.eventually.be.like({
             variables: {
-                strategy: '-1*sma_crossB'
+                strategy: '-sma_crossB'
             },
             parameters: {
                 fast_lenB: 25,

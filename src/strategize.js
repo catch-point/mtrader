@@ -478,8 +478,8 @@ function moreStrategies(prng, evaluate, parser, max_operands, latest) {
                 var needle = signal.variable || signal.expr;
                 return [
                     createReplacer({[needle]: signal_var})(leg.expr),
-                    leg.expr.replace(new RegExp('-1\\*' + needle + '\\b','g'), signal_var)
-                            .replace(new RegExp('\\b' + needle + '\\b','g'), '-1*' + signal_var)
+                    leg.expr.replace(new RegExp('-' + needle + '\\b','g'), signal_var)
+                            .replace(new RegExp('\\b' + needle + '\\b','g'), '-' + signal_var)
                 ];
             } else { // add or replace comparison
                 return listComparators(latest).map(comparator => {
@@ -526,6 +526,8 @@ function createParser() {
                     return args;
                 }, []);
                 return {expr, legs: members};
+            } else if (operator == 'NEGATIVE' && args.length == 1) {
+                return {expr, inverse: true, variable: args[0].expr || args[0]};
             } else if (args.length != 2) {
                 return {expr};
             } else if (~comparators.indexOf(operator) && ~args.indexOf('0')) {
@@ -602,10 +604,10 @@ function choose(prng, max, extra) {
 function listComparators(options) {
     var direct = [
         _.extend((a,b)=>`${a}=${b}`,     {operator: 'EQUALS'}),
-        _.extend((a,b)=>`${a}=-1*${b}`,  {operator: 'EQUALS'}),
+        _.extend((a,b)=>`${a}=-${b}`,  {operator: 'EQUALS'}),
         _.extend((a,b)=>`${a}=0`,        {operator: 'EQUALS'}),
         _.extend((a,b)=>`${a}!=${b}`,    {operator: 'NOT_EQUALS'}),
-        _.extend((a,b)=>`${a}!=-1*${b}`, {operator: 'NOT_EQUALS'}),
+        _.extend((a,b)=>`${a}!=-${b}`, {operator: 'NOT_EQUALS'}),
         _.extend((a,b)=>`${a}!=0`,       {operator: 'NOT_EQUALS'}),
     ];
     if (options && !options.directional) return direct;
@@ -628,10 +630,10 @@ function spliceExpr(array, start, deleteCount, ...items) {
 }
 
 /**
- * returns variable with and without the prefix '-1*'
+ * returns variable with and without the (negative) prefix '-'
  */
 function invert(variable) {
-    return [variable, `-1*${variable}`];
+    return [variable, `-${variable}`];
 }
 
 /**
