@@ -53,6 +53,15 @@ module.exports = function(func, wait) {
       if (!timeout) timeout = setTimeout(later, wait);
       return result;
     };
+    self.flush = function() {
+        if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+            result = func.apply(context, args);
+            if (!timeout) context = args = null;
+        }
+        return Promise.resolve(result);
+    };
     self.close = function() {
         if (timeout) {
             clearTimeout(timeout);

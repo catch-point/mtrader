@@ -75,13 +75,13 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
         return getResult(cache, hash, opts, fn, options, result => {
             promiseInitialCount.then(initialCount => {
                 if (maxPoolSize && initialCount + cache.added - cache.removed > 2*maxPoolSize) {
-                    debounced.close();
+                    return debounced.flush();
                 } else if (maxPoolSize && initialCount + cache.added - cache.removed > maxPoolSize) {
-                    debounced(cache, initialCount, poolSize);
+                    return debounced(cache, initialCount, poolSize);
                 } else if (!maxPoolSize && cache.added > cache.removed) {
-                    debounced(cache, initialCount, poolSize);
+                    return debounced(cache, initialCount, poolSize);
                 }
-            });
+            }).catch(err => logger.error("Cache maxPoolSize limit", err));
             return result;
         });
     }, {
