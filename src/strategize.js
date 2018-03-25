@@ -382,8 +382,9 @@ function search(bestsignal, moreStrategies, signals, options, cb) {
  * Finds the best signal for the strategy
  */
 function bestsignal(bestsignals, terminateAt, scores, signal_strategy, latest) {
+    var cost = getStrategyCost(signal_strategy, latest);
     if (scores[signal_strategy])
-        return scores[signal_strategy].then(score => ({score, revisited: true}));
+        return scores[signal_strategy].then(score => ({score, cost, revisited: true}));
     logger.debug("bestsignal", latest.label || '\b', signal_strategy);
     var regex = new RegExp('\\b' + latest.signal_variable + '\\b','g');
     var token = signal_strategy.split(' ').find(token => regex.exec(token));
@@ -404,7 +405,7 @@ function bestsignal(bestsignals, terminateAt, scores, signal_strategy, latest) {
                 [latest.strategy_variable]: signal_strategy
             },
             strategy_variable: latest.strategy_variable,
-            cost: getStrategyCost(signal_strategy, latest)
+            cost: cost
         }, best);
     });
     scores[signal_strategy] = promise.then(best => best.score);
