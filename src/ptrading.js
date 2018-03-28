@@ -79,7 +79,8 @@ program.command('start').description("Start a headless service on the listen int
 program.command('stop').description("Stops a headless service using the listen interface").action(() => {
     var address = config('listen');
     if (!address) throw Error("Service listen address is required to stop service");
-    var worker = replyTo(remote(address)).on('error', err => logger.debug(err, err.stack))
+    var worker = replyTo(remote(address, {checkServerIdentity: _.noop}))
+        .on('error', err => logger.debug(err, err.stack))
         .on('error', () => worker.disconnect());
     return new Promise((stopped, abort) => {
         process.on('SIGINT', abort);

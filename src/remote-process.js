@@ -45,9 +45,9 @@ const EOM = '\r\n\r\n';
 
 const DEFAULT_PATH = '/ptrading/' + version.minor_version + '/workers';
 
-var remote = module.exports = function(socket, label) {
+var remote = module.exports = function(socket, options) {
     if (typeof socket == 'string' || typeof socket == 'number')
-        return remote(new ws(parseLocation(socket, false).href, {
+        return remote(new ws(parseLocation(socket, false).href, _.extend({
             key: readFileSync(config('tls.key_pem')),
             passphrase: readBase64FileSync(config('tls.passphrase_base64')),
             cert: readFileSync(config('tls.cert_pem')),
@@ -67,8 +67,9 @@ var remote = module.exports = function(socket, label) {
             perMessageDeflate: config('tls.perMessageDeflate')!=null ? config('tls.perMessageDeflate') : true,
             headers: {'User-Agent': 'ptrading/' + version},
             agent: false
-        }), label || socket);
+        }, options)), _.extend({label: socket}, options));
     var buf = '';
+    var label = options.label;
     var timeout = config('tls.timeout');
     var emitter = new EventEmitter();
     socket.on('open', () => {
