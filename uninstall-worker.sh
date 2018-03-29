@@ -85,7 +85,7 @@ else
 fi
 
 if [ -z "$PREFIX" -a -x "$PRGDIR/ptrading" ]; then
-  PREFIX = "$PRGDIR/.."
+  PREFIX="$PRGDIR/.."
 elif [ -z "$PREFIX" ]; then
   PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
 fi
