@@ -243,7 +243,7 @@ function readMetadata(dirname) {
         if (!_.isArray(metadata.tables))
             metadata.tables = [];
         return metadata;
-    }).catch(error => logger.error("Could not read", dirname, error.message));
+    }).catch(error => logger.error("Could not read", dirname, error.message) || {tables:[]});
 }
 
 function writeMetadata(dirname, metadata) {
