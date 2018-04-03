@@ -573,7 +573,7 @@ function chooseContribution(prng, threshold, contributions, extra) {
         contrib: contrib
     }));
     var byContrib = _.sortBy(items, 'contrib');
-    if (byContrib.length && byContrib[0].contrib < threshold) return 0;
+    if (byContrib.length && byContrib[0].contrib < threshold) return byContrib[0].p;
     var idx = choose(prng, byContrib.length, extra);
     if (byContrib[idx]) return byContrib[idx].p;
     else return idx;
