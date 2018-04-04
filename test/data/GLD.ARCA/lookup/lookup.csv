@@ -1,0 +1,31 @@
+symbol,yahoo_symbol,exchange,name,type,typeDisp
+GLD,GLD,ARCA,SPDR Gold Shares,E,ETF
+JNUG,JNUG,ARCA,Direxion Daily Jr Gld Mnrs Bull 3X ETF,E,ETF
+JDST,JDST,ARCA,Direxion Daily Jr Gld Mnrs Bear 3X ETF,E,ETF
+GLDFF,GLDFF,ARCA,Golden Leaf Holdings Ltd.,S,Equity
+GLDD,GLDD,ARCA,Great Lakes Dredge & Dock Corporation,S,Equity
+GLDLF,GLDLF,ARCA,GoldMining Inc.,S,Equity
+USERX,USERX,ARCA,US Global Investors Gld & Prec Mtls,M,Fund
+GLDI,GLDI,ARCA,Credit Suisse X-Links Gold Cov Call ETN,E,ETF
+GLDG,GLDG,ARCA,Golden Global Corp.,S,Equity
+GLD180420C00128000,GLD180420C00128000,ARCA,GLD Apr 2018 call 128.000,O,Option
+GLD,GLD,ARCA,SPDR Gold Shares,E,ETF
+JNUG,JNUG,ARCA,Direxion Daily Jr Gld Mnrs Bull 3X ETF,E,ETF
+JDST,JDST,ARCA,Direxion Daily Jr Gld Mnrs Bear 3X ETF,E,ETF
+GLDG,GLDG,ARCA,Golden Global Corp.,S,Equity
+GLDD,GLDD,ARCA,Great Lakes Dredge & Dock Corporation,S,Equity
+GLDLF,GLDLF,ARCA,GoldMining Inc.,S,Equity
+GLD.V,GLD.V,ARCA,GoldON Resources Ltd.,S,Equity
+GLDN.V,GLDN.V,ARCA,Golden Ridge Resources Ltd.,S,Equity
+^GLDX-NV,^GLDX-NV,ARCA,Global X Gold Explorers ETF (Ne,I,Index
+GLD180615C00123000,GLD180615C00123000,ARCA,GLD Jun 2018 call 123.000,O,Option
+GLD,GLD,ARCA,SPDR Gold Shares,E,ETF
+JNUG,JNUG,ARCA,Direxion Daily Jr Gld Mnrs Bull 3X ETF,E,ETF
+JDST,JDST,ARCA,Direxion Daily Jr Gld Mnrs Bear 3X ETF,E,ETF
+GLDFF,GLDFF,ARCA,Golden Leaf Holdings Ltd.,S,Equity
+GLDD,GLDD,ARCA,Great Lakes Dredge & Dock Corporation,S,Equity
+GLD180420C00126000,GLD180420C00126000,ARCA,GLD Apr 2018 call 126.000,O,Option
+GLD180420C00135000,GLD180420C00135000,ARCA,GLD Apr 2018 call 135.000,O,Option
+GLD180615C00135000,GLD180615C00135000,ARCA,GLD Jun 2018 call 135.000,O,Option
+GLDT,GLDT,ARCA,"Gold Coast Bancorp, Inc.",S,Equity
+GLD180406P00126000,GLD180406P00126000,ARCA,GLD Apr 2018 put 126.000,O,Option

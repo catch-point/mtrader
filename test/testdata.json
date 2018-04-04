@@ -3,14 +3,7 @@
   "fetch": {
     "files": {
       "enabled": true,
-      "fallback": ["google", "yahoo", "iqfeed"]
-    },
-    "google": {
-      "enabled": false,
-      "lookup": true,
-      "fundamental": true,
-      "interday": ["year", "quarter", "month", "week", "day"],
-      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE"]
+      "fallback": ["yahoo", "iqfeed"]
     },
     "yahoo": {
       "enabled": false,

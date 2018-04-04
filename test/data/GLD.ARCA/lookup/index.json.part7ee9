@@ -1,0 +1,48 @@
+{
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 30,
+   "head": [
+    {
+     "symbol": "GLD",
+     "yahoo_symbol": "GLD",
+     "exchange": "ARCA",
+     "name": "SPDR Gold Shares",
+     "type": "E",
+     "typeDisp": "ETF"
+    },
+    {
+     "symbol": "JNUG",
+     "yahoo_symbol": "JNUG",
+     "exchange": "ARCA",
+     "name": "Direxion Daily Jr Gld Mnrs Bull 3X ETF",
+     "type": "E",
+     "typeDisp": "ETF"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "GLDT",
+     "yahoo_symbol": "GLDT",
+     "exchange": "ARCA",
+     "name": "Gold Coast Bancorp, Inc.",
+     "type": "S",
+     "typeDisp": "Equity"
+    },
+    {
+     "symbol": "GLD180406P00126000",
+     "yahoo_symbol": "GLD180406P00126000",
+     "exchange": "ARCA",
+     "name": "GLD Apr 2018 put 126.000",
+     "type": "O",
+     "typeDisp": "Option"
+    }
+   ],
+   "updatedAt": "2018-04-04T19:39:41.231Z",
+   "properties": {},
+   "createdAt": "2018-04-04T19:39:41.231Z"
+  }
+ ]
+}
