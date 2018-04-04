@@ -332,7 +332,7 @@ function formatBeginEnd(options) {
     var eod = moment(options.now).tz(options.tz).endOf('day');
     var begin = options.begin ? moment.tz(options.begin, options.tz) : eod;
     var oend = options.end && moment.tz(options.end, options.tz);
-    var end = oend && eod.isBefore(oend) ? eod : oend; // limit end to end of today
+    var end = !oend || eod.isBefore(oend) ? eod : oend; // limit end to end of today
     var pad_begin = options.pad_begin ? options.pad_begin :
             options.begin ? 0 : 100;
     var pad_end = end && options.pad_end || 0;
