@@ -216,7 +216,10 @@ function reduceEntries(cache, cb, initial) {
     }).then(files => files.filter(isMetadata))
       .then(files => files.map(file => path.resolve(dir, file)))
       .then(files => files.reduce((memo, file) => memo.then(memo => {
-        return readEntryMetadata(file).then(entry => entry ? cb(memo, entry) : memo)
+        return readEntryMetadata(file).then(entry => {
+            if (entry) return cb(memo, entry);
+            else return deleteEntryFile(file).then(() => memo);
+        });
     }), Promise.resolve(memo)))), Promise.resolve(initial)))));
 }
 
@@ -510,6 +513,20 @@ function deleteEntry(baseDir, entry) {
         entry.metadata = null;
         return entry;
     });
+}
+
+/**
+ * Attempts to delete the given entry file and its related files
+ */
+function deleteEntryFile(file) {
+    var prefix = path.basename(file, 'entry.json');
+    return new Promise((ready, error) => {
+        var dir = path.dirname(file);
+        fs.readdir(dir, (err, files) => err ? error(err) : ready(files));
+    }).then(files => Promise.all(files.map(file => {
+        if (file.indexOf(prefix) === 0) return deleteFile(dir, file)
+          .catch(err => logger.debug("Could not delete corupt file", file));
+    })));
 }
 
 /**
