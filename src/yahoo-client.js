@@ -60,16 +60,24 @@ function promiseHistoryAgent() {
         var options = url.parse(quote.replace('{symbol}', encodeURIComponent(symbol)));
         var headers = options.headers = {};
         return promiseText(options).then(body => {
-            var keyword = '"CrumbStore":{"crumb":"';
-            var start = body.indexOf(keyword) + keyword.length;
-            var end = body.indexOf('"', start);
+            var keyword = '{"crumb":"';
+            var start = 0, end = 0;
+            do {
+                start = body.indexOf(keyword, start) + keyword.length;
+                end = body.indexOf('"', start);
+            } while (start > 0 && body.substring(start-1, end+1)=='"{crumb}"');
             if (start < 0 && end < 0) return promiseText;
-            var crumb = encodeURIComponent(JSON.parse(body.substring(start-1, end+1)));
-            return query => {
-                var options = url.parse(query.replace('{crumb}', crumb));
-                options.headers = headers;
-                return promiseText(options);
-            };
+            try {
+                var crumb = encodeURIComponent(JSON.parse(body.substring(start-1, end+1)));
+                return query => {
+                    var options = url.parse(query.replace('{crumb}', crumb));
+                    options.headers = headers;
+                    return promiseText(options);
+                };
+            } catch(err) {
+                logger.error("Could not find yahoo crumb", body.substring(start-1, end+1));
+                throw err;
+            }
         });
     };
     var agent = expire(createAgent, 60 * 1000);
