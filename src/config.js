@@ -53,8 +53,8 @@ process.argv.forEach((arg, i, args) => {
         var map = arg.substring('--add-'.length).replace(/s?$/,'s');
         var pair = args[i+1].split('=');
         var name = _.first(pair);
-        var str = _.rest(pair).join('=');
-        if (map && name && str) {
+        var str = pair.length == 1 ? name : _.rest(pair).join('=');
+        if (map && name) {
             if (!session[map]) {
                 session[map] = {};
             }
