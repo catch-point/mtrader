@@ -30,6 +30,14 @@
       "location": "localhost:1880"
     }
   },
+  "collective2": {
+    "requestMarginEquity": "https://collective2.com/world/apiv3/requestMarginEquity",
+    "retrieveSystemEquity": "https://api.collective2.com/world/apiv3/retrieveSystemEquity",
+    "retrieveSignalsWorking": "https://collective2.com/world/apiv3/retrieveSignalsWorking",
+    "requestTrades": "https://collective2.com/world/apiv3/requestTrades",
+    "submitSignal": "https://collective2.com/world/apiv3/submitSignal",
+    "cancelSignal": "https://collective2.com/world/apiv3/cancelSignal"
+  },
   "exchanges": {
     "ARCA": {
       "label": "Archipelago Electronic Communications Network",
