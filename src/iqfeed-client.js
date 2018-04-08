@@ -35,6 +35,7 @@ const spawn = require('child_process').spawn;
 const moment = require('moment-timezone');
 const logger = require('./logger.js');
 const promiseThrottle = require('./throttle.js');
+const interrupt = require('./interrupt.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
@@ -54,7 +55,8 @@ module.exports = function(command, env, productId, productVersion) {
         },
         close() {
             return Promise.all([
-                adminPromise ? admin().then(closeSocket).then(() => adminPromise = null) : Promise.resolve(),
+                !adminPromise ? Promise.resolve() : adminPromise.then(closeSocket)
+                  .then(() => adminPromise = null, () => adminPromise = null),
                 lookup('close'),
                 level1('close')
             ]);
@@ -263,8 +265,17 @@ function historical(ready) {
     };
     return function(symbol, args) {
         return Promise.resolve(args).then(function(args){
-            if ('close' == symbol)
-                return lookupPromise && lookup().then(closeSocket).then(() => lookupPromise = null);
+            if ('close' == symbol) {
+                var closing = Error("IQFeed is closing");
+                try {
+                    _.forEach(pending, item => item.error(closing));
+                } catch (err) {
+                    logger.debug("IQFeed pending item", err);
+                } finally {
+                    return lookupPromise && lookupPromise.then(closeSocket)
+                      .then(() => lookupPromise = null, () => lookupPromise = null);
+               }
+            }
             if (!symbol) throw Error("Missing symbol in " + args.join(','));
             return lookup().then(function(socketId){
                 var id = ++seq;
@@ -359,15 +370,20 @@ function deregister(watching, socketId, symbol, pending) {
 }
 
 function promiseSocket(previous, createNewSocket) {
+    var check = interrupt(true);
     return (previous || Promise.reject()).then(function(socket){
         if (!socket.destroyed) return socket;
         else throw Error("Socket not connected");
-    }).catch(createNewSocket);
+    }).catch(err => {
+        if (check()) throw err;
+        return createNewSocket();
+    });
 }
 
 function promiseNewLookupSocket(blacklist, pending, port, retry) {
+    var check = interrupt(true);
     return openSocket(port).then(function(socket) {
-        return send('S,SET PROTOCOL,5.1', socket).then(function(socket) {
+        return promiseSend('S,SET PROTOCOL,5.1', socket).then(function(socket) {
             socket.on('close', error => {
                 // close and reconnect in a second
                 if (error) _.delay(retry, 1000);
@@ -405,10 +421,13 @@ function promiseNewLookupSocket(blacklist, pending, port, retry) {
 }
 
 function promiseNewLevel1Socket(blacklist, watching, port, retry) {
+    var check = interrupt(true);
     var fundamentalFormat = ['type', 'symbol', 'exchange_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'exchange_root'];
     var summaryFormat = ['type', 'symbol', 'close', 'most_recent_trade_date', 'most_recent_trade_timems', 'most_recent_trade'];
     return openSocket(port).then(function(socket) {
-        return send('S,SET PROTOCOL,5.1', socket).then(send.bind(this, 'S,SELECT UPDATE FIELDS,Close,Most Recent Trade Date,Most Recent Trade TimeMS,Most Recent Trade')).then(function(socket){
+        return promiseSend('S,SET PROTOCOL,5.1', socket)
+          .then(send.bind(this, 'S,SELECT UPDATE FIELDS,Close,Most Recent Trade Date,Most Recent Trade TimeMS,Most Recent Trade'))
+          .then(function(socket){
             socket.on('close', error => {
                 // close and reconnect in a second
                 if (error) _.delay(retry, 1000);
@@ -459,13 +478,15 @@ function promiseNewLevel1Socket(blacklist, watching, port, retry) {
 }
 
 function promiseNewAdminSocket(port, command, env, productId, productVersion) {
+    var check = interrupt(true);
     return openSocket(port).catch(err => {
+        if (check()) throw err;
         if (command && err.code == 'ECONNREFUSED') {
             // try launching command first
             return new Promise((ready, exit) => {
                 logger.debug("launching", command);
                 var p = spawn(_.first(command), _.rest(command), {
-                    env: env,
+                    env: _.extend({}, process.env, env),
                     detached: true,
                     stdio: 'ignore'
                 }).on('error', exit).on('exit', code => {
@@ -474,9 +495,11 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
                 }).unref();
                 ready();
             }).then(() => openSocket(port)).catch(err => {
+                if (check()) throw err;
                 if (err.code == 'ECONNREFUSED')
                     return new Promise(cb => _.delay(cb, 1000))
                         .then(() => openSocket(port)).catch(err => {
+                            if (check()) throw err;
                             if (err.code == 'ECONNREFUSED')
                                 return new Promise(cb => _.delay(cb, 4000))
                                     .then(() => openSocket(port));
@@ -488,7 +511,7 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
             throw err;
         }
     }).then(function(socket) {
-        return send('S,CONNECT', socket).then(function(socket){
+        return promiseSend('S,CONNECT', socket).then(function(socket){
             return new Promise(function(callback, abort) {
                 var registration;
                 var warning = _.throttle(msg => logger.warn(msg), 10000, {trailing: false});
@@ -502,7 +525,8 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
                             var msg = "S,REGISTER CLIENT APP," + productId + "," + productVersion;
                             if (productId && registration != msg) {
                                 registration = msg;
-                                send(msg, socket).then(send.bind(this, 'S,CONNECT'), abort);
+                                promiseSend(msg, socket)
+                                  .then(send.bind(this, 'S,CONNECT'), abort);
                             } else {
                                 warning(line);
                             }
@@ -529,14 +553,20 @@ function openSocket(port) {
 }
 
 function closeSocket(socket) {
+    var destroy;
     return new Promise(cb => {
         socket.on('close', cb).end();
         // wait 1s for remote to ACK FIN
-        _.delay(() => socket.destroy(), 1000);
-    });
+        destroy = setTimeout(() => socket.destroy(), 1000);
+    }).then(() => clearTimeout(destroy));
 }
 
 function send(cmd, socket) {
+    logger.log(cmd);
+    socket.write(cmd + '\r\n');
+}
+
+function promiseSend(cmd, socket) {
     return new Promise(function(callback, abort) {
         logger.log(cmd);
         socket.on('error', abort);
