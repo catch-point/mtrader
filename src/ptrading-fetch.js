@@ -97,11 +97,18 @@ if (require.main === module) {
     }
 } else if (config('workers') == 0) {
     var fetch;
+    var closed = false;
     module.exports = function(options) {
+        if (closed) throw Error("Fetch is closed");
         if (!fetch) fetch = Fetch();
         return fetch(options);
     };
+    module.exports.open = function() {
+        closed = false;
+        return Promise.resolve();
+    };
     module.exports.close = function() {
+        closed = true;
         if (fetch) try {
             return fetch.close();
         } finally {

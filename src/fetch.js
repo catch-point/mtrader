@@ -75,7 +75,7 @@ module.exports = function() {
         });
     };
     self.close = () => Promise.resolve(datasources).then(datasources => {
-        close(_.uniq(_.flatten(_.values(datasources).map(_.values))));
+        return close(_.uniq(_.flatten(_.values(datasources).map(_.values))));
     });
     return self;
 };
