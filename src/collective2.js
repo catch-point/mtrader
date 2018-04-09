@@ -133,7 +133,10 @@ function collective2(collect, agent, settings, options) {
                 quant_opened:0,
                 quant_closed:0
             };
-            return signals.concat(updateWorking(d, w));
+            var update = updateWorking(d, w);
+            if (update.length)
+                logger.trace("collective2", "desired", symbol, JSON.stringify(desired[symbol]));
+            return signals.concat(update);
         }, []);
     })).then(signals => signals.reduce((promise, signal) => promise.then(result => {
         if (signal && signal.action) return submit(agent, 'submitSignal', {
@@ -250,17 +253,25 @@ function updateWorking(desired, working) {
         else return updateWorking(desired, working.prior).concat(working.signal.signal_id);
     } else if (desired.prior && !working.prior) {
         // advance working state
-        expect(desired.signal).not.to.have.property('conditionalUponSignal');
+        var sig = desired.signal;
+        expect(sig).not.to.have.property('conditionalUponSignal');
         var upon = updateWorking(desired.prior, working);
-        var adv = upon.find(s => _.isObject(s) && !s.xreplace);
-        if (upon.some(s => s.conditionalupon || s.conditionalUponSignal))
+        var creating = upon.filter(s => _.isObject(s) && !s.xreplace);
+        var adv = creating.length == 1 && creating[0];
+        if (upon.some(s => s.conditionalupon || s.conditionalUponSignal || +s.stoploss || +s.profittarget) || creating.length>1)
             return upon; // Double conditionals not permitted
+        else if (creating.length>1)
+            return upon;
         else if (!adv && working.signal && working.signal.status == 'working')
-            return upon.concat(_.extend({conditionalupon: working.signal.signal_id}, desired.signal));
+            return upon.concat(_.extend({conditionalupon: working.signal.signal_id}, sig));
         else if (!adv)
-            return upon.concat(desired.signal);
+            return upon.concat(sig);
+        else if (adv && +sig.isStopOrder && isOpenAndClose(adv, sig))
+            return _.without(upon, adv).concat(_.extend({stoploss: sig.isStopOrder}, adv));
+        else if (adv && +sig.isLimitOrder && isOpenAndClose(adv, sig))
+            return _.without(upon, adv).concat(_.extend({profittarget: sig.isLimitOrder}, adv));
         else
-            return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, desired.signal));
+            return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, sig));
     } else if (working.prior && !desired.prior) {
         // cancel working signal
         return updateWorking(desired, working.prior).concat(working.signal.signal_id);
@@ -312,6 +323,16 @@ function updateWorking(desired, working) {
             duration: 'DAY'
         }];
     }
+}
+
+/**
+ * If the open signal is opening and the close signal closes the same quant
+ */
+function isOpenAndClose(open, close) {
+    return open.quant == close.quant && !+open.stoploss &&
+        open.parkUntilSecs == close.parkUntilSecs &&
+        (open.action == 'BTO' || open.action == 'STO') &&
+        (close.action == 'STC' || close.action == 'BTC');
 }
 
 /**

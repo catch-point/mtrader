@@ -1157,14 +1157,8 @@ describe("collective2", function() {
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
                 market: 1,
-                duration: 'DAY'
-            }, {
-                duration: 'GTC',
-                quant: 1,
-                symbol: 'GLD',
-                typeofsymbol: 'stock',
-                stop: 130,
-                action: 'STC'
+                duration: 'DAY',
+                stoploss: 130
             }]);
         });
         it("don't change stoploss order", function() {
@@ -1306,14 +1300,8 @@ describe("collective2", function() {
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
                 market: 1,
-                duration: 'DAY'
-            }, {
-                duration: 'GTC',
-                quant: 1,
-                symbol: 'GLD',
-                typeofsymbol: 'stock',
-                stop: 110,
-                action: 'STC'
+                duration: 'DAY',
+                stoploss: 110
             }]);
         });
         it("triggered before catch up", function() {
@@ -1362,14 +1350,8 @@ describe("collective2", function() {
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
                 market: 1,
-                duration: 'DAY'
-            }, {
-                duration: 'GTC',
-                quant: 1,
-                symbol: 'GLD',
-                typeofsymbol: 'stock',
-                stop: 130,
-                action: 'STC'
+                duration: 'DAY',
+                stoploss: 130
             }]);
         });
         it("triggered", function() {
@@ -1440,13 +1422,15 @@ describe("collective2", function() {
                 typeofsymbol: 'stock',
                 market: 1,
                 duration: 'DAY'
+                // parkUntilSecs: undefined
             }, {
                 duration: 'GTC',
                 quant: 1,
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
                 stop: 120,
-                action: 'STC'
+                action: 'STC',
+                parkUntilSecs: moment('2018-01-03').format('X')
             }]);
         });
         it("GLD STCSTO without stoploss", function() {
@@ -1575,14 +1559,8 @@ describe("collective2", function() {
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
                 market: 1,
-                duration: 'GTC'
-            }, {
                 duration: 'GTC',
-                quant: 2,
-                symbol: 'GLD',
-                typeofsymbol: 'stock',
-                stop: 130,
-                action: 'BTC'
+                stoploss: 130
             }]);
         });
     });
