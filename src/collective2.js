@@ -97,6 +97,10 @@ function help(bestsignals) {
                 systemid: {
                     usage: '<integer>',
                     description: "The Collective2 system identifier"
+                },
+                symbols: {
+                    usage: '[<symbol>]',
+                    description: "Array of position symbols that should be closed if no desired position exists"
                 }
             })
         }];
@@ -110,13 +114,19 @@ function collective2(collect, agent, settings, options) {
     return getDesiredPositions(collect, agent, settings, options)
       .then(desired => getWorkingPositions(agent, settings, options)
       .then(working => {
+        var symbols = _.uniq(_.keys(desired).concat(options.symbols));
         _.forEach(working, (w, symbol) => {
-            if (!desired[symbol] && w.quant_opened != w.quant_closed) {
+            if (!desired[symbol] && w.quant_opened != w.quant_closed && !~symbols.indexOf(symbol)) {
                 logger.warn("Unknown", w.long_or_short, "position",
                     w.quant_opened - w.quant_closed, w.symbol, w.symbol_description || '');
             }
         });
-        return _.reduce(desired, (signals, d, symbol) => {
+        return symbols.reduce((signals, symbol) => {
+            var d = desired[symbol] || {
+                symbol: symbol,
+                quant_opened:0,
+                quant_closed:0
+            };
             var w = working[symbol] || {
                 symbol: symbol,
                 instrument: d.instrument,
@@ -554,7 +564,7 @@ function retrieve(agent, name, settings, options) {
             throw Error("Unknown protocol " + uri);
         }
     }).then(JSON.parse).then(res => {
-        if (!res.equity_data) logger.debug("collective2", name, JSON.stringify(res));
+        if (!res.equity_data) logger.trace("collective2", name, JSON.stringify(res));
         if (res.title)
             logger.log(res.title);
         else if (res.error && res.error.title)
