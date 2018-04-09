@@ -230,7 +230,7 @@ function getWorkingPositions(agent, settings, options) {
  * Array of signals to update the working positions to the desired positions
  */
 function updateWorking(desired, working) {
-    var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'limit', 'market', 'profittarget', 'stoploss'];
+    var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss'];
     var d_opened = desired.quant_opened - desired.quant_closed;
     var w_opened = working.quant_opened - working.quant_closed;
     if (_.has(desired.signal, 'parkUntilSecs') && +working.closedWhenUnixTimeStamp > +desired.signal.parkUntilSecs) {
@@ -469,7 +469,10 @@ function c2signal(signal) {
         tif: signal.tif || signal.duration,
         duration: signal.duration || signal.tif,
         stop: +signal.stop || +signal.isStopOrder,
-        isStopOrder: +signal.isStopOrder || +signal.stop
+        isStopOrder: +signal.isStopOrder || +signal.stop,
+        isLimitOrder: +signal.isLimitOrder || +signal.limit,
+        limit: +signal.limit || +signal.isLimitOrder,
+        quant: +signal.quant
     }), v => !v || v == '0');
 }
 

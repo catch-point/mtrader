@@ -1260,7 +1260,7 @@ describe("collective2", function() {
                 systemid: 'test'
             }).should.eventually.be.like([{
                 duration: 'GTC',
-                quant: '1',
+                quant: 1,
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
                 stop: 120,
