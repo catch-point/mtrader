@@ -150,8 +150,9 @@ function collective2(collect, agent, settings, options) {
     }).then(res => {
         var log = s => {
             var type = +s.isStopOrder ? '@STOP ' + s.isStopOrder :
-                s.isLimitOrder ? '@LIMIT ' + s.isLimitOrder : '@MARKET';
-            logger.info(s.action, s.quant, s.symbol, type, s.duration, s.signalid || '', s.description || '');
+                +s.isLimitOrder || +s.islimit ? '@LIMIT ' + (+s.isLimitOrder || +s.islimit) : '@MARKET';
+            var tif = s.duration || s.tif || (+s.gtc ? 'GTC' : +s.day ? 'DAY' : '')
+            logger.info(s.action, s.quant, s.symbol || '', type, tif, s.signalid || '', s.description || '');
         }
         if (res.signal.conditionalUponSignal) {
             log(res.signal.conditionalUponSignal);
