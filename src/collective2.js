@@ -250,7 +250,7 @@ function updateWorking(desired, working) {
             xreplace: working.signal.signal_id
         }, desired.signal, working.signal)];
         // cancel working signal
-        else return updateWorking(desired, working.prior).concat(working.signal.signal_id);
+        else return [working.signal.signal_id].concat(updateWorking(desired, working.prior));
     } else if (desired.prior && !working.prior) {
         // advance working state
         var sig = desired.signal;
@@ -274,7 +274,7 @@ function updateWorking(desired, working) {
             return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, sig));
     } else if (working.prior && !desired.prior) {
         // cancel working signal
-        return updateWorking(desired, working.prior).concat(working.signal.signal_id);
+        return [working.signal.signal_id].concat(updateWorking(desired, working.prior));
     } else if (desired.prior && working.prior && desired.signal.action == working.signal.action) {
         // update quant
         return updateWorking(desired.prior, working.prior).concat(_.defaults({
@@ -282,8 +282,8 @@ function updateWorking(desired, working) {
         }, desired.signal));
     } else if (desired.prior && working.prior) {
         // cancel and submit
-        return updateWorking(desired.prior, working.prior)
-            .concat([working.signal.signal_id, desired.signal]);
+        return [working.signal.signal_id]
+            .concat(updateWorking(desired.prior, working.prior), desired.signal);
     } else if (d_opened && w_opened && desired.long_or_short != working.long_or_short) {
         // reverse position
         return [{
