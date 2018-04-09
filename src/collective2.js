@@ -139,7 +139,7 @@ function collective2(collect, agent, settings, options) {
         else throw Error("Unknown signal: " + JSON.stringify(signal));
     }).then(res => {
         var log = s => {
-            var type = s.isStopOrder ? '@STOP ' + s.isStopOrder :
+            var type = +s.isStopOrder ? '@STOP ' + s.isStopOrder :
                 s.isLimitOrder ? '@LIMIT ' + s.isLimitOrder : '@MARKET';
             logger.info(s.action, s.quant, s.symbol, type, s.duration, s.signalid || '', s.description || '');
         }
@@ -149,8 +149,10 @@ function collective2(collect, agent, settings, options) {
             var conditionalupon = res.signal.conditionalUponSignal.signalid;
             var flat = _.extend({conditionalupon}, _.omit(res.signal, 'conditionalUponSignal'));
             return promise.then(ar => ar.concat(_.compact([res.signal.conditionalUponSignal, flat])));
-        } else {
+        } else if (res.signal.action) {
             log(res.signal);
+            return promise.then(ar => ar.concat(res.signal));
+        } else {
             return promise.then(ar => ar.concat(res.signal));
         }
     }), Promise.resolve([])));
@@ -217,7 +219,7 @@ function getWorkingPositions(agent, settings, options) {
  * Array of signals to update the working positions to the desired positions
  */
 function updateWorking(desired, working) {
-    var attrs = ['isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'limit', 'market', 'profittarget', 'stoploss'];
+    var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'limit', 'market', 'profittarget', 'stoploss'];
     var d_opened = desired.quant_opened - desired.quant_closed;
     var w_opened = working.quant_opened - working.quant_closed;
     if (_.has(desired.signal, 'parkUntilSecs') && +working.closedWhenUnixTimeStamp > +desired.signal.parkUntilSecs) {
@@ -228,27 +230,38 @@ function updateWorking(desired, working) {
         if (!working.prior || !desired.prior) return [];
         else if (_.matcher(_.pick(desired.signal, attrs))(working.signal)) return [];
         // update working limit, stoploss, or parkUntil to desired
-        else return [_.defaults({
+        else if (desired.signal.action == working.signal.action) return [_.defaults({
             quant: working.signal.quant,
             action: working.signal.action,
             xreplace: working.signal.signal_id
         }, desired.signal, working.signal)];
+        // cancel working signal
+        else return updateWorking(desired, working.prior).concat(working.signal.signal_id);
     } else if (desired.prior && !working.prior) {
         // advance working state
         expect(desired.signal).not.to.have.property('conditionalUponSignal');
         var upon = updateWorking(desired.prior, working);
         var adv = upon.find(s => _.isObject(s) && !s.xreplace);
-        if (upon.some(s => s.conditionalUponSignal)) return upon; // Double conditionals not permitted
-        else if (!adv) return upon.concat(desired.signal);
-        else return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, desired.signal));
-    } else if (working.prior && (!desired.prior || desired.long_or_short != working.long_or_short)) {
+        if (upon.some(s => s.conditionalupon || s.conditionalUponSignal))
+            return upon; // Double conditionals not permitted
+        else if (!adv && working.signal && working.signal.status == 'working')
+            return upon.concat(_.extend({conditionalupon: working.signal.signal_id}, desired.signal));
+        else if (!adv)
+            return upon.concat(desired.signal);
+        else
+            return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, desired.signal));
+    } else if (working.prior && !desired.prior) {
         // cancel working signal
         return updateWorking(desired, working.prior).concat(working.signal.signal_id);
-    } else if (desired.prior && working.prior) {
+    } else if (desired.prior && working.prior && desired.signal.action == working.signal.action) {
         // update quant
         return updateWorking(desired.prior, working.prior).concat(_.defaults({
             xreplace: working.signal.signal_id
         }, desired.signal));
+    } else if (desired.prior && working.prior) {
+        // cancel and submit
+        return updateWorking(desired.prior, working.prior)
+            .concat([working.signal.signal_id, desired.signal]);
     } else if (d_opened && w_opened && desired.long_or_short != working.long_or_short) {
         // reverse position
         return [{
@@ -295,9 +308,9 @@ function updateWorking(desired, working) {
  */
 function advance(pos, signal, options) {
     if (signal.stoploss) {
-        var base = !+signal.quant && pos.prior && pos.signal.isStopOrder ? pos.prior : pos;
+        var base = !+signal.quant && pos.prior && +pos.signal.isStopOrder ? pos.prior : pos;
         var prior = updatePosition(base, _.omit(signal, 'stop', 'stoploss'), options);
-        var stoploss = signal.isStopOrder || signal.stoploss || signal.stop;
+        var stoploss = +signal.isStopOrder || +signal.stoploss || +signal.stop;
         var quant = +prior.signal.quant;
         expect(prior).to.have.property('long_or_short').that.is.oneOf(['long', 'short']);
         var stopSignal = _.omit(_.extend(_.pick(c2signal(signal), 'typeofsymbol', 'symbol', 'parkUntilSecs'), {
@@ -308,9 +321,9 @@ function advance(pos, signal, options) {
             isStopOrder: stoploss
         }), _.isUndefined);
         return _.defaults({stoploss, signal: stopSignal, prior}, prior);
-    } else if (signal.isStopOrder || signal.stop) {
-        var stoploss = signal.isStopOrder || signal.stoploss || signal.stop;
-        var prior = pos.prior && pos.signal.isStopOrder ? pos.prior : pos;
+    } else if (+signal.isStopOrder || signal.stop) {
+        var stoploss = +signal.isStopOrder || signal.stoploss || signal.stop;
+        var prior = pos.prior && +pos.signal.isStopOrder ? pos.prior : pos;
         return _.defaults({stoploss, signal: c2signal(signal), prior}, pos);
     } else {
         return updatePosition(pos, signal, options);
@@ -444,8 +457,8 @@ function c2signal(signal) {
         symbol: signal.c2_symbol || signal.symbol,
         tif: signal.tif || signal.duration,
         duration: signal.duration || signal.tif,
-        stop: signal.stop || signal.isStopOrder,
-        isStopOrder: signal.isStopOrder || signal.stop
+        stop: +signal.stop || +signal.isStopOrder,
+        isStopOrder: +signal.isStopOrder || +signal.stop
     }), v => !v || v == '0');
 }
 
@@ -454,28 +467,30 @@ function c2signal(signal) {
  */
 function sortSignals(position, a, b) {
     // increase position size
-    if (position.long_or_short == 'long' && a.action == 'BTO' && b.action != 'BTO') return -1;
-    if (position.long_or_short == 'long' && a.action != 'BTO' && b.action == 'BTO') return 1;
-    if (position.long_or_short == 'short' && a.action == 'STO' && b.action != 'STO') return -1;
-    if (position.long_or_short == 'short' && a.action != 'STO' && b.action == 'STO') return 1;
-    // reducing position size or profit target or stoploss
-    if (position.long_or_short == 'long' && a.action == 'STC' && b.action != 'STC') return -1;
-    if (position.long_or_short == 'long' && a.action != 'STC' && b.action == 'STC') return 1;
-    if (position.long_or_short == 'short' && a.action == 'BTC' && b.action != 'BTC') return -1;
-    if (position.long_or_short == 'short' && a.action != 'BTC' && b.action == 'BTC') return 1;
-    // reversed position
-    if (position.long_or_short == 'long' && a.action == 'STO' && b.action != 'STO') return -1;
-    if (position.long_or_short == 'long' && a.action != 'STO' && b.action == 'STO') return 1;
-    if (position.long_or_short == 'short' && a.action == 'BTO' && b.action != 'BTO') return -1;
-    if (position.long_or_short == 'short' && a.action != 'BTO' && b.action == 'BTO') return 1;
-    // reversed position's profit target or stoploss
-    if (position.long_or_short == 'long' && a.action == 'STC' && b.action != 'STC') return -1;
-    if (position.long_or_short == 'long' && a.action != 'STC' && b.action == 'STC') return 1;
-    if (position.long_or_short == 'short' && a.action == 'BTC' && b.action != 'BTC') return -1;
-    if (position.long_or_short == 'short' && a.action != 'BTC' && b.action == 'BTC') return 1;
+    if (position) {
+        if (position.long_or_short == 'long' && a.action == 'BTO' && b.action != 'BTO') return -1;
+        if (position.long_or_short == 'long' && a.action != 'BTO' && b.action == 'BTO') return 1;
+        if (position.long_or_short == 'short' && a.action == 'STO' && b.action != 'STO') return -1;
+        if (position.long_or_short == 'short' && a.action != 'STO' && b.action == 'STO') return 1;
+        // reducing position size or profit target or stoploss
+        if (position.long_or_short == 'long' && a.action == 'STC' && b.action != 'STC') return -1;
+        if (position.long_or_short == 'long' && a.action != 'STC' && b.action == 'STC') return 1;
+        if (position.long_or_short == 'short' && a.action == 'BTC' && b.action != 'BTC') return -1;
+        if (position.long_or_short == 'short' && a.action != 'BTC' && b.action == 'BTC') return 1;
+        // reversed position
+        if (position.long_or_short == 'long' && a.action == 'STO' && b.action != 'STO') return -1;
+        if (position.long_or_short == 'long' && a.action != 'STO' && b.action == 'STO') return 1;
+        if (position.long_or_short == 'short' && a.action == 'BTO' && b.action != 'BTO') return -1;
+        if (position.long_or_short == 'short' && a.action != 'BTO' && b.action == 'BTO') return 1;
+        // reversed position's profit target or stoploss
+        if (position.long_or_short == 'long' && a.action == 'STC' && b.action != 'STC') return -1;
+        if (position.long_or_short == 'long' && a.action != 'STC' && b.action == 'STC') return 1;
+        if (position.long_or_short == 'short' && a.action == 'BTC' && b.action != 'BTC') return -1;
+        if (position.long_or_short == 'short' && a.action != 'BTC' && b.action == 'BTC') return 1;
+    }
     // stoploss before reducing position and/or profit target
-    if ((a.isStopOrder && a.isStopOrder!= '0') && !(b.isStopOrder && b.isStopOrder!='0')) return -1;
-    if (!(a.isStopOrder && a.isStopOrder!= '0') && (b.isStopOrder && b.isStopOrder!='0')) return 1;
+    if (+a.isStopOrder && !+b.isStopOrder) return -1;
+    if (!+a.isStopOrder && +b.isStopOrder) return 1;
     // parkUntilSecs is not available at this time
     if (a.parkUntilSecs && !b.parkUntilSecs) return -1;
     if (!a.parkUntilSecs && b.parkUntilSecs) return 1;
@@ -606,7 +621,7 @@ function submit(agent, name, body, settings, options) {
             throw Error("Unknown protocol " + uri);
         }
     }).then(JSON.parse).then(res => {
-        logger.debug("collective2", name, JSON.stringify(res));
+        logger.debug("collective2", name, JSON.stringify(body), JSON.stringify(res));
         if (res.title)
             logger.log(res.title, res.signalid || '');
         else if (res.error && res.error.title)

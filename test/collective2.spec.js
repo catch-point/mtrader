@@ -1163,7 +1163,7 @@ describe("collective2", function() {
                 quant: 1,
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
-                stop: '130',
+                stop: 130,
                 action: 'STC'
             }]);
         });
@@ -1246,7 +1246,7 @@ describe("collective2", function() {
                     typeofsymbol: 'stock',
                     market: 1,
                     duration: 'DAY',
-                    stoploss: '130'
+                    stoploss: 130
                 }, {
                     action: 'BTO',
                     quant: 0,
@@ -1254,7 +1254,7 @@ describe("collective2", function() {
                     typeofsymbol: 'stock',
                     market: 1,
                     duration: 'DAY',
-                    stoploss: '120'
+                    stoploss: 120
                 }]);
             })({
                 systemid: 'test'
@@ -1263,7 +1263,7 @@ describe("collective2", function() {
                 quant: '1',
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
-                stop: '120',
+                stop: 120,
                 action: 'STC',
                 xreplace: '117389066'
             }]);
@@ -1312,7 +1312,7 @@ describe("collective2", function() {
                 quant: 1,
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
-                stop: '110',
+                stop: 110,
                 action: 'STC'
             }]);
         });
@@ -1368,7 +1368,7 @@ describe("collective2", function() {
                 quant: 1,
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
-                stop: '130',
+                stop: 130,
                 action: 'STC'
             }]);
         });
@@ -1445,7 +1445,7 @@ describe("collective2", function() {
                 quant: 1,
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
-                stop: '120',
+                stop: 120,
                 action: 'STC'
             }]);
         });
