@@ -123,7 +123,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-02-17T15:59:59").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-02-17T15:59:59", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-02-18",
@@ -174,7 +175,8 @@ describe("collective2", function() {
             }]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-02-17T16:00:00").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-02-18",
@@ -232,7 +234,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-02-17T16:00:00").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-02-18",
@@ -289,7 +292,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-06-16T15:59:59").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-06-16T15:59:59", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-06-17",
@@ -333,7 +337,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-06-16T16:00:00").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-06-17",
@@ -398,7 +403,8 @@ describe("collective2", function() {
             }]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-06-16T16:00:00").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-06-17",
@@ -433,7 +439,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-06-16T16:00:00").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-06-17",
@@ -504,7 +511,8 @@ describe("collective2", function() {
             }]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-06-16T16:00:00").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-02-18",
@@ -569,7 +577,8 @@ describe("collective2", function() {
             }]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-06-16T15:59:59").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-06-16T15:59:59", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-06-17",
@@ -644,7 +653,8 @@ describe("collective2", function() {
             }]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-06-16T16:00:01").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-06-16T16:00:01", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-06-17",
@@ -711,7 +721,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2015-02-17T16:00:01").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf(),
                 portfolio: 'IBM.NYSE',
                 begin: "2015-01-01",
                 end: "2015-02-18",
@@ -748,6 +759,129 @@ describe("collective2", function() {
                     duration: 'DAY'
                 }
             });
+        });
+        it("IBM submit BTO limit signal", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
+                    symbol: 'IBM',
+                    close: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    limit: 130,
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: '1424206800'
+                }]);
+            })({
+                systemid: 'test',
+                tz: 'America/New_York',
+                now: moment.tz("2015-02-17T15:59:59", 'America/New_York').valueOf(),
+                begin: "2015-01-01",
+                end: "2015-02-18"
+            }).then(() => fs.readFileSync(submitSignal, 'utf8'))
+              .then(JSON.parse)
+              .should.eventually.be.like({
+                signal: {
+                    action: 'BTO',
+                    quant: 2,
+                    symbol: 'IBM',
+                    typeofsymbol: 'stock',
+                    limit: 130,
+                    duration: 'GTC'
+                }
+            });
+        });
+        it("IBM submit BTO with working STC signal", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "IBM",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "4",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "IBM"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                signal_id: "94974798",
+                action: 'STC',
+                quant: 2,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                duration: 'GTC',
+                currency: 'USD',
+                status: 'working'
+            }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BTO',
+                    quant: 2,
+                    symbol: 'IBM',
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: '1424206800'
+                }, {
+                    action: 'STC',
+                    quant: 2,
+                    symbol: 'IBM',
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: '1434484800'
+                }, {
+                    action: 'BTO',
+                    quant: 2,
+                    symbol: 'IBM',
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: '1445025600'
+                }]);
+            })({
+                systemid: 'test',
+                tz: 'America/New_York',
+                now: moment.tz("2015-10-16T15:59:59", 'America/New_York').valueOf(),
+                begin: "2015-01-01"
+            }).should.eventually.be.like([{
+                signalid: "94974798"
+            }, {
+                action: 'STC',
+                quant: 4,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                duration: 'DAY'
+            }, {
+                action: 'BTO',
+                quant: 2,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                duration: 'GTC',
+                parkUntilSecs: '1445025600'
+            }]);
         });
     });
     describe("Gold positions", function() {
@@ -791,7 +925,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2016-10-03T15:59:59").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2016-10-03T15:59:59", 'America/New_York').valueOf(),
                 portfolio: 'GLD.ARCA',
                 begin: "2016-10-01",
                 columns: {
@@ -832,7 +967,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2016-10-13T15:59:59").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2016-10-13T15:59:59", 'America/New_York').valueOf(),
                 portfolio: 'GLD.ARCA',
                 begin: "2016-10-01",
                 columns: {
@@ -873,7 +1009,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2016-10-13T16:00:01").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2016-10-13T16:00:01", 'America/New_York').valueOf(),
                 portfolio: 'GLD.ARCA',
                 begin: "2016-10-01",
                 columns: {
@@ -908,6 +1045,56 @@ describe("collective2", function() {
                 }
             });
         });
+        it("GLD STO signal with working BTO signal", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                signal_id: '117389066',
+                action: 'BTO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                market: 1,
+                duration: 'GTC',
+                long_or_short: 'long',
+                parkUntilSecs: '1477339200'
+            }]}));
+            return collective2({
+                systemid: 'test',
+                tz: 'America/New_York',
+                now: moment.tz("2016-10-03T15:59:59", 'America/New_York').valueOf(),
+                portfolio: 'GLD.ARCA',
+                begin: "2016-10-01",
+                columns: {
+                    date: 'DATE(ending)',
+                    close: 'day.close',
+                    symbol: 'symbol',
+                    action: 'IF(psar<day.low, IF(!PREV("long_or_short"),"BTO", PREV("long_or_short")="short", "BTCBTO"), psar>day.high, IF(!PREV("long_or_short"),"STO", PREV("long_or_short")="long", "STCSTO"), PREV("action"))',
+                    long_or_short: 'IF(action="BTO" OR action="BTCBTO","long", action="STO" OR action="STCSTO","short", PREV("long_or_short"))',
+                    quant: 'IF(PREV("action"), 4, 2)',
+                    typeofsymbol: '"stock"',
+                    market: '1',
+                    duration: '"GTC"',
+                    currency: '"USD"',
+                    parkUntilSecs: "TEXT(ending,'X')"
+                },
+                variables: {
+                    psar: 'day.PSAR(0.05, 0.2, 50)'
+                },
+                filter: [
+                    'action'
+                ]
+            }).should.eventually.be.like([{
+                signalid: '117389066'
+            }, {
+                action: 'STO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                market: 1,
+                duration: 'GTC'
+            }]);
+        });
         it("GLD STCSTO", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
@@ -937,7 +1124,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2016-10-24T15:59:59").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf(),
                 portfolio: 'GLD.ARCA',
                 begin: "2016-10-01",
                 columns: {
@@ -1022,7 +1210,8 @@ describe("collective2", function() {
             }]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2016-10-24T15:59:59").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf(),
                 portfolio: 'GLD.ARCA',
                 begin: "2016-10-01",
                 columns: {
@@ -1098,7 +1287,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2016-10-24T16:00:01").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2016-10-24T16:00:01", 'America/New_York').valueOf(),
                 portfolio: 'GLD.ARCA',
                 begin: "2016-10-01",
                 columns: {
@@ -1261,6 +1451,58 @@ describe("collective2", function() {
                 action: 'STC',
                 xreplace: '117389066'
             }]);
+        });
+        it("don't update stoploss order unless effective", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+                quant_opened: 1,
+                quant_closed: 0,
+                symbol: 'GLD',
+                instrument: 'stock',
+                long_or_short: 'long'
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                isLimitOrder: '0',
+                strike: null,
+                status: 'working',
+                underlying: null,
+                isMarketOrder: '0',
+                tif: 'GTC',
+                putcall: null,
+                expiration: null,
+                quant: '1',
+                symbol: 'GLD',
+                name: '',
+                instrument: 'stock',
+                isStopOrder: '130',
+                posted_time_unix: '1522948540',
+                action: 'STC',
+                signal_id: '117389066',
+                posted_time: '2018-04-05 13:15:40'
+            }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BTO',
+                    quant: 1,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'DAY',
+                    stoploss: 130
+                }, {
+                    action: 'BTO',
+                    quant: 0,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'DAY',
+                    stoploss: 120,
+                    parkUntilSecs: moment.tz("2018-04-05T16:00:00", 'America/New_York').format('X'),
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2018-04-05T15:59:59", 'America/New_York').valueOf(),
+            }).should.eventually.be.like([]);
         });
         it("catch up with multiple stoploss orders", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
@@ -1462,7 +1704,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2016-10-24T15:59:59").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf(),
                 portfolio: 'GLD.ARCA',
                 begin: "2016-10-01",
                 columns: {
@@ -1530,7 +1773,8 @@ describe("collective2", function() {
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return collective2({
                 systemid: 'test',
-                now: moment("2016-10-24T15:59:59").valueOf(),
+                tz: 'America/New_York',
+                now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf(),
                 portfolio: 'GLD.ARCA',
                 begin: "2016-10-01",
                 columns: {

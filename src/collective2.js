@@ -114,7 +114,7 @@ function collective2(collect, agent, settings, options) {
     return getDesiredPositions(collect, agent, settings, options)
       .then(desired => getWorkingPositions(agent, settings, options)
       .then(working => {
-        var symbols = _.uniq(_.keys(desired).concat(options.symbols));
+        var symbols = _.uniq(_.compact(_.keys(desired).concat(options.symbols)));
         _.forEach(working, (w, symbol) => {
             if (!desired[symbol] && w.quant_opened != w.quant_closed && !~symbols.indexOf(symbol)) {
                 logger.warn("Unknown", w.long_or_short, "position",
@@ -133,7 +133,7 @@ function collective2(collect, agent, settings, options) {
                 quant_opened:0,
                 quant_closed:0
             };
-            var update = updateWorking(d, w);
+            var update = updateWorking(d, w, options);
             if (update.length)
                 logger.trace("collective2", "desired", symbol, JSON.stringify(desired[symbol]));
             return signals.concat(update);
@@ -232,58 +232,56 @@ function getWorkingPositions(agent, settings, options) {
 /**
  * Array of signals to update the working positions to the desired positions
  */
-function updateWorking(desired, working) {
+function updateWorking(desired, working, options) {
     var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss'];
+    var ds = desired.signal;
+    var ws = working.signal;
     var d_opened = desired.quant_opened - desired.quant_closed;
     var w_opened = working.quant_opened - working.quant_closed;
-    if (_.has(desired.signal, 'parkUntilSecs') && +working.closedWhenUnixTimeStamp > +desired.signal.parkUntilSecs) {
+    if (_.has(ds, 'parkUntilSecs') && +working.closedWhenUnixTimeStamp > +ds.parkUntilSecs) {
         // working position has since been closed (stoploss) since the last desired signal was produced
         return [];
     } else if (d_opened == w_opened && (!w_opened || desired.long_or_short == working.long_or_short)) {
         // they are or will align soon
         if (!working.prior || !desired.prior) return [];
-        else if (_.matcher(_.pick(desired.signal, attrs))(working.signal)) return [];
+        else if (_.matcher(_.pick(ds, attrs))(ws)) return [];
+        else if (+ds.isStopOrder && +ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now) return [];
         // update working limit, stoploss, or parkUntil to desired
-        else if (desired.signal.action == working.signal.action) return [_.defaults({
-            quant: working.signal.quant,
-            action: working.signal.action,
-            xreplace: working.signal.signal_id
-        }, desired.signal, working.signal)];
+        else if (ds.action == ws.action) return [_.defaults({
+            quant: ws.quant,
+            action: ws.action,
+            xreplace: ws.signal_id
+        }, ds, ws)];
         // cancel working signal
-        else return [working.signal.signal_id].concat(updateWorking(desired, working.prior));
+        else return [ws.signal_id].concat(updateWorking(desired, working.prior, options));
     } else if (desired.prior && !working.prior) {
         // advance working state
-        var sig = desired.signal;
-        expect(sig).not.to.have.property('conditionalUponSignal');
-        var upon = updateWorking(desired.prior, working);
-        var creating = upon.filter(s => _.isObject(s) && !s.xreplace);
-        var adv = creating.length == 1 && creating[0];
-        if (upon.some(s => s.conditionalupon || s.conditionalUponSignal || +s.stoploss || +s.profittarget) || creating.length>1)
+        expect(ds).not.to.have.property('conditionalUponSignal');
+        var upon = updateWorking(desired.prior, working, options);
+        var adv = upon.find(s => _.isObject(s) && !s.xreplace);
+        if (upon.some(s => s.conditionalupon || s.conditionalUponSignal || +s.stoploss || +s.profittarget))
             return upon; // Double conditionals not permitted
-        else if (creating.length>1)
-            return upon;
-        else if (!adv && working.signal && working.signal.status == 'working')
-            return upon.concat(_.extend({conditionalupon: working.signal.signal_id}, sig));
         else if (!adv)
-            return upon.concat(sig);
-        else if (adv && +sig.isStopOrder && isOpenAndClose(adv, sig))
-            return _.without(upon, adv).concat(_.extend({stoploss: sig.isStopOrder}, adv));
-        else if (adv && +sig.isLimitOrder && isOpenAndClose(adv, sig))
-            return _.without(upon, adv).concat(_.extend({profittarget: sig.isLimitOrder}, adv));
+            return upon.concat(ds);
+        else if (adv && +ds.isStopOrder && isOpenAndClose(adv, ds))
+            return _.without(upon, adv).concat(_.extend({stoploss: ds.isStopOrder}, adv));
         else
-            return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, sig));
+            return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, ds));
     } else if (working.prior && !desired.prior) {
         // cancel working signal
-        return [working.signal.signal_id].concat(updateWorking(desired, working.prior));
-    } else if (desired.prior && working.prior && desired.signal.action == working.signal.action) {
+        expect(ws).to.have.property('signal_id');
+        return [ws.signal_id].concat(updateWorking(desired, working.prior, options));
+    } else if (desired.prior && working.prior && ds.action == ws.action) {
         // update quant
-        return updateWorking(desired.prior, working.prior).concat(_.defaults({
-            xreplace: working.signal.signal_id
-        }, desired.signal));
+        expect(ws).to.have.property('signal_id');
+        return updateWorking(desired.prior, working.prior, options).concat(_.defaults({
+            xreplace: ws.signal_id
+        }, ds));
     } else if (desired.prior && working.prior) {
         // cancel and submit
-        return [working.signal.signal_id]
-            .concat(updateWorking(desired.prior, working.prior), desired.signal);
+        expect(ws).to.have.property('signal_id');
+        return [ws.signal_id]
+            .concat(updateWorking(desired.prior, working.prior, options), ds);
     } else if (d_opened && w_opened && desired.long_or_short != working.long_or_short) {
         // reverse position
         return [{
