@@ -233,7 +233,6 @@ function getWorkingPositions(agent, settings, options) {
  * Array of signals to update the working positions to the desired positions
  */
 function updateWorking(desired, working, options) {
-    var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss'];
     var ds = desired.signal;
     var ws = working.signal;
     var d_opened = desired.quant_opened - desired.quant_closed;
@@ -241,37 +240,40 @@ function updateWorking(desired, working, options) {
     if (_.has(ds, 'parkUntilSecs') && +working.closedWhenUnixTimeStamp > +ds.parkUntilSecs) {
         // working position has since been closed (stoploss) since the last desired signal was produced
         return [];
-    } else if (d_opened == w_opened && (!w_opened || desired.long_or_short == working.long_or_short)) {
-        // they are or will align soon
-        if (!working.prior || !desired.prior) return [];
-        else if (_.matcher(_.pick(ds, attrs))(ws)) return [];
-        else if (+ds.isStopOrder && +ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now) return [];
+    } else if (!d_opened && !w_opened && !working.prior && !desired.prior) {
+        // no open position
+        return [];
+    } else if (d_opened == w_opened && !working.prior && !desired.prior && desired.long_or_short == working.long_or_short) {
+        // positions are the same
+        return [];
+    } else if (d_opened == w_opened && working.prior && desired.prior && desired.long_or_short == working.long_or_short) {
+        // signals are the same
+        if (sameSignal(ds, ws))
+            return updateWorking(desired.prior, working.prior, options);
+        // signals are both stoploss orders, but the desired stoploss has not come into effect yet
+        else if (+ds.isStopOrder && +ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now)
+            return updateWorking(desired.prior, working.prior, options);
         // update working limit, stoploss, or parkUntil to desired
-        else if (ds.action == ws.action) return [_.defaults({
-            quant: ws.quant,
-            action: ws.action,
-            xreplace: ws.signal_id
-        }, ds, ws)];
+        else if (similarSignals(ds, ws))
+            return [_.defaults({
+                quant: ws.quant,
+                action: ws.action,
+                xreplace: ws.signal_id
+            }, ds, ws)];
         // cancel working signal
-        else return [ws.signal_id].concat(updateWorking(desired, working.prior, options));
+        else
+            return cancelSignal(desired, working, options);
+    } else if (d_opened == w_opened && working.prior && !desired.prior && desired.long_or_short == working.long_or_short) {
+        // cancel working signals
+        return cancelSignal(desired, working, options);
     } else if (desired.prior && !working.prior) {
         // advance working state
-        expect(ds).not.to.have.property('conditionalUponSignal');
-        var upon = updateWorking(desired.prior, working, options);
-        var adv = upon.find(s => _.isObject(s) && !s.xreplace);
-        if (upon.some(s => s.conditionalupon || s.conditionalUponSignal || +s.stoploss || +s.profittarget))
-            return upon; // Double conditionals not permitted
-        else if (!adv)
-            return upon.concat(ds);
-        else if (adv && +ds.isStopOrder && isOpenAndClose(adv, ds))
-            return _.without(upon, adv).concat(_.extend({stoploss: ds.isStopOrder}, adv));
-        else
-            return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, ds));
+        return appendSignal(updateWorking(desired.prior, working, options), ds, options);
     } else if (working.prior && !desired.prior) {
         // cancel working signal
         expect(ws).to.have.property('signal_id');
-        return [ws.signal_id].concat(updateWorking(desired, working.prior, options));
-    } else if (desired.prior && working.prior && ds.action == ws.action) {
+        return cancelSignal(desired, working, options);
+    } else if (desired.prior && working.prior && similarSignals(ds, ws)) {
         // update quant
         expect(ws).to.have.property('signal_id');
         return updateWorking(desired.prior, working.prior, options).concat(_.defaults({
@@ -279,9 +281,7 @@ function updateWorking(desired, working, options) {
         }, ds));
     } else if (desired.prior && working.prior) {
         // cancel and submit
-        expect(ws).to.have.property('signal_id');
-        return [ws.signal_id]
-            .concat(updateWorking(desired.prior, working.prior, options), ds);
+        return appendSignal(cancelSignal(desired.prior, working, options), ds, options);
     } else if (d_opened && w_opened && desired.long_or_short != working.long_or_short) {
         // reverse position
         return [{
@@ -324,11 +324,68 @@ function updateWorking(desired, working, options) {
 }
 
 /**
+ * Checks if the two signals appear to be the same
+ */
+function sameSignal(a, b) {
+    var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss'];
+    return _.matcher(_.pick(a, attrs))(b);
+}
+
+/**
+ * Cancels the latest working signal iff it would not be re-submitted
+ */
+function cancelSignal(desired, working, options) {
+    var ws = working.signal;
+    expect(ws).to.have.property('signal_id');
+    var adj = updateWorking(desired, working.prior, options);
+    // check if cancelling order is the same of submitting order
+    var same = _.find(adj, a => sameSignal(a, ws));
+    var similar = _.find(adj, a => !a.xreplace && similarSignals(a, ws));
+    if (same)
+        return _.without(adj, same);
+    else if (similar)
+        return adj.map(a => a == similar ? _.extend({xreplace: ws.signal_id}, a) : a);
+    else if (+ws.isStopOrder && _.every(adj, a => +a.parkUntilSecs * 1000 > options.now))
+        return adj; // don't cancel stoploss order until replacements orders come into effect
+    else
+        return [ws.signal_id].concat(adj);
+}
+
+/**
+ * Adds ds to the upon array use another signal as a conditionalupon and avoiding double conditionals
+ */
+function appendSignal(upon, ds, options) {
+    expect(ds).not.to.have.property('conditionalUponSignal');
+    var adv = upon.find(s => _.isObject(s) && !s.xreplace);
+    if (upon.some(s => s.conditionalupon || s.conditionalUponSignal || +s.stoploss || +s.profittarget))
+        return upon; // Double conditionals not permitted
+    else if (!adv)
+        return upon.concat(ds);
+    else if (adv && +ds.isStopOrder && isOpenAndClose(adv, ds, options))
+        return _.without(upon, adv).concat(_.extend({stoploss: ds.isStopOrder}, adv));
+    else if (+adv.isStopOrder)
+        return _.without(upon, adv).concat(ds);
+    else
+        return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, ds));
+}
+
+/**
+ * If two signals have the same order type, but may different on quant
+ */
+function similarSignals(a, b) {
+    return a.action == b.action &&
+        !!+a.isStopOrder == !!+b.isStopOrder &&
+        !!+a.isLimitOrder == !!+b.isLimitOrder;
+}
+
+/**
  * If the open signal is opening and the close signal closes the same quant
  */
-function isOpenAndClose(open, close) {
+function isOpenAndClose(open, close, options) {
     return open.quant == close.quant && !+open.stoploss &&
-        open.parkUntilSecs == close.parkUntilSecs &&
+        (open.parkUntilSecs == close.parkUntilSecs ||
+            !(+open.parkUntilSecs * 1000 >= options.now) &&
+            !(+close.parkUntilSects * 1000 >= options.now)) &&
         (open.action == 'BTO' || open.action == 'STO') &&
         (close.action == 'STC' || close.action == 'BTC');
 }
@@ -521,9 +578,9 @@ function sortSignals(position, a, b) {
         if (position.long_or_short == 'short' && a.action == 'BTC' && b.action != 'BTC') return -1;
         if (position.long_or_short == 'short' && a.action != 'BTC' && b.action == 'BTC') return 1;
     }
-    // stoploss before reducing position and/or profit target
-    if (+a.isStopOrder && !+b.isStopOrder) return -1;
-    if (!+a.isStopOrder && +b.isStopOrder) return 1;
+    // keep stoploss at the end as it would likely be the first to be cancelled
+    if (!+a.isStopOrder && +b.isStopOrder) return -1;
+    if (+a.isStopOrder && !+b.isStopOrder) return 1;
     // parkUntilSecs is not available at this time
     if (a.parkUntilSecs && !b.parkUntilSecs) return -1;
     if (!a.parkUntilSecs && b.parkUntilSecs) return 1;
