@@ -64,7 +64,7 @@ var m1 = {
     value: 'm1',
     millis: 60 * 1000,
     floor: function(ex, dateTime, amount) {
-        return moment(dateTime).tz(ex.tz).startOf('minute');
+        return moment.tz(dateTime, ex.tz).startOf('minute');
     },
     ceil: function(ex, dateTime) {
         var start = m1.floor(ex, dateTime);
@@ -259,7 +259,7 @@ var m60 = {
     value: 'm60',
     millis: 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment(dateTime).tz(ex.tz).startOf('hour');
+        return moment.tz(dateTime, ex.tz).startOf('hour');
     },
     ceil: function(ex, dateTime) {
         var start = m60.floor(ex, dateTime);
@@ -269,7 +269,7 @@ var m60 = {
     },
     inc: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var date = moment(dateTime).tz(ex.tz);
+        var date = moment.tz(dateTime, ex.tz);
         var opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
         var start = opens.valueOf() == date.valueOf() ? date.startOf('hour') : m60.ceil(ex, dateTime);
         var hours = marketHours(ex, start);
@@ -340,7 +340,7 @@ var m120 = {
     },
     inc: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var date = moment(dateTime).tz(ex.tz);
+        var date = moment.tz(dateTime, ex.tz);
         var opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
         var start = opens.valueOf() == date.valueOf() ? m120.floor(ex, opens) : m120.ceil(ex, dateTime);
         var hours = marketHours(ex, start);
@@ -418,7 +418,7 @@ var m240 = {
     },
     inc: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var date = moment(dateTime).tz(ex.tz);
+        var date = moment.tz(dateTime, ex.tz);
         var opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
         var start = opens.valueOf() == date.valueOf() ? m240.floor(ex, opens) : m240.ceil(ex, dateTime);
         var hours = marketHours(ex, start);
@@ -487,7 +487,7 @@ var day = {
     value: 'day',
     millis: 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment(dateTime).tz(ex.tz).startOf('day');
+        return moment.tz(dateTime, ex.tz).startOf('day');
     },
     ceil: function(ex, dateTime) {
         var start = day.floor(ex, dateTime);
@@ -520,8 +520,8 @@ var day = {
         else return start.isoWeek(start.isoWeek() - w).isoWeekday(wd -2 - days);
     },
     diff: function(ex, to, from) {
-        var start = moment(from).tz(ex.tz);
-        var end = moment(to).tz(ex.tz);
+        var start = moment.tz(from, ex.tz);
+        var end = moment.tz(to, ex.tz);
         if (end.isBefore(start))
             return -1 * day.diff(ex, from, to);
         var weeks = end.diff(start, 'weeks');
@@ -541,10 +541,10 @@ var week = {
     value: 'week',
     millis: 7 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment(dateTime).tz(ex.tz).startOf('isoweek');
+        return moment.tz(dateTime, ex.tz).startOf('isoweek');
     },
     ceil: function(ex, dateTime) {
-        var start = moment(dateTime).tz(ex.tz).startOf('isoweek');
+        var start = moment.tz(dateTime, ex.tz).startOf('isoweek');
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.isoWeek(start.isoWeek() + 1);
         return start;
@@ -558,8 +558,8 @@ var week = {
         return start.isoWeek(start.isoWeek() + -amount);
     },
     diff: function(ex, to, from) {
-        var start = moment(from).tz(ex.tz);
-        var end = moment(to).tz(ex.tz);
+        var start = moment.tz(from, ex.tz);
+        var end = moment.tz(to, ex.tz);
         return end.diff(start, 'weeks');
     }
 };
@@ -567,10 +567,10 @@ var month = {
     value: 'month',
     millis: 31 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment(dateTime).tz(ex.tz).startOf('month');
+        return moment.tz(dateTime, ex.tz).startOf('month');
     },
     ceil: function(ex, dateTime) {
-        var start = moment(dateTime).tz(ex.tz).startOf('month');
+        var start = moment.tz(dateTime, ex.tz).startOf('month');
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.month(start.month() + 1);
         return start;
@@ -584,8 +584,8 @@ var month = {
         return start.month(start.month() + -amount);
     },
     diff: function(ex, to, from) {
-        var start = moment(from).tz(ex.tz);
-        var end = moment(to).tz(ex.tz);
+        var start = moment.tz(from, ex.tz);
+        var end = moment.tz(to, ex.tz);
         return end.diff(start, 'months');
     }
 };
@@ -593,7 +593,7 @@ var quarter = {
     value: 'quarter',
     millis: 3 * 31 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment(dateTime).tz(ex.tz).startOf('quarter');
+        return moment.tz(dateTime, ex.tz).startOf('quarter');
     },
     ceil: function(ex, dateTime) {
         var start = quarter.floor(ex, dateTime);
@@ -622,7 +622,7 @@ var year = {
     value: 'year',
     millis: 365 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment(dateTime).tz(ex.tz).startOf('year');
+        return moment.tz(dateTime, ex.tz).startOf('year');
     },
     ceil: function(ex, dateTime) {
         var start = year.floor(ex, dateTime);
@@ -631,14 +631,14 @@ var year = {
         return start;
     },
     inc: function(ex, dateTime, amount) {
-        return moment(dateTime).tz(ex.tz).add(amount, 'years');
+        return moment.tz(dateTime, ex.tz).add(amount, 'years');
     },
     dec: function(ex, dateTime, amount) {
-        return moment(dateTime).tz(ex.tz).subtract(amount, 'years');
+        return moment.tz(dateTime, ex.tz).subtract(amount, 'years');
     },
     diff: function(ex, to, from) {
-        var start = moment(from).tz(ex.tz);
-        var end = moment(to).tz(ex.tz);
+        var start = moment.tz(from, ex.tz);
+        var end = moment.tz(to, ex.tz);
         return end.diff(start, 'years');
     }
 };

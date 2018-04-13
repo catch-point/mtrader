@@ -204,8 +204,8 @@ function yahoo_symbol(exchanges, options) {
 
 function year(yahoo, symbol, options) {
     return month(yahoo, symbol, _.defaults({
-        begin: moment(options.begin).tz(options.tz).startOf('year'),
-        end: options.end && moment(options.end).tz(options.tz).endOf('year')
+        begin: moment.tz(options.begin, options.tz).startOf('year'),
+        end: options.end && moment.tz(options.end, options.tz).endOf('year')
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).year()))
       .then(years => _.map(years, bars => bars.reduce((year, month) => {
@@ -226,8 +226,8 @@ function year(yahoo, symbol, options) {
 
 function quarter(yahoo, symbol, options) {
     return month(yahoo, symbol, _.defaults({
-        begin: moment(options.begin).tz(options.tz).startOf('quarter'),
-        end: options.end && moment(options.end).tz(options.tz).endOf('quarter')
+        begin: moment.tz(options.begin, options.tz).startOf('quarter'),
+        end: options.end && moment.tz(options.end, options.tz).endOf('quarter')
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-Q')))
       .then(quarters => _.map(quarters, bars => bars.reduce((quarter, month) => {
@@ -248,8 +248,8 @@ function quarter(yahoo, symbol, options) {
 
 function month(yahoo, symbol, options) {
     return day(yahoo, symbol, _.defaults({
-        begin: moment(options.begin).tz(options.tz).startOf('month'),
-        end: options.end && moment(options.end).tz(options.tz).endOf('month')
+        begin: moment.tz(options.begin, options.tz).startOf('month'),
+        end: options.end && moment.tz(options.end, options.tz).endOf('month')
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-MM')))
       .then(months => _.map(months, bars => bars.reduce((month, day) => {
@@ -270,8 +270,8 @@ function month(yahoo, symbol, options) {
 
 function week(yahoo, symbol, options) {
     return day(yahoo, symbol, _.defaults({
-        begin: moment(options.begin).tz(options.tz).startOf('isoWeek'),
-        end: options.end && moment(options.end).tz(options.tz).endOf('isoWeek')
+        begin: moment.tz(options.begin, options.tz).startOf('isoWeek'),
+        end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek')
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW')))
       .then(weeks => _.map(weeks, bars => bars.reduce((week, day) => {

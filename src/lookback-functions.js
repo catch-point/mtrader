@@ -289,7 +289,7 @@ var functions = module.exports.functions = {
         var n = Math.ceil((d + 1) * dayLength);
         return _.extend(bars => {
             if (_.isEmpty(bars)) return calc(bars);
-            var ending = moment(_.last(bars).ending).tz(opts.tz);
+            var ending = moment.tz(_.last(bars).ending, opts.tz);
             var day = periods(_.defaults({interval:'day'}, opts));
             var since = day.dec(ending, d-1).format();
             var start = _.sortedIndex(bars, {ending: since}, 'ending');
@@ -309,7 +309,7 @@ var functions = module.exports.functions = {
         var n = Math.ceil((d + 1) * dayLength);
         return _.extend(bars => {
             if (_.isEmpty(bars)) return calc(bars);
-            var ending = moment(_.last(bars).ending).tz(opts.tz);
+            var ending = moment.tz(_.last(bars).ending, opts.tz);
             var day = periods(_.defaults({interval:'day'}, opts));
             var diff = ending.diff(day.dec(ending, d), 'days');
             var days = ending.isoWeekday() == 7 ? diff + 1 : diff;
@@ -332,8 +332,8 @@ var functions = module.exports.functions = {
             if (_.isEmpty(bars))
                 return calc(bars);
             var start = "2000-01-01T".length;
-            var first = moment(_.first(bars).ending).tz(opts.tz);
-            var last = moment(_.last(bars).ending).tz(opts.tz);
+            var first = moment.tz(_.first(bars).ending, opts.tz);
+            var last = moment.tz(_.last(bars).ending, opts.tz);
             var opens = moment.tz(first.format('YYYY-MM-DD') + 'T' + opts.marketOpensAt, opts.tz);
             var closes = moment.tz(last.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt, opts.tz);
             var ohms = opens.hour() *60 *60 + opens.minute() *60 + opens.seconds();
@@ -353,7 +353,7 @@ var functions = module.exports.functions = {
                 }));
             } else {
                 return calc(bars.filter(function(bar){
-                    var ending = moment(bar.ending).tz(opts.tz);
+                    var ending = moment.tz(bar.ending, opts.tz);
                     var hms = ending.hour() *60 *60 + ending.minute() *60 + ending.seconds();
                     return ohms < hms && hms <= chms;
                 }));
@@ -370,8 +370,8 @@ var functions = module.exports.functions = {
             if (_.isEmpty(bars))
                 return calc(bars);
             var start = "2000-01-01T".length;
-            var first = moment(_.first(bars).ending).tz(opts.tz);
-            var last = moment(_.last(bars).ending).tz(opts.tz);
+            var first = moment.tz(_.first(bars).ending, opts.tz);
+            var last = moment.tz(_.last(bars).ending, opts.tz);
             if (first.isDST() == last.isDST() && last.diff(first, 'months') < 2) {
                 // Use string comparison for faster filter
                 var time = last.format().substring(start);
@@ -381,7 +381,7 @@ var functions = module.exports.functions = {
             } else {
                 var hms = last.hour() *60 *60 + last.minute() *60 + last.seconds();
                 return calc(bars.filter(function(bar){
-                    var ending = moment(bar.ending).tz(opts.tz);
+                    var ending = moment.tz(bar.ending, opts.tz);
                     var ahms = ending.hour() *60 *60 + ending.minute() *60 + ending.seconds();
                     return ahms == hms;
                 }));

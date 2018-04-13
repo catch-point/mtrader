@@ -267,7 +267,7 @@ function lookup(iqclient, exchs, symbol, listed_market) {
 
 function year(iqclient, symbol, options) {
     return month(iqclient, symbol, _.defaults({
-        begin: moment(options.begin).tz(options.tz).startOf('year')
+        begin: moment.tz(options.begin, options.tz).startOf('year')
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).year()))
       .then(years => _.map(years, bars => bars.reduce((year, month) => {
@@ -285,7 +285,7 @@ function year(iqclient, symbol, options) {
 
 function quarter(iqclient, symbol, options) {
     return month(iqclient, symbol, _.defaults({
-        begin: moment(options.begin).tz(options.tz).startOf('quarter')
+        begin: moment.tz(options.begin, options.tz).startOf('quarter')
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-Q')))
       .then(quarters => _.map(quarters, bars => bars.reduce((quarter, month) => {
@@ -362,14 +362,14 @@ function intraday(iqclient, symbol, options) {
 }
 
 function includeIntraday(iqclient, bars, interval, symbol, options) {
-    var now = moment(options.now).tz(options.tz);
+    var now = moment.tz(options.now, options.tz);
     if (now.days() === 6 || !bars.length) return bars;
     var tz = options.tz;
     var opensAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketOpensAt, tz);
     var closesAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, tz);
     if (opensAt.isBefore(closesAt) && now.isBefore(opensAt)) return bars;
     if (!closesAt.isAfter(_.last(bars).ending)) return bars;
-    var end = moment(options.end || now).tz(options.tz);
+    var end = moment.tz(options.end || now, options.tz);
     return rollday(iqclient, interval, symbol, _.defaults({
         minutes: 30,
         begin: _.last(bars).ending,

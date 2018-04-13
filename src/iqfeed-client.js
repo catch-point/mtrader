@@ -104,7 +104,7 @@ module.exports = function(command, env, productId, productVersion) {
             if (!earliest.isValid()) throw Error("Invalid begin date " + begin);
             return hmx(throttled, {
                 symbol: symbol,
-                maxDatapoints: moment(now).tz(tz).diff(earliest, 'months') + 1
+                maxDatapoints: moment.tz(now, tz).diff(earliest, 'months') + 1
             }).then(parseDailyResults.bind(this, 'month', marketClosesAt, tz, now)).then(results => {
                 if (results.length && _.last(results).Date_Stamp <= earliest.format('Y-MM-DD'))
                     results.pop(); // today's trading session is not over
@@ -133,8 +133,8 @@ module.exports = function(command, env, productId, productVersion) {
             if (end) expect(begin).to.be.below(end);
             expect(marketClosesAt).to.be.a('string').and.match(/^\d\d:\d\d(:00)?$/);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
-            var b = moment(begin).tz(tz);
-            var e = end && moment(end).tz(tz);
+            var b = moment.tz(begin, tz);
+            var e = end && moment.tz(end, tz);
             if (!b.isValid()) throw Error("Invalid begin date " + begin);
             if (e && !e.isValid()) throw Error("Invalid end date " + end);
             var now = moment().tz(tz);
@@ -150,11 +150,11 @@ module.exports = function(command, env, productId, productVersion) {
             if (end) expect(begin).to.be.below(end);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
             var now = moment().tz('America/New_York');
-            var b = moment(begin).tz('America/New_York');
+            var b = moment.tz(begin, 'America/New_York');
             if (!b.isValid()) throw Error("Invalid begin date " + begin);
             // include interval ending at begin
             b.minutes(minutes*(Math.ceil(b.minutes()/minutes)-1));
-            var e = end && moment(end).tz('America/New_York');
+            var e = end && moment.tz(end, 'America/New_York');
             if (e && !e.isValid()) throw Error("Invalid end date " + end);
             if (e) e.minutes(minutes*Math.floor(e.minutes()/minutes)).subtract(1,'s');
             return hit(throttled, {

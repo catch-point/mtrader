@@ -54,10 +54,10 @@ module.exports.has = function(name) {
 
 var functions = module.exports.functions = {
     NOW: _.extend((opts, tz) => {
-        var now = moment(opts.now).tz(opts.tz).format();
+        var now = moment.tz(opts.now, opts.tz).format();
         return context => {
             if (!tz || tz == opts.tz) return now;
-            else return moment(opts.now).tz(tz(context)).format();
+            else return moment.tz(opts.now, tz(context)).format();
         };
     }, {
         description: "The local date and time at the point the function was executed",
@@ -65,10 +65,10 @@ var functions = module.exports.functions = {
         sideEffect: true
     }),
     BEGIN: _.extend((opts, tz) => {
-        var begin = moment(opts.begin).tz(opts.tz).format();
+        var begin = moment.tz(opts.begin, opts.tz).format();
         return context => {
             if (!tz || tz == opts.tz) return begin;
-            else return moment(opts.begin).tz(tz(context)).format();
+            else return moment.tz(opts.begin, tz(context)).format();
         };
     }, {
         description: "The local date and time collecting began",
@@ -76,10 +76,10 @@ var functions = module.exports.functions = {
         sideEffect: true
     }),
     END: _.extend((opts, tz) => {
-        var end = moment(opts.end || opts.now).tz(opts.tz).format();
+        var end = moment.tz(opts.end || opts.now, opts.tz).format();
         return context => {
             if (!tz || tz == opts.tz) return end;
-            else return moment(opts.end || opts.now).tz(tz(context)).format();
+            else return moment.tz(opts.end || opts.now, tz(context)).format();
         };
     }, {
         description: "The local date and time collecting will end",
@@ -89,7 +89,7 @@ var functions = module.exports.functions = {
     /* Add d workdays to the date */
     WORKDAY: _.extend((opts, ending, days, tz) => {
         return context => {
-            var start = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!start.isValid()) return null;
             var d = Math.min(start.isoWeekday()-1,4) + days(context);
             var wk = Math.floor(d /5);
@@ -101,7 +101,7 @@ var functions = module.exports.functions = {
     }),
     EDATE: _.extend((opts, start_date, duration, tz) => {
         return context => {
-            var date = moment(start_date(context)).tz(tz ? tz(context) : opts.tz);
+            var date = moment.tz(start_date(context), tz ? tz(context) : opts.tz);
             var dur = duration(context);
             var d = _.isFinite(dur) ? moment.duration(+dur, 'months') : moment.duration(dur);
             return date.add(d).format();
@@ -113,7 +113,7 @@ var functions = module.exports.functions = {
         return context => {
             var val = value(context);
             if (_.isFinite(val)) return d3.format(format(context))(+val);
-            else return moment(val).tz(tz ? tz(context) : opts.tz).format(format(context));
+            else return moment.tz(val, tz ? tz(context) : opts.tz).format(format(context));
         };
     }, {
         description: "Converts numbers and dates to text in the given format"
@@ -121,7 +121,7 @@ var functions = module.exports.functions = {
     /* The number of days since 1899-12-31 */
     DATEVALUE: _.extend((opts, ending, tz) => {
         return context => {
-            var start = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!start.isValid()) return null;
             var zero = moment.tz('1899-12-31', opts.tz);
             return start.diff(zero, 'days');
@@ -132,7 +132,7 @@ var functions = module.exports.functions = {
     /* The fraction of day */
     TIMEVALUE: _.extend((opts, ending, tz) => {
         return context => {
-            var start = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!start.isValid()) return null;
             var noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
             var hours = (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
@@ -157,7 +157,7 @@ var functions = module.exports.functions = {
         return context => {
             var date = month ?
                 moment.tz(new Date(ending(context), month(context)-1, day(context)).toISOString().substring(0,10), tz ? tz(context) : opts.tz) :
-                moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+                moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.format('Y-MM-DD');
         };
@@ -168,7 +168,7 @@ var functions = module.exports.functions = {
     /* HH:mm:ss time 24hr format */
     TIME: _.extend((opts, ending, tz) => {
         return context => {
-            var date = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.format('HH:mm:ss');
         };
@@ -179,7 +179,7 @@ var functions = module.exports.functions = {
     /* Date of Month as a number (1-31) */
     DAY: _.extend((opts, ending, tz) => {
         return context => {
-            var date = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.date();
         };
@@ -190,7 +190,7 @@ var functions = module.exports.functions = {
     /* Week of Year as a number (1-52) */
     WEEKNUM: _.extend((opts, ending, mode, tz) => {
         return context => {
-            var date = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             if (!mode || mode(context) == 1) return date.week();
             else return date.isoWeek();
@@ -201,7 +201,7 @@ var functions = module.exports.functions = {
     }),
     WEEKDAY: _.extend((opts, ending, tz) => {
         return context => {
-            var date = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.day()+1;
         };
@@ -212,7 +212,7 @@ var functions = module.exports.functions = {
     /* Month of Year as a number (1-12) */
     MONTH: _.extend((opts, ending, tz) => {
         return context => {
-            var date = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.month() + 1;
         };
@@ -223,7 +223,7 @@ var functions = module.exports.functions = {
     /* Year */
     YEAR(opts, ending, tz) {
         return context => {
-            var date = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.year();
         };
@@ -232,7 +232,7 @@ var functions = module.exports.functions = {
     HOUR: _.extend((opts, ending, tz) => {
         return context => {
             // pivot around noon as leap seconds/hours occur at night
-            var start = moment(ending(context)).tz(tz ? tz(context) : opts.tz);
+            var start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!start.isValid()) return null;
             var noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
             return (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
@@ -242,8 +242,8 @@ var functions = module.exports.functions = {
     }),
     DAYS: _.extend((opts, to, from, tz) => {
         return context => {
-            var a = moment(to(context)).tz(tz ? tz(context) : opts.tz);
-            var b = moment(from(context)).tz(tz ? tz(context) : opts.tz);
+            var a = moment.tz(to(context), tz ? tz(context) : opts.tz);
+            var b = moment.tz(from(context), tz ? tz(context) : opts.tz);
             if (!a.isValid() || !b.isValid()) return null;
             return a.diff(b, 'days');
         };
@@ -252,8 +252,8 @@ var functions = module.exports.functions = {
     }),
     NETWORKDAYS: _.extend((opts, from, to, tz) => {
         return context => {
-            var a = moment(to(context)).tz(tz ? tz(context) : opts.tz);
-            var b = moment(from(context)).tz(tz ? tz(context) : opts.tz);
+            var a = moment.tz(to(context), tz ? tz(context) : opts.tz);
+            var b = moment.tz(from(context), tz ? tz(context) : opts.tz);
             if (!a.isValid() || !b.isValid()) return null;
             if (a.isBefore(b)) {
                 var swap = b;

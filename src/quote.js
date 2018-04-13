@@ -329,7 +329,7 @@ function inlinePadBegin(quoteBars, interval, opts) {
  * Formats begin and end options.
  */
 function formatBeginEnd(options) {
-    var eod = moment(options.now).tz(options.tz).endOf('day');
+    var eod = moment.tz(options.now, options.tz).endOf('day');
     var begin = options.begin ? moment.tz(options.begin, options.tz) : eod;
     var oend = options.end && moment.tz(options.end, options.tz);
     var end = !oend || eod.isBefore(oend) ? eod : oend; // limit end to end of today
@@ -505,7 +505,7 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
     var begin = options.begin;
     var pad_begin = options.pad_begin + warmUpLength;
     var start = pad_begin ? period.dec(begin, pad_begin) : period.floor(begin);
-    var end = options.end || moment(options.now).tz(options.tz);
+    var end = options.end || moment.tz(options.now, options.tz);
     var stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
     var blocks = getBlocks(options.interval, start, stop, options);
     if (options.offline) return Promise.resolve(blocks);
