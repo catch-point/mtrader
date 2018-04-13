@@ -87,7 +87,8 @@ module.exports = function() {
         }).then(fetch => {
             if (fetch.connectionError) fetch.disconnect();
             else if (fetch.connected) return fetch;
-            return replyTo(remote(config('fetch.remote.location')));
+            return replyTo(remote(config('fetch.remote.location')))
+                .handle('stop', () => fetch.disconnect());
         });
     }
 };
