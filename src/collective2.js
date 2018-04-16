@@ -237,7 +237,7 @@ function updateWorking(desired, working, options) {
     var ws = working.signal;
     var d_opened = desired.quant_opened - desired.quant_closed;
     var w_opened = working.quant_opened - working.quant_closed;
-    if (_.has(ds, 'parkUntilSecs') && +working.closedWhenUnixTimeStamp > +ds.parkUntilSecs) {
+    if (_.has(ds, 'parkUntilSecs') && !working.prior && +working.closedWhenUnixTimeStamp > +ds.parkUntilSecs) {
         // working position has since been closed (stoploss) since the last desired signal was produced
         return [];
     } else if (!d_opened && !w_opened && !working.prior && !desired.prior) {
@@ -273,12 +273,15 @@ function updateWorking(desired, working, options) {
         // cancel working signal
         expect(ws).to.have.property('signal_id');
         return cancelSignal(desired, working, options);
+    } else if (desired.prior && working.prior && sameSignal(ds, ws)) {
+        // don't change this signal
+        return updateWorking(desired.prior, working.prior, options);
     } else if (desired.prior && working.prior && similarSignals(ds, ws)) {
         // update quant
         expect(ws).to.have.property('signal_id');
-        return updateWorking(desired.prior, working.prior, options).concat(_.defaults({
+        return appendSignal(updateWorking(desired.prior, working.prior, options), _.defaults({
             xreplace: ws.signal_id
-        }, ds));
+        }, ds), options);
     } else if (desired.prior && working.prior) {
         // cancel and submit
         return appendSignal(cancelSignal(desired.prior, working, options), ds, options);
@@ -327,7 +330,7 @@ function updateWorking(desired, working, options) {
  * Checks if the two signals appear to be the same
  */
 function sameSignal(a, b) {
-    var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss'];
+    var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss', 'quant'];
     return _.matcher(_.pick(a, attrs))(b);
 }
 
@@ -345,7 +348,7 @@ function cancelSignal(desired, working, options) {
         return _.without(adj, same);
     else if (similar)
         return adj.map(a => a == similar ? _.extend({xreplace: ws.signal_id}, a) : a);
-    else if (+ws.isStopOrder && _.every(adj, a => +a.parkUntilSecs * 1000 > options.now))
+    else if (+ws.isStopOrder && !_.every(adj, a => !(+a.parkUntilSecs * 1000 > options.now)))
         return adj; // don't cancel stoploss order until replacements orders come into effect
     else
         return [ws.signal_id].concat(adj);

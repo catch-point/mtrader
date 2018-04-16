@@ -600,19 +600,15 @@ describe("collective2", function() {
                 filter: [
                     'action'
                 ]
-            }).then(() => fs.readFileSync(submitSignal, 'utf8'))
-              .then(JSON.parse)
-              .should.eventually.be.like({
-                signal: {
-                    action: 'STC',
-                    quant: 2,
-                    symbol: 'IBM',
-                    typeofsymbol: 'stock',
-                    market: 1,
-                    duration: 'GTC',
-                    xreplace: "94974798"
-                }
-            });
+            }).should.eventually.be.like([{
+                action: 'STC',
+                quant: 2,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                market: 1,
+                duration: 'GTC',
+                xreplace: "94974798"
+            }]);
         });
         it("IBM reduce signal quant after posted", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
@@ -1561,6 +1557,59 @@ describe("collective2", function() {
                 typeofsymbol: 'stock',
                 market: 1,
                 duration: 'DAY'
+            }]);
+        });
+        it("Order cancelled with stoploss", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+                quant_opened: 2,
+                quant_closed: 0,
+                symbol: 'IBM',
+                instrument: 'stock',
+                long_or_short: 'long'
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                signal_id: "94974798",
+                action: 'STC',
+                quant: 2,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                market: 0,
+                isStopOrder: 120,
+                duration: 'GTC'
+            }, {
+                signal_id: "94974799",
+                action: 'STC',
+                quant: 2,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                market: 0,
+                isLimitOrder: 140,
+                duration: 'GTC'
+            }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
+                    symbol: 'IBM',
+                    close: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    market: 0,
+                    limit: 130,
+                    stoploss: 120,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: '1424206800'
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                signalid: "94974799"
             }]);
         });
         it("catch up with multiple stoploss orders", function() {
