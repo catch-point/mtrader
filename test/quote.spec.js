@@ -248,7 +248,7 @@ describe("quote", function() {
             {ending:'2014-03-03T10:30:00-05:00',high:1.10825,low:1.10805,open:1.10819,close:1.10819}
         ]);
     });
-    it("should update partial blocks", function() {
+    it("should update partial blocks with PRIOR", function() {
         config('fetch.files.dirname', path.resolve(__dirname, 'partial'));
         fetch.close();
         quote.close();
@@ -258,7 +258,7 @@ describe("quote", function() {
             columns: {
                 Date: 'DATE(day.ending)',
                 Close: 'day.close',
-                Change: '(day.close - OFFSET(1, day.close)) *100 / day.close',
+                Change: '(day.close - PRIOR(1, day.close)) *100 / day.close',
                 incomplete: 'day.incomplete'
             },
             symbol: 'IBM',
@@ -278,7 +278,7 @@ describe("quote", function() {
                 columns: {
                     Date: 'DATE(day.ending)',
                     Close: 'day.close',
-                    Change: '(day.close - OFFSET(1, day.close)) *100 / OFFSET(1, day.close)'
+                    Change: '(day.close - PRIOR(1, day.close)) *100 / PRIOR(1, day.close)'
                 },
                 symbol: 'IBM',
                 exchange: 'NYSE',

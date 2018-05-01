@@ -456,7 +456,7 @@ function getDayLength(opts) {
     if (!closes.isValid())
         throw Error("Invalid afterHoursClosesAt: " + opts.afterHoursClosesAt);
     if (closes.isBefore(opens)) closes.add(1, 'days');
-    return periods(opts).diff(closes, opens) * 2; // extra for after hours activity
+    return Math.max(periods(opts).diff(closes, opens) * 2, 1); // extra for after hours activity
 }
 
 function getValues(size, calc, bars) {

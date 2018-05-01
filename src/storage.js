@@ -215,7 +215,7 @@ function openCollection(dirname, name) {
                     metadata.tables.splice(idx, 0, entry);
                 }
                 return debouncedWriteMetadata(collpath, metadata);
-            });
+            }).then(() => records);
         },
         flushCache() {
             return cachedTables.flush();

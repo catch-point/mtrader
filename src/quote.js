@@ -693,6 +693,7 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
         if (i < blocks.length -1 || _.last(tail).ending <= stop || _.last(tail).asof <= stop)
             return fetchPartial(block, _.first(tail).ending).catch(error => {
                 if (stop) logger.debug("Need to fetch", _.last(tail).ending);
+                logger.debug("Fetch failed", error);
                 throw Error("Fetch failed try using the offline flag " + error.message);
             });
     })).then(results => {
@@ -732,8 +733,7 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin) {
                 return Promise.all(warmUpBlocks.map(block => collection.readFrom(block)))
                   .then(results => _.flatten(results, true))
                   .then(prior => {
-                    var data = prior.concat(partial, records)
-                        .map(bar => ({[options.interval]: bar}));
+                    var data = createPoints(prior.concat(partial, records), options);
                     var bars = records.map((bar, i, bars) => {
                         var end = prior.length + partial.length + i;
                         return _.extend(bar, _.mapObject(exprs, expr => {
