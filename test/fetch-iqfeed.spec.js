@@ -60,7 +60,7 @@ describe("fetch-iqfeed", function() {
         }).should.eventually.be.like([{
             symbol: 'USDCAD.FXCM',
             listed_market: "74",
-            company_name: "FXCM USD CAD Spot"
+            company_name: /FXCM USD CAD/
         }]);
     });
     it("should return daily", function() {

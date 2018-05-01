@@ -140,6 +140,7 @@ describe("ptrading", function() {
             portfolio: 'SPY.ARCA',
             begin: '2000-01-01',
             end: '2010-01-01',
+            population_size: 12,
             optimize_termination: 'PT5M',
             eval_validity: 'fast_len<slow_len',
             eval_score: 'gain/pain',
@@ -167,6 +168,7 @@ describe("ptrading", function() {
     it("should find best signal parameters for each", function() {
         ptrading.seed(27644437);
         ptrading.config.save('TREND', {
+            population_size: 12,
             signals: ['sma_cross','ema_cross'],
             variables: {
                 sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))',
@@ -199,6 +201,7 @@ describe("ptrading", function() {
             }
         });
         ptrading.config.save('RELATIVESTRENGTH', {
+            population_size: 12,
             signals: ['STO_signal'],
             variables: {
                 STO_signal: 'SIGN(K-D)',

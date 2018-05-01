@@ -564,6 +564,7 @@ function closeSocket(socket) {
 function send(cmd, socket) {
     logger.log(cmd);
     socket.write(cmd + '\r\n');
+    return socket;
 }
 
 function promiseSend(cmd, socket) {
