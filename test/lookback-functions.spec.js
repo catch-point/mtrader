@@ -1021,4 +1021,38 @@ describe("lookback-functions", function(){
             {Date:"2016-01-29",Close:193.72,Change:1.68,Shortfall:0.0244}
         ]);
     });
+    it("quote TOD SMA", function() {
+        return quote({
+            columns: {
+                Date: 'DATE(m60.ending)',
+                Time: 'TIME(m60.ending)',
+                Close: 'm60.close',
+                Volume: 'm60.volume',
+                Relative: 'CHANGE(m60.volume, TOD(SMA(20,m60.volume)))'
+            },
+            symbol: 'USD',
+            exchange: 'CAD',
+            begin: '2016-01-08',
+            end: '2016-01-10'
+        }).should.eventually.be.like([
+            { Date: '2016-01-08', Time: '00:00:00', Close: 1.40813, Volume: 4067, Relative: 5.8 },
+            { Date: '2016-01-08', Time: '01:00:00', Close: 1.40832, Volume: 5194, Relative: 52.39 },
+            { Date: '2016-01-08', Time: '02:00:00', Close: 1.40771, Volume: 4853, Relative: 17.88 },
+            { Date: '2016-01-08', Time: '03:00:00', Close: 1.41072, Volume: 13052, Relative: 27.8 },
+            { Date: '2016-01-08', Time: '04:00:00', Close: 1.41118, Volume: 18097, Relative: 26.68 },
+            { Date: '2016-01-08', Time: '05:00:00', Close: 1.41064, Volume: 11218, Relative: -8.03 },
+            { Date: '2016-01-08', Time: '06:00:00', Close: 1.4123, Volume: 13957, Relative: 11.2 },
+            { Date: '2016-01-08', Time: '07:00:00', Close: 1.41156, Volume: 15741, Relative: 23.77 },
+            { Date: '2016-01-08', Time: '08:00:00', Close: 1.40998, Volume: 16587, Relative: 21.32 },
+            { Date: '2016-01-08', Time: '09:00:00', Close: 1.40896, Volume: 35007, Relative: 64.16 },
+            { Date: '2016-01-08', Time: '10:00:00', Close: 1.41145, Volume: 33515, Relative: 25.5 },
+            { Date: '2016-01-08', Time: '11:00:00', Close: 1.41569, Volume: 31110, Relative: 13.77 },
+            { Date: '2016-01-08', Time: '12:00:00', Close: 1.41517, Volume: 31373, Relative: 39.33 },
+            { Date: '2016-01-08', Time: '13:00:00', Close: 1.41126, Volume: 21201, Relative: 35.46 },
+            { Date: '2016-01-08', Time: '14:00:00', Close: 1.41333, Volume: 20108, Relative: 49.11 },
+            { Date: '2016-01-08', Time: '15:00:00', Close: 1.41348, Volume: 14878, Relative: -9.8 },
+            { Date: '2016-01-08', Time: '16:00:00', Close: 1.41479, Volume: 13069, Relative: -7.31 },
+            { Date: '2016-01-08', Time: '17:00:00', Close: 1.41688, Volume: 5491, Relative: -41.77 }
+        ]);
+    });
 });

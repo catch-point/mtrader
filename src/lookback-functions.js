@@ -370,22 +370,30 @@ var functions = module.exports.functions = {
             if (_.isEmpty(bars))
                 return calc(bars);
             var start = "2000-01-01T".length;
-            var first = moment.tz(_.first(bars).ending, opts.tz);
-            var last = moment.tz(_.last(bars).ending, opts.tz);
-            if (first.isDST() == last.isDST() && last.diff(first, 'months') < 2) {
-                // Use string comparison for faster filter
-                var time = last.format().substring(start);
-                return calc(bars.filter(function(bar){
-                    return bar.ending.substring(start) == time;
-                }));
-            } else {
-                var hms = last.hour() *60 *60 + last.minute() *60 + last.seconds();
-                return calc(bars.filter(function(bar){
-                    var ending = moment.tz(bar.ending, opts.tz);
-                    var ahms = ending.hour() *60 *60 + ending.minute() *60 + ending.seconds();
-                    return ahms == hms;
-                }));
+            var step = Math.round(dayLength/2);
+            var last = bars.length -1;
+            var filtered = [_.last(bars)];
+            var suffix = _.last(bars).ending.substring(start);
+            while (filtered.length <= calc.warmUpLength) {
+                if (last >= step && bars[last - step].ending.substring(start) == suffix) {
+                    filtered.push(bars[last - step]);
+                    last -= step;
+                } else {
+                    var idx, formatted;
+                    var iter = moment.tz(bars[last].ending, opts.tz);
+                    do {
+                        iter.subtract(1, 'day');
+                        formatted = iter.format();
+                        idx = _.sortedIndex(bars, {ending: formatted}, 'ending');
+                    } while (bars[idx].ending != formatted && formatted > bars[0].ending);
+                    if (bars[idx].ending != formatted) break;
+                    filtered.push(bars[idx]);
+                    suffix = formatted.substring(start);
+                    step = last - idx;
+                    last = idx;
+                }
             }
+            return calc(filtered.reverse());
         }, {
             fields: ['ending'],
             warmUpLength: (calc.warmUpLength +1) * dayLength
