@@ -214,7 +214,7 @@ function collectDuration(quote, callCollect, fields, options) {
                     [options.exchangeCol]: 'exchange',
                     [options.temporalCol]: 'DATETIME(ending)'
                 }),
-                variables: _.extend(_.omit(_.omit(opts.columns, (v,k)=>v==k), _.keys(columns).concat(used)), opts.variables),
+                variables: _.extend(_.omit(_.omit(opts.columns, (v,k)=>v==k||~fields.indexOf(k)), _.keys(columns).concat(used)), opts.variables),
                 filter: _.flatten(_.compact(filter), true),
                 begin: opts.begin || begin,
                 order: _.flatten(_.compact(['DATETIME(ending)', opts.order]), true),
