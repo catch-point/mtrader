@@ -313,7 +313,7 @@ function getPrices(bars) {
             if (prices[i] != price) prices.splice(i, 0, price);
             return prices;
         }, prices);
-    }, new Array(bars.length * 4));
+    }, []);
     var median = prices[Math.floor(prices.length/2)];
     while (_.last(prices) > median * 100) prices.pop();
     return prices;
