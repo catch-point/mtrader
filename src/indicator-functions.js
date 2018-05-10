@@ -219,34 +219,43 @@ var functions = module.exports.functions = {
         });
     },
     /* Price of Percent of Volume */
-    POPV(n, p) {
+    POPV: _.extend((n, p) => {
         return _.extend(bars => {
             var adj_bars = adj(bars);
             var prices = getPrices(adj_bars);
             if (p <= 0) return _.first(prices);
             if (!(p < 100)) return _.last(prices);
             var volume = getPriceVolume(adj_bars, prices);
-            var total = volume.reduce((a, b) => a + b);
+            if (!volume.length) return null;
+            var total_volume = volume.reduce((total_volume, volume) => {
+                var pre = total_volume.length ? total_volume[total_volume.length-1] : 0;
+                total_volume.push(pre + volume);
+                return total_volume;
+            }, []);
+            var total = total_volume[total_volume.length-1];
             var target = p * total /100;
-            var below = 0;
-            for (var i=0; below + volume[i] < target; i++) {
-                below += volume[i];
-            }
-            return prices[target - below < volume[i] /2 ? i -1 : i];
+            var i = _.sortedIndex(total_volume, target);
+            if (total_volume[i] <= target) return prices[i];
+            var ratio = (target - total_volume[i-1]) / (total_volume[i] - total_volume[i-1]);
+            return prices[i-1] + (prices[i] - prices[i-1]) * ratio;
         }, {
             warmUpLength: n -1
         });
-    },
+    }, {
+        description: "Estimated Price with the given Percent of Volume traded below it",
+        args: "numberOfPeriods, percentOfVolumeBelowPrice"
+    }),
     /* Percent of trade Volume below close Oscillator */
     POVO(n) {
         return _.extend(bars => {
-            if (_.isEmpty(bars)) return;
+            if (_.isEmpty(bars)) return null;
             var adj_bars = adj(bars);
             var target = _.last(adj_bars).close;
             var prices = getPrices(adj_bars);
             if (target <= _.first(prices)) return 0;
             if (target >= _.last(prices)) return 100;
             var volume = getPriceVolume(adj_bars, prices);
+            if (!volume.length) return null;
             var below = volume.slice(0, _.sortedIndex(prices, target)+1);
             var total = volume.reduce((a, b) => a + b);
             return below.reduce((a, b) => a + b) *100 / total;

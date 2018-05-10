@@ -263,7 +263,7 @@ var functions = module.exports.functions = {
         });
     },
     /* Prior value N days ago */
-    PRIOR(opts, days, field) {
+    PRIOR: _.extend((opts, days, field) => {
         var d = asPositiveInteger(days, "PRIOR");
         var dayLength = getDayLength(opts);
         var n = Math.ceil((d + 1) * dayLength);
@@ -281,9 +281,11 @@ var functions = module.exports.functions = {
             fields: ['ending'],
             warmUpLength: n + field.warmUpLength
         });
-    },
+    }, {
+        description: "Include only data upto N days ago (As of N days ago)"
+    }),
     /* Since N days ago */
-    SINCE(opts, days, calc) {
+    SINCE: _.extend((opts, days, calc) => {
         var d = asPositiveInteger(days, "SINCE");
         var dayLength = getDayLength(opts);
         var n = Math.ceil((d + 1) * dayLength);
@@ -301,9 +303,11 @@ var functions = module.exports.functions = {
             fields: ['ending'],
             warmUpLength: n + calc.warmUpLength - 1
         });
-    },
+    }, {
+        description: "Anchor data to the start of day, N days ago"
+    }),
     /* Past N days */
-    PAST(opts, days, calc) {
+    PAST: _.extend((opts, days, calc) => {
         var d = asPositiveInteger(days, "PAST");
         var dayLength = getDayLength(opts);
         var n = Math.ceil((d + 1) * dayLength);
@@ -323,7 +327,9 @@ var functions = module.exports.functions = {
             fields: ['ending'],
             warmUpLength: n + calc.warmUpLength - 1
         });
-    },
+    }, {
+        description: "Anchor data to N × 24hours ago"
+    }),
     /* Normal Market Hour Session */
     SESSION(opts, calc) {
         var dayLength = getDayLength(opts);
