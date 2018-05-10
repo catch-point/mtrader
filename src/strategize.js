@@ -104,6 +104,10 @@ function help(bestsignals) {
                     usage: 'true',
                     description: "If more conjunctions are prohibited (no 'AND' operators)"
                 },
+                follow_signals_only: {
+                    usage: 'true',
+                    description: "If the strategy should never counter the signal direction"
+                },
                 max_operands: {
                     usage: '<number>',
                     description: "Maximum amount of operands between AND/OR conjunctions/disjunctions"
@@ -454,7 +458,8 @@ function moreStrategies(prng, evaluate, parser, max_operands, latest) {
     var strategy = parser(latest.variables[strategy_var]);
     var signal_var = latest.signal_variable;
     if (!strategy.legs.length || signal_var == strategy.expr) { // initial signal
-        return Promise.resolve(invert(signal_var));
+        if (latest.follow_signals_only) return Promise.resolve([signal_var]);
+        else return Promise.resolve(invert(signal_var));
     }
     expect(latest).to.have.property('score');
     expect(strategy.legs).to.have.lengthOf(1);
@@ -477,8 +482,10 @@ function moreStrategies(prng, evaluate, parser, max_operands, latest) {
             if (cmpIdx > comparisons.length || !room && cmpIdx == comparisons.length) {
                 // replace reference signal
                 var needle = signal.variable || signal.expr;
-                return [
-                    createReplacer({[needle]: signal_var})(leg.expr),
+                var follow = createReplacer({[needle]: signal_var})(leg.expr);
+                if (latest.follow_signals_only) return [follow];
+                else return [
+                    follow,
                     leg.expr.replace(new RegExp('-' + needle + '\\b','g'), signal_var)
                             .replace(new RegExp('\\b' + needle + '\\b','g'), '-' + signal_var)
                 ];
