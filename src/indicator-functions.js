@@ -246,7 +246,7 @@ var functions = module.exports.functions = {
         args: "numberOfPeriods, percentOfVolumeBelowPrice"
     }),
     /* Percent of trade Volume below close Oscillator */
-    POVO(n) {
+    POVO: _.extend((n, o) => {
         return _.extend(bars => {
             if (_.isEmpty(bars)) return null;
             var adj_bars = adj(bars);
@@ -254,15 +254,19 @@ var functions = module.exports.functions = {
             var prices = getPrices(adj_bars);
             if (target <= _.first(prices)) return 0;
             if (target >= _.last(prices)) return 100;
-            var volume = getPriceVolume(adj_bars, prices);
+            var inc_bars = o ? adj_bars.slice(0, adj_bars.length-o) : adj_bars;
+            var volume = getPriceVolume(inc_bars, prices);
             if (!volume.length) return null;
             var below = volume.slice(0, _.sortedIndex(prices, target)+1);
             var total = volume.reduce((a, b) => a + b);
             return below.reduce((a, b) => a + b) *100 / total;
         }, {
-            warmUpLength: n -1
+            warmUpLength: (o || 0) + n -1
         });
-    },
+    }, {
+        description: "Percent of trade Volume below current bar close Oscillator",
+        args: "numberOfPeriodsToInclude, [offsetNumberOfPeriods]"
+    }),
     /* Rotation Factor */
     ROF(n) {
         return _.extend(bars => {
@@ -341,9 +345,9 @@ function reducePriceVolume(bars, prices, fn, memo) {
 function getPriceVolume(bars, prices) {
     return reducePriceVolume(bars, prices, (volume, price, weight) => {
         var i = _.sortedIndex(prices, price);
-        volume[i] = (volume[i] || 0) + weight;
+        volume[i] = volume[i] + weight;
         return volume;
-    }, new Array(prices.length));
+    }, prices.map(_.constant(0)));
 }
 
 function decimal(float) {

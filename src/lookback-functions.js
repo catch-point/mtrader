@@ -142,6 +142,7 @@ var functions = module.exports.functions = {
         var n = asPositiveInteger(num, "EMA");
         return _.extend(bars => {
             var values = getValues(n * 10, calc, bars);
+            if (n == 1) return _.last(values);
             var a = 2 / (n + 1);
             var firstN = values.slice(0, n);
             var sma = _.reduce(firstN, function(memo, value, index){
@@ -151,7 +152,7 @@ var functions = module.exports.functions = {
                 return a * value + (1 - a) * memo;
             }, sma);
         }, {
-            warmUpLength: n * 10 + calc.warmUpLength - 1
+            warmUpLength: n > 1 ? n * 10 + calc.warmUpLength - 1 : calc.warmUpLength
         });
     },
     PF(opts, num, calc) {
