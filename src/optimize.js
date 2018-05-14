@@ -38,6 +38,7 @@ const common = require('./common-functions.js');
 const lookback = require('./lookback-functions.js');
 const rolling = require('./rolling-functions.js');
 const logger = require('./logger.js');
+const interrupt = require('./interrupt.js');
 const expect = require('chai').expect;
 
 const MIN_POPULATION = 2;
@@ -306,7 +307,8 @@ function fitness(collect, options, pnames) {
     var transient = _.isBoolean(options.transient) ? options.transient :
         isLookbackParameter(pnames, options);
     return function(candidate) {
-        var parameters = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
+        var params = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
+        var parameters = _.defaults(params, options.parameters);
         var label = pnames.length ? (options.label ? options.label + ' ' : '') +
                 candidate.pindex.map((idx,i) => {
             return options.parameter_values[pnames[i]][idx];
@@ -334,6 +336,7 @@ function fitness(collect, options, pnames) {
  * Cycles between candidate selection and mutation until the score of the best/worst selected solution is the same for `stale` number of iterations
  */
 function adapt(fitness, mutation, pnames, terminateAt, options, population, size) {
+    var check = interrupt(true);
     var maxEliteSize = Math.max(options.solution_count || 1, Math.floor(size/2));
     var generation = size - maxEliteSize || 1;
     var elite = []; // elite solutions best one last
@@ -347,7 +350,7 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
             candidates.splice(candidates.indexOf(candidate), 1);
             solutions.push(solution);
         }).then(() => {
-            if (!solutions.length) return;
+            if (!solutions.length || check()) return;
             var population = solutions.concat(elite);
             var top = _.sortBy(population, 'score').slice(-maxEliteSize);
             var additions = _.difference(top, elite);
@@ -392,7 +395,7 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
     };
     until = until.then(() => Promise.all(candidates.map(rank)));
     var wait = promise => promise.then(() => {
-        if (promise != until) return wait(until);
+        if (promise != until && !check()) return wait(until);
         else return elite.slice(0).reverse();
     });
     return wait(until);
