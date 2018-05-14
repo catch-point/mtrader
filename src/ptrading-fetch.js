@@ -184,7 +184,7 @@ help(app, 'lookup', `
   Options:
 ${listOptions(info.lookup.options)}
 `);
-help(app, 'fundamental', `
+if (info.fundamental) help(app, 'fundamental', `
   Usage: fundamental :symbol.exchange
 
   List fundamental information about security

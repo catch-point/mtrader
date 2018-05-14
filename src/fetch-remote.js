@@ -67,8 +67,7 @@ module.exports = function() {
         var check = interrupted || interrupt(true);
         var delay = (delayed || 500) *2;
         return Fetch().then(client => client.request('fetch', options).catch(err => {
-            if (check() || delay > 5000 || !err || !err.message ||
-                    !~err.message.indexOf('connect') && !~err.message.indexOf('timed out'))
+            if (check() || delay > 5000 || !isConnectionError(err))
                 throw err;
             // connection error wait and try again
             client.connectionError = true;
@@ -92,3 +91,10 @@ module.exports = function() {
         });
     }
 };
+
+function isConnectionError(err) {
+    if (!err || !err.message) return false;
+    else return ~err.message.indexOf('connect') ||
+        ~err.message.indexOf('timed out') ||
+        ~err.message.indexOf('ECONNRESET');
+}
