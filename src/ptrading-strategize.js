@@ -78,6 +78,7 @@ function usage(command) {
         .option('--max-changes <number>', "The maximum number of changes allowed to strategy expressions")
         .option('--concurrent-strategies <number>', "Number of strategies to search for and evaluate at once")
         .option('--signal-cost <number>', "Minimum amount the score must increase by before adding another signal")
+        .option('--from-scratch', "If the existing strategy should not be immediately considered")
         .option('--amend', "If the result should include option properties from the input")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--save <file>', "JSON file to write the result into");

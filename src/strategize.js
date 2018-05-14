@@ -173,7 +173,8 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sig
             var cost = getStrategyCost(strategy.expr, options);
             var better = reset[strategy_var];
             if (latestScore - cost < better.score - better.cost) return reset;
-            else return some(scores, signals);
+            logger.log("Strategize", options.label || '\b', "from scratch was not good enough", better.variables[strategy_var], better.score);
+            return some(scores, signals);
         });
     });
 }
