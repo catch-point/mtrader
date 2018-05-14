@@ -108,6 +108,10 @@ function help(bestsignals) {
                     usage: 'true',
                     description: "If the strategy should never counter the signal direction"
                 },
+                from_scratch: {
+                    usage: 'true',
+                    description: "If the existing strategy should not be immediately considered"
+                },
                 max_operands: {
                     usage: '<number>',
                     description: "Maximum amount of operands between AND/OR conjunctions/disjunctions"
@@ -149,19 +153,46 @@ function strategize(bestsignals, prng, options) {
  * Tries to find an similar, but better strategy
  */
 function strategizeLegs(bestsignals, prng, parser, termAt, started, options, signals) {
-    var check = interrupt(true);
     var scores = {};
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
     var latest_expr = latest.variables[strategy_var];
+    var strategy = parser(latest_expr == options.signal_variable ? '' : latest_expr);
+    var from_scratch = options.from_scratch || !strategy.legs.length;
+    var incremental = strategy.legs.length;
     var searchFn = searchLeg.bind(this, bestsignals, prng, parser, termAt);
+    var all = strategizeAll.bind(this, bestsignals, searchFn, parser, started, options);
+    var some = strategizeSome.bind(this, bestsignals, prng, searchFn, parser, termAt, started, options);
+    return Promise.resolve(from_scratch ? all(scores, merge({signals}, {signals:{
+        [strategy_var]: {variables:{[strategy_var]:''}}
+    }})) : null).then(reset => {
+        if (!incremental) return reset;
+        else if (!reset) return some(scores, signals);
+        else return evaluate(bestsignals, scores, strategy.expr, latest)
+          .then(latestScore => {
+            var cost = getStrategyCost(strategy.expr, options);
+            var better = reset[strategy_var];
+            if (latestScore - cost < better.score - better.cost) return reset;
+            else return some(scores, signals);
+        });
+    });
+}
+
+/**
+ * Tries to find an similar, but possibly a slightly better strategy
+ */
+function strategizeSome(bestsignals, prng, searchLeg, parser, termAt, started, options, scores, signals) {
+    var check = interrupt(true);
+    var strategy_var = options.strategy_variable;
+    var latest = signals[strategy_var];
+    var latest_expr = latest.variables[strategy_var];
     var strategy = parser(latest_expr == options.signal_variable ? '' : latest_expr);
     if (!strategy.legs.length)
-        return strategizeAll(bestsignals, searchFn, parser, started, options, scores, {signals});
+        return strategizeAll(bestsignals, searchLeg, parser, started, options, scores, {signals});
     var isolations = strategy.legs.length > 1 && strategy.legs.map((leg, i) => {
         return spliceExpr(strategy.legs, i, 1).join(' OR ');
     });
-    return Promise.resolve(evaluate(bestsignals, scores, strategy.expr, latest))
+    return evaluate(bestsignals, scores, strategy.expr, latest)
       .then(latestScore => Promise.all(strategy.legs.map((leg, i) => {
         if (strategy.legs.length == 1) return latestScore;
         var withoutIt = isolations[i];
@@ -177,13 +208,14 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sig
         var idx = chooseContribution(prng, options.disjunction_cost, contribs, full ? 0 : 1);
         if (idx < strategy.legs.length)
             logger.trace("Strategize", label, "contrib", strategy.legs[idx].expr, contribs[idx]);
-        return strategizeContribs(searchFn.bind(this, 1, {}), msignals, strategy, contribs[idx], idx, options)
+        var searchFn = searchLeg.bind(this, 1, {}); // just try to improve one thing
+        return strategizeContribs(searchFn, msignals, strategy, contribs[idx], idx, options)
           .then(signals => {
             var better = signals[strategy_var];
             var new_expr = better.variables[strategy_var];
             if (!new_expr) {
                 logger.warn("Strategize", options.label || '\b', "failed to make sense of", latest_expr);
-                return strategizeAll(bestsignals, searchFn, parser, started, options, scores, {signals});
+                return strategizeAll(bestsignals, searchLeg, parser, started, options, scores, {signals});
             }
             if (latestScore - cost < better.score - better.cost) return signals;
             else return msignals; // better was not significantly so
