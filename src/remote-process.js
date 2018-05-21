@@ -116,7 +116,8 @@ var remote = module.exports = function(socket, options) {
             emitter.emit('error', Error("unexpected server response (" + response.statusCode + ")"));
         }
     }).on('error', err => {
-        emitter.emit('error', Error(`${err.message} from ${label}`));
+        if (label) emitter.emit('error', Error(`${err.message} from ${label}`));
+        else emitter.emit('error', err);
     });
     emitter.remote = true;
     emitter.pid = label || '';
