@@ -307,6 +307,51 @@
         }
       }
     },
+    "NOK": {
+      "description": "Forex Capital Markets trading using NOK as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "17:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "NOK",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "NOK.FXCM",
+          "listed_market": 74
+        }
+      }
+    },
+    "SEK": {
+      "description": "Forex Capital Markets trading using SEK as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "17:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "SEK",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "SEK.FXCM",
+          "listed_market": 74
+        }
+      }
+    },
+    "CNH": {
+      "description": "Forex Capital Markets trading using CNH as the quote currency.",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "17:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "CNH",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "CNH.FXCM",
+          "listed_market": 74
+        }
+      }
+    },
     "JPY": {
       "description": "Forex Capital Markets trading using JPY as the quote currency.",
       "afterHoursClosesAt": "24:00:00",
