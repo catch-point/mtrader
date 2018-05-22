@@ -273,18 +273,23 @@ function updateWorking(desired, working, options) {
         // cancel working signal
         expect(ws).to.have.property('signal_id');
         return cancelSignal(desired, working, options);
-    } else if (desired.prior && working.prior && sameSignal(ds, ws)) {
-        // don't change this signal
-        return updateWorking(desired.prior, working.prior, options);
-    } else if (desired.prior && working.prior && similarSignals(ds, ws)) {
-        // update quant
-        expect(ws).to.have.property('signal_id');
-        return appendSignal(updateWorking(desired.prior, working.prior, options), _.defaults({
-            xreplace: ws.signal_id
-        }, ds), options);
     } else if (desired.prior && working.prior) {
-        // cancel and submit
-        return appendSignal(cancelSignal(desired.prior, working, options), ds, options);
+        if (sameSignal(ds, ws)) {
+            // don't change this signal
+            return updateWorking(desired.prior, working.prior, options);
+        } else if (+ds.isStopOrder && +ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now) {
+            // signals are both stoploss orders, but the desired stoploss has not come into effect yet
+            return updateWorking(desired.prior, working.prior, options);
+        } else if (similarSignals(ds, ws)) {
+            // update quant
+            expect(ws).to.have.property('signal_id');
+            return appendSignal(updateWorking(desired.prior, working.prior, options), _.defaults({
+                xreplace: ws.signal_id
+            }, ds), options);
+        } else {
+            // cancel and submit
+            return appendSignal(cancelSignal(desired.prior, working, options), ds, options);
+        }
     } else if (d_opened && w_opened && desired.long_or_short != working.long_or_short) {
         // reverse position
         return [{
