@@ -180,10 +180,10 @@ function collectDuration(quote, callCollect, fields, options) {
     var illegal = _.intersection(_.keys(options.variables), fields);
     if (illegal.length) expect(options.variables).not.to.have.property(_.first(illegal));
     var portfolio = getPortfolio(options.portfolio, options);
-    var optional = _.difference(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true), fields);
+    var optional = _.difference(_.uniq(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true)), fields);
     var defaults = _.object(optional, optional.map(v => null));
     var avail = _.union(fields, optional);
-    checkCircularVariableReference(avail, options);
+    checkCircularVariableReference(fields, options);
     var zipColumns = parseNeededColumns(avail, options);
     var columns = _.object(zipColumns);
     var columnNames = _.object(_.keys(options.columns), zipColumns.map(_.first));
@@ -204,17 +204,16 @@ function collectDuration(quote, callCollect, fields, options) {
                 }
             });
             var columns = parser.parse(simpleColumns);
-            var used = getUsedColumns(columns, opts);
             var filter = [opts.filter, parser.parse(criteria)];
             var params = _.omit(defaults, _.keys(opts.columns).concat(_.keys(opts.variables)));
             return callCollect(_.defaults({
-                columns: _.extend(columns, _.pick(opts.columns, used), {
+                columns: _.extend(columns, {
                     [options.indexCol]: JSON.stringify(index),
                     [options.symbolCol]: 'symbol',
                     [options.exchangeCol]: 'exchange',
                     [options.temporalCol]: 'DATETIME(ending)'
                 }),
-                variables: _.extend(_.omit(_.omit(opts.columns, (v,k)=>v==k||~fields.indexOf(k)), _.keys(columns).concat(used)), opts.variables),
+                variables: _.extend(_.omit(getColumnVariables(fields, opts), _.keys(columns)), opts.variables),
                 filter: _.flatten(_.compact(filter), true),
                 begin: opts.begin || begin,
                 order: _.flatten(_.compact(['DATETIME(ending)', opts.order]), true),
@@ -267,10 +266,10 @@ function collectDuration(quote, callCollect, fields, options) {
  * Looks for column/variable circular reference and if found throws an Error
  */
 function checkCircularVariableReference(fields, options) {
-    var variables = _.extend({}, _.omit(options.columns, fields), options.variables);
+    var variables = _.extend({}, getColumnVariables(fields, options), options.variables);
     var references = getReferences(variables);
     _.each(references, (reference, name) => {
-        if (_.contains(reference, name) && variables[name] != name) {
+        if (_.contains(reference, name)) {
             var path = _.sortBy(_.keys(references).filter(n => _.contains(references[n], n) && _.contains(references[n], name)));
             throw Error("Circular variable reference " + path.join(',') + ": " + variables[name]);
         }
@@ -278,32 +277,15 @@ function checkCircularVariableReference(fields, options) {
 }
 
 /**
- * Returns an array of variable names used by at least one of columns/criteria/precedence/filter/order
+ * Hash of columns that don't conflict with other variables names from
+ * variables, parameters, subcollect, and fields
  */
-function getUsedColumns(columns, options) {
-    var itSelf = (v, k) => v==k;
-    var variables = _.defaults(_.omit(columns, itSelf), _.omit(options.columns, itSelf), options.variables);
-    var exprs = _.flatten(_.compact([
-        options.criteria, options.precedence, options.filter, options.order
-    ]), true);
-    var names = _.uniq(_.flatten(Parser({
-        constant(value) {
-            return [];
-        },
-        variable(name) {
-            return [name];
-        },
-        expression(expr, name, args) {
-            if (rolling.has(name)) return rolling.getVariables(expr);
-            else return _.uniq(_.flatten(args, true));
-        }
-    }).parseCriteriaList(exprs), true));
-    var references = getReferences(variables, true);
-    return _.uniq(names.concat(_.keys(columns)).reduce((used, name) => {
-        used.push(name);
-        if (references[name]) used.push.apply(used, references[name]);
-        return used;
-    }, []));
+function getColumnVariables(fields, options) {
+    var pnames = _.keys(options.parameters);
+    var varnames = _.keys(options.variables);
+    var portfolio = getPortfolio(options.portfolio, options);
+    var inherited = _.uniq(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true));
+    return _.omit(options.columns, pnames.concat(varnames, inherited, fields));
 }
 
 /**
@@ -466,7 +448,7 @@ function getVariables(fields, options) {
         more_vars = _.difference(new_vars, old_vars);
     }
     var multiples = _.uniq(_.flatten(exprs.map(expr => _.keys(expr).filter(name => expr[name] > 1)), true));
-    return _.union(_.difference(_.keys(options.columns), fields), multiples);
+    return _.union(_.keys(getColumnVariables(fields, options)), multiples);
 }
 
 /**
