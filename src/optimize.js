@@ -96,6 +96,10 @@ function help(collect) {
                     usage: '<number of samples>',
                     description: "Number of samples to search before searching the entire date range (begin-end)"
                 },
+                sample_population_size: {
+                    usage: '<number of candidates>',
+                    description: "Number of candidates to test and mutate together in each sample"
+                },
                 sample_termination: {
                     usage: 'PT1M',
                     description: "Amount of time spent searching for sample solutions"
@@ -228,15 +232,17 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
     var end = moment(options.end || options.now);
     if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
     if (!end.isValid()) throw Error("Invalid end date: " + options.end);
+    var until = options.sample_duration ?
+        moment(end).subtract(moment.duration(options.sample_duration)) : end;
     var count = options.sample_count || 1;
-    var period = createDuration(begin, end, count);
+    var period = createDuration(begin, until, count);
     var unit = getDurationUnit(period, count);
     var duration = options.sample_duration ?
         moment.duration(options.sample_duration) :
         moment.duration(Math.round(period.as(unit) / count), unit);
     if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.sample_duration);
-    var period_units = period.subtract(duration).as(unit);
-        var pvalues = pnames.map(name => options.parameter_values[name]);
+    var period_units = Math.max(period.as(unit), 0);
+    var pvalues = pnames.map(name => options.parameter_values[name]);
     var termination = options.sample_termination || options.optimize_termination &&
         moment.duration(moment.duration(options.optimize_termination).asSeconds()/3000).toISOString();
     var optionset = _.range(count).map(() => {
@@ -248,20 +254,21 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
         }
         return _.defaults({
             optimize_termination: termination,
-            begin: periodBegin.format(), end: periodEnd.format()
+            begin: periodBegin.format(), end: periodEnd.format(),
+            population_size: options.sample_population_size || options.population_size
         }, _.omit(options, ['sample_duration', 'sample_count']));
     });
     return Promise.all(optionset.map(opts => {
-        return searchParameters(collect, prng, pnames, Math.ceil(size/2), opts);
+        return searchParameters(collect, prng, pnames, opts.population_size, opts);
     })).then(results => {
         var parameters = _.pick(options.parameters, pnames);
-        var population = results.reduce((population, sols) => sols.reduce((population, solution) => {
+        var population = _.compact(_.flatten(_.zip.apply(_, results))).reduce((population, solution) => {
             var candidate = {pindex: solution.pindex};
-            if (space(candidate)) {
+            if (population.length < size && space(candidate)) {
                 population.push(candidate);
             }
             return population;
-        }, population), []);
+        }, []);
         var seed = _.isEmpty(parameters) ? null :
             {pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))};
         if (seed && space(seed)) {
@@ -446,7 +453,7 @@ function createDuration(begin, end, count) {
  * Chooses a major division unit, one of years, months, days, hours, minutes, or seconds
  */
 function getDurationUnit(duration, count) {
-    return ['years', 'months', 'days', 'hours', 'minutes'].reduce((result, unit) => {
+    return ['years', 'months', 'weeks', 'days', 'hours', 'minutes'].reduce((result, unit) => {
         var number = duration.as(unit);
         if (!result && number > count && Math.abs(number - Math.round(number)) < 0.1)
             return unit;
