@@ -37,7 +37,6 @@ const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
-const Remote = require('./remote-workers.js');
 const config = require('./ptrading-config.js');
 const Optimize = require('./optimize.js');
 const expect = require('chai').expect;
@@ -98,9 +97,8 @@ if (require.main === module) {
 }
 
 function createInstance(program) {
-    var remote = !_.isEmpty(config('remote_workers')) && Remote();
-    var collect = !remote && require('./ptrading-collect.js');
-    var optimize = Optimize(remote ? remote.collect : collect);
+    var collect = require('./ptrading-collect.js');
+    var optimize = Optimize(collect);
     var promiseKeys;
     var instance = function(options) {
         if (!promiseKeys) {
@@ -112,7 +110,6 @@ function createInstance(program) {
     instance.seed = optimize.seed;
     instance.close = function() {
         return Promise.all([
-            remote && remote.close(),
             collect && collect.close(),
             optimize.close()
         ]);
