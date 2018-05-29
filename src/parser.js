@@ -149,7 +149,7 @@ function parseExpression(str, substitutions, handlers) {
 }
 
 function parseExpressions(str, substitutions) {
-    var expressions = parseExpressionList(str.toString());
+    var expressions = parseExpressionList(str == null ? '' : str.toString());
     if (_.isEmpty(substitutions)) return expressions;
     else return expressions.map(expr => inline(expr, substitutions));
 }
