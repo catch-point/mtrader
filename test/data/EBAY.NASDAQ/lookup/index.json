@@ -1,0 +1,48 @@
+{
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 30,
+   "head": [
+    {
+     "symbol": "EBAY",
+     "yahoo_symbol": "EBAY",
+     "exchange": "NASDAQ",
+     "name": "eBay Inc.",
+     "type": "S",
+     "typeDisp": "Equity"
+    },
+    {
+     "symbol": "EBAYL",
+     "yahoo_symbol": "EBAYL",
+     "exchange": "NASDAQ",
+     "name": "eBay Inc. NT 56",
+     "type": "S",
+     "typeDisp": "Equity"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "0R3D.L",
+     "yahoo_symbol": "0R3D.L",
+     "exchange": "NASDAQ",
+     "name": "EBAY INC EBAY ORD SHS",
+     "type": "S",
+     "typeDisp": "Equity"
+    },
+    {
+     "symbol": "EBA.BE",
+     "yahoo_symbol": "EBA.BE",
+     "exchange": "NASDAQ",
+     "name": "EBAY INC.  DL-,001",
+     "type": "S",
+     "typeDisp": "Equity"
+    }
+   ],
+   "updatedAt": "2018-05-29T15:15:41.681Z",
+   "properties": {},
+   "createdAt": "2018-05-29T15:15:41.681Z"
+  }
+ ]
+}

@@ -1,0 +1,48 @@
+{
+ "tables": [
+  {
+   "id": "lookup",
+   "name": "lookup",
+   "size": 30,
+   "head": [
+    {
+     "symbol": "PYPL",
+     "yahoo_symbol": "PYPL",
+     "exchange": "NASDAQ",
+     "name": "PayPal Holdings, Inc.",
+     "type": "S",
+     "typeDisp": "Equity"
+    },
+    {
+     "symbol": "PYPL-USD.SW",
+     "yahoo_symbol": "PYPL-USD.SW",
+     "exchange": "NASDAQ",
+     "name": "PayPal",
+     "type": "S",
+     "typeDisp": "Equity"
+    }
+   ],
+   "tail": [
+    {
+     "symbol": "PYPL190118C00085000",
+     "yahoo_symbol": "PYPL190118C00085000",
+     "exchange": "NASDAQ",
+     "name": "PYPL Jan 2019 call 85.000",
+     "type": "O",
+     "typeDisp": "Option"
+    },
+    {
+     "symbol": "PYPL190118P00047000",
+     "yahoo_symbol": "PYPL190118P00047000",
+     "exchange": "NASDAQ",
+     "name": "PYPL Jan 2019 put 47.000",
+     "type": "O",
+     "typeDisp": "Option"
+    }
+   ],
+   "updatedAt": "2018-05-29T15:15:41.800Z",
+   "properties": {},
+   "createdAt": "2018-05-29T15:15:41.800Z"
+  }
+ ]
+}

@@ -1432,5 +1432,57 @@ describe("collect", function() {
             { symbol: 'IBM', date: '2016-12-30', close: 165.99 }
         ]);
     });
+    it("should use subcollect begin/end to filter", function() {
+        return collect({
+            portfolio: [{
+                portfolio: 'SPY.ARCA',
+                end: '1998-09-24',
+                columns: {
+                    symbol: '"PYPL"',
+                    'day.close': 'ROUND(day.close*47.38/104.38,2)'
+                }
+            }, {
+                portfolio: 'EBAY.NASDAQ',
+                begin: '1998-09-24',
+                end: '2015-07-20',
+                columns: {
+                    symbol: '"PYPL"',
+                    'day.close': 'ROUND(day.close*(1-1/2.376),2)'
+                }
+            }, {
+                portfolio: 'PYPL.NASDAQ',
+                begin: '2015-07-20'
+            }],
+            begin: '2015-07-01',
+            end: '2015-07-31',
+            columns: {
+                symbol: 'symbol',
+                date: 'DATE(ending)',
+                close: 'day.close'
+            }
+        }).should.eventually.be.like([
+            { symbol: 'PYPL', date: '2015-07-01', close: 35 },
+            { symbol: 'PYPL', date: '2015-07-02', close: 35.82 },
+            { symbol: 'PYPL', date: '2015-07-06', close: 35.77 },
+            { symbol: 'PYPL', date: '2015-07-07', close: 35.89 },
+            { symbol: 'PYPL', date: '2015-07-08', close: 35.32 },
+            { symbol: 'PYPL', date: '2015-07-09', close: 35.77 },
+            { symbol: 'PYPL', date: '2015-07-10', close: 36.12 },
+            { symbol: 'PYPL', date: '2015-07-13', close: 36.76 },
+            { symbol: 'PYPL', date: '2015-07-14', close: 36.83 },
+            { symbol: 'PYPL', date: '2015-07-15', close: 36.74 },
+            { symbol: 'PYPL', date: '2015-07-16', close: 37.98 },
+            { symbol: 'PYPL', date: '2015-07-17', close: 38.39 },
+            { symbol: 'PYPL', date: '2015-07-20', close: 40.47 },
+            { symbol: 'PYPL', date: '2015-07-21', close: 39.35 },
+            { symbol: 'PYPL', date: '2015-07-22', close: 38.39 },
+            { symbol: 'PYPL', date: '2015-07-23', close: 37.01 },
+            { symbol: 'PYPL', date: '2015-07-24', close: 37 },
+            { symbol: 'PYPL', date: '2015-07-27', close: 36.39 },
+            { symbol: 'PYPL', date: '2015-07-28', close: 37.6 },
+            { symbol: 'PYPL', date: '2015-07-29', close: 37.95 },
+            { symbol: 'PYPL', date: '2015-07-30', close: 38.45 }
+        ]);
+    });
 });
 

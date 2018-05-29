@@ -126,8 +126,8 @@ function help(quote) {
  */
 function collect(quote, callCollect, fields, options) {
     var duration = options.reset_every && moment.duration(options.reset_every);
-    var begin = moment(options.begin);
-    var end = moment(options.end || options.now);
+    var begin = moment.tz(options.begin, options.tz);
+    var end = moment.tz(options.end || options.now, options.tz);
     if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
     if (!end.isValid()) throw Error("Invalid end date: " + options.end);
     var segments = [];
@@ -192,8 +192,6 @@ function collectDuration(quote, callCollect, fields, options) {
     return Promise.all(portfolio.map((opts, idx) => {
         var index = '#' + idx.toString() + (options.columns[options.indexCol] ?
             '.' + JSON.parse(options.columns[options.indexCol]).substring(1) : '');
-        var begin = !options.pad_leading ? options.begin :
-            common('WORKDAY', [_.constant(options.begin), _.constant(-options.pad_leading)], options)();
         if (opts.portfolio) {
             var parser = Parser({
                 variable(name){
@@ -215,7 +213,6 @@ function collectDuration(quote, callCollect, fields, options) {
                 }),
                 variables: _.extend(_.omit(getColumnVariables(fields, opts), _.keys(columns)), opts.variables),
                 filter: _.flatten(_.compact(filter), true),
-                begin: opts.begin || begin,
                 order: _.flatten(_.compact(['DATETIME(ending)', opts.order]), true),
                 parameters: _.defaults({}, options.parameters, opts.parameters, params)
             }, opts));
@@ -228,7 +225,6 @@ function collectDuration(quote, callCollect, fields, options) {
                     [options.temporalCol]: 'DATETIME(ending)'
                 }, simpleColumns),
                 criteria: criteria,
-                begin: begin,
                 parameters: _.defaults({}, options.parameters, defaults)
             }, opts));
         }
@@ -236,7 +232,7 @@ function collectDuration(quote, callCollect, fields, options) {
         var parser = createParser(quote, dataset, columns, _.keys(simpleColumns), options);
         return collectDataset(dataset, parser, columns, options);
     }).then(collection => {
-        var begin = moment(options.begin).toISOString();
+        var begin = moment.tz(options.begin, options.tz).toISOString();
         var start = _.sortedIndex(collection, {[options.temporalCol]: begin}, options.temporalCol);
         if (start <= 0) return collection;
         else return collection.slice(start);
@@ -336,17 +332,27 @@ function getPortfolio(portfolio, options) {
         _.isObject(portfolio) ? [portfolio] :
         _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
         expect(portfolio).to.be.a('string');
-    return array.map(symbolExchange => {
-        if (_.isObject(symbolExchange))
-            return _.defaults({}, symbolExchange, opts);
+    var begin = !options.pad_leading ? options.begin :
+        common('WORKDAY', [_.constant(options.begin), _.constant(-options.pad_leading)], options)();
+    var mbegin = moment.tz(begin, options.tz);
+    var mend = moment.tz(options.end || options.now, options.tz);
+    return _.compact(array.map(symbolExchange => {
+        if (_.isObject(symbolExchange)) return symbolExchange;
         var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
         if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
-        return _.defaults({
+        return {
             label: symbolExchange,
             symbol: m[1],
             exchange: m[2]
-        }, opts);
-    });
+        };
+    }).map(subcollect => {
+        var sbegin = subcollect.begin && moment.tz(subcollect.begin, subcollect.tz || options.tz);
+        var send = subcollect.end && moment.tz(subcollect.end, subcollect.tz || options.tz);
+        if (send && !send.isAfter(mbegin) || sbegin && sbegin.isAfter(mend)) return null;
+        var begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
+        var end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
+        return _.defaults({begin, end}, subcollect, opts);
+    }));
 }
 
 /**
