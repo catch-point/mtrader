@@ -233,20 +233,19 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
     if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
     if (!end.isValid()) throw Error("Invalid end date: " + options.end);
     var until = options.sample_duration ?
-        moment(end).subtract(moment.duration(options.sample_duration)) : end;
+        moment(end).subtract(moment.duration(options.sample_duration)) : begin;
     var count = options.sample_count || 1;
     var period = createDuration(begin, until, count);
     var unit = getDurationUnit(period, count);
     var duration = options.sample_duration ?
-        moment.duration(options.sample_duration) :
-        moment.duration(Math.round(period.as(unit) / count), unit);
+        moment.duration(options.sample_duration) : moment.duration(end.diff(begin));
     if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.sample_duration);
     var period_units = Math.max(period.as(unit), 0);
     var pvalues = pnames.map(name => options.parameter_values[name]);
     var termination = options.sample_termination || options.optimize_termination &&
         moment.duration(moment.duration(options.optimize_termination).asSeconds()/3000).toISOString();
     var optionset = _.range(count).map(() => {
-        var periodBegin = moment(begin).add(Math.round(prng() * period_units), unit);
+        var periodBegin = period_units ? moment(begin).add(Math.round(prng() * period_units), unit) : begin
         var periodEnd = moment(periodBegin).add(duration);
         if (periodEnd.isAfter(end)) {
             periodEnd = end;
@@ -444,7 +443,7 @@ function mutation(prng, pvalues, space, solutions, strength) {
  * Splits the date range begin-end up into even count segments along major divisions (year,month,day)
  */
 function createDuration(begin, end, count) {
-    var duration = moment.duration(Math.round(end.diff(begin, 'seconds')), 'seconds');
+    var duration = moment.duration(end.diff(begin));
     var unit = getDurationUnit(duration, count);
     return moment.duration(duration.as(unit), unit);
 }
