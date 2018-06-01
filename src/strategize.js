@@ -138,8 +138,6 @@ function strategize(bestsignals, prng, options) {
     var termAt = options.termination && moment().add(moment.duration(options.termination)).valueOf();
     var strategize = strategizeLegs.bind(this, bestsignals, prng, parser, termAt, now);
     var strategy_var = options.strategy_variable;
-    var expr = options.variables[strategy_var] || '';
-    var strategy = parser(expr);
     return strategize(options, {[strategy_var]: options})
       .then(signals => combine(signals, options))
       .then(best => {
@@ -157,7 +155,7 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sig
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
     var latest_expr = latest.variables[strategy_var];
-    var strategy = parser(latest_expr == options.signal_variable ? '' : latest_expr);
+    var strategy = parser(isBlankStrategy(latest_expr, options) ? '' : latest_expr);
     var from_scratch = options.from_scratch || !strategy.legs.length;
     var incremental = strategy.legs.length;
     var searchFn = searchLeg.bind(this, bestsignals, prng, parser, termAt);
@@ -172,12 +170,21 @@ function strategizeLegs(bestsignals, prng, parser, termAt, started, options, sig
           .then(latestScore => {
             var cost = getStrategyCost(strategy.expr, options);
             var better = reset[strategy_var];
-            if (latestScore - cost < better.score - better.cost) return reset;
-            if (latestScore - cost == better.score - better.cost) return signals;
+            if (latestScore - cost < better.score - better.cost)
+                return reset;
+            if (latestScore - cost == better.score - better.cost)
+                return merge(signals, {[strategy_var]: {score: latestScore}});
             logger.log("Strategize", options.label || '\b', "from scratch was not good enough", better.variables[strategy_var], better.score);
             return some(scores, signals);
         });
     });
+}
+
+/**
+ * Some simple heuristics to identify if this strategy is obviously invalid or inactive
+ */
+function isBlankStrategy(expr, options) {
+    return !expr || expr == '0' || expr == options.signal_variable;
 }
 
 /**
@@ -188,7 +195,7 @@ function strategizeSome(bestsignals, prng, searchLeg, parser, termAt, started, o
     var strategy_var = options.strategy_variable;
     var latest = signals[strategy_var];
     var latest_expr = latest.variables[strategy_var];
-    var strategy = parser(latest_expr == options.signal_variable ? '' : latest_expr);
+    var strategy = parser(isBlankStrategy(latest_expr, options) ? '' : latest_expr);
     if (!strategy.legs.length)
         return strategizeAll(bestsignals, searchLeg, parser, started, options, scores, {signals});
     var isolations = strategy.legs.length > 1 && strategy.legs.map((leg, i) => {
@@ -234,7 +241,7 @@ function strategizeAll(bestsignals, searchLeg, parser, started, options, scores,
     var strategy_var = options.strategy_variable;
     var latest = state.signals[strategy_var];
     var latest_expr = latest.variables[strategy_var];
-    var strategy = parser(latest_expr == options.signal_variable ? '' : latest_expr);
+    var strategy = parser(isBlankStrategy(latest_expr, options) ? '' : latest_expr);
     var isolations = strategy.legs.length > 1 && strategy.legs.map((leg, i) => {
         return spliceExpr(strategy.legs, i, 1).join(' OR ');
     });
