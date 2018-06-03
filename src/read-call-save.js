@@ -44,13 +44,14 @@ module.exports = function(read, call, save) {
     var file = read && _.isString(read) && config.resolve(read);
     var original = file ? config.read(file) : read ? read : {};
     if (!original) throw Error("Could not read " + read + " settings");
+    var amend = arguments.length>2 && config('amend');
+    var target = save && amend ? config.read(save) : original;
     var dir = file ? path.dirname(file) : '.';
     var inlineOriginal = inlineCollections(collections, dir, original, [read]);
     var options = mergeSignals(inlineOriginal, _.isString(read) ? read : '');
     var inlineOptions = inlineCollections(collections, '.', options, [read]);
-    var amend = arguments.length>2 && config('amend');
     return Promise.resolve(!call ? inlineOptions : call(inlineOptions))
-      .then(result => amend ? mergeSignalSets(original, result) : result)
+      .then(result => amend ? mergeSignalSets(target, result) : result)
       .then(result => arguments.length>2 ? output(result, save || amend && file) : result);
 };
 
