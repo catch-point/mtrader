@@ -75,10 +75,14 @@ function inlineCollections(collections, base, options, avoid) {
     else if (_.has(collections, options) || ~options.indexOf('.json') || ~options.indexOf('/')) {
         var file = config.resolve(base, options);
         var dir = path.dirname(file);
-        var cfg = config.read(file);
-        if (cfg) collections[options] = inlineCollections(collections, dir, _.extend({
-            label: options,
-        }, cfg), _.flatten(_.compact([avoid, options]), true));
+        try {
+            var cfg = config.read(file);
+            if (cfg) collections[options] = inlineCollections(collections, dir, _.extend({
+                label: options,
+            }, cfg), _.flatten(_.compact([avoid, options]), true));
+        } catch (e) {
+            logger.warn("Failed to include", options, e.message || e);
+        }
     }
     if (collections[options]) return collections[options];
     else return options;
