@@ -651,22 +651,25 @@ function choose(prng, max, extra) {
  * List of possible comparators that can be used
  */
 function listComparators(options) {
-    var direct = [
+    var follow = [
         _.extend((a,b)=>`${a}=${b}`,     {operator: 'EQUALS'}),
+        _.extend((a,b)=>`${a}!=-${b}`, {operator: 'NOT_EQUALS'})
+    ];
+    if (options && options.follow_signals_only) return follow;
+    var direct = [
         _.extend((a,b)=>`${a}=-${b}`,  {operator: 'EQUALS'}),
         _.extend((a,b)=>`${a}=0`,        {operator: 'EQUALS'}),
         _.extend((a,b)=>`${a}!=${b}`,    {operator: 'NOT_EQUALS'}),
-        _.extend((a,b)=>`${a}!=-${b}`, {operator: 'NOT_EQUALS'}),
-        _.extend((a,b)=>`${a}!=0`,       {operator: 'NOT_EQUALS'}),
+        _.extend((a,b)=>`${a}!=0`,       {operator: 'NOT_EQUALS'})
     ];
-    if (options && !options.directional) return direct;
+    if (options && !options.directional) return follow.concat(direct);
     var relative = [
         _.extend((a,b)=>`${a}<0`,  {operator: 'LESS_THAN'}),
         _.extend((a,b)=>`${a}>0`,  {operator: 'GREATER_THAN'}),
         _.extend((a,b)=>`${a}>=0`, {operator: 'NOT_LESS_THAN'}),
-        _.extend((a,b)=>`${a}<=0`, {operator: 'NOT_GREATER_THAN'}),
+        _.extend((a,b)=>`${a}<=0`, {operator: 'NOT_GREATER_THAN'})
     ];
-    return direct.concat(relative);
+    return follow.concat(direct, relative);
 }
 
 /**
