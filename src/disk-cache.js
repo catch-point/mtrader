@@ -37,6 +37,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const csv = require('fast-csv');
 const expect = require('chai').expect;
+const awriter = require('./atomic-write.js');
 const minor_version = require('./version.js').minor_version;
 const config = require('./config.js');
 const debounce = require('./debounce.js');
@@ -236,7 +237,7 @@ function lock(cache, cb) {
 function flock(cache, cb) {
     var lock_file = path.resolve(cache.baseDir, ".~lock.pid");
     var cleanup = () => deleteFile(cache.baseDir, lock_file);
-    return mkdirp(cache.baseDir).then(() => aquireLock(cache, lock_file))
+    return awriter.mkdirp(cache.baseDir).then(() => aquireLock(cache, lock_file))
       .then(() => Promise.resolve(cb())
       .then(result => cleanup().then(() => result),
             error => cleanup().then(() => {
@@ -385,7 +386,7 @@ function readEntryMetadata(file) {
  */
 function writePendingEntryResult(cache, entry, opts, result) {
     var dir = getDir(cache.baseDir, entry.hash);
-    return mkdirp(dir).then(() => {
+    return awriter.mkdirp(dir).then(() => {
         var filename = cache.prefix + (++cache.seq).toString(36);
         var file = path.resolve(dir, filename);
         if (_.isArray(result)) {
@@ -484,13 +485,8 @@ function writeEntryMetadata(cache, entry) {
  * Writes a JSON object to a file
  */
 function writeObject(cache, file, object) {
-    var part = partFor(cache, file);
-    return new Promise((ready, error) => {
-        var data = JSON.stringify(object, null, ' ');
-        fs.writeFile(part, data, err => err ? error(err) : ready(object));
-    }).then(() => new Promise((ready, error) => {
-        fs.rename(part, file, err => err ? error(err) : ready(object));
-    }));
+    var data = JSON.stringify(object, null, ' ');
+    return awriter.writeFile(file, data).then(() => object);
 }
 
 /**
@@ -544,28 +540,4 @@ function deleteFile(dir, filename) {
  */
 function getDir(baseDir, hash) {
     return path.resolve(baseDir, hash.substring(0, 8).replace(/\W/g,'').substring(0, 3));
-}
-
-/**
- * Provides a some what unique filename suffix
- */ 
-function partFor(cache, filename) {
-    return filename + '.part' + (++cache.seq).toString(36);
-}
-
-/**
- * Creates and directory and its parent directories
- */
-function mkdirp(dirname) {
-    return new Promise((present, absent) => {
-        fs.access(dirname, fs.F_OK, err => err ? absent(err) : present(dirname));
-    }).catch(absent => {
-        if (absent.code != 'ENOENT') throw absent;
-        return mkdirp(path.dirname(dirname)).then(() => new Promise((ready, error) => {
-            fs.mkdir(dirname, err => err ? error(err) : ready(dirname));
-        })).catch(err => {
-            if (err.code == 'EEXIST') return dirname;
-            else throw err;
-        });
-    });
 }

@@ -32,6 +32,7 @@
 const fs = require('fs');
 const path = require('path');
 const _ = require('underscore');
+const awriter = require('./atomic-write.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const like = require('./like.js');
@@ -120,12 +121,7 @@ function readInfo(dir, symbol, exchange, offline) {
 function saveInfo(dir, symbol, exchange, info) {
     var file = getInfoFileName(dir, symbol, exchange);
     var data = JSON.stringify(info, null, '  ') + '\n';
-    return mkdirp(path.dirname(file)).then(dir => new Promise((cb, fail) => {
-        var part = partFor(file);
-        fs.writeFile(part, data, 'utf-8', (err, data) => err ? fail(err) : cb(part));
-    })).then(part => new Promise((cb, fail) => {
-        fs.rename(part, file, err => err ? fail(err) : cb(info));
-    }));
+    return awriter.writeFile(file, data).then(() => info);
 }
 
 function getInfoFileName(dir, symbol, exchange) {
@@ -138,23 +134,4 @@ function safe(segment) {
     if (!_.isString(segment)) return safe('' + segment);
     else if (segment.match(/^[\w._-]+$/)) return segment;
     else return segment.replace(/[^\w.-]+/g,'_');
-}
-
-function mkdirp(dirname) {
-    return new Promise((present, absent) => {
-        fs.access(dirname, fs.F_OK, err => err ? absent(err) : present(dirname));
-    }).catch(absent => {
-        if (absent.code != 'ENOENT') throw absent;
-        return mkdirp(path.dirname(dirname)).then(() => new Promise((ready, error) => {
-            fs.mkdir(dirname, err => err ? error(err) : ready(dirname));
-        })).catch(err => {
-            if (err.code == 'EEXIST') return dirname;
-            else throw err;
-        });
-    });
-}
-
-var seq = Date.now() % 32768;
-function partFor(filename) {
-    return filename + '.part' + (++seq).toString(16);
 }

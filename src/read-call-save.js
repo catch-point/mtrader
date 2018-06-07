@@ -34,6 +34,7 @@ const path = require('path');
 const Writable = require('stream').Writable;
 const _ = require('underscore');
 const merge = require('./merge.js');
+const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
 
@@ -52,7 +53,7 @@ module.exports = function(read, call, save) {
     var inlineOptions = inlineCollections(collections, '.', options, [read]);
     return Promise.resolve(!call ? inlineOptions : call(inlineOptions))
       .then(result => amend ? mergeSignalSets(target, result) : result)
-      .then(result => arguments.length>2 ? output(result, save || amend && file) : result);
+      .then(result => arguments.length>2 ? outputFile(result, save || amend && file) : result);
 };
 
 function inlineCollections(collections, base, options, avoid) {
@@ -111,6 +112,11 @@ function mergeSignalSets(original, result) {
     if (original.pad_leading && result.pad_leading)
         merged.pad_leading = Math.max(original.pad_leading, result.pad_leading);
     return merged;
+}
+
+function outputFile(result, file) {
+    if (file) return awriter(file => output(result, file), file);
+    else return output(result);
 }
 
 function output(result, file) {

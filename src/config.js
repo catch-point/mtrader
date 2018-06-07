@@ -35,6 +35,7 @@ const path = require('path');
 const process = require('process');
 const child_process = require('child_process');
 const merge = require('./merge.js');
+const awriter = require('./atomic-write.js');
 const commander = require('commander');
 const commander_options = commander.options;
 const commander_emit = commander.Command.prototype.emit.bind(commander);
@@ -299,23 +300,7 @@ function loadConfigFile(filename) {
 }
 
 function writeConfigFile(filename, json) {
-    var dirname = path.dirname(filename);
-    try {
-        fs.accessSync(dirname, fs.F_OK);
-    } catch(e) {
-        mkdirp(dirname);
-    }
-    fs.writeFileSync(filename, JSON.stringify(json, null, '  ') + '\n');
-}
-
-function mkdirp(dirname) {
-    var parent = path.dirname(dirname);
-    try {
-        fs.accessSync(parent, fs.F_OK);
-    } catch(e) {
-        if (parent != dirname) mkdirp(parent);
-    }
-    fs.mkdirSync(dirname);
+    awriter.writeFileSync(filename, JSON.stringify(json, null, '  ') + '\n');
 }
 
 function assign(obj, path, value) {

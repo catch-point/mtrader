@@ -34,6 +34,7 @@ const path = require('path');
 const _ = require('underscore');
 const csv = require('fast-csv');
 const expect = require('chai').expect;
+const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
 const interrupt = require('./interrupt.js');
 const debounce = require('./debounce.js');
@@ -248,8 +249,8 @@ function readMetadata(dirname) {
 
 function writeMetadata(dirname, metadata) {
     var filename = path.resolve(dirname, 'index.json');
-    var part = partFor(filename);
-    return mkdirp(dirname).then(() => {
+    var part = awriter.partFor(filename);
+    return awriter.mkdirp(dirname).then(() => {
         return new Promise((ready, error) => {
             fs.writeFile(part, JSON.stringify(metadata, null, ' '), err => {
                 if (err) error(err);
@@ -334,46 +335,17 @@ function readTable(filename, size) {
 
 function writeTable(filename, table) {
     expect(table).to.be.an('array');
-    var part = partFor(filename);
-    return mkdirp(path.dirname(filename)).then(() => {
-        return new Promise(finished => {
-            var headers = _.union(_.keys(_.first(table)), _.keys(_.last(table)));
-            var output = fs.createWriteStream(part);
-            output.on('finish', finished);
-            var writer = csv.createWriteStream({
-                headers: headers,
-                rowDelimiter: '\r\n',
-                includeEndRowDelimiter: true
-            });
-            writer.pipe(output);
-            table.forEach(record => writer.write(record));
-            writer.end();
+    return awriter(filename => new Promise(finished => {
+        var headers = _.union(_.keys(_.first(table)), _.keys(_.last(table)));
+        var output = fs.createWriteStream(filename);
+        output.on('finish', finished);
+        var writer = csv.createWriteStream({
+            headers: headers,
+            rowDelimiter: '\r\n',
+            includeEndRowDelimiter: true
         });
-    }).then(() => {
-        return new Promise((ready, error) => {
-            fs.rename(part, filename, err => {
-                if (err) error(err);
-                else ready();
-            });
-        });
-    });
-}
-
-function mkdirp(dirname) {
-    return new Promise((present, absent) => {
-        fs.access(dirname, fs.F_OK, err => err ? absent(err) : present(dirname));
-    }).catch(absent => {
-        if (absent.code != 'ENOENT') throw absent;
-        return mkdirp(path.dirname(dirname)).then(() => new Promise((ready, error) => {
-            fs.mkdir(dirname, err => err ? error(err) : ready(dirname));
-        })).catch(err => {
-            if (err.code == 'EEXIST') return dirname;
-            else throw err;
-        });
-    });
-}
-
-var seq = Date.now() % 32768;
-function partFor(filename) {
-    return filename + '.part' + (++seq).toString(16);
+        writer.pipe(output);
+        table.forEach(record => writer.write(record));
+        writer.end();
+    }), filename);
 }

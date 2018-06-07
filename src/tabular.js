@@ -37,6 +37,7 @@ const _ = require('underscore');
 const spawn = require('child_process').spawn;
 const Writable = require('stream').Writable;
 const csv = require('fast-csv');
+const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
 const interrupt = require('./interrupt.js');
 
@@ -65,7 +66,14 @@ module.exports = function(data, options) {
             })
             .on('end', () => ready(objects));
     })).then(existing => reverse ? existing.reverse().concat(data) : existing.concat(data)) : data)
-      .then(data => new Promise((finished, error) => {
+      .then(data => {
+        if (filename) return awriter(filename => writeData(transpose, reverse, filename, data), filename);
+        else return writeData(transpose, reverse, null, data);
+    }).then(() => launchOutput(filename, options));
+};
+
+function writeData(transpose, reverse, filename, data) {
+    return new Promise((finished, error) => {
         var output = createWriteStream(filename).on('error', error);
         output.on('finish', finished);
         if (transpose) {
@@ -99,10 +107,8 @@ module.exports = function(data, options) {
             else writer.write(data);
             writer.end();
         }
-    })).then(() => {
-        return launchOutput(filename, options);
     });
-};
+}
 
 function getOutputFile(options) {
     var output = options.output;
