@@ -1439,7 +1439,8 @@ describe("collect", function() {
                 end: '1998-09-24',
                 columns: {
                     symbol: '"PYPL"',
-                    'day.close': 'ROUND(day.close*47.38/104.38,2)'
+                    'day.close': 'ROUND(day.close*47.38/104.38,2)',
+                    proxy: 'symbol'
                 }
             }, {
                 portfolio: 'EBAY.NASDAQ',
@@ -1447,7 +1448,8 @@ describe("collect", function() {
                 end: '2015-07-20',
                 columns: {
                     symbol: '"PYPL"',
-                    'day.close': 'ROUND(day.close*(1-1/2.376),2)'
+                    'day.close': 'ROUND(day.close*(1-1/2.376),2)',
+                    proxy: 'symbol'
                 }
             }, {
                 portfolio: 'PYPL.NASDAQ',
@@ -1458,7 +1460,8 @@ describe("collect", function() {
             columns: {
                 symbol: 'symbol',
                 date: 'DATE(ending)',
-                close: 'day.close'
+                close: 'day.close',
+                Proxy: 'proxy'
             }
         }).should.eventually.be.like([
             { symbol: 'PYPL', date: '2015-07-01', close: 35 },
@@ -1474,6 +1477,48 @@ describe("collect", function() {
             { symbol: 'PYPL', date: '2015-07-16', close: 37.98 },
             { symbol: 'PYPL', date: '2015-07-17', close: 38.39 },
             { symbol: 'PYPL', date: '2015-07-20', close: 40.47 },
+            { symbol: 'PYPL', date: '2015-07-21', close: 39.35 },
+            { symbol: 'PYPL', date: '2015-07-22', close: 38.39 },
+            { symbol: 'PYPL', date: '2015-07-23', close: 37.01 },
+            { symbol: 'PYPL', date: '2015-07-24', close: 37 },
+            { symbol: 'PYPL', date: '2015-07-27', close: 36.39 },
+            { symbol: 'PYPL', date: '2015-07-28', close: 37.6 },
+            { symbol: 'PYPL', date: '2015-07-29', close: 37.95 },
+            { symbol: 'PYPL', date: '2015-07-30', close: 38.45 }
+        ]);
+    });
+    it("should understand variables that are filtered out", function() {
+        return collect({
+            portfolio: [{
+                portfolio: 'SPY.ARCA',
+                end: '1998-09-24',
+                columns: {
+                    symbol: '"PYPL"',
+                    'day.close': 'ROUND(day.close*47.38/104.38,2)',
+                    proxy: 'symbol'
+                }
+            }, {
+                portfolio: 'EBAY.NASDAQ',
+                begin: '1998-09-24',
+                end: '2015-07-20',
+                columns: {
+                    symbol: '"PYPL"',
+                    'day.close': 'ROUND(day.close*(1-1/2.376),2)',
+                    proxy: 'symbol'
+                }
+            }, {
+                portfolio: 'PYPL.NASDAQ',
+                begin: '2015-07-20'
+            }],
+            begin: '2015-07-21',
+            end: '2015-07-31',
+            columns: {
+                symbol: 'symbol',
+                date: 'DATE(ending)',
+                close: 'day.close',
+                Proxy: 'proxy'
+            }
+        }).should.eventually.be.like([
             { symbol: 'PYPL', date: '2015-07-21', close: 39.35 },
             { symbol: 'PYPL', date: '2015-07-22', close: 38.39 },
             { symbol: 'PYPL', date: '2015-07-23', close: 37.01 },

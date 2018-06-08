@@ -152,8 +152,10 @@ function collect(quote, callCollect, fields, options) {
     } else {
         throw Error("Invalid duration: " + options.reset_every);
     }
-    if (segments.length < 2) // only one period
-        return collectDuration(quote, callCollect, fields, options);
+    if (segments.length < 2) {// only one period
+        var compacted = compactPortfolio(fields, options.begin, options.end, options.tz, options);
+        return collectDuration(quote, callCollect, fields, compacted);
+    }
     var optionset = segments.map((segment, i, segments) => {
         if (i === 0) return _.defaults({
             begin: options.begin, end: segments[i+1]
@@ -164,7 +166,7 @@ function collect(quote, callCollect, fields, options) {
         else return _.defaults({
             begin: segment, end: options.end
         }, options);
-    });
+    }).map(opts => compactPortfolio(fields, opts.begin, opts.end, opts.tz || options.tz, opts));
     return Promise.all(optionset.map(opts => callCollect(opts))).then(dataset => {
         return _.flatten(dataset, true);
     });
@@ -322,6 +324,40 @@ function valOrNull(value) {
 }
 
 /**
+ * Potentially reduces the number of portfolios by filtering on begin/end
+ */
+function compactPortfolio(fields, begin, end, tz, options) {
+    var portfolio = options.portfolio;
+    var array = _.isArray(portfolio) ? portfolio :
+        _.isObject(portfolio) ? [portfolio] :
+        _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
+        expect(portfolio).to.be.a('string');
+    var leading = !options.pad_leading ? begin :
+        common('WORKDAY', [_.constant(begin), _.constant(-options.pad_leading)], {tz})();
+    var mbegin = moment.tz(leading, tz);
+    var mend = moment.tz(end || options.now, tz);
+    var compacted = _.compact(array.map(subcollect => {
+        if (!_.isObject(subcollect)) return subcollect;
+        var stz = subcollect.tz || tz;
+        var sbegin = subcollect.begin && moment.tz(subcollect.begin, stz);
+        var send = subcollect.end && moment.tz(subcollect.end, stz);
+        if (send && !send.isAfter(mbegin) || sbegin && !sbegin.isBefore(mend)) return null;
+        var begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
+        var end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
+        return compactPortfolio(fields, begin, end, stz, subcollect);
+    }));
+    if (array.every((item, i) => item == compacted[i])) return options;
+    var before = _.uniq(_.flatten(array.map(subcollect => _.keys(subcollect.columns))));
+    var after = _.uniq(_.flatten(compacted.map(subcollect => _.keys(subcollect.columns))));
+    var missing = _.difference(before, after, _.keys(options.variables), _.keys(options.parameters), fields);
+    var params = _.object(missing, missing.map(v => null));
+    return _.defaults({
+        portfolio: compacted,
+        parameters: _.defaults({}, options.parameters, params)
+    }, options);
+}
+
+/**
  * Parses a comma separated list into symbol/exchange pairs.
  */
 function getPortfolio(portfolio, options) {
@@ -348,7 +384,8 @@ function getPortfolio(portfolio, options) {
     }).map(subcollect => {
         var sbegin = subcollect.begin && moment.tz(subcollect.begin, subcollect.tz || options.tz);
         var send = subcollect.end && moment.tz(subcollect.end, subcollect.tz || options.tz);
-        if (send && !send.isAfter(mbegin) || sbegin && sbegin.isAfter(mend)) return null;
+        if (send && !send.isAfter(mbegin) || sbegin && sbegin.isAfter(mend))
+            throw Error(`Expected ${subcollect.label} to be removed in compactPortfolio`);
         var begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
         var end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
         return _.defaults({begin, end}, subcollect, opts);
