@@ -44,6 +44,7 @@ const logger = require('./logger.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./ptrading-config.js');
+const date = require('./ptrading-date.js');
 const shellError = require('./shell-error.js');
 const version = require('./version.js');
 
@@ -53,6 +54,7 @@ const WORKER_COUNT = require('os').cpus().length;
 var program = require('commander')
     .description(version.description)
     .command('config <name> [value]', "View or change stored options")
+    .command('date <format>', "Formats the time now")
     .command('fetch <interval> <symbol.exchange>', "Fetches remote data for the given symbol")
     .command('quote <symbol.exchange>', "Historic information of a security")
     .command('collect [identifier]', "Collects historic portfolio data")
@@ -204,6 +206,7 @@ function createInstance() {
         shell(app) {
             Promise.all([
                 config.shell(app),
+                date.shell(app),
                 fetch.shell(app),
                 quote.shell(app),
                 collect.shell(app),
