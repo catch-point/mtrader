@@ -149,7 +149,10 @@ function optimize(collect, prng, options) {
     var count = options.solution_count || 1;
     var pnames = _.keys(options.parameter_values);
     var pvalues = pnames.map(name => options.parameter_values[name]);
-    return searchParameters(collect, prng, pnames, count, options).then(solutions => {
+    var space = createSearchSpace(pnames, options);
+    return searchParameters(collect, prng, pnames, count, space, options).then(solutions => {
+        if (_.isEmpty(solutions))
+            throw Error("Could not create population for " + options.label);
         var duration = moment.duration(_.max(_.pluck(solutions, 'foundAt')) - started);
         if (!_.isEmpty(solutions) && solutions[0].pindex.length)
             logger.log("Found local extremum", options.label || '\b', solutions[0].pindex.map((idx, i) => pvalues[i][idx]).join(','), "in", duration.humanize(), solutions[0].score);
@@ -170,10 +173,9 @@ function optimize(collect, prng, options) {
 /**
  * Searches the parameter values returning count results
  */
-function searchParameters(collect, prng, pnames, count, options) {
+function searchParameters(collect, prng, pnames, count, space, options) {
     var terminateAt = options.optimize_termination &&
         moment().add(moment.duration(options.optimize_termination)).valueOf();
-    var space = createSearchSpace(pnames, options);
     var pvalues = pnames.map(name => options.parameter_values[name]);
     var size = options.population_size || Math.max(
         Math.min(Math.ceil(pvalues.map(_.size).reduce((a,b)=>a+b,0)/2), MAX_POPULATION),
@@ -182,6 +184,8 @@ function searchParameters(collect, prng, pnames, count, options) {
         sampleSolutions(collect, prng, pnames, space, size, options) :
         initialPopulation(prng, pnames, space, size, options);
     return Promise.resolve(createPopulation).then(population => {
+        if (population.length === 0)
+            return [];
         if (population.length > 1)
             logger.debug("Initial population of", population.length, options.label || '\b');
         var fitnessFn = fitness(collect, options, pnames);
@@ -247,9 +251,11 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
     var optionset = _.range(count).map(() => {
         var periodBegin = period_units ? moment(begin).add(Math.round(prng() * period_units), unit) : begin
         var periodEnd = moment(periodBegin).add(duration);
-        if (periodEnd.isAfter(end)) {
+        if (!periodEnd.isBefore(end)) {
             periodEnd = end;
-            periodBegin = moment(end).subtract(duration);
+            if (periodBegin.isAfter(begin)) {
+                periodBegin = moment(end).subtract(duration);
+            }
         }
         return _.defaults({
             optimize_termination: termination,
@@ -257,13 +263,17 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
             population_size: options.sample_population_size || options.population_size
         }, _.omit(options, ['sample_duration', 'sample_count']));
     });
+    var space_factory = period_units ? createSearchSpace : _.constant(space);
     return Promise.all(optionset.map(opts => {
-        return searchParameters(collect, prng, pnames, opts.population_size, opts);
+        var sample_space = space_factory(pnames, options);
+        return searchParameters(collect, prng, pnames, opts.population_size, sample_space, opts);
     })).then(results => {
         var parameters = _.pick(options.parameters, pnames);
-        var population = _.compact(_.flatten(_.zip.apply(_, results))).reduce((population, solution) => {
+        var pool = _.compact(_.flatten(_.zip.apply(_, results)));
+        var sorted = period_units ? pool : _.sortBy(pool.reverse(), 'score').reverse();
+        var population = sorted.reduce((population, solution) => {
             var candidate = {pindex: solution.pindex};
-            if (population.length < size && space(candidate)) {
+            if (population.length < size && (!period_units || space(candidate))) {
                 population.push(candidate);
             }
             return population;
@@ -300,7 +310,6 @@ function initialPopulation(prng, pnames, space, size, options) {
         var mutant = mutate(seed);
         if (mutant) population.push(mutant);
     }
-    if (population.length === 0) throw Error("Could not create population for " + options.label);
     return population;
 }
 
@@ -449,7 +458,7 @@ function createDuration(begin, end, count) {
 }
 
 /**
- * Chooses a major division unit, one of years, months, days, hours, minutes, or seconds
+ * Chooses a major division unit, one of years, months, days, hours, or minutes
  */
 function getDurationUnit(duration, count) {
     return ['years', 'months', 'weeks', 'days', 'hours', 'minutes'].reduce((result, unit) => {
@@ -457,7 +466,7 @@ function getDurationUnit(duration, count) {
         if (!result && number > count && Math.abs(number - Math.round(number)) < 0.1)
             return unit;
         else return result;
-    }, null) || 'seconds';
+    }, null) || 'minutes';
 }
 
 /**
