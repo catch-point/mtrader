@@ -456,4 +456,51 @@ describe("common-functions", function(){
             expect(TEXT({val: "2012-03-14T13:29:00-04:00", pat: "h:mm A"})).to.equal("1:29 PM");
         });
     });
+    describe("LEFT/RIGHT", function() {
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, {tz: 'America/New_York'});
+            }
+        });
+        var LEFT = parser.parse('LEFT(t, n)');
+        var RIGHT = parser.parse('RIGHT(t, n)');
+        it("a1", function() {
+            expect(LEFT({t:"a",n:1})).to.equal("a");
+            expect(RIGHT({t:"a",n:1})).to.equal("a");
+        });
+        it("ab1", function() {
+            expect(LEFT({t:"ab",n:1})).to.equal("a");
+            expect(RIGHT({t:"ab",n:1})).to.equal("b");
+        });
+        it("abc2", function() {
+            expect(LEFT({t:"abc",n:2})).to.equal("ab");
+            expect(RIGHT({t:"abc",n:2})).to.equal("bc");
+        });
+        it("abc4", function() {
+            expect(LEFT({t:"abc",n:4})).to.equal("abc");
+            expect(RIGHT({t:"abc",n:4})).to.equal("abc");
+        });
+        it("1", function() {
+            expect(LEFT({t:"",n:1})).to.equal("");
+            expect(RIGHT({t:"",n:1})).to.equal("");
+        });
+        it("abc0", function() {
+            expect(LEFT({t:"abc",n:0})).to.equal("");
+            expect(RIGHT({t:"abc",n:0})).to.equal("");
+        });
+        it("abc-1", function() {
+            expect(LEFT({t:"abc",n:-1})).to.equal("");
+            expect(RIGHT({t:"abc",n:-1})).to.equal("");
+        });
+        it("null1", function() {
+            expect(LEFT({n:1})).to.equal(null);
+            expect(RIGHT({n:1})).to.equal(null);
+        });
+    });
 });

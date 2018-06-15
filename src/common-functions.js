@@ -118,6 +118,27 @@ var functions = module.exports.functions = {
     }, {
         description: "Converts numbers and dates to text in the given format"
     }),
+    LEFT: _.extend((opts, text, number) => {
+        return context => {
+            var str = text(context);
+            if (str == null) return null;
+            var n = number(context) || 0;
+            return str.toString().substring(0, n);
+        };
+    }, {
+        description: "Returns the first character or characters of a text"
+    }),
+    RIGHT: _.extend((opts, text, number) => {
+        return context => {
+            var str = text(context);
+            if (str == null) return null;
+            var n = number(context) || 0;
+            var len = str.toString().length;
+            return str.toString().substring(Math.max(len - n, 0), len);
+        };
+    }, {
+        description: "Returns the last character or characters of a text"
+    }),
     /* The number of days since 1899-12-31 */
     DATEVALUE: _.extend((opts, ending, tz) => {
         return context => {
