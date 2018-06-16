@@ -297,14 +297,16 @@ function updateWorking(desired, working, options) {
             quant: d_opened,
             symbol: desired.symbol,
             typeofsymbol: desired.instrument,
-            market: 1,
+            market: ds.limit ? 0 : 1,
+            limit: ds.limit,
             duration: 'DAY',
             conditionalUponSignal: {
                 action: working.long_or_short=='short' ? 'BTC' : 'STC',
                 quant: w_opened,
                 symbol: working.symbol,
                 typeofsymbol: working.instrument,
-                market: 1,
+                market: ds.limit ? 0 : 1,
+                limit: ds.limit,
                 duration: 'DAY'
             }
         }];
@@ -315,7 +317,8 @@ function updateWorking(desired, working, options) {
             quant: w_opened - d_opened,
             symbol: working.symbol,
             typeofsymbol: working.instrument,
-            market: 1,
+            market: ds.limit ? 0 : 1,
+            limit: ds.limit,
             duration: 'DAY'
         }];
     } else {
@@ -325,7 +328,8 @@ function updateWorking(desired, working, options) {
             quant: d_opened - w_opened,
             symbol: desired.symbol,
             typeofsymbol: desired.instrument,
-            market: 1,
+            market: ds.limit ? 0 : 1,
+            limit: ds.limit,
             duration: 'DAY'
         }];
     }
@@ -431,10 +435,33 @@ function advance(pos, signal, options) {
 function updatePosition(pos, signal, options) {
     if (+signal.quant > 0) {
         return changePosition(pos, signal, options);
-    } else if (signal.parkUntilSecs) {
+    } else {
+        return updateParkUntilSecs(pos, signal, options);
+    }
+}
+
+/**
+ * Position after applying the given signal parkUntilSecs and limit
+ */
+function updateParkUntilSecs(pos, signal, options) {
+    if (signal.parkUntilSecs) {
         expect(signal).to.have.property('action').that.is.oneOf(['BTO', 'STO']);
         expect(pos).to.have.property('signal');
-        return _.defaults({signal: _.defaults(_.pick(signal, 'parkUntilSecs'), pos.signal)}, pos);
+        var updated = _.defaults({signal: _.defaults(_.pick(signal, 'parkUntilSecs'), pos.signal)}, pos);
+        return updateLimit(updated, signal, options);
+    } else {
+        return updateLimit(pos, signal, options);
+    }
+}
+
+/**
+ * Position after applying the given signal limit
+ */
+function updateLimit(pos, signal, options) {
+    if (signal.limit) {
+        expect(signal).to.have.property('action').that.is.oneOf(['BTO', 'STO']);
+        expect(pos).to.have.property('signal');
+        return _.defaults({signal: _.defaults(_.pick(signal, 'limit'), pos.signal)}, pos);
     } else {
         return pos;
     }

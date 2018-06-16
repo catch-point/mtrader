@@ -434,34 +434,38 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
+                    symbol: 'IBM',
+                    close: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }, {
+                    date: '2015-06-16',
+                    symbol: 'IBM',
+                    close: 150.53,
+                    action: 'STC',
+                    long_or_short: 'short',
+                    quant: 1,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: -1,
+                    parkUntilSecs: moment('2015-06-16T16:00:00-04:00').format('X')
+                }]);
+            })({
                 systemid: 'test',
-                tz: 'America/New_York',
-                now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf(),
-                portfolio: 'IBM.NYSE',
-                begin: "2015-01-01",
-                end: "2015-06-17",
-                columns: {
-                    date: 'DATE(ending)',
-                    symbol: 'symbol',
-                    close: 'ROUND(day.adj_close,2)',
-                    action: 'IF(sma_cross>0 AND !(PREV("long_or_short")="long"), "BTO", sma_cross<0 AND PREV("long_or_short")="long", "STC")',
-                    long_or_short: 'IF(action="BTO","long", action="STC","short", PREV("long_or_short"))',
-                    quant: 'IF(action="BTO",2,1)',
-                    typeofsymbol: '"stock"',
-                    market: '1',
-                    duration: '"GTC"',
-                    currency: '"USD"',
-                    sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))',
-                    parkUntilSecs: "TEXT(ending,'X')"
-                },
-                parameters: {
-                    fast_len: 13,
-                    slow_len: 50
-                },
-                filter: [
-                    'action'
-                ]
+                now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf()
             }).should.eventually.be.like([{
                 action: 'BTO',
                 quant: 1,
@@ -712,46 +716,33 @@ describe("collective2", function() {
 	          "symbol_description" : "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
-                systemid: 'test',
-                tz: 'America/New_York',
-                now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf(),
-                portfolio: 'IBM.NYSE',
-                begin: "2015-01-01",
-                end: "2015-02-18",
-                columns: {
-                    date: 'DATE(ending)',
-                    symbol: 'symbol',
-                    close: 'ROUND(day.adj_close,2)',
-                    action: 'IF(sma_cross>0 AND !(PREV("long_or_short")="long"), "BTO", sma_cross<0 AND PREV("long_or_short")="long", "STC")',
-                    long_or_short: 'IF(action="BTO","long", action="STC","short", PREV("long_or_short"))',
-                    quant: 2,
-                    typeofsymbol: '"stock"',
-                    market: '1',
-                    duration: '"GTC"',
-                    currency: '"USD"',
-                    sma_cross: 'SIGN(SMA(fast_len,day.adj_close)-SMA(slow_len,day.adj_close))',
-                    parkUntilSecs: "TEXT(ending,'X')"
-                },
-                parameters: {
-                    fast_len: 13,
-                    slow_len: 50
-                },
-                filter: [
-                    'action'
-                ]
-            }).then(() => fs.readFileSync(submitSignal, 'utf8'))
-              .then(JSON.parse)
-              .should.eventually.be.like({
-                signal: {
-                    action: 'BTO',
-                    quant: 1,
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
                     symbol: 'IBM',
+                    close: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 2,
                     typeofsymbol: 'stock',
                     market: 1,
-                    duration: 'DAY'
-                }
-            });
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                action: 'BTO',
+                quant: 1,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                market: 1,
+                duration: 'DAY'
+            }]);
         });
         it("IBM submit BTO limit signal", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
@@ -771,7 +762,7 @@ describe("collective2", function() {
                     duration: 'GTC',
                     currency: 'USD',
                     sma_cross: 1,
-                    parkUntilSecs: '1424206800'
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
                 }]);
             })({
                 systemid: 'test',
@@ -836,7 +827,7 @@ describe("collective2", function() {
                     typeofsymbol: 'stock',
                     duration: 'GTC',
                     currency: 'USD',
-                    parkUntilSecs: '1424206800'
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
                 }, {
                     action: 'STC',
                     quant: 2,
@@ -844,7 +835,7 @@ describe("collective2", function() {
                     typeofsymbol: 'stock',
                     duration: 'GTC',
                     currency: 'USD',
-                    parkUntilSecs: '1434484800'
+                    parkUntilSecs: moment('2015-06-16T16:00:00-04:00').format('X')
                 }, {
                     action: 'BTO',
                     quant: 2,
@@ -958,31 +949,36 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    close: 125.32,
+                    symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X')
+                }, {
+                    date: '2016-10-13',
+                    close: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X')
+                }]);
+            })({
                 systemid: 'test',
-                tz: 'America/New_York',
-                now: moment.tz("2016-10-13T15:59:59", 'America/New_York').valueOf(),
-                portfolio: 'GLD.ARCA',
-                begin: "2016-10-01",
-                columns: {
-                    date: 'DATE(ending)',
-                    close: 'day.close',
-                    symbol: 'symbol',
-                    action: 'IF(psar<day.low, IF(!PREV("long_or_short"),"BTO", PREV("long_or_short")="short", "BTCBTO"), psar>day.high, IF(!PREV("long_or_short"),"STO", PREV("long_or_short")="long", "STCSTO"), PREV("action"))',
-                    long_or_short: 'IF(action="BTO" OR action="BTCBTO","long", action="STO" OR action="STCSTO","short", PREV("long_or_short"))',
-                    quant: 'IF(PREV("long_or_short"), 4, 2)',
-                    typeofsymbol: '"stock"',
-                    market: '1',
-                    duration: '"GTC"',
-                    currency: '"USD"',
-                    parkUntilSecs: "TEXT(ending,'X')"
-                },
-                variables: {
-                    psar: 'day.PSAR(0.05, 0.2, 50)'
-                },
-                filter: [
-                    'action'
-                ]
+                now: moment.tz("2016-10-13T15:59:59", 'America/New_York').valueOf()
             }).should.eventually.be.like([{
                 action: 'STO',
                 quant: 2,
@@ -1005,43 +1001,44 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
-                systemid: 'test',
-                tz: 'America/New_York',
-                now: moment.tz("2016-10-13T16:00:01", 'America/New_York').valueOf(),
-                portfolio: 'GLD.ARCA',
-                begin: "2016-10-01",
-                columns: {
-                    date: 'DATE(ending)',
-                    close: 'day.close',
-                    symbol: 'symbol',
-                    action: 'IF(psar<day.low, IF(!PREV("long_or_short"),"BTO", PREV("long_or_short")="short", "BTCBTO"), psar>day.high, IF(!PREV("long_or_short"),"STO", PREV("long_or_short")="long", "STCSTO"), PREV("action"))',
-                    long_or_short: 'IF(action="BTO" OR action="BTCBTO","long", action="STO" OR action="STCSTO","short", PREV("long_or_short"))',
-                    quant: 'IF(PREV("long_or_short"), 4, 2)',
-                    typeofsymbol: '"stock"',
-                    market: '1',
-                    duration: '"GTC"',
-                    currency: '"USD"',
-                    parkUntilSecs: "TEXT(ending,'X')"
-                },
-                variables: {
-                    psar: 'day.PSAR(0.05, 0.2, 50)'
-                },
-                filter: [
-                    'action'
-                ]
-            }).then(() => fs.readFileSync(submitSignal, 'utf8'))
-              .then(JSON.parse)
-              .should.eventually.be.like({
-                signal: {
-                    action: 'BTO',
-                    quant: 2,
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    close: 125.32,
                     symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
                     typeofsymbol: 'stock',
                     market: 1,
-                    duration: 'DAY'
-                }
-            });
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X')
+                }, {
+                    date: '2016-10-13',
+                    close: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2016-10-13T16:00:01", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                action: 'BTO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                market: 1,
+                duration: 'DAY'
+            }]);
         });
         it("GLD STO signal with working BTO signal", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
@@ -1055,7 +1052,7 @@ describe("collective2", function() {
                 market: 1,
                 duration: 'GTC',
                 long_or_short: 'long',
-                parkUntilSecs: '1477339200'
+                parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X')
             }]}));
             return collective2({
                 systemid: 'test',
@@ -1195,7 +1192,7 @@ describe("collective2", function() {
                 market: 1,
                 duration: 'GTC',
                 long_or_short: 'short',
-                parkUntilSecs: '1477339200'
+                parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X')
             }, {
                 action: 'STC',
                 quant: 2,
@@ -1204,7 +1201,7 @@ describe("collective2", function() {
                 market: 1,
                 duration: 'GTC',
                 long_or_short: 'long',
-                parkUntilSecs: '1477339200'
+                parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X')
             }]}));
             return collective2({
                 systemid: 'test',
@@ -1283,43 +1280,63 @@ describe("collective2", function() {
 	          "symbol_description" : "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
-                systemid: 'test',
-                tz: 'America/New_York',
-                now: moment.tz("2016-10-24T16:00:01", 'America/New_York').valueOf(),
-                portfolio: 'GLD.ARCA',
-                begin: "2016-10-01",
-                columns: {
-                    date: 'DATE(ending)',
-                    close: 'day.close',
-                    symbol: 'symbol',
-                    action: 'IF(psar<day.low, IF(!PREV("long_or_short"),"BTO", PREV("long_or_short")="short", "BTCBTO"), psar>day.high, IF(!PREV("long_or_short"),"STO", PREV("long_or_short")="long", "STCSTO"), PREV("action"))',
-                    long_or_short: 'IF(action="BTO" OR action="BTCBTO","long", action="STO" OR action="STCSTO","short", PREV("long_or_short"))',
-                    quant: 'IF(PREV("long_or_short"), 4, 2)',
-                    typeofsymbol: '"stock"',
-                    market: '1',
-                    duration: '"GTC"',
-                    currency: '"USD"',
-                    parkUntilSecs: "TEXT(ending,'X')"
-                },
-                variables: {
-                    psar: 'day.PSAR(0.05, 0.2, 50)'
-                },
-                filter: [
-                    'action'
-                ]
-            }).then(() => fs.readFileSync(submitSignal, 'utf8'))
-              .then(JSON.parse)
-              .should.eventually.be.like({
-                signal: {
-                    action: 'STO',
-                    quant: 2,
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    close: 125.32,
                     symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
                     typeofsymbol: 'stock',
                     market: 1,
-                    duration: 'DAY'
-                }
-            });
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X')
+                }, {
+                    date: '2016-10-13',
+                    close: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X')
+                }, {
+                    date: '2016-10-24',
+                    close: 120.56,
+                    symbol: 'GLD',
+                    action: 'STCSTO',
+                    long_or_short: 'short',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2016-10-24T16:00:01", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                action: 'STC',
+                duration: 'DAY',
+                market: 1,
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock'
+            }, {
+                action: 'STO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                market: 1,
+                duration: 'DAY'
+            }]);
         });
     });
     describe("StopLoss orders", function() {
@@ -1543,7 +1560,7 @@ describe("collective2", function() {
                     duration: 'GTC',
                     currency: 'USD',
                     sma_cross: 1,
-                    parkUntilSecs: '1424206800'
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
                 }]);
             })({
                 systemid: 'test',
@@ -1555,7 +1572,7 @@ describe("collective2", function() {
                 quant: 2,
                 symbol: 'IBM',
                 typeofsymbol: 'stock',
-                market: 1,
+                limit: 130,
                 duration: 'DAY'
             }]);
         });
@@ -1603,7 +1620,7 @@ describe("collective2", function() {
                     duration: 'GTC',
                     currency: 'USD',
                     sma_cross: 1,
-                    parkUntilSecs: '1424206800'
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
                 }]);
             })({
                 systemid: 'test',
@@ -1825,7 +1842,7 @@ describe("collective2", function() {
                     market: 1,
                     duration: 'GTC',
                     currency: 'USD',
-                    parkUntilSecs: '1475524800',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
                     stoploss: 130
                 }, {
                     date: '2016-10-13',
@@ -1838,7 +1855,7 @@ describe("collective2", function() {
                     market: 1,
                     duration: 'GTC',
                     currency: 'USD',
-                    parkUntilSecs: '1476388800',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
                     stoploss: 130
                 }, {
                     date: '2016-10-24',
@@ -1851,7 +1868,7 @@ describe("collective2", function() {
                     market: 1,
                     duration: 'GTC',
                     currency: 'USD',
-                    parkUntilSecs: '1477339200',
+                    parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
                     stoploss: 130
                 }]);
             })({
@@ -1913,7 +1930,7 @@ describe("collective2", function() {
                     market: 1,
                     duration: 'GTC',
                     currency: 'USD',
-                    parkUntilSecs: '1475524800',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
                     stoploss: 130
                 }, {
                     date: '2016-10-13',
@@ -1926,7 +1943,7 @@ describe("collective2", function() {
                     market: 1,
                     duration: 'GTC',
                     currency: 'USD',
-                    parkUntilSecs: '1476388800',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
                     stoploss: 130
                 }, {
                     date: '2016-10-24',
@@ -1939,7 +1956,7 @@ describe("collective2", function() {
                     market: 1,
                     duration: 'GTC',
                     currency: 'USD',
-                    parkUntilSecs: '1477339200',
+                    parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
                     stoploss: 130
                 }]);
             })({
@@ -1952,6 +1969,572 @@ describe("collective2", function() {
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
                 market: 1,
+                duration: 'DAY',
+                stoploss: 130
+            }]);
+        });
+    });
+    describe("catch-up limit orders", function() {
+        it("IBM submit BTO on STC signal", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
+                    symbol: 'IBM',
+                    limit: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }, {
+                    date: '2015-06-16',
+                    symbol: 'IBM',
+                    limit: 150.53,
+                    action: 'STC',
+                    long_or_short: 'short',
+                    quant: 1,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: -1,
+                    parkUntilSecs: moment('2015-06-16T16:00:00-04:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                action: 'BTO',
+                quant: 1,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                limit: 150.53,
+                duration: 'DAY'
+            }]);
+        });
+        it("IBM increase quant after filled", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "IBM",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "1",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "IBM"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
+                    symbol: 'IBM',
+                    limit: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                action: 'BTO',
+                quant: 1,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                limit: 144.14,
+                duration: 'DAY'
+            }]);
+        });
+        it("GLD catch up on working BTCBTO signal", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    limit: 125.32,
+                    symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X')
+                }, {
+                    date: '2016-10-13',
+                    limit: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2016-10-13T15:59:59", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                action: 'STO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 125.32,
+                duration: 'DAY' // catch up
+            }, {
+                action: 'BTC',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 120.03,
+                duration: 'GTC', // wait for confirmation before BTC
+                parkUntilSecs: moment.tz("2016-10-13T16:00:00", 'America/New_York').format('X')
+                // don't include BTO (yet) as double conditionals are not permitted
+            }]);
+        });
+        it("GLD BTO signal catchup", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    limit: 125.32,
+                    symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X')
+                }, {
+                    date: '2016-10-13',
+                    limit: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2016-10-13T16:00:01", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                action: 'BTO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 120.03,
+                duration: 'DAY'
+            }]);
+        });
+        it("GLD STCSTO miss", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "GLD",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "2",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "GLD"
+            }, {
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "short",
+	          "quant_closed" : "2",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "GLD",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "2",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "GLD"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    limit: 125.32,
+                    symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X')
+                }, {
+                    date: '2016-10-13',
+                    limit: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X')
+                }, {
+                    date: '2016-10-24',
+                    limit: 120.56,
+                    symbol: 'GLD',
+                    action: 'STCSTO',
+                    long_or_short: 'short',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2016-10-24T16:00:01", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                action: 'STC',
+                duration: 'DAY',
+                limit: 120.56,
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock'
+            }, {
+                action: 'STO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 120.56,
+                duration: 'DAY'
+            }]);
+        });
+        it("Order not filled with stoploss", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                signal_id: "94974798",
+                action: 'BTO',
+                quant: 2,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                market: 0,
+                limit: 130,
+                duration: 'GTC'
+            }, {
+                signal_id: "94974799",
+                action: 'STC',
+                quant: 2,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                market: 0,
+                isStopOrder: 120,
+                duration: 'GTC'
+            }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
+                    symbol: 'IBM',
+                    close: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    market: 0,
+                    limit: 130,
+                    stoploss: 120,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                signalid: "94974798"
+            }, {
+                action: 'BTO',
+                quant: 2,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                limit: 130,
+                duration: 'DAY'
+            }]);
+        });
+        it("catch up with multiple stoploss orders", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BTO',
+                    quant: 1,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    limit: 145,
+                    duration: 'DAY',
+                    stoploss: '130'
+                }, {
+                    action: 'BTO',
+                    quant: 0,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    limit: 135,
+                    duration: 'DAY',
+                    stoploss: '120'
+                }, {
+                    action: 'BTO',
+                    quant: 0,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    limit: 125,
+                    duration: 'DAY',
+                    stoploss: '110'
+                }]);
+            })({
+                systemid: 'test'
+            }).should.eventually.be.like([{
+                action: 'BTO',
+                quant: 1,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 125,
+                duration: 'DAY',
+                stoploss: 110
+            }]);
+        });
+        it("triggered before catch up", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BTO',
+                    quant: 1,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    limit: 145,
+                    duration: 'DAY',
+                    stoploss: '130'
+                }, {
+                    action: 'BTO',
+                    quant: 0,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    limit: 135,
+                    duration: 'DAY',
+                    stoploss: '120'
+                }, {
+                    action: 'BTO',
+                    quant: 0,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    limit: 125,
+                    duration: 'DAY',
+                    stoploss: '110'
+                }, {
+                    action: 'BTO',
+                    quant: 0,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    limit: 145,
+                    duration: 'DAY',
+                    stoploss: '130'
+                }]);
+            })({
+                systemid: 'test'
+            }).should.eventually.be.like([{
+                action: 'BTO',
+                quant: 1,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 145,
+                duration: 'DAY',
+                stoploss: 130
+            }]);
+        });
+        it("triggered and re-instated", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+                quant_opened: 1,
+                quant_closed: 1,
+                symbol: 'GLD',
+                instrument: 'stock',
+                long_or_short: 'long',
+                closedWhenUnixTimeStamp: moment('2018-01-02').format('X')
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BTO',
+                    quant: 1,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    limit: 145,
+                    duration: 'DAY',
+                    stoploss: '130',
+                    parkUntilSecs: moment('2018-01-01').format('X')
+                }, {
+                    action: 'BTO',
+                    quant: 0,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    limit: 135,
+                    duration: 'DAY',
+                    stoploss: '120',
+                    parkUntilSecs: moment('2018-01-03').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                now: '2018-01-03'
+            }).should.eventually.be.like([{
+                action: 'BTO',
+                quant: 1,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 135,
+                duration: 'DAY',
+                stoploss: 120
+                // parkUntilSecs: undefined
+            }]);
+        });
+        it("GLD STCSTO with stoploss", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "2",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "GLD",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "2",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "GLD"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    limit: 125.32,
+                    symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }, {
+                    date: '2016-10-13',
+                    limit: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }, {
+                    date: '2016-10-24',
+                    limit: 120.56,
+                    symbol: 'GLD',
+                    action: 'STCSTO',
+                    long_or_short: 'short',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }]);
+            })({
+                systemid: 'test',
+                tz: 'America/New_York',
+                now: "2016-10-24T16:00:00"
+            }).should.eventually.be.like([{
+                action: 'STO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 120.56,
                 duration: 'DAY',
                 stoploss: 130
             }]);
