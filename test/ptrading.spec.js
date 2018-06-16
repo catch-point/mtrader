@@ -242,20 +242,20 @@ describe("ptrading", function() {
         });
         return readCallSave('BEST', ptrading.bestsignals).should.eventually.be.like([{
             variables: {
-                signal: 'bollinger_signal'
-            },
-            parameters:  {
-                len: 10,
-                multiplier: 2
-            }
-        }, {
-            variables: {
                 signal: 'STO_signal'
             },
             parameters:  {
                 lookback: 10,
                 Ksmoothing: 5,
                 Dmoving: 5
+            }
+        }, {
+            variables: {
+                signal: 'bollinger_signal'
+            },
+            parameters:  {
+                len: 10,
+                multiplier: 2
             }
         }]);
     });
