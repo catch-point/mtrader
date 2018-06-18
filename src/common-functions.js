@@ -271,10 +271,11 @@ var functions = module.exports.functions = {
     }, {
         description: "Calculates the number of days between two dates"
     }),
-    NETWORKDAYS: _.extend((opts, from, to, tz) => {
+    NETWORKDAYS: _.extend((opts, from, to, tzone) => {
         return context => {
-            var a = moment.tz(to(context), tz ? tz(context) : opts.tz);
-            var b = moment.tz(from(context), tz ? tz(context) : opts.tz);
+            var tz = tzone ? tzone(context) : opts.tz;
+            var a = moment.tz(to(context), tz);
+            var b = moment.tz(from(context), tz);
             if (!a.isValid() || !b.isValid()) return null;
             if (a.isBefore(b)) {
                 var swap = b;
