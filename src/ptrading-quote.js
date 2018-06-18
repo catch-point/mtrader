@@ -198,7 +198,7 @@ function getMasterWorker(workers, options) {
 function chooseSlaveWorker(workers, master, options) {
     if (_.has(options, 'read_only') && !options.read_only)
         return master; // write requested
-    if (!options.end || moment.tz(options.end, options.tz).valueOf() >= Date.now())
+    if (!options.end || moment.tz(options.end, options.tz || moment.tz.guess()).valueOf() >= Date.now())
         return master; // latest data requested
     var loads = workers.map(load);
     var light = _.min(loads);

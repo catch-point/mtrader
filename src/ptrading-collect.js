@@ -252,7 +252,7 @@ function createSlaveQuote(quote, parent) {
     return function(options) {
         if (_.has(options, 'read_only') && !options.read_only)
             return parent.request('quote', options); // write requested
-        if (!options.end || moment.tz(options.end, options.tz).valueOf() >= Date.now())
+        if (!options.end || moment.tz(options.end, options.tz || moment.tz.guess()).valueOf() >= Date.now())
             return parent.request('quote', options); // latest data requested
         var opts = _.extend({read_only: true}, options);
         return quote(opts).catch(err => {
