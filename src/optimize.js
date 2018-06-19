@@ -398,7 +398,7 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
                             ranking.push(rank(mutant));
                         }
                     }
-                    strength += solutions.length/generation/pnames.length;
+                    strength += 1/generation/pnames.length;
                 }
                 if (ranking.length) {
                     until = until.then(() => Promise.all(ranking));
