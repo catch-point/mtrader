@@ -115,6 +115,9 @@ function help(quote) {
                 },
                 tz: {
                     description: "Timezone formatted using the identifier in the tz database"
+                },
+                id: {
+                    description: "Unique alphanumeric identifier among its peers (optional)"
                 }
             })
         }];
@@ -152,20 +155,20 @@ function collect(quote, callCollect, fields, options) {
     } else {
         throw Error("Invalid duration: " + options.reset_every);
     }
+    var compacted = compactPortfolio(fields, options.begin, options.end, options.tz, options);
     if (segments.length < 2) {// only one period
-        var compacted = compactPortfolio(fields, options.begin, options.end, options.tz, options);
         return collectDuration(quote, callCollect, fields, compacted);
     }
     var optionset = segments.map((segment, i, segments) => {
         if (i === 0) return _.defaults({
             begin: options.begin, end: segments[i+1]
-        }, options);
+        }, compacted);
         else if (i < segments.length -1) return _.defaults({
             begin: segment, end: segments[i+1]
-        }, options);
+        }, compacted);
         else return _.defaults({
             begin: segment, end: options.end
-        }, options);
+        }, compacted);
     }).map(opts => compactPortfolio(fields, opts.begin, opts.end, opts.tz || options.tz, opts));
     return Promise.all(optionset.map(opts => callCollect(opts))).then(dataset => {
         return _.flatten(dataset, true);
@@ -191,8 +194,9 @@ function collectDuration(quote, callCollect, fields, options) {
     var columnNames = _.object(_.keys(options.columns), zipColumns.map(_.first));
     var simpleColumns = getSimpleColumns(columns, options);
     var criteria = getSimpleCriteria(columns, options);
-    return Promise.all(portfolio.map((opts, idx) => {
-        var index = '#' + idx.toString() + (options.columns[options.indexCol] ?
+    return Promise.all(portfolio.map(opts => {
+        if (opts.id == null) throw Error(`Missing portfolio ID ${opts.label}`);
+        var index = '#' + opts.id.toString() + (options.columns[options.indexCol] ?
             '.' + JSON.parse(options.columns[options.indexCol]).substring(1) : '');
         if (opts.portfolio) {
             var parser = Parser({
@@ -336,7 +340,7 @@ function compactPortfolio(fields, begin, end, tz, options) {
         common('WORKDAY', [_.constant(begin), _.constant(-options.pad_leading)], {tz})();
     var mbegin = moment.tz(leading, tz);
     var mend = moment.tz(end || options.now, tz);
-    var compacted = _.compact(array.map(subcollect => {
+    var compacted = _.compact(array.map((subcollect, idx) => {
         if (!_.isObject(subcollect)) return subcollect;
         var stz = subcollect.tz || tz;
         var sbegin = subcollect.begin && moment.tz(subcollect.begin, stz);
@@ -344,7 +348,9 @@ function compactPortfolio(fields, begin, end, tz, options) {
         if (send && !send.isAfter(mbegin) || sbegin && !sbegin.isBefore(mend)) return null;
         var begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
         var end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
-        return compactPortfolio(fields, begin, end, stz, subcollect);
+        var compact = compactPortfolio(fields, begin, end, stz, subcollect);
+        if (compact.id != null) return compact;
+        else return _.extend({id: 'c' + idx}, compact);
     }));
     if (array.every((item, i) => item == compacted[i])) return options;
     var before = _.uniq(_.flatten(array.map(subcollect => _.keys(subcollect.columns))));
@@ -362,7 +368,7 @@ function compactPortfolio(fields, begin, end, tz, options) {
  */
 function getPortfolio(portfolio, options) {
     var opts = _.omit(options, [
-        'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading', 'tail', 'head', 'begin'
+        'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading', 'tail', 'head', 'begin', 'reset_every'
     ]);
     var array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :
@@ -381,14 +387,15 @@ function getPortfolio(portfolio, options) {
             symbol: m[1],
             exchange: m[2]
         };
-    }).map(subcollect => {
+    }).map((subcollect, idx) => {
         var sbegin = subcollect.begin && moment.tz(subcollect.begin, subcollect.tz || options.tz);
         var send = subcollect.end && moment.tz(subcollect.end, subcollect.tz || options.tz);
         if (send && !send.isAfter(mbegin) || sbegin && sbegin.isAfter(mend))
             throw Error(`Expected ${subcollect.label} to be removed in compactPortfolio`);
+        var id = subcollect.id == null ? 'q' + idx : subcollect.id;
         var begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
         var end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
-        return _.defaults({begin, end}, subcollect, opts);
+        return _.defaults({id, begin, end}, subcollect, opts);
     }));
 }
 
