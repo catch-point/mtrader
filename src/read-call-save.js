@@ -109,7 +109,7 @@ function mergeSignalSets(original, result) {
         merged.signalset = merged.signalset.map(signalset => signalset.name || signalset);
     if (original.eval_validity && result.eval_validity)
         merged.eval_validity = _.flatten([original.eval_validity, result.eval_validity]);
-    if (original.pad_leading && result.pad_leading)
+    if (_.isFinite(original.pad_leading) && _.isFinite(result.pad_leading))
         merged.pad_leading = Math.max(original.pad_leading, result.pad_leading);
     return merged;
 }

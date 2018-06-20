@@ -195,7 +195,7 @@ function formatSignal(signalset, options) {
         signal_variable: signalset.signal_variable,
         variables: _.pick(signalset.variables, local),
         parameters: _.pick(signalset.parameters, local),
-        pad_leading: signalset.pad_leading
+        pad_leading: signalset.pad_leading ? signalset.pad_leading : undefined
     }, value => value == null);
 }
 

@@ -792,8 +792,8 @@ function formatSolutionWithId(solution, options, id) {
             [solution.strategy_variable]: strategy
         })),
         parameters: _.reduce(_.pick(solution.parameters, local), rename, {}),
-        pad_leading: !options.pad_leading || solution.pad_leading > options.pad_leading ?
-            solution.pad_leading : undefined,
+        pad_leading: !options.pad_leading && solution.pad_leading ||
+            solution.pad_leading > options.pad_leading ? solution.pad_leading : undefined,
     }, value => value == null);
 }
 
