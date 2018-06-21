@@ -41,11 +41,12 @@ const debounce = require('./debounce.js');
  * assumed to be a callback function and is not passed to the given func, but
  * called from the returned function and those results are returned from it.
  */
-module.exports = function(func, hashFn, poolSize) {
+module.exports = function(func, hashFn, poolSize, loadFactor) {
     var size = _.isFinite(hashFn) ? hashFn : poolSize || 1;
+    var maxPoolSize = Math.ceil(size / ((_.isFinite(hashFn) ? poolSize : loadFactor) || 0.75));
     var hash = _.isFunction(hashFn) ? hashFn : _.identity.bind(_);
     var cache = {};
-    var debounced = debounce(sweep, 10000);
+    var debounced = debounce(sweep, 10000, maxPoolSize);
     var releaseEntry = release.bind(this, debounced, size, cache);
     var cached = function() {
         var cb = _.isFunction(_.last(arguments)) ? _.last(arguments) : (err, result) => {

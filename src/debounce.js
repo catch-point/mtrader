@@ -31,17 +31,28 @@
 
 const _ = require('underscore');
 
-module.exports = function(func, wait) {
+/**
+ * Creates and returns a new debounced version of the passed function which will
+ * postpone its execution until after wait milliseconds have elapsed since the
+ * last time it was invoked or until max number if invocation since the last
+ * execution.
+ * @param func the to wrap
+ * @param wait number of milliseconds to wait before invoking
+ * @param max the number of attempted invocation before giving up on waiting
+ */
+module.exports = function(func, wait, max) {
     var timeout, args, context, timestamp, result;
+    var counter = 0;
 
     var later = function() {
       var last = Date.now() - timestamp;
 
-      if (last < wait && last >= 0) {
+      if (last < wait && last >= 0 && (!max || counter < max)) {
         timeout = setTimeout(later, wait - last);
       } else {
         timeout = null;
         result = func.apply(context, args);
+        counter = 0;
         if (!timeout) context = args = null;
       }
     };
@@ -49,6 +60,7 @@ module.exports = function(func, wait) {
     var self = function() {
       context = this;
       args = arguments;
+      counter++;
       timestamp = Date.now();
       if (!timeout) timeout = setTimeout(later, wait);
       return result;

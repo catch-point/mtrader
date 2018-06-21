@@ -48,7 +48,7 @@ const logger = require('./logger.js');
  * Caches fn results to disk in baseDir
  */
 module.exports = function(baseDir, fn, poolSize, loadFactor) {
-    var maxPoolSize = poolSize / (loadFactor || 0.75);
+    var maxPoolSize = Math.ceil(poolSize / (loadFactor || 0.75));
     var cache = _.extend(new EventEmitter(), {
         added: 0,
         removed: 0,
@@ -68,16 +68,14 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
     var debounced = debounce(function(){
         cache.prefix = Date.now().toString(36);
         return sweep.apply(this, arguments).catch(err => logger.debug(err.message));
-    }, 10000);
+    }, 10000, maxPoolSize);
     return _.extend(function(options) {
         var opts = _.omit(options, _.isUndefined);
         var hash = readHash(opts);
         expect(hash).to.be.a('string');
         return getResult(cache, hash, opts, fn, options, result => {
             promiseInitialCount.then(initialCount => {
-                if (maxPoolSize && initialCount + cache.added - cache.removed > 2*maxPoolSize) {
-                    return debounced.flush();
-                } else if (maxPoolSize && initialCount + cache.added - cache.removed > maxPoolSize) {
+                if (maxPoolSize && initialCount + cache.added - cache.removed > maxPoolSize) {
                     return debounced(cache, initialCount, poolSize);
                 } else if (!maxPoolSize && cache.added > cache.removed) {
                     return debounced(cache, initialCount, poolSize);

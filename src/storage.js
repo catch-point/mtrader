@@ -86,7 +86,7 @@ function safe(segment) {
 function openCollection(dirname, name) {
     var cachedTables = cache(readTable);
     var collpath = path.resolve(dirname, safe(name));
-    var debouncedWriteMetadata = debounce(writeMetadata, 10000);
+    var debouncedWriteMetadata = debounce(writeMetadata, 10000, 100);
     var locks = {};
     return readMetadata(collpath).then(metadata => ({
         close() {

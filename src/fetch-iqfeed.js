@@ -133,7 +133,7 @@ module.exports = function() {
     );
     var lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_market) => {
         return symbol + ' ' + listed_market;
-    }, 100);
+    }, 10);
     return {
         open() {
             return iqclient.open();
