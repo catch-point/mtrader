@@ -362,7 +362,7 @@ After=network.target
 
 [Service]
 ExecStart=$PREFIX/bin/ptrading start
-ExecReload=/bin/kill -HUP $MAINPID
+ExecReload=/bin/kill -HUP \$MAINPID
 ExecStop=$PREFIX/bin/ptrading stop
 Restart=always
 User=$DAEMON_USER
