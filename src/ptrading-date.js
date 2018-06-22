@@ -103,14 +103,18 @@ function formatDate(format, options) {
     var date = moment.tz(options.now, tz);
     var durations = _.isArray(options.duration) ? options.duration :
         _.isString(options.duration) ? options.duration.split(',') : [];
+    var startOf = ['year', 'month', 'quarter', 'week', 'isoWeek',
+            'day', 'date', 'hour', 'minute', 'second'];
     var advanced = durations.reduce((date, d) => {
         if (d.match(/^[PYMWDTHMS0-9\-\+,.:]+$/)) return date.add(moment.duration(d));
-        var advanced = _.has(months(), d) ? moment(date).month(months()[d]) :
+        var advanced = ~startOf.indexOf(d) ? moment(date).startOf(d) :
+            _.has(months(), d) ? moment(date).month(months()[d]) :
             _.has(dates(), d) ? moment(date).date(dates()[d]) :
             _.has(days(), d) ? moment(date).day(days()[d]) : null;
         if (!advanced) throw Error(`Unknown duration format ${d}`);
         else if (!advanced.isBefore(date)) return advanced;
-        else return _.has(months(), d) ? moment(date).add(1, 'year').month(months()[d]) :
+        else return ~startOf.indexOf(d) ? moment(date).add(1, d).startOf(d) :
+                _.has(months(), d) ? moment(date).add(1, 'year').month(months()[d]) :
                 _.has(dates(), d) ? moment(date).add(1, 'month').date(dates()[d]) :
                 _.has(days(), d) ? moment(date).add(1, 'week').day(days()[d]) : null;
     }, date);
@@ -136,8 +140,10 @@ help(app, 'date', `
 
   Show the time now for this session in the given format. If a duration value
   is provided the time now is advanced by the comma separated values of the
-  ISO 8601 duration or weekday or day of month or month. The following values
-  are also permitted:
+  ISO 8601 duration or to start of period or weekday or day of month or month.
+  Other than durations, the following values are also permitted:
+    ${wrap(['year', 'month', 'quarter', 'week', 'isoWeek',
+            'day', 'date', 'hour', 'minute', 'second'].join(' '), '    ', 80)}
     ${wrap(_.keys(months()).join(' '), '    ', 80)}
     ${wrap(_.keys(dates()).join(' '), '    ', 80)}
     ${wrap(_.keys(days()).join(' '), '    ', 80)}
