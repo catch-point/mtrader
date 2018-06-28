@@ -33,7 +33,6 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const config = require('./config.js');
 const logger = require('./logger.js');
-const google = require('./fetch-google.js');
 const yahoo = require('./fetch-yahoo.js');
 const iqfeed = require('./fetch-iqfeed.js');
 const files = require('./fetch-files.js');
@@ -86,10 +85,9 @@ module.exports = function() {
 function promiseDatasources() {
     var sources = _.extend(
         config('fetch.files.enabled') ? {files: files()} : {},
-        config('fetch.google.enabled') ? {google: google()} : {},
-        config('fetch.yahoo.enabled') ? {yahoo: yahoo()} : {},
+        config('fetch.remote.enabled') ? {remote: remote()} : {},
         config('fetch.iqfeed.enabled') ? {iqfeed: iqfeed()} : {},
-        config('fetch.remote.enabled') ? {remote: remote()} : {}
+        config('fetch.yahoo.enabled') ? {yahoo: yahoo()} : {}
     );
     var ids = _.keys(sources);
     return Promise.all(ids.map(id => sources[id].help()))

@@ -3,13 +3,6 @@
   "default_cache_dir": "var/cache",
   "default_config_dir": "etc",
   "fetch": {
-    "google": {
-      "enabled": false,
-      "lookup": true,
-      "fundamental": true,
-      "interday": ["year", "quarter", "month", "week", "day"],
-      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE"]
-    },
     "yahoo": {
       "enabled": true,
       "lookup": true,
@@ -49,9 +42,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "google": {
-            "e": "NYSEARCA"
-        },
         "yahoo": {
           "exchs": ["NYQ", "PCX"],
           "marketLang": "en-US"
@@ -71,9 +61,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "google": {
-            "e": "BATS"
-        },
         "yahoo": {
           "exchs": ["NYQ", "PCX", "BTS"],
           "marketLang": "en-US"
@@ -93,9 +80,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "google": {
-            "e": "NASDAQ"
-        },
         "yahoo": {
           "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
           "marketLang": "en-US"
@@ -115,9 +99,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "google": {
-            "e": "NYSE"
-        },
         "yahoo": {
           "exchs": ["NYQ"],
           "marketLang": "en-US"
@@ -137,9 +118,6 @@
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
-        "google": {
-            "e": "NYSEMKT"
-        },
         "yahoo": {
           "exchs": ["ASE"],
           "marketLang": "en-US"
@@ -159,9 +137,6 @@
       "currency": "GBP",
       "tz": "Europe/London",
       "datasources": {
-        "google": {
-            "e": "LON"
-        },
         "yahoo": {
           "exchs": ["LSE"],
           "marketLang": "en-GB",
@@ -179,9 +154,6 @@
       "currency": "CAD",
       "tz": "America/Toronto",
       "datasources": {
-        "google": {
-            "e": "TSE"
-        },
         "yahoo": {
           "exchs": ["TOR", "YHD"],
           "marketLang": "en-CA",
@@ -203,9 +175,6 @@
       "currency": "CAD",
       "tz": "America/Toronto",
       "datasources": {
-        "google": {
-            "e": "CVE"
-        },
         "yahoo": {
           "exchs": ["TOR"],
           "marketLang": "en-CA",
