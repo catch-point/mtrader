@@ -227,7 +227,14 @@ function iqfeed_symbol(exchanges, options) {
         var source = exchanges[options.exchange].datasources.iqfeed;
         var prefix = source.dtnPrefix || '';
         var suffix = source.dtnSuffix || '';
-        if (prefix || suffix)
+        var map = source.dtnPrefixMap || {};
+        var three = options.symbol.substring(0, 3);
+        var two = options.symbol.substring(0, 2);
+        if (map[three])
+            return map[three] + options.symbol.substring(3);
+        else if (map[two])
+            return map[two] + options.symbol.substring(2);
+        else if (prefix || suffix)
             return prefix + options.symbol + suffix;
         else
             return options.symbol;
@@ -240,12 +247,24 @@ function iqfeed_symbol(exchanges, options) {
 }
 
 function lookup(iqclient, exchs, symbol, listed_market) {
-    return iqclient.lookup(symbol, listed_market).then(rows => rows.map(row => {
+    var map = _.reduce(exchs, (map, ds) => {
+        if (listed_market && !~ds.listed_markets.indexOf(listed_market)) return map;
+        return _.extend(ds && ds.dtnPrefixMap || {}, map);
+    }, {});
+    var three = symbol.substring(0, 3);
+    var two = symbol.substring(0, 2);
+    var mapped_symbol = map[three] ? map[three] + symbol.substring(3) :
+        map[two] ? map[two] + symbol.substring(2) : symbol;
+    return iqclient.lookup(mapped_symbol, listed_market).then(rows => rows.map(row => {
         var sym = row.symbol;
         var sources = _.pick(exchs, ds => {
             if (!~ds.listed_markets.indexOf(row.listed_market)) return false;
             var prefix = ds && ds.dtnPrefix || '';
             var suffix = ds && ds.dtnSuffix || '';
+            var map = ds && ds.dtnPrefixMap || {};
+            var three = sym.substring(0, 3);
+            var two = sym.substring(0, 2);
+            if (map[three] || map[two]) return true;
             var startsWith = !prefix || sym.indexOf(prefix) === 0;
             var endsWith = !suffix || sym.indexOf(suffix) == sym.length - suffix.length;
             return startsWith && endsWith;
@@ -253,10 +272,15 @@ function lookup(iqclient, exchs, symbol, listed_market) {
         var ds = _.find(sources);
         var prefix = ds && ds.dtnPrefix || '';
         var suffix = ds && ds.dtnSuffix || '';
+        var map = _.invert(ds && ds.dtnPrefixMap || {});
+        var four = sym.substring(0, 4);
+        var three = sym.substring(0, 3);
         var startsWith = prefix && sym.indexOf(prefix) === 0;
         var endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
-        var symbol = startsWith && endsWith ?
-            sym.substring(prefix.length, sym.length - prefix.length - suffix.length) :
+        var symbol = map[four] ? map[four] + sym.substring(4) :
+            map[three] ? map[three] + sym.substring(3) :
+            startsWith && endsWith ?
+                sym.substring(prefix.length, sym.length - prefix.length - suffix.length) :
             startsWith ? sym.substring(prefix.length) :
             endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
         return {

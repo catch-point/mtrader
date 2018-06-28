@@ -16,7 +16,7 @@
       "fundamental": true,
       "interday": ["year", "quarter", "month", "week", "day"],
       "intraday": ["m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY"]
+      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME"]
     },
     "remote": {
       "enabled": false,
@@ -333,6 +333,71 @@
         "iqfeed": {
           "dtnSuffix": "JPY.FXCM",
           "listed_markets": [74]
+        }
+      }
+    },
+    "CME": {
+      "description": "Chicago Mercantile Exchange (GLOBEX)",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "18:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "USD",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "dtnPrefix": "@",
+          "dtnPrefixMap": {
+            "6A": "@AD",
+            "6B": "@BP",
+            "6C": "@CD",
+            "6E": "@EU",
+            "6J": "@JY",
+            "6L": "@BR",
+            "6M": "@PX",
+            "6N": "@NE",
+            "6R": "@RU",
+            "6S": "@SF",
+            "6Z": "@RA",
+            "BOS": "@BT",
+            "CHI": "@CH",
+            "CUS": "@CU",
+            "CZK": "@CKO",
+            "DC": "@DA",
+            "DEN": "@DE",
+            "E7": "@ME",
+            "ECK": "@ECZ",
+            "EHF": "@EHU",
+            "EPZ": "@EPL",
+            "GD": "@GI",
+            "GDK": "@DK",
+            "GE": "@ED",
+            "GLB": "@EM",
+            "GNF": "@NF",
+            "HUF": "@HFO",
+            "ILS": "@IL",
+            "J7": "@JE",
+            "LAV": "@LV",
+            "LAX": "@LA",
+            "LBS": "@LB",
+            "MIA": "@MI",
+            "NQT": "@NQB",
+            "NYM": "@NY",
+            "PLN": "@PLZ",
+            "RGT": "@RST",
+            "RMB": "@RB",
+            "RME": "@RE",
+            "RS1": "@R1",
+            "RVT": "@RUT",
+            "SDG": "@SD",
+            "SFR": "@FR",
+            "SPX": "@SPO",
+            "WDC": "@DC",
+            "XBT": "@XMT",
+            "XRT": "@XTT",
+            "XVT": "@XCT"
+          },
+          "listed_markets": [43, 110]
         }
       }
     }
