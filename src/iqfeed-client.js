@@ -94,10 +94,9 @@ module.exports = function(command, env, productId, productVersion) {
                 update: update
             });
         },
-        month(symbol, begin, end, marketClosesAt, tz) {
+        month(symbol, begin, end, tz) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             if (end) expect(begin).to.be.below(end);
-            expect(marketClosesAt).to.be.a('string').and.match(/^\d\d:\d\d(:00)?$/);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
             var now = moment().tz(tz);
             var earliest = moment.tz(begin, tz);
@@ -105,16 +104,15 @@ module.exports = function(command, env, productId, productVersion) {
             return hmx(throttled, {
                 symbol: symbol,
                 maxDatapoints: moment.tz(now, tz).diff(earliest, 'months') + 1
-            }).then(parseDailyResults.bind(this, 'month', marketClosesAt, tz, now)).then(results => {
+            }).then(parseDailyResults).then(results => {
                 if (results.length && _.last(results).Date_Stamp <= earliest.format('Y-MM-DD'))
                     results.pop(); // today's trading session is not over
-                return results;
+                return results.reverse();
             });
         },
-        week(symbol, begin, end, marketClosesAt, tz) {
+        week(symbol, begin, end, tz) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             if (end) expect(begin).to.be.below(end);
-            expect(marketClosesAt).to.be.a('string').and.match(/^\d\d:\d\d(:00)?$/);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
             var now = moment().tz(tz);
             var earliest = moment.tz(begin, tz);
@@ -122,16 +120,15 @@ module.exports = function(command, env, productId, productVersion) {
             return hwx(throttled, {
                 symbol: symbol,
                 maxDatapoints: now.diff(earliest, 'weeks') + 1
-            }).then(parseDailyResults.bind(this, 'week', marketClosesAt, tz, now)).then(results => {
+            }).then(parseDailyResults).then(results => {
                 if (results.length && _.last(results).Date_Stamp <= earliest.format('Y-MM-DD'))
                     results.pop(); // today's trading session is not over
-                return results;
+                return results.reverse();
             });
         },
-        day(symbol, begin, end, marketClosesAt, tz) {
+        day(symbol, begin, end, tz) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             if (end) expect(begin).to.be.below(end);
-            expect(marketClosesAt).to.be.a('string').and.match(/^\d\d:\d\d(:00)?$/);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
             var b = moment.tz(begin, tz);
             var e = end && moment.tz(end, tz);
@@ -141,8 +138,9 @@ module.exports = function(command, env, productId, productVersion) {
             return hdt(throttled, {
                 symbol: symbol,
                 begin: b.format('YYYYMMDD'),
-                end: e && e.format('YYYYMMDD')
-            }).then(parseDailyResults.bind(this, 'day', marketClosesAt, tz, now));
+                end: e && e.format('YYYYMMDD'),
+                dataDirection: 1
+            }).then(parseDailyResults);
         },
         minute(minutes, symbol, begin, end, tz) {
             expect(minutes).to.be.like(_.isFinite);
@@ -161,20 +159,21 @@ module.exports = function(command, env, productId, productVersion) {
                 symbol: symbol,
                 seconds: 60 * minutes,
                 begin: b.format('YYYYMMDD HHmmss'),
-                end: e && e.format('YYYYMMDD HHmmss')
-            }).then(parseIntradayResults.bind(this, minutes, tz, now));
+                end: e && e.format('YYYYMMDD HHmmss'),
+                dataDirection: 1
+            }).then(parseIntradayResults);
         }
     };
 }
 
-function parseDailyResults(unit, marketClosesAt, tz, now, lines) {
+function parseDailyResults(lines) {
     return lines.map(line => _.object([
         'Request_ID','Date_Stamp','High','Low','Open','Close',
         'Period_Volume','Open_Interest'
     ], line.split(',')));
 }
 
-function parseIntradayResults(minutes, tz, now, lines) {
+function parseIntradayResults(lines) {
     return lines.map(line => _.object([
         'Request_ID','Time_Stamp','High','Low','Open','Close',
         'Total_Volume','Period_Volume','Number_of_Trades'

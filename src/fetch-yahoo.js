@@ -33,6 +33,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const config = require('./config.js');
 const yahooClient = require('./yahoo-client.js');
+const Adjustments = require('./adjustments.js');
 const cache = require('./memoize-cache.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
@@ -98,8 +99,9 @@ module.exports = function() {
         if (!_.isFunction(fn) || name == 'close') return fn;
         else return cache(fn, function() {
             return JSON.stringify(_.toArray(arguments));
-        }, require('os').cpus().length*2);
+        });
     });
+    var adjustments = Adjustments(yahoo);
     return {
         close() {
             return Promise.all(_.map(yahoo, (fn, name) => {
@@ -108,7 +110,7 @@ module.exports = function() {
                 } else if (name == 'close') {
                     return fn();
                 }
-            }));
+            }).concat(adjustments.close()));
         },
         help() {
             return Promise.resolve(helpInfo);
@@ -156,11 +158,11 @@ module.exports = function() {
                 tz: _.isString
             });
             switch(options.interval) {
-                case 'year': return year(yahoo, symbol(options), options);
-                case 'quarter': return quarter(yahoo, symbol(options), options);
-                case 'month': return month(yahoo, symbol(options), options);
-                case 'week': return week(yahoo, symbol(options), options);
-                case 'day': return day(yahoo, symbol(options), options);
+                case 'year': return year(yahoo, adjustments, symbol(options), options);
+                case 'quarter': return quarter(yahoo, adjustments, symbol(options), options);
+                case 'month': return month(yahoo, adjustments, symbol(options), options);
+                case 'week': return week(yahoo, adjustments, symbol(options), options);
+                case 'day': return day(yahoo, adjustments, symbol(options), options);
                 default:
                     expect(options.interval).to.be.oneOf([
                         'year', 'quarter', 'month', 'week', 'day'
@@ -202,8 +204,8 @@ function yahoo_symbol(exchanges, options) {
     }
 }
 
-function year(yahoo, symbol, options) {
-    return month(yahoo, symbol, _.defaults({
+function year(yahoo, adjustments, symbol, options) {
+    return month(yahoo, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('year'),
         end: options.end && moment.tz(options.end, options.tz).endOf('year')
     }, options))
@@ -224,8 +226,8 @@ function year(yahoo, symbol, options) {
       }, {})));
 }
 
-function quarter(yahoo, symbol, options) {
-    return month(yahoo, symbol, _.defaults({
+function quarter(yahoo, adjustments, symbol, options) {
+    return month(yahoo, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('quarter'),
         end: options.end && moment.tz(options.end, options.tz).endOf('quarter')
     }, options))
@@ -246,8 +248,8 @@ function quarter(yahoo, symbol, options) {
       }, {})));
 }
 
-function month(yahoo, symbol, options) {
-    return day(yahoo, symbol, _.defaults({
+function month(yahoo, adjustments, symbol, options) {
+    return day(yahoo, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('month'),
         end: options.end && moment.tz(options.end, options.tz).endOf('month')
     }, options))
@@ -268,10 +270,10 @@ function month(yahoo, symbol, options) {
       }, {})));
 }
 
-function week(yahoo, symbol, options) {
-    return day(yahoo, symbol, _.defaults({
-        begin: moment.tz(options.begin, options.tz).startOf('isoWeek'),
-        end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek')
+function week(yahoo, adjustments, symbol, options) {
+    return day(yahoo, adjustments, symbol, _.defaults({
+        begin: moment.tz(options.begin, options.tz).startOf('isoWeek').subtract(1, 'days'),
+        end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days')
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW')))
       .then(weeks => _.map(weeks, bars => bars.reduce((week, day) => {
@@ -290,33 +292,28 @@ function week(yahoo, symbol, options) {
       }, {})));
 }
 
-function day(yahoo, symbol, options) {
-    var now = moment().tz(options.tz);
-    var eod = now.days() === 6 || options.end && now.diff(options.end, 'days') >= 1;
-    var final = endOf('day', options.end || now, options);
-    var decade = (Math.floor(moment.tz(options.begin, options.tz).year()/10)*10)+'-01-01';
+function day(yahoo, adjustments, symbol, options) {
     return Promise.all([
         yahoo.day(symbol, options.begin, options.tz),
-        yahoo.split(symbol, decade, options.tz),
-        yahoo.dividend(symbol, decade, options.tz)
-    ]).then(psdi => {
-        var prices = psdi[0], split = psdi[1], div = psdi[2];
-        return adjRight(prices, split, div, options, (today, datum, splits, split, div) => ({
+        adjustments(options)
+    ]).then(prices_adjustments => {
+        var prices = prices_adjustments[0], adjustments = prices_adjustments[1];
+        return adjRight(prices, adjustments, options, (today, datum, splits, adj) => ({
             ending: endOf('day', datum.Date, options),
             open: parseCurrency(datum.Open, splits),
             high: parseCurrency(datum.High, splits),
             low: parseCurrency(datum.Low, splits),
             close: parseCurrency(datum.Close, splits) || today.close,
             volume: parseFloat(datum.Volume) || 0,
-            adj_close: Math.round((_.isEmpty(today) ?
-                parseCurrency(datum.Close, splits)/split - div :
-                today.adj_close + today.adj_close/today.close *
-                    (parseCurrency(datum.Close, splits)/split - today.close - div)
-                ) * 1000000) / 1000000 || today.adj_close
+            adj_close: Math.round(
+                parseCurrency(datum.Close, splits) * adj
+                * 1000000) / 1000000 || today.adj_close
         })).filter(bar => bar.volume);
     }).then(result => {
         if (_.last(result) && !_.last(result).close) result.pop();
         if (!options.end) return result;
+        var final = endOf('day', options.end, options);
+        if (moment(final).isAfter()) return result;
         var last = _.sortedIndex(result, {ending: final}, 'ending');
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
@@ -333,25 +330,20 @@ function adjustment(base, bar) {
     };
 }
 
-function adjRight(bars, _splits, _divs, options, cb) {
+function adjRight(bars, adjustments, options, cb) {
     var result = [];
-    var splits = _.sortBy(_splits, 'Date');
-    var divs = _.sortBy(_divs, 'Date');
     var today = null;
     var msplit = 1;
+    var a = adjustments.length;
     for (var i=bars.length -1; i>=0; i--) {
         var div = 0;
-        while (divs.length && _.last(divs).Date > bars[i].Date) {
-            div += +divs.pop()['Dividends'] * msplit;
+        var split = 1;
+        while (a > 0 && adjustments[a-1].exdate > bars[i].Date) {
+            var adj = adjustments[--a];
+            div += adj.dividend;
+            split = split * adj.split;
+            msplit = adj.cum_close / bars[i].Close;
         }
-        var ratio = 1;
-        while (splits.length && _.last(splits).Date > bars[i].Date) {
-            var nd = splits.pop()['Stock Splits'].split('/');
-            ratio = ratio * +nd[0] / +nd[1];
-        }
-        msplit = msplit * ratio;
-        // check if split is being used to adjust for a big dividend
-        var split = !div || ratio < 1 || ratio > 2 ? ratio : 1;
         if (today) {
             today.split = split;
             today.dividend = div;
@@ -361,7 +353,7 @@ function adjRight(bars, _splits, _divs, options, cb) {
                 dividend: div
             };
         }
-        result[i] = today = cb(today, bars[i], msplit, split, div);
+        result[i] = today = cb(today, bars[i], msplit, adj ? adj.adj : 1);
         today.split = 1;
         today.dividend = 0;
     }
