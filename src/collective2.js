@@ -317,8 +317,8 @@ function updateWorking(desired, working, options) {
             quant: w_opened - d_opened,
             symbol: working.symbol,
             typeofsymbol: working.instrument,
-            market: ds.limit ? 0 : 1,
-            limit: ds.limit,
+            market: ds && ds.limit ? 0 : 1,
+            limit: ds ? ds.limit : undefined,
             duration: 'DAY'
         }];
     } else {
@@ -328,8 +328,8 @@ function updateWorking(desired, working, options) {
             quant: d_opened - w_opened,
             symbol: desired.symbol,
             typeofsymbol: desired.instrument,
-            market: ds.limit ? 0 : 1,
-            limit: ds.limit,
+            market: ds && ds.limit ? 0 : 1,
+            limit: ds ? ds.limit : undefined,
             duration: 'DAY'
         }];
     }
