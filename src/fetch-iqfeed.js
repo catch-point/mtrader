@@ -133,8 +133,8 @@ module.exports = function() {
         config('version')
     );
     var adjustments = Adjustments();
-    var lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_market) => {
-        return symbol + ' ' + listed_market;
+    var lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_markets) => {
+        return symbol + ' ' + _.compact(_.flatten([listed_markets])).join(' ');
     }, 10);
     return {
         open() {
@@ -155,8 +155,10 @@ module.exports = function() {
                 options.exchange ? _.pick(exchanges, [options.exchange]) : exchanges,
                 exch => exch.datasources.iqfeed
             ), val => val);
+            var listed_markets = options.listed_market ? [options.listed_market] :
+                _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
             if (_.isEmpty(exchs)) return Promise.resolve([]);
-            else return lookupCached(exchs, symbol(options), options.listed_market);
+            else return lookupCached(exchs, symbol(options), listed_markets);
         },
         fundamental(options) {
             expect(options).to.be.like({
@@ -166,7 +168,7 @@ module.exports = function() {
             });
             return iqclient.fundamental(symbol(options),
                 options.marketClosesAt, options.tz
-            ).then(fundamental => [fundamental]);
+            ).then(fundamental => [_.extend({name: fundamental.company_name}, fundamental)]);
         },
         interday(options) {
             expect(options).to.be.like({
@@ -246,16 +248,17 @@ function iqfeed_symbol(exchanges, options) {
     }
 }
 
-function lookup(iqclient, exchs, symbol, listed_market) {
+function lookup(iqclient, exchs, symbol, listed_markets) {
     var map = _.reduce(exchs, (map, ds) => {
-        if (listed_market && !~ds.listed_markets.indexOf(listed_market)) return map;
+        if (!_.isEmpty(listed_markets) && !_.intersection(ds.listed_markets, listed_markets).length)
+            return map;
         return _.extend(ds && ds.dtnPrefixMap || {}, map);
     }, {});
     var three = symbol.substring(0, 3);
     var two = symbol.substring(0, 2);
     var mapped_symbol = map[three] ? map[three] + symbol.substring(3) :
         map[two] ? map[two] + symbol.substring(2) : symbol;
-    return iqclient.lookup(mapped_symbol, listed_market).then(rows => rows.map(row => {
+    return iqclient.lookup(mapped_symbol, listed_markets).then(rows => rows.map(row => {
         var sym = row.symbol;
         var sources = _.pick(exchs, ds => {
             if (!~ds.listed_markets.indexOf(row.listed_market)) return false;

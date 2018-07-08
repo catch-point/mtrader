@@ -61,13 +61,13 @@ module.exports = function(command, env, productId, productVersion) {
                 level1('close')
             ]);
         },
-        lookup(symbol, listed_market) {
+        lookup(symbol, listed_markets) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             return sbf(throttled, {
                 field: 's',
                 search: symbol,
                 type: 'e',
-                value: listed_market
+                value: _.compact(_.flatten([listed_markets])).join(' ')
             }).then(lines => lines.map(line => {
                 var row = line.split(',', 5);
                 return _.extend({
