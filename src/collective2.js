@@ -243,26 +243,9 @@ function updateWorking(desired, working, options) {
     } else if (!d_opened && !w_opened && !working.prior && !desired.prior) {
         // no open position
         return [];
-    } else if (d_opened == w_opened && !working.prior && !desired.prior && desired.long_or_short == working.long_or_short) {
+    } else if (d_opened == w_opened && !working.prior && desired.long_or_short == working.long_or_short) {
         // positions are the same
         return [];
-    } else if (d_opened == w_opened && working.prior && desired.prior && desired.long_or_short == working.long_or_short) {
-        // signals are the same
-        if (sameSignal(ds, ws))
-            return updateWorking(desired.prior, working.prior, options);
-        // signals are both stoploss orders, but the desired stoploss has not come into effect yet
-        else if (+ds.isStopOrder && +ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now)
-            return updateWorking(desired.prior, working.prior, options);
-        // update working limit, stoploss, or parkUntil to desired
-        else if (similarSignals(ds, ws))
-            return [_.defaults({
-                quant: ws.quant,
-                action: ws.action,
-                xreplace: ws.signal_id
-            }, ds, ws)];
-        // cancel working signal
-        else
-            return cancelSignal(desired, working, options);
     } else if (d_opened == w_opened && working.prior && !desired.prior && desired.long_or_short == working.long_or_short) {
         // cancel working signals
         return cancelSignal(desired, working, options);
@@ -280,15 +263,24 @@ function updateWorking(desired, working, options) {
         } else if (+ds.isStopOrder && +ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now) {
             // signals are both stoploss orders, but the desired stoploss has not come into effect yet
             return updateWorking(desired.prior, working.prior, options);
+        } else if (+ds.isStopOrder && !+ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now) {
+            // desired signal is stoploss order, but has not come into effect yet
+            return updateWorking(desired.prior, working, options);
         } else if (similarSignals(ds, ws)) {
             // update quant
             expect(ws).to.have.property('signal_id');
             return appendSignal(updateWorking(desired.prior, working.prior, options), _.defaults({
                 xreplace: ws.signal_id
             }, ds), options);
+        } else if (d_opened != w_opened && desired.long_or_short == working.long_or_short) {
+            return cancelSignal(desired, working, options);
         } else {
             // cancel and submit
-            return appendSignal(cancelSignal(desired.prior, working, options), ds, options);
+            var upon = cancelSignal(desired.prior, working, options);
+            var cond = !_.isEmpty(upon) || +ws.isStopOrder || ws.conditionalupon ? ds : _.extend({
+                conditionalupon: ws.signal_id
+            }, ds);
+            return appendSignal(upon, cond, options);
         }
     } else if (d_opened && w_opened && desired.long_or_short != working.long_or_short) {
         // reverse position
@@ -368,8 +360,8 @@ function cancelSignal(desired, working, options) {
  */
 function appendSignal(upon, ds, options) {
     expect(ds).not.to.have.property('conditionalUponSignal');
-    var adv = upon.find(s => _.isObject(s) && !s.xreplace);
-    if (upon.some(s => s.conditionalupon || s.conditionalUponSignal || +s.stoploss || +s.profittarget))
+    var adv = upon.find(s => _.isObject(s));
+    if (upon.some(s => s.conditionalupon || s.conditionalUponSignal || +s.stoploss || +s.profittarget || s.xreplace))
         return upon; // Double conditionals not permitted
     else if (!adv)
         return upon.concat(ds);
@@ -612,6 +604,9 @@ function sortSignals(position, a, b) {
         if (position.long_or_short == 'long' && a.action != 'STC' && b.action == 'STC') return 1;
         if (position.long_or_short == 'short' && a.action == 'BTC' && b.action != 'BTC') return -1;
         if (position.long_or_short == 'short' && a.action != 'BTC' && b.action == 'BTC') return 1;
+        // stoploss before closing order
+        if (+a.isStopOrder && !+b.isStopOrder && a.action == b.action) return -1;
+        if (!+a.isStopOrder && +b.isStopOrder && a.action == b.action) return 1;
     }
     // keep stoploss at the end as it would likely be the first to be cancelled
     if (!+a.isStopOrder && +b.isStopOrder) return -1;

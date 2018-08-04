@@ -851,20 +851,12 @@ describe("collective2", function() {
                 now: moment.tz("2015-10-16T15:59:59", 'America/New_York').valueOf(),
                 begin: "2015-01-01"
             }).should.eventually.be.like([{
-                signalid: "94974798"
-            }, {
                 action: 'STC',
                 quant: 4,
                 symbol: 'IBM',
                 typeofsymbol: 'stock',
-                duration: 'DAY'
-            }, {
-                action: 'BTO',
-                quant: 2,
-                symbol: 'IBM',
-                typeofsymbol: 'stock',
-                duration: 'GTC',
-                parkUntilSecs: '1445025600'
+                duration: 'DAY',
+                xreplace: '94974798'
             }]);
         });
     });
@@ -1890,6 +1882,288 @@ describe("collective2", function() {
                 duration: 'GTC'
             }]);
         });
+        it("GLD STCSTO with STC", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "GLD",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "2",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "GLD"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                signal_id: "94974798",
+                typeofsymbol: 'stock',
+                symbol: 'GLD',
+                action: 'STC',
+                quant: 2,
+                duration: 'GTC',
+                market: 1,
+                status: 'working'
+            }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    close: 125.32,
+                    symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }, {
+                    date: '2016-10-13',
+                    close: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }, {
+                    date: '2016-10-24',
+                    close: 120.56,
+                    symbol: 'GLD',
+                    action: 'STCSTO',
+                    long_or_short: 'short',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                conditionalupon: '94974798',
+                action: 'STO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                market: 1,
+                duration: 'GTC'
+            }]);
+        });
+        it("GLD STCSTO with wrong STC", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "GLD",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "2",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "GLD"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                signal_id: "94974798",
+                typeofsymbol: 'stock',
+                symbol: 'GLD',
+                action: 'STC',
+                quant: 1,
+                duration: 'GTC',
+                market: 1,
+                status: 'working'
+            }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    close: 125.32,
+                    symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }, {
+                    date: '2016-10-13',
+                    close: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }, {
+                    date: '2016-10-24',
+                    close: 120.56,
+                    symbol: 'GLD',
+                    action: 'STCSTO',
+                    long_or_short: 'short',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                xreplace: '94974798',
+                action: 'STC',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                market: 1,
+                duration: 'GTC'
+            }]);
+        });
+        it("GLD STCSTO with wrong STCSTO", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "GLD",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "2",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "GLD"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                signal_id: "94974798",
+                typeofsymbol: 'stock',
+                symbol: 'GLD',
+                action: 'STC',
+                quant: 2,
+                duration: 'GTC',
+                limit: 120.03,
+                status: 'working'
+            }, {
+                signal_id: "94974799",
+                action: 'STO',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 120.03,
+                duration: 'GTC',
+                status: 'working'
+            }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2016-10-03',
+                    close: 125.32,
+                    symbol: 'GLD',
+                    action: 'STO',
+                    long_or_short: 'short',
+                    quant: 2,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }, {
+                    date: '2016-10-13',
+                    close: 120.03,
+                    symbol: 'GLD',
+                    action: 'BTCBTO',
+                    long_or_short: 'long',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }, {
+                    date: '2016-10-24',
+                    close: 120.56,
+                    symbol: 'GLD',
+                    action: 'STCSTO',
+                    long_or_short: 'short',
+                    quant: 4,
+                    typeofsymbol: 'stock',
+                    limit: 120.56,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
+                    stoploss: 130
+                }]);
+            })({
+                systemid: 'test',
+                now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf()
+            }).should.eventually.be.like([{
+                xreplace: '94974798',
+                action: 'STC',
+                quant: 2,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                limit: 120.56,
+                duration: 'GTC'
+            }]);
+        });
         it("GLD STCSTO with stoploss", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
@@ -2538,6 +2812,123 @@ describe("collective2", function() {
                 duration: 'DAY',
                 stoploss: 130
             }]);
+        });
+        it("MSF working BTCBTO stop and reverse", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok: '1',response: [{
+                closeVWAP_timestamp: '1531428976',
+                strike: null,
+                fullSymbol: '@MSFU18',
+                open_or_closed: 'open',
+                expir: null,
+                openVWAP_timestamp: '1531428976',
+                currency: 'CHF',
+                underlying: 'CHF',
+                closing_price_VWAP: '1.00270',
+                putcall: null,
+                openedWhenUnixTimeStamp: '1531428908',
+                quant_closed: '0',
+                markToMarket_time: '2018-07-12 16:56:16',
+                opening_price_VWAP: '1.00270',
+                trade_id: '118904708',
+                symbol: '@MSFU8',
+                quant_opened: '1',
+                closedWhen: '',
+                instrument: 'future',
+                ptValue: '12500',
+                PL: '-118',
+                closedWhenUnixTimeStamp: '',
+                currencyMultiplierUSD: 1.00731309305558,
+                openedWhen: '2018-07-12 16:55:08',
+                long_or_short: 'short',
+                symbol_description: null
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                    signal_id: 'xxx',
+                    action: 'BTC',
+                    duration: 'GTC',
+                    isStopOrder: 1.023,
+                    parkUntilSecs: 1532120100,
+                    quant: 1,
+                    signalid: 12240489,
+                    stop: 1.023,
+                    symbol: '@MSFU8',
+                    typeofsymbol: 'future'
+                }, {
+                    isLimitOrder: '1.011800000',
+                    strike: null,
+                    status: 'working',
+                    underlying: null,
+                    isMarketOrder: '0',
+                    tif: 'DAY',
+                    putcall: null,
+                    expiration: null,
+                    quant: '1',
+                    parked_releasewhen: '',
+                    symbol: '@MSFU8',
+                    name: '',
+                    instrument: 'future',
+                    isStopOrder: '0',
+                    posted_time_unix: '1532385924',
+                    isOrderParked: '0',
+                    action: 'BTC',
+                    signal_id: '119080350',
+                    posted_time: '2018-07-23 18:45:24'
+                }, {
+                    isLimitOrder: '1.011800000',
+                    strike: null,
+                    status: 'working',
+                    underlying: null,
+                    isMarketOrder: '0',
+                    tif: 'DAY',
+                    putcall: null,
+                    expiration: null,
+                    quant: '1',
+                    parked_releasewhen: '',
+                    symbol: '@MSFU8',
+                    name: '',
+                    instrument: 'future',
+                    isStopOrder: '0',
+                    posted_time_unix: '1532385924',
+                    isOrderParked: '0',
+                    action: 'BTO',
+                    signal_id: '119080352',
+                    posted_time: '2018-07-23 18:45:24'
+                }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'STO',
+                    quant: 1,
+                    symbol: '@MSFU8',
+                    typeofsymbol: 'future',
+                    underlying: 'CHF',
+                    duration: 'DAY',
+                    stoploss: 1.023,
+                    limit: 1.0122,
+                    currency: 'USD',
+                    parkUntilSecs: 1532120100,
+                    parkUntilYYYYMMDDHHMM: 201807201655,
+                    position: -1
+                }, {
+                    action: 'BTCBTO',
+                    quant: 2,
+                    symbol: '@MSFU8',
+                    typeofsymbol: 'future',
+                    underlying: 'CHF',
+                    duration: 'DAY',
+                    stoploss: 0.9913,
+                    limit: 1.0118,
+                    currency: 'USD',
+                    parkUntilSecs: 1532379300,
+                    parkUntilYYYYMMDDHHMM: 201807231655,
+                    position: 1
+                }]);
+            })({
+                systemid: 'test',
+                tz: 'America/New_York',
+                now: "2018-07-23T16:00:00"
+            }).should.eventually.be.like([]);
         });
     });
 });
