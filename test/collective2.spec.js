@@ -744,6 +744,164 @@ describe("collective2", function() {
                 duration: 'DAY'
             }]);
         });
+        it("IBM small increase quant after filled", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "IBM",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "100",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "IBM"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
+                    symbol: 'IBM',
+                    close: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 102,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                quant_threshold: 5,
+                now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf()
+            }).should.eventually.be.like([]);
+        });
+        it("IBM small percent increase quant after filled", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "IBM",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "100",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "IBM"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
+                    symbol: 'IBM',
+                    close: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 102,
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                quant_threshold_percent: 5,
+                now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf()
+            }).should.eventually.be.like([]);
+        });
+        it("IBM small increase quant after filled with stoploss", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "IBM",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "100",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "IBM"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                signal_id: "94974799",
+                action: 'STC',
+                quant: 100,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                market: 0,
+                isStopOrder: 120,
+                duration: 'GTC'
+            }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    date: '2015-02-17',
+                    symbol: 'IBM',
+                    close: 144.14,
+                    action: 'BTO',
+                    long_or_short: 'long',
+                    quant: 102,
+                    typeofsymbol: 'stock',
+                    market: 0,
+                    limit: 130,
+                    stoploss: 120,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    sma_cross: 1,
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                quant_threshold_percent: 2,
+                now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf()
+            }).should.eventually.be.like([]);
+        });
         it("IBM submit BTO limit signal", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
@@ -857,6 +1015,65 @@ describe("collective2", function() {
                 typeofsymbol: 'stock',
                 duration: 'DAY',
                 xreplace: '94974798'
+            }]);
+        });
+        it("IBM submit STC with different quant", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "IBM",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "100",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "IBM"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BTO',
+                    quant: 102,
+                    symbol: 'IBM',
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }, {
+                    action: 'STC',
+                    quant: 50,
+                    symbol: 'IBM',
+                    typeofsymbol: 'stock',
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2015-06-16T16:00:00-04:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                tz: 'America/New_York',
+                quant_threshold_percent: 2,
+                now: moment.tz("2015-06-16T15:59:59", 'America/New_York').valueOf(),
+                begin: "2015-01-01"
+            }).should.eventually.be.like([{
+                action: 'STC',
+                quant: 48,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                duration: 'GTC'
             }]);
         });
     });
@@ -1619,6 +1836,78 @@ describe("collective2", function() {
                 now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf()
             }).should.eventually.be.like([{
                 signalid: "94974799"
+            }]);
+        });
+        it("IBM submit BTO with stoploss and different quant", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+	          "closeVWAP_timestamp" : "1434055203",
+	          "strike" : "0",
+	          "open_or_closed" : "open",
+	          "expir" : "",
+	          "openVWAP_timestamp" : "1434055203",
+	          "underlying" : "",
+	          "closing_price_VWAP" : "56.43",
+	          "putcall" : "",
+	          "long_or_short" : "long",
+	          "quant_closed" : "0",
+	          "markToMarket_time" : "2015-06-11 16:40:03",
+	          "trade_id" : "94369671",
+	          "symbol" : "IBM",
+	          "opening_price_VWAP" : "58.23390",
+	          "quant_opened" : "100",
+	          "closedWhen" : "",
+	          "instrument" : "stock",
+	          "ptValue" : "1",
+	          "PL" : "-451",
+	          "closedWhenUnixTimeStamp" : "",
+	          "openedWhen" : "2015-05-12 09:38:19",
+	          "symbol_description" : "IBM"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                signal_id: "94974798",
+                action: 'STC',
+                quant: 100,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                market: 0,
+                isStopOrder: 120,
+                duration: 'GTC'
+            }]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BTO',
+                    quant: 102,
+                    symbol: 'IBM',
+                    typeofsymbol: 'stock',
+                    market: 0,
+                    limit: 130,
+                    stoploss: 120,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
+                }, {
+                    action: 'BTO',
+                    quant: 50,
+                    symbol: 'IBM',
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'GTC',
+                    currency: 'USD',
+                    parkUntilSecs: moment('2015-06-16T16:00:00-04:00').format('X')
+                }]);
+            })({
+                systemid: 'test',
+                tz: 'America/New_York',
+                quant_threshold: 5,
+                now: moment.tz("2015-06-16T15:59:59", 'America/New_York').valueOf(),
+                begin: "2015-01-01"
+            }).should.eventually.be.like([{
+                action: 'BTO',
+                quant: 52,
+                symbol: 'IBM',
+                typeofsymbol: 'stock',
+                duration: 'GTC'
             }]);
         });
         it("catch up with multiple stoploss orders", function() {

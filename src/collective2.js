@@ -101,6 +101,14 @@ function help(bestsignals) {
                 symbols: {
                     usage: '[<symbol>]',
                     description: "Array of position symbols that should be closed if no desired position exists"
+                },
+                quant_threshold: {
+                    usage: '<integer>',
+                    description: "Minimum quantity of shares/contracts that must change to generate a signal"
+                },
+                quant_threshold_percent: {
+                    usage: '<decimal>',
+                    description: "Minimum quantity, relative to current position, that must change to generate a signal"
                 }
             })
         }];
@@ -133,7 +141,8 @@ function collective2(collect, agent, settings, options) {
                 quant_opened:0,
                 quant_closed:0
             };
-            var update = updateWorking(d, w, options);
+            var quant_threshold = getQuantThreshold(w, options);
+            var update = updateWorking(d, w, _.defaults({quant_threshold}, options));
             if (update.length)
                 logger.trace("collective2", "desired", symbol, JSON.stringify(desired[symbol]));
             return signals.concat(update);
@@ -230,6 +239,19 @@ function getWorkingPositions(agent, settings, options) {
 }
 
 /**
+ * Converts quant_threshold_percent into quant_threshold relative to open position size
+ */
+function getQuantThreshold(working, options) {
+    if (!options.quant_threshold_percent) return options.quant_threshold || 0;
+    if (working.prior) return getQuantThreshold(working.prior, options);
+    var opened = working.quant_opened - working.quant_closed;
+    var threshold = Math.floor(opened * options.quant_threshold_percent /100);
+    if (!threshold) return options.quant_threshold || 0;
+    else if (!options.quant_threshold) return threshold;
+    else return Math.min(threshold, options.quant_threshold);
+}
+
+/**
  * Array of signals to update the working positions to the desired positions
  */
 function updateWorking(desired, working, options) {
@@ -237,21 +259,27 @@ function updateWorking(desired, working, options) {
     var ws = working.signal;
     var d_opened = desired.quant_opened - desired.quant_closed;
     var w_opened = working.quant_opened - working.quant_closed;
+    var within = Math.abs(d_opened - w_opened) <= (options.quant_threshold || 0);
+    var same_side = desired.long_or_short == working.long_or_short;
     if (_.has(ds, 'parkUntilSecs') && !working.prior && +working.closedWhenUnixTimeStamp > +ds.parkUntilSecs) {
         // working position has since been closed (stoploss) since the last desired signal was produced
         return [];
     } else if (!d_opened && !w_opened && !working.prior && !desired.prior) {
         // no open position
         return [];
-    } else if (d_opened == w_opened && !working.prior && desired.long_or_short == working.long_or_short) {
-        // positions are the same
+    } else if (within && !working.prior && same_side) {
+        // positions are (nearly) the same
         return [];
-    } else if (d_opened == w_opened && working.prior && !desired.prior && desired.long_or_short == working.long_or_short) {
+    } else if (d_opened == w_opened && working.prior && !desired.prior && same_side) {
         // cancel working signals
         return cancelSignal(desired, working, options);
     } else if (desired.prior && !working.prior) {
         // advance working state
-        return appendSignal(updateWorking(desired.prior, working, options), ds, options);
+        var adj = updateWorking(desired.prior, working, options);
+        return appendSignal(adj, _.defaults({
+            // adjust quant if first signal
+            quant: _.isEmpty(adj) && Math.abs(d_opened - w_opened) || ds.quant
+        }, ds), options);
     } else if (working.prior && !desired.prior) {
         // cancel working signal
         expect(ws).to.have.property('signal_id');
@@ -259,6 +287,9 @@ function updateWorking(desired, working, options) {
     } else if (desired.prior && working.prior) {
         if (sameSignal(ds, ws)) {
             // don't change this signal
+            return updateWorking(desired.prior, working.prior, options);
+        } else if (+ds.isStopOrder && +ws.isStopOrder && sameSignal(ds, ws, options.quant_threshold)) {
+            // signals are both stoploss orders and within quant_threshold
             return updateWorking(desired.prior, working.prior, options);
         } else if (+ds.isStopOrder && +ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now) {
             // signals are both stoploss orders, but the desired stoploss has not come into effect yet
@@ -272,7 +303,7 @@ function updateWorking(desired, working, options) {
             return appendSignal(updateWorking(desired.prior, working.prior, options), _.defaults({
                 xreplace: ws.signal_id
             }, ds), options);
-        } else if (d_opened != w_opened && desired.long_or_short == working.long_or_short) {
+        } else if (d_opened != w_opened && same_side) {
             return cancelSignal(desired, working, options);
         } else {
             // cancel and submit
@@ -330,9 +361,9 @@ function updateWorking(desired, working, options) {
 /**
  * Checks if the two signals appear to be the same
  */
-function sameSignal(a, b) {
-    var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss', 'quant'];
-    return _.matcher(_.pick(a, attrs))(b);
+function sameSignal(a, b, threshold) {
+    var attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss'];
+    return _.matcher(_.pick(a, attrs))(b) && Math.abs(a.quant - b.quant) <= (threshold || 0);
 }
 
 /**
