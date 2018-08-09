@@ -374,12 +374,14 @@ function getPortfolio(portfolio, options) {
         _.isObject(portfolio) ? [portfolio] :
         _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
         expect(portfolio).to.be.a('string');
+    if (_.isEmpty(_.compact(array))) throw Error("Missing portfolio");
     var begin = !options.pad_leading ? options.begin :
         common('WORKDAY', [_.constant(options.begin), _.constant(-options.pad_leading)], options)();
     var mbegin = moment.tz(begin, options.tz);
     var mend = moment.tz(options.end || options.now, options.tz);
     return _.compact(array.map(symbolExchange => {
         if (_.isObject(symbolExchange)) return symbolExchange;
+        else if (!symbolExchange) return null;
         var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
         if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
         return {

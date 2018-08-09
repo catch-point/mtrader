@@ -171,11 +171,14 @@ function fresh(collection, since, options) {
 function writeAdjPrice(yahoo, symbol, col, since, data, options) {
     if (compatible(col, since) && col.sizeOf(since) == data.length) return col.readFrom(since);
     else return yahoo.day(symbol, since, options.tz)
-      .then(prices => data.map(datum => _.extend(datum, {
-        Dividends: datum.Dividends || null,
-        'Stock Splits': datum['Stock Splits'] || null,
-        cum_close: +prices[_.sortedIndex(prices, datum, 'Date')-1].Close
-    }))).then(data => col.writeTo(data, since));
+      .then(prices => data.map(datum => {
+        var prior = prices[_.sortedIndex(prices, datum, 'Date')-1];
+        return _.extend(datum, {
+            Dividends: datum.Dividends || null,
+            'Stock Splits': datum['Stock Splits'] || null,
+            cum_close: prior ? +prior.Close : undefined
+        });
+    })).then(data => col.writeTo(data, since));
 }
 
 function compatible(collection, since) {
@@ -223,7 +226,7 @@ function adjustments(yahoo, db, symbol, options) {
                 adj_yahoo_price /= split;
             }
             var cum_close = +datum.cum_close / adj_split_only * adj_yahoo_price;
-            if (dividend) {
+            if (dividend && +datum.cum_close) {
                 adj_dividend_only *= (cum_close - dividend)/cum_close;
                 adj *= (cum_close - dividend)/cum_close;
             }

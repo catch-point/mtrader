@@ -342,7 +342,7 @@ function adjRight(bars, adjustments, options, cb) {
             var adj = adjustments[--a];
             div += adj.dividend;
             split = split * adj.split;
-            msplit = adj.cum_close / bars[i].Close;
+            msplit = adj.cum_close / bars[i].Close || 1;
         }
         if (today) {
             today.split = split;
