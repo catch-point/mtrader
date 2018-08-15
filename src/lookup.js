@@ -83,21 +83,19 @@ function fetchOptionsFactory(fetch, offline, read_only) {
         var symbol = options.symbol.toUpperCase();
         var exchange = options.exchange;
         var exchanges = config('exchanges');
-        if (exchange) expect(exchange).to.be.oneOf(_.keys(exchanges));
         var args = _.toArray(arguments);
         return memoizeFirstLookup(symbol, exchange).then(security => {
             return _.defaults(
-                _.omit(exchanges[security.exchange], 'datasources', 'label', 'description'),
+                _.omit(exchanges[security.exchange] || {}, 'datasources', 'label', 'description'),
                 security,
                 options
             );
         }, err => {
             memoizeFirstLookup.cache = {};
             if (!exchange) throw err;
-            expect(exchanges[exchange]).to.have.property('tz');
             logger.debug("Fetch lookup failed", err);
             return _.defaults(
-                _.omit(exchanges[exchange], 'datasources', 'label', 'description'),
+                _.omit(exchanges[exchange] || {}, 'datasources', 'label', 'description'),
                 options,
                 {symbol: symbol}
             );

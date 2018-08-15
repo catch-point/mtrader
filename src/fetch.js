@@ -33,6 +33,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const config = require('./config.js');
 const logger = require('./logger.js');
+const blended = require('./fetch-blended.js');
 const yahoo = require('./fetch-yahoo.js');
 const iqfeed = require('./fetch-iqfeed.js');
 const files = require('./fetch-files.js');
@@ -49,7 +50,10 @@ module.exports = function() {
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
             var exchange = options.exchange;
             var exchanges = config('exchanges');
-            if (exchange) expect(exchange).to.be.oneOf(_.keys(exchanges));
+            if (exchange && !exchanges[exchange]) {
+                var others = _.flatten(_.map(datasources, _.keys));
+                expect(exchange).to.be.oneOf(_.uniq(_.union(_.keys(exchanges), others)));
+            }
             var opt = exchange ? _.extend(
                 _.omit(exchanges[exchange], 'datasources', 'label', 'description'),
                 options
@@ -83,29 +87,30 @@ module.exports = function() {
  * hash of intervals -> exchange -> source
  */
 function promiseDatasources() {
-    var sources = _.extend(
-        config('fetch.files.enabled') ? {files: files()} : {},
-        config('fetch.remote.enabled') ? {remote: remote()} : {},
-        config('fetch.iqfeed.enabled') ? {iqfeed: iqfeed()} : {},
-        config('fetch.yahoo.enabled') ? {yahoo: yahoo()} : {}
-    );
-    var ids = _.keys(sources);
-    return Promise.all(ids.map(id => sources[id].help()))
+    var sources = _.compact([
+        config('fetch.files.enabled') && files(),
+        config('fetch.blended.enabled') && blended(),
+        config('fetch.remote.enabled') && remote(),
+        config('fetch.iqfeed.enabled') && iqfeed(),
+        config('fetch.yahoo.enabled') && yahoo()
+    ]);
+    return Promise.all(sources.map(source => source.help()))
       .then(result => result.reduce((datasources, help, i) => {
-        var id = ids[i];
-        return help.reduce((datasources, info) => {
+        return _.flatten(help).reduce((datasources, info) => {
             if (info.name == 'interday' && info.options.interval.values) {
                 return info.options.interval.values.reduce((datasources, interval) => {
-                    return addSource(datasources, interval, info.options.exchange.values, sources[id]);
+                    return addSource(datasources, interval, info.options.exchange.values, sources[i]);
                 }, datasources);
             } else if (info.name == 'intraday' && info.options.minutes.values) {
                 return info.options.minutes.values.reduce((datasources, minutes) => {
                     var interval = 'm' + minutes;
-                    return addSource(datasources, interval, info.options.exchange.values, sources[id]);
+                    return addSource(datasources, interval, info.options.exchange.values, sources[i]);
                 }, datasources);
             } else {
-                if (!info.options.exchange.values) throw Error("Missing exchange values for " + id);
-                return addSource(datasources, info.name, info.options.exchange.values, sources[id]);
+                expect(info).to.have.property('options');
+                expect(info.options).to.have.property('exchange');
+                if (!info.options.exchange.values) throw Error("Missing exchange values");
+                return addSource(datasources, info.name, info.options.exchange.values, sources[i]);
             }
         }, datasources);
     }, {}));

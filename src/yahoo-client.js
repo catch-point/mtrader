@@ -150,6 +150,7 @@ function lookupSymbol(listSymbols, symbol, marketLang) {
 
 function listSymbols(url) {
     return promiseText(url).then(function(jsonp) {
+        if (!jsonp) throw Error(`Empty response from ${url}`);
         return jsonp.replace(/^\s*YAHOO.util.ScriptNodeDataSource.callbacks\((.*)\);?\s*$/, '$1');
     }).then(parseJSON).then(function(json) {
         return json.ResultSet.Result.map(function(object){
