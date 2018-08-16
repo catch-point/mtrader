@@ -267,6 +267,13 @@ function updateWorking(desired, working, options) {
     } else if (!d_opened && !w_opened && !working.prior && !desired.prior) {
         // no open position
         return [];
+    } else if (within && !working.prior && same_side && desired.prior && +ds.isStopOrder) {
+        // advance working state
+        var adj = updateWorking(desired.prior, working, options);
+        return appendSignal(adj, _.defaults({
+            // adjust stoploss quant if first signal
+            quant: _.isEmpty(adj) && d_opened == ds.quant ? w_opened : ds.quant
+        }, ds), options);
     } else if (within && !working.prior && same_side) {
         // positions are (nearly) the same
         return [];
@@ -278,7 +285,7 @@ function updateWorking(desired, working, options) {
         var adj = updateWorking(desired.prior, working, options);
         return appendSignal(adj, _.defaults({
             // adjust quant if first signal
-            quant: _.isEmpty(adj) && Math.abs(d_opened - w_opened) || ds.quant
+            quant: _.isEmpty(adj.filter(a=>!+a.isStopOrder)) && Math.abs(d_opened - w_opened) || ds.quant
         }, ds), options);
     } else if (working.prior && !desired.prior) {
         // cancel working signal
@@ -777,8 +784,10 @@ function submit(agent, name, body, settings, options) {
             logger.log(res.title, res.signalid || '');
         else if (res.error && res.error.title)
             logger.error(res.error.title, res.signalid || '');
-        if (!+res.ok)
+        if (name == 'cancelSignal' && _.property(['error', 'title'])(res) && res.error.title.indexOf('Signal already cancel'))
+            return res;
+        else if (!+res.ok)
             throw Error(res.message || res.error && res.error.message || JSON.stringify(res));
-        return res;
+        else return res;
     });
 }

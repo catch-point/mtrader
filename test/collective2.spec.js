@@ -1575,6 +1575,37 @@ describe("collective2", function() {
                 stoploss: 130
             }]);
         });
+        it("submit just stoploss order", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+                quant_opened: 1,
+                quant_closed: 0,
+                symbol: 'GLD',
+                instrument: 'stock',
+                long_or_short: 'long'
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BTO',
+                    quant: 1,
+                    symbol: 'GLD',
+                    typeofsymbol: 'stock',
+                    market: 1,
+                    duration: 'DAY',
+                    stoploss: '130'
+                }]);
+            })({
+                systemid: 'test'
+            }).should.eventually.be.like([{
+                action: 'STC',
+                quant: 1,
+                symbol: 'GLD',
+                typeofsymbol: 'stock',
+                duration: 'GTC',
+                isStopOrder: 130
+            }]);
+        });
         it("don't change stoploss order", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
                 quant_opened: 1,
