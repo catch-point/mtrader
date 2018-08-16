@@ -211,8 +211,9 @@ function lookup(datasources, options) {
     }).then(rows => _.sortBy(rows, row => {
         var score = 0;
         if (row.symbol != symbol) score++;
-        if (!row.symbol.match(almost)) score+= 3;
-        if (row.symbol.indexOf(symbol) !== 0) score+= 5;
+        if (!row.symbol.match(almost)) score+= 2;
+        if (exchange && row.exchange != exchange) score+= 3;
+        if (row.symbol.indexOf(symbol) !== 0) score+= 3;
         return score + row.symbol;
     }));
 }
