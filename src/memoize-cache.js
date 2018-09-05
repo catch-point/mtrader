@@ -130,8 +130,7 @@ function aquire(entry) {
 function release(sweep, size, cache, entry) {
     _.forEach(cache, entry => !entry.registered && !entry.marked && entry.age++);
     entry.registered--;
-    while(_.reject(cache, 'marked').length > size)
-        mark(cache);
+    while(_.reject(cache, 'marked').length > size && mark(cache));
     sweep(cache);
 }
 
@@ -141,8 +140,9 @@ function mark(cache) {
             return oldest;
         else
             return base;
-    });
+    }, null);
     if (oldest) oldest.marked = true;
+    return oldest && oldest.marked;
 }
 
 function sweep(cache) {

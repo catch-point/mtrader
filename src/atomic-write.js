@@ -73,7 +73,7 @@ module.exports = _.extend(function(fn, filename) {
 });
 
 /**
- * Creates and directory and its parent directories
+ * Creates directory and its parent directories
  */
 function mkdirp(dirname) {
     return new Promise((present, absent) => {
@@ -112,5 +112,5 @@ function mkdirpSync(dirname) {
  */
 var seq = Date.now() % 32768;
 function partFor(filename) {
-    return filename + '.part' + (++seq).toString(36);
+    return filename + '.part' + process.pid.toString(36) + (++seq).toString(36);
 }

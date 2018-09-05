@@ -564,7 +564,7 @@ function readBlocks(collection, warmUpLength, blocks, expressions, options) {
                 else return collection.writeTo(bars, block).then(() => {
                     var value = collection.propertyOf(block, 'warmUpBlocks') || [];
                     var blocks = _.union(value, warmUpBlocks).sort();
-                    collection.propertyOf(block, 'warmUpBlocks', blocks);
+                    return collection.propertyOf(block, 'warmUpBlocks', blocks);
                 }).then(() => dataBlocks);
             });
         });
@@ -709,8 +709,7 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
 function fetchCompleteBlock(fetch, options, collection, version, block, last) {
     return fetch(blockOptions(block, options)).then(records => {
         if (last && _.isEmpty(records)) return records; // don't write incomplete empty blocks
-        return collection.remove(block)
-          .then(() => collection.writeTo(records, block))
+        return collection.replaceWith(records, block)
           .then(() => collection.propertyOf(block, 'version', version));
     });
 }
