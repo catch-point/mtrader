@@ -89,7 +89,7 @@ function help() {
     var interday = {
         name: "interday",
         usage: "interday(options)",
-        description: "Historic data for a security on the local IQFeed client",
+        description: "Historic interday data for a security on the local IQFeed client",
         properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
         options: _.extend(commonOptions, durationOptions, tzOptions, {
             interval: {
@@ -102,8 +102,8 @@ function help() {
     var intraday = {
         name: "intraday",
         usage: "intraday(options)",
-        description: "Historic data for a security on the local IQFeed client",
-        properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
+        description: "Historic intraday data for a security on the local IQFeed client",
+        properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'total_volume', 'adj_close'],
         options: _.extend(commonOptions, durationOptions, tzOptions, {
             minutes: {
                 description: "Number of minutes in a single bar length",
@@ -468,7 +468,7 @@ function includeIntraday(iqclient, adjustments, bars, interval, symbol, options)
         end: end.format(),
         tz: tz
     }, options)).then(intraday => intraday.reduce((bars, bar) => {
-        if (_.last(bars).incomplete) return bars;
+        if (_.last(bars).incomplete) bars.pop(); // remove incomplete (holi)days
         if (bar.ending == _.last(bars).ending) {
             adj = _.last(bars).adj_close / bar.close;
         } else if (bar.ending > _.last(bars).ending) {
