@@ -190,7 +190,7 @@ function getDesiredPositions(collect, agent, settings, options) {
       .then(retrieveSystemEquity => {
         var unix_timestamp = moment.tz(options.begin, options.tz).format('X');
         var idx = _.sortedIndex(retrieveSystemEquity.equity_data, {unix_timestamp}, 'unix_timestamp');
-        return retrieveSystemEquity.equity_data[Math.max(idx-1, 0)];
+        return retrieveSystemEquity.equity_data[idx];
     }).then(systemEquity => collect(merge(options, {
         parameters: _.pick(requestMarginEquity, 'buyPower', 'marginUsed', 'modelAccountValue' , 'cash')
     }, {
@@ -292,7 +292,7 @@ function updateWorking(desired, working, options) {
         expect(ws).to.have.property('signal_id');
         return cancelSignal(desired, working, options);
     } else if (desired.prior && working.prior) {
-        if (sameSignal(ds, ws)) {
+        if (sameSignal(ds, ws, options.quant_threshold)) {
             // don't change this signal
             return updateWorking(desired.prior, working.prior, options);
         } else if (+ds.isStopOrder && +ws.isStopOrder && sameSignal(ds, ws, options.quant_threshold)) {
@@ -307,8 +307,10 @@ function updateWorking(desired, working, options) {
         } else if (similarSignals(ds, ws)) {
             // update quant
             expect(ws).to.have.property('signal_id');
-            return appendSignal(updateWorking(desired.prior, working.prior, options), _.defaults({
-                xreplace: ws.signal_id
+            var adj = updateWorking(desired.prior, working.prior, options);
+            return appendSignal(adj, _.defaults({
+                xreplace: ws.signal_id,
+                quant: d_opened == w_opened ? ws.quant : ds.quant
             }, ds), options);
         } else if (d_opened != w_opened && same_side) {
             return cancelSignal(desired, working, options);
@@ -436,7 +438,9 @@ function isOpenAndClose(open, close, options) {
  * Position after applying the given signal
  */
 function advance(pos, signal, options) {
-    if (signal.stoploss) {
+    if (signal.quant === 0 && signal.parkUntilSecs && +signal.parkUntilSecs * 1000 > options.now) {
+        return pos; // don't update signal limits if in the future
+    } else if (signal.stoploss) {
         var base = !+signal.quant && pos.prior && +pos.signal.isStopOrder ? pos.prior : pos;
         var prior = updatePosition(base, _.omit(signal, 'stop', 'stoploss'), options);
         var stoploss = +signal.isStopOrder || +signal.stoploss || +signal.stop;
@@ -536,7 +540,7 @@ function changePositionSize(pos, signal, options) {
     expect(signal).has.property('quant').that.is.above(0);
     var parkUntilSecs = signal.parkUntilSecs || signal.posted_time_unix;
     var m_when = parkUntilSecs ? moment.tz(parkUntilSecs, 'X', 'America/New_York') :
-        moment.tz(options.now || Date.now(), options.tz);
+        moment.tz(options.now || Date.now(), options.tz).tz('America/New_York');
     if (!m_when.isValid()) throw Error("Invalid posted date: " + JSON.stringify(signal));
     var when = m_when.format('YYYY-MM-DD HH:mm:ss');
     if (signal.action == 'BTO') {
