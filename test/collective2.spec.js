@@ -2033,6 +2033,85 @@ describe("collective2", function() {
                 stoploss: 130
             }]);
         });
+        it("triggered before eod", function() {
+            fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
+                PL: "0",
+                closeVWAP_timestamp: null,
+                closedWhen: "2018-09-04 16:32:16",
+                closedWhenUnixTimeStamp: "1536093136",
+                closing_price_VWAP: "0.7587",
+                currency: "CAD",
+                currencyMultiplierUSD: 0.758627491143024,
+                expir: null,
+                fullSymbol: "@MCDU18",
+                instrument: "future",
+                long_or_short: "long",
+                markToMarket_time: "",
+                openVWAP_timestamp: null,
+                open_or_closed: "closed",
+                openedWhen: "2018-09-04 16:30:35",
+                openedWhenUnixTimeStamp: "1536093035",
+                opening_price_VWAP: "0.7587",
+                ptValue: "10000",
+                putcall: null,
+                quant_closed: "1",
+                quant_opened: "1",
+                strike: null,
+                symbol: "@MCDU8",
+                symbol_description: "",
+                trade_id: "119721534",
+                underlying: null
+            }, {
+                PL: "58",
+                closeVWAP_timestamp: "1534452856",
+                closedWhen: "2018-08-13 16:55:04",
+                closedWhenUnixTimeStamp: "1534193704",
+                closing_price_VWAP: "0.76180",
+                currency: "CAD",
+                currencyMultiplierUSD: 0.758627491143024,
+                expir: null,
+                fullSymbol: "@MCDU18",
+                instrument: "future",
+                long_or_short: "short",
+                markToMarket_time: "",
+                openVWAP_timestamp: "1533588977",
+                open_or_closed: "closed",
+                openedWhen: "2018-08-06 16:55:01",
+                openedWhenUnixTimeStamp: "1533588901",
+                opening_price_VWAP: "0.76940",
+                ptValue: "10000",
+                putcall: null,
+                quant_closed: "1",
+                quant_opened: "1",
+                strike: null,
+                symbol: "@MCDU8",
+                symbol_description: "",
+                trade_id: "119308552",
+                underlying: "CAD"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
+            return Collective2(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: "BTO",
+                    currency: "USD",
+                    duration: "DAY",
+                    isLimitOrder: 0.7752,
+                    limit: 0.7672,
+                    stoploss: 0.7594,
+                    parkUntilSecs: "1535748900",
+                    parkUntilYYYYMMDDHHMM: "201808291655",
+                    quant: 1,
+                    symbol: "@MCDU8",
+                    tif: "DAY",
+                    typeofsymbol: "future",
+                    underlying: "CAD"
+                }]);
+            })({
+                systemid: 'test',
+                now: '2018-09-04T16:45:00'
+            }).should.eventually.be.like([]);
+        });
         it("triggered", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
                 quant_opened: 1,

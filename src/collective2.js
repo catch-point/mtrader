@@ -220,7 +220,9 @@ function getWorkingPositions(agent, settings, options) {
             var dup = positions[pos.symbol];
             if (dup && dup.quant_closed != dup.quant_opened && pos.quant_closed != pos.quant_opened)
                 throw Error("Two open positions for the same symbol found: " + JSON.stringify(dup) + JSON.stringify(pos));
-            else if (dup && dup.quant_closed != dup.quant_opened)
+            else if (!dup || pos.quant_closed != pos.quant_opened)
+                return _.defaults({[pos.symbol]: pos}, positions);
+            else if (dup.quant_closed != dup.quant_opened || dup.closedWhen > pos.closedWhen)
                 return positions;
             else
                 return _.defaults({[pos.symbol]: pos}, positions);
