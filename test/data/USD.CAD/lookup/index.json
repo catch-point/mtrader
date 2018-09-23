@@ -8,7 +8,7 @@
     {
      "symbol": "USD",
      "iqfeed_symbol": "USDCAD.FXCM",
-     "exchange": "CAD",
+     "market": "CAD",
      "listed_market": 74,
      "securityTypeID": 16,
      "name": "FXCM USD CAD Spot"
@@ -18,7 +18,7 @@
     {
      "symbol": "USD",
      "iqfeed_symbol": "USDCAD.FXCM",
-     "exchange": "CAD",
+     "market": "CAD",
      "listed_market": 74,
      "securityTypeID": 16,
      "name": "FXCM USD CAD Spot"

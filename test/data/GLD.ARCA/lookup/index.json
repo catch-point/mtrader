@@ -8,7 +8,7 @@
     {
      "symbol": "GLD",
      "yahoo_symbol": "GLD",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "SPDR Gold Shares",
      "type": "E",
      "typeDisp": "ETF"
@@ -16,7 +16,7 @@
     {
      "symbol": "JNUG",
      "yahoo_symbol": "JNUG",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "Direxion Daily Jr Gld Mnrs Bull 3X ETF",
      "type": "E",
      "typeDisp": "ETF"
@@ -26,7 +26,7 @@
     {
      "symbol": "GLDT",
      "yahoo_symbol": "GLDT",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "Gold Coast Bancorp, Inc.",
      "type": "S",
      "typeDisp": "Equity"
@@ -34,7 +34,7 @@
     {
      "symbol": "GLD180406P00126000",
      "yahoo_symbol": "GLD180406P00126000",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "GLD Apr 2018 put 126.000",
      "type": "O",
      "typeDisp": "Option"

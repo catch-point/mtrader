@@ -1,2 +1,2 @@
-symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
+symbol,yahoo_symbol,market,name,exch,type,exchDisp,typeDisp
 SPY,SPY,ARCA,SPDR S&P 500 ETF Trust,PCX,E,NYSEArca,ETF

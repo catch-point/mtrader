@@ -41,7 +41,7 @@ const expect = require('chai').expect;
 module.exports = function(expr, name, args, quote, dataset, options) {
     expect(options).to.have.property('indexCol').that.is.a('string');
     expect(options).to.have.property('symbolCol').that.is.a('string');
-    expect(options).to.have.property('exchangeCol').that.is.a('string');
+    expect(options).to.have.property('marketCol').that.is.a('string');
     expect(options).to.have.property('temporalCol').that.is.a('string');
     if (functions[name])
         return functions[name].apply(this, [quote, dataset, options, expr].concat(args));
@@ -75,7 +75,7 @@ var functions = module.exports.functions = {
             return _.defaults({
                 index: first[options.indexCol],
                 symbol: first[options.symbolCol],
-                exchange: first[options.exchangeCol],
+                market: first[options.marketCol],
                 variables: {},
                 columns: {
                     [options.temporalCol]: 'DATETIME(ending)',

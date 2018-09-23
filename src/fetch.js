@@ -48,14 +48,14 @@ module.exports = function() {
         return datasources.then(datasources => {
             if (options.help || options.interval == 'help')
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
-            var exchange = options.exchange;
-            var exchanges = config('exchanges');
-            if (exchange && !exchanges[exchange]) {
+            var market = options.market;
+            var markets = config('markets');
+            if (market && !markets[market]) {
                 var others = _.flatten(_.map(datasources, _.keys));
-                expect(exchange).to.be.oneOf(_.uniq(_.union(_.keys(exchanges), others)));
+                expect(market).to.be.oneOf(_.uniq(_.union(_.keys(markets), others)));
             }
-            var opt = exchange ? _.extend(
-                _.omit(exchanges[exchange], 'datasources', 'label', 'description'),
+            var opt = market ? _.extend(
+                _.omit(markets[market], 'datasources', 'label', 'description'),
                 options
             ) : options;
             var interval = options.interval;
@@ -84,7 +84,7 @@ module.exports = function() {
 };
 
 /**
- * hash of intervals -> exchange -> source
+ * hash of intervals -> market -> source
  */
 function promiseDatasources() {
     var sources = _.compact([
@@ -99,25 +99,25 @@ function promiseDatasources() {
         return _.flatten(help).reduce((datasources, info) => {
             if (info.name == 'interday' && info.options.interval.values) {
                 return info.options.interval.values.reduce((datasources, interval) => {
-                    return addSource(datasources, interval, info.options.exchange.values, sources[i]);
+                    return addSource(datasources, interval, info.options.market.values, sources[i]);
                 }, datasources);
             } else if (info.name == 'intraday' && info.options.minutes.values) {
                 return info.options.minutes.values.reduce((datasources, minutes) => {
                     var interval = 'm' + minutes;
-                    return addSource(datasources, interval, info.options.exchange.values, sources[i]);
+                    return addSource(datasources, interval, info.options.market.values, sources[i]);
                 }, datasources);
             } else {
                 expect(info).to.have.property('options');
-                expect(info.options).to.have.property('exchange');
-                if (!info.options.exchange.values) throw Error("Missing exchange values");
-                return addSource(datasources, info.name, info.options.exchange.values, sources[i]);
+                expect(info.options).to.have.property('market');
+                if (!info.options.market.values) throw Error("Missing market values");
+                return addSource(datasources, info.name, info.options.market.values, sources[i]);
             }
         }, datasources);
     }, {}));
 }
 
-function addSource(datasources, interval, exchanges, source) {
-    datasources[interval] = exchanges.reduce((sources, exch) => {
+function addSource(datasources, interval, markets, source) {
+    datasources[interval] = markets.reduce((sources, exch) => {
         if (!sources[exch]) sources[exch] = [];
         sources[exch].push(source);
         return sources;
@@ -130,16 +130,16 @@ function close(datasources) {
 }
 
 function help(datasources) {
-    var exchangeOptions = _.uniq(_.flatten(_.map(config('exchanges'), _.keys), true));
+    var marketOptions = _.uniq(_.flatten(_.map(config('markets'), _.keys), true));
     return Promise.all(_.map(datasources, datasource => {
         return datasource.help();
     })).then(helps => {
         var groups = _.values(_.groupBy(_.flatten(helps), 'name'));
         return groups.map(helps => helps.reduce((help, h) => {
-            var lookupProperties = h.name == 'lookup' ? exchangeOptions : [];
+            var lookupProperties = h.name == 'lookup' ? marketOptions : [];
             var options = _.extend({
                 interval: {values: h.name == 'lookup' || h.name == 'fundamental' ? [h.name] : []}
-            }, _.omit(h.options, exchangeOptions), help.options);
+            }, _.omit(h.options, marketOptions), help.options);
             return {
                 name: help.name || h.name,
                 usage: help.usage,
@@ -171,21 +171,21 @@ function lookup(datasources, options) {
     expect(options).to.be.like({
         symbol: /^\S+$/
     });
-    var exchange = options.exchange;
-    if (exchange) expect(exchange).to.be.oneOf(_.keys(datasources));
+    var market = options.market;
+    if (market) expect(market).to.be.oneOf(_.keys(datasources));
     var symbol = options.symbol.toUpperCase();
     var same = new RegExp('^' + symbol.replace(/\W/g, '\\W') + '$');
     var almost = new RegExp('\\b' + symbol.replace(/\W/g, '.*') + '\\b');
-    var sources = exchange ? datasources[exchange] : _.uniq(_.flatten(_.values(datasources)));
+    var sources = market ? datasources[market] : _.uniq(_.flatten(_.values(datasources)));
     var results = _.map(sources, datasource => {
         return datasource.lookup(_.defaults({
             symbol: symbol,
-            exchange: exchange || undefined
+            market: market || undefined
         }, options)).then(list => list.map(item => {
             var same_item = item.symbol == symbol || item.symbol.match(same);
             return _.defaults({
                 symbol: same_item ? symbol : item.symbol,
-                exchange: item.exchange,
+                market: item.market,
                 name: item.name
             }, item);
         }));
@@ -202,7 +202,7 @@ function lookup(datasources, options) {
         else if (error) logger.debug("Fetch fundamental failed", error);
         return result;
     }).then(rows => _.map(
-        _.groupBy(rows, row => row.symbol + ':' + row.exchange),
+        _.groupBy(rows, row => row.symbol + ':' + row.market),
         group => _.defaults.apply(_, group)
     )).then(rows => {
         var keys = rows.reduce((keys, row) => _.union(keys, _.keys(row)), []);
@@ -212,7 +212,7 @@ function lookup(datasources, options) {
         var score = 0;
         if (row.symbol != symbol) score++;
         if (!row.symbol.match(almost)) score+= 2;
-        if (exchange && row.exchange != exchange) score+= 3;
+        if (market && row.market != market) score+= 3;
         if (row.symbol.indexOf(symbol) !== 0) score+= 3;
         return score + row.symbol;
     }));
@@ -221,11 +221,11 @@ function lookup(datasources, options) {
 function fundamental(datasources, options) {
     expect(options).to.be.like({
         symbol: /^\S+$/,
-        exchange: ex => expect(ex).to.be.oneOf(_.keys(datasources))
+        market: ex => expect(ex).to.be.oneOf(_.keys(datasources))
     });
     var now = moment();
     var error;
-    return datasources[options.exchange].map(datasource => {
+    return datasources[options.market].map(datasource => {
         return datasource.fundamental(options);
     }).reduce((promise, data) => promise.then(result => {
         return data.then(a => a.reduce((result,o) => _.defaults(result, o), result), err => {
@@ -240,7 +240,7 @@ function fundamental(datasources, options) {
     }).then(result => {
         return [_.defaults({
             symbol: options.symbol,
-            exchange: options.exchange,
+            market: options.market,
             name: result.name,
             asof: now.format()
         }, result)];
@@ -251,7 +251,7 @@ function interday(datasources, options) {
     expect(options).to.be.like({
         interval: /^\S+$/,
         symbol: /^\S+$/,
-        exchange: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
+        market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });
     var now = moment().tz(options.tz);
@@ -263,7 +263,7 @@ function interday(datasources, options) {
     var opts = _.defaults({
         begin: begin.format()
     }, options);
-    return datasources[options.exchange].reduce((promise, datasource) => promise.catch(err => {
+    return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
         return datasource.interday(opts).then(result => {
             if (err && !_.isArray(err)) logger.debug("Fetch", opts.interval, "failed", err.stack);
             if (_.isArray(err) && err.length >= result.length)
@@ -294,7 +294,7 @@ function interday(datasources, options) {
 function intraday(datasources, options) {
     expect(options).to.be.like({
         symbol: /^\S+$/,
-        exchange: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
+        market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });
     var now = moment().tz(options.tz);
@@ -302,7 +302,7 @@ function intraday(datasources, options) {
         begin: moment(now).startOf('day').format()
     }, options);
     var minutes = opts.minutes || +opts.interval.substring(1);
-    return datasources[options.exchange].reduce((promise, datasource) => promise.catch(err => {
+    return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
         return datasource.intraday(_.defaults({
             minutes: +minutes
         }, opts)).then(result => {

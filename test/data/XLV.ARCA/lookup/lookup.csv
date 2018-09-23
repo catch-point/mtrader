@@ -1,2 +1,2 @@
-symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
+symbol,yahoo_symbol,market,name,exch,type,exchDisp,typeDisp
 XLV,XLV,ARCA,The Select Sector SPDR Trust - The Health Care Select Sector SPDR Fund,PCX,E,NYSEArca,ETF

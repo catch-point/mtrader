@@ -8,7 +8,7 @@
     {
      "symbol": "XLV",
      "yahoo_symbol": "XLV",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "The Select Sector SPDR Trust - The Health Care Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",
@@ -20,7 +20,7 @@
     {
      "symbol": "XLV",
      "yahoo_symbol": "XLV",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "The Select Sector SPDR Trust - The Health Care Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",

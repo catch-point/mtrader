@@ -1,4 +1,4 @@
-symbol,yahoo_symbol,exchange,name,type,typeDisp
+symbol,yahoo_symbol,market,name,type,typeDisp
 PYPL,PYPL,NASDAQ,"PayPal Holdings, Inc.",S,Equity
 PYPL-USD.SW,PYPL-USD.SW,NASDAQ,PayPal,S,Equity
 PYPL.SW,PYPL.SW,NASDAQ,"PayPal Holdings, Inc.",S,Equity

@@ -8,7 +8,7 @@
     {
      "symbol": "XLC",
      "yahoo_symbol": "XLC",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "Communication Services Sel Sect SPDRETF",
      "type": "E",
      "typeDisp": "ETF"
@@ -16,7 +16,7 @@
     {
      "symbol": "XLC180921C00050000",
      "yahoo_symbol": "XLC180921C00050000",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "XLC Sep 2018 call 50.000",
      "type": "O",
      "typeDisp": "Option"
@@ -26,7 +26,7 @@
     {
      "symbol": "XLC181019C00040000",
      "yahoo_symbol": "XLC181019C00040000",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "XLC Oct 2018 call 40.000",
      "type": "O",
      "typeDisp": "Option"
@@ -34,7 +34,7 @@
     {
      "symbol": "XLC181019C00047000",
      "yahoo_symbol": "XLC181019C00047000",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "XLC Oct 2018 call 47.000",
      "type": "O",
      "typeDisp": "Option"

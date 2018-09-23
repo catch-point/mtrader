@@ -54,16 +54,16 @@ module.exports = function() {
     var delegate = cfg.delegate == 'remote' ? remote() :
         cfg.delegate == 'iqfeed' ? iqfeed() :
         cfg.delegate == 'files' ? files() : yahoo();
-    var exchanges = _.uniq(cfg.assets.map(asset => asset.exchange));
+    var markets = _.uniq(cfg.assets.map(asset => asset.market));
     return {
         close() {
             return Promise.resolve(delegate && delegate.close());
         },
         help() {
             return delegate.help().then(_.flatten).then(info => info.map(interday => {
-                if (!interday.options || !interday.options.exchange) return info;
-                else return merge(interday, {options: {exchange: {
-                    values: _.union(exchanges, interday.options.exchange.values)
+                if (!interday.options || !interday.options.market) return info;
+                else return merge(interday, {options: {market: {
+                    values: _.union(markets, interday.options.market.values)
                 }}});
             }));
         },
@@ -150,7 +150,7 @@ function blendCall(delegate, cfg, cmd, options) {
 
 function findAsset(cfg, cmd, options) {
     expect(cfg).to.have.property('assets').that.is.an('array');
-    return cfg.assets.find(asset => asset.symbol == options.symbol && asset.exchange == options.exchange);
+    return cfg.assets.find(asset => asset.symbol == options.symbol && asset.market == options.market);
 }
 
 function readData(cfg, blend, options) {

@@ -58,44 +58,44 @@ module.exports = function(fetch) {
  */
 function fetchOptionsFactory(fetch, offline, read_only) {
     var dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    var memoizeFirstLookup = _.memoize((symbol, exchange) => {
-        return readInfo(dir, symbol, exchange, offline).catch(err => {
+    var memoizeFirstLookup = _.memoize((symbol, market) => {
+        return readInfo(dir, symbol, market, offline).catch(err => {
             if (offline) throw err;
             else return fetch({
                 interval: 'lookup',
                 symbol: symbol,
-                exchange: exchange
+                market: market
             }).then(matches => _.first(matches)).then(security => {
                 if (_.isEmpty(security))
-                    throw Error("Unknown symbol: " + (exchange ? symbol + '.' + exchange:exchange));
+                    throw Error("Unknown symbol: " + (market ? symbol + '.' + market:market));
                 else if (security.symbol == symbol) return security;
                 else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
             }).then(info => {
                 if (read_only) return info;
-                else return saveInfo(dir, symbol, exchange, info);
+                else return saveInfo(dir, symbol, market, info);
             });
         });
-    }, (symbol, exchange) => {
-        return exchange ? symbol + ' ' + exchange : symbol;
+    }, (symbol, market) => {
+        return market ? symbol + ' ' + market : symbol;
     });
     return function(options) {
         expect(options).to.have.property('symbol');
         var symbol = options.symbol.toUpperCase();
-        var exchange = options.exchange;
-        var exchanges = config('exchanges');
+        var market = options.market;
+        var markets = config('markets');
         var args = _.toArray(arguments);
-        return memoizeFirstLookup(symbol, exchange).then(security => {
+        return memoizeFirstLookup(symbol, market).then(security => {
             return _.defaults(
-                _.omit(exchanges[security.exchange] || {}, 'datasources', 'label', 'description'),
+                _.omit(markets[security.market] || {}, 'datasources', 'label', 'description'),
                 security,
                 options
             );
         }, err => {
             memoizeFirstLookup.cache = {};
-            if (!exchange) throw err;
+            if (!market) throw err;
             logger.debug("Fetch lookup failed", err);
             return _.defaults(
-                _.omit(exchanges[exchange] || {}, 'datasources', 'label', 'description'),
+                _.omit(markets[market] || {}, 'datasources', 'label', 'description'),
                 options,
                 {symbol: symbol}
             );
@@ -103,9 +103,9 @@ function fetchOptionsFactory(fetch, offline, read_only) {
     };
 }
 
-function readInfo(dir, symbol, exchange, offline) {
+function readInfo(dir, symbol, market, offline) {
     var yesterday = offline ? 0 : Date.now() - 24 *60 * 60 *1000;
-    var file = getInfoFileName(dir, symbol, exchange);
+    var file = getInfoFileName(dir, symbol, market);
     return new Promise((cb, fail) => {
         fs.stat(file, (err, stats) => err ? fail(err) : cb(stats));
     }).then(stats => {
@@ -116,14 +116,14 @@ function readInfo(dir, symbol, exchange, offline) {
     })).then(data => JSON.parse(data));
 }
 
-function saveInfo(dir, symbol, exchange, info) {
-    var file = getInfoFileName(dir, symbol, exchange);
+function saveInfo(dir, symbol, market, info) {
+    var file = getInfoFileName(dir, symbol, market);
     var data = JSON.stringify(info, null, '  ') + '\n';
     return awriter.writeFile(file, data).then(() => info);
 }
 
-function getInfoFileName(dir, symbol, exchange) {
-    var name = exchange ? symbol + '.' + exchange : symbol;
+function getInfoFileName(dir, symbol, market) {
+    var name = market ? symbol + '.' + market : symbol;
     return path.resolve(dir, safe(name), 'info.json');
 }
 

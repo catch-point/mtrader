@@ -484,13 +484,13 @@ describe("collect", function() {
               usd_cad: 'usd_cad_cvar'
           },
           variables: {
-              cvar: 'IF(symbol="USD" AND exchange="CAD", CVAR(5,60,day.close))',
-              usd_cad_cvar: 'MAXPREC("cvar", 1, "symbol=\'USD\' AND exchange=\'CAD\'")'
+              cvar: 'IF(symbol="USD" AND market="CAD", CVAR(5,60,day.close))',
+              usd_cad_cvar: 'MAXPREC("cvar", 1, "symbol=\'USD\' AND market=\'CAD\'")'
           },
           pad_leading: 1,
           // USD.CAD day.ending is an hour after SPY.ARCA day.ending, so
           // the previous USD.CAD day.close is used
-          filter: 'exchange=IF(usd_cad_cvar<0.01,"ARCA","TSX")'
+          filter: 'market=IF(usd_cad_cvar<0.01,"ARCA","TSX")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
             {symbol:"SPY",date:"2016-01-05",Price:201.36},
@@ -519,7 +519,7 @@ describe("collect", function() {
             portfolio: 'USD.CAD',
             columns: {
                 symbol: 'symbol',
-                exchange: 'exchange',
+                market: 'market',
                 cvar: 'TOD(CVAR(5,60,m240.close))'
             },
             criteria: 'TIME(m240.ending)="16:00:00"'
@@ -532,9 +532,9 @@ describe("collect", function() {
               Price: 'day.close'
           },
           variables: {
-              usd_cad_cvar: 'MAXPREC("cvar", 0, "symbol=\'USD\' AND exchange=\'CAD\'")'
+              usd_cad_cvar: 'MAXPREC("cvar", 0, "symbol=\'USD\' AND market=\'CAD\'")'
           },
-          filter: 'exchange=IF(usd_cad_cvar<0.01,"ARCA","TSX")'
+          filter: 'market=IF(usd_cad_cvar<0.01,"ARCA","TSX")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
             {symbol:"SPY",date:"2016-01-05",Price:201.36},
@@ -1016,7 +1016,7 @@ describe("collect", function() {
               price_cad: 'ROUND(day.close * usd_cad,2)'
           },
           variables: {
-              usd_cad: 'LOOKUP("day.close", "symbol=\'USD\' AND exchange=\'CAD\'")'
+              usd_cad: 'LOOKUP("day.close", "symbol=\'USD\' AND market=\'CAD\'")'
           },
           filter: 'symbol="SPY"'
         }).should.eventually.be.like([
@@ -1058,7 +1058,7 @@ describe("collect", function() {
         return collect({
             portfolio: 'USD.CAD,USD.CAD',
             columns: {
-                symbol: 'IF(first, exchange, symbol)',
+                symbol: 'IF(first, market, symbol)',
                 date: 'DATE(day.ending)',
                 close: 'ROUND(IF(first, 1/day.close, day.close), 5)'
             },

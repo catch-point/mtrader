@@ -42,7 +42,7 @@ const config = require('./mtrader-config.js');
 function usage(command) {
     return command.version(require('./version.js').version)
         .description("Fetches remote data for the given symbol")
-        .usage('<interval> <symbol.exchange> [options]')
+        .usage('<interval> <symbol.market> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-q, --quiet', "Include less information about what the system is doing")
         .option('-x, --debug', "Include details about what the system is working on")
@@ -66,9 +66,9 @@ if (require.main === module) {
     if (program.args.length) {
         var interval = program.args[0];
         var symbol = program.args[1];
-        var exchange = program.args[2];
-        if (!exchange && symbol && ~symbol.indexOf('.')) {
-            exchange = symbol.substring(symbol.lastIndexOf('.')+1);
+        var market = program.args[2];
+        if (!market && symbol && ~symbol.indexOf('.')) {
+            market = symbol.substring(symbol.lastIndexOf('.')+1);
             symbol = symbol.substring(0, symbol.lastIndexOf('.'));
         }
         var fetch = Fetch();
@@ -77,7 +77,7 @@ if (require.main === module) {
         Promise.resolve().then(() => fetch(_.defaults({
             interval: interval,
             symbol: symbol,
-            exchange: exchange
+            market: market
         }, config.options())))
         .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack))
@@ -145,33 +145,33 @@ function shell(desc, fetch, app) {
     app.cmd('lookup :symbol', "List securities with similar symbols", (cmd, sh, cb) => {
         var s = cmd.params.symbol;
         var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
-        var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
+        var market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         fetch(_.defaults({
             interval: 'lookup',
             symbol: symbol,
-            exchange: exchange
+            market: market
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     // fundamental
     app.cmd('fundamental :symbol', "List fundamental information about security", (cmd, sh, cb) => {
         var s = cmd.params.symbol;
         var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
-        var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
+        var market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         fetch(_.defaults({
             interval: 'fundamental',
             symbol: symbol,
-            exchange: exchange
+            market: market
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     // fetch
     app.cmd('fetch :interval :symbol', desc, (cmd, sh, cb) => {
         var s = cmd.params.symbol;
         var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
-        var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
+        var market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         fetch(_.defaults({
             interval: cmd.params.interval,
             symbol: symbol,
-            exchange: exchange
+            market: market
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
 // help
@@ -179,19 +179,19 @@ return fetch({help: true}).then(info => _.indexBy(info, 'name')).then(info => {
 help(app, 'lookup', `
   Usage: lookup :symbol
 
-  List securities and their exchange that have similar symbols
+  List securities and their market that have similar symbols
 
   Options:
 ${listOptions(info.lookup.options)}
 `);
 if (info.fundamental) help(app, 'fundamental', `
-  Usage: fundamental :symbol.exchange
+  Usage: fundamental :symbol.market
 
   List fundamental information about security
 
-    :symbol.exchange
-      The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
-${listOptions(config('exchanges'))}
+    :symbol.market
+      The ticker symbol used by the market followed by a dot and one of the following market acronyms:
+${listOptions(config('markets'))}
 
   Options:
 ${listOptions(info.fundamental.options)}
@@ -199,7 +199,7 @@ ${listOptions(info.fundamental.options)}
     help transpose  
 `);
 help(app, 'fetch', `
-  Usage: fetch :interval :symbol.exchange
+  Usage: fetch :interval :symbol.market
 
   ${desc}
 
@@ -212,11 +212,11 @@ help(app, 'fetch', `
       day         List daily quotes for security
       mX          List intraday quotes for security by X minutes
 
-    :symbol.exchange
-      The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
-${listOptions(config('exchanges'))}
+    :symbol.market
+      The ticker symbol used by the market followed by a dot and one of the following market acronyms:
+${listOptions(config('markets'))}
   Options:
-${listOptions(_.omit(info.interday.options, ['symbol', 'exchange', 'interval']))}
+${listOptions(_.omit(info.interday.options, ['symbol', 'market', 'interval']))}
   See also:
     help begin  
     help end  

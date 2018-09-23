@@ -58,7 +58,7 @@ function usage(command) {
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('--end <dateTime>', "ISO dateTime of the ending point")
         .option('--pad-leading <number>', "Number of work days prior to begin to compute initial variables")
-        .option('--portfolio <list>', "Comma separated list of <symbol>.<exchange> to search")
+        .option('--portfolio <list>', "Comma separated list of <symbol>.<market> to search")
         .option('--add-column <name=expression>', "Add a column to the output (such as close=day.close)")
         .option('--add-variable <name=expression>', "Add a variable to include in column expressions")
         .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")

@@ -44,7 +44,7 @@ describe("adjustments", function() {
     it("list dividends and adjustments", function() {
         return adjustments({
             symbol: 'SPY',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: '2017-01-01',
             tz: tz
         }).then(adjustments => {
@@ -68,7 +68,7 @@ describe("adjustments", function() {
     it("should handle ignore peudo split entry", function() {
         return adjustments({
             symbol: 'XLF',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: '2016-01-01',
             tz: tz
         }).then(adjustments => {
@@ -93,7 +93,7 @@ describe("adjustments", function() {
     it("should adjust splits and dividends", function() {
         return adjustments({
             symbol: 'AAPL',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: '2014-01-01',
             tz: tz
         }).then(adjustments => {
@@ -118,7 +118,7 @@ describe("adjustments", function() {
     it("should adjust for REM reverse split", function() {
         return adjustments({
             symbol: 'REM',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: '2016-01-01',
             tz: tz
         }).then(adjustments => {
@@ -143,7 +143,7 @@ describe("adjustments", function() {
     it("should adjust for Citigroup reverse split", function() {
         return adjustments({
             symbol: 'C',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: '2011-01-01',
             tz: tz
         }).then(adjustments => {
@@ -164,10 +164,10 @@ describe("adjustments", function() {
             {exdate:'2011-11-03',dividend:0.01,cum_close:29.83,adj:0.999}
         ]);
     });
-    it("should be empty for unsupported exchanges", function() {
+    it("should be empty for unsupported markets", function() {
         return adjustments({
             symbol: 'ABC',
-            exchange: 'DNE',
+            market: 'DNE',
             begin: '2011-01-01',
             end: '2011-12-31',
             tz: tz

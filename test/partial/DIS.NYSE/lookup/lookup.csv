@@ -1,4 +1,4 @@
-symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
+symbol,yahoo_symbol,market,name,exch,type,exchDisp,typeDisp
 DIS,DIS,NYSE,The Walt Disney Company,NYQ,S,NYSE,Equity
 DFS,DFS,NYSE,Discover Financial Services,NYQ,S,NYSE,Equity
 CBD,CBD,NYSE,Companhia Brasileira de Distribuição,NYQ,S,NYSE,Equity

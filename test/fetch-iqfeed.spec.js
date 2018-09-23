@@ -50,7 +50,7 @@ describe("fetch-iqfeed", function() {
     it("should find AABA", function() {
         return client.lookup({symbol:'AABA'}).should.eventually.be.like(results => _.some(results, like({
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             iqfeed_symbol: 'AABA',
             name: "ALTABA INC"
         })));
@@ -58,7 +58,7 @@ describe("fetch-iqfeed", function() {
     it("should find AABA details", function() {
         return client.fundamental({
             symbol:'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).should.eventually.be.like([{
             symbol: 'AABA',
@@ -75,7 +75,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'day',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
             end: moment.tz('2014-02-01', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -107,7 +107,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'week',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2014-01-06', tz),
             end: moment.tz('2014-02-01', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -122,7 +122,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'month',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
             end: moment.tz('2014-02-01', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -137,7 +137,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'quarter',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
             end: moment.tz('2013-12-01', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -149,7 +149,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'year',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
             end: moment.tz('2013-12-01', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -169,7 +169,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'day',
             symbol: 'SPY',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: moment.tz('2017-03-15', tz),
             end: moment.tz('2017-03-22', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -188,7 +188,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'day',
             symbol: 'SPY',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: moment.tz('2016-12-01', tz),
             end: moment.tz('2016-12-31', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -223,7 +223,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'day',
             symbol: 'XLF',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: moment.tz('2016-09-14', tz),
             end: moment.tz('2016-09-22', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -243,7 +243,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'month',
             symbol: 'SPY',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: moment.tz('2016-01-01', tz),
             end: moment.tz('2016-12-31', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -269,7 +269,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'month',
             symbol: 'AAPL',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
             end: moment.tz('2014-09-30', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -292,7 +292,7 @@ describe("fetch-iqfeed", function() {
         return client.intraday({
             minutes: 30,
             symbol: 'AAPL',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: '2014-06-06T09:30:00-04:00',
             end: '2014-06-09T16:00:00-04:00',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -352,7 +352,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'year',
             symbol: 'SPY',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: moment.tz('2010-01-01', tz),
             end: moment.tz('2016-12-31', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -373,7 +373,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'day',
             symbol: 'REM',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: '2016-11-01',
             end: '2016-12-01',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz

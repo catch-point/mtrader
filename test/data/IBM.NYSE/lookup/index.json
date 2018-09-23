@@ -8,7 +8,7 @@
     {
      "symbol": "IBM",
      "yahoo_symbol": "IBM",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "International Business Machines Corporation",
      "type": "S",
      "typeDisp": "Equity"
@@ -16,7 +16,7 @@
     {
      "symbol": "IBM.F",
      "yahoo_symbol": "IBM.F",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "International Business Machines Corporation",
      "type": "S",
      "typeDisp": "Equity"
@@ -26,7 +26,7 @@
     {
      "symbol": "IBM180420P00155000",
      "yahoo_symbol": "IBM180420P00155000",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "IBM Apr 2018 put 155.000",
      "type": "O",
      "typeDisp": "Option"
@@ -34,7 +34,7 @@
     {
      "symbol": "IBM180518P00135000",
      "yahoo_symbol": "IBM180518P00135000",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "IBM May 2018 put 135.000",
      "type": "O",
      "typeDisp": "Option"

@@ -65,7 +65,7 @@ describe("quote", function() {
         return quote({
             columns: {ending: 'day.ending'},
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
             end: moment.tz('2014-02-01', tz)
         }).should.eventually.be.like([
@@ -96,7 +96,7 @@ describe("quote", function() {
         return quote({
             columns: {ending: 'week.ending'},
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2014-01-06', tz),
             end: moment.tz('2014-02-01', tz)
         }).should.eventually.be.like(results => results.should.be.like([
@@ -110,7 +110,7 @@ describe("quote", function() {
         return quote({
             columns: {ending:'month.ending'},
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
             end: moment.tz('2014-02-01', tz)
         }).should.eventually.be.like(results => results.slice(-4).should.be.like([
@@ -123,7 +123,7 @@ describe("quote", function() {
     it("should return weekly and monthly", function() {
         return quote({
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             columns: {
                 day: 'DATE(day.ending)',
                 close: 'day.close',
@@ -168,7 +168,7 @@ describe("quote", function() {
         return quote({
             interval: 'm30',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
@@ -196,7 +196,7 @@ describe("quote", function() {
         return quote({
             interval: 'm10',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T10:10:00-0500'),
             end: moment('2014-03-03T11:00:00-0500')
         }).should.eventually.be.like([
@@ -212,7 +212,7 @@ describe("quote", function() {
         return quote({
             interval: 'm1',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T10:01:00-0500'),
             end: moment('2014-03-03T10:30:00-0500')
         }).should.eventually.be.like([
@@ -262,7 +262,7 @@ describe("quote", function() {
                 incomplete: 'day.incomplete'
             },
             symbol: 'IBM',
-            exchange: 'NYSE',
+            market: 'NYSE',
             begin: moment.tz('2009-12-01', tz),
             end: moment.tz('2010-02-01', tz)
         }).then(partial => {
@@ -281,7 +281,7 @@ describe("quote", function() {
                     Change: '(day.close - PRIOR(1, day.close)) *100 / PRIOR(1, day.close)'
                 },
                 symbol: 'IBM',
-                exchange: 'NYSE',
+                market: 'NYSE',
                 begin: moment.tz('2009-12-01', tz),
                 end: moment.tz('2010-03-01', tz),
             });
@@ -362,7 +362,7 @@ describe("quote", function() {
                 Change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
             },
             symbol: 'DIS',
-            exchange: 'NYSE',
+            market: 'NYSE',
             begin: moment.tz('2016-12-01', tz),
             end: moment.tz('2016-12-08', tz).endOf('day')
         }).then(wrong => {
@@ -382,7 +382,7 @@ describe("quote", function() {
                     Change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
                 },
                 symbol: 'DIS',
-                exchange: 'NYSE',
+                market: 'NYSE',
                 begin: moment.tz('2016-12-01', tz),
                 end: moment.tz('2016-12-31', tz),
             });
@@ -413,14 +413,14 @@ describe("quote", function() {
     it("should load the last 100 days", function() {
         return quote({
             symbol: 'IBM',
-            exchange: 'NYSE'
+            market: 'NYSE'
         }).should.eventually.be.an('array').and.lengthOf(100);
     });
     it("should pad end", function() {
         return quote({
             interval: 'day',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
             end: moment.tz('2014-01-01', tz),
             pad_end: 21,
@@ -451,71 +451,71 @@ describe("quote", function() {
     it("should eval change", function() {
         return quote({
             symbol: 'IBM',
-            exchange: 'NYSE',
+            market: 'NYSE',
             begin: moment.tz('2010-01-04', tz),
             end: moment.tz('2010-01-30', tz),
             columns: {
                 symbol: 'symbol',
-                exchange: 'exchange',
+                market: 'market',
                 Date: 'DATE(ending)',
                 Close: 'day.close',
                 Change: '(day.close - OFFSET(1, day.close))*100/OFFSET(1,day.close)'
             }
         }).should.eventually.be.like([
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-04',Close:132.45,Change:1.1841},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-05',Close:130.85,Change:-1.2080},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-06',Close:130,Change:-0.6495},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-07',Close:129.55,Change:-0.3461},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-08',Close:130.85,Change:1.0034},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-11',Close:129.48,Change:-1.0470},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-12',Close:130.51,Change:0.7954},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-13',Close:130.23,Change:-0.2145},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-14',Close:132.31,Change:1.5971},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-15',Close:131.78,Change:-0.4005},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-19',Close:134.14,Change:1.7908},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-20',Close:130.25,Change:-2.8999},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-21',Close:129,Change:-0.9596},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-22',Close:125.5,Change:-2.7131},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-25',Close:126.12,Change:0.4940},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-26',Close:125.75,Change:-0.2933},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-27',Close:126.33,Change:0.4612},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-28',Close:123.75,Change:-2.0422},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-29',Close:122.39,Change:-1.0989}
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-04',Close:132.45,Change:1.1841},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-05',Close:130.85,Change:-1.2080},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-06',Close:130,Change:-0.6495},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-07',Close:129.55,Change:-0.3461},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-08',Close:130.85,Change:1.0034},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-11',Close:129.48,Change:-1.0470},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-12',Close:130.51,Change:0.7954},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-13',Close:130.23,Change:-0.2145},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-14',Close:132.31,Change:1.5971},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-15',Close:131.78,Change:-0.4005},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-19',Close:134.14,Change:1.7908},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-20',Close:130.25,Change:-2.8999},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-21',Close:129,Change:-0.9596},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-22',Close:125.5,Change:-2.7131},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-25',Close:126.12,Change:0.4940},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-26',Close:125.75,Change:-0.2933},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-27',Close:126.33,Change:0.4612},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-28',Close:123.75,Change:-2.0422},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-29',Close:122.39,Change:-1.0989}
         ]);
     });
     it("should serialize empty columns as empty strings", function() {
         return quote({
             symbol: 'IBM',
-            exchange: 'NYSE',
+            market: 'NYSE',
             begin: moment.tz('2010-01-04', tz),
             end: moment.tz('2010-01-30', tz),
             columns: {
                 symbol: 'symbol',
-                exchange: 'exchange',
+                market: 'market',
                 Date: 'DATE(ending)',
                 Close: 'day.close',
                 Nothing: ''
             }
         }).should.eventually.be.like([
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-04',Close:132.45,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-05',Close:130.85,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-06',Close:130,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-07',Close:129.55,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-08',Close:130.85,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-11',Close:129.48,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-12',Close:130.51,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-13',Close:130.23,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-14',Close:132.31,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-15',Close:131.78,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-19',Close:134.14,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-20',Close:130.25,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-21',Close:129,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-22',Close:125.5,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-25',Close:126.12,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-26',Close:125.75,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-27',Close:126.33,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-28',Close:123.75,Nothing:null},
-            {symbol:'IBM',exchange:'NYSE',Date:'2010-01-29',Close:122.39,Nothing:null}
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-04',Close:132.45,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-05',Close:130.85,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-06',Close:130,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-07',Close:129.55,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-08',Close:130.85,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-11',Close:129.48,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-12',Close:130.51,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-13',Close:130.23,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-14',Close:132.31,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-15',Close:131.78,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-19',Close:134.14,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-20',Close:130.25,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-21',Close:129,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-22',Close:125.5,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-25',Close:126.12,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-26',Close:125.75,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-27',Close:126.33,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-28',Close:123.75,Nothing:null},
+            {symbol:'IBM',market:'NYSE',Date:'2010-01-29',Close:122.39,Nothing:null}
         ]);
     });
     it("should combine intervals", function() {
@@ -527,7 +527,7 @@ describe("quote", function() {
                 Change: '(m30.close - day.close)*100/day.close'
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:30:00-0500')
         }).should.eventually.be.like([
@@ -561,7 +561,7 @@ describe("quote", function() {
                 Change: 'CHANGE(m30.close, IF(TIME(day.ending)=TIME(m30.ending),OFFSET(1,day.close),day.close))'
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:30:00-0500')
         }).should.eventually.be.like([
@@ -595,7 +595,7 @@ describe("quote", function() {
                 YTD: '(m30.close - year.close)*100/year.close'
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
@@ -626,7 +626,7 @@ describe("quote", function() {
                 previously: "OFFSET(1, DAYS(NOW(), day.ending))"
             },
             symbol: 'IBM',
-            exchange: 'NYSE',
+            market: 'NYSE',
             begin: "2010-01-05",
             end: "2010-01-06",
             now: "2010-01-08T16:00:00"
@@ -638,7 +638,7 @@ describe("quote", function() {
                 previously: "DAYS(NOW(), day.ending)"
             },
             symbol: 'IBM',
-            exchange: 'NYSE',
+            market: 'NYSE',
             begin: "2010-01-05",
             end: "2010-01-06",
             now: "2010-01-08T16:00:00"
@@ -651,7 +651,7 @@ describe("quote", function() {
                 previously: previously
             },
             symbol: 'IBM',
-            exchange: 'NYSE',
+            market: 'NYSE',
             begin: "2010-01-05",
             end: "2010-01-06",
             now: "2010-01-15T16:00:00"
@@ -670,7 +670,7 @@ describe("quote", function() {
             },
             criteria: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.be.rejected;
@@ -685,7 +685,7 @@ describe("quote", function() {
             },
             criteria: 'm30.close > OFFSET(1, m30.close)',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
@@ -707,7 +707,7 @@ describe("quote", function() {
             },
             criteria: 'Price > OFFSET(1, Price)',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
@@ -732,7 +732,7 @@ describe("quote", function() {
             },
             criteria: 'Price > pcls',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
@@ -757,7 +757,7 @@ describe("quote", function() {
                 minimum: 0.2
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
@@ -773,7 +773,7 @@ describe("quote", function() {
     it("should support include currency and tz for instrument", function() {
         return quote({
             symbol: "USD",
-            exchange: "CAD",
+            market: "CAD",
             columns: {
                 date: "DATE(day.ending)",
                 hour: "HOUR(ending, tz)",
@@ -795,7 +795,7 @@ describe("quote", function() {
             },
             criteria: 'DATE(month.ending) = DATE(day.ending) and HOUR(m30.ending) = 12',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-01-01T08:30:00-0500'),
             end: moment('2014-12-31T17:00:00-0500')
         }).should.eventually.be.like([
@@ -823,7 +823,7 @@ describe("quote", function() {
                 M2: 'OFFSET(240, m240.close)'
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: '2016-01-15',
             end: '2016-01-16'
         }).should.eventually.be.like([
@@ -851,7 +851,7 @@ describe("quote", function() {
                 incomplete: 'm240.incomplete'
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: '2016-02-15',
             end: '2016-02-16'
         }).then(partial => {
@@ -870,7 +870,7 @@ describe("quote", function() {
                     Price: 'm240.close'
                 },
                 symbol: 'USD',
-                exchange: 'CAD',
+                market: 'CAD',
                 begin: '2016-02-16',
                 end: '2016-02-17'
             });
@@ -884,7 +884,7 @@ describe("quote", function() {
                     M2: 'OFFSET(240, m240.close)'
                 },
                 symbol: 'USD',
-                exchange: 'CAD',
+                market: 'CAD',
                 begin: '2016-02-16',
                 end: '2016-02-17'
             });

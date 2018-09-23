@@ -8,7 +8,7 @@
     {
      "symbol": "XLU",
      "yahoo_symbol": "XLU",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "The Select Sector SPDR Trust - The Utilities Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",
@@ -20,7 +20,7 @@
     {
      "symbol": "XLU",
      "yahoo_symbol": "XLU",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "The Select Sector SPDR Trust - The Utilities Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",

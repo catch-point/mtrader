@@ -73,7 +73,7 @@ describe("indicator-functions", function(){
                 OBV: 'day.OBV(28)'
             },
             symbol: 'WMT',
-            exchange: 'NYSE',
+            market: 'NYSE',
             begin: moment('2010-10-27'),
             end: moment('2010-12-09')
         }).should.eventually.be.like([
@@ -180,7 +180,7 @@ describe("indicator-functions", function(){
                     PSAR: 'day.PSAR(0.02, 0.2, 15)'
                 },
                 symbol: 'QQQ',
-                exchange: 'NASDAQ',
+                market: 'NASDAQ',
                 begin: moment('2010-01-10'),
                 end: moment('2010-02-13')
             }).should.eventually.be.like([
@@ -219,7 +219,7 @@ describe("indicator-functions", function(){
                     SAB: 'day.SAB(0.02, 0.2, 15)'
                 },
                 symbol: 'QQQ',
-                exchange: 'NASDAQ',
+                market: 'NASDAQ',
                 begin: moment('2010-01-10'),
                 end: moment('2010-02-13')
             }).should.eventually.be.like([
@@ -258,7 +258,7 @@ describe("indicator-functions", function(){
                     SAS: 'day.SAS(0.02, 0.2, 15)'
                 },
                 symbol: 'QQQ',
-                exchange: 'NASDAQ',
+                market: 'NASDAQ',
                 begin: moment('2010-01-10'),
                 end: moment('2010-02-13')
             }).should.eventually.be.like([
@@ -300,7 +300,7 @@ describe("indicator-functions", function(){
                 POVO: 'ROUND(day.POVO(20),2)'
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-01-01'),
             end: moment('2014-02-01')
         }).should.eventually.be.like([
@@ -339,7 +339,7 @@ describe("indicator-functions", function(){
                 POVO: 'ROUND(day.POVO(20,1),2)'
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-01-01'),
             end: moment('2014-02-01')
         }).should.eventually.be.like([
@@ -377,7 +377,7 @@ describe("indicator-functions", function(){
                 ROF: 'day.ROF(20)'
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-01-01'),
             end: moment('2014-02-01')
         }).should.eventually.be.like([

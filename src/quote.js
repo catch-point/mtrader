@@ -92,7 +92,7 @@ function help(fetch) {
             options: _.extend({}, _.omit(downstream, help.lookup.properties), {
                 label: downstream.label,
                 symbol: downstream.symbol,
-                exchange: downstream.exchange,
+                market: downstream.market,
                 begin: downstream.begin,
                 end: downstream.end,
                 interval: downstream.interval,
@@ -161,8 +161,8 @@ function quote(fetch, store, fields, options) {
     var intervals = periods.sort(_.keys(exprMap));
     if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
     var criteria = parseCriteriaMap(options.criteria, fields, cached, intervals, options);
-    var name = options.exchange ?
-        options.symbol + '.' + options.exchange : options.symbol;
+    var name = options.market ?
+        options.symbol + '.' + options.market : options.symbol;
     var interval = intervals[0];
     intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
     return store.open(name, (err, db) => {
@@ -249,7 +249,7 @@ function createParser(fields, cached, options) {
             return () => value;
         },
         variable(name) {
-            if (_.contains(['symbol', 'exchange', 'ending'], name))
+            if (_.contains(['symbol', 'market', 'ending'], name))
                 return ctx => _.last(ctx)[name];
             else if (!~name.indexOf('.') && ~fields.indexOf(name))
                 return _.constant(options[name]);
@@ -580,7 +580,7 @@ function createPoints(bars, options) {
     return bars.map(bar => ({
         ending: bar.ending,
         symbol: options.symbol,
-        exchange: options.exchange,
+        market: options.market,
         [options.interval]: bar
     }));
 }

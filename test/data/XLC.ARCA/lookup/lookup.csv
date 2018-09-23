@@ -1,4 +1,4 @@
-symbol,yahoo_symbol,exchange,name,type,typeDisp
+symbol,yahoo_symbol,market,name,type,typeDisp
 XLC,XLC,ARCA,Communication Services Sel Sect SPDRETF,E,ETF
 XLC180921C00050000,XLC180921C00050000,ARCA,XLC Sep 2018 call 50.000,O,Option
 XLC181019C00050000,XLC181019C00050000,ARCA,XLC Oct 2018 call 50.000,O,Option

@@ -8,7 +8,7 @@
     {
      "symbol": "EBAY",
      "yahoo_symbol": "EBAY",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "eBay Inc.",
      "type": "S",
      "typeDisp": "Equity"
@@ -16,7 +16,7 @@
     {
      "symbol": "EBAYL",
      "yahoo_symbol": "EBAYL",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "eBay Inc. NT 56",
      "type": "S",
      "typeDisp": "Equity"
@@ -26,7 +26,7 @@
     {
      "symbol": "0R3D.L",
      "yahoo_symbol": "0R3D.L",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "EBAY INC EBAY ORD SHS",
      "type": "S",
      "typeDisp": "Equity"
@@ -34,7 +34,7 @@
     {
      "symbol": "EBA.BE",
      "yahoo_symbol": "EBA.BE",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "EBAY INC.  DL-,001",
      "type": "S",
      "typeDisp": "Equity"

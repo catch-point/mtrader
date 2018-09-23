@@ -1,2 +1,2 @@
-symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
+symbol,yahoo_symbol,market,name,exch,type,exchDisp,typeDisp
 XLY,XLY,ARCA,The Select Sector SPDR Trust - The Consumer Discretionary Select Sector SPDR Fund,PCX,E,NYSEArca,ETF

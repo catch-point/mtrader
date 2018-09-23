@@ -123,7 +123,7 @@ function help(datasources) {
 
 function readOrWriteResult(fallbacks, open, cmd, options) {
     var args = _.compact(_.pick(options, 'interval', 'minutes', 'begin', 'end'));
-    var name = options.exchange ? options.symbol + '.' + options.exchange : options.symbol;
+    var name = options.market ? options.symbol + '.' + options.market : options.symbol;
     return open(name, (err, db) => {
         if (err) throw err;
         return db.collection(cmd).then(coll => coll.lockWith([name], names => {

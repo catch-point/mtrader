@@ -59,7 +59,7 @@ describe("fetch", function() {
     it("should find AABA", function() {
         return fetch({interval: 'lookup', symbol:'AABA'}).then(_.first).should.eventually.be.like({
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             yahoo_symbol: 'AABA',
             name: "Altaba Inc"
         });
@@ -68,7 +68,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'lookup',
             symbol: 'IBM',
-            exchange: 'NYSE'
+            market: 'NYSE'
         }).then(_.first).should.eventually.be.like({
             symbol: 'IBM',
             yahoo_symbol: 'IBM',
@@ -79,7 +79,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'fundamental',
             symbol: 'USD',
-            exchange: 'CAD'
+            market: 'CAD'
         }).should.eventually.be.like([{
             symbol: 'USD'
         }]);
@@ -88,7 +88,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'day',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2014-01-01', tz),
             end: moment.tz('2014-02-01', tz)
         }).should.eventually.be.like([
@@ -119,7 +119,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'week',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2014-01-06', tz)
         }).should.eventually.be.like(results => results.slice(0,4).should.be.like([
             {ending:'2014-01-10T16:00:00-05:00'},
@@ -132,7 +132,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'month',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz)
         }).should.eventually.be.like(results => results.slice(0,4).should.be.like([
             {ending:'2013-10-31T16:00:00-04:00'},
@@ -145,7 +145,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'quarter',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
             end: moment.tz('2013-12-01', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -157,7 +157,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'year',
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             begin: moment.tz('2013-10-01', tz),
             end: moment.tz('2013-12-01', tz),
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -169,7 +169,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'lookup',
             symbol: 'BRK.A',
-            exchange: 'NYSE'
+            market: 'NYSE'
         }).should.eventually.be.like(results => _.some(results, like({
             symbol: /^BRK.A/,
             yahoo_symbol: /^BRK.A/,
@@ -180,7 +180,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'm30',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T08:30:00-0500'),
             end: moment('2014-03-03T17:00:00-0500')
         }).should.eventually.be.like([
@@ -208,7 +208,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'm10',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T10:10:00-0500'),
             end: moment('2014-03-03T11:00:00-0500')
         }).should.eventually.be.like([
@@ -224,7 +224,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'm1',
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: moment('2014-03-03T10:01:00-0500'),
             end: moment('2014-03-03T10:30:00-0500')
         }).should.eventually.be.like([

@@ -43,11 +43,11 @@ const minor_version = require('./version.js').minor_version;
 function help() {
     return [{
         symbol: {
-            description: "Ticker symbol used by the exchange"
+            description: "Ticker symbol used by the market"
         },
-        exchange: {
+        market: {
             description: "Exchange market acronym",
-            values: config('fetch.yahoo.exchanges')
+            values: config('fetch.yahoo.markets')
         },
         yahoo_symbol: {
             description: "Symbol for security as used by The Yahoo! Network"
@@ -61,7 +61,7 @@ function help() {
             description: "Sets the latest date to retrieve"
         },
         tz: {
-            description: "Timezone of the exchange formatted using the identifier in the tz database"
+            description: "Timezone of the market formatted using the identifier in the tz database"
         },
         now: {
             usage: '<timestamp>',
@@ -78,13 +78,13 @@ module.exports = function(yahooClient) {
     var helpInfo = help();
     var dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     var store = storage(dir);
-    var exchanges = _.pick(config('exchanges'), config('fetch.yahoo.exchanges'));
-    var symbol = yahoo_symbol.bind(this, exchanges);
+    var markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
+    var symbol = yahoo_symbol.bind(this, markets);
     var yahoo = yahooClient || Yahoo();
     return _.extend(options => {
         if (options.help) return Promise.resolve(helpInfo);
-        else if (options.exchange && !exchanges[options.exchange]) return Promise.resolve([]);
-        var name = options.exchange ? options.symbol + '.' + options.exchange :
+        else if (options.market && !markets[options.market]) return Promise.resolve([]);
+        var name = options.market ? options.symbol + '.' + options.market :
             options.yahoo_symbol ? options.yahoo_symbol : options.symbol;
         return store.open(name, (err, db) => {
             if (err) throw err;
@@ -98,17 +98,17 @@ module.exports = function(yahooClient) {
     });
 };
 
-function yahoo_symbol(exchanges, options) {
+function yahoo_symbol(markets, options) {
     if (options.yahoo_symbol) {
         expect(options).to.be.like({
             yahoo_symbol: /^\S+$/
         });
         return options.yahoo_symbol;
-    } else if (exchanges[options.exchange] && exchanges[options.exchange].datasources.yahoo) {
+    } else if (markets[options.market] && markets[options.market].datasources.yahoo) {
         expect(options).to.be.like({
             symbol: /^\S+$/
         });
-        var source = exchanges[options.exchange].datasources.yahoo;
+        var source = markets[options.market].datasources.yahoo;
         var suffix = source.yahooSuffix || '';
         if (!suffix && options.symbol.match(/^\w+$/))
             return options.symbol;

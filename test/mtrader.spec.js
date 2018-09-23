@@ -55,13 +55,13 @@ describe("mtrader", function() {
     it("lookup", function() {
         return mtrader.lookup({symbol: 'AABA'}).then(_.first).then(suggestion => {
             suggestion.symbol.should.eql('AABA');
-            suggestion.exchange.should.eql('NASDAQ');
+            suggestion.market.should.eql('NASDAQ');
         });
     });
     it.skip("fundamental", function() {
         return mtrader.fundamental({
           symbol: 'AABA',
-          exchange: 'NASDAQ'
+          market: 'NASDAQ'
         }).should.eventually.be.like({
             name: /Altaba Inc/,
             eps: _.isFinite
@@ -71,7 +71,7 @@ describe("mtrader", function() {
         return mtrader.fetch({
           interval: 'day',
           symbol: 'AABA',
-          exchange: 'NASDAQ',
+          market: 'NASDAQ',
           begin: "2017-01-13",
           end: "2017-01-14",
         }).then(_.first).should.eventually.be.like({
@@ -86,7 +86,7 @@ describe("mtrader", function() {
     it("quote", function() {
         return mtrader.quote({
           symbol: 'AABA',
-          exchange: 'NASDAQ',
+          market: 'NASDAQ',
           begin: "2017-01-13",
           pad_begin: 9,
           end: "2017-01-14",

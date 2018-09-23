@@ -8,7 +8,7 @@
     {
      "symbol": "XLK",
      "yahoo_symbol": "XLK",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "The Select Sector SPDR Trust - The Technology Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",
@@ -20,7 +20,7 @@
     {
      "symbol": "XLK",
      "yahoo_symbol": "XLK",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "The Select Sector SPDR Trust - The Technology Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",

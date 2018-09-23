@@ -8,7 +8,7 @@
     {
      "symbol": "XLB",
      "google_symbol": "NYSEARCA:XLB",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "e": "NYSEARCA",
      "name": "Materials Select Sector SPDR",
      "id": "700199"
@@ -16,7 +16,7 @@
     {
      "symbol": "XLBT",
      "google_symbol": "NYSEARCA:XLBT",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "e": "NYSEARCA",
      "name": "Russell Developed ex US Low Beta ETF",
      "id": "15307993"
@@ -26,7 +26,7 @@
     {
      "symbol": "XLB",
      "google_symbol": "NYSEARCA:XLB",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "e": "NYSEARCA",
      "name": "Materials Select Sector SPDR",
      "id": "700199"
@@ -34,7 +34,7 @@
     {
      "symbol": "XLBT",
      "google_symbol": "NYSEARCA:XLBT",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "e": "NYSEARCA",
      "name": "Russell Developed ex US Low Beta ETF",
      "id": "15307993"

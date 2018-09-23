@@ -8,7 +8,7 @@
     {
      "symbol": "PYPL",
      "yahoo_symbol": "PYPL",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "PayPal Holdings, Inc.",
      "type": "S",
      "typeDisp": "Equity"
@@ -16,7 +16,7 @@
     {
      "symbol": "PYPL-USD.SW",
      "yahoo_symbol": "PYPL-USD.SW",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "PayPal",
      "type": "S",
      "typeDisp": "Equity"
@@ -26,7 +26,7 @@
     {
      "symbol": "PYPL190118C00085000",
      "yahoo_symbol": "PYPL190118C00085000",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "PYPL Jan 2019 call 85.000",
      "type": "O",
      "typeDisp": "Option"
@@ -34,7 +34,7 @@
     {
      "symbol": "PYPL190118P00047000",
      "yahoo_symbol": "PYPL190118P00047000",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "PYPL Jan 2019 put 47.000",
      "type": "O",
      "typeDisp": "Option"

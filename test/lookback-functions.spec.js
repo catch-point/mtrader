@@ -878,7 +878,7 @@ describe("lookback-functions", function(){
                 PF: 'PF(10, day.close)'
             },
             symbol: 'SPY',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
@@ -923,7 +923,7 @@ describe("lookback-functions", function(){
                 RR: 'R2(5,day.close)'
             },
             symbol: 'SPY',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: moment('2016-01-01'),
             end: moment('2016-02-01'),
             pad_begin: 4
@@ -962,7 +962,7 @@ describe("lookback-functions", function(){
                 VaR: 'VAR(5, 260, day.adj_close)'
             },
             symbol: 'SPY',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
@@ -996,7 +996,7 @@ describe("lookback-functions", function(){
                 Shortfall: 'CVAR(5, 260, day.adj_close)'
             },
             symbol: 'SPY',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: moment('2016-01-01'),
             end: moment('2016-02-01')
         }).should.eventually.be.like([
@@ -1031,7 +1031,7 @@ describe("lookback-functions", function(){
                 Relative: 'CHANGE(m60.volume, TOD(SMA(20,m60.volume)))'
             },
             symbol: 'USD',
-            exchange: 'CAD',
+            market: 'CAD',
             begin: '2016-01-08',
             end: '2016-01-10'
         }).should.eventually.be.like([

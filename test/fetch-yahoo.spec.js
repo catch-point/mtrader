@@ -44,7 +44,7 @@ describe("fetch-yahoo", function() {
     it("should find AABA", function() {
         return client.lookup({symbol:'AABA'}).should.eventually.be.like(results => _.some(results, like({
             symbol: 'AABA',
-            exchange: 'NASDAQ',
+            market: 'NASDAQ',
             yahoo_symbol: 'AABA',
             name: "Altaba Inc."
         })));
@@ -301,7 +301,7 @@ describe("fetch-yahoo", function() {
         return client.interday({
             interval: 'day',
             symbol: 'REM',
-            exchange: 'ARCA',
+            market: 'ARCA',
             begin: '2016-11-01',
             end: '2016-11-30',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz

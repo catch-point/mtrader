@@ -41,11 +41,11 @@ const expect = require('chai').use(like).expect;
 function help() {
     var commonOptions = {
         symbol: {
-            description: "Ticker symbol used by the exchange"
+            description: "Ticker symbol used by the market"
         },
-        exchange: {
+        market: {
             description: "Exchange market acronym",
-            values: config('fetch.iqfeed.exchanges')
+            values: config('fetch.iqfeed.markets')
         },
         iqfeed_symbol: {
             description: "Symbol used in the DTN network"
@@ -53,13 +53,13 @@ function help() {
     };
     var tzOptions = {
         marketOpensAt: {
-            description: "Time of day that the exchange options"
+            description: "Time of day that the market options"
         },
         marketClosesAt: {
-            description: "Time of day that the exchange closes"
+            description: "Time of day that the market closes"
         },
         tz: {
-            description: "Timezone of the exchange formatted using the identifier in the tz database"
+            description: "Timezone of the market formatted using the identifier in the tz database"
         }
     };
     var durationOptions = {
@@ -75,15 +75,15 @@ function help() {
     var lookup = {
         name: "lookup",
         usage: "lookup(options)",
-        description: "Looks up existing symbol/exchange using the given symbol prefix using the local IQFeed client",
-        properties: ['symbol', 'iqfeed_symbol', 'exchange', 'name'],
+        description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
+        properties: ['symbol', 'iqfeed_symbol', 'market', 'name'],
         options: commonOptions
     };
     var fundamental = {
         name: "fundamental",
         usage: "fundamental(options)",
         description: "Details of a security on the local IQFeed client",
-        properties: ['type', 'symbol', 'exchange_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'exchange_root'],
+        properties: ['type', 'symbol', 'market_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'market_root'],
         options: _.extend(commonOptions, tzOptions)
     };
     var interday = {
@@ -123,8 +123,8 @@ function help() {
 
 module.exports = function() {
     var helpInfo = help();
-    var exchanges = _.pick(config('exchanges'), config('fetch.iqfeed.exchanges'));
-    var symbol = iqfeed_symbol.bind(this, exchanges);
+    var markets = _.pick(config('markets'), config('fetch.iqfeed.markets'));
+    var symbol = iqfeed_symbol.bind(this, markets);
     var launch = config('fetch.iqfeed.command');
     var iqclient = iqfeed(
         _.isArray(launch) ? launch : launch && launch.split(' '),
@@ -152,7 +152,7 @@ module.exports = function() {
         },
         lookup(options) {
             var exchs = _.pick(_.mapObject(
-                options.exchange ? _.pick(exchanges, [options.exchange]) : exchanges,
+                options.market ? _.pick(markets, [options.market]) : markets,
                 exch => exch.datasources.iqfeed
             ), val => val);
             var listed_markets = options.listed_market ? [options.listed_market] :
@@ -216,17 +216,17 @@ module.exports = function() {
     };
 };
 
-function iqfeed_symbol(exchanges, options) {
+function iqfeed_symbol(markets, options) {
     if (options.iqfeed_symbol) {
         expect(options).to.be.like({
             iqfeed_symbol: /^\S+$/
         });
         return options.iqfeed_symbol;
-    } else if (exchanges[options.exchange] && exchanges[options.exchange].datasources.iqfeed) {
+    } else if (markets[options.market] && markets[options.market].datasources.iqfeed) {
         expect(options).to.be.like({
             symbol: /^\S+$/
         });
-        var source = exchanges[options.exchange].datasources.iqfeed;
+        var source = markets[options.market].datasources.iqfeed;
         var prefix = source.dtnPrefix || '';
         var suffix = source.dtnSuffix || '';
         var map = source.dtnPrefixMap || {};
@@ -289,10 +289,10 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
         return {
             symbol: symbol,
             iqfeed_symbol: row.symbol,
-            exchange: _.first(_.keys(sources)),
+            market: _.first(_.keys(sources)),
             name: row.name
         };
-    })).then(rows => rows.filter(row => row.exchange));
+    })).then(rows => rows.filter(row => row.market));
 }
 
 function year(iqclient, adjustments, symbol, options) {

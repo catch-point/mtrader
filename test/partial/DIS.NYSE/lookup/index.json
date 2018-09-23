@@ -8,7 +8,7 @@
     {
      "symbol": "DIS",
      "yahoo_symbol": "DIS",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "The Walt Disney Company",
      "exch": "NYQ",
      "type": "S",
@@ -18,7 +18,7 @@
     {
      "symbol": "DFS",
      "yahoo_symbol": "DFS",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "Discover Financial Services",
      "exch": "NYQ",
      "type": "S",
@@ -30,7 +30,7 @@
     {
      "symbol": "ADSW",
      "yahoo_symbol": "ADSW",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "Advanced Disposal Services, Inc.",
      "exch": "NYQ",
      "type": "S",
@@ -40,7 +40,7 @@
     {
      "symbol": "DL",
      "yahoo_symbol": "DL",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "China Distance Education Holdings Limited",
      "exch": "NYQ",
      "type": "S",

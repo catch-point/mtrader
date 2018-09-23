@@ -8,7 +8,7 @@
     {
      "symbol": "IBM",
      "yahoo_symbol": "IBM",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "International Business Machines Corporation",
      "exch": "NYQ",
      "type": "S",
@@ -20,7 +20,7 @@
     {
      "symbol": "IBM",
      "yahoo_symbol": "IBM",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "International Business Machines Corporation",
      "exch": "NYQ",
      "type": "S",

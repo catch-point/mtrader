@@ -8,7 +8,7 @@
     {
      "symbol": "QQQ",
      "yahoo_symbol": "QQQ",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "PowerShares QQQ Trust, Series 1",
      "exch": "NGM",
      "type": "E",
@@ -18,7 +18,7 @@
     {
      "symbol": "TQQQ",
      "yahoo_symbol": "TQQQ",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "ProShares Trust - ProShares UltraPro QQQ",
      "exch": "NGM",
      "type": "E",
@@ -30,7 +30,7 @@
     {
      "symbol": "QQQX",
      "yahoo_symbol": "QQQX",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "Nuveen Nasdaq 100 Dynamic Overwrite Fund",
      "exch": "NMS",
      "type": "S",
@@ -40,7 +40,7 @@
     {
      "symbol": "QQQQ",
      "yahoo_symbol": "QQQQ",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "QQQQ",
      "exch": "NGM",
      "type": "E",

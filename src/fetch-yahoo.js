@@ -41,11 +41,11 @@ const expect = require('chai').use(like).expect;
 function help() {
     var commonOptions = {
         symbol: {
-            description: "Ticker symbol used by the exchange"
+            description: "Ticker symbol used by the market"
         },
-        exchange: {
+        market: {
             description: "Exchange market acronym",
-            values: config('fetch.yahoo.exchanges')
+            values: config('fetch.yahoo.markets')
         },
         yahoo_symbol: {
             description: "Symbol for security as used by The Yahoo! Network"
@@ -54,8 +54,8 @@ function help() {
     var lookup = {
         name: "lookup",
         usage: "lookup(options)",
-        description: "Looks up existing symbol/exchange using the given symbol prefix on the Yahoo! network",
-        properties: ['symbol', 'yahoo_symbol', 'exchange', 'name', 'type', 'typeDisp'],
+        description: "Looks up existing symbol/market using the given symbol prefix on the Yahoo! network",
+        properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'type', 'typeDisp'],
         options: commonOptions
     };
     var interday = {
@@ -78,13 +78,13 @@ function help() {
                 description: "Sets the latest dateTime to retrieve"
             },
             marketOpensAt: {
-                description: "Time of day that the exchange options"
+                description: "Time of day that the market options"
             },
             marketClosesAt: {
-                description: "Time of day that the exchange closes"
+                description: "Time of day that the market closes"
             },
             tz: {
-                description: "Timezone of the exchange formatted using the identifier in the tz database"
+                description: "Timezone of the market formatted using the identifier in the tz database"
             }
         })
     };
@@ -93,8 +93,8 @@ function help() {
 
 module.exports = function() {
     var helpInfo = help();
-    var exchanges = _.pick(config('exchanges'), config('fetch.yahoo.exchanges'));
-    var symbol = yahoo_symbol.bind(this, exchanges);
+    var markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
+    var symbol = yahoo_symbol.bind(this, markets);
     var yahoo = _.mapObject(yahooClient(), (fn, name) => {
         if (!_.isFunction(fn) || name == 'close') return fn;
         else return cache(fn, function() {
@@ -116,8 +116,8 @@ module.exports = function() {
             return Promise.resolve(helpInfo);
         },
         lookup(options) {
-            var langs = _.uniq(_.compact(_.map(exchanges, exchange =>
-                    exchange.datasources.yahoo && exchange.datasources.yahoo.marketLang
+            var langs = _.uniq(_.compact(_.map(markets, market =>
+                    market.datasources.yahoo && market.datasources.yahoo.marketLang
                 )));
             return Promise.all(langs.map(marketLang =>
                 yahoo.lookup(symbol(options), marketLang)
@@ -126,9 +126,9 @@ module.exports = function() {
                 return !suffix || row.symbol.indexOf(suffix) == row.symbol.length - suffix.length;
             })).then(rows => rows.map(row => {
                 var sym = row.symbol;
-                var sources = options.exchange ? {[options.exchange]: options} :
-                    _.pick(_.mapObject(exchanges, exchange =>
-                        exchange.datasources.yahoo
+                var sources = options.market ? {[options.market]: options} :
+                    _.pick(_.mapObject(markets, market =>
+                        market.datasources.yahoo
                     ), source =>
                         source && _.contains(source.exchs, row.exch)
                     );
@@ -139,12 +139,12 @@ module.exports = function() {
                 return {
                     symbol: symbol,
                     yahoo_symbol: row.symbol,
-                    exchange: _.first(_.keys(sources)),
+                    market: _.first(_.keys(sources)),
                     name: row.name,
                     type: row.type,
                     typeDisp: row.typeDisp
                 };
-            })).then(rows => rows.filter(row => row.exchange));
+            })).then(rows => rows.filter(row => row.market));
         },
         fundamental(options) {
             throw Error("Yahoo! fundamental service has been discontinued");
@@ -175,17 +175,17 @@ module.exports = function() {
     };
 };
 
-function yahoo_symbol(exchanges, options) {
+function yahoo_symbol(markets, options) {
     if (options.yahoo_symbol) {
         expect(options).to.be.like({
             yahoo_symbol: /^\S+$/
         });
         return options.yahoo_symbol;
-    } else if (exchanges[options.exchange] && exchanges[options.exchange].datasources.yahoo) {
+    } else if (markets[options.market] && markets[options.market].datasources.yahoo) {
         expect(options).to.be.like({
             symbol: /^\S+$/
         });
-        var source = exchanges[options.exchange].datasources.yahoo;
+        var source = markets[options.market].datasources.yahoo;
         var suffix = source.yahooSuffix || '';
         if (!suffix && options.symbol.match(/^\w+$/))
             return options.symbol;

@@ -13,17 +13,17 @@ mtrader can be used as a node.js library, as a command line utility or as an int
 ```
 const mtrader = require('mtrader');
 
-// lookup exchange for a symbol and search for similar symbols
+// lookup market for a symbol and search for similar symbols
 mtrader.lookup({symbol: 'AABA'}).then(suggestions => {
   suggestions.forEach(suggestion => {
-    console.log(suggestion.symbol, suggestion.exchange, suggestion.name); // AABA NASDAQ Altaba Inc
+    console.log(suggestion.symbol, suggestion.market, suggestion.name); // AABA NASDAQ Altaba Inc
   });
 });
 
 // fundamental
 mtrader.fundamental({
   symbol: 'AABA',
-  exchange: 'NASDAQ'
+  market: 'NASDAQ'
 }).then(security => {
   console.log(security.name, security.EarningsShare); // Altaba Inc 4.58
 });
@@ -32,7 +32,7 @@ mtrader.fundamental({
 mtrader.fetch({
   interval: 'day',
   symbol: 'AABA',
-  exchange: 'NASDAQ'
+  market: 'NASDAQ'
 }).then(bars => {
   bars.forEach(bar => {
     console.log(bar.ending, bar.open, bar.high, bar.low, bar.close, bar.volume);
@@ -56,7 +56,7 @@ mtrader.config('prefix', '/tmp/mtrader');
 // retrieve historic data using custom columns and filtering
 mtrader.quote({
   symbol: 'AABA',
-  exchange: 'NASDAQ',
+  market: 'NASDAQ',
   pad_begin: 9,       // Show today and nine earlier trading days
   columns: {
       Date: 'DATE(ending)',
@@ -195,8 +195,8 @@ A function call has a name followed parentheses enclosed comma separated list of
 A field can be one of the following without a prefix:
 
 ```
-      symbol    Represents the symbol used by the exchange
-      exchange  Represents the exchange acronym
+      symbol    Represents the symbol used by the market
+      market    Represents the market acronym
       ending    Represents the dateTime of when an interval ended
 ```
 A field can also be one of the following prefixed by an interval:

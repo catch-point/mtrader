@@ -8,7 +8,7 @@
     {
      "symbol": "AABA",
      "yahoo_symbol": "AABA",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "Altaba Inc.",
      "exch": "NGM",
      "type": "E",
@@ -18,7 +18,7 @@
     {
      "symbol": "AABAX",
      "yahoo_symbol": "AABAX",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "Cavanal Hill Active Core A",
      "exch": "NAS",
      "type": "M",
@@ -30,7 +30,7 @@
     {
      "symbol": "AABA",
      "yahoo_symbol": "AABA",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "Altaba Inc.",
      "exch": "NGM",
      "type": "E",
@@ -40,7 +40,7 @@
     {
      "symbol": "AABAX",
      "yahoo_symbol": "AABAX",
-     "exchange": "NASDAQ",
+     "market": "NASDAQ",
      "name": "Cavanal Hill Active Core A",
      "exch": "NAS",
      "type": "M",

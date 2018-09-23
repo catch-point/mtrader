@@ -8,7 +8,7 @@
     {
      "symbol": "WMT",
      "yahoo_symbol": "WMT",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "Wal-Mart Stores, Inc.",
      "exch": "NYQ",
      "type": "S",
@@ -20,7 +20,7 @@
     {
      "symbol": "WMT",
      "yahoo_symbol": "WMT",
-     "exchange": "NYSE",
+     "market": "NYSE",
      "name": "Wal-Mart Stores, Inc.",
      "exch": "NYQ",
      "type": "S",

@@ -8,7 +8,7 @@
       "lookup": true,
       "fundamental": false,
       "interday": ["year", "quarter", "month", "week", "day"],
-      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV"]
+      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV"]
     },
     "iqfeed": {
       "enabled": false,
@@ -16,7 +16,7 @@
       "fundamental": true,
       "interday": ["year", "quarter", "month", "week", "day"],
       "intraday": ["m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME"]
+      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME"]
     },
     "remote": {
       "enabled": false,
@@ -31,7 +31,7 @@
     "submitSignal": "https://collective2.com/world/apiv3/submitSignal",
     "cancelSignal": "https://collective2.com/world/apiv3/cancelSignal"
   },
-  "exchanges": {
+  "markets": {
     "ARCA": {
       "label": "Archipelago Electronic Communications Network",
       "description": "The Archipelago Electronic Communications Network (ARCX) allows the trading of listed NYSE, AMEX, NYSE Arca, and Nasdaq stocks in quantities from 1 to 1,000,000.",

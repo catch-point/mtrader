@@ -8,7 +8,7 @@
     {
      "symbol": "XLI",
      "yahoo_symbol": "XLI",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "The Select Sector SPDR Trust - The Industrial Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",
@@ -20,7 +20,7 @@
     {
      "symbol": "XLI",
      "yahoo_symbol": "XLI",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "The Select Sector SPDR Trust - The Industrial Select Sector SPDR Fund",
      "exch": "PCX",
      "type": "E",

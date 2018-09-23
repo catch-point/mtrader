@@ -1,4 +1,4 @@
-symbol,yahoo_symbol,exchange,name,exch,type,exchDisp,typeDisp
+symbol,yahoo_symbol,market,name,exch,type,exchDisp,typeDisp
 QQQ,QQQ,NASDAQ,"PowerShares QQQ Trust, Series 1",NGM,E,NASDAQ,ETF
 TQQQ,TQQQ,NASDAQ,ProShares Trust - ProShares UltraPro QQQ,NGM,E,NASDAQ,ETF
 SQQQ,SQQQ,NASDAQ,ProShares Trust - ProShares UltraPro Short QQQ,NGM,E,NASDAQ,ETF

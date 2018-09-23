@@ -9,7 +9,7 @@
       "enabled": false,
       "lookup": true,
       "interday": ["year", "quarter", "month", "week", "day"],
-      "exchanges": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV"]
+      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV"]
     }
   }
 }

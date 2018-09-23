@@ -1,4 +1,4 @@
-symbol,yahoo_symbol,exchange,name,type,typeDisp
+symbol,yahoo_symbol,market,name,type,typeDisp
 GLD,GLD,ARCA,SPDR Gold Shares,E,ETF
 JNUG,JNUG,ARCA,Direxion Daily Jr Gld Mnrs Bull 3X ETF,E,ETF
 JDST,JDST,ARCA,Direxion Daily Jr Gld Mnrs Bear 3X ETF,E,ETF

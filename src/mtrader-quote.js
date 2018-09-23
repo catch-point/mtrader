@@ -52,7 +52,7 @@ const WORKER_COUNT = require('os').cpus().length;
 function usage(command) {
     return command.version(require('./version.js').version)
         .description("Quotes historical data for the given symbol")
-        .usage('<symbol.exchange> [options]')
+        .usage('<symbol.market> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-q, --quiet', "Include less information about what the system is doing")
         .option('-x, --debug', "Include details about what the system is working on")
@@ -86,14 +86,14 @@ if (require.main === module) {
         process.on('SIGINT', () => quote.close().then(() => fetch.close()));
         process.on('SIGTERM', () => quote.close().then(() => fetch.close()));
         var symbol = program.args[0];
-        var exchange = program.args[1];
-        if (!exchange && ~symbol.indexOf('.')) {
-            exchange = symbol.substring(symbol.lastIndexOf('.')+1);
+        var market = program.args[1];
+        if (!market && ~symbol.indexOf('.')) {
+            market = symbol.substring(symbol.lastIndexOf('.')+1);
             symbol = symbol.substring(0, symbol.lastIndexOf('.'));
         }
         Promise.resolve().then(() => quote(_.defaults({
             symbol: symbol,
-            exchange: exchange
+            market: market
         }, config.options())))
         .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack))
@@ -187,8 +187,8 @@ function createWorkers(program, fetch) {
 
 function getMasterWorker(workers, options) {
     if (!options.help) expect(options).to.have.property('symbol');
-    var name = options.help ? 'help' : options.exchange ?
-        options.symbol + '.' + options.exchange : options.symbol;
+    var name = options.help ? 'help' : options.market ?
+        options.symbol + '.' + options.market : options.symbol;
     expect(workers).to.be.an('array').and.not.empty;
     var capacity = workers.length;
     var number = (hashCode(name) % capacity + capacity) % capacity;
@@ -229,10 +229,10 @@ function shell(desc, quote, app) {
     app.cmd('quote :symbol', desc, (cmd, sh, cb) => {
         var s = cmd.params.symbol;
         var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
-        var exchange = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
+        var market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         quote(_.defaults({
             symbol: symbol,
-            exchange: exchange
+            market: market
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     _.forEach(common.functions, (fn, name) => {
@@ -247,15 +247,15 @@ function shell(desc, quote, app) {
 // help
 return quote({help: true}).then(_.first).then(info => {
 help(app, 'quote', `
-  Usage: quote :symbol.exchange
+  Usage: quote :symbol.market
 
   ${info.description}
 
-    :symbol.exchange
-      The ticker symbol used by the exchange followed by a dot and one of the following exchange acronyms:
-${listOptions(config('exchanges'))}
+    :symbol.market
+      The ticker symbol used by the market followed by a dot and one of the following market acronyms:
+${listOptions(config('markets'))}
   Options:
-${listOptions(_.omit(info.options, ['symbol', 'exchange']))}
+${listOptions(_.omit(info.options, ['symbol', 'market']))}
   See also:
     help output  
     help reverse  
@@ -295,8 +295,8 @@ help(app, 'expression', `
     list of expressions.
 
     A field can be one of the following without a prefix:
-    symbol    Represents the symbol used by the exchange
-    exchange  Represents the exchange acronym
+    symbol    Represents the symbol used by the market
+    market  Represents the market acronym
     ending    Represents the dateTime of when an interval ended
 
     A field can also be one of the following prefixed by an interval:

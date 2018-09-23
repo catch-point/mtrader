@@ -1,4 +1,4 @@
-symbol,yahoo_symbol,exchange,name,type,typeDisp
+symbol,yahoo_symbol,market,name,type,typeDisp
 IBM,IBM,NYSE,International Business Machines Corporation,S,Equity
 IBM.F,IBM.F,NYSE,International Business Machines Corporation,S,Equity
 IBMH,IBMH,NYSE,iShares iBonds Sep 2019 Term Muni Bd ETF,E,ETF

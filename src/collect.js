@@ -57,7 +57,7 @@ module.exports = function(quote, collectFn) {
             var opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
                 indexCol: '$index',
                 symbolCol: '$symbol',
-                exchangeCol: '$exchange',
+                marketCol: '$market',
                 temporalCol: '$temporal',
                 tz: moment.tz.guess()
             });
@@ -80,9 +80,9 @@ function help(quote) {
             usage: 'collect(options)',
             description: "Evaluates columns using historic security data",
             properties: help.properties,
-            options: _.extend({}, _.omit(help.options, ['symbol','exchange','pad_begin','pad_end']), {
+            options: _.extend({}, _.omit(help.options, ['symbol','market','pad_begin','pad_end']), {
                 portfolio: {
-                    usage: 'symbol.exchange,..',
+                    usage: 'symbol.market,..',
                     description: "Sets the set of securities or nested protfolios to collect data on"
                 },
                 filter: {
@@ -214,7 +214,7 @@ function collectDuration(quote, callCollect, fields, options) {
                 columns: _.extend(columns, {
                     [options.indexCol]: JSON.stringify(index),
                     [options.symbolCol]: 'symbol',
-                    [options.exchangeCol]: 'exchange',
+                    [options.marketCol]: 'market',
                     [options.temporalCol]: 'DATETIME(ending)'
                 }),
                 variables: _.extend(_.omit(getColumnVariables(fields, opts), _.keys(columns)), opts.variables),
@@ -227,7 +227,7 @@ function collectDuration(quote, callCollect, fields, options) {
                 columns: _.defaults({
                     [options.indexCol]: JSON.stringify(index),
                     [options.symbolCol]: JSON.stringify(opts.symbol),
-                    [options.exchangeCol]: JSON.stringify(opts.exchange),
+                    [options.marketCol]: JSON.stringify(opts.market),
                     [options.temporalCol]: 'DATETIME(ending)'
                 }, simpleColumns),
                 criteria: criteria,
@@ -364,7 +364,7 @@ function compactPortfolio(fields, begin, end, tz, options) {
 }
 
 /**
- * Parses a comma separated list into symbol/exchange pairs.
+ * Parses a comma separated list into symbol/market pairs.
  */
 function getPortfolio(portfolio, options) {
     var opts = _.omit(options, [
@@ -383,11 +383,11 @@ function getPortfolio(portfolio, options) {
         if (_.isObject(symbolExchange)) return symbolExchange;
         else if (!symbolExchange) return null;
         var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
-        if (!m) throw Error("Unexpected symbol.exchange: " + symbolExchange);
+        if (!m) throw Error("Unexpected symbol.market: " + symbolExchange);
         return {
             label: symbolExchange,
             symbol: m[1],
-            exchange: m[2]
+            market: m[2]
         };
     }).map((subcollect, idx) => {
         var sbegin = subcollect.begin && moment.tz(subcollect.begin, subcollect.tz || options.tz);
@@ -717,13 +717,13 @@ function promiseColumns(parser, columns, options) {
       .then(columns => {
         var indexCol = options.indexCol;
         var symbolCol = options.symbolCol;
-        var exchangeCol = options.exchangeCol;
+        var marketCol = options.marketCol;
         var temporalCol = options.temporalCol;
         if (!columns[indexCol]) return columns;
         // nested collect pass through these columns as-is
         columns[indexCol] = ctx => _.last(_.values(_.last(ctx)))[indexCol];
         columns[symbolCol] = ctx => _.last(_.values(_.last(ctx)))[symbolCol];
-        columns[exchangeCol] = ctx => _.last(_.values(_.last(ctx)))[exchangeCol];
+        columns[marketCol] = ctx => _.last(_.values(_.last(ctx)))[marketCol];
         columns[temporalCol] = ctx => _.last(_.values(_.last(ctx)))[temporalCol];
         return columns;
     });

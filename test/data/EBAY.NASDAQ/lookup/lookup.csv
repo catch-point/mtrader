@@ -1,4 +1,4 @@
-symbol,yahoo_symbol,exchange,name,type,typeDisp
+symbol,yahoo_symbol,market,name,type,typeDisp
 EBAY,EBAY,NASDAQ,eBay Inc.,S,Equity
 EBAYL,EBAYL,NASDAQ,eBay Inc. NT 56,S,Equity
 EBAY180601C00039000,EBAY180601C00039000,NASDAQ,EBAY Jun 2018 call 39.000,O,Option

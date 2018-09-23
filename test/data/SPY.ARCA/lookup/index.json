@@ -8,7 +8,7 @@
     {
      "symbol": "SPY",
      "yahoo_symbol": "SPY",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "SPDR S&P 500 ETF Trust",
      "exch": "PCX",
      "type": "E",
@@ -20,7 +20,7 @@
     {
      "symbol": "SPY",
      "yahoo_symbol": "SPY",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "name": "SPDR S&P 500 ETF Trust",
      "exch": "PCX",
      "type": "E",

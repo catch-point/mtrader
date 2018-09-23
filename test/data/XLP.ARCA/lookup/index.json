@@ -8,7 +8,7 @@
     {
      "symbol": "XLP",
      "google_symbol": "NYSEARCA:XLP",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "e": "NYSEARCA",
      "name": "Consumer Staples Select Sect. SPDR (ETF)",
      "id": "700194"
@@ -18,7 +18,7 @@
     {
      "symbol": "XLP",
      "google_symbol": "NYSEARCA:XLP",
-     "exchange": "ARCA",
+     "market": "ARCA",
      "e": "NYSEARCA",
      "name": "Consumer Staples Select Sect. SPDR (ETF)",
      "id": "700194"
