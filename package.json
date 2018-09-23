@@ -1,8 +1,8 @@
 {
-  "name": "ptrading",
-  "version": "0.63.79",
+  "name": "mtrader",
+  "version": "0.99.99",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
-  "main": "src/ptrading.js",
+  "main": "src/mtrader.js",
   "dependencies": {
     "alea": "0.0.9",
     "chai": "^3.5.0",
@@ -28,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ptrading/ptrading.git"
+    "url": "git+https://github.com/jamesrdf/mtrader.git"
   },
   "keywords": [
     "trading",
@@ -39,10 +39,10 @@
   "author": "James Leigh",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ptrading/ptrading/issues"
+    "url": "https://github.com/jamesrdf/mtrader/issues"
   },
-  "homepage": "https://github.com/ptrading/ptrading#readme",
+  "homepage": "https://github.com/jamesrdf/mtrader#readme",
   "bin": {
-    "ptrading": "src/ptrading.js"
+    "mtrader": "src/mtrader.js"
   }
 }

@@ -1,6 +1,6 @@
-// ptrading-collect.spec.js
+// mtrader-collect.spec.js
 /*
- *  Copyright (c) 2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -31,34 +31,34 @@
 
 const path = require('path');
 const _ = require('underscore');
-const ptrading = require('../src/ptrading.js');
+const mtrader = require('../src/mtrader.js');
 const readCallSave = require('../src/read-call-save.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
-describe("ptrading-collect", function() {
+describe("mtrader-collect", function() {
     this.timeout(1200000);
     before(function() {
-        ptrading.config('prefix', createTempDir('ptrading'));
-        ptrading.config('fetch.iqfeed.enabled', false);
-        ptrading.config('fetch.yahoo.enabled', true);
-        ptrading.config('fetch.files.enabled', false);
+        mtrader.config('prefix', createTempDir('mtrader'));
+        mtrader.config('fetch.iqfeed.enabled', false);
+        mtrader.config('fetch.yahoo.enabled', true);
+        mtrader.config('fetch.files.enabled', false);
         process.emit('SIGHUP');
-        ptrading.config.save('SPY', {
+        mtrader.config.save('SPY', {
             portfolio: 'SPY.ARCA',
             columns: {
                 'day.ending': 'day.ending',
                 'day.close': 'ROUND(day.close,5)'
             }
         });
-        ptrading.config.save('SPY_ARCA', {
+        mtrader.config.save('SPY_ARCA', {
             portfolio: 'ARCA_SPY',
             columns: {
                 'day.ending': 'day.ending',
                 'day.close': 'ROUND(day.close,5)'
             }
         });
-        ptrading.config.save('ARCA_SPY', {
+        mtrader.config.save('ARCA_SPY', {
             portfolio: 'SPY_ARCA',
             columns: {
                 'day.ending': 'day.ending',
@@ -67,13 +67,13 @@ describe("ptrading-collect", function() {
         });
     });
     after(function() {
-        ptrading.config.unset('prefix');
-        ptrading.config.unset('fetch.iqfeed.enabled');
-        ptrading.config.unset('fetch.yahoo.enabled');
-        ptrading.config.unset('fetch.files.enabled');
+        mtrader.config.unset('prefix');
+        mtrader.config.unset('fetch.iqfeed.enabled');
+        mtrader.config.unset('fetch.yahoo.enabled');
+        mtrader.config.unset('fetch.files.enabled');
     });
     it("change", function() {
-        return ptrading.collect({
+        return mtrader.collect({
           portfolio: 'AABA.NASDAQ,IBM.NYSE',
           begin: "2016-12-29",
           end: "2017-01-14",
@@ -100,7 +100,7 @@ describe("ptrading-collect", function() {
         ]);
     });
     it("profit", function() {
-        return ptrading.collect({
+        return mtrader.collect({
           portfolio: 'AABA.NASDAQ,IBM.NYSE',
           begin: "2017-01-09",
           end: "2017-01-14",
@@ -138,7 +138,7 @@ describe("ptrading-collect", function() {
         ]);
     });
     it("by week should be the same as by month", function() {
-        return ptrading.collect({
+        return mtrader.collect({
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
           pad_leading: 3,
           begin: "2016-10-30",
@@ -158,7 +158,7 @@ describe("ptrading-collect", function() {
           },
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           criteria: 'position OR shares'
-        }).then(expected => ptrading.collect({
+        }).then(expected => mtrader.collect({
           portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
           pad_leading: 3,
           begin: "2016-10-30",
@@ -190,7 +190,7 @@ describe("ptrading-collect", function() {
             },
             begin: '2017-01-01',
             end: '2017-01-31'
-        }).then(ptrading.collect).should.eventually.be.like([
+        }).then(mtrader.collect).should.eventually.be.like([
             {date:"2017-01-03",close:225.24},
             {date:"2017-01-04",close:226.58},
             {date:"2017-01-05",close:226.4},
@@ -213,7 +213,7 @@ describe("ptrading-collect", function() {
         ]);
     });
     it("should detect nested collect cycle", function() {
-        return Promise.resolve().then(() => ptrading.collect({
+        return Promise.resolve().then(() => mtrader.collect({
             portfolio: 'SPY_ARCA',
             columns: {
                 date: 'DATE(day.ending)',

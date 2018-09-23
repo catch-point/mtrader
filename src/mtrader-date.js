@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// ptrading-date.js
+// mtrader-date.js
 /*
  *  Copyright (c) 2018 James Leigh, Some Rights Reserved
  *

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// ptrading-quote.js
+// mtrader-quote.js
 /*
- *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -41,7 +41,7 @@ const interrupt = require('./interrupt.js');
 const workerQueue = require('./worker-queue.js');
 const Quote = require('./quote.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./ptrading-config.js');
+const config = require('./mtrader-config.js');
 const expect = require('chai').expect;
 const common = require('./common-functions.js');
 const lookback = require('./lookback-functions.js');
@@ -81,7 +81,7 @@ function usage(command) {
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var fetch = require('./ptrading-fetch.js');
+        var fetch = require('./mtrader-fetch.js');
         var quote = Quote(fetch);
         process.on('SIGINT', () => quote.close().then(() => fetch.close()));
         process.on('SIGTERM', () => quote.close().then(() => fetch.close()));
@@ -113,7 +113,7 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    var fetch = require('./ptrading-fetch.js');
+    var fetch = require('./mtrader-fetch.js');
     var program = usage(new commander.Command());
     module.exports = createInstance(fetch, program);
     process.on('SIGHUP', () => module.exports.reload());

@@ -1,5 +1,5 @@
 {
-  "description": "Configuration file for ptrading",
+  "description": "Configuration file for mtrader",
   "default_cache_dir": "var/cache",
   "default_config_dir": "etc",
   "fetch": {

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Portions Copyright (c) 2017 James Leigh, Some Rights Reserved
+# Portions Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are met:
@@ -31,10 +31,10 @@
 
 #
 # Usage:
-# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/uninstall-worker.sh)'
+# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/jamesrdf/mtrader/master/uninstall-worker.sh)'
 #
 
-NAME=ptrading-worker
+NAME=mtrader-worker
 
 # Read configuration variable file if it is present
 [ -r "/etc/default/$NAME" ] && . "/etc/default/$NAME"
@@ -84,7 +84,7 @@ else
   BASEDIR=$(eval echo ~$DAEMON_USER)
 fi
 
-if [ -z "$PREFIX" -a -x "$PRGDIR/ptrading" ]; then
+if [ -z "$PREFIX" -a -x "$PRGDIR/mtrader" ]; then
   PREFIX="$PRGDIR/.."
 elif [ -z "$PREFIX" ]; then
   PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
@@ -92,12 +92,12 @@ fi
 
 # uninstall/upgrade software
 if [ "$PREFIX" = "$BASEDIR" ]; then
-  sudo -iu "$DAEMON_USER" npm uninstall ptrading -g
+  sudo -iu "$DAEMON_USER" npm uninstall mtrader -g
 elif [ "$(id -u)" = "0" ]; then
-  npm uninstall ptrading -g
-elif [ ! -x "$(which ptrading)" ]; then
+  npm uninstall mtrader -g
+elif [ ! -x "$(which mtrader)" ]; then
   PREFIX=$(npm prefix)
-  npm uninstall ptrading
+  npm uninstall mtrader
 fi
 
 # Check if certbot was installed
@@ -122,10 +122,10 @@ if [ -z "$CONFIG_DIR" ]; then
 fi
 
 # Remove configuration
-if [ -f "$PREFIX/etc/ptrading.json" ]; then
-  rm -f "$PREFIX/etc/ptrading.json" "$PREFIX/bin/certbot-pre-$NAME" "$PREFIX/bin/certbot-post-$NAME" "$PREFIX/bin/uninstall-$NAME"
+if [ -f "$PREFIX/etc/mtrader.json" ]; then
+  rm -f "$PREFIX/etc/mtrader.json" "$PREFIX/bin/certbot-pre-$NAME" "$PREFIX/bin/certbot-post-$NAME" "$PREFIX/bin/uninstall-$NAME"
   # remove generated certificates
-  rm -f "$PREFIX/etc/ptrading-privkey.pem" "$PREFIX/etc/ptrading-fullchain.pem" "$PREFIX/etc/ptrading-crt.pem" "$PREFIX/etc/ptrading-dh.pem" "$PREFIX/etc/ptrading-cert.pem" "$PREFIX/etc/ptrading-ca.pem" "$PREFIX/etc/ptrading-csr.pem"
+  rm -f "$PREFIX/etc/mtrader-privkey.pem" "$PREFIX/etc/mtrader-fullchain.pem" "$PREFIX/etc/mtrader-crt.pem" "$PREFIX/etc/mtrader-dh.pem" "$PREFIX/etc/mtrader-cert.pem" "$PREFIX/etc/mtrader-ca.pem" "$PREFIX/etc/mtrader-csr.pem"
   rm -rf "$PREFIX/$CACHE_DIR"
   rmdir "$PREFIX/$CONFIG_DIR"
 fi

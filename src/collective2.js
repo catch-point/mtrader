@@ -688,7 +688,7 @@ function retrieve(agent, name, settings, options) {
             var client = parsed.protocol == 'https:' ? https : http;
             var request = client.request(_.defaults({
                 method: 'POST',
-                headers: {'User-Agent': 'ptrading/' + version},
+                headers: {'User-Agent': 'mtrader/' + version},
                 agent: parsed.protocol == 'https:' && agent
             }, parsed), res => {
                 try {
@@ -749,7 +749,7 @@ function submit(agent, name, body, settings, options) {
             var client = parsed.protocol == 'https:' ? https : http;
             var request = client.request(_.defaults({
                 method: 'POST',
-                headers: {'User-Agent': 'ptrading/' + version},
+                headers: {'User-Agent': 'mtrader/' + version},
                 agent: parsed.protocol == 'https:' && agent
             }, parsed), res => {
                 try {

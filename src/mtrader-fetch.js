@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// ptrading-fetch.js
+// mtrader-fetch.js
 /*
- *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -37,7 +37,7 @@ const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const Fetch = require('./fetch.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./ptrading-config.js');
+const config = require('./mtrader-config.js');
 
 function usage(command) {
     return command.version(require('./version.js').version)

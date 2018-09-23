@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// ptrading-optimize.js
+// mtrader-strategize.js
 /*
- *  Copyright (c) 2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -37,15 +37,15 @@ const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./ptrading-config.js');
-const Optimize = require('./optimize.js');
+const config = require('./mtrader-config.js');
+const Strategize = require('./strategize.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
 
 function usage(command) {
     return command.version(require('./version.js').version)
-        .description("Optimizes the parameter values in the given portfolio")
+        .description("Modifies a strategy looking for improvements")
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-q, --quiet', "Include less information about what the system is doing")
@@ -74,6 +74,11 @@ function usage(command) {
         .option('-o, --offline', "Disable data updates")
         .option('--solution-count <number>', "Number of solutions to include in result")
         .option('--termination <Duration>', "Amount of time spent searching for a solution before the best yet is used")
+        .option('--signalset <identifier,..>', "Comma separated signal set names")
+        .option('--max-changes <number>', "The maximum number of changes allowed to strategy expressions")
+        .option('--concurrent-strategies <number>', "Number of strategies to search for and evaluate at once")
+        .option('--signal-cost <number>', "Minimum amount the score must increase by before adding another signal")
+        .option('--from-scratch', "If the existing strategy should not be immediately considered")
         .option('--amend', "If the result should include option properties from the input")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--save <file>', "JSON file to write the result into");
@@ -82,14 +87,14 @@ function usage(command) {
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var optimize = createInstance(program);
-        process.on('SIGINT', () => optimize.close());
-        process.on('SIGTERM', () => optimize.close());
+        var strategize = createInstance(program);
+        process.on('SIGINT', () => strategize.close());
+        process.on('SIGTERM', () => strategize.close());
         var save = config('save');
         Promise.all(program.args.map((name, i) => {
-            return readCallSave(name, optimize, _.isArray(save) ? save[i] : save);
+            return readCallSave(name, strategize, _.isArray(save) ? save[i] : save);
         })).catch(err => logger.error(err, err.stack))
-          .then(() => optimize.close());
+          .then(() => strategize.close());
     } else {
         program.help();
     }
@@ -98,42 +103,39 @@ if (require.main === module) {
 }
 
 function createInstance(program) {
-    var collect = require('./ptrading-collect.js');
-    var optimize = Optimize(collect);
+    var bestsignals = require('./mtrader-bestsignals.js');
+    var strategize = Strategize(bestsignals);
     var promiseKeys;
     var instance = function(options) {
         if (!promiseKeys) {
-            promiseKeys = optimize({help: true})
+            promiseKeys = strategize({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
         }
-        return promiseKeys.then(keys => _.pick(options, keys)).then(optimize);
+        return promiseKeys.then(keys => _.pick(options, keys)).then(strategize);
     };
-    instance.seed = optimize.seed;
+    instance.seed = strategize.seed;
     instance.close = function() {
-        return Promise.all([
-            collect && collect.close(),
-            optimize.close()
-        ]);
+        return bestsignals.close().then(strategize.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;
 }
 
-function shell(desc, optimize, app) {
-    app.on('quit', () => optimize.close());
-    app.on('exit', () => optimize.close());
-    app.cmd('optimize', desc, (cmd, sh, cb) => {
-        readCallSave(null, optimize, config('save'))
+function shell(desc, strategize, app) {
+    app.on('quit', () => strategize.close());
+    app.on('exit', () => strategize.close());
+    app.cmd('strategize', desc, (cmd, sh, cb) => {
+        readCallSave(null, strategize, config('save'))
           .then(() => sh.prompt(), cb);
     });
-    app.cmd("optimize :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
-        readCallSave(cmd.params.name, optimize, config('save'))
+    app.cmd("strategize :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
+        readCallSave(cmd.params.name, strategize, config('save'))
           .then(() => sh.prompt(), cb);
     });
 // help
-return optimize({help: true}).then(_.first).then(info => {
-help(app, 'optimize', `
-  Usage: optimize :name
+return strategize({help: true}).then(_.first).then(info => {
+help(app, 'strategize', `
+  Usage: strategize :name
 
   ${desc}
 

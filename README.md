@@ -1,27 +1,27 @@
-# ptrading
+# mtrader
 Technical Market Data Analysis Tool data uses Yahoo! financial data and other
 sources to retreive and manipulate data locally for personal use.
 
 ## Instalation
 
-> npm install ptrading/ptrading -g
+> npm install jamesrdf/mtrader -g
 
 ## Usage
 
-ptrading can be used as a node.js library, as a command line utility or as an interactive shell. All shell commands include a coresponding help command that explains the available arguments and features with some usage documentation.
+mtrader can be used as a node.js library, as a command line utility or as an interactive shell. All shell commands include a coresponding help command that explains the available arguments and features with some usage documentation.
 
 ```
-const ptrading = require('ptrading');
+const mtrader = require('mtrader');
 
 // lookup exchange for a symbol and search for similar symbols
-ptrading.lookup({symbol: 'AABA'}).then(suggestions => {
+mtrader.lookup({symbol: 'AABA'}).then(suggestions => {
   suggestions.forEach(suggestion => {
     console.log(suggestion.symbol, suggestion.exchange, suggestion.name); // AABA NASDAQ Altaba Inc
   });
 });
 
 // fundamental
-ptrading.fundamental({
+mtrader.fundamental({
   symbol: 'AABA',
   exchange: 'NASDAQ'
 }).then(security => {
@@ -29,7 +29,7 @@ ptrading.fundamental({
 });
 
 // fetch day, week, month, quarter, or year historic data about a symbol
-ptrading.fetch({
+mtrader.fetch({
   interval: 'day',
   symbol: 'AABA',
   exchange: 'NASDAQ'
@@ -51,10 +51,10 @@ ptrading.fetch({
 */
 
 // set storage location for computations
-ptrading.config('prefix', '/tmp/ptrading');
+mtrader.config('prefix', '/tmp/mtrader');
 
 // retrieve historic data using custom columns and filtering
-ptrading.quote({
+mtrader.quote({
   symbol: 'AABA',
   exchange: 'NASDAQ',
   pad_begin: 9,       // Show today and nine earlier trading days
@@ -81,7 +81,7 @@ ptrading.quote({
 */
 
 // calculate hypothetical trades for a portfolio
-ptrading.collect({
+mtrader.collect({
   portfolio: 'AABA.NASDAQ,IBM.NYSE',
   begin: "2017-01-09",
   end: "2017-01-14",
@@ -116,7 +116,7 @@ YHOO 2017-01-13 -234  42.25  9886.5  1
 */
 
 // optimize SMA cross parameters between 2000 and 2010
-ptrading.optimize({
+mtrader.optimize({
     portfolio: 'SPY.ARCA',
     begin: '2000-01-01',
     end: '2010-01-01',
@@ -147,7 +147,7 @@ ptrading.optimize({
 */
 
 // test SMA cross vs EMA cross between 2000 and 2010
-ptrading.bestsignals({
+mtrader.bestsignals({
     portfolio: 'SPY.ARCA',
     begin: '2000-01-01',
     end: '2010-01-01',
@@ -182,7 +182,7 @@ ptrading.bestsignals({
 */
 
 // close down helper threads
-ptrading.close();
+mtrader.close();
 ```
 
 ## Expressions ##

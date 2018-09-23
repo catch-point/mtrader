@@ -31,10 +31,10 @@
 
 #
 # Usage:
-# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/ptrading/ptrading/master/install-worker.sh)'
+# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/jamesrdf/mtrader/master/install-worker.sh)'
 #
 
-NAME=ptrading-worker
+NAME=mtrader-worker
 
 # Read configuration variable file if it is present
 [ -r "/etc/default/$NAME" ] && . "/etc/default/$NAME"
@@ -92,19 +92,19 @@ fi
 # Install/upgrade software
 PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
 if [ "$PREFIX" = "$BASEDIR" ]; then
-  sudo -iu "$DAEMON_USER" npm install ptrading/ptrading -g
-  sudo -iu "$DAEMON_USER" npm --depth 9999 update ptrading/ptrading -g
+  sudo -iu "$DAEMON_USER" npm install jamesrdf/mtrader -g
+  sudo -iu "$DAEMON_USER" npm --depth 9999 update jamesrdf/mtrader -g
 elif [ "$(id -u)" = "0" ]; then
-  npm install ptrading/ptrading -g
-  npm --depth 9999 update ptrading/ptrading -g
-elif [ ! -x "$(which ptrading)" ]; then
+  npm install jamesrdf/mtrader -g
+  npm --depth 9999 update jamesrdf/mtrader -g
+elif [ ! -x "$(which mtrader)" ]; then
   PREFIX=$(npm prefix)
-  npm install ptrading/ptrading
-  npm --depth 9999 update ptrading/ptrading
+  npm install jamesrdf/mtrader
+  npm --depth 9999 update jamesrdf/mtrader
 fi
 
 if [ ! -x "$PREFIX/bin/uninstall-$NAME" ]; then
-  cp "$PREFIX/lib/node_modules/ptrading/uninstall-worker.sh" "$PREFIX/bin/uninstall-$NAME"
+  cp "$PREFIX/lib/node_modules/mtrader/uninstall-worker.sh" "$PREFIX/bin/uninstall-$NAME"
   chmod a+x "$PREFIX/bin/uninstall-$NAME"
 fi
 
@@ -161,7 +161,7 @@ if [ -z "$SECURE_OPTIONS" ]; then
   SECURE_OPTIONS=$(node -pe "require('constants').SSL_OP_NO_SSLv3 | require('constants').SSL_OP_NO_SSLv2")
 fi
 
-if [ -z "$DOMAINS" -a ! -f "$PREFIX/etc/ptrading.json" ]; then
+if [ -z "$DOMAINS" -a ! -f "$PREFIX/etc/mtrader.json" ]; then
   EXTERNAL_HOST=$(dig +short -x $(dig +short myip.opendns.com @resolver1.opendns.com))
   DEFAULT_DOMAINS=$(node -pe "'$EXTERNAL_HOST'.replace(/\\.$/,'')")
   if [ -z "$DOMAINS" -a "`tty`" != "not a tty" ]; then
@@ -172,18 +172,18 @@ if [ -z "$DOMAINS" -a ! -f "$PREFIX/etc/ptrading.json" ]; then
   fi
 fi
 
-if [ -z "$AUTHORITY" -a ! -f "$PREFIX/etc/ptrading.json" ]; then
+if [ -z "$AUTHORITY" -a ! -f "$PREFIX/etc/mtrader.json" ]; then
   AUTHORITY=$(node -pe "'$DOMAINS'.replace(/,.*/,'')")
 fi
 
-if [ -z "$HOST" -a ! -f "$PREFIX/etc/ptrading.json" ]; then
+if [ -z "$HOST" -a ! -f "$PREFIX/etc/mtrader.json" ]; then
   if [ -z "$HOST" -a "`tty`" != "not a tty" ]; then
     read -p "Interface to listen on (leave blank for all) []:" HOST
   fi
 fi
 
-if [ -f "$PREFIX/etc/ptrading.json" -a -z "$PORT" ]; then
-  PORT=$(node -pe "JSON.parse(require('fs').readFileSync('$PREFIX/etc/ptrading.json',{encoding:'utf-8'})).listen.replace(/.*:(\d+)([/]|$)/,'\$1').replace(/^wss:.*$|^https:.*$/,'443').replace(/^ws:.*$|^http:.*$/,'80')")
+if [ -f "$PREFIX/etc/mtrader.json" -a -z "$PORT" ]; then
+  PORT=$(node -pe "JSON.parse(require('fs').readFileSync('$PREFIX/etc/mtrader.json',{encoding:'utf-8'})).listen.replace(/.*:(\d+)([/]|$)/,'\$1').replace(/^wss:.*$|^https:.*$/,'443').replace(/^ws:.*$|^http:.*$/,'80')")
 elif [ -z "$PORT" ]; then
   if [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" ]; then
     DEFAULT_PORT=443
@@ -212,7 +212,7 @@ if [ -f "/etc/letsencrypt/live/$NAME/privkey.pem" -a -n "$CERTBOT" ]; then
 fi
 
 # Request signed certificate
-if [ ! -f "$PREFIX/etc/ptrading.json" -a -n "$CERTBOT" ] && [[ "$PORT" != *8* ]]; then
+if [ ! -f "$PREFIX/etc/mtrader.json" -a -n "$CERTBOT" ] && [[ "$PORT" != *8* ]]; then
   if [ ! -f "$PREFIX/bin/certbot-pre-$NAME" ]; then
     cat > "$PREFIX/bin/certbot-pre-$NAME" << EOF
 #!/bin/sh
@@ -242,10 +242,10 @@ EOF
 
 if [ -f "/etc/letsencrypt/live/$NAME/privkey.pem" ]; then
   umask 077
-  cp "/etc/letsencrypt/live/$NAME/privkey.pem" "$PREFIX/etc/ptrading-privkey.pem"
-  cp "/etc/letsencrypt/live/$NAME/fullchain.pem" "$PREFIX/etc/ptrading-fullchain.pem"
-  chmod go-rwx "$PREFIX/etc/ptrading-privkey.pem"
-  chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/ptrading-privkey.pem" "$PREFIX/etc/ptrading-fullchain.pem"
+  cp "/etc/letsencrypt/live/$NAME/privkey.pem" "$PREFIX/etc/mtrader-privkey.pem"
+  cp "/etc/letsencrypt/live/$NAME/fullchain.pem" "$PREFIX/etc/mtrader-fullchain.pem"
+  chmod go-rwx "$PREFIX/etc/mtrader-privkey.pem"
+  chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/mtrader-privkey.pem" "$PREFIX/etc/mtrader-fullchain.pem"
   if [ -f "/etc/systemd/system/$NAME.service" ]; then
     systemctl start $NAME
   fi
@@ -255,27 +255,27 @@ EOF
   fi
   $CERTBOT certonly -d "$DOMAINS" --standalone --cert-name "$NAME" --pre-hook "$PREFIX/bin/certbot-pre-$NAME" --post-hook "$PREFIX/bin/certbot-post-$NAME" $CERTBOT_OPTS
   if [ -f "/etc/letsencrypt/live/$NAME/privkey.pem" ]; then
-    if [ ! -f "$PREFIX/etc/ptrading-crt.pem" ] ; then
-      touch "$PREFIX/etc/ptrading-crt.pem"
+    if [ ! -f "$PREFIX/etc/mtrader-crt.pem" ] ; then
+      touch "$PREFIX/etc/mtrader-crt.pem"
     fi
-    if [ ! -f "$PREFIX/etc/ptrading-dh.pem" ]; then
-      openssl dhparam -outform PEM -out "$PREFIX/etc/ptrading-dh.pem" 2048
+    if [ ! -f "$PREFIX/etc/mtrader-dh.pem" ]; then
+      openssl dhparam -outform PEM -out "$PREFIX/etc/mtrader-dh.pem" 2048
     fi
-    chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/ptrading-privkey.pem" "$PREFIX/etc/ptrading-fullchain.pem" "$PREFIX/etc/ptrading-crt.pem" "$PREFIX/etc/ptrading-dh.pem"
-    echo "Add \"remote_workers\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"] to client's etc/ptrading.json"
-    cat > "$PREFIX/etc/ptrading.json" << EOF
+    chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/mtrader-privkey.pem" "$PREFIX/etc/mtrader-fullchain.pem" "$PREFIX/etc/mtrader-crt.pem" "$PREFIX/etc/mtrader-dh.pem"
+    echo "Add \"remote_workers\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"] to client's etc/mtrader.json"
+    cat > "$PREFIX/etc/mtrader.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "listen": "wss://$USERINFO@$HOST:$PORT",
   "tls": {
-    "key_pem": "etc/ptrading-privkey.pem",
-    "cert_pem": "etc/ptrading-fullchain.pem",
-    "crt_pem": "etc/ptrading-crt.pem",
+    "key_pem": "etc/mtrader-privkey.pem",
+    "cert_pem": "etc/mtrader-fullchain.pem",
+    "crt_pem": "etc/mtrader-crt.pem",
     "honorCipherOrder": true,
     "ecdhCurve": "prime256v1",
-    "dhparam_pem": "etc/ptrading-dh.pem",
+    "dhparam_pem": "etc/mtrader-dh.pem",
     "secureProtocol": "SSLv23_method",
     "secureOptions": $SECURE_OPTIONS,
     "handshakeTimeout": 10000,
@@ -289,40 +289,40 @@ EOF
 fi
 
 # Self signed certificate
-if [ ! -f "$PREFIX/etc/ptrading.json" ] && [[ "$PORT" != *8* ]]; then
-  openssl genrsa -out "$PREFIX/etc/ptrading-privkey.pem" 2048
-  if [ -f "$PREFIX/etc/ptrading-privkey.pem" ]; then
-    if [ ! -f "$PREFIX/etc/ptrading-csr.pem" ] ; then
-      openssl req -new -sha256 -subj "/CN=$AUTHORITY" -key "$PREFIX/etc/ptrading-privkey.pem" -out "$PREFIX/etc/ptrading-csr.pem"
+if [ ! -f "$PREFIX/etc/mtrader.json" ] && [[ "$PORT" != *8* ]]; then
+  openssl genrsa -out "$PREFIX/etc/mtrader-privkey.pem" 2048
+  if [ -f "$PREFIX/etc/mtrader-privkey.pem" ]; then
+    if [ ! -f "$PREFIX/etc/mtrader-csr.pem" ] ; then
+      openssl req -new -sha256 -subj "/CN=$AUTHORITY" -key "$PREFIX/etc/mtrader-privkey.pem" -out "$PREFIX/etc/mtrader-csr.pem"
     fi
     if [ ! -f "$PREFIX/etc/cert.pem" ] ; then
-      openssl x509 -req -in "$PREFIX/etc/ptrading-csr.pem" -signkey "$PREFIX/etc/ptrading-privkey.pem" -out "$PREFIX/etc/ptrading-cert.pem"
+      openssl x509 -req -in "$PREFIX/etc/mtrader-csr.pem" -signkey "$PREFIX/etc/mtrader-privkey.pem" -out "$PREFIX/etc/mtrader-cert.pem"
     fi
-    cat "$PREFIX/etc/ptrading-cert.pem" >> "$PREFIX/etc/ptrading-ca.pem"
-    chmod go-rwx "$PREFIX/etc/ptrading-privkey.pem"
-    if [ ! -f "$PREFIX/etc/ptrading-crt.pem" ] ; then
-      touch "$PREFIX/etc/ptrading-crt.pem"
+    cat "$PREFIX/etc/mtrader-cert.pem" >> "$PREFIX/etc/mtrader-ca.pem"
+    chmod go-rwx "$PREFIX/etc/mtrader-privkey.pem"
+    if [ ! -f "$PREFIX/etc/mtrader-crt.pem" ] ; then
+      touch "$PREFIX/etc/mtrader-crt.pem"
     fi
-    if [ ! -f "$PREFIX/etc/ptrading-dh.pem" ]; then
-      openssl dhparam -outform PEM -out "$PREFIX/etc/ptrading-dh.pem" 2048
+    if [ ! -f "$PREFIX/etc/mtrader-dh.pem" ]; then
+      openssl dhparam -outform PEM -out "$PREFIX/etc/mtrader-dh.pem" 2048
     fi
-    chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/ptrading-privkey.pem" "$PREFIX/etc/ptrading-cert.pem" "$PREFIX/etc/ptrading-ca.pem" "$PREFIX/etc/ptrading-crt.pem" "$PREFIX/etc/ptrading-dh.pem"
-    echo "Add \"remote_workers\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"] to client's etc/ptrading.json"
-    echo "Append etc/ptrading-cert.pem to client's etc/ptrading-ca.pem or set \"tls\": { \"rejectUnauthorized\": false } in client's etc/ptrading.json"
-    cat > "$PREFIX/etc/ptrading.json" << EOF
+    chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/mtrader-privkey.pem" "$PREFIX/etc/mtrader-cert.pem" "$PREFIX/etc/mtrader-ca.pem" "$PREFIX/etc/mtrader-crt.pem" "$PREFIX/etc/mtrader-dh.pem"
+    echo "Add \"remote_workers\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"] to client's etc/mtrader.json"
+    echo "Append etc/mtrader-cert.pem to client's etc/mtrader-ca.pem or set \"tls\": { \"rejectUnauthorized\": false } in client's etc/mtrader.json"
+    cat > "$PREFIX/etc/mtrader.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "listen": "wss://$USERINFO@$HOST:$PORT",
   "tls": {
-    "key_pem": "etc/ptrading-privkey.pem",
-    "cert_pem": "etc/ptrading-cert.pem",
-    "ca_pem": "etc/ptrading-ca.pem",
-    "crt_pem": "etc/ptrading-crt.pem",
+    "key_pem": "etc/mtrader-privkey.pem",
+    "cert_pem": "etc/mtrader-cert.pem",
+    "ca_pem": "etc/mtrader-ca.pem",
+    "crt_pem": "etc/mtrader-crt.pem",
     "honorCipherOrder": true,
     "ecdhCurve": "prime256v1",
-    "dhparam_pem": "etc/ptrading-dh.pem",
+    "dhparam_pem": "etc/mtrader-dh.pem",
     "secureProtocol": "SSLv23_method",
     "secureOptions": $SECURE_OPTIONS,
     "handshakeTimeout": 10000,
@@ -337,9 +337,9 @@ EOF
 fi
 
 # Unencrypted socket
-if [ ! -f "$PREFIX/etc/ptrading.json" ]; then
-  echo "Add \"remote_workers\":[\"ws://$USERINFO@$AUTHORITY:$PORT\"] to client etc/ptrading.json file"
-  cat > "$PREFIX/etc/ptrading.json" << EOF
+if [ ! -f "$PREFIX/etc/mtrader.json" ]; then
+  echo "Add \"remote_workers\":[\"ws://$USERINFO@$AUTHORITY:$PORT\"] to client etc/mtrader.json file"
+  cat > "$PREFIX/etc/mtrader.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
@@ -350,7 +350,7 @@ EOF
 fi
 
 if [ "$(id -u)" = "0" ]; then
-  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$CONFIG_DIR" "$CACHE_DIR" "$PREFIX/etc/ptrading.json"
+  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$CONFIG_DIR" "$CACHE_DIR" "$PREFIX/etc/mtrader.json"
 fi
 
 # install daemon
@@ -361,9 +361,9 @@ Description=$NAME
 After=network.target
 
 [Service]
-ExecStart=$PREFIX/bin/ptrading start
+ExecStart=$PREFIX/bin/mtrader start
 ExecReload=/bin/kill -HUP \$MAINPID
-ExecStop=$PREFIX/bin/ptrading stop
+ExecStop=$PREFIX/bin/mtrader stop
 Restart=always
 User=$DAEMON_USER
 Group=$DAEMON_GROUP
@@ -383,5 +383,5 @@ if [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" -a "`tty`" != "n
 elif [ -f "/etc/systemd/system/$NAME.service" -a "$(id -u)" = "0" ]; then
   systemctl start "$NAME"
 elif [ "`tty`" != "not a tty" ]; then
-  echo "Run '$PREFIX/bin/ptrading start' to start the service"
+  echo "Run '$PREFIX/bin/mtrader start' to start the service"
 fi

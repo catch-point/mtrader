@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// ptrading-config.js
+// mtrader-config.js
 /*
- *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:

@@ -1,6 +1,6 @@
 // config.js
 /*
- *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -101,8 +101,8 @@ function createInstance(session) {
     config.load = function(filename) {
         defaults = _.extend({
             prefix: opt('prefix', process.argv[1] ? path.resolve(process.argv[1], '../..') : '')
-        }, loadConfigFile(path.resolve(__dirname, '../etc/ptrading.json')));
-        stored = loadConfigFile(path.resolve(defaults.prefix, 'etc/ptrading.json'));
+        }, loadConfigFile(path.resolve(__dirname, '../etc/mtrader.json')));
+        stored = loadConfigFile(path.resolve(defaults.prefix, 'etc/mtrader.json'));
         loadedFrom = filename || loadedFrom || opt('load');
         loaded = loadedFrom ? loadConfigFile(config.resolve(loadedFrom)) : {};
         if (loadedFrom && _.isEmpty(loaded))
@@ -142,7 +142,7 @@ function createInstance(session) {
     };
 
     config.configFilename = function() {
-        return path.resolve(config('prefix'), 'etc/ptrading.json');
+        return path.resolve(config('prefix'), 'etc/mtrader.json');
     };
 
     config.configDirname = function() {
@@ -176,7 +176,7 @@ function createInstance(session) {
         }
         var l = '.json'.length;
         return fs.readdirSync(dir)
-            .filter(name => name != 'ptrading.json' && name.lastIndexOf('.json') == name.length - l)
+            .filter(name => name != 'mtrader.json' && name.lastIndexOf('.json') == name.length - l)
             .map(name => name.substring(0, name.length - l));
     };
 

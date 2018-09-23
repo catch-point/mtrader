@@ -1,6 +1,6 @@
-// ptrading.spec.js
+// mtrader.spec.js
 /*
- *  Copyright (c) 2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -31,35 +31,35 @@
 
 const path = require('path');
 const _ = require('underscore');
-const ptrading = require('../src/ptrading.js');
+const mtrader = require('../src/mtrader.js');
 const readCallSave = require('../src/read-call-save.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
-describe("ptrading", function() {
+describe("mtrader", function() {
     this.timeout(60000);
     before(function() {
-        ptrading.config.load(path.resolve(__dirname, '../etc/ptrading.json'));
-        ptrading.config('prefix', createTempDir('ptrading'));
-        ptrading.config('iqfeed.enabled', false);
-        ptrading.config('yahoo.enabled', true);
-        ptrading.config('files.enabled', false);
+        mtrader.config.load(path.resolve(__dirname, '../etc/mtrader.json'));
+        mtrader.config('prefix', createTempDir('mtrader'));
+        mtrader.config('iqfeed.enabled', false);
+        mtrader.config('yahoo.enabled', true);
+        mtrader.config('files.enabled', false);
         process.emit('SIGHUP');
     });
     after(function() {
-        ptrading.config.unset('prefix');
-        ptrading.config.unset('iqfeed.enabled');
-        ptrading.config.unset('yahoo.enabled');
-        ptrading.config.unset('files.enabled');
+        mtrader.config.unset('prefix');
+        mtrader.config.unset('iqfeed.enabled');
+        mtrader.config.unset('yahoo.enabled');
+        mtrader.config.unset('files.enabled');
     });
     it("lookup", function() {
-        return ptrading.lookup({symbol: 'AABA'}).then(_.first).then(suggestion => {
+        return mtrader.lookup({symbol: 'AABA'}).then(_.first).then(suggestion => {
             suggestion.symbol.should.eql('AABA');
             suggestion.exchange.should.eql('NASDAQ');
         });
     });
     it.skip("fundamental", function() {
-        return ptrading.fundamental({
+        return mtrader.fundamental({
           symbol: 'AABA',
           exchange: 'NASDAQ'
         }).should.eventually.be.like({
@@ -68,7 +68,7 @@ describe("ptrading", function() {
         });
     });
     it("fetch", function() {
-        return ptrading.fetch({
+        return mtrader.fetch({
           interval: 'day',
           symbol: 'AABA',
           exchange: 'NASDAQ',
@@ -84,7 +84,7 @@ describe("ptrading", function() {
         });
     });
     it("quote", function() {
-        return ptrading.quote({
+        return mtrader.quote({
           symbol: 'AABA',
           exchange: 'NASDAQ',
           begin: "2017-01-13",
@@ -108,7 +108,7 @@ describe("ptrading", function() {
         ]);
     });
     it("collect change", function() {
-        return ptrading.collect({
+        return mtrader.collect({
           portfolio: 'AABA.NASDAQ,IBM.NYSE',
           begin: "2016-12-29",
           end: "2017-01-14",
@@ -135,8 +135,8 @@ describe("ptrading", function() {
         ]);
     });
     it("optimize SMA", function() {
-        ptrading.seed(27644437);
-        return ptrading.optimize({
+        mtrader.seed(27644437);
+        return mtrader.optimize({
             portfolio: 'SPY.ARCA',
             begin: '2000-01-01',
             end: '2010-01-01',
@@ -166,8 +166,8 @@ describe("ptrading", function() {
         });
     });
     it("should find best signal parameters for each", function() {
-        ptrading.seed(27644437);
-        ptrading.config.save('TREND', {
+        mtrader.seed(27644437);
+        mtrader.config.save('TREND', {
             population_size: 12,
             signals: ['sma_cross','ema_cross'],
             variables: {
@@ -183,7 +183,7 @@ describe("ptrading", function() {
                 slow_len: [20,25,50,80,100,150,200]
             }
         });
-        ptrading.config.save('MEANREVERSION', {
+        mtrader.config.save('MEANREVERSION', {
             signals: ['bollinger_signal'],
             variables: {
                 middle_band: 'SMA(len,day.adj_close)',
@@ -200,7 +200,7 @@ describe("ptrading", function() {
                 multiplier: [1,2,3]
             }
         });
-        ptrading.config.save('RELATIVESTRENGTH', {
+        mtrader.config.save('RELATIVESTRENGTH', {
             population_size: 12,
             signals: ['STO_signal'],
             variables: {
@@ -220,7 +220,7 @@ describe("ptrading", function() {
                 Dmoving: [3,5]
             }
         });
-        ptrading.config.save('BEST', {
+        mtrader.config.save('BEST', {
             portfolio: 'SPY.ARCA',
             begin: '2016-07-01',
             end: '2016-12-31',
@@ -240,7 +240,7 @@ describe("ptrading", function() {
             },
             signalset: ['TREND', 'MEANREVERSION', 'RELATIVESTRENGTH']
         });
-        return readCallSave('BEST', ptrading.bestsignals).should.eventually.be.like([{
+        return readCallSave('BEST', mtrader.bestsignals).should.eventually.be.like([{
             variables: {
                 signal: 'STO_signal'
             },

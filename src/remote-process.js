@@ -1,6 +1,6 @@
 // remote-process.js
 /*
- *  Copyright (c) 2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -43,7 +43,7 @@ const version = require('./version.js');
 
 const EOM = '\r\n\r\n';
 
-const DEFAULT_PATH = '/ptrading/' + version.minor_version + '/workers';
+const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
 
 var remote = module.exports = function(socket, options) {
     if (typeof socket == 'string' || typeof socket == 'number')
@@ -65,7 +65,7 @@ var remote = module.exports = function(socket, options) {
             NPNProtocols: config('tls.NPNProtocols'),
             ALPNProtocols: config('tls.ALPNProtocols'),
             perMessageDeflate: config('tls.perMessageDeflate')!=null ? config('tls.perMessageDeflate') : true,
-            headers: {'User-Agent': 'ptrading/' + version},
+            headers: {'User-Agent': 'mtrader/' + version},
             agent: false
         }, options)), _.extend({label: socket}, options));
     var buf = '';

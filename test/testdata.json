@@ -1,5 +1,5 @@
 {
-  "description": "Configuration test file for ptrading",
+  "description": "Configuration test file for mtrader",
   "fetch": {
     "files": {
       "enabled": true,

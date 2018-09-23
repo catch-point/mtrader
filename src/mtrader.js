@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// ptrading.js
+// mtrader.js
 /*
- *  Copyright (c) 2016-2017 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -43,12 +43,12 @@ const expect = require('chai').expect;
 const logger = require('./logger.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./ptrading-config.js');
-const date = require('./ptrading-date.js');
+const config = require('./mtrader-config.js');
+const date = require('./mtrader-date.js');
 const shellError = require('./shell-error.js');
 const version = require('./version.js');
 
-const DEFAULT_PATH = '/ptrading/' + version.minor_version + '/workers';
+const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
 
 var program = require('commander')
@@ -133,23 +133,23 @@ if (require.main === module) {
             app.use(shellError(settings));
         });
         settings.sensitive = null; // disable case insensitivity in commands
-        var ptrading = createInstance();
-        ptrading.shell(app);
+        var mtrader = createInstance();
+        mtrader.shell(app);
         process.on('SIGINT', () => app.quit());
         process.on('SIGTERM', () => app.quit());
-        app.on('quit', () => ptrading.close());
-        app.on('exit', () => ptrading.close());
+        app.on('quit', () => mtrader.close());
+        app.on('exit', () => mtrader.close());
         if (config('listen')) {
-            ptrading.listen(config('listen'));
+            mtrader.listen(config('listen'));
         }
     } else if (!program_args_version && config('listen') &&
             !~['stop','config','fetch','version'].indexOf(program.args[0]) &&
             !~['stop','config','fetch','version'].indexOf(program.args[0].name && program.args[0].name())) {
-        var ptrading = createInstance();
-        var server = ptrading.listen(config('listen'));
-        process.on('SIGINT', () => ptrading.close());
-        process.on('SIGTERM', () => ptrading.close());
-        server.on('close', () => ptrading.close());
+        var mtrader = createInstance();
+        var server = mtrader.listen(config('listen'));
+        process.on('SIGINT', () => mtrader.close());
+        process.on('SIGTERM', () => mtrader.close());
+        server.on('close', () => mtrader.close());
     }
 } else {
     module.exports = createInstance();
@@ -167,12 +167,12 @@ function parseKnownOptions(program, argv) {
 }
 
 function createInstance() {
-    var fetch = require('./ptrading-fetch.js');
-    var quote = require('./ptrading-quote.js');
-    var collect = require('./ptrading-collect.js');
-    var optimize = require('./ptrading-optimize.js');
-    var bestsignals = require('./ptrading-bestsignals.js');
-    var strategize = require('./ptrading-strategize.js');
+    var fetch = require('./mtrader-fetch.js');
+    var quote = require('./mtrader-quote.js');
+    var collect = require('./mtrader-collect.js');
+    var optimize = require('./mtrader-optimize.js');
+    var bestsignals = require('./mtrader-bestsignals.js');
+    var strategize = require('./mtrader-strategize.js');
     var servers = [];
     return {
         config: config,
@@ -229,7 +229,7 @@ function createInstance() {
     };
 }
 
-function listen(ptrading, address) {
+function listen(mtrader, address) {
     var timeout = config('tls.timeout');
     var addr = parseLocation(address, false);
     var auth = addr.auth ? 'Basic ' + new Buffer(addr.auth).toString('base64') : undefined;
@@ -254,10 +254,10 @@ function listen(ptrading, address) {
     server.on('upgrade', (request, socket, head) => {
         if (wsserver.shouldHandle(request)) return;
         else if (socket.writable) {
-            var msg = `Try using ptrading/${version}\r\n`;
+            var msg = `Try using mtrader/${version}\r\n`;
             socket.write(
                 `HTTP/1.1 400 ${http.STATUS_CODES[400]}\r\n` +
-                `Server: ptrading/${version}\r\n` +
+                `Server: mtrader/${version}\r\n` +
                 'Connection: close\r\n' +
                 'Content-type: text/plain\r\n' +
                 `Content-Length: ${Buffer.byteLength(msg)}\r\n` +
@@ -268,9 +268,9 @@ function listen(ptrading, address) {
         }
     });
     server.on('request', (request, response) => {
-        response.setHeader('Server', 'ptrading/' + version);
+        response.setHeader('Server', 'mtrader/' + version);
         if (wsserver.shouldHandle(request)) return;
-        var msg = `Try using ptrading/${version}\r\n`;
+        var msg = `Try using mtrader/${version}\r\n`;
         response.statusCode = 404;
         response.setHeader('Content-Type', 'text/plain');
         response.setHeader('Content-Length', Buffer.byteLength(msg));
@@ -285,7 +285,7 @@ function listen(ptrading, address) {
         } : undefined
     });
     wsserver.on('headers', (headers, request) => {
-        headers.push('Server: ptrading/' + version);
+        headers.push('Server: mtrader/' + version);
     });
     wsserver.on('connection', (ws, message) => {
         var socket = message.socket;
@@ -302,14 +302,14 @@ function listen(ptrading, address) {
             logger.log("Client", label, "disconnected");
         });
         replyTo(process)
-            .handle('lookup', ptrading.lookup)
-            .handle('fundamental', ptrading.fundamental)
-            .handle('fetch', ptrading.fetch)
-            .handle('quote', ptrading.quote)
-            .handle('collect', ptrading.collect)
-            .handle('optimize', ptrading.optimize)
-            .handle('bestsignals', ptrading.bestsignals)
-            .handle('strategize', ptrading.strategize)
+            .handle('lookup', mtrader.lookup)
+            .handle('fundamental', mtrader.fundamental)
+            .handle('fetch', mtrader.fetch)
+            .handle('quote', mtrader.quote)
+            .handle('collect', mtrader.collect)
+            .handle('optimize', mtrader.optimize)
+            .handle('bestsignals', mtrader.bestsignals)
+            .handle('strategize', mtrader.strategize)
             .handle('version', () => version.toString())
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
             .handle('stop', () => {

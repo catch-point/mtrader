@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// ptrading-collective2.js
+// mtrader-collective2.js
 /*
  *  Copyright (c) 2018 James Leigh, Some Rights Reserved
  *
@@ -38,7 +38,7 @@ const commander = require('commander');
 const tabular = require('./tabular.js');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./ptrading-config.js');
+const config = require('./mtrader-config.js');
 const Collective2 = require('./collective2.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
@@ -92,7 +92,7 @@ if (require.main === module) {
 }
 
 function createInstance(program) {
-    var collect = require('./ptrading-collect.js');
+    var collect = require('./mtrader-collect.js');
     var collective2 = Collective2(collect);
     var promiseKeys;
     var instance = function(options) {
