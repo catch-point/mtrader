@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Portions Copyright (c) 2017 James Leigh, Some Rights Reserved
+# Portions Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are met:
@@ -31,10 +31,10 @@
 
 #
 # Usage:
-# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/jamesrdf/mtrader/master/install-worker.sh)'
+# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/jamesrdf/mtrader/master/install-daemon.sh)'
 #
 
-NAME=mtrader-worker
+NAME=mtrader
 
 # Read configuration variable file if it is present
 [ -r "/etc/default/$NAME" ] && . "/etc/default/$NAME"
@@ -104,7 +104,7 @@ elif [ ! -x "$(which mtrader)" ]; then
 fi
 
 if [ ! -x "$PREFIX/bin/uninstall-$NAME" ]; then
-  cp "$PREFIX/lib/node_modules/mtrader/uninstall-worker.sh" "$PREFIX/bin/uninstall-$NAME"
+  cp "$PREFIX/lib/node_modules/mtrader/uninstall-daemon.sh" "$PREFIX/bin/uninstall-$NAME"
   chmod a+x "$PREFIX/bin/uninstall-$NAME"
 fi
 

@@ -29,12 +29,7 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-#
-# Usage:
-# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/jamesrdf/mtrader/master/uninstall-worker.sh)'
-#
-
-NAME=mtrader-worker
+NAME=mtrader
 
 # Read configuration variable file if it is present
 [ -r "/etc/default/$NAME" ] && . "/etc/default/$NAME"
@@ -90,21 +85,6 @@ elif [ -z "$PREFIX" ]; then
   PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
 fi
 
-# uninstall/upgrade software
-if [ "$PREFIX" = "$BASEDIR" ]; then
-  sudo -iu "$DAEMON_USER" npm uninstall mtrader -g
-elif [ "$(id -u)" = "0" ]; then
-  npm uninstall mtrader -g
-elif [ ! -x "$(which mtrader)" ]; then
-  PREFIX=$(npm prefix)
-  npm uninstall mtrader
-fi
-
-# Check if certbot was installed
-if [ -x "$PREFIX/bin/certbot-auto" ]; then
-  rm "$PREFIX/bin/certbot-auto"
-fi
-
 if [ -z "$CONFIG_DIR" ]; then
   if [ "$PREFIX" = "$BASEDIR" ]; then
     CONFIG_DIR=etc
@@ -119,6 +99,35 @@ if [ -z "$CONFIG_DIR" ]; then
     CONFIG_DIR=etc
     CACHE_DIR=var/cache
   fi
+fi
+
+# Check if certbot was installed
+if [ -z "$CERTBOT" -a "$(id -u)" = "0" ]; then
+  if [ -x "$PREFIX/bin/certbot" ]; then
+    CERTBOT="$PREFIX/bin/certbot"
+  elif [ -x "$PREFIX/bin/certbot-auto" ]; then
+    CERTBOT="$PREFIX/bin/certbot-auto"
+  elif [ -x "$(which certbot)" ]; then
+    CERTBOT="$(which certbot)"
+  elif [ -x "$(which certbot)" ]; then
+    CERTBOT="$(which certbot)"
+  fi
+fi
+if [ -z "$CERTBOT" ]; then
+  $CERTBOT delete --cert-name "$NAME"
+fi
+if [ -x "$PREFIX/bin/certbot-auto" ]; then
+  rm "$PREFIX/bin/certbot-auto"
+fi
+
+# uninstall/upgrade software
+if [ "$PREFIX" = "$BASEDIR" ]; then
+  sudo -iu "$DAEMON_USER" npm uninstall mtrader -g
+elif [ "$(id -u)" = "0" ]; then
+  npm uninstall mtrader -g
+elif [ ! -x "$(which mtrader)" ]; then
+  PREFIX=$(npm prefix)
+  npm uninstall mtrader
 fi
 
 # Remove configuration
