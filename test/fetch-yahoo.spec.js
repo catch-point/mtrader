@@ -301,7 +301,7 @@ describe("fetch-yahoo", function() {
         return client.interday({
             interval: 'day',
             symbol: 'REM',
-            market: 'ARCA',
+            market: 'BATS',
             begin: '2016-11-01',
             end: '2016-11-30',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -314,7 +314,7 @@ describe("fetch-yahoo", function() {
             {ending:'2016-11-03T16:00:00-04:00',close:10.35,adj_close:41.40,split:1,dividend:0},
             {ending:'2016-11-04T16:00:00-04:00',close:10.43,adj_close:41.72,split:1,dividend:0},
             {ending:'2016-11-07T16:00:00-05:00',close:42.02,adj_close:42.02,split:0.25,dividend:0},
-            {ending:'2016-11-08T16:00:00-05:00',close:42.22,adj_close:42.21,split:1,dividend:0},
+            {ending:'2016-11-08T16:00:00-05:00',close:42.22,adj_close:42.22,split:1,dividend:0},
             {ending:'2016-11-09T16:00:00-05:00',close:41.95,adj_close:41.95,split:1,dividend:0},
             {ending:'2016-11-10T16:00:00-05:00',close:41.39,adj_close:41.39,split:1,dividend:0},
             {ending:'2016-11-11T16:00:00-05:00',close:41.71,adj_close:41.71,split:1,dividend:0},
@@ -327,7 +327,7 @@ describe("fetch-yahoo", function() {
             {ending:'2016-11-22T16:00:00-05:00',close:42.79,adj_close:42.79,split:1,dividend:0},
             {ending:'2016-11-23T16:00:00-05:00',close:42.3,adj_close:42.30,split:1,dividend:0},
             {ending:'2016-11-25T16:00:00-05:00',close:42.6,adj_close:42.60,split:1,dividend:0},
-            {ending:'2016-11-28T16:00:00-05:00',close:42.82,adj_close:42.83,split:1,dividend:0},
+            {ending:'2016-11-28T16:00:00-05:00',close:42.82,adj_close:42.82,split:1,dividend:0},
             {ending:'2016-11-29T16:00:00-05:00',close:43.22,adj_close:43.22,split:1,dividend:0},
             {ending:'2016-11-30T16:00:00-05:00',close:42.63,adj_close:42.63,split:1,dividend:0}
         ]);

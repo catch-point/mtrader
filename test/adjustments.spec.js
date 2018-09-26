@@ -90,7 +90,7 @@ describe("adjustments", function() {
             {exdate:'2016-12-16',dividend:0.11,adj:0.995}
         ]);
     });
-    it("should adjust splits and dividends", function() {
+    it("should adjust splits and dividends for AAPL", function() {
         return adjustments({
             symbol: 'AAPL',
             market: 'NASDAQ',
@@ -115,10 +115,33 @@ describe("adjustments", function() {
             {exdate:'2014-11-06',dividend:0.47,cum_close:108.86,adj:0.9957}
         ]);
     });
+    it("should adjust splits and dividends for BERK", function() {
+        return adjustments({
+            symbol: 'BERK',
+            market: 'NASDAQ',
+            begin: '2004-01-01',
+            tz: tz
+        }).then(adjustments => {
+            var end = '2004-12-31';
+            var idx = _.sortedIndex(adjustments, {exdate: end}, 'exdate');
+            var after = adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
+            return adjustments
+              .filter(datum => datum.exdate <= end)
+              .map(datum => _.extend(datum, {
+                adj: datum.adj / after.adj,
+                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
+                adj_split_only: datum.adj_split_only / after.adj_split_only
+              }));
+        }).should.eventually.be.like([
+            {exdate:'2004-04-15',dividend:0.15,cum_close:55.00,adj:0.3313},
+            {exdate:'2004-05-19',split:3/1,    cum_close:54.99,adj:0.3323},
+            {exdate:'2004-10-20',dividend:0.06,cum_close:18.49,adj:0.9968}
+        ]);
+    });
     it("should adjust for REM reverse split", function() {
         return adjustments({
             symbol: 'REM',
-            market: 'ARCA',
+            market: 'BATS',
             begin: '2016-01-01',
             tz: tz
         }).then(adjustments => {

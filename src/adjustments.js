@@ -215,6 +215,12 @@ function adjustments(yahoo, db, symbol, options) {
                     }
                 }
             }
+            // check if split is large enough for yahoo to change it dividends
+            if (split > 3 || split < 1/3) {
+                // AAPL.NASDAQ 2014-01-01
+                // REM.ARCA 2016-11-07
+                adj_yahoo_divs *= split;
+            }
             if (split != 1) {
                 adj_split_only /= split;
                 adj /= split;
