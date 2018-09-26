@@ -203,6 +203,8 @@ process.on('SIGINT', () => {
     if (!reason || !reason.message || reason.message!='SIGINT' && reason.message!='SIGTERM' && !~reason.message.indexOf('Disconnecting') && !~reason.message.indexOf("Workers have closed")) {
         logger.warn('Unhandled Rejection', reason && reason.message || reason || p, reason && reason.stack || '');
     }
+}).on('rejectionHandled', (p) => {
+    logger.warn('Rejection Handled', p);
 });
 
 function inc(stats, cmd, opt) {
