@@ -94,6 +94,9 @@ function promiseDatasources() {
         config('fetch.iqfeed.enabled') && iqfeed(),
         config('fetch.yahoo.enabled') && yahoo()
     ]);
+    if (_.isEmpty(sources)) {
+        sources = [yahoo()];
+    }
     return Promise.all(sources.map(source => source.help()))
       .then(result => result.reduce((datasources, help, i) => {
         return _.flatten(help).reduce((datasources, info) => {

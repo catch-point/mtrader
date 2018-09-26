@@ -76,7 +76,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
-        properties: ['symbol', 'iqfeed_symbol', 'market', 'name'],
+        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type'],
         options: commonOptions
     };
     var fundamental = {
@@ -136,6 +136,16 @@ module.exports = function() {
     var lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_markets) => {
         return symbol + ' ' + _.compact(_.flatten([listed_markets])).join(' ');
     }, 10);
+    var lookupSecurity = (options) => {
+        var exchs = _.pick(_.mapObject(
+            options.market ? _.pick(markets, [options.market]) : markets,
+            exch => exch.datasources.iqfeed
+        ), val => val);
+        var listed_markets = options.listed_market ? [options.listed_market] :
+            _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
+        if (_.isEmpty(exchs)) return Promise.resolve([]);
+        else return lookupCached(exchs, symbol(options), listed_markets);
+    }
     return {
         open() {
             return iqclient.open();
@@ -151,14 +161,7 @@ module.exports = function() {
             return Promise.resolve(helpInfo);
         },
         lookup(options) {
-            var exchs = _.pick(_.mapObject(
-                options.market ? _.pick(markets, [options.market]) : markets,
-                exch => exch.datasources.iqfeed
-            ), val => val);
-            var listed_markets = options.listed_market ? [options.listed_market] :
-                _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
-            if (_.isEmpty(exchs)) return Promise.resolve([]);
-            else return lookupCached(exchs, symbol(options), listed_markets);
+            return lookupSecurity(options);
         },
         fundamental(options) {
             expect(options).to.be.like({
@@ -180,17 +183,10 @@ module.exports = function() {
                 tz: /^\S+\/\S+$/
             });
             expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
-            switch(options.interval) {
-                case 'year': return year(iqclient, adjustments, symbol(options), options);
-                case 'quarter': return quarter(iqclient, adjustments, symbol(options), options);
-                case 'month': return month(iqclient, adjustments, symbol(options), options);
-                case 'week': return week(iqclient, adjustments, symbol(options), options);
-                case 'day': return day(iqclient, adjustments, symbol(options), options);
-                default:
-                    expect(options.interval).to.be.oneOf([
-                        'year', 'quarter', 'month', 'week', 'day'
-                    ]);
-            }
+            return lookupSecurity(options).then(security => {
+                var opts = _.extend({}, options, _.first(security));
+                return interday(iqclient, adjustments, symbol(opts), opts);
+            });
         },
         intraday(options) {
             expect(options).to.be.like({
@@ -200,7 +196,10 @@ module.exports = function() {
                 tz: _.isString
             });
             expect(options.tz).to.match(/^\S+\/\S+$/);
-            return intraday(iqclient, adjustments, symbol(options), options);
+            return lookupSecurity(options).then(security => {
+                var opts = _.extend({}, options, _.first(security));
+                return intraday(iqclient, adjustments, symbol(opts), opts);
+            });
         },
         rollday(options) {
             expect(options).to.be.like({
@@ -290,9 +289,25 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
             symbol: symbol,
             iqfeed_symbol: row.symbol,
             market: _.first(_.keys(sources)),
-            name: row.name
+            name: row.name,
+            listed_market: row.listed_market,
+            security_type: row.security_type
         };
     })).then(rows => rows.filter(row => row.market));
+}
+
+function interday(iqclient, adjustments, symbol, options) {
+    switch(options.interval) {
+        case 'year': return year(iqclient, adjustments, symbol, options);
+        case 'quarter': return quarter(iqclient, adjustments, symbol, options);
+        case 'month': return month(iqclient, adjustments, symbol, options);
+        case 'week': return week(iqclient, adjustments, symbol, options);
+        case 'day': return day(iqclient, adjustments, symbol, options);
+        default:
+            expect(options.interval).to.be.oneOf([
+                'year', 'quarter', 'month', 'week', 'day'
+            ]);
+    }
 }
 
 function year(iqclient, adjustments, symbol, options) {
@@ -404,7 +419,7 @@ function day(iqclient, adjustments, symbol, options) {
             adj_close: Math.round(
                 parseCurrency(datum.Close, splits) * adj
                 * 1000000) / 1000000 || today.adj_close
-        })).filter(bar => bar.volume);
+        }));
     }).then(result => {
         if (_.last(result) && !_.last(result).close) result.pop();
         if (!options.end) return result;
@@ -460,6 +475,7 @@ function includeIntraday(iqclient, adjustments, bars, interval, symbol, options)
     if (!closesAt.isAfter(_.last(bars).ending)) return bars;
     var end = moment.tz(options.end || now, options.tz);
     if (end.isBefore(opensAt)) return bars;
+    var equity = !options.security_type || options.security_type == 'EQUITY';
     var adj = _.last(bars).adj_close / _.last(bars).close;
     var test_size = bars.length;
     return rollday(iqclient, adjustments, interval, symbol, _.defaults({
@@ -469,7 +485,7 @@ function includeIntraday(iqclient, adjustments, bars, interval, symbol, options)
         tz: tz
     }, options)).then(intraday => intraday.reduce((bars, bar) => {
         if (_.last(bars).incomplete) bars.pop(); // remove incomplete (holi)days
-        if (bar.ending == _.last(bars).ending) {
+        if (equity && bar.ending == _.last(bars).ending) {
             adj = _.last(bars).adj_close / bar.close;
         } else if (bar.ending > _.last(bars).ending) {
             bars.push(_.extend({}, bar, {adj_close: bar.close * adj}));

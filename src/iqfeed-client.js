@@ -49,6 +49,7 @@ module.exports = function(command, env, productId, productVersion) {
     var lookup = historical(admin);
     var throttled = promiseThrottle(lookup, 10);
     var level1 = watch(admin);
+    var promise_markets, promise_types;
     return {
         open() {
             return admin();
@@ -63,26 +64,42 @@ module.exports = function(command, env, productId, productVersion) {
         },
         lookup(symbol, listed_markets) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            return sbf(throttled, {
-                field: 's',
-                search: symbol,
-                type: 'e',
-                value: _.compact(_.flatten([listed_markets])).join(' ')
-            }).then(lines => lines.map(line => {
-                var row = line.split(',', 5);
-                return _.extend({
-                    symbol: row[1],
-                    listed_market: parseFloat(row[2]),
-                    securityTypeID: parseFloat(row[3]),
-                    name: row[4]
+            return (promise_markets || Promise.reject()).catch(err => slm()).then(markets => {
+                return (promise_types || Promise.reject()).catch(err => sst()).then(types => {
+                    var values = _.compact(_.flatten([listed_markets])).map(market => {
+                        var id = markets.indexOf(market);
+                        if (id >= 0) return id;
+                        else return market;
+                    });
+                    return sbf(throttled, {
+                        field: 's',
+                        search: symbol,
+                        type: 'e',
+                        value: values.join(' ')
+                    }).then(lines => lines.map(line => {
+                        var row = line.split(',', 5);
+                        return _.extend({
+                            symbol: row[1],
+                            listed_market: markets[parseInt(row[2])] || row[2],
+                            security_type: types[parseInt(row[3])] || row[3],
+                            name: row[4]
+                        });
+                    }));
                 });
-            }));
+            });
         },
         fundamental: promiseThrottle(symbol => {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            return level1({
-                type: 'fundamental',
-                symbol: symbol
+            return (promise_markets || Promise.reject()).catch(err => slm()).then(markets => {
+                return (promise_types || Promise.reject()).catch(err => sst()).then(types => {
+                    return level1({
+                        type: 'fundamental',
+                        symbol: symbol
+                    }).then(datum => _.extend(datum, {
+                        listed_market: markets[parseInt(datum.listed_market)] || datum.listed_market,
+                        security_type: types[parseInt(datum.security_type)] || datum.security_type
+                    }));
+                });
             });
         }, 10),
         summary(symbol, update){
@@ -243,6 +260,42 @@ function sbf(lookup, options) {
     ]);
 }
 
+function slm() {
+    return listOf('SLM');
+}
+
+function sst() {
+    return listOf('SST');
+}
+
+function listOf(cmd) {
+    return openSocket(9100).then(function(socket) {
+        return promiseSend('S,SET PROTOCOL,5.1', socket)
+          .then(socket => new Promise((ready, error) => {
+            socket.on('close', err => err && error(err));
+            var listed = [];
+            onreceive(socket, function(line) {
+                var values = line.split(',');
+                if ('!ENDMSG!' == values[0]) {
+                    ready(listed);
+                    return false;
+                } else if ('E' == values[0]) {
+                    error(Error(line.replace(/E,!?/,'').replace(/!?,*$/,'')));
+                    return false;
+                } else if (isFinite(values[0])) {
+                    listed[+values[0]] = values[1];
+                    return false;
+                }
+            });
+            send(cmd, socket);
+        })).then(listed => {
+            return closeSocket(socket).then(() => listed);
+        }).catch(function(error) {
+            return closeSocket(socket).then(() => Promise.reject(error));
+        });
+    });
+}
+
 function historical(ready) {
     var seq = 0;
     var blacklist = {};
@@ -380,7 +433,6 @@ function promiseSocket(previous, createNewSocket) {
 }
 
 function promiseNewLookupSocket(blacklist, pending, port, retry) {
-    var check = interrupt(true);
     return openSocket(port).then(function(socket) {
         return promiseSend('S,SET PROTOCOL,5.1', socket).then(function(socket) {
             socket.on('close', error => {

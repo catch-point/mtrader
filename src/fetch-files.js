@@ -42,7 +42,7 @@ const storage = require('./storage.js');
 module.exports = function() {
     var fallbacks = _.mapObject(_.object(
             config('fetch.files.fallback') || _.compact([
-                config('fetch.yahoo.enabled') && 'yahoo',
+                (config('fetch.yahoo.enabled') || !config('fetch.iqfeed.enabled')) && 'yahoo',
                 config('fetch.iqfeed.enabled') && 'iqfeed'
             ]), []), (nil, fallback) => {
         return 'yahoo' == fallback ? yahoo() :

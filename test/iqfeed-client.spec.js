@@ -48,16 +48,17 @@ describe("iqfeed-client", function() {
         if (client) return client.close();
     });
     it("should find IBM", function() {
-        return client.lookup('IBM', 7).should.eventually.be.like(results => _.some(results, like({
+        return client.lookup('IBM', "NYSE").should.eventually.be.like(results => _.some(results, like({
             symbol: 'IBM',
-            listed_market: 7,
+            listed_market: "NYSE",
             name: "INTERNATIONAL BUSINESS MACHINE"
         })));
     });
     it("should find USD/CAD details", function() {
-        return client.fundamental('USDCAD.FXCM', 74).should.eventually.be.like({
+        return client.fundamental('USDCAD.FXCM', "FXCM").should.eventually.be.like({
             symbol: 'USDCAD.FXCM',
-            listed_market: "74",
+            listed_market: "FXCM",
+            security_type: "FOREX",
             company_name: /FXCM USD CAD/
         });
     });

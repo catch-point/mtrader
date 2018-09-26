@@ -4,7 +4,6 @@
   "default_config_dir": "etc",
   "fetch": {
     "yahoo": {
-      "enabled": true,
       "lookup": true,
       "fundamental": false,
       "interday": ["year", "quarter", "month", "week", "day"],
@@ -16,7 +15,7 @@
       "fundamental": true,
       "interday": ["year", "quarter", "month", "week", "day"],
       "intraday": ["m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME"]
+      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOEX"]
     },
     "remote": {
       "enabled": false,
@@ -47,7 +46,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
-          "listed_markets": [11]
+          "listed_markets": ["NYSE_ARCA"]
         }
       }
     },
@@ -66,7 +65,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
-          "listed_markets": [18]
+          "listed_markets": ["BATS"]
         }
       }
     },
@@ -85,7 +84,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
-          "listed_markets": [1, 5, 21]
+          "listed_markets": ["NGM", "NASDAQ", "NGSM", "NCM", "OTC"]
         }
       }
     },
@@ -104,7 +103,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
-          "listed_markets": [7]
+          "listed_markets": ["NYSE"]
         }
       }
     },
@@ -123,7 +122,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
-          "listed_markets": [6]
+          "listed_markets": ["NYSE_AMERICAN"]
         }
       }
     },
@@ -141,6 +140,9 @@
           "exchs": ["LSE"],
           "marketLang": "en-GB",
           "yahooSuffix": ".L"
+        },
+        "iqfeed": {
+          "listed_markets": ["LSE"]
         }
       }
     },
@@ -161,7 +163,7 @@
         },
         "iqfeed": {
           "dtnPrefix": "C.",
-          "listed_markets": [50]
+          "listed_markets": ["TSE"]
         }
       }
     },
@@ -182,7 +184,7 @@
         },
         "iqfeed": {
           "dtnPrefix": "C.",
-          "listed_markets": [52]
+          "listed_markets": ["CVE"]
         }
       }
     },
@@ -197,7 +199,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "GBP.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -212,7 +214,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "AUD.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -227,7 +229,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "NZD.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -242,7 +244,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "USD.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -257,7 +259,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CAD.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -272,7 +274,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CHF.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -287,7 +289,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "NOK.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -302,7 +304,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "SEK.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -317,7 +319,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CNH.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -332,7 +334,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "JPY.FXCM",
-          "listed_markets": [74]
+          "listed_markets": ["FXCM"]
         }
       }
     },
@@ -397,7 +399,36 @@
             "XRT": "@XTT",
             "XVT": "@XCT"
           },
-          "listed_markets": [43, 110]
+          "listed_markets": ["CMEMINI", "CME_GBX"]
+        }
+      }
+    },
+    "OPRA": {
+      "description": "The Options Price Reporting Authority (OPRA) is a committee of representatives from participating securities exchanges responsible for providing last-sale options quotations and information from the participating exchanges.",
+      "afterHoursClosesAt": "16:15:00",
+      "marketClosesAt": "16:15:00",
+      "marketOpensAt": "09:30:00",
+      "premarketOpensAt": "03:00:00",
+      "currency": "USD",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "listed_markets": ["OPRA"]
+        }
+      }
+    },
+    "CBOEX": {
+      "description": "Indexes listed on the Chicago Board Options Exchange",
+      "afterHoursClosesAt": "16:15:00",
+      "marketClosesAt": "16:15:00",
+      "marketOpensAt": "09:30:00",
+      "premarketOpensAt": "03:00:00",
+      "currency": "USD",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": ".XO",
+          "listed_markets": ["CBOE"]
         }
       }
     }

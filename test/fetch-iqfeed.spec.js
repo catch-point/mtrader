@@ -66,7 +66,7 @@ describe("fetch-iqfeed", function() {
         }]);
     });
     it("should find IBM", function() {
-        return client.lookup({symbol:'IBM', listed_market:7}).should.eventually.be.like(results => _.some(results, like({
+        return client.lookup({symbol:'IBM', listed_market:"NYSE"}).should.eventually.be.like(results => _.some(results, like({
             symbol: 'IBM',
             name: "INTERNATIONAL BUSINESS MACHINE"
         })));
@@ -373,7 +373,7 @@ describe("fetch-iqfeed", function() {
         return client.interday({
             interval: 'day',
             symbol: 'REM',
-            market: 'ARCA',
+            market: 'BATS',
             begin: '2016-11-01',
             end: '2016-12-01',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -386,7 +386,7 @@ describe("fetch-iqfeed", function() {
             {ending:'2016-11-03T16:00:00-04:00',close:10.35,adj_close:41.40,split:1,dividend:0},
             {ending:'2016-11-04T16:00:00-04:00',close:10.43,adj_close:41.72,split:1,dividend:0},
             {ending:'2016-11-07T16:00:00-05:00',close:42.02,adj_close:42.02,split:0.25,dividend:0},
-            {ending:'2016-11-08T16:00:00-05:00',close:42.22,adj_close:42.21,split:1,dividend:0},
+            {ending:'2016-11-08T16:00:00-05:00',close:42.22,adj_close:42.22,split:1,dividend:0},
             {ending:'2016-11-09T16:00:00-05:00',close:41.95,adj_close:41.95,split:1,dividend:0},
             {ending:'2016-11-10T16:00:00-05:00',close:41.39,adj_close:41.39,split:1,dividend:0},
             {ending:'2016-11-11T16:00:00-05:00',close:41.71,adj_close:41.71,split:1,dividend:0},
@@ -410,7 +410,7 @@ describe("fetch-iqfeed", function() {
             marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like([{
             symbol: 'USDCAD.FXCM',
-            listed_market: "74",
+            listed_market: "FXCM",
             company_name: /FXCM USD CAD/
         }]);
     });
@@ -503,7 +503,7 @@ describe("fetch-iqfeed", function() {
         ]));
     });
     it("should find BRK.A symbol", function() {
-        return client.lookup({symbol:'BRK.A', listed_market:7}).should.eventually.be.like(results => _.some(results, like(
+        return client.lookup({symbol:'BRK.A', listed_market:"NYSE"}).should.eventually.be.like(results => _.some(results, like(
             {symbol: /^BRK.A/, name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
         )));
     });
