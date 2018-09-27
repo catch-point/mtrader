@@ -64,8 +64,8 @@ module.exports = function(command, env, productId, productVersion) {
         },
         lookup(symbol, listed_markets) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            return (promise_markets || Promise.reject()).catch(err => slm()).then(markets => {
-                return (promise_types || Promise.reject()).catch(err => sst()).then(types => {
+            return (promise_markets || Promise.reject()).catch(err => slm(admin)).then(markets => {
+                return (promise_types || Promise.reject()).catch(err => sst(admin)).then(types => {
                     var values = _.compact(_.flatten([listed_markets])).map(market => {
                         var id = markets.indexOf(market);
                         if (id >= 0) return id;
@@ -90,8 +90,8 @@ module.exports = function(command, env, productId, productVersion) {
         },
         fundamental: promiseThrottle(symbol => {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            return (promise_markets || Promise.reject()).catch(err => slm()).then(markets => {
-                return (promise_types || Promise.reject()).catch(err => sst()).then(types => {
+            return (promise_markets || Promise.reject()).catch(err => slm(admin)).then(markets => {
+                return (promise_types || Promise.reject()).catch(err => sst(admin)).then(types => {
                     return level1({
                         type: 'fundamental',
                         symbol: symbol
@@ -260,40 +260,39 @@ function sbf(lookup, options) {
     ]);
 }
 
-function slm() {
-    return listOf('SLM');
+function slm(ready) {
+    return listOf('SLM', ready);
 }
 
-function sst() {
-    return listOf('SST');
+function sst(ready) {
+    return listOf('SST', ready);
 }
 
-function listOf(cmd) {
-    return openSocket(9100).then(function(socket) {
-        return promiseSend('S,SET PROTOCOL,5.1', socket)
-          .then(socket => new Promise((ready, error) => {
-            socket.on('close', err => err && error(err));
-            var listed = [];
-            onreceive(socket, function(line) {
-                var values = line.split(',');
-                if ('!ENDMSG!' == values[0]) {
-                    ready(listed);
-                    return false;
-                } else if ('E' == values[0]) {
-                    error(Error(line.replace(/E,!?/,'').replace(/!?,*$/,'')));
-                    return false;
-                } else if (isFinite(values[0])) {
-                    listed[+values[0]] = values[1];
-                    return false;
-                }
-            });
-            send(cmd, socket);
-        })).then(listed => {
-            return closeSocket(socket).then(() => listed);
-        }).catch(function(error) {
-            return closeSocket(socket).then(() => Promise.reject(error));
+function listOf(cmd, ready) {
+    return (ready() || Promise.resolve()).then(() => openSocket(9100))
+      .then(socket => promiseSend('S,SET PROTOCOL,5.1', socket)
+      .then(socket => new Promise((ready, error) => {
+        socket.on('close', err => err && error(err));
+        var listed = [];
+        onreceive(socket, function(line) {
+            var values = line.split(',');
+            if ('!ENDMSG!' == values[0]) {
+                ready(listed);
+                return false;
+            } else if ('E' == values[0]) {
+                error(Error(line.replace(/E,!?/,'').replace(/!?,*$/,'')));
+                return false;
+            } else if (isFinite(values[0])) {
+                listed[+values[0]] = values[1];
+                return false;
+            }
         });
-    });
+        send(cmd, socket);
+    })).then(listed => {
+        return closeSocket(socket).then(() => listed);
+    }).catch(function(error) {
+        return closeSocket(socket).then(() => Promise.reject(error));
+    }));
 }
 
 function historical(ready) {
