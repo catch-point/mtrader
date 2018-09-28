@@ -144,7 +144,7 @@ function collective2(collect, agent, settings, options) {
             var quant_threshold = getQuantThreshold(w, options);
             var update = updateWorking(d, w, _.defaults({quant_threshold}, options));
             if (update.length)
-                logger.trace("collective2", "desired", symbol, JSON.stringify(desired[symbol]));
+                logger.debug("collective2", "desired", symbol, JSON.stringify(desired[symbol]));
             return signals.concat(update);
         }, []);
     })).then(signals => signals.reduce((promise, signal) => promise.then(result => {
@@ -718,7 +718,7 @@ function retrieve(agent, name, settings, options) {
             throw Error("Unknown protocol " + uri);
         }
     }).then(JSON.parse).then(res => {
-        if (!res.equity_data) logger.trace("collective2", name, JSON.stringify(res));
+        if (!res.equity_data) logger.debug("collective2", name, JSON.stringify(res));
         if (res.title)
             logger.log(res.title);
         else if (res.error && res.error.title)
