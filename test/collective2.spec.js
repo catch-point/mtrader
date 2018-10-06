@@ -1806,14 +1806,13 @@ describe("collective2", function() {
                 systemid: 'test',
                 now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf()
             }).should.eventually.be.like([{
-                signalid: "94974798"
-            }, {
                 action: 'BTO',
                 quant: 2,
                 symbol: 'IBM',
                 typeofsymbol: 'stock',
                 limit: 130,
-                duration: 'DAY'
+                duration: 'DAY',
+                xreplace: "94974798"
             }]);
         });
         it("Order cancelled with stoploss", function() {
@@ -3093,14 +3092,13 @@ describe("collective2", function() {
                 systemid: 'test',
                 now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf()
             }).should.eventually.be.like([{
-                signalid: "94974798"
-            }, {
                 action: 'BTO',
                 quant: 2,
                 symbol: 'IBM',
                 typeofsymbol: 'stock',
                 limit: 130,
-                duration: 'DAY'
+                duration: 'DAY',
+                xreplace: "94974798"
             }]);
         });
         it("catch up with multiple stoploss orders", function() {

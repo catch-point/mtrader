@@ -326,7 +326,7 @@ function updateWorking(desired, working, options) {
         }
     } else if (d_opened && w_opened && desired.long_or_short != working.long_or_short) {
         // reverse position
-        return [{
+        return [c2signal({
             action: desired.long_or_short=='short' ? 'STO' : 'BTO',
             quant: d_opened,
             symbol: desired.symbol,
@@ -334,7 +334,7 @@ function updateWorking(desired, working, options) {
             market: ds.limit ? 0 : 1,
             limit: ds.limit,
             duration: 'DAY',
-            conditionalUponSignal: {
+            conditionalUponSignal: c2signal({
                 action: working.long_or_short=='short' ? 'BTC' : 'STC',
                 quant: w_opened,
                 symbol: working.symbol,
@@ -342,11 +342,11 @@ function updateWorking(desired, working, options) {
                 market: ds.limit ? 0 : 1,
                 limit: ds.limit,
                 duration: 'DAY'
-            }
-        }];
+            })
+        })];
     } else if (d_opened < w_opened) {
         // reduce position
-        return [{
+        return [c2signal({
             action: working.long_or_short=='short' ? 'BTC' : 'STC',
             quant: w_opened - d_opened,
             symbol: working.symbol,
@@ -354,10 +354,10 @@ function updateWorking(desired, working, options) {
             market: ds && ds.limit ? 0 : 1,
             limit: ds ? ds.limit : undefined,
             duration: 'DAY'
-        }];
+        })];
     } else {
         // increase position
-        return [{
+        return [c2signal({
             action: desired.long_or_short=='short' ? 'STO' : 'BTO',
             quant: d_opened - w_opened,
             symbol: desired.symbol,
@@ -365,7 +365,7 @@ function updateWorking(desired, working, options) {
             market: ds && ds.limit ? 0 : 1,
             limit: ds ? ds.limit : undefined,
             duration: 'DAY'
-        }];
+        })];
     }
 }
 
