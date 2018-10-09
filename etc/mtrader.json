@@ -15,7 +15,7 @@
       "fundamental": true,
       "interday": ["year", "quarter", "month", "week", "day"],
       "intraday": ["m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOEX"]
+      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOEX", "COMEX"]
     },
     "remote": {
       "enabled": false,
@@ -400,6 +400,23 @@
             "XVT": "@XCT"
           },
           "listed_markets": ["CMEMINI", "CME_GBX"]
+        }
+      }
+    },
+    "COMEX": {
+      "description": "Commodity Exchange, a division of the New York Mercantile Exchange",
+      "afterHoursClosesAt": "24:00:00",
+      "marketClosesAt": "17:00:00",
+      "marketOpensAt": "18:00:00",
+      "premarketOpensAt": "00:00:00",
+      "currency": "USD",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "listed_markets": ["COMEX_GBX"],
+          "dtnPrefixMap": {
+            "GC": "QGC"
+          }
         }
       }
     },
