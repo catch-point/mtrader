@@ -153,25 +153,29 @@ function help(fetch) {
  * that each pass the given criteria and are within the begin/end range.
  */
 function quote(fetch, store, fields, options) {
-    if (options.columns) expect(options.columns).not.to.have.property('length'); // not array like
-    if (options.variables) expect(options.variables).not.to.have.property('length'); // not array like
-    if (options.parameters) expect(options.parameters).not.to.have.property('length'); // not array like
-    var exprMap = parseWarmUpMap(fields, options);
-    var cached = _.mapObject(exprMap, _.keys);
-    var intervals = periods.sort(_.keys(exprMap));
-    if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
-    var criteria = parseCriteriaMap(options.criteria, fields, cached, intervals, options);
     var name = options.market ?
         options.symbol + '.' + options.market : options.symbol;
-    var interval = intervals[0];
-    intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
-    return store.open(name, (err, db) => {
-        if (err) throw err;
-        var quoteBars = fetchBars.bind(this, fetch, db, fields);
-        return inlinePadBegin(quoteBars, interval, options)
-          .then(options => inlinePadEnd(quoteBars, interval, options))
-          .then(options => mergeBars(quoteBars, exprMap, criteria, options));
-    }).then(signals => formatColumns(fields, signals, options));
+    try {
+        if (options.columns) expect(options.columns).not.to.have.property('length'); // not array like
+        if (options.variables) expect(options.variables).not.to.have.property('length'); // not array like
+        if (options.parameters) expect(options.parameters).not.to.have.property('length'); // not array like
+        var exprMap = parseWarmUpMap(fields, options);
+        var cached = _.mapObject(exprMap, _.keys);
+        var intervals = periods.sort(_.keys(exprMap));
+        if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
+        var criteria = parseCriteriaMap(options.criteria, fields, cached, intervals, options);
+        var interval = intervals[0];
+        intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
+        return store.open(name, (err, db) => {
+            if (err) throw err;
+            var quoteBars = fetchBars.bind(this, fetch, db, fields);
+            return inlinePadBegin(quoteBars, interval, options)
+              .then(options => inlinePadEnd(quoteBars, interval, options))
+              .then(options => mergeBars(quoteBars, exprMap, criteria, options));
+        }).then(signals => formatColumns(fields, signals, options));
+    } catch (e) {
+        throw Error((e.message || e) + " for " + name);
+    }
 }
 
 /**
