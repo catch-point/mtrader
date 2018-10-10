@@ -136,16 +136,6 @@ module.exports = function() {
     var lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_markets) => {
         return symbol + ' ' + _.compact(_.flatten([listed_markets])).join(' ');
     }, 10);
-    var lookupSecurity = (options) => {
-        var exchs = _.pick(_.mapObject(
-            options.market ? _.pick(markets, [options.market]) : markets,
-            exch => exch.datasources.iqfeed
-        ), val => val);
-        var listed_markets = options.listed_market ? [options.listed_market] :
-            _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
-        if (_.isEmpty(exchs)) return Promise.resolve([]);
-        else return lookupCached(exchs, symbol(options), listed_markets);
-    }
     return {
         open() {
             return iqclient.open();
@@ -161,7 +151,14 @@ module.exports = function() {
             return Promise.resolve(helpInfo);
         },
         lookup(options) {
-            return lookupSecurity(options);
+            var exchs = _.pick(_.mapObject(
+                options.market ? _.pick(markets, [options.market]) : markets,
+                exch => exch.datasources.iqfeed
+            ), val => val);
+            var listed_markets = options.listed_market ? [options.listed_market] :
+                _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
+            if (_.isEmpty(exchs)) return Promise.resolve([]);
+            else return lookupCached(exchs, symbol(options), listed_markets);
         },
         fundamental(options) {
             expect(options).to.be.like({
@@ -183,10 +180,8 @@ module.exports = function() {
                 tz: /^\S+\/\S+$/
             });
             expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
-            return lookupSecurity(options).then(security => {
-                var opts = _.extend({}, options, _.first(security));
-                return interday(iqclient, adjustments, symbol(opts), opts);
-            });
+            var adj = isNotEquity(markets, options) ? null : adjustments;
+            return interday(iqclient, adj, symbol(options), options);
         },
         intraday(options) {
             expect(options).to.be.like({
@@ -196,10 +191,8 @@ module.exports = function() {
                 tz: _.isString
             });
             expect(options.tz).to.match(/^\S+\/\S+$/);
-            return lookupSecurity(options).then(security => {
-                var opts = _.extend({}, options, _.first(security));
-                return intraday(iqclient, adjustments, symbol(opts), opts);
-            });
+            var adj = isNotEquity(markets, options) ? null : adjustments;
+            return intraday(iqclient, adj, symbol(options), options);
         },
         rollday(options) {
             expect(options).to.be.like({
@@ -210,7 +203,8 @@ module.exports = function() {
                 tz: _.isString
             });
             expect(options.tz).to.match(/^\S+\/\S+$/);
-            return rollday(iqclient, adjustments, options.interval, symbol(options), options);
+            var adj = isNotEquity(markets, options) ? null : adjustments;
+            return rollday(iqclient, adj, options.interval, symbol(options), options);
         }
     };
 };
@@ -244,6 +238,15 @@ function iqfeed_symbol(markets, options) {
             symbol: /^\S+$/
         });
         return options.symbol;
+    }
+}
+
+function isNotEquity(markets, options) {
+    if (markets[options.market] && markets[options.market].datasources.iqfeed) {
+        var source = markets[options.market].datasources.iqfeed;
+        if (source.security_types) {
+            return source.security_types.indexOf('EQUITY') < 0;
+        }
     }
 }
 
@@ -406,7 +409,7 @@ function week(iqclient, adjustments, symbol, options) {
 function day(iqclient, adjustments, symbol, options) {
     return Promise.all([
         iqclient.day(symbol, options.begin, null, options.tz),
-        adjustments(options)
+        adjustments && adjustments(options)
     ]).then(prices_adjustments => {
         var prices = prices_adjustments[0], adjustments = prices_adjustments[1];
         return adjRight(prices, adjustments, options, (today, datum, splits, adj) => ({
@@ -436,7 +439,7 @@ function day(iqclient, adjustments, symbol, options) {
 function intraday(iqclient, adjustments, symbol, options) {
     return Promise.all([
         iqclient.minute(options.minutes, symbol, options.begin, options.end, options.tz),
-        adjustments(options)
+        adjustments && adjustments(options)
     ]).then(prices_adjustments => {
         var prices = prices_adjustments[0], adjustments = prices_adjustments[1];
         return adjRight(prices, adjustments, options, (today, datum, splits, adj) => ({
@@ -475,7 +478,6 @@ function includeIntraday(iqclient, adjustments, bars, interval, symbol, options)
     if (!closesAt.isAfter(_.last(bars).ending)) return bars;
     var end = moment.tz(options.end || now, options.tz);
     if (end.isBefore(opensAt)) return bars;
-    var equity = !options.security_type || options.security_type == 'EQUITY';
     var adj = _.last(bars).adj_close / _.last(bars).close;
     var test_size = bars.length;
     return rollday(iqclient, adjustments, interval, symbol, _.defaults({
@@ -485,7 +487,7 @@ function includeIntraday(iqclient, adjustments, bars, interval, symbol, options)
         tz: tz
     }, options)).then(intraday => intraday.reduce((bars, bar) => {
         if (_.last(bars).incomplete) bars.pop(); // remove incomplete (holi)days
-        if (equity && bar.ending == _.last(bars).ending) {
+        if (adjustments && bar.ending == _.last(bars).ending) {
             adj = _.last(bars).adj_close / bar.close;
         } else if (bar.ending > _.last(bars).ending) {
             bars.push(_.extend({}, bar, {adj_close: bar.close * adj}));
@@ -529,11 +531,11 @@ function adjRight(bars, adjustments, options, cb) {
     var result = [];
     var today = null;
     var msplit = 1;
-    var a = adjustments.length;
+    var a = adjustments && adjustments.length;
     for (var i=bars.length -1; i>=0; i--) {
         var div = 0;
         var split = 1;
-        if (adjustments.length) {
+        if (adjustments && adjustments.length) {
             while (a > 0 && adjustments[a-1].exdate > (bars[i].Date_Stamp || bars[i].Time_Stamp)) {
                 var adj = adjustments[--a];
                 div += adj.dividend;
@@ -551,7 +553,7 @@ function adjRight(bars, adjustments, options, cb) {
             }
         }
         result[i] = today = cb(today, bars[i], msplit, adj ? adj.adj : 1);
-        if (adjustments.length) {
+        if (adjustments && adjustments.length) {
             today.split = 1;
             today.dividend = 0;
         }

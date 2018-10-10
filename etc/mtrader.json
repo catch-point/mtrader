@@ -46,6 +46,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
+          "security_types": ["EQUITY"],
           "listed_markets": ["NYSE_ARCA"]
         }
       }
@@ -65,6 +66,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
+          "security_types": ["EQUITY"],
           "listed_markets": ["BATS"]
         }
       }
@@ -84,6 +86,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
+          "security_types": ["EQUITY"],
           "listed_markets": ["NGM", "NASDAQ", "NGSM", "NCM", "OTC"]
         }
       }
@@ -103,6 +106,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
+          "security_types": ["EQUITY"],
           "listed_markets": ["NYSE"]
         }
       }
@@ -122,6 +126,7 @@
           "marketLang": "en-US"
         },
         "iqfeed": {
+          "security_types": ["EQUITY"],
           "listed_markets": ["NYSE_AMERICAN"]
         }
       }
@@ -142,6 +147,7 @@
           "yahooSuffix": ".L"
         },
         "iqfeed": {
+          "security_types": ["EQUITY"],
           "listed_markets": ["LSE"]
         }
       }
@@ -163,6 +169,7 @@
         },
         "iqfeed": {
           "dtnPrefix": "C.",
+          "security_types": ["EQUITY"],
           "listed_markets": ["TSE"]
         }
       }
@@ -184,6 +191,7 @@
         },
         "iqfeed": {
           "dtnPrefix": "C.",
+          "security_types": ["EQUITY"],
           "listed_markets": ["CVE"]
         }
       }
@@ -199,6 +207,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "GBP.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -214,6 +223,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "AUD.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -229,6 +239,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "NZD.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -244,6 +255,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "USD.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -259,6 +271,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CAD.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -274,6 +287,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CHF.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -289,6 +303,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "NOK.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -304,6 +319,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "SEK.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -319,6 +335,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CNH.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -334,6 +351,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "JPY.FXCM",
+          "security_types": ["SPOT", "FOREX"],
           "listed_markets": ["FXCM"]
         }
       }
@@ -399,6 +417,7 @@
             "XRT": "@XTT",
             "XVT": "@XCT"
           },
+          "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
           "listed_markets": ["CMEMINI", "CME_GBX"]
         }
       }
@@ -413,6 +432,7 @@
       "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
+          "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
           "listed_markets": ["COMEX_GBX"],
           "dtnPrefixMap": {
             "GC": "QGC"
@@ -430,6 +450,7 @@
       "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
+          "security_types": ["IEOPTION", "FOPTION"],
           "listed_markets": ["OPRA"]
         }
       }
@@ -445,6 +466,7 @@
       "datasources": {
         "iqfeed": {
           "dtnSuffix": ".XO",
+          "security_types": ["INDEX"],
           "listed_markets": ["CBOE"]
         }
       }
