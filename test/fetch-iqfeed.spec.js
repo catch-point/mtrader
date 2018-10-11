@@ -656,4 +656,34 @@ describe("fetch-iqfeed", function() {
             {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.05874,open:1.06321,close:1.16123}
         ]));
     });
+    it.skip("should lookup many iqfeed futures symbols", function() {
+        return Promise.all(_.flatten(_.range(10,19).map(year => ['H','M','U','Z'].map(mo => {
+            return client.lookup({
+                symbol: `6E${mo}${year}`,
+                market: "CME"
+            }).catch(err => err);
+        }))))
+          .then(array => array.filter(item => !_.isArray(item)))
+          .then(d=>d.forEach(d=>console.log(d))||d)
+          .should.eventually.be.empty;
+    });
+    it.skip("should lookup many local futures symbols", function() {
+        this.timeout(100000);
+        var config = require('../src/config.js');
+        config('fetch.remote.location', "ws://localhost:8081");
+        config('fetch.iqfeed.enabled', true);
+        var mtrader = require('../src/mtrader.js');
+        var server = mtrader.listen('ws://localhost:8081');
+        var remote = require('../src/fetch-remote.js')();
+        return Promise.all(_.flatten(_.range(10,19).map(year => ['H','M','U','Z'].map(mo => {
+            return remote.lookup({
+                interval: 'lookup',
+                symbol: `6E${mo}${year}`,
+                market: "CME"
+            }).catch(err => err);
+        }))))
+          .then(array => array.filter(item => !_.isArray(item)))
+          .then(d=>d.forEach(d=>console.log(d))||d)
+          .should.eventually.be.empty;
+    });
 });

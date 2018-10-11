@@ -93,7 +93,7 @@ function fetchOptionsFactory(fetch, offline, read_only) {
         }, err => {
             memoizeFirstLookup.cache = {};
             if (!market) throw err;
-            logger.debug("Fetch lookup failed", err);
+            logger.debug("Fetch lookup failed on ", symbol + '.' + market, err);
             return _.defaults(
                 _.omit(markets[market] || {}, 'datasources', 'label', 'description'),
                 options,

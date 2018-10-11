@@ -46,10 +46,16 @@ module.exports = function(command, env, productId, productVersion) {
         return adminPromise = promiseSocket(adminPromise,
             promiseNewAdminSocket.bind(this, 9300, command, env, productId, productVersion));
     };
-    var lookup = historical(admin);
+    var lookup = historical(nextval, admin);
     var throttled = promiseThrottle(lookup, 10);
     var level1 = watch(admin);
-    var promise_markets, promise_types;
+    var promised_markets, promised_types;
+    var promiseMarkets = function() {
+        return promised_markets = (promised_markets || Promise.reject()).catch(err => slm(admin));
+    };
+    var promiseTypes = function() {
+        return promised_types = (promised_types || Promise.reject()).catch(err => sst(admin));
+    };
     return {
         open() {
             return admin();
@@ -64,8 +70,8 @@ module.exports = function(command, env, productId, productVersion) {
         },
         lookup(symbol, listed_markets) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            return (promise_markets || Promise.reject()).catch(err => slm(admin)).then(markets => {
-                return (promise_types || Promise.reject()).catch(err => sst(admin)).then(types => {
+            return promiseMarkets().then(markets => {
+                return promiseTypes().then(types => {
                     var values = _.compact(_.flatten([listed_markets])).map(market => {
                         var id = markets.indexOf(market);
                         if (id >= 0) return id;
@@ -90,8 +96,8 @@ module.exports = function(command, env, productId, productVersion) {
         },
         fundamental: promiseThrottle(symbol => {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            return (promise_markets || Promise.reject()).catch(err => slm(admin)).then(markets => {
-                return (promise_types || Promise.reject()).catch(err => sst(admin)).then(types => {
+            return promiseMarkets().then(markets => {
+                return promiseTypes().then(types => {
                     return level1({
                         type: 'fundamental',
                         symbol: symbol
@@ -181,6 +187,11 @@ module.exports = function(command, env, productId, productVersion) {
             }).then(parseIntradayResults);
         }
     };
+}
+
+var sequence_counter = Date.now() % 32768;
+function nextval() {
+    return ++sequence_counter;
 }
 
 function parseDailyResults(lines) {
@@ -280,7 +291,8 @@ function listOf(cmd, ready) {
                 ready(listed);
                 return false;
             } else if ('E' == values[0]) {
-                error(Error(line.replace(/E,!?/,'').replace(/!?,*$/,'')));
+                var msg = line.replace(/E,!?/,'').replace(/!?,*$/,'');
+                error(Error(msg));
                 return false;
             } else if (isFinite(values[0])) {
                 listed[+values[0]] = values[1];
@@ -295,8 +307,7 @@ function listOf(cmd, ready) {
     }));
 }
 
-function historical(ready) {
-    var seq = 0;
+function historical(nextval, ready) {
     var blacklist = {};
     var pending = {};
     var lookupPromise;
@@ -329,7 +340,7 @@ function historical(ready) {
             }
             if (!symbol) throw Error("Missing symbol in " + args.join(','));
             return lookup().then(function(socketId){
-                var id = ++seq;
+                var id = nextval();
                 var cmd = args.join(',').replace('[RequestID]', id);
                 return new Promise(function(callback, onerror){
                     if (blacklist[symbol])

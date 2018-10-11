@@ -195,9 +195,9 @@ function lookup(datasources, options) {
     });
     var error;
     return results.reduce((promise, data) => promise.then(result => {
-        return data.then(o => result.concat(o), err => {
+        return data.then(o => o ? result.concat(o) : result, err => {
             if (!error) error = err;
-            else logger.debug("Fetch lookup failed", err);
+            else logger.debug("Fetch lookup failed for ", symbol + '.' + market, err);
             return result;
         });
     }), Promise.resolve([])).then(result => {

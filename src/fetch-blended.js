@@ -63,7 +63,7 @@ module.exports = function() {
             return delegate.help().then(_.flatten).then(info => info.map(interday => {
                 if (!interday.options || !interday.options.market) return info;
                 else return merge(interday, {options: {market: {
-                    values: _.union(markets, interday.options.market.values)
+                    values: markets
                 }}});
             }));
         },
