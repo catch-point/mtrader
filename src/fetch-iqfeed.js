@@ -31,6 +31,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const logger = require('./logger.js');
 const config = require('./config.js');
 const iqfeed = require('./iqfeed-client.js');
 const Adjustments = require('./adjustments.js');
@@ -123,6 +124,72 @@ function help() {
 
 module.exports = function() {
     var helpInfo = help();
+    return register({
+        close() {
+            return unregister(this);
+        },
+        help() {
+            return Promise.resolve(helpInfo);
+        },
+        open: sharedInstance.bind(this, 'open'),
+        lookup: sharedInstance.bind(this, 'lookup'),
+        fundamental: sharedInstance.bind(this, 'fundamental'),
+        interday: sharedInstance.bind(this, 'interday'),
+        intraday: sharedInstance.bind(this, 'intraday'),
+        rollday: sharedInstance.bind(this, 'rollday'),
+    });
+};
+
+var shared_instance, instance_timer;
+var last_used = 0, elapsed_time = 0;
+var references = [];
+var instance_lock = Promise.resolve();
+
+/** Track the references to this model */
+function register(ref) {
+    references.push(ref);
+    return ref;
+}
+
+/** If this is the last reference, release shared instance */
+function unregister(ref) {
+    var idx = references.indexOf(ref);
+    if (idx < 0) return Promise.resolve();
+    references.splice(idx, 1)
+    return instance_lock = instance_lock.catch(_.noop).then(() => {
+        if (references.length) return Promise.resolve();
+        else return releaseInstance();
+    });
+}
+
+/** Use the shared instance, creating a new one if needed */
+function sharedInstance(cmd, options) {
+    last_used = elapsed_time;
+    if (shared_instance) return shared_instance[cmd](options);
+    else return instance_lock = instance_lock.catch(_.noop).then(() => {
+        shared_instance = createInstance();
+        instance_timer = setInterval(() => {
+            if (last_used < elapsed_time++) {
+                releaseInstance().catch(logger.error);
+            }
+        }, config('fetch.iqfeed.timeout') || 600000);
+        instance_timer.unref();
+        return shared_instance[cmd](options);
+    });
+}
+
+/** Free up shared instance */
+function releaseInstance() {
+    if (instance_timer) clearInterval(instance_timer);
+    var instance = shared_instance;
+    shared_instance = null;
+    instance_timer = null;
+    return instance ? instance.close() : Promise.resolve();
+}
+
+/** Create a new instance */
+function createInstance() {
+    var helpInfo = help();
     var markets = _.pick(config('markets'), config('fetch.iqfeed.markets'));
     var symbol = iqfeed_symbol.bind(this, markets);
     var launch = config('fetch.iqfeed.command');
@@ -207,7 +274,7 @@ module.exports = function() {
             return rollday(iqclient, adj, options.interval, symbol(options), options);
         }
     };
-};
+}
 
 function iqfeed_symbol(markets, options) {
     if (options.iqfeed_symbol) {
