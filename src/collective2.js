@@ -263,6 +263,7 @@ function updateWorking(desired, working, options) {
     var w_opened = working.quant_opened - working.quant_closed;
     var within = Math.abs(d_opened - w_opened) <= (options.quant_threshold || 0);
     var same_side = desired.long_or_short == working.long_or_short;
+    var ds_projected = ds && +ds.parkUntilSecs * 1000 > options.now;
     if (_.has(ds, 'parkUntilSecs') && !working.prior && +working.closedWhenUnixTimeStamp > +ds.parkUntilSecs) {
         // working position has since been closed (stoploss) since the last desired signal was produced
         return [];
@@ -300,10 +301,10 @@ function updateWorking(desired, working, options) {
         } else if (+ds.isStopOrder && +ws.isStopOrder && sameSignal(ds, ws, options.quant_threshold)) {
             // signals are both stoploss orders and within quant_threshold
             return updateWorking(desired.prior, working.prior, options);
-        } else if (+ds.isStopOrder && +ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now) {
+        } else if (+ds.isStopOrder && +ws.isStopOrder && ds_projected) {
             // signals are both stoploss orders, but the desired stoploss has not come into effect yet
             return updateWorking(desired.prior, working.prior, options);
-        } else if (+ds.isStopOrder && !+ws.isStopOrder && +ds.parkUntilSecs * 1000 > options.now) {
+        } else if (+ds.isStopOrder && !+ws.isStopOrder && ds_projected) {
             // desired signal is stoploss order, but has not come into effect yet
             return updateWorking(desired.prior, working, options);
         } else if (similarSignals(ds, ws)) {
@@ -331,16 +332,16 @@ function updateWorking(desired, working, options) {
             quant: d_opened,
             symbol: desired.symbol,
             typeofsymbol: desired.instrument,
-            market: ds.limit ? 0 : 1,
-            limit: ds.limit,
+            market: desired.limit ? 0 : 1,
+            limit: desired.limit,
             duration: 'DAY',
             conditionalUponSignal: c2signal({
                 action: working.long_or_short=='short' ? 'BTC' : 'STC',
                 quant: w_opened,
                 symbol: working.symbol,
                 typeofsymbol: working.instrument,
-                market: ds.limit ? 0 : 1,
-                limit: ds.limit,
+                market: desired.limit ? 0 : 1,
+                limit: desired.limit,
                 duration: 'DAY'
             })
         })];
@@ -351,8 +352,8 @@ function updateWorking(desired, working, options) {
             quant: w_opened - d_opened,
             symbol: working.symbol,
             typeofsymbol: working.instrument,
-            market: ds && ds.limit ? 0 : 1,
-            limit: ds ? ds.limit : undefined,
+            market: desired.limit ? 0 : 1,
+            limit: desired.limit,
             duration: 'DAY'
         })];
     } else {
@@ -362,8 +363,8 @@ function updateWorking(desired, working, options) {
             quant: d_opened - w_opened,
             symbol: desired.symbol,
             typeofsymbol: desired.instrument,
-            market: ds && ds.limit ? 0 : 1,
-            limit: ds ? ds.limit : undefined,
+            market: desired.limit ? 0 : 1,
+            limit: desired.limit,
             duration: 'DAY'
         })];
     }
@@ -440,11 +441,18 @@ function isOpenAndClose(open, close, options) {
  * Position after applying the given signal
  */
 function advance(pos, signal, options) {
+    var position = updateStoploss(pos, signal, options);
+    if (!signal.limit) return position;
+    // record limit for use with adjustements
+    else return _.extend({}, position, {limit: signal.limit});
+}
+
+function updateStoploss(pos, signal, options) {
     if (signal.quant === 0 && signal.parkUntilSecs && +signal.parkUntilSecs * 1000 > options.now) {
         return pos; // don't update signal limits if in the future
     } else if (signal.stoploss) {
         var base = !+signal.quant && pos.prior && +pos.signal.isStopOrder ? pos.prior : pos;
-        var prior = updatePosition(base, _.omit(signal, 'stop', 'stoploss'), options);
+        var prior = advance(base, _.omit(signal, 'stop', 'stoploss'), options);
         var stoploss = +signal.isStopOrder || +signal.stoploss || +signal.stop;
         var quant = +prior.signal.quant;
         expect(prior).to.have.property('long_or_short').that.is.oneOf(['long', 'short']);
