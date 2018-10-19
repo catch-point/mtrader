@@ -98,9 +98,7 @@ function readConfig(name) {
 }
 
 function lookup(delegate, cfg, cmd, options) {
-    var asset = findAsset(cfg, cmd, options);
-    return delegate[cmd](_.defaults({}, asset && asset.underlying, options))
-      .then(result => result.map(item => {
+    return delegateCall(delegate, cfg, cmd, options).then(result => result.map(item => {
         var asset = cfg.assets.find(a => _.matcher(a.underlying)(item));
         return _.defaults(_.omit(asset, 'underlying', 'blend'), item);
     }));
@@ -108,7 +106,11 @@ function lookup(delegate, cfg, cmd, options) {
 
 function delegateCall(delegate, cfg, cmd, options) {
     var asset = findAsset(cfg, cmd, options);
-    return delegate[cmd](_.defaults({}, asset && asset.underlying, options));
+    var market = asset && asset.underlying && asset.underlying.market ?
+        _.omit(config('markets')[asset.underlying.market], 'datasources', 'label', 'description') : null;
+    var opts = !asset || !asset.underlying ? options :
+        _.defaults({}, asset && asset.underlying, market, options);
+    return delegate[cmd](opts);
 }
 
 function blendCall(delegate, cfg, cmd, options) {

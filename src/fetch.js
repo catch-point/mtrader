@@ -44,9 +44,6 @@ const expect = require('chai').use(like).expect;
 module.exports = function() {
     var datasources;
     var markets = config('markets');
-    var tz = config('tz');
-    var marketOpensAt = config('marketOpensAt');
-    var marketClosesAt = config('marketClosesAt');
     var self = function(options) {
         datasources = datasources || promiseDatasources();
         return datasources.then(datasources => {
@@ -57,10 +54,10 @@ module.exports = function() {
                 var others = _.flatten(_.map(datasources, _.keys));
                 expect(market).to.be.oneOf(_.uniq(_.union(_.keys(markets), others)));
             }
-            var opt = _.extend({tz, marketOpensAt, marketClosesAt},
+            var opt = market ? _.extend(
                 _.omit(markets[market], 'datasources', 'label', 'description'),
                 options
-            );
+            ) : options;
             var interval = options.interval;
             switch(interval) {
                 case 'lookup': return lookup(datasources.lookup, opt);
