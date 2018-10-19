@@ -138,13 +138,13 @@ function blendCall(delegate, cfg, cmd, options) {
             if (_.isEmpty(result)) return part;
             var next = _.last(part);
             var overlap = _.sortedIndex(result, next, 'ending');
-            if (result[overlap].ending > next.ending) overlap--;
+            if (!result[overlap] || result[overlap].ending > next.ending) overlap--;
             if (!result[overlap])
                 return part.concat(result);
             else if (next.adj_close == result[overlap].adj_close)
                 return part.concat(result.slice(overlap+1));
             var scale = result[overlap].adj_close / next.adj_close;
-            return part.map(datum => _.defaults({adj_close: datum.adj_close * scale}, datum))
+            return part.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}))
                 .concat(result.slice(overlap+1));
         });
     }), Promise.resolve([]));
