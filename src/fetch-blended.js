@@ -119,12 +119,14 @@ function blendCall(delegate, cfg, cmd, options) {
     return asset.blend.reduceRight((promise, blend, i) => promise.then(result => {
         return readData(cfg, blend, options).then(part => {
             if (i == asset.blend.length-1) {
-                var begin = _.isEmpty(part) && moment.tz(options.begin, options.tz).format();
+                var begining = _.isEmpty(part) && moment.tz(options.begin, options.tz).format();
                 var ending = !_.isEmpty(part) && _.last(part).ending;
+                var earlier = _.last(_.sortBy(_.compact([begining, ending])));
+                var later = _.last(_.sortBy(_.compact([end, ending])));
                 return delegateCall(delegate, cfg, cmd, _.defaults({
                     interval: 'day',
-                    begin: _.last(_.sortBy(_.compact([begin, ending]))),
-                    end: _.last(_.sortBy(_.compact([end, ending])))
+                    begin: earlier,
+                    end: later != earlier ? later : undefined
                 }, options)).then(data => {
                     result = data;
                     return part;
