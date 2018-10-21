@@ -88,7 +88,7 @@ function usage(command) {
 
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
-    if (program.args.length) {
+    if (program.args.length || !process.send) {
         var fetch = require('./mtrader-fetch.js');
         var quote = require('./mtrader-quote.js');
         var collect = createInstance(program, fetch, quote);
@@ -100,10 +100,8 @@ if (require.main === module) {
           .then(result => tabular(result, config()))
           .catch(err => logger.error(err, err.stack))
           .then(() => collect.close());
-    } else if (process.send) {
-        spawn();
     } else {
-        program.help();
+        spawn();
     }
 } else {
     var fetch = require('./mtrader-fetch.js');
