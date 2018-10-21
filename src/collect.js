@@ -784,17 +784,18 @@ function reduceInterval(dataset, temporal, cb, memo) {
 }
 
 /**
- * Returns array after sorting it inplace
+ * Returns copy of array after stable sorting
  * @param order an array [{by: prop, desc: false}]
  */
 function sortBy(array, order) {
     if (_.isEmpty(order)) return array;
-    else return array.sort((left, right) => {
-        return order.reduce((r, o) => {
-            var a = o.by(left);
-            var b = o.by(right);
-            if (r != 0 || a === b) {
-                return r;
+    else return _.range(array.length).sort((left, right) => {
+        var ret = order.reduce((r, o) => {
+            if (r != 0) return r;
+            var a = o.by(array[left]);
+            var b = o.by(array[right]);
+            if (a === b) {
+                return 0;
             } else if (!o.desc) {
                 if (a > b || a === void 0) return 1;
                 if (a < b || b === void 0) return -1;
@@ -803,5 +804,6 @@ function sortBy(array, order) {
                 if (a > b || b === void 0) return -1;
             }
         }, 0);
-    });
+        return ret || left - right;
+    }).map(i => array[i]);
 }
