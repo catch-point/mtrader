@@ -139,6 +139,19 @@ var functions = module.exports.functions = {
     }, {
         description: "Returns the last character or characters of a text"
     }),
+    REPLACE: _.extend((opts, text, position, length, new_text) => {
+        return context => {
+            var str_text = text(context);
+            if (str_text == null) return null;
+            var str = str_text.toString();
+            var p = position(context) || 1;
+            var len = length(context) || 0;
+            var rp = new_text && new_text(context) || '';
+            return str.substring(0, p-1) + rp + str.substring(Math.min(p-1 + len, str.length));
+        };
+    }, {
+        description: "Replaces characters within a text string with a different text string"
+    }),
     /* The number of days since 1899-12-31 */
     DATEVALUE: _.extend((opts, ending, tz) => {
         return context => {

@@ -503,4 +503,34 @@ describe("common-functions", function(){
             expect(RIGHT({n:1})).to.equal(null);
         });
     });
+    describe("REPLACE", function() {
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, {tz: 'America/New_York'});
+            }
+        });
+        var REPLACE = parser.parse('REPLACE(t, p, l, n)');
+        it("abc", function() {
+            expect(REPLACE({t:"abc"})).to.equal("abc");
+            expect(REPLACE({t:"abc",p:2})).to.equal("abc");
+        });
+        it("bc", function() {
+            expect(REPLACE({t:"abc",p:1,l:1})).to.equal("bc");
+        });
+        it("ab1", function() {
+            expect(REPLACE({t:"abc",p:3,l:1,n:'1'})).to.equal("ab1");
+        });
+        it("1", function() {
+            expect(REPLACE({t:"abc",p:1,l:3,n:'1'})).to.equal("1");
+        });
+        it("ab-c", function() {
+            expect(REPLACE({t:"abc",p:3,l:0,n:'-'})).to.equal("ab-c");
+        });
+    });
 });
