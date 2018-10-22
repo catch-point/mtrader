@@ -503,7 +503,7 @@ describe("common-functions", function(){
             expect(RIGHT({n:1})).to.equal(null);
         });
     });
-    describe("REPLACE", function() {
+    describe("SEARCH/REPLACE", function() {
         var parser = Parser({
             constant(value) {
                 return () => value;
@@ -515,22 +515,35 @@ describe("common-functions", function(){
                 return common(name, args, {tz: 'America/New_York'});
             }
         });
+        var LEN = parser.parse('LEN(t)');
         var REPLACE = parser.parse('REPLACE(t, p, l, n)');
+        var SEARCH = parser.parse('SEARCH(f, t, p)');
         it("abc", function() {
             expect(REPLACE({t:"abc"})).to.equal("abc");
             expect(REPLACE({t:"abc",p:2})).to.equal("abc");
+            expect(LEN({t:"abc"})).to.equal(3);
+            expect(SEARCH({f:"a",t:"abcabc",p:1})).to.equal(1);
+            expect(SEARCH({f:"a",t:"abcabc",p:2})).to.equal(4);
         });
         it("bc", function() {
             expect(REPLACE({t:"abc",p:1,l:1})).to.equal("bc");
+            expect(LEN({t:"bc"})).to.equal(2);
+            expect(SEARCH({f:"bc",t:"abc"})).to.equal(2);
         });
         it("ab1", function() {
             expect(REPLACE({t:"abc",p:3,l:1,n:'1'})).to.equal("ab1");
+            expect(LEN({t:"ab1"})).to.equal(3);
+            expect(SEARCH({f:"1",t:"ab1"})).to.equal(3);
         });
         it("1", function() {
             expect(REPLACE({t:"abc",p:1,l:3,n:'1'})).to.equal("1");
+            expect(LEN({t:"1"})).to.equal(1);
+            expect(SEARCH({f:"bc",t:"abc"})).to.equal(2);
         });
         it("ab-c", function() {
             expect(REPLACE({t:"abc",p:3,l:0,n:'-'})).to.equal("ab-c");
+            expect(LEN({t:"ab-c"})).to.equal(4);
+            expect(SEARCH({f:"B",t:"ab-c"})).to.equal(2);
         });
     });
 });

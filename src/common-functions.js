@@ -139,6 +139,15 @@ var functions = module.exports.functions = {
     }, {
         description: "Returns the last character or characters of a text"
     }),
+    LEN: _.extend((opts, text) => {
+        return context => {
+            var str_text = text(context);
+            if (str_text == null) return null;
+            return str_text.toString().length;
+        };
+    }, {
+        description: "Calculates length of a text string"
+    }),
     REPLACE: _.extend((opts, text, position, length, new_text) => {
         return context => {
             var str_text = text(context);
@@ -151,6 +160,18 @@ var functions = module.exports.functions = {
         };
     }, {
         description: "Replaces characters within a text string with a different text string"
+    }),
+    SEARCH: _.extend((opts, find_text, text, position) => {
+        return context => {
+            var str_text = text(context);
+            if (str_text == null) return null;
+            var str = str_text.toString().toLowerCase();
+            var needle = find_text(context).toString().toLowerCase();
+            var p = position && position(context) || 1;
+            return str.indexOf(needle, p-1) +1 || null;
+        };
+    }, {
+        description: "Looks for one text value within another (not case-sensitive)"
     }),
     /* The number of days since 1899-12-31 */
     DATEVALUE: _.extend((opts, ending, tz) => {
