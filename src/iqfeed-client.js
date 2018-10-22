@@ -47,7 +47,7 @@ module.exports = function(command, env, productId, productVersion) {
             promiseNewAdminSocket.bind(this, 9300, command, env, productId, productVersion));
     };
     var lookup = historical(nextval, admin);
-    var throttled = promiseThrottle(lookup, 10);
+    var throttled = promiseThrottle(lookup, 100);
     var level1 = watch(admin);
     var promised_markets, promised_types;
     var promiseMarkets = function() {
