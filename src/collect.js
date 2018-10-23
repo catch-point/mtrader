@@ -209,7 +209,9 @@ function collectDuration(quote, callCollect, fields, options) {
             });
             var columns = parser.parse(simpleColumns);
             var filter = [opts.filter, parser.parse(criteria)];
-            var params = _.omit(defaults, _.keys(opts.columns).concat(_.keys(opts.variables)));
+            var nestedColumns = _.flatten(_.flatten([opts.portfolio]).map(p => _.keys(p.columns)));
+            var existing_vars = _.union(_.keys(opts.columns), _.keys(opts.variables), nestedColumns);
+            var params = _.omit(defaults, existing_vars);
             return callCollect(_.defaults({
                 columns: _.extend(columns, {
                     [options.indexCol]: JSON.stringify(index),
