@@ -33,6 +33,7 @@ const net = require('net');
 const _ = require('underscore');
 const spawn = require('child_process').spawn;
 const moment = require('moment-timezone');
+const d3 = require('d3-format');
 const logger = require('./logger.js');
 const promiseThrottle = require('./throttle.js');
 const interrupt = require('./interrupt.js');
@@ -70,9 +71,12 @@ module.exports = function(command, env, productId, productVersion) {
         },
         lookup(symbol, listed_markets) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            return promiseMarkets().then(markets => {
+            var listed_markets_ar = _.compact(_.flatten([listed_markets]));
+            var listed_market = listed_markets_ar.length == 1 ? listed_markets_ar[0] : null;
+            if (listed_market == 'OPRA') return Promise.resolve([lookupOptions(symbol)]);
+            else return promiseMarkets().then(markets => {
                 return promiseTypes().then(types => {
-                    var values = _.compact(_.flatten([listed_markets])).map(market => {
+                    var values = listed_markets_ar.map(market => {
                         var id = markets.indexOf(market);
                         if (id >= 0) return id;
                         else return market;
@@ -124,6 +128,7 @@ module.exports = function(command, env, productId, productVersion) {
             var now = moment().tz(tz);
             var earliest = moment.tz(begin, tz);
             if (!earliest.isValid()) throw Error("Invalid begin date " + begin);
+            if (isOptionExpired(symbol, earliest, end, tz)) return Promise.resolve([]);
             return hmx(throttled, {
                 symbol: symbol,
                 maxDatapoints: moment.tz(now, tz).diff(earliest, 'months') + 1
@@ -140,6 +145,7 @@ module.exports = function(command, env, productId, productVersion) {
             var now = moment().tz(tz);
             var earliest = moment.tz(begin, tz);
             if (!earliest.isValid()) throw Error("Invalid begin date " + begin);
+            if (isOptionExpired(symbol, earliest, end, tz)) return Promise.resolve([]);
             return hwx(throttled, {
                 symbol: symbol,
                 maxDatapoints: now.diff(earliest, 'weeks') + 1
@@ -158,6 +164,7 @@ module.exports = function(command, env, productId, productVersion) {
             if (!b.isValid()) throw Error("Invalid begin date " + begin);
             if (e && !e.isValid()) throw Error("Invalid end date " + end);
             var now = moment().tz(tz);
+            if (isOptionExpired(symbol, b, e, tz)) return Promise.resolve([]);
             return hdt(throttled, {
                 symbol: symbol,
                 begin: b.format('YYYYMMDD'),
@@ -178,6 +185,7 @@ module.exports = function(command, env, productId, productVersion) {
             var e = end && moment.tz(end, 'America/New_York');
             if (e && !e.isValid()) throw Error("Invalid end date " + end);
             if (e) e.minutes(minutes*Math.floor(e.minutes()/minutes)).subtract(1,'s');
+            if (isOptionExpired(symbol, b, e, tz)) return Promise.resolve([]);
             return hit(throttled, {
                 symbol: symbol,
                 seconds: 60 * minutes,
@@ -192,6 +200,55 @@ module.exports = function(command, env, productId, productVersion) {
 var sequence_counter = Date.now() % 32768;
 function nextval() {
     return ++sequence_counter;
+}
+
+var calls = {
+    A: 'JAN', B: 'FEB', C: 'MAR', D: 'APR', E: 'MAY', F: 'JUN',
+    G: 'JUL', H: 'AUG', I: 'SEP', J: 'OCT', K: 'NOV', L: 'DEC'
+};
+var puts = {
+    M: 'JAN', N: 'FEB', O: 'MAR', P: 'APR', Q: 'MAY', R: 'JUN',
+    S: 'JUL', T: 'AUG', U: 'SEP', V: 'OCT', W: 'NOV', X: 'DEC'
+};
+var months = {
+    A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
+    G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
+    M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
+    S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
+};
+var strike_format = d3.format(".2f");
+function lookupOptions(symbol) {
+    var m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return [];
+    var underlying = m[1];
+    var yy = +m[2];
+    var cc = yy<50 ? 2000 : 1900;
+    var year = cc + yy;
+    var day = m[3];
+    var mo = months[m[4]];
+    var cmonth = calls[m[4]];
+    var pmonth = puts[m[4]];
+    var pc = cmonth ? 'C' : 'P';
+    var month = cmonth || pmonth;
+    var strike = strike_format(+m[5]);
+    return {
+        symbol: symbol,
+        listed_market: 'OPRA',
+        security_type: 'IEOPTION',
+        name: `${underlying} ${month} ${year} ${pc} ${strike}`,
+        strike_price: strike,
+        expiration_date: `${year}-${mo}-${day}`
+    };
+}
+
+function isOptionExpired(symbol, begin, end, tz) {
+    var option = lookupOptions(symbol);
+    if (option && moment.tz(option.expiration_date,tz).endOf('day').isBefore(begin))
+        return true;
+    else if (option && end && moment.tz(option.expiration_date,tz).subtract(6,'months').isAfter(end))
+        return true;
+    else
+        return false;
 }
 
 function parseDailyResults(lines) {

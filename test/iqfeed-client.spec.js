@@ -47,6 +47,56 @@ describe("iqfeed-client", function() {
     after(function() {
         if (client) return client.close();
     });
+    describe.only("options", function() {
+        it("lookup", function() {
+            return client.lookup('SPY1819V280', 'OPRA')
+              .should.eventually.be.like(results => _.some(results, like({
+                symbol: 'SPY1819V280',
+                listed_market: 'OPRA',
+                security_type: 'IEOPTION',
+                name: 'SPY OCT 2018 P 280.00'
+            })));
+        });
+        it("near expiration", function() {
+            return client.day('SPY1819V280', '2018-10-10', '2020-01-01', tz)
+              .should.eventually.be.like([
+                { Date_Stamp: '2018-10-10', Close: '5.26' },
+                { Date_Stamp: '2018-10-11', Close: '8.28' },
+                { Date_Stamp: '2018-10-12', Close: '5.21' },
+                { Date_Stamp: '2018-10-15', Close: '6.17' },
+                { Date_Stamp: '2018-10-16', Close: '1.32' },
+                { Date_Stamp: '2018-10-17', Close: '1.13' },
+                { Date_Stamp: '2018-10-18', Close: '3.59' },
+                { Date_Stamp: '2018-10-19', Close: '4.16' }
+              ]);
+        });
+        it("last day", function() {
+            return client.day('SPY1819V280', '2018-10-19T12:00:00', '2020-01-01', tz)
+              .should.eventually.be.like([
+                { Date_Stamp: '2018-10-19', Close: '4.16' }
+              ]);
+        });
+        it("after expiration", function() {
+            return client.day('SPY1819V280', '2018-10-20', '2020-01-01', tz)
+              .should.eventually.be.like([]);
+        });
+        it("before listing", function() {
+            return client.day('SPY1819V280', '2010-01-01', '2018-01-01', tz)
+              .should.eventually.be.like([]);
+        });
+        it("last week", function() {
+            return client.week('SPY1819V280', '2018-10-14', '2020-01-01', tz)
+              .should.eventually.be.like([
+                { Date_Stamp: '2018-10-19', Close: '4.16' }
+              ]);
+        });
+        it("last month", function() {
+            return client.month('SPY1819V280', '2018-10-14', '2020-01-01', tz)
+              .should.eventually.be.like([
+                { Date_Stamp: '2018-10-19', Close: '4.16' }
+              ]);
+        });
+    });
     it("should find IBM", function() {
         return client.lookup('IBM', "NYSE").should.eventually.be.like(results => _.some(results, like({
             symbol: 'IBM',
