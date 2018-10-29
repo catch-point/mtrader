@@ -113,8 +113,11 @@ var functions = module.exports.functions = {
     TEXT: _.extend((opts, value, format, tz) => {
         return context => {
             var val = value(context);
-            if (_.isFinite(val)) return d3.format(format(context))(+val);
-            else return moment.tz(val, tz ? tz(context) : opts.tz).format(format(context));
+            var pattern = format && format(context);
+            if (!pattern && !val && val!=0) return '';
+            else if (!pattern) return val.toString();
+            else if (_.isFinite(val)) return d3.format(pattern)(+val);
+            else return moment.tz(val, tz ? tz(context) : opts.tz).format(pattern);
         };
     }, {
         description: "Converts numbers and dates to text in the given format"
@@ -493,7 +496,10 @@ var functions = module.exports.functions = {
     /* Addition */
     ADD(opts, a, b) {
         return context => {
-            return precision(a(context) + b(context));
+            var x = a(context);
+            var y = b(context);
+            if (!_.isFinite(x) || !_.isFinite(y)) return x + y;
+            else return precision(+x + +y);
         };
     },
     /* Subtraction */
