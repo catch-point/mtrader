@@ -31,6 +31,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const statkit = require("statkit");
 const d3 = require('d3-format');
 const periods = require('./periods.js');
 const expect = require('chai').expect;
@@ -166,7 +167,7 @@ var functions = module.exports.functions = {
             var str_text = text(context);
             if (str_text == null) return null;
             var str = str_text.toString().toLowerCase();
-            var needle = find_text(context).toString().toLowerCase();
+            var needle = (find_text(context) || '').toString().toLowerCase();
             var p = position && position(context) || 1;
             return str.indexOf(needle, p-1) +1 || null;
         };
@@ -526,6 +527,58 @@ var functions = module.exports.functions = {
             return precision(number(context) % divisor(context));
         };
     },
+    POWER: _.extend((opts, base, exponent) => {
+        return context => {
+            var value = Math.pow(number(context));
+            return _.isFinite(value) ? value : null;
+        };
+    }, {
+        description: "Returns a^b, base a raised to the power of exponent b"
+    }),
+    SQRT: _.extend((opts, number) => {
+        return context => {
+            var value = Math.sqrt(number(context));
+            return _.isFinite(value) ? value : null;
+        };
+    }, {
+        description: "Returns the sequare root of a number"
+    }),
+    EXP: _.extend((opts, number) => {
+        return context => {
+            var value = Math.exp(number(context));
+            return _.isFinite(value) ? value : null;
+        };
+    }, {
+        description: "Calculates the exponent for basis e"
+    }),
+    LN: _.extend((opts, number) => {
+        return context => {
+            var value = Math.log(number(context));
+            return _.isFinite(value) ? value : null;
+        };
+    }, {
+        description: "Calculates the natural logarithm of a number"
+    }),
+    NORMSDIST: _.extend((opts, number) => {
+        return context => {
+            var n = number(context);
+            if (!_.isFinite(n)) return null;
+            var value = statkit.normcdf(n);
+            return _.isFinite(value) ? value : null;
+        };
+    }, {
+        description: "The values of the standard normal cumulative distribution"
+    }),
+    NORMSINV: _.extend((opts, number) => {
+        return context => {
+            var n = number(context);
+            if (!_.isFinite(n)) return null;
+            var value = statkit.norminv(n);
+            return _.isFinite(value) ? value : null;
+        };
+    }, {
+        description: "Values of the inverse standard normal distribution"
+    }),
     /* Percent change ratio */
     CHANGE(opts, target, reference, denominator) {
         if (!target || !reference) throw Error("CHANGE requires two or three arguments");
