@@ -31,7 +31,6 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const fs = require('fs');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');

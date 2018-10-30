@@ -30,7 +30,7 @@
  */
 
 const _ = require('underscore');
-const fs = require('fs');
+const fs = require('graceful-fs');
 const path = require('path');
 const process = require('process');
 const child_process = require('child_process');

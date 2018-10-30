@@ -30,7 +30,7 @@
  */
 
 const _ = require('underscore');
-const fs = require('fs');
+const fs = require('graceful-fs');
 const url = require('url');
 const http = require('http');
 const https = require('https');

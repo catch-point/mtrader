@@ -31,7 +31,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const fs = require('fs');
+const fs = require('graceful-fs');
 const path = require('path');
 const url = require('url');
 const http = require('http');

@@ -29,7 +29,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const fs = require('fs');
+const fs = require('graceful-fs');
 const os = require('os');
 const path = require('path');
 const process = require('process');
