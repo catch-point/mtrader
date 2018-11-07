@@ -32,6 +32,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const statkit = require("statkit");
+const iv = require('implied-volatility');
 const d3 = require('d3-format');
 const periods = require('./periods.js');
 const expect = require('chai').expect;
@@ -535,7 +536,9 @@ var functions = module.exports.functions = {
     },
     POWER: _.extend((opts, base, exponent) => {
         return context => {
-            var value = Math.pow(number(context));
+            var b = base && base(context) || 0;
+            var e = exponent && exponent(context) || 0;
+            var value = Math.pow(b, e);
             return _.isFinite(value) ? value : null;
         };
     }, {
@@ -565,6 +568,11 @@ var functions = module.exports.functions = {
     }, {
         description: "Calculates the natural logarithm of a number"
     }),
+    PI: _.extend((opts) => {
+        return _.constant(Math.PI);
+    }, {
+        description: "Returns the ratio of the circumference of a circle to its diameter, approximately 3.14159"
+    }),
     NORMSDIST: _.extend((opts, number) => {
         return context => {
             var n = number(context);
@@ -584,6 +592,20 @@ var functions = module.exports.functions = {
         };
     }, {
         description: "Values of the inverse standard normal distribution"
+    }),
+    BSIV: _.extend((opts, op_cost, asset_price, strike, days, rate, C_or_P) => {
+        return context => {
+            var c = op_cost && op_cost(context) || 0;
+            var s = asset_price && asset_price(context) || 0;
+            var k = strike && strike(context) || 0;
+            var t = days && days(context)/365 || 0;
+            var r = rate && rate(context)/100 || 0;
+            var cp = C_or_P && (C_or_P(context)||'').toString().charAt(0);
+            var callPut = cp == 'P' || cp == 'p' ? 'put' : 'call';
+            return iv.getImpliedVolatility(c, s,  k, t, r, callPut) * 100;
+        };
+    }, {
+        description: "Determine implied volatility of options based on their prices"
     }),
     /* Percent change ratio */
     CHANGE(opts, target, reference, denominator) {

@@ -546,4 +546,66 @@ describe("common-functions", function(){
             expect(SEARCH({f:"B",t:"ab-c"})).to.equal(2);
         });
     });
+    describe("Options", function() {
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, {tz: 'America/New_York'});
+            }
+        });
+        // note that these options assume no dividend yeild
+        var BSIV = parser.parse('BSIV(c, s, k, t, r, cp)');
+        var ln = parser.parse('LN(s/k)');
+        var power = parser.parse('POWER(BSIV(c, s, k, t, r, cp)/100,2)');
+        var dn = parser.parse('(r/100+POWER(BSIV(c, s, k, t, r, cp)/100,2)/2)*t/365');
+        var xert = parser.parse('k*EXP(-r/100*t/365)');
+        var v1 = 'BSIV(c, s, k, t, r, cp)/100*SQRT(t/365)';
+        var d1 = `(LN(s/k)+(r/100+POWER(BSIV(c, s, k, t, r, cp)/100,2)/2)*t/365)/(${v1})`;
+        var g1 = `EXP(-POWER(${d1},2)/2)/SQRT(2*PI())`;
+        var t1 = `-s*${g1}*BSIV(c, s, k, t, r, cp)/100/(2*SQRT(t/365))`;
+        var r1 = `k*EXP(-r/100*t/365)*NORMSDIST(${d1}-${v1})`;
+        var delta = parser.parse(`NORMSDIST(${d1})`);
+        var gamma = parser.parse(`${g1}/(s*${v1})`);
+        var ctheta = parser.parse(`(${t1}-(r/100*${r1}))/365`);
+        var ptheta = parser.parse(`(${t1}+(r/100*${r1}))/365`);
+        var vega = parser.parse(`${g1}*s*SQRT(t/365)/100`);
+        var rho = parser.parse(`t/365*${r1}/100`);
+        var nd2 = parser.parse(`NORMSDIST(${d1}-${v1})`);
+        var pd1 = parser.parse(d1);
+        var dd = parser.parse(v1);
+        it("35 call option", function() {
+            expect(BSIV  ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(48, 1);
+            expect(ln    ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.0301, 0.0005);
+            expect(power ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.23, 0.005);
+            expect(dn    ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.0090, 0.0005);
+            expect(dd    ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.12, 0.05);
+            expect(pd1   ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.303, 0.001);
+            expect(xert  ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(34.98, 0.01);
+            expect(nd2   ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.5695, 0.001);
+            expect(delta ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.6194, 0.0005);
+            expect(gamma ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.0820, 0.0005);
+            expect(ctheta({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(-0.0346, 0.0005);
+            expect(vega  ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.0367, 0.0005);
+            expect(rho   ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.0142, 0.005);
+        });
+        it("35 put option", function() {
+            expect(BSIV  ({c:1.33,s:36.07,k:35,t:26,r:1,cp:'P'})).to.closeTo(48, 1);
+            expect(delta ({c:1.33,s:36.07,k:35,t:26,r:1,cp:'P'})).to.closeTo(1-0.3806, 0.0005);
+            expect(gamma ({c:1.33,s:36.07,k:35,t:26,r:1,cp:'P'})).to.closeTo(0.0820, 0.0005);
+            expect(ptheta({c:1.33,s:36.07,k:35,t:26,r:1,cp:'P'})).to.closeTo(-0.0336, 0.0005);
+            expect(vega  ({c:1.33,s:36.07,k:35,t:26,r:1,cp:'P'})).to.closeTo(0.0367, 0.0005);
+            expect(rho   ({c:1.33,s:36.07,k:35,t:26,r:1,cp:'P'})).to.closeTo(0.0107, 0.005);
+        });
+        it("call delta", function() {
+            expect(delta({c:0.80,s:1516.12,k:1680,t:67,r:0.5,cp:'C'})).to.closeTo(0.0268, 0.0005);
+        });
+        it("put delta", function() {
+            expect(delta({c:19.15,s:1516.12,k:1470,t:67,r:0.5,cp:'P'})).to.closeTo(1-0.30, 0.001);
+        });
+    });
 });
