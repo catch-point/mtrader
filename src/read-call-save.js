@@ -71,8 +71,8 @@ function inlineCollections(collections, base, options, avoid) {
 }
 
 function loadCollection(collections, base, options, avoid) {
-    var opts = options.load ? _.compact(_.flatten([options.load])).reduceRight((load, options) => {
-        return merge(inlineCollections(load), options);
+    var opts = options.load ? _.compact(_.flatten([options.load])).reduceRight((options, load) => {
+        return merge(inlineCollections(collections, base, load, avoid), options);
     }, options) : options;
     return inlineSignalset(collections, base, opts, avoid);
 }
