@@ -361,7 +361,7 @@ var functions = module.exports.functions = {
 
 function parseCriteria(columnName, criteria, positions, options) {
     if (!criteria)
-        return _.constant(true);
+        return parseCriteria(columnName, `${columnName} OR ${columnName}=0`, positions, options);
     if (_.isFunction(criteria))
         return parseCriteria(columnName, criteria(positions), positions, options);
     if (!_.isString(criteria)) // not a string, must be a value
