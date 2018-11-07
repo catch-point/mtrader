@@ -376,7 +376,8 @@ function getPortfolio(portfolio, options) {
         _.isObject(portfolio) ? [portfolio] :
         _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
         expect(portfolio).to.be.a('string');
-    if (_.isEmpty(_.compact(array))) throw Error("Missing portfolio");
+    if (_.isEmpty(_.compact(array)) && !options.portfolio) throw Error(`Missing portfolio ${options.label}`);
+    else if (_.isEmpty(_.compact(array))) throw Error(`No portfolio matches this time frame ${options.label}`);
     var begin = !options.pad_leading ? options.begin :
         common('WORKDAY', [_.constant(options.begin), _.constant(-options.pad_leading)], options)();
     var mbegin = moment.tz(begin, options.tz);

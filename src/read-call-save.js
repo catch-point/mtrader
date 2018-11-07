@@ -61,33 +61,56 @@ function inlineCollections(collections, base, options, avoid) {
         return options;
     else if (_.isArray(options))
         return options.map(item => inlineCollections(collections, base, item, avoid));
-    else if (_.isObject(options) && (options.portfolio || options.signalset))
-        return _.omit(_.defaults({
-            portfolio: inlineCollections(collections, base, options.portfolio, avoid),
+    else if (_.isString(options))
+        return readCollection(collections, base, options, avoid);
+    else
+        return _.omit(
+            loadCollection(collections, base, options, avoid),
+            val => val == null || _.isObject(val) && _.isEmpty(val)
+        );
+}
+
+function loadCollection(collections, base, options, avoid) {
+    var opts = options.load ? _.compact(_.flatten([options.load])).reduceRight((load, options) => {
+        return merge(inlineCollections(load), options);
+    }, options) : options;
+    return inlineSignalset(collections, base, opts, avoid);
+}
+
+function inlineSignalset(collections, base, options, avoid) {
+    var opts = options.signalset ? _.defaults({
             signalset: inlineCollections(collections, base, options.signalset, avoid)
-        }, options), val => val == null || _.isObject(val) && _.isEmpty(val));
-    else if (_.isObject(options))
-        return options;
-    else if (_.contains(avoid, options))
-        throw Error("Cycle profile detected: " + avoid + " -> " + options);
+        }, options) : options;
+    return inlinePortfolio(collections, base, opts, avoid);
+}
+
+function inlinePortfolio(collections, base, options, avoid) {
+    return options.portfolio ? _.defaults({
+            portfolio: inlineCollections(collections, base, options.portfolio, avoid)
+        }, options) : options;
+}
+
+function readCollection(collections, base, filename, avoid) {
+    if (_.contains(avoid, filename))
+        throw Error("Cycle profile detected: " + avoid + " -> " + filename);
     if (_.isEmpty(collections)) {
         _.extend(collections, _.object(config.list(), []));
     }
-    if (collections[options]) return collections[options];
-    else if (_.has(collections, options) || ~options.indexOf('.json') || ~options.indexOf('/')) {
-        var file = config.resolve(base, options);
+    if (collections[filename]) return collections[filename];
+    else if (_.has(collections, filename) || ~filename.indexOf('.json') || ~filename.indexOf('/')) {
+        var file = config.resolve(base, filename);
         var dir = path.dirname(file);
         try {
             var cfg = config.read(file);
-            if (cfg) collections[options] = inlineCollections(collections, dir, _.extend({
-                label: options,
-            }, cfg), _.flatten(_.compact([avoid, options]), true));
+            if (cfg) collections[filename] = inlineCollections(collections, dir, _.extend({
+                label: filename,
+            }, cfg), _.flatten(_.compact([avoid, filename]), true));
         } catch (e) {
-            logger.warn("Failed to include", options, e.message || e);
+            logger.warn("Failed to include", filename, e.message || e);
         }
     }
-    if (collections[options]) return collections[options];
-    else return options;
+    if (collections[filename]) return collections[filename];
+    else return filename;
 }
 
 function mergeSignals(original, label) {
