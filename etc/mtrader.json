@@ -16,7 +16,7 @@
       "fundamental": true,
       "interday": ["year", "quarter", "month", "week", "day"],
       "intraday": ["m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOEX", "COMEX"]
+      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOEX", "COMEX", "IND"]
     },
     "remote": {
       "enabled": false,
@@ -458,10 +458,10 @@
     },
     "CBOEX": {
       "description": "Indexes listed on the Chicago Board Options Exchange",
-      "afterHoursClosesAt": "16:15:00",
-      "marketClosesAt": "16:15:00",
+      "afterHoursClosesAt": "16:00:00",
+      "marketClosesAt": "16:00:00",
       "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "03:00:00",
+      "premarketOpensAt": "09:30:00",
       "currency": "USD",
       "tz": "America/New_York",
       "datasources": {
@@ -469,6 +469,22 @@
           "dtnSuffix": ".XO",
           "security_types": ["INDEX"],
           "listed_markets": ["CBOE"]
+        }
+      }
+    },
+    "IND": {
+      "description": "Most US indexes",
+      "afterHoursClosesAt": "16:00:00",
+      "marketClosesAt": "16:00:00",
+      "marketOpensAt": "09:30:00",
+      "premarketOpensAt": "09:30:00",
+      "currency": "USD",
+      "tz": "America/New_York",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": ".X",
+          "security_types": ["INDEX"],
+          "listed_markets": ["RUSSELL-FL", "DJ", "NASDAQ"]
         }
       }
     }
