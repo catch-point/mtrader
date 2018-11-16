@@ -73,8 +73,11 @@ module.exports = function(command, env, productId, productVersion) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             var listed_markets_ar = _.compact(_.flatten([listed_markets]));
             var listed_market = listed_markets_ar.length == 1 ? listed_markets_ar[0] : null;
-            if (listed_market == 'OPRA') return Promise.resolve([lookupOptions(symbol)]);
-            else return promiseMarkets().then(markets => {
+            if (listed_market == 'OPRA') {
+                var opra = lookupOptions(symbol);
+                if (opra) return Promise.resolve([opra]);
+            }
+            return promiseMarkets().then(markets => {
                 return promiseTypes().then(types => {
                     var values = listed_markets_ar.map(market => {
                         var id = markets.indexOf(market);
@@ -219,7 +222,7 @@ var months = {
 var strike_format = d3.format(".2f");
 function lookupOptions(symbol) {
     var m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
-    if (!m) return [];
+    if (!m) return null;
     var underlying = m[1];
     var yy = +m[2];
     var cc = yy<50 ? 2000 : 1900;
