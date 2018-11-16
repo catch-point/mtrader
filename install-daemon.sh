@@ -279,7 +279,7 @@ EOF
     "secureProtocol": "SSLv23_method",
     "secureOptions": $SECURE_OPTIONS,
     "handshakeTimeout": 10000,
-    "timeout": 600000,
+    "timeout": 1800000,
     "requestCert": false,
     "rejectUnauthorized": true
   }
@@ -326,7 +326,7 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ] && [[ "$PORT" != *8* ]]; then
     "secureProtocol": "SSLv23_method",
     "secureOptions": $SECURE_OPTIONS,
     "handshakeTimeout": 10000,
-    "timeout": 600000,
+    "timeout": 1800000,
     "requestCert": false,
     "rejectUnauthorized": true,
     "perMessageDeflate": true
