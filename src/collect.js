@@ -524,10 +524,10 @@ function createNormalizeParser(variables, options) {
  * that can safely be inlined in expressions
  */
 function getSubstitutions(variables, options) {
-    var params = _.mapObject(_.pick(options.parameters, val => {
+    var params = _.mapObject(_.pick(options.parameters, (val,key) => {
         return _.isString(val) || _.isNumber(val) || _.isNull(val);
     }), val => stringify(val));
-    return _.mapObject(_.defaults(_.omit(options.variables, variables), params), valOrNull);
+    return _.mapObject(_.omit(_.defaults(options.variables, params), variables), valOrNull);
 }
 
 /**
