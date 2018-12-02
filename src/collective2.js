@@ -37,6 +37,7 @@ const https = require('https');
 const path = require('path');
 const moment = require('moment-timezone');
 const merge = require('./merge.js');
+const interrupt = require('./interrupt.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
@@ -119,9 +120,10 @@ function help(bestsignals) {
  * Aligns the working signals on collective2 with the signal rows from the collect result
  */
 function collective2(collect, agent, settings, options) {
-    return getDesiredPositions(collect, agent, settings, options)
-      .then(desired => getWorkingPositions(agent, settings, options)
-      .then(working => {
+    var check = interrupt();
+    return getWorkingPositions(agent, settings, options)
+      .then(working => getDesiredPositions(collect, agent, settings, options)
+      .then(desired => {
         var symbols = _.uniq(_.compact(_.keys(desired).concat(options.symbols)));
         _.forEach(working, (w, symbol) => {
             if (!desired[symbol] && w.quant_opened != w.quant_closed && !~symbols.indexOf(symbol)) {
@@ -148,6 +150,7 @@ function collective2(collect, agent, settings, options) {
             return signals.concat(update);
         }, []);
     })).then(signals => signals.reduce((promise, signal) => promise.then(result => {
+        check();
         if (signal && signal.action) return submit(agent, 'submitSignal', {
             apikey: settings.apikey,
             systemid: options.systemid,
@@ -266,6 +269,7 @@ function updateWorking(desired, working, options) {
     var ds_projected = ds && +ds.parkUntilSecs * 1000 > options.now;
     if (_.has(ds, 'parkUntilSecs') && !working.prior && +working.closedWhenUnixTimeStamp > +ds.parkUntilSecs) {
         // working position has since been closed (stoploss) since the last desired signal was produced
+        logger.warn(`Working ${desired.symbol} position has since been closed`);
         return [];
     } else if (!d_opened && !w_opened && !working.prior && !desired.prior) {
         // no open position
