@@ -454,7 +454,7 @@ function advance(pos, signal, options) {
 function updateStoploss(pos, signal, options) {
     if (signal.quant === 0 && signal.parkUntilSecs && +signal.parkUntilSecs * 1000 > options.now) {
         return pos; // don't update signal limits if in the future
-    } else if (signal.stoploss) {
+    } else if (signal.stoploss && prior && prior.signal) {
         var base = !+signal.quant && pos.prior && +pos.signal.isStopOrder ? pos.prior : pos;
         var prior = advance(base, _.omit(signal, 'stop', 'stoploss'), options);
         var stoploss = +signal.isStopOrder || +signal.stoploss || +signal.stop;
@@ -492,9 +492,8 @@ function updatePosition(pos, signal, options) {
  * Position after applying the given signal parkUntilSecs and limit
  */
 function updateParkUntilSecs(pos, signal, options) {
-    if (signal.parkUntilSecs) {
+    if (signal.parkUntilSecs && pos.signal) {
         expect(signal).to.have.property('action').that.is.oneOf(['BTO', 'STO']);
-        expect(pos).to.have.property('signal');
         var updated = _.defaults({signal: _.defaults(_.pick(signal, 'parkUntilSecs'), pos.signal)}, pos);
         return updateLimit(updated, signal, options);
     } else {
@@ -506,9 +505,7 @@ function updateParkUntilSecs(pos, signal, options) {
  * Position after applying the given signal limit
  */
 function updateLimit(pos, signal, options) {
-    if (signal.limit) {
-        expect(signal).to.have.property('action').that.is.oneOf(['BTO', 'STO']);
-        expect(pos).to.have.property('signal');
+    if (signal.limit && pos.signal) {
         return _.defaults({signal: _.defaults(_.pick(signal, 'limit'), pos.signal)}, pos);
     } else {
         return pos;
