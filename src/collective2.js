@@ -454,7 +454,7 @@ function advance(pos, signal, options) {
 function updateStoploss(pos, signal, options) {
     if (signal.quant === 0 && signal.parkUntilSecs && +signal.parkUntilSecs * 1000 > options.now) {
         return pos; // don't update signal limits if in the future
-    } else if (signal.stoploss && prior && prior.signal) {
+    } else if (signal.stoploss) {
         var base = !+signal.quant && pos.prior && +pos.signal.isStopOrder ? pos.prior : pos;
         var prior = advance(base, _.omit(signal, 'stop', 'stoploss'), options);
         var stoploss = +signal.isStopOrder || +signal.stoploss || +signal.stop;
