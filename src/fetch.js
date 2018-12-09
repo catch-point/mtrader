@@ -37,6 +37,7 @@ const blended = require('./fetch-blended.js');
 const yahoo = require('./fetch-yahoo.js');
 const iqfeed = require('./fetch-iqfeed.js');
 const files = require('./fetch-files.js');
+const ivolatility = require('./fetch-ivolatility.js');
 const remote = require('./fetch-remote.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
@@ -90,9 +91,10 @@ function promiseDatasources() {
     var sources = _.compact([
         config('fetch.files.enabled') && files(),
         config('fetch.blended.enabled') && blended(),
-        config('fetch.remote.enabled') && remote(),
+        config('fetch.ivolatility.enabled') && ivolatility(),
         config('fetch.iqfeed.enabled') && iqfeed(),
-        config('fetch.yahoo.enabled') && yahoo()
+        config('fetch.yahoo.enabled') && yahoo(),
+        config('fetch.remote.enabled') && remote()
     ]);
     if (_.isEmpty(sources)) {
         sources = [yahoo()];
