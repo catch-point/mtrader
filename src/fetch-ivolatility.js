@@ -39,6 +39,9 @@ const merge = require('./merge.js');
 const interrupt = require('./interrupt.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
+const iqfeed = require('./fetch-iqfeed.js');
+const remote = require('./fetch-remote.js');
+const files = require('./fetch-files.js');
 const Ivolatility = require('./ivolatility-client.js');
 const expect = require('chai').expect;
 
@@ -92,11 +95,23 @@ function help() {
 }
 
 module.exports = function() {
-    var dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    var ivolatility = Ivolatility(dir);
+    var cacheDir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    var downloadDir = config('fetch.ivolatility.downloads') || path.resolve(config('prefix'), 'var/lib/ivolatility');
+    var username = config('fetch.ivolatility.username');
+    var passwordFile = config('fetch.ivolatility.passwordFile');
+    var downloadType = config('fetch.ivolatility.downloadType');
+    if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
+    var cfg = config('fetch.ivolatility') || {};
+    var delegate = cfg.delegate == 'remote' ? remote() :
+        cfg.delegate == 'iqfeed' ? iqfeed() :
+        cfg.delegate == 'files' ? files() : null;
+    var ivolatility = Ivolatility(cacheDir, downloadDir, username, passwordFile, downloadType);
     return {
         close() {
-            return Promise.resolve();
+            return Promise.all([
+                delegate && delegate.close(),
+                ivolatility.close()
+            ]);
         },
         help() {
             return Promise.resolve(help());
@@ -104,7 +119,7 @@ module.exports = function() {
         interday: options => {
             expect(options).to.have.property('marketClosesAt');
             expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
-            var dayFn = day.bind(this, loadIvolatility.bind(this, ivolatility));
+            var dayFn = day.bind(this, loadIvolatility.bind(this, ivolatility.interday), delegate);
             switch(options.interval) {
                 case 'year': return year(dayFn, options);
                 case 'quarter': return quarter(dayFn, options);
@@ -167,7 +182,7 @@ function loadIvolatility(ivolatility, options) {
     }));
 }
 
-function day(readTable, options) {
+function day(readTable, delegate, options) {
     return readTable(options).then(result => {
         var begin = moment.tz(options.begin, options.tz);
         var start = begin.format();
@@ -183,7 +198,21 @@ function day(readTable, options) {
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
         else return result.slice(0, last);
-    });
+    }).then(adata => delegate.interday(_.defaults({interval: 'day'}, options)).then(bdata => {
+        var cdata = new Array(Math.max(adata.length, bdata.length));
+        var a = 0, b = 0, c = 0;
+        while (a < adata.length || b < bdata.length) {
+            if (a >= adata.length) cdata[c++] = bdata[b++];
+            else if (b >= bdata.length) cdata[c++] = adata[a++];
+            else if (adata[a].ending < bdata[b].ending) cdata[c++] = adata[a++];
+            else if (adata[a].ending > bdata[b].ending) cdata[c++] = bdata[b++];
+            else cdata[c++] = _.extend(
+                _.pick(bdata[b++], ['ending', 'open', 'high', 'low']),
+                _.pick(adata[a++], ['close', 'volume', 'adj_close'])
+            );
+        }
+        return cdata;
+    }));
 }
 
 function year(day, options) {

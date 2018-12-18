@@ -91,6 +91,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             marked: false
         };
     };
+    cached.size = () => _.size(cache);
     cached.flush = () => {
         _.forEach(cache, entry => entry.marked = true);
         return sweep(cache);

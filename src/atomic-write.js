@@ -37,6 +37,7 @@ const _ = require('underscore');
  * Writes to temporary file followed by an atomic rename to target filename
  */
 module.exports = _.extend(function(fn, filename) {
+    if (!filename) throw Error("No filename given");
     var part = partFor(filename);
     return mkdirp(path.dirname(part))
       .then(dirname => fn(part))

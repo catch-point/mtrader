@@ -46,6 +46,7 @@ const EOM = '\r\n\r\n';
 const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
 
 var remote = module.exports = function(socket, options) {
+    if (!socket) throw Error("No remote location given");
     if (typeof socket == 'string' || typeof socket == 'number')
         return remote(new ws(parseLocation(socket, false).href, _.extend({
             key: readFileSync(config('tls.key_pem')),

@@ -46,6 +46,9 @@ module.exports = _.extend(function(dirname) {
         open(name, cb) {
             return cachedDatabases(safe(name), cb);
         },
+        flush() {
+            return cachedDatabases.flush();
+        },
         close() {
             return cachedDatabases.close();
         }

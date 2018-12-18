@@ -39,10 +39,11 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 module.exports = function() {
-    var promiseFetch = Promise.reject();
+    var promiseFetch;
+    if (!config('fetch.remote.location')) throw Error("No remote location configured");
     return {
         close() {
-            return promiseFetch.then(fetch => {
+            return (promiseFetch || Promise.reject()).then(fetch => {
                 if (fetch.connected) return fetch.disconnect();
             }, err => {});
         },
@@ -81,7 +82,7 @@ module.exports = function() {
     }
 
     function Fetch() {
-        return promiseFetch = promiseFetch.catch(err => {
+        return promiseFetch = (promiseFetch || Promise.reject()).catch(err => {
             return {connected: false};
         }).then(fetch => {
             if (fetch.connectionError) fetch.disconnect();

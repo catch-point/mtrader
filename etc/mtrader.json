@@ -20,6 +20,9 @@
     },
     "ivolatility": {
       "enabled": false,
+      "username": "",
+      "passwordFile": "",
+      "downloadType": "DAILY_ONLY",
       "lookup": false,
       "fundamental": false,
       "interday": ["year", "quarter", "month", "week", "day"],
@@ -27,7 +30,7 @@
     },
     "remote": {
       "enabled": false,
-      "location": "localhost:1880"
+      "location": ""
     }
   },
   "collective2": {
