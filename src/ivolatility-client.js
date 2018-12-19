@@ -58,6 +58,7 @@ module.exports = function(cacheDir, downloadDir, username, passwordFile, downloa
             checkTormorrow = setTimeout(() => {
                 processing.then(processEveryDay);
             }, another_six_hours);
+            checkTormorrow.unref();
         });
     };
     var processing = processEveryDay();
@@ -200,6 +201,8 @@ function createDataSinkStore(cacheDir) {
                     } else if (error) {
                         _.values(helpers).forEach(helper => helper.disconnect());
                         fail(error);
+                    } else if (abort && _.isEmpty(helpers)) {
+                        ready();
                     }
                 };
                 cleanup();

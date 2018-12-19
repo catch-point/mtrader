@@ -200,7 +200,12 @@ function createInstance() {
             return Promise.all(servers.map(server => {
                 return new Promise(cb => server.close(cb));
             })).then(() => {
-                strategize.close();
+                return strategize.close();
+            }).then(() => {
+                setTimeout(() => {
+                    if (process._getActiveHandles)
+                        logger.log("Still active", process._getActiveHandles());
+                }, 10000).unref();
             });
         },
         shell(app) {
