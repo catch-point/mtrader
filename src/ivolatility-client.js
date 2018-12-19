@@ -477,14 +477,19 @@ function downloadFiles(downloadDir, fileUrls) {
             logger.info("Downloading", fileUrl);
             var protocol = fileUrl.startsWith('https') ? https : http;
             var req = protocol.get(fileUrl, res => {
-                res.pipe(file);
-                res.on('error', error).on('end', () => {
-                    fs.stat(filename, (err, stats) => {
-                        if (err) error(err);
-                        else if (stats.size) ready();
-                        else error(Error("Could not download " + fileUrl));
+                if (res.statusCode == 200 || res.statusCode == 203) {
+                    res.pipe(file);
+                    res.on('error', error).on('end', () => {
+                        fs.stat(filename, (err, stats) => {
+                            if (err) error(err);
+                            else if (stats.size) ready();
+                            else error(Error("Could not download " + fileUrl));
+                        });
                     });
-                });
+                } else {
+                    error(Error("Could not download " + fileUrl + " " + res.statusMessage));
+                    res.resume();
+                }
             });
             req.on('error', error);
         }), filename).then(() => filename);
