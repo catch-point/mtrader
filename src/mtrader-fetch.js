@@ -88,6 +88,12 @@ if (require.main === module) {
         });
         var fetch = _.once(() => Fetch());
         process.on('disconnect', () => fetch().close());
+        process.on('disconnect', () => {
+            setTimeout(() => {
+                if (process._getActiveHandles)
+                    console.log("Still active on", process.pid, process._getActiveHandles());
+            }, 10000).unref();
+        });
         process.on('SIGHUP', () => {
             fetch().close();
             fetch = _.once(() => Fetch());

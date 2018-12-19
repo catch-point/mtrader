@@ -107,23 +107,28 @@ function checkForUpdates(cacheDir, downloadDir, username, passwordFile, download
 }
 
 function processNewFiles(cacheDir, downloadDir) {
-    var sink = createDataSinkStore(cacheDir);
-    var close = () => sink.close();
     return readMetadata(downloadDir).then(metadata => {
         return listNewFiles(downloadDir, metadata).then(files => files.reduce((wait, file) => wait.then(() => {
             var filename = path.resolve(downloadDir, file);
-            return explodeZip(filename, (stats, datum) => {
-                sink(datum);
-                if (!~stats.symbols.indexOf(datum.symbol)) {
-                    stats.symbols.push(datum.symbol);
-                }
-                if (!~stats.exchanges.indexOf(datum.exchange)) {
-                    stats.exchanges.push(datum.exchange);
-                }
-                if (!~stats.expirations.indexOf(datum.expiration)) {
-                    stats.expirations.push(datum.expiration);
-                }
-                return stats;
+            return explodeZip(filename, (stats, entryStream) => {
+                var sink = createDataSinkStore(cacheDir);
+                return parseZipEntry(entryStream, (stats, datum) => {
+                    sink(datum);
+                    if (!~stats.symbols.indexOf(datum.symbol)) {
+                        stats.symbols.push(datum.symbol);
+                    }
+                    if (!~stats.exchanges.indexOf(datum.exchange)) {
+                        stats.exchanges.push(datum.exchange);
+                    }
+                    if (!~stats.expirations.indexOf(datum.expiration)) {
+                        stats.expirations.push(datum.expiration);
+                    }
+                    return stats;
+                }, stats).then(result => {
+                    return sink.close().then(() => result);
+                }, err => {
+                    return sink.close().then(() => Promise.reject(err));
+                });
             }, {file, symbols:[], exchanges:[], expirations:[]}).then(stats => {
                 var idx = metadata.entries.findIndex(entry => entry.file == file);
                 if (idx<0) metadata.entries.push(stats);
@@ -133,13 +138,13 @@ function processNewFiles(cacheDir, downloadDir) {
         }), Promise.resolve())).then(result => {
             return writeMetadata(downloadDir, metadata).then(() => result);
         });
-    }).then(result => close().then(() => result), err => close().then(() => Promise.reject(err))).then(result => {
+    }).then(result => {
         if (result) logger.info("Finished processing new ivolatility.com files");
     });
 }
 
 function createDataSinkStore(cacheDir) {
-    var every_five_minutes = 5 * 60 * 1000;
+    var every_minute = 60 * 1000;
     var cleanup, error, abort;
     var total = 0, count = 0;
     var queue = {};
@@ -150,11 +155,15 @@ function createDataSinkStore(cacheDir) {
     var fork = key => {
         var forked = child_process.fork(module.filename, [cacheDir]);
         forked.on('message', msg => {
-            if (msg && msg.cmd == 'ready' && queue[key].length) {
+            if (abort) {
+                forked.send({cmd:'close'});
+            } else if (msg && msg.cmd == 'ready' && queue[key].length) {
                 var payload = queue[key].splice(0, Math.min(queue[key].length, 100));
                 forked.send({cmd: 'store', payload});
                 count+= payload.length;
                 logProgress(count/total);
+            } else if (msg && msg.cmd == 'ready' && cleanup) {
+                forked.send({cmd:'close'});
             } else if (msg && msg.cmd == 'ready') {
                 _.defer(() => {
                     if (queue[key].length) {
@@ -172,8 +181,8 @@ function createDataSinkStore(cacheDir) {
             }
         }).on('disconnect', () => {
             delete helpers[key];
-            if (cleanup) cleanup();
-            else if (queue[key].length) helpers[key] = fork(key);
+            if (!abort && queue[key].length) helpers[key] = fork(key);
+            else if (cleanup) cleanup();
         });
         return forked;
     };
@@ -194,8 +203,8 @@ function createDataSinkStore(cacheDir) {
         close() {
             return new Promise((ready, fail) => {
                 logProgress = _.throttle(progress => {
-                    logger.log("Processing ivolatility.com files", Math.round(progress*100), "% complete");
-                }, every_five_minutes, {trailing: false});
+                    logger.log("Processing ivolatility.com entry", Math.round(progress*100), "% complete");
+                }, every_minute, {trailing: false});
                 cleanup = () => {
                     if (_.isEmpty(helpers) && _.isEmpty(_.flatten(_.values(queue)))) {
                         ready();
@@ -281,7 +290,6 @@ function mdy2ymd(mdy) {
 }
 
 function explodeZip(file, reduce, initial) {
-    var check = interrupt();
     var result = initial;
     logger.info("Extracting", file);
     return new Promise((ready, error) => {
@@ -289,22 +297,13 @@ function explodeZip(file, reduce, initial) {
         yauzl.open(file, {lazyEntries: true}, (err, zipfile) => {
             if (err) return error(err);
             zipfile.readEntry();
-            zipfile.on('close', () => ready(Promise.all(entries)));
+            zipfile.on('close', () => Promise.all(entries).then(() => ready(result), error));
             zipfile.on('entry', function(entry) {
-                zipfile.openReadStream(entry, (err, readStream) => {
+                logger.debug("Processing", file, entry.fileName);
+                zipfile.openReadStream(entry, (err, entryStream) => {
                     if (err) return error(err);
-                    entries.push(new Promise((ready, error) => {
-                        csv.fromStream(readStream, {headers : true, ignoreEmpty: true})
-                            .on('error', error)
-                            .on('data', function(data) {
-                                try {
-                                    check();
-                                    var obj = _.mapObject(data, value => _.isFinite(value) ? +value : value);
-                                    result = reduce(initial, obj);
-                                } catch (e) {
-                                    this.emit('error', e);
-                                }
-                        }).on('end', () => ready(result));
+                    entries.push(reduce(result, entryStream).then(next => {
+                        return result = next;
                     }).then(result => zipfile.readEntry(), err => {
                         zipfile.close();
                         return Promise.reject(err);
@@ -313,6 +312,24 @@ function explodeZip(file, reduce, initial) {
             });
         });
     }).then(() => result);
+}
+
+function parseZipEntry(entryStream, reduce, initial) {
+    var check = interrupt();
+    var result = initial;
+    return new Promise((ready, error) => {
+        csv.fromStream(entryStream, {headers : true, ignoreEmpty: true})
+            .on('error', error)
+            .on('data', function(data) {
+                try {
+                    check();
+                    var obj = _.mapObject(data, value => _.isFinite(value) ? +value : value);
+                    result = reduce(initial, obj);
+                } catch (e) {
+                    this.emit('error', e);
+                }
+        }).on('end', () => ready(result));
+    });
 }
 
 function listNewFiles(downloadDir, metadata) {

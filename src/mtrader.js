@@ -202,7 +202,7 @@ function createInstance() {
             })).then(() => {
                 setTimeout(() => {
                     if (process._getActiveHandles)
-                        console.log("Still active", process._getActiveHandles());
+                        console.log("Still active on", process.pid, process._getActiveHandles());
                 }, 10000).unref();
             }).then(() => {
                 return strategize.close();
