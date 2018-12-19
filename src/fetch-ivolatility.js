@@ -158,8 +158,10 @@ function loadIvolatility(ivolatility, options) {
     var yy = +m[2];
     var cc = yy<50 ? 2000 : 1900;
     var year = cc + yy;
-    var day = m[3];
     var mo = months[m[4]];
+    // ivolatility.com uses last trading day (Friday) as expiration for monthlies after 2015
+    var lastTrade = year > 2015 || year == 2015 && mo != '01' && mo != '12' || +m[3] < 15 || +m[3] > 21;
+    var day = lastTrade ? m[3] : 1 + +m[3];
     var cmonth = calls[m[4]];
     var pmonth = puts[m[4]];
     var cp = cmonth ? 'C' : 'P';

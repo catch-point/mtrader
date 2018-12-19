@@ -52,12 +52,13 @@ module.exports = function(cacheDir, downloadDir, username, passwordFile, downloa
     var checkForUpdatesFn = checkForUpdates.bind(this, cacheDir, downloadDir, username, passwordFile, downloadType);
     var checkTormorrow;
     var another_six_hours = 6 * 60 * 60 * 1000;
+    var another_21_hours = 21 * 60 * 60 * 1000;
     var processEveryDay = () => {
-        return processing = checkForUpdatesFn().then(() => {
+        return processing = checkForUpdatesFn().then(result => {
             store.flush();
             checkTormorrow = setTimeout(() => {
                 processing.then(processEveryDay);
-            }, another_six_hours);
+            }, result ? another_21_hours : another_six_hours);
             checkTormorrow.unref();
         });
     };
@@ -194,7 +195,7 @@ function createDataSinkStore(cacheDir) {
             return new Promise((ready, fail) => {
                 logProgress = _.throttle(progress => {
                     logger.log("Processing ivolatility.com files", Math.round(progress*100), "% complete");
-                }, every_five_minutes);
+                }, every_five_minutes, {trailing: false});
                 cleanup = () => {
                     if (_.isEmpty(helpers) && _.isEmpty(_.flatten(_.values(queue)))) {
                         ready();
