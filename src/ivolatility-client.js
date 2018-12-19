@@ -51,7 +51,7 @@ module.exports = function(cacheDir, downloadDir, username, passwordFile, downloa
     var store = storage(cacheDir);
     var checkForUpdatesFn = checkForUpdates.bind(this, cacheDir, downloadDir, username, passwordFile, downloadType);
     var checkTormorrow;
-    var another_six_hours = 6 * 60 * 1000;
+    var another_six_hours = 6 * 60 * 60 * 1000;
     var processEveryDay = () => {
         return processing = checkForUpdatesFn().then(() => {
             store.flush();
@@ -478,7 +478,13 @@ function downloadFiles(downloadDir, fileUrls) {
             var protocol = fileUrl.startsWith('https') ? https : http;
             var req = protocol.get(fileUrl, res => {
                 res.pipe(file);
-                res.on('error', error).on('end', ready);
+                res.on('error', error).on('end', () => {
+                    fs.stat(filename, (err, stats) => {
+                        if (err) error(err);
+                        else if (stats.size) ready();
+                        else error(Error("Could not download " + fileUrl));
+                    });
+                });
             });
             req.on('error', error);
         }), filename).then(() => filename);
