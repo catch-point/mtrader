@@ -23,6 +23,7 @@
       "username": "",
       "passwordFile": "",
       "downloadType": "DAILY_ONLY",
+      "combine_after": "2000-01-01",
       "lookup": false,
       "fundamental": false,
       "interday": ["year", "quarter", "month", "week", "day"],

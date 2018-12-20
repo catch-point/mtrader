@@ -101,6 +101,7 @@ module.exports = function() {
     var passwordFile = config('fetch.ivolatility.passwordFile');
     var downloadType = config('fetch.ivolatility.downloadType');
     if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
+    var combine_after = config('fetch.ivolatility.combine_after');
     var cfg = config('fetch.ivolatility') || {};
     var delegate = cfg.delegate == 'remote' ? remote() :
         cfg.delegate == 'iqfeed' ? iqfeed() :
@@ -119,7 +120,9 @@ module.exports = function() {
         interday: options => {
             expect(options).to.have.property('marketClosesAt');
             expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
-            var dayFn = day.bind(this, loadIvolatility.bind(this, ivolatility.interday), delegate);
+            var no_combine = options.end && combine_after && moment(options.end).isBefore(combine_after);
+            var del = no_combine ? null : delegate;
+            var dayFn = day.bind(this, loadIvolatility.bind(this, ivolatility.interday), del);
             switch(options.interval) {
                 case 'year': return year(dayFn, options);
                 case 'quarter': return quarter(dayFn, options);
@@ -200,21 +203,24 @@ function day(readTable, delegate, options) {
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
         else return result.slice(0, last);
-    }).then(adata => delegate.interday(_.defaults({interval: 'day'}, options)).then(bdata => {
-        var cdata = new Array(Math.max(adata.length, bdata.length));
-        var a = 0, b = 0, c = 0;
-        while (a < adata.length || b < bdata.length) {
-            if (a >= adata.length) cdata[c++] = bdata[b++];
-            else if (b >= bdata.length) cdata[c++] = adata[a++];
-            else if (adata[a].ending < bdata[b].ending) cdata[c++] = adata[a++];
-            else if (adata[a].ending > bdata[b].ending) cdata[c++] = bdata[b++];
-            else cdata[c++] = _.extend(
-                _.pick(bdata[b++], ['ending', 'open', 'high', 'low']),
-                _.pick(adata[a++], ['close', 'volume', 'adj_close'])
-            );
-        }
-        return cdata;
-    }));
+    }).then(adata => {
+        if (!delegate) return adata;
+        else return delegate.interday(_.defaults({interval: 'day'}, options)).then(bdata => {
+            var cdata = new Array(Math.max(adata.length, bdata.length));
+            var a = 0, b = 0, c = 0;
+            while (a < adata.length || b < bdata.length) {
+                if (a >= adata.length) cdata[c++] = bdata[b++];
+                else if (b >= bdata.length) cdata[c++] = adata[a++];
+                else if (adata[a].ending < bdata[b].ending) cdata[c++] = adata[a++];
+                else if (adata[a].ending > bdata[b].ending) cdata[c++] = bdata[b++];
+                else cdata[c++] = _.extend(
+                    _.pick(bdata[b++], ['ending', 'open', 'high', 'low']),
+                    _.pick(adata[a++], ['close', 'volume', 'adj_close'])
+                );
+            }
+            return cdata;
+        });
+    });
 }
 
 function year(day, options) {
