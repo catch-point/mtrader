@@ -39,6 +39,7 @@ const child_process = require('child_process');
 const _ = require('underscore');
 const csv = require('fast-csv');
 const moment = require('moment-timezone');
+const d3 = require('d3-format');
 const yauzl = require('yauzl');
 const logger = require('./logger.js');
 const interrupt = require('./interrupt.js');
@@ -242,18 +243,22 @@ if (require.main === module && process.send) {
     ready();
 }
 
+var strike_format = d3.format("08d");
 function createInlineDataSinkStore(cacheDir) {
     var check = interrupt();
     var store = storage(cacheDir);
     var lookup = cache(datum => {
         var date = mdy2ymd(datum.expiration);
-        var optsym = datum.symbol + datum['option symbol'].replace(/^.*\s+/,'');
+        var yymmdd = datum.expiration.replace(/(\d\d)\/(\d\d)\/\d\d(\d\d)/, '$3$1$2');
+        var cp = datum['call/put'];
+        var strike = strike_format(+datum.strike * 1000);
+        var iv_symbol = `${datum.symbol}${yymmdd}${cp}${strike}`;
         var dbname = datum.symbol;
         return store.open(dbname, (err, db) => {
             if (err) throw err;
             return db.collection(date).then(collection => {
-                if (!collection.exists(optsym)) return [];
-                else return collection.readFrom(optsym);
+                if (!collection.exists(iv_symbol)) return [];
+                else return collection.readFrom(iv_symbol);
             });
         }).then(array => ({
             add(datum) {
@@ -269,7 +274,7 @@ function createInlineDataSinkStore(cacheDir) {
                 return store.open(dbname, (err, db) => {
                     if (err) throw err;
                     return db.collection(date).then(collection => {
-                        return collection.writeTo(array, optsym);
+                        return collection.writeTo(array, iv_symbol);
                     });
                 });
             }
