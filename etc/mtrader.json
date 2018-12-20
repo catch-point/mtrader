@@ -1,6 +1,7 @@
 {
   "description": "Configuration file for mtrader",
   "default_cache_dir": "var/cache",
+  "default_lib_dir": "var/lib",
   "default_config_dir": "etc",
   "tz": "America/New_York",
   "fetch": {

@@ -140,17 +140,21 @@ if [ -z "$CONFIG_DIR" ]; then
   if [ "$PREFIX" = "$BASEDIR" ]; then
     CONFIG_DIR=$PREFIX/etc
     CACHE_DIR=$PREFIX/var/cache
+    LIB_DIR=$PREFIX/var/lib
   elif [ "$PREFIX" = "/usr" ]; then
     CONFIG_DIR=/etc/$NAME
     CACHE_DIR=/var/cache/$NAME
+    LIB_DIR=/var/lib/$NAME
   elif [ -d "$PREFIX/etc" -o -d "$PREFIX/var" ]; then
     CONFIG_DIR=$PREFIX/etc/$NAME
     CACHE_DIR=$PREFIX/var/cache/$NAME
+    LIB_DIR=$PREFIX/var/lib/$NAME
   else
     CONFIG_DIR=$PREFIX/etc
     CACHE_DIR=$PREFIX/var/cache
+    LIB_DIR=$PREFIX/var/lib
   fi
-  mkdir -p "$PREFIX/etc" "$CONFIG_DIR" "$CACHE_DIR"
+  mkdir -p "$PREFIX/etc" "$CONFIG_DIR" "$CACHE_DIR" "$LIB_DIR"
 fi
 
 if [ -z "$USERINFO" ]; then
@@ -268,6 +272,7 @@ EOF
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
+  "lib_dir": "$LIB_DIR",
   "listen": "wss://$USERINFO@$HOST:$PORT",
   "tls": {
     "key_pem": "etc/mtrader-privkey.pem",
@@ -314,6 +319,7 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ] && [[ "$PORT" != *8* ]]; then
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
+  "lib_dir": "$LIB_DIR",
   "listen": "wss://$USERINFO@$HOST:$PORT",
   "tls": {
     "key_pem": "etc/mtrader-privkey.pem",
@@ -344,13 +350,14 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ]; then
   "description": "Configuration file for $NAME generated on $(date)",
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
+  "lib_dir": "$LIB_DIR",
   "listen": "ws://$USERINFO@$HOST:$PORT"
 }
 EOF
 fi
 
 if [ "$(id -u)" = "0" ]; then
-  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$CONFIG_DIR" "$CACHE_DIR" "$PREFIX/etc/mtrader.json"
+  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$CONFIG_DIR" "$CACHE_DIR" "$LIB_DIR" "$PREFIX/etc/mtrader.json"
 fi
 
 # install daemon

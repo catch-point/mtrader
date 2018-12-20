@@ -96,7 +96,8 @@ function help() {
 
 module.exports = function() {
     var cacheDir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    var downloadDir = config('fetch.ivolatility.downloads') || path.resolve(config('prefix'), 'var/lib/ivolatility');
+    var libDir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
+    var downloadDir = config('fetch.ivolatility.downloads') || path.resolve(libDir, 'ivolatility');
     var username = config('fetch.ivolatility.username');
     var passwordFile = config('fetch.ivolatility.passwordFile');
     var downloadType = config('fetch.ivolatility.downloadType');
@@ -118,10 +119,11 @@ module.exports = function() {
             return Promise.resolve(help());
         },
         interday: options => {
+            expect(options).to.have.property('symbol');
             expect(options).to.have.property('marketClosesAt');
             expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
-            var no_combine = options.end && combine_after && moment(options.end).isBefore(combine_after);
-            var del = no_combine ? null : delegate;
+            var combine = !combine_after || isOptionExpiredAfter(options.symbol, combine_after);
+            var del = combine ? delegate : null;
             var dayFn = day.bind(this, loadIvolatility.bind(this, ivolatility.interday), del);
             switch(options.interval) {
                 case 'year': return year(dayFn, options);
@@ -158,9 +160,9 @@ function loadIvolatility(ivolatility, options) {
     var m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) throw Error(`Unknown option symbol format ${symbol}`);
     var underlying = m[1];
-    var yy = +m[2];
-    var cc = yy<50 ? 2000 : 1900;
-    var year = cc + yy;
+    var yy = m[2];
+    var cc = +yy<50 ? 2000 : 1900;
+    var year = cc + +yy;
     var mo = months[m[4]];
     // ivolatility.com uses last trading day (Friday) as expiration for monthlies after 2015
     var lastTrade = year > 2015 || year == 2015 && mo != '01' && mo != '12' || +m[3] < 15 || +m[3] > 21;
@@ -185,6 +187,18 @@ function loadIvolatility(ivolatility, options) {
             adj_close: mid
         };
     }));
+}
+
+function isOptionExpiredAfter(symbol, point) {
+    var m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return null;
+    var yy = m[2];
+    var cc = +yy<50 ? 2000 : 1900;
+    var year = cc + +yy;
+    var day = m[3];
+    var mo = months[m[4]];
+    var expiration_date = `${year}-${mo}-${day}`;
+    return moment(expiration_date).endOf('day').isAfter(point);
 }
 
 function day(readTable, delegate, options) {
