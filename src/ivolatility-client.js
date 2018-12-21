@@ -156,7 +156,7 @@ function createDataSinkStore(cacheDir) {
     var fork = key => {
         var forked = child_process.fork(module.filename, [cacheDir]);
         forked.on('message', msg => {
-            logProgress(count/total);
+            if (count) logProgress(count/total);
             if (abort) {
                 forked.send({cmd:'close'});
             } else if (msg && msg.cmd == 'ready' && queue[key].length) {

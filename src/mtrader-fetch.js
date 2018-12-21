@@ -104,6 +104,7 @@ if (require.main === module) {
 } else if (config('workers') == 0) {
     var fetch;
     var closed = false;
+    var program = usage(new commander.Command());
     module.exports = function(options) {
         if (closed) throw Error("Fetch is closed");
         if (!fetch) fetch = Fetch();
@@ -121,6 +122,7 @@ if (require.main === module) {
             fetch = null;
         } else return Promise.resolve();
     };
+    module.exports.shell = shell.bind(this, program.description(), module.exports);
     process.on('SIGINT', module.exports.close);
 } else {
     var program = usage(new commander.Command());

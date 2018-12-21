@@ -128,12 +128,10 @@ var remote = module.exports = function(socket, options) {
     };
     emitter.disconnect = () => socket.close();
     emitter.kill = () => socket.terminate();
+    emitter.connecting = true;
     return _.extend(emitter, {
         get connected() {
             return socket.readyState == 1;
-        },
-        get connecting() {
-            return socket.readyState === 0;
         }
     });
 };
