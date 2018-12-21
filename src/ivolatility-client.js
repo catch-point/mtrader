@@ -111,7 +111,7 @@ function processNewFiles(cacheDir, downloadDir) {
     return readMetadata(downloadDir).then(metadata => {
         return listNewFiles(downloadDir, metadata).then(files => files.reduce((wait, file) => wait.then(() => {
             var filename = path.resolve(downloadDir, file);
-            return explodeZip(filename, (stats, entryStream) => {
+            return explodeZip(filename, (stats, entryStream, entryName) => {
                 var sink = createDataSinkStore(cacheDir);
                 return parseZipEntry(entryStream, (stats, datum) => {
                     sink(datum);
@@ -126,9 +126,9 @@ function processNewFiles(cacheDir, downloadDir) {
                     }
                     return stats;
                 }, stats).then(result => {
-                    return sink.close().then(() => result);
+                    return sink.close(entryName).then(() => result);
                 }, err => {
-                    return sink.close().then(() => Promise.reject(err));
+                    return sink.close(entryName).then(() => Promise.reject(err));
                 });
             }, {file, symbols:[], exchanges:[], expirations:[]}).then(stats => {
                 var idx = metadata.entries.findIndex(entry => entry.file == file);
@@ -156,13 +156,13 @@ function createDataSinkStore(cacheDir) {
     var fork = key => {
         var forked = child_process.fork(module.filename, [cacheDir]);
         forked.on('message', msg => {
+            logProgress(count/total);
             if (abort) {
                 forked.send({cmd:'close'});
             } else if (msg && msg.cmd == 'ready' && queue[key].length) {
                 var payload = queue[key].splice(0, Math.min(queue[key].length, 100));
                 forked.send({cmd: 'store', payload});
                 count+= payload.length;
-                logProgress(count/total);
             } else if (msg && msg.cmd == 'ready' && cleanup) {
                 forked.send({cmd:'close'});
             } else if (msg && msg.cmd == 'ready') {
@@ -171,7 +171,6 @@ function createDataSinkStore(cacheDir) {
                         var payload = queue[key].splice(0, Math.min(queue[key].length, 100));
                         forked.send({cmd: 'store', payload});
                         count+= payload.length;
-                        logProgress(count/total);
                     } else {
                         forked.send({cmd:'close'});
                     }
@@ -201,18 +200,21 @@ function createDataSinkStore(cacheDir) {
         if (!abort && !helpers[key] && !cleanup) helpers[key] = fork(key);
         return datum;
     }, {
-        close() {
+        close(entryName) {
             return new Promise((ready, fail) => {
-                logProgress = _.throttle(progress => {
-                    logger.log("Processing ivolatility.com entry", Math.round(progress*100), "% complete");
-                }, every_minute, {trailing: false});
+                var logProgressNow = progress => {
+                    logger.log("Processing ivolatility", entryName, Math.round(progress*100), "% complete");
+                };
+                logProgress = _.throttle(logProgressNow, every_minute, {trailing: false});
                 cleanup = () => {
-                    if (_.isEmpty(helpers) && _.isEmpty(_.flatten(_.values(queue)))) {
-                        ready();
-                    } else if (error) {
-                        _.values(helpers).forEach(helper => helper.disconnect());
+                    if (error && _.isEmpty(helpers)) {
                         fail(error);
                     } else if (abort && _.isEmpty(helpers)) {
+                        ready();
+                    } else if (error || abort) {
+                        _.values(helpers).forEach(helper => helper.send({cmd:'close'}));
+                    } else if (_.isEmpty(helpers) && _.isEmpty(_.flatten(_.values(queue)))) {
+                        logger.log("Processing ivolatility", entryName, "is complete");
                         ready();
                     }
                 };
@@ -229,13 +231,14 @@ if (require.main === module && process.send) {
     var ready = () => {
         process.send({cmd:'ready'});
     };
+    var error = err => {
+        process.send({cmd:'error', message: err.stack || err.message || err});
+    };
     process.on('message', msg => {
         if (msg && msg.cmd == 'store') {
-            Promise.all(msg.payload.map(sink)).then(ready).catch(err => {
-                process.send({cmd:'error', message: err.stack || err.message || err});
-            });
+            Promise.all(msg.payload.map(sink)).then(ready).catch(error);
         } else if (msg && msg.cmd == 'close') {
-            sink.close().then(() => {
+            sink.close().catch(error).then(() => {
                 process.disconnect();
             });
         }
@@ -243,17 +246,22 @@ if (require.main === module && process.send) {
     ready();
 }
 
+var counter = 0;
 var strike_format = d3.format("08d");
 function createInlineDataSinkStore(cacheDir) {
     var check = interrupt();
     var store = storage(cacheDir);
-    var lookup = cache(datum => {
-        var date = mdy2ymd(datum.expiration);
+    var iv_symbol_of = datum => {
         var yymmdd = datum.expiration.replace(/(\d\d)\/(\d\d)\/\d\d(\d\d)/, '$3$1$2');
         var cp = datum['call/put'];
         var strike = strike_format(+datum.strike * 1000);
-        var iv_symbol = `${datum.symbol}${yymmdd}${cp}${strike}`;
+        return `${datum.symbol}${yymmdd}${cp}${strike}`;
+    };
+    var lookup = cache(datum => {
+        var date = mdy2ymd(datum.expiration);
         var dbname = datum.symbol;
+        var iv_symbol = iv_symbol_of(datum);
+        var entryId = ++counter;
         return store.open(dbname, (err, db) => {
             if (err) throw err;
             return db.collection(date).then(collection => {
@@ -279,11 +287,14 @@ function createInlineDataSinkStore(cacheDir) {
                 });
             }
         }));
-    }, datum => datum.symbol + datum.expiration + datum['option symbol'], 1000);
+    }, iv_symbol_of, 1000);
     return _.extend(datum => {
         check();
         return lookup(datum).then(data => data.add(datum));
     }, {
+        flush() {
+            return lookup.flush().then(() => store.flush());
+        },
         close() {
             return lookup.close().then(() => store.close());
         }
@@ -307,7 +318,7 @@ function explodeZip(file, reduce, initial) {
                 logger.debug("Processing", file, entry.fileName);
                 zipfile.openReadStream(entry, (err, entryStream) => {
                     if (err) return error(err);
-                    entries.push(reduce(result, entryStream).then(next => {
+                    entries.push(reduce(result, entryStream, entry.fileName).then(next => {
                         return result = next;
                     }).then(result => zipfile.readEntry(), err => {
                         zipfile.close();

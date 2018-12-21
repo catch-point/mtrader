@@ -32,6 +32,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const interrupt = require('./interrupt.js');
+const logger = require('./logger.js');
 const config = require('./config.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
@@ -40,9 +41,11 @@ const expect = require('chai').use(like).expect;
 
 module.exports = function() {
     var promiseFetch;
+    var closing = false;
     if (!config('fetch.remote.location')) throw Error("No remote location configured");
     return {
         close() {
+            closing = true;
             return (promiseFetch || Promise.reject()).then(fetch => {
                 if (fetch.connected) return fetch.disconnect();
             }, err => {});
@@ -68,7 +71,7 @@ module.exports = function() {
         var check = interrupted || interrupt(true);
         var delay = (delayed || 500) *2;
         return Fetch().then(client => client.request('fetch', options).catch(err => {
-            if (check() || delay > 5000 || !isConnectionError(err))
+            if (closing || check() || delay > 5000 || !isConnectionError(err))
                 throw err;
             // connection error wait and try again
             client.connectionError = true;
@@ -87,6 +90,7 @@ module.exports = function() {
         }).then(fetch => {
             if (fetch.connectionError) fetch.disconnect();
             else if (fetch.connected) return fetch;
+            if (closing) throw Error("Closing remote connection");
             return replyTo(remote(config('fetch.remote.location')))
                 .handle('stop', () => fetch.disconnect());
         });

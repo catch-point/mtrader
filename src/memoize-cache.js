@@ -31,6 +31,7 @@
 
 const _ = require('underscore');
 const debounce = require('./debounce.js');
+const logger = require('./logger.js');
 
 /**
  * Caches a given function by keeping the computed result in memory. Useful for
@@ -54,31 +55,26 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             else return result;
         };
         var args = _.isFunction(_.last(arguments)) ? _.initial(arguments) : arguments;
-        var key = hash.apply(this, args);
-        var entry = cache[key] ? cache[key] : cache[key] = {
-            id: key,
-            result: func.apply(this, args),
-            registered: 0
-        };
-        try {
-            aquire(entry);
-            var next = entry.result && _.isFunction(entry.result.then) ?
-                entry.result.then(
-                    result => cb.call(this, null, result),
-                    err => cb.call(this, err)
-                ) : cb.call(this, entry.error, entry.result);
-            if (next && _.isFunction(next.then)) return next.then(result => {
-                releaseEntry(entry);
-                return result;
-            }, err => {
-                releaseEntry(entry);
-                throw err;
+        var key = hash.apply(cached, args);
+        if (cache[key] && cache[key].closing) {
+            return cache[key].closing.then(() => {
+                var entry = cache[key] = {
+                    id: key,
+                    result: func.apply(cached, args),
+                    registered: 0
+                };
+                return aquireEntry(releaseEntry, entry, cb);
             });
-            releaseEntry(entry);
-            return next;
-        } catch(err) {
-            releaseEntry(entry);
-            throw err;
+        } else if (cache[key]) {
+            var entry = cache[key];
+            return aquireEntry(releaseEntry, entry, cb);
+        } else {
+            var entry = cache[key] = {
+                id: key,
+                result: func.apply(this, args),
+                registered: 0
+            };
+            return aquireEntry(releaseEntry, entry, cb);
         }
     };
     cached.replaceEntry = (key, result) => {
@@ -122,6 +118,29 @@ function createEntry(key, func, args) {
     }
 }
 
+function aquireEntry(releaseEntry, entry, cb) {
+    try {
+        aquire(entry);
+        var next = entry.result && _.isFunction(entry.result.then) ?
+            entry.result.then(
+                result => cb.call(this, null, result),
+                err => cb.call(this, err)
+            ) : cb.call(this, entry.error, entry.result);
+        if (next && _.isFunction(next.then)) return next.then(result => {
+            releaseEntry(entry);
+            return result;
+        }, err => {
+            releaseEntry(entry);
+            throw err;
+        });
+        releaseEntry(entry);
+        return next;
+    } catch(err) {
+        releaseEntry(entry);
+        throw err;
+    }
+}
+
 function aquire(entry) {
     entry.registered++;
     entry.age = 0;
@@ -148,14 +167,29 @@ function mark(cache) {
 
 function sweep(cache) {
     return Promise.all(_.map(_.pick(cache, _.property('marked')), (entry, id) => {
-        try {
-            if (entry.result && _.isFunction(entry.result.then))
-                return entry.result
-                    .then(obj => _.isFunction(obj.close) ? obj.close() : obj);
-            else if (entry.result && _.isFunction(entry.result.close))
-                return entry.result.close();
-        } finally {
+        if (entry.closing) return entry.closing;
+        var closing = closeEntry(entry);
+        if (!closing) delete cache[id];
+        else return entry.closing = Promise.resolve(closing).then(result => {
             delete cache[id];
-        }
+            return result;
+        }, err => {
+            delete cache[id];
+            logger.debug("Cache entry close", err);
+        });
     }));
+}
+
+function closeEntry(entry) {
+    try {
+        if (entry.result && _.isFunction(entry.result.then)) {
+            return entry.result
+                .then(obj => _.isFunction(obj.close) ? obj.close() : obj);
+        } else if (entry.result && _.isFunction(entry.result.close)) {
+            var closing = entry.result.close();
+            if (closing && _.isFunction(closing.then)) return closing;
+        }
+    } catch(err) {
+        logger.debug("Cache entry close", err);
+    }
 }
