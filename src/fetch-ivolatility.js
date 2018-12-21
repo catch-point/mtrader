@@ -164,9 +164,7 @@ function loadIvolatility(ivolatility, options) {
     var cc = +yy<50 ? 2000 : 1900;
     var year = cc + +yy;
     var mo = months[m[4]];
-    // ivolatility.com uses last trading day (Friday) as expiration for monthlies after 2015
-    var lastTrade = year > 2015 || year == 2015 && mo != '01' && mo != '12' || +m[3] < 15 || +m[3] > 21;
-    var day = lastTrade ? m[3] : 1 + +m[3];
+    var day = isExpirationLastTradingDay(year, mo, m[3]) ? m[3] : 1 + +m[3];
     var cmonth = calls[m[4]];
     var pmonth = puts[m[4]];
     var cp = cmonth ? 'C' : 'P';
@@ -187,6 +185,17 @@ function loadIvolatility(ivolatility, options) {
             adj_close: mid
         };
     }));
+}
+
+function isExpirationLastTradingDay(year, mm, dd) {
+    // ivolatility.com uses last trading day (Friday) as expiration for SPX monthlies after 2015
+    if (year > 2015) return true;
+    // quarterly or weekly SPX options use last trading day
+    if (+dd < 15 || +dd > 21) return true;
+    // monthly SPX options <2015 were usually on Saturday, with some exceptions
+    if (year == 2015 && mm != '01' && mm != '12') return true;
+    if (year == 2000 && mm == '04' && dd == '21') return true;
+    else return false;
 }
 
 function isOptionExpiredAfter(symbol, point) {
