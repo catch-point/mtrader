@@ -1529,5 +1529,33 @@ describe("collect", function() {
             { symbol: 'PYPL', date: '2015-07-30', close: 38.45 }
         ]);
     });
+    it("should include variables only used in criteria of rolling functions", function() {
+        return collect({
+            portfolio: [{
+                portfolio: 'SPY.ARCA',
+                columns: {
+                    symbol: 'symbol',
+                    date: 'DATE(ending)',
+                    close: 'day.close',
+                    volume: 'day.volume'
+                }
+            }],
+            columns: {
+                symbol: 'symbol',
+                date: 'date',
+                close: 'close',
+                big: 'LOOKUP("date","volume>"+day.volume)'
+            },
+            begin: '2016-05-09',
+            end: '2016-05-15',
+            pad_leading: 5
+        }).should.eventually.be.like([
+            { symbol: 'SPY', date: '2016-05-09', close: 205.89, big: '2016-05-06' },
+            { symbol: 'SPY', date: '2016-05-10', close: 208.45, big: '2016-05-06' },
+            { symbol: 'SPY', date: '2016-05-11', close: 206.50, big: '2016-05-06' },
+            { symbol: 'SPY', date: '2016-05-12', close: 206.56, big: '2016-05-04' },
+            { symbol: 'SPY', date: '2016-05-13', close: 204.76, big: '2016-05-03' }
+        ]);
+    });
 });
 

@@ -188,7 +188,7 @@ function getParameterNames(signal, options) {
 function formatSignal(signalset, options) {
     var signal = signalset.signal_variable;
     var vars = _.extend({}, signalset.variables, signalset.parameters);
-    var references = getReferences(vars);
+    var references = getReferences(vars, options);
     var local = [signal].concat(references[signal]);
     return _.omit({
         score: signalset.score,
@@ -202,7 +202,7 @@ function formatSignal(signalset, options) {
 /**
  * Hash of variable names to array of variable names it depends on
  */
-function getReferences(variables) {
+function getReferences(variables, options) {
     var references = Parser({
         constant(value) {
             return [];
@@ -213,7 +213,7 @@ function getReferences(variables) {
         },
         expression(expr, name, args) {
             if (rolling.has(name))
-                return _.intersection(rolling.getVariables(expr), _.keys(variables));
+                return _.intersection(rolling.getVariables(expr, options), _.keys(variables));
             else return _.uniq(_.flatten(args, true));
         }
     }).parse(variables);

@@ -478,7 +478,7 @@ function getVariables(fields, options) {
         },
         expression(expr, name, args) {
             if (rolling.has(name))
-                return rolling.getVariables(expr).reduce((o, name) => {
+                return rolling.getVariables(expr, options).reduce((o, name) => {
                     return _.extend(o, {[name]: Infinity});
                 }, {});
             else return args.reduce((count, arg) => {

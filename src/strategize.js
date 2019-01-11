@@ -328,7 +328,7 @@ function strategizeLeg(searchLeg, signals, strategy, idx, options) {
     var latest = signals[strategy_var];
     var empty = !strategy.legs.length;
     var scratch = idx >= strategy.legs.length;
-    var used = empty ? [] : getReferences(latest.variables[strategy_var]);
+    var used = empty ? [] : getReferences(latest.variables[strategy_var], options);
     var operands = idx < strategy.legs.length ? countOperands(strategy.legs[idx].expr) : 0;
     var other_operands = empty ? 0 : countOperands(strategy.expr) - operands;
     var opts = merge(latest, {
@@ -696,7 +696,7 @@ function combine(signals, options) {
     var strategy_var = options.strategy_variable;
     var best = signals[strategy_var];
     if (!best.variables[strategy_var]) return null;
-    var variables = getReferences(best.variables)[strategy_var];
+    var variables = getReferences(best.variables, options)[strategy_var];
     var used = _.intersection(variables, _.keys(signals));
     var replacement = {};
     var result = used.reduce((combined, variable) => {
@@ -769,7 +769,7 @@ function formatSolutionWithId(solution, options, id) {
             conflicts.push(name);
         return conflicts;
     }, _.keys(solution.parameters));
-    var references = getReferences(values);
+    var references = getReferences(values, options);
     var local = [signal].concat(references[signal]);
     var overlap = references[signal].filter(name => ~conflicts.indexOf(name) ||
         _.intersection(conflicts, references[name]).length);
@@ -802,7 +802,7 @@ function formatSolutionWithId(solution, options, id) {
  * Hash of variable names to array of variable names it depends on
  * @param variables a string expression or map of names to string expressions
  */
-function getReferences(variables) {
+function getReferences(variables, options) {
     var references = Parser({
         constant(value) {
             return [];
@@ -813,7 +813,7 @@ function getReferences(variables) {
         },
         expression(expr, name, args) {
             if (rolling.has(name))
-                return _.intersection(rolling.getVariables(expr), _.keys(variables));
+                return _.intersection(rolling.getVariables(expr, options), _.keys(variables));
             else return _.uniq(_.flatten(args, true));
         }
     }).parse(variables);
@@ -863,7 +863,7 @@ function createReplacer(replacement) {
  * Chooses a variable name based on prefix that is not already used
  */
 function chooseVariable(prefix, options) {
-    var references = getReferences(merge(options.columns, options.variables));
+    var references = getReferences(merge(options.columns, options.variables), options);
     var portfolioCols = _.flatten(_.flatten([options.portfolio]).map(portfolio => _.keys(portfolio.columns)));
     var variables = _.uniq(_.keys(references).concat(_.flatten(_.values(references)), portfolioCols));
     if (!~variables.indexOf(prefix)) return prefix;

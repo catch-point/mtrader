@@ -59,7 +59,7 @@ module.exports.has = function(name) {
     return !!functions[name];
 };
 
-module.exports.getVariables = function(expr) {
+module.exports.getVariables = function(expr, options) {
     var variables = [];
     var parser = Parser({
         constant(value) {
@@ -67,7 +67,7 @@ module.exports.getVariables = function(expr) {
         },
         variable(name) {
             variables.push(name);
-            return null;
+            return _.constant(0);
         },
         expression(expr, name, args) {
             if (module.exports.has(name)) {
@@ -81,11 +81,11 @@ module.exports.getVariables = function(expr) {
                     var expr = rel ? columnName + value : value;
                     parser.parse(expr);
                 });
-                return null;
-            } else if (args.some(_.isNull)) {
-                return null;
-            } else {
+                return _.constant(0);
+            } else if (common.has(name)) {
                 return common(name, args, options);
+            } else {
+                return _.constant(0);
             }
         }
     });
