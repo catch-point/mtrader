@@ -1,6 +1,6 @@
 // fetch-yahoo.spec.js
 /*
- *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -310,7 +310,7 @@ describe("fetch-yahoo", function() {
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
         }).should.eventually.be.like([
             {ending:'2016-11-01T16:00:00-04:00',close:10.32,adj_close:41.28,split:1,dividend:0},
-            {ending:'2016-11-02T16:00:00-04:00',close:10.3,adj_close:41.19,split:1,dividend:0},
+            {ending:'2016-11-02T16:00:00-04:00',close:10.30,adj_close:41.20,split:1,dividend:0},
             {ending:'2016-11-03T16:00:00-04:00',close:10.35,adj_close:41.40,split:1,dividend:0},
             {ending:'2016-11-04T16:00:00-04:00',close:10.43,adj_close:41.72,split:1,dividend:0},
             {ending:'2016-11-07T16:00:00-05:00',close:42.02,adj_close:42.02,split:0.25,dividend:0},

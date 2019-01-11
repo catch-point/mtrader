@@ -1,6 +1,6 @@
 // adjustments.js
 /*
- *  Copyright (c) 2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -215,9 +215,9 @@ function adjustments(yahoo, db, symbol, options) {
                     }
                 }
             }
-            // check if split is large enough for yahoo to change it dividends
-            if (split > 3 || split < 1/3) {
-                // AAPL.NASDAQ 2014-01-01
+            // check if reverse split is enough for yahoo to change it dividends
+            if (split < 1/3) {
+                // AAPL.NASDAQ 2014-06-09 not anymore as of 2019-01-11
                 // REM.ARCA 2016-11-07
                 adj_yahoo_divs *= split;
             }
@@ -242,10 +242,15 @@ function adjustments(yahoo, db, symbol, options) {
     });
 }
 
+/*
+ * Number of shares after the split for every share before the split.
+ * Returns X where X is X-to-1 split.
+ * A reverse split is indicated by a number between 0 and 1.
+ */
 function parseSplit(stock_splits) {
     if (!stock_splits) return 1;
     var splits = stock_splits.split('/');
-    return +splits[0] / +splits[1];
+    return +splits[1] / +splits[0];
 }
 
 function filterAdj(adjustments, options) {
