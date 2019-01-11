@@ -153,6 +153,14 @@ var functions = module.exports.functions = {
     }, {
         description: "Calculates length of a text string"
     }),
+    CONCAT: _.extend(function(opts, text1, text2) {
+        var texts = _.rest(arguments);
+        return context => {
+            return texts.map(f => f(context)).filter(v => v != null).join('');
+        };
+    }, {
+        description: "Combines several text strings into one string."
+    }),
     REPLACE: _.extend((opts, text, position, length, new_text) => {
         return context => {
             var str_text = text(context);

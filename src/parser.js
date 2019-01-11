@@ -339,8 +339,10 @@ function parseExpressionList(str) {
             return parseVariableOrCall();
         } else if (isNumber(peek()) || peek() == '-') {
             return parseNumber();
-        } else if (peek() == '"' || peek() == "'") {
+        } else if (isQuote(peek())) {
             return parseString();
+        } else if (peek() == '`') {
+            return parseTemplate();
         } else {
             expect("letter, number, or bracket");
         }
@@ -377,13 +379,46 @@ function parseExpressionList(str) {
         else expect(quote);
         var buf = ['"'];
         while (index < str.length && str[index] != quote) {
-            if (str[index] == '"' || str[index] == '\\') buf.push('\\');
-            if (str[index] == '\\') index+= 2;
-            else index++;
+            if (str[index] == '"' || str[index] == '\\' && str[index+1] != "'") buf.push('\\');
+            if (str[index] == '\\') index++;
+            index++;
             buf.push(str[index -1]);
         }
         buf.push('"');
         expect(quote);
+        return JSON.stringify(JSON.parse(buf.join('')));
+    }
+    function parseTemplate() {
+        var start = index;
+        if (peek() != '`') expect("back-tick");
+        else expect('`');
+        var template = parseTemplateLiteral();
+        while (peek() == '{') {
+            expect('{');
+            var expression = parseExpression();
+            expect('}');
+            var literal = parseTemplateLiteral();
+            if (_.isArray(template) && template[0] == 'CONCAT') {
+                template.push(expression, literal);
+            } else {
+                template = ['CONCAT', template, expression, literal];
+            }
+        }
+        expect('`');
+        return template;
+    }
+    function parseTemplateLiteral() {
+        var start = index;
+        var buf = ['"'];
+        while (index < str.length && str[index] != '`' && (str[index] != '{' || str[index+1] == '{')) {
+            if (str[index] == '"' || str[index] == '\\' && str[index+1] != '`') buf.push('\\');
+            if (str[index] == '\\') index++;
+            if (str[index] == '{' && str[index+1] == '{') index++;
+            if (str[index] == '}' && str[index+1] == '}') index++;
+            index++;
+            buf.push(str[index -1]);
+        }
+        buf.push('"');
         return JSON.stringify(JSON.parse(buf.join('')));
     }
     function parseNumber() {

@@ -1,6 +1,6 @@
 // common-functions.spec.js
 /*
- *  Copyright (c) 2014-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2014-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -35,96 +35,6 @@ const Parser = require('../src/parser.js');
 const expect = require('chai').expect;
 
 describe("common-functions", function(){
-    describe("parser", function() {
-        var parser = Parser({
-            constant(value) {
-                return () => value;
-            },
-            variable(name) {
-                return context => context[name];
-            },
-            expression(expr, name, args) {
-                return common(name, args, {tz: 'America/New_York'});
-            }
-        });
-        it("ADD", function() {
-            expect(parser.parse('1 + 1')()).to.equal(2);
-        });
-        it("SUBTRACT", function() {
-            expect(parser.parse('2 - 1 - 1')()).to.equal(0);
-        });
-        it("PRODUCT", function() {
-            expect(parser.parse('-4.2 * (2 + 3.5)')()).to.equal(-23.1);
-        });
-        it("DIVIDE", function() {
-            expect(parser.parse('5 × 5 / (2 + 3) / 5')()).to.equal(1);
-        });
-        it("MOD", function() {
-            expect(parser.parse('6 % 5')()).to.equal(1);
-        });
-        it("NEGATIVE", function() {
-            expect(parser.parse('5 × -(2 + 3)')()).to.equal(-25);
-        });
-        it("ABS", function() {
-            expect(parser.parse('ABS(5 × -(2 + 3))')()).to.equal(25);
-        });
-        it("EQUALS", function() {
-            expect(parser.parse('2 = 2')()).to.equal(1);
-        });
-        it("NOT_EQUALS", function() {
-            expect(parser.parse('2 != 2')()).to.equal(0);
-        });
-        it("NOT", function() {
-            expect(parser.parse('!(2 = 2)')()).to.equal(0);
-        });
-        it("NOT_EQUALS", function() {
-            expect(parser.parse('2 <> 2')()).to.equal(0);
-        });
-        it("LESS_THAN", function() {
-            expect(parser.parse('1 < 2')()).to.equal(1);
-        });
-        it("GREATER_THAN", function() {
-            expect(parser.parse('1 > 2')()).to.equal(0);
-        });
-        it("NOT_LESS_THAN", function() {
-            expect(parser.parse('1 >= 2')()).to.equal(0);
-        });
-        it("NOT_GREATER_THAN", function() {
-            expect(parser.parse('1 <= 2')()).to.equal(1);
-        });
-        it("SIGN0", function() {
-            expect(parser.parse('SIGN(5)')()).to.equal(1);
-        });
-        it("SIGN1", function() {
-            expect(parser.parse('SIGN(0)')()).to.equal(0);
-        });
-        it("SIGN2", function() {
-            expect(parser.parse('SIGN(-5)')()).to.equal(-1);
-        });
-        it("AND0", function() {
-            expect(parser.parse('1 and 1 and 0')()).to.equal(0);
-        });
-        it("AND1", function() {
-            expect(parser.parse('AND(1, 1, 0)')()).to.equal(0);
-        });
-        it("OR0", function() {
-            expect(parser.parse('1 or 1 or 0')()).to.equal(1);
-        });
-        it("OR1", function() {
-            expect(parser.parse('OR(1, 1, 0)')()).to.equal(1);
-        });
-        it("XOR0", function() {
-            expect(parser.parse('XOR(1, 1, 0)')()).to.equal(0);
-        });
-        it("XOR1", function() {
-            expect(parser.parse('XOR(1, 1, 0, 1)')()).to.equal(1);
-        });
-        it("should reformat", function() {
-            expect(parser.parse("4/(1/2)*(1/2)")()).to.equal(4);
-            expect(Parser().parse("4/(1/2)*(1/2)")).to.equal("4/(1/2)*1/2");
-            expect(parser.parse(Parser().parse("4/(1/2)*(1/2)"))()).to.equal(4);
-        });
-    });
     describe("WORKDATE", function(){
         var parser = Parser({
             constant(value) {
