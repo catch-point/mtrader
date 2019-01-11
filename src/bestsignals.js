@@ -1,6 +1,6 @@
 // bestsignals.js
 /*
- *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -33,6 +33,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const statkit = require("statkit");
 const Alea = require('alea');
+const merge = require('./merge.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
@@ -108,7 +109,7 @@ function bestsignals(optimize, options) {
             if (!options.signalset) return signals;
             var signalset = _.isArray(options.signalset) ?
                 [options.signalset[set]] : options.signalset;
-            return signals.map(signal => _.extend({}, signal, {signalset}));
+            return signals.map(signal => merge(options, signal, {signalset}));
         });
     })).then(_.flatten).then(signals => {
         var count = options.solution_count || 1;

@@ -1,6 +1,6 @@
 // bestsignals.spec.js
 /*
- *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -187,6 +187,56 @@ describe("bestsignals", function() {
                 slow_len: 25
             }
         }]);
+    });
+    it("should find best sma/ema cross with a fixed parameter", function() {
+        return bestsignals({
+            portfolio: 'SPY.ARCA',
+            begin: '2015-01-01',
+            end: '2015-12-31',
+            signal_variable: 'signal',
+            eval_validity: 'fast_len<slow_len',
+            eval_score: 'gain',
+            columns: {
+                date: 'DATE(ending)',
+                change: 'close - PREV("close")',
+                close: 'day.adj_close',
+                gain: 'PREC("gain") + change * PREV("signal")'
+            },
+            signalset: [{
+                signals: ['sma_cross'],
+                variables: {
+                    sma_cross: 'SMA(fast_len,day.adj_close)>SMA(slow_len,day.adj_close)'
+                },
+                parameters: {
+                    fast_len: 15,
+                    slow_len: 25
+                },
+                parameter_values: {
+                    fast_len: [1,5,10,15,20]
+                }
+            }, {
+                signals: ['ema_cross'],
+                variables: {
+                    ema_cross: 'EMA(fast_len,day.adj_close)>EMA(slow_len,day.adj_close)'
+                },
+                parameters: {
+                    fast_len: 15,
+                    slow_len: 25
+                },
+                parameter_values: {
+                    fast_len: [1,5,10,15,20]
+                }
+            }]
+        }).should.eventually.be.like({
+            variables: {
+                signal: 'sma_cross',
+                sma_cross: 'SMA(fast_len,day.adj_close)>SMA(slow_len,day.adj_close)'
+            },
+            parameters: {
+                fast_len: 15,
+                slow_len: 25
+            }
+        });
     });
     it("should find best counter trend cross parameters", function() {
         return bestsignals({
