@@ -47,6 +47,7 @@ module.exports = function(process) {
     var ondisconnect = [];
     var queue = createQueue(onquit, process.pid);
     var stats = {};
+    process.setMaxListeners(0);
     process.on('disconnect', () => {
         try {
             queue.close();

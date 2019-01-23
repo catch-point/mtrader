@@ -47,7 +47,7 @@ module.exports = function() {
         close() {
             closing = true;
             return (promiseFetch || Promise.reject()).then(fetch => {
-                if (fetch.connected) return fetch.disconnect();
+                if (fetch.process.connected || fetch.process.connecting) return fetch.disconnect();
             }, err => {});
         },
         help() {
@@ -86,15 +86,16 @@ module.exports = function() {
 
     function Fetch() {
         return promiseFetch = (promiseFetch || Promise.reject()).catch(err => {
-            return {connected: false};
+            return {process: {connected: false}};
         }).then(fetch => {
             if (fetch.connectionError) fetch.disconnect();
-            else if (fetch.connected || fetch.connecting) return fetch;
+            else if (fetch.process.connected || fetch.process.connecting) return fetch;
             if (closing) throw Error("Closing remote connection");
             var location = config('fetch.remote.location');
-            logger.log(`Connecting to ${location}`);
-            return replyTo(remote(location))
-                .handle('stop', () => fetch.disconnect());
+            logger.log(`Connecting to ${location} from ${process.pid}`);
+            var connection = remote(location);
+            return replyTo(connection)
+                .handle('stop', () => connection.disconnect());
         });
     }
 };
