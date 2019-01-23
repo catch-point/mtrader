@@ -563,10 +563,48 @@ function includeIntraday(iqclient, adjustments, bars, symbol, options) {
 }
 
 function mostRecentTrade(iqclient, adjustments, symbol, options) {
-    if (options.market == 'OPRA') return summarize(iqclient, symbol, options);
-    else return rollday(iqclient, adjustments, 'day', symbol, _.defaults({
-        minutes: 30
-    }, options));
+    if (options.market != 'OPRA') {
+        return rollday(iqclient, adjustments, 'day', symbol, _.defaults({
+            minutes: 30
+        }, options));
+    } else if (isOptionExpired(symbol)) {
+        return [];
+    } else {
+        return summarize(iqclient, symbol, options);
+    }
+}
+
+function rollday(iqclient, adjustments, interval, symbol, options) {
+    var asof = moment().tz(options.tz).format();
+    return intraday(iqclient, adjustments, symbol, options).then(bars => bars.reduce((days, bar) => {
+        var merging = days.length && _.last(days).ending >= bar.ending;
+        if (!merging && isBeforeOpen(bar.ending, options)) return days;
+        var today = merging ? days.pop() : {};
+        days.push({
+            ending: today.ending || endOf(interval, bar.ending, options),
+            open: today.open || bar.open,
+            high: Math.max(today.high || 0, bar.high),
+            low: today.low && today.low < bar.low ? today.low : bar.low,
+            close: bar.close,
+            volume: bar.total_volume,
+            asof: asof,
+            incomplete: true
+        });
+        return days;
+    }, []));
+}
+
+function isOptionExpired(symbol) {
+    var m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return null;
+    var yy = m[2];
+    var cc = +yy<50 ? 2000 : 1900;
+    var year = cc + +yy;
+    var day = m[3];
+    var mo = months[m[4]];
+    var expiration_date = `${year}-${mo}-${day}`;
+    var exdate = moment(expiration_date).endOf('day');
+    return exdate.isValid() && exdate.isBefore();
 }
 
 function summarize(iqclient, symbol, options) {
@@ -589,26 +627,6 @@ function summarize(iqclient, symbol, options) {
             incomplete: true
         }];
     });
-}
-
-function rollday(iqclient, adjustments, interval, symbol, options) {
-    var asof = moment().tz(options.tz).format();
-    return intraday(iqclient, adjustments, symbol, options).then(bars => bars.reduce((days, bar) => {
-        var merging = days.length && _.last(days).ending >= bar.ending;
-        if (!merging && isBeforeOpen(bar.ending, options)) return days;
-        var today = merging ? days.pop() : {};
-        days.push({
-            ending: today.ending || endOf(interval, bar.ending, options),
-            open: today.open || bar.open,
-            high: Math.max(today.high || 0, bar.high),
-            low: today.low && today.low < bar.low ? today.low : bar.low,
-            close: bar.close,
-            volume: bar.total_volume,
-            asof: asof,
-            incomplete: true
-        });
-        return days;
-    }, []));
 }
 
 function adjustment(base, bar) {
