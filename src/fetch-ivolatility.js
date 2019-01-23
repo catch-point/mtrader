@@ -201,7 +201,7 @@ function day(readTable, delegate, options) {
     var now = moment.tz(options.now, options.tz);
     var begin = moment.tz(options.begin, options.tz);
     var end = moment.tz(options.end || now, options.tz);
-    if (!isOptionActive(options.symbol, begin, end)) return [];
+    if (!isOptionActive(options.symbol, begin, end)) return Promise.resolve([]);
     return readTable(options).then(result => {
         var start = begin.format();
         var first = _.sortedIndex(result, {ending: start}, 'ending');
