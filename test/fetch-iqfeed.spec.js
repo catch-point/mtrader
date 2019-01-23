@@ -686,4 +686,13 @@ describe("fetch-iqfeed", function() {
           .then(d=>d.forEach(d=>console.log(d))||d)
           .should.eventually.be.empty;
     });
+    it.skip("should use summary info for OPRA intraday", function() {
+        return client.interday({
+            interval: 'day',
+            symbol: 'SPX1918D2675',
+            market: 'OPRA',
+            begin: moment.tz('2019-01-18', tz),
+            marketOpensAt: '02:00:00', marketClosesAt: '16:15:00', tz: tz
+        }).then(d=>d.forEach(d=>console.log(d))||d);
+    });
 });

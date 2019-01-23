@@ -91,7 +91,9 @@ module.exports = function() {
             if (fetch.connectionError) fetch.disconnect();
             else if (fetch.connected || fetch.connecting) return fetch;
             if (closing) throw Error("Closing remote connection");
-            return replyTo(remote(config('fetch.remote.location')))
+            var location = config('fetch.remote.location');
+            logger.log(`Connecting to ${location}`);
+            return replyTo(remote(location))
                 .handle('stop', () => fetch.disconnect());
         });
     }

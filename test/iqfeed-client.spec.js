@@ -83,13 +83,13 @@ describe("iqfeed-client", function() {
         return client.day('SPY1819V280', '2010-01-01', '2018-01-01', tz)
           .should.eventually.be.like([]);
     });
-    it("options last week", function() {
+    it.skip("options last week", function() {
         return client.week('SPY1819V280', '2018-10-14', '2020-01-01', tz)
           .should.eventually.be.like([
             { Date_Stamp: '2018-10-19', Close: '4.16' }
           ]);
     });
-    it("options last month", function() {
+    it.skip("options last month", function() {
         return client.month('SPY1819V280', '2018-10-14', '2020-01-01', tz)
           .should.eventually.be.like([
             { Date_Stamp: '2018-10-19', Close: '4.16' }
@@ -245,5 +245,8 @@ describe("iqfeed-client", function() {
             {Time_Stamp:'2014-03-03 10:29:00',High:'1.10860',Low:'1.10815',Open:'1.10859',Close:'1.10815'},
             {Time_Stamp:'2014-03-03 10:30:00',High:'1.10825',Low:'1.10805',Open:'1.10819',Close:'1.10819'}
         ]);
+    });
+    it("should return summary info", function() {
+        return client.summary('SPY').should.eventually.be.like({symbol:'SPY'});
     });
 });

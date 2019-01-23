@@ -500,7 +500,7 @@ function day(iqclient, adjustments, symbol, options) {
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
         else return result.slice(0, last);
-    }).then(bars => includeIntraday(iqclient, adjustments, bars, 'day', symbol, options));
+    }).then(bars => includeIntraday(iqclient, adjustments, bars, symbol, options));
 }
 
 function intraday(iqclient, adjustments, symbol, options) {
@@ -534,7 +534,7 @@ function intraday(iqclient, adjustments, symbol, options) {
     });
 }
 
-function includeIntraday(iqclient, adjustments, bars, interval, symbol, options) {
+function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     var now = moment.tz(options.now, options.tz);
     if (now.days() === 6 || !bars.length) return bars;
     var tz = options.tz;
@@ -547,8 +547,7 @@ function includeIntraday(iqclient, adjustments, bars, interval, symbol, options)
     if (end.isBefore(opensAt)) return bars;
     var adj = _.last(bars).adj_close / _.last(bars).close;
     var test_size = bars.length;
-    return rollday(iqclient, adjustments, interval, symbol, _.defaults({
-        minutes: 30,
+    return mostRecentTrade(iqclient, adjustments, symbol, _.defaults({
         begin: _.last(bars).ending,
         end: end.format(),
         tz: tz
@@ -561,6 +560,35 @@ function includeIntraday(iqclient, adjustments, bars, interval, symbol, options)
         }
         return bars;
     }, bars));
+}
+
+function mostRecentTrade(iqclient, adjustments, symbol, options) {
+    if (options.market == 'OPRA') return summarize(iqclient, symbol, options);
+    else return rollday(iqclient, adjustments, 'day', symbol, _.defaults({
+        minutes: 30
+    }, options));
+}
+
+function summarize(iqclient, symbol, options) {
+    var now = moment();
+    var asof = moment(now).tz(options.tz).format();
+    var today = now.tz('America/New_York').format('YYYY-MM-DD') + ' ';
+    return iqclient.summary(symbol).then(summary => {
+        var mid_time = _.last(_.sortBy([summary.bid_timems, summary.ask_timems]));
+        var ending = moment.tz(today + mid_time, 'America/New_York').format();
+        var ten = Math.pow(10, +summary.decimal_precision);
+        var close = Math.round((+summary.ask + +summary.bid)/2 * ten)/ten;
+        return [{
+            ending: ending,
+            open: +summary.open,
+            high: +summary.high,
+            low: +summary.low,
+            close: close,
+            volume: +summary.total_volume,
+            asof: asof,
+            incomplete: true
+        }];
+    });
 }
 
 function rollday(iqclient, adjustments, interval, symbol, options) {

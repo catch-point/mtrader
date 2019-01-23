@@ -106,7 +106,7 @@ module.exports = function(command, env, productId, productVersion) {
             return promiseMarkets().then(markets => {
                 return promiseTypes().then(types => {
                     return level1({
-                        type: 'fundamental',
+                        fundamental: true,
                         symbol: symbol
                     }).then(datum => _.extend(datum, {
                         listed_market: markets[parseInt(datum.listed_market)] || datum.listed_market,
@@ -119,7 +119,7 @@ module.exports = function(command, env, productId, productVersion) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             if (update) expect(update).to.be.a('function');
             return level1({
-                type: 'summary',
+                summary: true,
                 symbol: symbol,
                 update: update
             });
@@ -245,10 +245,17 @@ function lookupOptions(symbol) {
 }
 
 function isOptionExpired(symbol, begin, end, tz) {
-    var option = lookupOptions(symbol);
-    if (option && moment.tz(option.expiration_date,tz).endOf('day').isBefore(begin))
+    var m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return false;
+    var yy = +m[2];
+    var cc = yy<50 ? 2000 : 1900;
+    var year = cc + yy;
+    var mo = months[m[4]];
+    var day = m[3];
+    var expiration_date = `${year}-${mo}-${day}`;
+    if (moment.tz(expiration_date,tz).endOf('day').isBefore(begin))
         return true;
-    else if (option && end && moment.tz(option.expiration_date,tz).subtract(6,'months').isAfter(end))
+    else if (end && moment.tz(expiration_date,tz).subtract(6,'months').isAfter(end))
         return true;
     else
         return false;
@@ -371,7 +378,34 @@ function historical(nextval, ready) {
     var blacklist = {};
     var pending = {};
     var lookupPromise;
+    var closing;
+    var mark = () => {
+        var marked = _.pick(pending, _.property('marked'));
+        if (!closing && !_.isEmpty(marked)) {
+            lookup().then(function(socketId){
+                _.map(marked, (item, id) => {
+                    if (pending[id]) {
+                        var adj = item.socketId == socketId ? "same" : "new";
+                        logger.warn(`Resending ${symbol} ${item.cmd} on ${adj} socket ${socketId}`);
+                        delete pending[id];
+                        submit(nextval, pending, socketId, item);
+                    }
+                });
+            }).catch(err => {
+                _.map(marked, (item, id) => {
+                    if (pending[id]) {
+                        delete pending[id];
+                        item.error(err);
+                    }
+                });
+            });
+        }
+        _.forEach(pending, item => item.marked = true);
+        return marker = setTimeout(mark, 10000).unref();
+    };
+    var marker = mark();
     var lookup = function(){
+        if (closing) throw closing;
         return lookupPromise = promiseSocket(lookupPromise, function(){
             return ready().then(function(){
                 return promiseNewLookupSocket(blacklist, pending, 9100, lookup);
@@ -388,42 +422,43 @@ function historical(nextval, ready) {
     return function(symbol, args) {
         return Promise.resolve(args).then(function(args){
             if ('close' == symbol) {
-                var closing = Error("IQFeed is closing");
-                try {
-                    _.forEach(pending, item => item.error(closing));
-                } catch (err) {
-                    logger.debug("IQFeed pending item", err);
-                } finally {
-                    return lookupPromise && lookupPromise.then(closeSocket)
-                      .then(() => lookupPromise = null, () => lookupPromise = null);
-               }
+                closing = Error("IQFeed is closing");
+                clearTimeout(marker);
+                _.forEach(_.clone(pending), item => item.error(closing));
+                return lookupPromise && lookupPromise.then(closeSocket)
+                  .then(() => lookupPromise = null, () => lookupPromise = null);
             }
             if (!symbol) throw Error("Missing symbol in " + args.join(','));
             return lookup().then(function(socketId){
-                var id = nextval();
-                var cmd = args.join(',').replace('[RequestID]', id);
-                return new Promise(function(callback, onerror){
+                return new Promise(function(callback, error){
                     if (blacklist[symbol])
                         throw Error(blacklist[symbol] + ": " + symbol);
-                    pending[id] = {
-                        symbol: symbol,
-                        cmd: cmd,
-                        buffer:[],
-                        socketId: socketId,
-                        callback: function(result) {
-                            delete pending[id];
-                            return callback(result);
-                        },
-                        error: function(e) {
-                            delete pending[id];
-                            return onerror(e);
-                        }
-                    };
-                    send(cmd, socketId);
+                    if (closing) throw closing;
+                    submit(nextval, pending, socketId, {symbol, args, callback, error});
                 });
             })
         });
     };
+}
+
+function submit(nextval, pending, socketId, item) {
+    var id = nextval();
+    pending[id] = {
+        symbol: item.symbol,
+        cmd: item.args.join(',').replace('[RequestID]', id),
+        args: item.args,
+        buffer:[],
+        socketId: socketId,
+        callback: function(result) {
+            delete pending[id];
+            return item.callback(result);
+        },
+        error: function(e) {
+            delete pending[id];
+            return item.error(e);
+        }
+    };
+    send(pending[id].cmd, socketId);
 }
 
 function watch(ready) {
@@ -450,17 +485,23 @@ function watch(ready) {
                         symbol: symbol,
                         socketId: socketId,
                         fundamental: function(result) {
-                            if (!options.update) {
+                            if (!options.summary)
                                 deregister(watching, socketId, symbol, pending);
+                            if (options.fundamental)
                                 return callback(result);
-                            }
                         },
                         summary: function(result) {
-                            if (options.update) callback(result);
+                            if (!options.update)
+                                deregister(watching, socketId, symbol, pending);
+                            if (options.summary)
+                                return callback(result);
                         },
                         update: function(result) {
                             try {
-                                if (options.update) return options.update(result);
+                                if (options.update) {
+                                    var ret = options.update(result);
+                                    if (ret) return ret;
+                                }
                             } catch(e) {
                                 logger.error("IQFeed", e);
                             }
@@ -544,10 +585,10 @@ function promiseNewLookupSocket(blacklist, pending, port, retry) {
 function promiseNewLevel1Socket(blacklist, watching, port, retry) {
     var check = interrupt(true);
     var fundamentalFormat = ['type', 'symbol', 'market_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'market_root'];
-    var summaryFormat = ['type', 'symbol', 'close', 'most_recent_trade_date', 'most_recent_trade_timems', 'most_recent_trade'];
+    var summaryFormat = ['type', 'symbol', 'close', 'most_recent_trade_date', 'open', 'high', 'low', 'most_recent_trade_timems', 'most_recent_trade', 'bid_timems', 'bid', 'ask_timems', 'ask', 'total_volume', 'decimal_precision'];
     return openSocket(port).then(function(socket) {
         return promiseSend('S,SET PROTOCOL,5.1', socket)
-          .then(send.bind(this, 'S,SELECT UPDATE FIELDS,Close,Most Recent Trade Date,Most Recent Trade TimeMS,Most Recent Trade'))
+          .then(send.bind(this, 'S,SELECT UPDATE FIELDS,Close,Most Recent Trade Date,Open,High,Low,Most Recent Trade TimeMS,Most Recent Trade,Bid TimeMS,Bid,Ask TimeMS,Ask,Total Volume,Decimal Precision'))
           .then(function(socket){
             socket.on('close', error => {
                 // close and reconnect in a second
