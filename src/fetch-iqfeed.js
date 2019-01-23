@@ -153,6 +153,7 @@ function register(ref) {
 
 /** If this is the last reference, release shared instance */
 function unregister(ref) {
+    ref.closed = true;
     var idx = references.indexOf(ref);
     if (idx < 0) return Promise.resolve();
     references.splice(idx, 1)
@@ -164,6 +165,7 @@ function unregister(ref) {
 
 /** Use the shared instance, creating a new one if needed */
 function sharedInstance(cmd, options) {
+    if (this.closed) throw Error("IQFeed has closed");
     last_used = elapsed_time;
     if (shared_instance) return shared_instance[cmd](options);
     else return instance_lock = instance_lock.catch(_.noop).then(() => {
@@ -568,7 +570,7 @@ function mostRecentTrade(iqclient, adjustments, symbol, options) {
             minutes: 30
         }, options));
     } else if (isOptionExpired(symbol)) {
-        return [];
+        return Promise.resolve([]);
     } else {
         return summarize(iqclient, symbol, options);
     }
@@ -594,6 +596,12 @@ function rollday(iqclient, adjustments, interval, symbol, options) {
     }, []));
 }
 
+var months = {
+    A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
+    G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
+    M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
+    S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
+};
 function isOptionExpired(symbol) {
     var m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return null;
