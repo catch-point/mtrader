@@ -184,7 +184,7 @@ function loadIvolatility(ivolatility, options) {
     }));
 }
 
-function isOptionExpiredBefore(symbol, point) {
+function isOptionActive(symbol, begin, end) {
     var m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return null;
     var yy = m[2];
@@ -193,19 +193,22 @@ function isOptionExpiredBefore(symbol, point) {
     var day = m[3];
     var mo = months[m[4]];
     var expiration_date = `${year}-${mo}-${day}`;
-    return moment(expiration_date).endOf('day').isBefore(moment(point));
+    var exdate = moment(expiration_date).endOf('day');
+    return exdate.isAfter(begin) && exdate.subtract(3,'years').isBefore(end);
 }
 
 function day(readTable, delegate, options) {
+    var now = moment.tz(options.now, options.tz);
+    var begin = moment.tz(options.begin, options.tz);
+    var end = moment.tz(options.end || now, options.tz);
+    if (!isOptionActive(options.symbol, begin, end)) return [];
     return readTable(options).then(result => {
-        var begin = moment.tz(options.begin, options.tz);
         var start = begin.format();
         var first = _.sortedIndex(result, {ending: start}, 'ending');
         if (first < 1) return result;
         else return result.slice(first);
     }).then(result => {
         if (!options.end) return result;
-        var end = moment.tz(options.end || now, options.tz);
         if (end.isAfter()) return result;
         var final = end.format();
         var last = _.sortedIndex(result, {ending: final}, 'ending');
@@ -215,7 +218,6 @@ function day(readTable, delegate, options) {
     }).then(adata => {
         if (!delegate) return adata;
         if (adata.length) {
-            var now = moment.tz(options.now, options.tz);
             if (now.days() === 0 || now.days() === 6) return adata;
             var tz = options.tz;
             var opensAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketOpensAt, tz);
@@ -223,9 +225,8 @@ function day(readTable, delegate, options) {
             if (!opensAt.isBefore(closesAt)) opensAt.subtract(1, 'day');
             if (now.isBefore(opensAt)) return adata;
             if (!closesAt.isAfter(_.last(adata).ending)) return adata;
-            var end = moment.tz(options.end || now, options.tz);
             if (end.isBefore(opensAt)) return adata;
-            if (isOptionExpiredBefore(options.symbol, opensAt)) return adata;
+            if (!isOptionActive(options.symbol, opensAt, now)) return adata;
         }
         return delegate.interday(_.defaults({
             interval: 'day',

@@ -255,7 +255,7 @@ function isOptionExpired(symbol, begin, end, tz) {
     var expiration_date = `${year}-${mo}-${day}`;
     if (moment.tz(expiration_date,tz).endOf('day').isBefore(begin))
         return true;
-    else if (end && moment.tz(expiration_date,tz).subtract(6,'months').isAfter(end))
+    else if (end && moment.tz(expiration_date,tz).subtract(3,'years').isAfter(end))
         return true;
     else
         return false;
