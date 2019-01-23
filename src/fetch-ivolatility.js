@@ -194,7 +194,10 @@ function isOptionActive(symbol, begin, end) {
     var mo = months[m[4]];
     var expiration_date = `${year}-${mo}-${day}`;
     var exdate = moment(expiration_date).endOf('day');
-    return exdate.isAfter(begin) && exdate.subtract(3,'years').isBefore(end);
+    var issued = mo == '01' ?
+        moment(exdate).subtract(3, 'years') :
+        moment(exdate).subtract(9, 'months');
+    return exdate.isAfter(begin) && issued.isBefore(end);
 }
 
 function day(readTable, delegate, options) {
