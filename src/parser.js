@@ -427,10 +427,11 @@ function parseExpressionList(str) {
         if (peek() == '-') index++;
         if (!isNumber(str[index])) expect("number");
         while(isNumber(str[index])) index++;
-        if (str[index] != '.')
+        if (str[index] != '.' && str[index] != 'E' && str[index] != 'e')
             return parseInt(str.substring(start, index));
-        index++
-        if (!isNumber(str[index])) expect("number after decimal point");
+        if (str[index] == '.') index++
+        if (!isNumber(str[index]) && str[index] != 'E' && str[index] != 'e')
+            expect("number after decimal point");
         while(isNumber(str[index])) index++;
         if (str[index] == 'E' || str[index] == 'e') {
             index++;

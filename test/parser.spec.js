@@ -46,6 +46,23 @@ describe("parser", function() {
             return common(name, args, {tz: 'America/New_York'});
         }
     });
+    it("number", function() {
+        expect(parser.parse(1)()).to.equal(1);
+        expect(parser.parse(100)()).to.equal(100);
+        expect(parser.parse(10000)()).to.equal(10000);
+        expect(parser.parse(100000000)()).to.equal(100000000);
+        expect(parser.parse(10000000000000000)()).to.equal(10000000000000000);
+        expect(parser.parse(100000000000000000000000000000000)()).to.equal(100000000000000000000000000000000);
+        expect(parser.parse(0.01)()).to.equal(0.01);
+        expect(parser.parse(0.0001)()).to.equal(0.0001);
+        expect(parser.parse(0.00000001)()).to.equal(0.00000001);
+        expect(parser.parse(0.0000000000000001)()).to.equal(0.0000000000000001);
+        expect(parser.parse(0.00000000000000000000000000000001)()).to.equal(0.00000000000000000000000000000001);
+        expect(parser.parse("1e-7")()).to.equal(1e-7);
+        expect(parser.parse("1E-7")()).to.equal(1E-7);
+        expect(parser.parse("1.5e-7")()).to.equal(1.5e-7);
+        expect(parser.parse("1.5E-7")()).to.equal(1.5E-7);
+    });
     it("string", function() {
         expect(parser.parse('"Hello World!"')()).to.equal('Hello World!');
         expect(parser.parse('"Hello \\"World!\\""')()).to.equal('Hello "World!"');
