@@ -98,15 +98,14 @@ module.exports = function() {
     var cacheDir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     var libDir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     var downloadDir = config('fetch.ivolatility.downloads') || path.resolve(libDir, 'ivolatility');
-    var username = config('fetch.ivolatility.username');
-    var passwordFile = config('fetch.ivolatility.passwordFile');
+    var auth_file = config('fetch.ivolatility.auth_file');
     var downloadType = config('fetch.ivolatility.downloadType');
     if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
     var cfg = config('fetch.ivolatility') || {};
     var delegate = cfg.delegate == 'remote' ? remote() :
         cfg.delegate == 'iqfeed' ? iqfeed() :
         cfg.delegate == 'files' ? files() : null;
-    var ivolatility = Ivolatility(cacheDir, downloadDir, username, passwordFile, downloadType);
+    var ivolatility = Ivolatility(cacheDir, downloadDir, auth_file, downloadType);
     return {
         close() {
             return Promise.all([

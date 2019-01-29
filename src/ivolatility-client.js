@@ -48,9 +48,9 @@ const cache = require('./memoize-cache.js');
 const storage = require('./storage.js');
 const expect = require('chai').expect;
 
-module.exports = function(cacheDir, downloadDir, username, passwordFile, downloadType) {
+module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
     var store = storage(cacheDir);
-    var checkForUpdatesFn = checkForUpdates.bind(this, cacheDir, downloadDir, username, passwordFile, downloadType);
+    var checkForUpdatesFn = checkForUpdates.bind(this, cacheDir, downloadDir, auth_file, downloadType);
     var checkTormorrow;
     var another_six_hours = 6 * 60 * 60 * 1000;
     var another_21_hours = 21 * 60 * 60 * 1000;
@@ -66,11 +66,14 @@ module.exports = function(cacheDir, downloadDir, username, passwordFile, downloa
     var processing = processEveryDay();
     return {
         listAvailableDownloads(dType) {
-            var password = passwordFile && fs.readFileSync(passwordFile, 'utf8').trim();
+            var token = auth_file ? fs.readFileSync(auth_file, 'utf8').trim() : '';
+            var auth = new Buffer.from(token, 'base64').toString().split(/:/);
+            var username = auth[0];
+            var password = auth[1];
             return listAvailableDownloads(username, password, dType || downloadType);
         },
         downloadUpdates(dType) {
-            return downloadUpdates(downloadDir, username, passwordFile, dType || downloadType);
+            return downloadUpdates(downloadDir, auth_file, dType || downloadType);
         },
         processNewFiles() {
             return processing.then(() => processNewFiles(cacheDir, downloadDir));
@@ -101,8 +104,8 @@ module.exports = function(cacheDir, downloadDir, username, passwordFile, downloa
     };
 };
 
-function checkForUpdates(cacheDir, downloadDir, username, passwordFile, downloadType) {
-    return Promise.resolve(username ? downloadUpdates(downloadDir, username, passwordFile, downloadType) : null)
+function checkForUpdates(cacheDir, downloadDir, auth_file, downloadType) {
+    return Promise.resolve(auth_file ? downloadUpdates(downloadDir, auth_file, downloadType) : null)
       .then(() => Promise.resolve(downloadDir ? processNewFiles(cacheDir, downloadDir) : null))
       .catch(err => logger.error("Could not process updates from ivolatility.com", err));
 }
@@ -410,8 +413,11 @@ function mtime(filename) {
     }).then(stats => stats.mtime);
 }
 
-function downloadUpdates(downloadDir, username, passwordFile, downloadType) {
-    var password = fs.readFileSync(passwordFile, 'utf8').trim();
+function downloadUpdates(downloadDir, auth_file, downloadType) {
+    var token = auth_file ? fs.readFileSync(auth_file, 'utf8').trim() : '';
+    var auth = new Buffer.from(token, 'base64').toString().split(/:/);
+    var username = auth[0];
+    var password = auth[1];
     return readMetadata(downloadDir).then(metadata => {
         return listAvailableDownloads(username, password, downloadType, metadata.mtime)
           .then(fileUrls => absentFileUrls(downloadDir, fileUrls))
