@@ -621,11 +621,11 @@ function summarize(iqclient, symbol, options) {
     var today = now.tz('America/New_York').format('YYYY-MM-DD') + ' ';
     return iqclient.summary(symbol).then(summary => {
         var mid_time = _.last(_.sortBy([summary.bid_timems, summary.ask_timems]));
-        var ending = moment.tz(today + mid_time, 'America/New_York').format();
+        var ending = moment.tz(today + mid_time, 'America/New_York').tz(options.tz);
         var ten = Math.pow(10, +summary.decimal_precision);
         var close = Math.round((+summary.ask + +summary.bid)/2 * ten)/ten;
         return [{
-            ending: ending,
+            ending: endOf('day', ending, options),
             open: +summary.open,
             high: +summary.high,
             low: +summary.low,
