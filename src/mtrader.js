@@ -167,6 +167,7 @@ function parseKnownOptions(program, argv) {
 }
 
 function createInstance() {
+    var date = require('./mtrader-date.js');
     var fetch = require('./mtrader-fetch.js');
     var quote = require('./mtrader-quote.js');
     var collect = require('./mtrader-collect.js');
@@ -176,6 +177,7 @@ function createInstance() {
     var servers = [];
     return {
         config: config,
+        date: date,
         lookup(options) {
             return fetch(_.defaults({
                 interval: 'lookup'
