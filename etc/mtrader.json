@@ -17,7 +17,7 @@
       "fundamental": true,
       "interday": ["year", "quarter", "month", "week", "day"],
       "intraday": ["m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOEX", "COMEX", "IND"]
+      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOE", "COMEX", "X"]
     },
     "ivolatility": {
       "enabled": false,
@@ -468,7 +468,7 @@
         }
       }
     },
-    "CBOEX": {
+    "CBOE": {
       "description": "Indexes listed on the Chicago Board Options Exchange",
       "afterHoursClosesAt": "16:00:00",
       "marketClosesAt": "16:00:00",
@@ -484,7 +484,7 @@
         }
       }
     },
-    "IND": {
+    "X": {
       "description": "Most US indexes",
       "afterHoursClosesAt": "16:00:00",
       "marketClosesAt": "16:00:00",
@@ -496,7 +496,7 @@
         "iqfeed": {
           "dtnSuffix": ".X",
           "security_types": ["INDEX"],
-          "listed_markets": ["RUSSELL-FL", "DJ", "NASDAQ"]
+          "listed_markets": ["RUSSELL-FL", "DJ", "NASDAQ", "CME-FL", "DTN", "NYSE_ARCA", "CME", "BLOOMBERG", "FTSE", "BATS"]
         }
       }
     }
