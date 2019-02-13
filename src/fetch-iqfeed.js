@@ -564,15 +564,30 @@ function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     }, bars));
 }
 
-function mostRecentTrade(iqclient, adjustments, symbol, options) {
-    if (options.market != 'OPRA') {
-        return rollday(iqclient, adjustments, 'day', symbol, _.defaults({
+async function mostRecentTrade(iqclient, adjustments, symbol, options) {
+    if (options.market == 'OPRA' && isOptionExpired(symbol)) {
+        return [];
+    } else {
+        var m30 = await rollday(iqclient, adjustments, 'day', symbol, _.defaults({
             minutes: 30
         }, options));
-    } else if (isOptionExpired(symbol)) {
-        return Promise.resolve([]);
-    } else {
-        return summarize(iqclient, symbol, options);
+        var currently = await summarize(iqclient, symbol, options);
+        var bar = _.last(m30);
+        var today = _.last(currently);
+        if (!bar) return currently;
+        else if (!today) return m30;
+        else if (bar.ending == options.begin && today.ending > options.begin) return today;
+        else if (bar.ending != today.ending) return m30;
+        return _.initial(m30).concat(Object.assign({
+            ending: today.ending,
+            open: today.open || bar.open,
+            high: Math.max(today.high || 0, bar.high),
+            low: today.low && today.low < bar.low ? today.low : bar.low,
+            close: today.close,
+            volume: today.total_volume || bar.total_volume,
+            asof: today.asof,
+            incomplete: true
+        }));
     }
 }
 
@@ -618,13 +633,18 @@ function isOptionExpired(symbol) {
 function summarize(iqclient, symbol, options) {
     var now = moment();
     var asof = moment(now).tz(options.tz).format();
-    var today = now.tz('America/New_York').format('YYYY-MM-DD') + ' ';
     return iqclient.summary(symbol).then(summary => {
-        var mid_time = _.last(_.sortBy([summary.bid_timems, summary.ask_timems]));
-        var ending = moment.tz(today + mid_time, 'America/New_York').tz(options.tz);
-        var ten = Math.pow(10, +summary.decimal_precision);
-        var close = Math.round((+summary.ask + +summary.bid)/2 * ten)/ten;
-        return [{
+        var use_mid = summary.decimal_precision && summary.ask && summary.bid;
+        var date = use_mid ? now.tz('America/New_York') :
+            moment.tz(summary.most_recent_trade_date, 'MM/DD/YYYY', 'America/New_York');
+        var time = use_mid ? _.last(_.sortBy([summary.bid_timems, summary.ask_timems])) :
+            summary.most_recent_trade_timems;
+        var ending = moment.tz(date.format('YYYY-MM-DD') + ' ' + time, 'America/New_York').tz(options.tz);
+        var ten = use_mid && Math.pow(10, +summary.decimal_precision);
+        var close = use_mid ? Math.round((+summary.ask + +summary.bid)/2 * ten)/ten :
+            summary.most_recent_trade;
+        if (!close || !ending.isValid() || ending.isAfter(now)) return [];
+        else return [{
             ending: endOf('day', ending, options),
             open: +summary.open,
             high: +summary.high,
