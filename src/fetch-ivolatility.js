@@ -241,7 +241,10 @@ function day(readTable, delegate, options) {
                 else if (b >= bdata.length) cdata[c++] = adata[a++];
                 else if (adata[a].ending < bdata[b].ending) cdata[c++] = adata[a++];
                 else if (adata[a].ending > bdata[b].ending) cdata[c++] = bdata[b++];
-                else cdata[c++] = adata[a++];
+                else {
+                    b++;
+                    cdata[c++] = adata[a++];
+                }
             }
             return cdata;
         });
