@@ -95,7 +95,8 @@ if (require.main === module) {
         process.on('SIGHUP', () => collect.reload());
         process.on('SIGINT', () => collect.close());
         process.on('SIGTERM', () => collect.close());
-        Promise.all(program.args.map(name => readCallSave(name, collect)))
+        var args = program.args.length ? program.args : [''];
+        Promise.all(args.map(name => readCallSave(name, collect)))
           .then(results => [].concat(...results))
           .then(result => tabular(result, config()))
           .catch(err => logger.error(err, err.stack))
