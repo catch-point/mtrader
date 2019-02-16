@@ -199,6 +199,7 @@ function collectDuration(quote, callCollect, fields, options) {
         var index = '#' + opts.id.toString() + (options.columns[options.indexCol] ?
             '.' + JSON.parse(options.columns[options.indexCol]).substring(1) : '');
         if (opts.portfolio) {
+            if (~_.flatten([opts.portfolio]).indexOf(null)) throw Error(`Portfolio cannot contain null in ${opts.id} ${opts.portfolio}`);
             var parser = Parser({
                 variable(name){
                     return opts.columns && opts.columns[name] || name;
