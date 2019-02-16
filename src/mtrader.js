@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader.js
 /*
- *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -43,10 +43,18 @@ const expect = require('chai').expect;
 const logger = require('./logger.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./mtrader-config.js');
+const Config = require('./mtrader-config.js');
+const config = require('./config.js');
 const date = require('./mtrader-date.js');
 const shellError = require('./shell-error.js');
 const version = require('./version.js');
+const Dater = require('./mtrader-date.js');
+const Fetch = require('./mtrader-fetch.js');
+const Quote = require('./mtrader-quote.js');
+const Collect = require('./mtrader-collect.js');
+const Optimize = require('./mtrader-optimize.js');
+const Bestsignals = require('./mtrader-bestsignals.js');
+const Strategize = require('./mtrader-strategize.js');
 
 const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
@@ -151,8 +159,14 @@ if (require.main === module) {
         process.on('SIGTERM', () => mtrader.close());
         server.on('close', () => mtrader.close());
     }
+    process.on('SIGTERM', () => {
+        setTimeout(() => {
+            if (process._getActiveHandles)
+                console.log("Still active on", process.pid, process._getActiveHandles());
+        }, 10000).unref();
+    });
 } else {
-    module.exports = createInstance();
+    module.exports = createInstance;
 }
 
 function parseKnownOptions(program, argv) {
@@ -167,13 +181,14 @@ function parseKnownOptions(program, argv) {
 }
 
 function createInstance() {
-    var date = require('./mtrader-date.js');
-    var fetch = require('./mtrader-fetch.js');
-    var quote = require('./mtrader-quote.js');
-    var collect = require('./mtrader-collect.js');
-    var optimize = require('./mtrader-optimize.js');
-    var bestsignals = require('./mtrader-bestsignals.js');
-    var strategize = require('./mtrader-strategize.js');
+    var config = new Config();
+    var date = new Dater();
+    var fetch = new Fetch();
+    var quote = new Quote();
+    var collect = new Collect();
+    var optimize = new Optimize();
+    var bestsignals = new Bestsignals();
+    var strategize = new Strategize();
     var servers = [];
     return {
         config: config,
@@ -202,12 +217,16 @@ function createInstance() {
             return Promise.all(servers.map(server => {
                 return new Promise(cb => server.close(cb));
             })).then(() => {
-                setTimeout(() => {
-                    if (process._getActiveHandles)
-                        console.log("Still active on", process.pid, process._getActiveHandles());
-                }, 10000).unref();
-            }).then(() => {
-                return strategize.close();
+                return Promise.all([
+                    config.close(),
+                    date.close(),
+                    fetch.close(),
+                    quote.close(),
+                    collect.close(),
+                    optimize.close(),
+                    bestsignals.close(),
+                    strategize.close()
+                ]);
             });
         },
         shell(app) {

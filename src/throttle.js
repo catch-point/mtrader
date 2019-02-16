@@ -29,6 +29,8 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 module.exports = function(fn, limit) {
     var max = limit || 1;
     var currently = 0;

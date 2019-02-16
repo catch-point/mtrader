@@ -30,6 +30,7 @@
  */
 
 const _ = require('underscore');
+const share = require('./share.js');
 const interrupt = require('./interrupt.js');
 const replyTo = require('./promise-reply.js');
 const remote = require('./remote-process.js');
@@ -37,29 +38,13 @@ const workerQueue = require('./worker-queue.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
 
-process.on('SIGHUP', () => instance && instance.reload());
-process.on('SIGINT', () => instance && instance.close());
-process.on('SIGTERM', () => instance && instance.close());
+process.setMaxListeners(process.getMaxListeners()+1);
 
-var instance;
-var instanceCount = 0;
+var shared = module.exports = share(createInstance);
 
-module.exports = function() {
-    instanceCount++;
-    if (!instance) {
-        instance = createInstance();
-        var close = instance.close;
-        instance.close = function() {
-            if (instance == this && --instanceCount) return Promise.resolve(); // still in use
-            try {
-                return close.apply(this);
-            } finally {
-                if (instance == this) instance = null;
-            }
-        };
-    }
-    return instance;
-};
+process.on('SIGHUP', () => shared.instance && shared.instance.reload());
+process.on('SIGINT', () => shared.instance && shared.instance.close());
+process.on('SIGTERM', () => shared.instance && shared.instance.close());
 
 function createInstance() {
     var check = interrupt(true);

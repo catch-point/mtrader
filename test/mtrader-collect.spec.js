@@ -1,6 +1,6 @@
 // mtrader-collect.spec.js
 /*
- *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -31,18 +31,21 @@
 
 const path = require('path');
 const _ = require('underscore');
-const mtrader = require('../src/mtrader.js');
+const Mtrader = require('../src/mtrader.js');
 const readCallSave = require('../src/read-call-save.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
 describe("mtrader-collect", function() {
     this.timeout(1200000);
+    var mtrader;
     before(function() {
+        mtrader = new Mtrader();
         mtrader.config('prefix', createTempDir('mtrader'));
         mtrader.config('fetch.iqfeed.enabled', false);
         mtrader.config('fetch.yahoo.enabled', true);
         mtrader.config('fetch.files.enabled', false);
+        mtrader.config('workers', 0);
         process.emit('SIGHUP');
         mtrader.config.save('SPY', {
             portfolio: 'SPY.ARCA',
@@ -71,6 +74,8 @@ describe("mtrader-collect", function() {
         mtrader.config.unset('fetch.iqfeed.enabled');
         mtrader.config.unset('fetch.yahoo.enabled');
         mtrader.config.unset('fetch.files.enabled');
+        mtrader.config.unset('workers');
+        return mtrader.close();
     });
     it("change", function() {
         return mtrader.collect({

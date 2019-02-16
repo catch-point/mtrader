@@ -1,6 +1,6 @@
-// collective2.js
+// position.js
 /*
- *  Copyright (c) 2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -42,40 +42,29 @@ const config = require('./config.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 const version = require('../package.json').version;
+const Broker = require('./broker.js');
 
 /**
  * Aligns the working signals on collective2 with the signal rows from the collect result
  */
 module.exports = function(collect) {
     var promiseHelp;
-    var agent = new https.Agent({
-        keepAlive: config('collective2.keepAlive') || false,
-        keepAliveMsecs: config('collective2.keepAliveMsecs') || 1000,
-        maxSockets: config('collective2.maxSockets'),
-        maxFreeSockets: config('collective2.maxFreeSockets') || 256,
-        ciphers: config('tls.ciphers'),
-        honorCipherOrder: config('tls.honorCipherOrder'),
-        ecdhCurve: config('tls.ecdhCurve'),
-        secureProtocol: config('tls.secureProtocol'),
-        secureOptions: config('tls.secureOptions'),
-        handshakeTimeout: config('tls.handshakeTimeout'),
-        requestCert: config('tls.requestCert'),
-        rejectUnauthorized: config('tls.rejectUnauthorized'),
-        NPNProtocols: config('tls.NPNProtocols'),
-        ALPNProtocols: config('tls.ALPNProtocols')
-    });
-    var settings = _.extend({offline: config('offline')}, config('collective2'));
     return _.extend(function(options) {
-        if (!promiseHelp) promiseHelp = help(collect);
+        if (!promiseHelp) promiseHelp = help(collect, Broker);
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
-            var fields = _.first(help).properties;
             var opts = _.defaults({
                 now: moment.tz(options.now || Date.now(), options.tz).valueOf()
             }, _.pick(options, _.keys(_.first(help).options)), {
                 tz: moment.tz.guess()
             });
-            return collective2(collect, agent, settings, opts);
+            return Broker(opts).then(broker => {
+                return collective2(collect, broker, opts).then(ret => {
+                    return broker.close().then(() => ret);
+                }, err => {
+                    return broker.close().then(() => Promise.reject(err));
+                });
+            });
         });
     }, {
         close() {
@@ -87,42 +76,39 @@ module.exports = function(collect) {
 /**
  * Array of one Object with description of module, including supported options
  */
-function help(bestsignals) {
-    return bestsignals({help: true}).then(_.first).then(help => {
-        return [{
-            name: 'collective2',
-            usage: 'collective2(options)',
-            description: "Changes workers orders to align with signal orders in result",
-            properties: ["systemid", "parkUntilSecs", "symbol", "duration", "typeofsymbol", "currency", "quant", "limit", "action"],
-            options: _.extend({}, help.options, {
-                systemid: {
-                    usage: '<integer>',
-                    description: "The Collective2 system identifier"
-                },
-                symbols: {
-                    usage: '[<symbol>]',
-                    description: "Array of position symbols that should be closed if no desired position exists"
-                },
-                quant_threshold: {
-                    usage: '<integer>',
-                    description: "Minimum quantity of shares/contracts that must change to generate a signal"
-                },
-                quant_threshold_percent: {
-                    usage: '<decimal>',
-                    description: "Minimum quantity, relative to current position, that must change to generate a signal"
-                }
-            })
-        }];
-    });
+function help(collect, Broker) {
+    return Promise.all([collect({help: true}), Broker({help: true})]).then(_.flatten)
+      .then(list => list.reduce((help, delegate) => {
+        return _.extend(help, {options: _.extend({}, delegate.options, help.options)});
+    }, {
+        name: 'position',
+        usage: 'position(options)',
+        description: "Changes workers orders to align with signal orders in result",
+        properties: ['action', 'quant', 'symbol', 'typeofsymbol', 'duration', 'limit', 'parkUntilSecs', 'parkUntilYYYYMMDDHHMM'],
+        options: {
+            symbols: {
+                usage: '[<symbol>]',
+                description: "Array of position symbols that should be closed if no desired position exists"
+            },
+            quant_threshold: {
+                usage: '<integer>',
+                description: "Minimum quantity of shares/contracts that must change to generate a signal"
+            },
+            quant_threshold_percent: {
+                usage: '<decimal>',
+                description: "Minimum quantity, relative to current position, that must change to generate a signal"
+            }
+        }
+    })).then(help => [help]);
 }
 
 /**
  * Aligns the working signals on collective2 with the signal rows from the collect result
  */
-function collective2(collect, agent, settings, options) {
+function collective2(collect, broker, options) {
     var check = interrupt();
-    return getWorkingPositions(agent, settings, options)
-      .then(working => getDesiredPositions(collect, agent, settings, options)
+    return getWorkingPositions(broker, options)
+      .then(working => getDesiredPositions(collect, broker, options)
       .then(desired => {
         var symbols = _.uniq(_.compact(_.keys(desired).concat(options.symbols)));
         _.forEach(working, (w, symbol) => {
@@ -151,16 +137,8 @@ function collective2(collect, agent, settings, options) {
         }, []);
     })).then(signals => signals.reduce((promise, signal) => promise.then(result => {
         check();
-        if (signal && signal.action) return submit(agent, 'submitSignal', {
-            apikey: settings.apikey,
-            systemid: options.systemid,
-            signal: signal
-        }, settings, options);
-        else if (_.isString(signal)) return submit(agent, 'cancelSignal', {
-            apikey: settings.apikey,
-            systemid: options.systemid,
-            signalid: signal
-        }, settings, options);
+        if (signal && signal.action) return broker(signal);
+        else if (_.isString(signal)) return broker({action: 'cancelSignal', signalid: signal});
         else throw Error("Unknown signal: " + JSON.stringify(signal));
     }).then(res => {
         var log = s => {
@@ -187,9 +165,9 @@ function collective2(collect, agent, settings, options) {
 /**
  * Collects the options results and converts the signals into positions
  */
-function getDesiredPositions(collect, agent, settings, options) {
-    return retrieve(agent, 'requestMarginEquity', settings, options)
-      .then(requestMarginEquity => retrieve(agent, 'retrieveSystemEquity', settings, options)
+function getDesiredPositions(collect, broker, options) {
+    return broker({action: 'requestMarginEquity'})
+      .then(requestMarginEquity => broker({action:'retrieveSystemEquity'})
       .then(retrieveSystemEquity => {
         var unix_timestamp = moment.tz(options.begin, options.tz).format('X');
         var idx = _.sortedIndex(retrieveSystemEquity.equity_data, {unix_timestamp}, 'unix_timestamp');
@@ -213,9 +191,9 @@ function getDesiredPositions(collect, agent, settings, options) {
 /**
  * Retrieves the open positions and working signals from collective2
  */
-function getWorkingPositions(agent, settings, options) {
-    return retrieve(agent, 'retrieveSignalsWorking', settings, options)
-      .then(retrieveSignalsWorking => retrieve(agent, 'requestTrades', settings, options)
+function getWorkingPositions(broker, options) {
+    return broker({action: 'retrieveSignalsWorking'})
+      .then(retrieveSignalsWorking => broker({action: 'requestTrades'})
       .then(requestTrades => {
         expect(retrieveSignalsWorking).to.have.property('response').that.is.an('array');
         expect(requestTrades).to.have.property('response').that.is.an('array');
@@ -680,129 +658,4 @@ function sortSignals(position, a, b) {
     // fallback for stable sorting, should not happen with live data
     if (_.isEqual(a, b)) return 0;
     else return JSON.stringify(a).length - JSON.stringify(b).length;
-}
-
-/**
- * Retrieve the collective2 response
- */
-function retrieve(agent, name, settings, options) {
-    expect(settings).to.have.property('apikey').that.is.a('string');
-    expect(options).to.have.property('systemid').that.is.a('string');
-    return new Promise((ready, error) => {
-        var uri = settings[name];
-        var parsed = _.isString(uri) && url.parse(uri);
-        if (_.isObject(uri)) {
-            ready(JSON.stringify(uri));
-        } else if (parsed.protocol == 'https:' || parsed.protocol == 'http:') {
-            var client = parsed.protocol == 'https:' ? https : http;
-            var request = client.request(_.defaults({
-                method: 'POST',
-                headers: {'User-Agent': 'mtrader/' + version},
-                agent: parsed.protocol == 'https:' && agent
-            }, parsed), res => {
-                try {
-                    if (res.statusCode >= 300)
-                        throw Error("Unexpected response code " + res.statusCode);
-                    if (!~res.headers['content-type'].indexOf('/json'))
-                        throw Error("Unexpected response type " + res.headers['content-type']);
-                    var data = [];
-                    res.setEncoding('utf8');
-                    res.on('data', chunk => {
-                        data.push(chunk);
-                    });
-                    res.on('end', () => {
-                        ready(data.join(''));
-                    });
-                } catch(err) {
-                    error(err);
-                }
-            }).on('error', error);
-            request.end(JSON.stringify({
-                apikey: settings.apikey,
-                systemid: options.systemid
-            }));
-        } else if (parsed.protocol == 'file:') {
-            fs.readFile(parsed.pathname, 'utf8', (err, data) => err ? error(err) : ready(data));
-        } else {
-            throw Error("Unknown protocol " + uri);
-        }
-    }).then(JSON.parse).then(res => {
-        if (!res.equity_data) logger.debug("collective2", name, JSON.stringify(res));
-        if (res.title)
-            logger.log(res.title);
-        else if (res.error && res.error.title)
-            logger.error(res.error.title);
-        if (!+res.ok)
-            throw Error(res.message || res.error && res.error.message || JSON.stringify(res));
-        return res;
-    });
-}
-
-/**
- * Submits a new or updated signal or cancels a signal
- */
-function submit(agent, name, body, settings, options) {
-    expect(settings).to.have.property('apikey').that.is.a('string');
-    expect(options).to.have.property('systemid').that.is.a('string');
-    return new Promise((ready, error) => {
-        var uri = settings[name];
-        var parsed = _.isString(uri) && url.parse(uri);
-        if (settings.offline || !parsed) {
-            ready(JSON.stringify(_.defaults({
-                ok: 1,
-                signal: _.extend({
-                    signalid: body.signalid
-                }, body.signal)
-            }, body)));
-        } else if (parsed.protocol == 'https:' || parsed.protocol == 'http:') {
-            var client = parsed.protocol == 'https:' ? https : http;
-            var request = client.request(_.defaults({
-                method: 'POST',
-                headers: {'User-Agent': 'mtrader/' + version},
-                agent: parsed.protocol == 'https:' && agent
-            }, parsed), res => {
-                try {
-                    if (res.statusCode >= 300)
-                        throw Error("Unexpected response code " + res.statusCode);
-                    if (!~res.headers['content-type'].indexOf('/json'))
-                        throw Error("Unexpected response type " + res.headers['content-type']);
-                    var data = [];
-                    res.setEncoding('utf8');
-                    res.on('data', chunk => {
-                        data.push(chunk);
-                    });
-                    res.on('end', () => {
-                        ready(data.join(''));
-                    });
-                } catch(err) {
-                    error(err);
-                }
-            }).on('error', error);
-            request.end(JSON.stringify(_.extend({
-                apikey: settings.apikey,
-                systemid: options.systemid
-            }, body)));
-        } else if (parsed.protocol == 'file:') {
-            var data = JSON.stringify(body, null, ' ');
-            fs.writeFile(parsed.pathname, data, err => err ? error(err) : ready(JSON.stringify(_.defaults({
-                ok: 1,
-                signal: _.extend({
-                    signalid: body.signalid || Math.floor(Math.random() * 100000000)
-                }, body.signal)
-            }, body))));
-        } else {
-            throw Error("Unknown protocol " + uri);
-        }
-    }).then(JSON.parse).then(res => {
-        logger.debug("collective2", name, JSON.stringify(body), JSON.stringify(res));
-        if (res.title)
-            logger.log(res.title, res.signalid || '');
-        else if (res.error && res.error.title)
-            logger.error(res.error.title, res.signalid || '');
-        if (name == 'cancelSignal' && _.property(['error', 'title'])(res) && res.error.title.indexOf('Signal already cancel'))
-            return res;
-        else if (!+res.ok)
-            throw Error(res.message || res.error && res.error.message || JSON.stringify(res));
-        else return res;
-    });
 }

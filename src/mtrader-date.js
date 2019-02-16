@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-date.js
 /*
- *  Copyright (c) 2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -96,7 +96,11 @@ if (require.main === module) {
     }
 }
 
-module.exports = formatDate;
+module.exports = function() {
+    return Object.assign((format, options) => formatDate(format, options), {
+        close: () => Promise.resolve()
+    });
+};
 
 function formatDate(format, options) {
     var tz = options.tz || moment.tz.guess();

@@ -33,6 +33,8 @@ const _ = require('underscore');
 const logger = require('./logger.js');
 const AssertionError = require('chai').AssertionError;
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 module.exports = function(process) {
     var seq = 0;
     var handlers = {};

@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-config.js
 /*
- *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -77,11 +77,16 @@ if (require.main === module) {
     }
 }
 
-module.exports = _.extend(function(name, value) {
-    return config.apply(config, arguments);
-}, _.mapObject(_.pick(config,_.isFunction), fn => fn.bind(config)));
+module.exports = function() {
+    var instance = _.extend(function(name, value) {
+        return config.apply(config, arguments);
+    }, _.mapObject(_.pick(config,_.isFunction), fn => fn.bind(config)));
+    if (!instance.close) instance.close = () => Promise.resolve();
+    instance.shell = shell;
+    return instance;
+};
 
-module.exports.shell = function(app) {
+function shell(app) {
     app.cmd('config :option', "Show the active option value for this session", (cmd, sh, cb) => {
         try {
             var value = config(cmd.params.option);

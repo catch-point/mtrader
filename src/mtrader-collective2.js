@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-collective2.js
 /*
- *  Copyright (c) 2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -37,11 +37,12 @@ const commander = require('commander');
 const tabular = require('./tabular.js');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./mtrader-config.js');
-const Collective2 = require('./collective2.js');
+const config = require('./config.js');
+const Position = require('./position.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
+const Collect = require('./mtrader-collect.js');
 
 function usage(command) {
     return command.version(require('../package.json').version)
@@ -75,54 +76,56 @@ function usage(command) {
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var collective2 = createInstance(program);
-        process.on('SIGINT', () => collective2.close());
-        process.on('SIGTERM', () => collective2.close());
+        var position = createInstance(program);
+        process.on('SIGINT', () => position.close());
+        process.on('SIGTERM', () => position.close());
         Promise.all(program.args.map(name => {
-            return readCallSave(name, collective2)
+            return readCallSave(name, position)
               .then(result => tabular(result, config()))
         })).catch(err => logger.error(err, err.stack))
-          .then(() => collective2.close());
+          .then(() => position.close());
     } else {
         program.help();
     }
 } else {
-    module.exports = createInstance(usage(new commander.Command()));
+    module.exports = function() {
+        return createInstance(usage(new commander.Command()));
+    };
 }
 
 function createInstance(program) {
-    var collect = require('./mtrader-collect.js');
-    var collective2 = Collective2(collect);
+    var collect = new Collect();
+    var position = new Position(collect);
     var promiseKeys;
     var instance = function(options) {
         if (!promiseKeys) {
-            promiseKeys = collective2({help: true})
+            promiseKeys = position({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
         }
-        return promiseKeys.then(keys => _.pick(options, keys)).then(collective2);
+        return promiseKeys.then(keys => _.pick(options, keys)).then(position);
     };
     instance.close = function() {
-        return collective2.close().then(collect.close);
+        return position.close().then(collect.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;
 }
 
-function shell(desc, collective2, app) {
-    app.on('quit', () => collective2.close());
-    app.on('exit', () => collective2.close());
-    app.cmd('collective2', desc, (cmd, sh, cb) => {
-        readCallSave(null, collective2, config('save'))
+function shell(desc, position, app) {
+    app.on('quit', () => position.close());
+    app.on('exit', () => position.close());
+    app.cmd('position', desc, (cmd, sh, cb) => {
+        readCallSave(null, position, config('save'))
           .then(() => sh.prompt(), cb);
     });
-    app.cmd("collective2 :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
-        readCallSave(cmd.params.name, collective2, config('save'))
+    app.cmd("position :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
+        readCallSave(cmd.params.name, position, config('save'))
           .then(() => sh.prompt(), cb);
     });
 // help
-return collective2({help: true}).then(_.first).then(info => {
-help(app, 'collective2', `
-  Usage: collective2 :name
+return position({help: true}).then(_.first).then(info => {
+help(app, 'position', `
+  Usage: position :name
 
   ${desc}
 

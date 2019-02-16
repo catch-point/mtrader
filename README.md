@@ -11,7 +11,8 @@ sources to retreive and manipulate data locally for personal use.
 mtrader can be used as a node.js library, as a command line utility or as an interactive shell. All shell commands include a coresponding help command that explains the available arguments and features with some usage documentation.
 
 ```
-const mtrader = require('mtrader');
+const Mtrader = require('mtrader');
+var mtrader = new Mtrader();
 
 // lookup market for a symbol and search for similar symbols
 mtrader.lookup({symbol: 'AABA'}).then(suggestions => {

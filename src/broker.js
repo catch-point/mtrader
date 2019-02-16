@@ -1,6 +1,6 @@
-// interrupt.js
+// broker.js
 /*
- *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -29,25 +29,43 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-process.setMaxListeners(process.getMaxListeners()+1);
+const _ = require('underscore');
+const logger = require('./logger.js');
+const Collective2 = require('./broker-collective2.js');
+const expect = require('chai').expect;
 
-var signal;
-var interrupted = 0;
+module.exports = function(settings) {
+    var promiseHelpWithSettings, promiseHelpWithOptions;
+    if (!promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Collective2);
+    if (settings.help) return promiseHelpWithSettings;
+    else return promiseHelpWithSettings
+      .then(help => _.pick(settings, _.flatten(_.map(help, info => _.keys(info.options)))))
+      .then(settings => {
+        var collective2 = Collective2(settings);
+        return _.extend(function(options) {
+            if (!promiseHelpWithOptions) promiseHelpWithOptions = helpWithOptions(collective2);
+            if (options.help) return promiseHelpWithOptions;
+            else return promiseHelpWithOptions
+              .then(help => _.pick(options, _.flatten(_.map(help, info => _.keys(info.options)))))
+              .then(options => {
+                return broker(collective2, options);
+            });
+        }, {
+            close() {
+                return collective2.close();
+            }
+        });
+    });
+};
 
-process.on('SIGINT', () => {
-    signal = 'SIGINT';
-    interrupted++;
-}).on('SIGTERM', () => {
-    signal = 'SIGTERM';
-    interrupted++;
-});
-
-module.exports = function(returnValue) {
-    var base = interrupted;
-    if (arguments.length) return () => {
-        if (base != interrupted) return returnValue;
-    }; else return () => {
-        if (base != interrupted) throw Error(signal);
-    };
+function broker(collective2, options) {
+    return collective2(options);
 }
 
+function helpWithSettings(Collective2) {
+    return Collective2({help: true});
+}
+
+function helpWithOptions(collective2) {
+    return collective2({help: true});
+}

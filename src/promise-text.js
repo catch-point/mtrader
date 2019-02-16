@@ -34,6 +34,8 @@ const https = require('https');
 const _ = require('underscore');
 const logger = require('./logger.js');
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 module.exports = function(url) {
     var pending = _.isString(url) ? {url: url} : _.clone(url);
     return new Promise(function(resolve, reject) {

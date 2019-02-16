@@ -1,6 +1,6 @@
-// interrupt.js
+// share.js
 /*
- *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -29,25 +29,30 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-process.setMaxListeners(process.getMaxListeners()+1);
-
-var signal;
-var interrupted = 0;
-
-process.on('SIGINT', () => {
-    signal = 'SIGINT';
-    interrupted++;
-}).on('SIGTERM', () => {
-    signal = 'SIGTERM';
-    interrupted++;
-});
-
-module.exports = function(returnValue) {
-    var base = interrupted;
-    if (arguments.length) return () => {
-        if (base != interrupted) return returnValue;
-    }; else return () => {
-        if (base != interrupted) throw Error(signal);
+/**
+ * Creates a version of the factory function that such that repeated calls will
+ * have no effect, returning the value from the original call, until the close
+ * function of the returned instance is called. Care should be taken to not call
+ * closed more then the number of times the given factory function is called.
+ */
+module.exports = function(factory) {
+    var used = 0;
+    var shared = function() {
+        used++;
+        if (shared.instance) return shared.instance;
+        var self = shared.instance = factory.apply(this, arguments);
+        var closed = false;
+        used = 1;
+        var close_handler = self.close ? self.close.bind(self) : () => Promise.resolve();
+        self.close = function(force) {
+            return Promise.resolve().then(() => {
+                if (closed || --used && !force) return Promise.resolve();
+                closed = true;
+                if (shared.instance === self) shared.instance = null;
+                return close_handler.apply(this, arguments);
+            });
+        };
+        return self;
     };
+    return shared;
 }
-

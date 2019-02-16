@@ -1,6 +1,6 @@
 // collective2.spec.js
 /*
- *  Copyright (c) 2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -37,13 +37,13 @@ const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
 const Collect = require('../src/collect.js');
-const Collective2 = require('../src/collective2.js');
+const Position = require('../src/position.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
-describe("collective2", function() {
+describe("position", function() {
     this.timeout(60000);
-    var fetch, quote, collect, collective2;
+    var fetch, quote, collect, position;
     var dir = createTempDir('collective2');
     var requestMarginEquity = path.resolve(dir, 'requestMarginEquity');
     var retrieveSystemEquity = path.resolve(dir, 'retrieveSystemEquity');
@@ -55,25 +55,25 @@ describe("collective2", function() {
         config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('collective2'));
         config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        config('collective2.requestMarginEquity', 'file://' + requestMarginEquity);
-        config('collective2.retrieveSystemEquity', 'file://' + retrieveSystemEquity);
-        config('collective2.requestTrades', 'file://' + requestTrades);
-        config('collective2.retrieveSignalsWorking', 'file://' + retrieveSignalsWorking);
-        config('collective2.submitSignal', 'file://' + submitSignal);
-        config('collective2.cancelSignal', 'file://' + cancelSignal);
-        config('collective2.apikey', 'test');
+        config('broker.collective2.requestMarginEquity', 'file://' + requestMarginEquity);
+        config('broker.collective2.retrieveSystemEquity', 'file://' + retrieveSystemEquity);
+        config('broker.collective2.requestTrades', 'file://' + requestTrades);
+        config('broker.collective2.retrieveSignalsWorking', 'file://' + retrieveSignalsWorking);
+        config('broker.collective2.submitSignal', 'file://' + submitSignal);
+        config('broker.collective2.cancelSignal', 'file://' + cancelSignal);
+        config('broker.collective2.apikey', 'test');
         fs.writeFileSync(requestMarginEquity, JSON.stringify({ok:1}));
         fs.writeFileSync(retrieveSystemEquity, JSON.stringify({ok:1,equity_data:[]}));
-        fetch = Fetch();
-        quote = Quote(fetch);
-        collect = Collect(quote);
-        collective2 = Collective2(collect);
+        fetch = new Fetch();
+        quote = new Quote(fetch);
+        collect = new Collect(quote);
+        position = new Position(collect);
     });
     after(function() {
         config.unset('prefix');
         config.unset('fetch.files.dirname');
         return Promise.all([
-            collective2.close(),
+            position.close(),
             collect.close(),
             quote.close(),
             fetch.close()
@@ -121,7 +121,7 @@ describe("collective2", function() {
         it("IBM submit BTO signal", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2015-02-17T15:59:59", 'America/New_York').valueOf(),
@@ -174,7 +174,7 @@ describe("collective2", function() {
                 market: 1,
                 duration: 'DAY'
             }]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf(),
@@ -231,7 +231,7 @@ describe("collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf(),
@@ -289,7 +289,7 @@ describe("collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2015-06-16T15:59:59", 'America/New_York').valueOf(),
@@ -334,7 +334,7 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf(),
@@ -400,7 +400,7 @@ describe("collective2", function() {
                 market: 1,
                 duration: 'DAY'
             }]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf(),
@@ -434,7 +434,7 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -510,7 +510,7 @@ describe("collective2", function() {
                 market: 1,
                 duration: 'GTC'
             }]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2015-06-16T16:00:00", 'America/New_York').valueOf(),
@@ -576,7 +576,7 @@ describe("collective2", function() {
                 market: 1,
                 duration: 'GTC'
             }]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2015-06-16T15:59:59", 'America/New_York').valueOf(),
@@ -648,7 +648,7 @@ describe("collective2", function() {
                 market: 1,
                 duration: 'GTC'
             }]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2015-06-16T16:00:01", 'America/New_York').valueOf(),
@@ -716,7 +716,7 @@ describe("collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -771,7 +771,7 @@ describe("collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -820,7 +820,7 @@ describe("collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -878,7 +878,7 @@ describe("collective2", function() {
                 isStopOrder: 120,
                 duration: 'GTC'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -905,7 +905,7 @@ describe("collective2", function() {
         it("IBM submit BTO limit signal", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -976,7 +976,7 @@ describe("collective2", function() {
                 currency: 'USD',
                 status: 'working'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1043,7 +1043,7 @@ describe("collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1116,7 +1116,7 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2016-10-03T15:59:59", 'America/New_York').valueOf(),
@@ -1158,7 +1158,7 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -1210,7 +1210,7 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -1263,7 +1263,7 @@ describe("collective2", function() {
                 long_or_short: 'long',
                 parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X')
             }]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2016-10-03T15:59:59", 'America/New_York').valueOf(),
@@ -1326,7 +1326,7 @@ describe("collective2", function() {
 	          symbol_description: "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf(),
@@ -1412,7 +1412,7 @@ describe("collective2", function() {
                 long_or_short: 'long',
                 parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X')
             }]}));
-            return collective2({
+            return position({
                 systemid: 'test',
                 tz: 'America/New_York',
                 now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf(),
@@ -1489,7 +1489,7 @@ describe("collective2", function() {
 	          symbol_description: "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -1552,7 +1552,7 @@ describe("collective2", function() {
         it("submit stoploss order", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1584,7 +1584,7 @@ describe("collective2", function() {
                 long_or_short: 'long'
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1634,7 +1634,7 @@ describe("collective2", function() {
                 signal_id: '117389066',
                 posted_time: '2018-04-05 13:15:40'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1678,7 +1678,7 @@ describe("collective2", function() {
                 signal_id: '117389066',
                 posted_time: '2018-04-05 13:15:40'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1736,7 +1736,7 @@ describe("collective2", function() {
                 signal_id: '117389066',
                 posted_time: '2018-04-05 13:15:40'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1784,7 +1784,7 @@ describe("collective2", function() {
                 isStopOrder: 120,
                 duration: 'GTC'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -1843,7 +1843,7 @@ describe("collective2", function() {
                 isLimitOrder: 140,
                 duration: 'GTC'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -1903,7 +1903,7 @@ describe("collective2", function() {
                 isStopOrder: 120,
                 duration: 'GTC'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1943,7 +1943,7 @@ describe("collective2", function() {
         it("catch up with multiple stoploss orders", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1985,7 +1985,7 @@ describe("collective2", function() {
         it("triggered before catch up", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -2089,7 +2089,7 @@ describe("collective2", function() {
                 underlying: "CAD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: "BTO",
@@ -2121,7 +2121,7 @@ describe("collective2", function() {
                 closedWhenUnixTimeStamp: moment('2018-01-02').format('X')
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -2148,7 +2148,7 @@ describe("collective2", function() {
                 closedWhenUnixTimeStamp: moment('2018-01-02').format('X')
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -2219,7 +2219,7 @@ describe("collective2", function() {
                 stop: 130,
                 isStopOrder: 130
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2316,7 +2316,7 @@ describe("collective2", function() {
                 market: 1,
                 status: 'working'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2407,7 +2407,7 @@ describe("collective2", function() {
                 market: 1,
                 status: 'working'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2507,7 +2507,7 @@ describe("collective2", function() {
                 duration: 'GTC',
                 status: 'working'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2589,7 +2589,7 @@ describe("collective2", function() {
 	          symbol_description: "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2716,7 +2716,7 @@ describe("collective2", function() {
                 tif: "DAY",
                 underlying: "CAD"
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: "STO",
@@ -2759,7 +2759,7 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -2825,7 +2825,7 @@ describe("collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -2856,7 +2856,7 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2906,7 +2906,7 @@ describe("collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2993,7 +2993,7 @@ describe("collective2", function() {
 	          symbol_description: "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -3070,7 +3070,7 @@ describe("collective2", function() {
                 isStopOrder: 120,
                 duration: 'GTC'
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -3104,7 +3104,7 @@ describe("collective2", function() {
         it("catch up with multiple stoploss orders", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -3146,7 +3146,7 @@ describe("collective2", function() {
         it("triggered before catch up", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -3203,7 +3203,7 @@ describe("collective2", function() {
                 closedWhenUnixTimeStamp: moment('2018-01-02').format('X')
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -3265,7 +3265,7 @@ describe("collective2", function() {
 	          symbol_description: "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -3400,7 +3400,7 @@ describe("collective2", function() {
                     signal_id: '119080352',
                     posted_time: '2018-07-23 18:45:24'
                 }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'STO',
@@ -3486,7 +3486,7 @@ describe("collective2", function() {
                 tif: "DAY",
                 underlying: null
             }]}));
-            return Collective2(function(options) {
+            return Position(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: "BTO",

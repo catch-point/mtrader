@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-optimize.js
 /*
- *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -36,11 +36,12 @@ const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./mtrader-config.js');
+const config = require('./config.js');
 const Optimize = require('./optimize.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
+const Collect = require('./mtrader-collect.js');
 
 function usage(command) {
     return command.version(require('./version.js').version)
@@ -93,12 +94,14 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = createInstance(usage(new commander.Command()));
+    module.exports = function() {
+        return createInstance(usage(new commander.Command()));
+    };
 }
 
 function createInstance(program) {
-    var collect = require('./mtrader-collect.js');
-    var optimize = Optimize(collect);
+    var collect = new Collect();
+    var optimize = new Optimize(collect);
     var promiseKeys;
     var instance = function(options) {
         if (!promiseKeys) {

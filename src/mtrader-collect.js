@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-collect.js
 /*
- *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -36,6 +36,7 @@ const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
+const share = require('./share.js');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const replyTo = require('./promise-reply.js');
@@ -43,7 +44,9 @@ const interrupt = require('./interrupt.js');
 const workerQueue = require('./worker-queue.js');
 const Remote = require('./remote-workers.js');
 const Cache = require('./disk-cache.js');
-const config = require('./mtrader-config.js');
+const config = require('./config.js');
+const Fetch = require('./mtrader-fetch.js');
+const Quote = require('./mtrader-quote.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
@@ -89,9 +92,7 @@ function usage(command) {
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length || !process.send) {
-        var fetch = require('./mtrader-fetch.js');
-        var quote = require('./mtrader-quote.js');
-        var collect = createInstance(program, fetch, quote);
+        var collect = createInstance(program);
         process.on('SIGHUP', () => collect.reload());
         process.on('SIGINT', () => collect.close());
         process.on('SIGTERM', () => collect.close());
@@ -105,18 +106,19 @@ if (require.main === module) {
         spawn();
     }
 } else {
-    var fetch = require('./mtrader-fetch.js');
-    var quote = require('./mtrader-quote.js');
     var prog = usage(new commander.Command());
-    module.exports = createInstance(prog, fetch, quote);
-    process.on('SIGHUP', () => module.exports.reload());
-    process.on('SIGINT', () => module.exports.reset().then(_.noop, err => logger.warn("Collect reset", err)));
-    process.on('SIGTERM', () => module.exports.close());
+    var shared = module.exports = share(() => createInstance(prog));
+    process.on('SIGTERM', () => sharedinstance && shared.instance.close(true));
+    process.on('SIGHUP', () => shared.instance && shared.instance.reload());
+    process.on('SIGINT', () => shared.instance && shared.instance.reset()
+      .then(_.noop, err => logger.warn("Collect reset", err)));
 }
 
-function createInstance(program, fetch, quote) {
+function createInstance(program) {
     var promiseKeys;
     var closed = false;
+    var fetch = new Fetch();
+    var quote = new Quote();
     var inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
     var instance = function(options) {
         if (closed) throw Error("Collect is closed");
@@ -240,7 +242,7 @@ function spawn() {
     });
     var quote = require('./quote.js')(callFetch.bind(this, parent));
     var quoteFn = createSlaveQuote(quote, parent);
-    var collect = _.once(() => Collect(quoteFn, callCollect.bind(this, parent)));
+    var collect = _.once(() => new Collect(quoteFn, callCollect.bind(this, parent)));
     process.on('disconnect', () => collect().close().then(quote.close));
     process.on('SIGINT', () => collect().close().then(quote.close));
     process.on('SIGTERM', () => collect().close().then(quote.close));

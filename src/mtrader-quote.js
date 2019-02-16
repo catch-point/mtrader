@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-quote.js
 /*
- *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -35,17 +35,19 @@ const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
+const share = require('./share.js');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const interrupt = require('./interrupt.js');
 const workerQueue = require('./worker-queue.js');
 const Quote = require('./quote.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./mtrader-config.js');
+const config = require('./config.js');
 const expect = require('chai').expect;
 const common = require('./common-functions.js');
 const lookback = require('./lookback-functions.js');
 const indicator = require('./indicator-functions.js');
+const Fetch = require('./mtrader-fetch.js');
 
 const WORKER_COUNT = require('os').cpus().length;
 
@@ -81,8 +83,8 @@ function usage(command) {
 if (require.main === module) {
     var program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var fetch = require('./mtrader-fetch.js');
-        var quote = Quote(fetch);
+        var fetch = new Fetch();
+        var quote = new Quote(fetch);
         process.on('SIGINT', () => quote.close().then(() => fetch.close()));
         process.on('SIGTERM', () => quote.close().then(() => fetch.close()));
         var symbol = program.args[0];
@@ -103,7 +105,7 @@ if (require.main === module) {
         var parent = replyTo(process).handle('quote', payload => {
             return quote()(payload);
         });
-        var quote = _.once(() => Quote(function(options) {
+        var quote = _.once(() => new Quote(function(options) {
             return parent.request('fetch', options);
         }));
         process.on('disconnect', () => quote().close());
@@ -113,15 +115,16 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    var fetch = require('./mtrader-fetch.js');
     var program = usage(new commander.Command());
-    module.exports = createInstance(fetch, program);
-    process.on('SIGHUP', () => module.exports.reload());
-    process.on('SIGINT', () => module.exports.reset().then(_.noop, err => logger.warn("Quote reset", err)));
-    process.on('SIGTERM', () => module.exports.close());
+    var shared = module.exports = share(() => createInstance(program));
+    process.on('SIGTERM', () => shared.instance && shared.instance.close(true));
+    process.on('SIGHUP', () => shared.instance && shared.instance.reload());
+    process.on('SIGINT', () => shared.instance && shared.instance.reset()
+      .then(_.noop, err => logger.warn("Quote reset", err)));
 }
 
-function createInstance(fetch, program) {
+function createInstance(program) {
+    var fetch = new Fetch();
     var promiseKeys;
     var instance = function(options) {
         if (!promiseKeys) {
@@ -135,7 +138,7 @@ function createInstance(fetch, program) {
         });
     };
     instance.close = function() {
-        queue.close().then(fetch.close);
+        return queue.close().then(fetch.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = () => {

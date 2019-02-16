@@ -34,6 +34,8 @@ const process = require('process');
 const _ = require('underscore');
 const config = require('./config.js');
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 var relative = path.relative(process.cwd(), path.dirname(__filename));
 var quiet = process.argv.some(arg => /^--quiet$|^-\w*q/.test(arg));
 var verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg));

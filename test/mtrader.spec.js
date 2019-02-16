@@ -1,6 +1,6 @@
 // mtrader.spec.js
 /*
- *  Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2017-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -31,19 +31,22 @@
 
 const path = require('path');
 const _ = require('underscore');
-const mtrader = require('../src/mtrader.js');
+const Mtrader = require('../src/mtrader.js');
 const readCallSave = require('../src/read-call-save.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
 describe("mtrader", function() {
     this.timeout(60000);
+    var mtrader;
     before(function() {
+        mtrader = new Mtrader();
         mtrader.config.load(path.resolve(__dirname, '../etc/mtrader.json'));
         mtrader.config('prefix', createTempDir('mtrader'));
         mtrader.config('iqfeed.enabled', false);
         mtrader.config('yahoo.enabled', true);
         mtrader.config('files.enabled', false);
+        mtrader.config('workers', 0);
         process.emit('SIGHUP');
     });
     after(function() {
@@ -51,6 +54,8 @@ describe("mtrader", function() {
         mtrader.config.unset('iqfeed.enabled');
         mtrader.config.unset('yahoo.enabled');
         mtrader.config.unset('files.enabled');
+        mtrader.config.unset('workers');
+        return mtrader.close();
     });
     it("lookup", function() {
         return mtrader.lookup({symbol: 'AABA'}).then(_.first).then(suggestion => {

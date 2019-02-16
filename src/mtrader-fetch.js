@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-fetch.js
 /*
- *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -33,11 +33,12 @@
 
 const _ = require('underscore');
 const commander = require('commander');
+const share = require('./share.js');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const Fetch = require('./fetch.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./mtrader-config.js');
+const config = require('./config.js');
 
 function usage(command) {
     return command.version(require('./version.js').version)
@@ -102,48 +103,51 @@ if (require.main === module) {
         program.help();
     }
 } else if (config('workers') == 0) {
-    var fetch;
-    var closed = false;
-    var program = usage(new commander.Command());
-    module.exports = function(options) {
-        if (closed) throw Error("Fetch is closed");
-        if (!fetch) fetch = Fetch();
-        return fetch(options);
-    };
-    module.exports.open = function() {
-        closed = false;
-        return Promise.resolve();
-    };
-    module.exports.close = function() {
-        closed = true;
-        if (fetch) try {
-            return fetch.close();
-        } finally {
-            fetch = null;
-        } else return Promise.resolve();
-    };
-    module.exports.shell = shell.bind(this, program.description(), module.exports);
-    process.on('SIGINT', module.exports.close);
+    var shared = module.exports = share(() => {
+        var fetch;
+        var closed = false;
+        var program = usage(new commander.Command());
+        var instance = function(options) {
+            if (closed) throw Error("Fetch is closed");
+            if (!fetch) fetch = Fetch();
+            return fetch(options);
+        };
+        instance.close = function() {
+            closed = true;
+            if (fetch) try {
+                return fetch.close();
+            } finally {
+                fetch = null;
+            } else return Promise.resolve();
+        };
+        instance.shell = shell.bind(this, program.description(), instance);
+        return instance;
+    });
+    process.on('SIGINT', () => shared.instance && shared.instance.close(true));
+    process.on('SIGTERM', () => shared.instance && shared.instance.close(true));
 } else {
-    var program = usage(new commander.Command());
-    var child;
-    module.exports = function(options) {
-        if (!child) {
-            child = replyTo(config.fork(module.filename, program));
-            module.exports.process = child.process;
-        }
-        return child.request('fetch', options);
-    };
-    module.exports.close = function() {
-        if (child) try {
-            return child.disconnect();
-        } finally {
-            child = null;
-        } else return Promise.resolve();
-    };
-    module.exports.shell = shell.bind(this, program.description(), module.exports);
-    process.on('SIGINT', module.exports.close);
-    process.on('SIGTERM', module.exports.close);
+    var shared = module.exports = share(() => {
+        var program = usage(new commander.Command());
+        var child;
+        var instance = function(options) {
+            if (!child) {
+                child = replyTo(config.fork(module.filename, program));
+                instance.process = child.process;
+            }
+            return child.request('fetch', options);
+        };
+        instance.close = function() {
+            if (child) try {
+                return child.disconnect();
+            } finally {
+                child = null;
+            } else return Promise.resolve();
+        };
+        instance.shell = shell.bind(this, program.description(), instance);
+        return instance;
+    });
+    process.on('SIGINT', () => shared.instance && shared.instance.close(true));
+    process.on('SIGTERM', () => shared.instance && shared.instance.close(true));
 }
 
 function shell(desc, fetch, app) {

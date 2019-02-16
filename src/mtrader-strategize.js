@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-strategize.js
 /*
- *  Copyright (c) 2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -36,11 +36,12 @@ const moment = require('moment-timezone');
 const commander = require('commander');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
-const config = require('./mtrader-config.js');
+const config = require('./config.js');
 const Strategize = require('./strategize.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
+const Bestsignals = require('./mtrader-bestsignals.js');
 
 function usage(command) {
     return command.version(require('./version.js').version)
@@ -98,11 +99,13 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = createInstance(usage(new commander.Command()));
+    module.exports = function() {
+        return createInstance(usage(new commander.Command()));
+    };
 }
 
 function createInstance(program) {
-    var bestsignals = require('./mtrader-bestsignals.js');
+    var bestsignals = new Bestsignals();
     var strategize = Strategize(bestsignals);
     var promiseKeys;
     var instance = function(options) {
