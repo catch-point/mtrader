@@ -570,10 +570,12 @@ async function mostRecentTrade(iqclient, adjustments, symbol, options) {
     } else if (options.market == 'OPRA') {
         return summarize(iqclient, symbol, options);
     } else {
-        var m30 = await rollday(iqclient, adjustments, 'day', symbol, _.defaults({
-            minutes: 30
-        }, options));
-        var currently = await summarize(iqclient, symbol, options);
+        var [m30, currently] = await Promise.all([
+            rollday(iqclient, adjustments, 'day', symbol, _.defaults({
+                minutes: 30
+            }, options)),
+            summarize(iqclient, symbol, options)
+        ]);
         var bar = _.last(m30);
         var today = _.last(currently);
         if (!bar) return currently;
