@@ -125,7 +125,7 @@ if (require.main === module) {
 
 function createInstance(program) {
     var fetch = new Fetch();
-    var promiseKeys;
+    var promiseKeys, closed;
     var instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = direct({help: true})
@@ -138,7 +138,8 @@ function createInstance(program) {
         });
     };
     instance.close = function() {
-        return queue.close().then(fetch.close);
+        if (closed) return closed;
+        else return closed = queue.close().then(fetch.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = () => {

@@ -96,7 +96,7 @@ if (require.main === module) {
 function createInstance(program) {
     var collect = new Collect();
     var position = new Position(collect);
-    var promiseKeys;
+    var promiseKeys, closed;
     var instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = position({help: true})
@@ -105,7 +105,8 @@ function createInstance(program) {
         return promiseKeys.then(keys => _.pick(options, keys)).then(position);
     };
     instance.close = function() {
-        return position.close().then(collect.close);
+        if (closed) return closed;
+        else return closed = position.close().then(collect.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;

@@ -104,8 +104,7 @@ if (require.main === module) {
     }
 } else if (config('workers') == 0) {
     var shared = module.exports = share(() => {
-        var fetch;
-        var closed = false;
+        var fetch, closed;
         var program = usage(new commander.Command());
         var instance = function(options) {
             if (closed) throw Error("Fetch is closed");
@@ -113,9 +112,9 @@ if (require.main === module) {
             return fetch(options);
         };
         instance.close = function() {
-            closed = true;
+            if (closed) return closed;
             if (fetch) try {
-                return fetch.close();
+                return closed = fetch.close();
             } finally {
                 fetch = null;
             } else return Promise.resolve();
@@ -128,7 +127,7 @@ if (require.main === module) {
 } else {
     var shared = module.exports = share(() => {
         var program = usage(new commander.Command());
-        var child;
+        var child, closed;
         var instance = function(options) {
             if (!child) {
                 child = replyTo(config.fork(module.filename, program));
@@ -137,8 +136,9 @@ if (require.main === module) {
             return child.request('fetch', options);
         };
         instance.close = function() {
+            if (closed) return closed;
             if (child) try {
-                return child.disconnect();
+                return closed = child.disconnect();
             } finally {
                 child = null;
             } else return Promise.resolve();

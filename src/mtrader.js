@@ -190,6 +190,7 @@ function createInstance() {
     var bestsignals = new Bestsignals();
     var strategize = new Strategize();
     var servers = [];
+    var closed;
     return {
         config: config,
         date: date,
@@ -214,7 +215,8 @@ function createInstance() {
             strategize.seed(number);
         },
         close() {
-            return Promise.all(servers.map(server => {
+            if (closed) return closed;
+            else return closed = Promise.all(servers.map(server => {
                 return new Promise(cb => server.close(cb));
             })).then(() => {
                 return Promise.all([

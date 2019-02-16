@@ -102,7 +102,7 @@ if (require.main === module) {
 function createInstance(program) {
     var collect = new Collect();
     var optimize = new Optimize(collect);
-    var promiseKeys;
+    var promiseKeys, closed;
     var instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = optimize({help: true})
@@ -112,7 +112,8 @@ function createInstance(program) {
     };
     instance.seed = optimize.seed;
     instance.close = function() {
-        return Promise.all([
+        if (closed) return closed;
+        else return closed = Promise.all([
             collect && collect.close(),
             optimize.close()
         ]);

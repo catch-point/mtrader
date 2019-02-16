@@ -115,8 +115,7 @@ if (require.main === module) {
 }
 
 function createInstance(program) {
-    var promiseKeys;
-    var closed = false;
+    var promiseKeys, closed;
     var fetch = new Fetch();
     var quote = new Quote();
     var inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
@@ -138,8 +137,8 @@ function createInstance(program) {
         });
     };
     instance.close = function() {
-        closed = true;
-        return remote.close()
+        if (closed) return closed;
+        else return closed = remote.close()
           .then(local.close, local.close)
           .then(direct.close)
           .then(quote.close)

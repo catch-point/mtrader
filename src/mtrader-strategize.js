@@ -107,7 +107,7 @@ if (require.main === module) {
 function createInstance(program) {
     var bestsignals = new Bestsignals();
     var strategize = Strategize(bestsignals);
-    var promiseKeys;
+    var promiseKeys, closed;
     var instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = strategize({help: true})
@@ -117,7 +117,8 @@ function createInstance(program) {
     };
     instance.seed = strategize.seed;
     instance.close = function() {
-        return bestsignals.close().then(strategize.close);
+        if (closed) return closed;
+        else return closed = bestsignals.close().then(strategize.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;
