@@ -102,7 +102,7 @@ module.exports = function() {
             return JSON.stringify(_.toArray(arguments));
         });
     });
-    const adjustments = Adjustments(yahoo);
+    const adjustments = new Adjustments(yahoo);
     return {
         close() {
             return Promise.all(_.map(yahoo, (fn, name) => {
@@ -205,13 +205,13 @@ function yahoo_symbol(markets, options) {
     }
 }
 
-function year(yahoo, adjustments, symbol, options) {
-    return month(yahoo, adjustments, symbol, _.defaults({
+async function year(yahoo, adjustments, symbol, options) {
+    const bars = await month(yahoo, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('year'),
         end: options.end && moment.tz(options.end, options.tz).endOf('year')
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).year()))
-      .then(years => _.map(years, bars => bars.reduce((year, month) => {
+    }, options));
+    const years = _.groupBy(bars, bar => moment(bar.ending).year());
+    return _.map(years, bars => bars.reduce((year, month) => {
         const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('year', month.ending, options),
@@ -224,16 +224,16 @@ function year(yahoo, adjustments, symbol, options) {
             split: (year.split || 1) * (month.split || 1),
             dividend: (year.dividend || 0) + (month.dividend || 0)
         }, month, year);
-      }, {})));
+      }, {}));
 }
 
-function quarter(yahoo, adjustments, symbol, options) {
-    return month(yahoo, adjustments, symbol, _.defaults({
+async function quarter(yahoo, adjustments, symbol, options) {
+    const bars = await month(yahoo, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('quarter'),
         end: options.end && moment.tz(options.end, options.tz).endOf('quarter')
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-Q')))
-      .then(quarters => _.map(quarters, bars => bars.reduce((quarter, month) => {
+    }, options));
+    const quarters = _.groupBy(bars, bar => moment(bar.ending).format('Y-Q'));
+    return _.map(quarters, bars => bars.reduce((quarter, month) => {
         const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('quarter', month.ending, options),
@@ -246,16 +246,16 @@ function quarter(yahoo, adjustments, symbol, options) {
             split: (quarter.split || 1) * (month.split || 1),
             dividend: (quarter.dividend || 0) + (month.dividend || 0)
         }, month, quarter);
-      }, {})));
+      }, {}));
 }
 
-function month(yahoo, adjustments, symbol, options) {
-    return day(yahoo, adjustments, symbol, _.defaults({
+async function month(yahoo, adjustments, symbol, options) {
+    const bars = await day(yahoo, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('month'),
         end: options.end && moment.tz(options.end, options.tz).endOf('month')
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-MM')))
-      .then(months => _.map(months, bars => bars.reduce((month, day) => {
+    }, options));
+    const months = _.groupBy(bars, bar => moment(bar.ending).format('Y-MM'));
+    return _.map(months, bars => bars.reduce((month, day) => {
         const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('month', day.ending, options),
@@ -268,16 +268,16 @@ function month(yahoo, adjustments, symbol, options) {
             split: (month.split || 1) * (day.split || 1),
             dividend: (month.dividend || 0) + (day.dividend || 0)
         }, day, month);
-      }, {})));
+      }, {}));
 }
 
-function week(yahoo, adjustments, symbol, options) {
-    return day(yahoo, adjustments, symbol, _.defaults({
+async function week(yahoo, adjustments, symbol, options) {
+    const bars = await day(yahoo, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('isoWeek').subtract(1, 'days'),
         end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days')
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW')))
-      .then(weeks => _.map(weeks, bars => bars.reduce((week, day) => {
+    }, options));
+    const weeks = _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW'));
+    return _.map(weeks, bars => bars.reduce((week, day) => {
         const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('isoWeek', day.ending, options),
@@ -290,36 +290,33 @@ function week(yahoo, adjustments, symbol, options) {
             split: (week.split || 1) * (day.split || 1),
             dividend: (week.dividend || 0) + (day.dividend || 0)
         }, day, week);
-      }, {})));
+      }, {}));
 }
 
-function day(yahoo, adjustments, symbol, options) {
-    return Promise.all([
+async function day(yahoo, adjustments, symbol, options) {
+    const [prices, adjusts] = await Promise.all([
         yahoo.day(symbol, options.begin, options.tz),
         adjustments(options)
-    ]).then(prices_adjustments => {
-        const prices = prices_adjustments[0], adjustments = prices_adjustments[1];
-        return adjRight(prices, adjustments, options, (today, datum, splits, adj) => ({
-            ending: endOf('day', datum.Date, options),
-            open: parseCurrency(datum.Open, splits),
-            high: parseCurrency(datum.High, splits),
-            low: parseCurrency(datum.Low, splits),
-            close: parseCurrency(datum.Close, splits) || today.close,
-            volume: parseFloat(datum.Volume) || 0,
-            adj_close: Math.round(
-                parseCurrency(datum.Close, splits) * adj
-                * 1000000) / 1000000 || today.adj_close
-        })).filter(bar => bar.volume);
-    }).then(result => {
-        if (_.last(result) && !_.last(result).close) result.pop();
-        if (!options.end) return result;
-        const final = endOf('day', options.end, options);
-        if (moment(final).isAfter()) return result;
-        let last = _.sortedIndex(result, {ending: final}, 'ending');
-        if (result[last] && result[last].ending == final) last++;
-        if (last == result.length) return result;
-        else return result.slice(0, last);
-    });
+    ]);
+    const result = adjRight(prices, adjusts, options, (today, datum, splits, adj) => ({
+        ending: endOf('day', datum.Date, options),
+        open: parseCurrency(datum.Open, splits),
+        high: parseCurrency(datum.High, splits),
+        low: parseCurrency(datum.Low, splits),
+        close: parseCurrency(datum.Close, splits) || today.close,
+        volume: parseFloat(datum.Volume) || 0,
+        adj_close: Math.round(
+            parseCurrency(datum.Close, splits) * adj
+            * 1000000) / 1000000 || today.adj_close
+    })).filter(bar => bar.volume);
+    if (_.last(result) && !_.last(result).close) result.pop();
+    if (!options.end) return result;
+    const final = endOf('day', options.end, options);
+    if (moment(final).isAfter()) return result;
+    let last = _.sortedIndex(result, {ending: final}, 'ending');
+    if (result[last] && result[last].ending == final) last++;
+    if (last == result.length) return result;
+    else return result.slice(0, last);
 }
 
 function adjustment(base, bar) {

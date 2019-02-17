@@ -74,7 +74,7 @@ if (require.main === module) {
             market = symbol.substring(symbol.lastIndexOf('.')+1);
             symbol = symbol.substring(0, symbol.lastIndexOf('.'));
         }
-        const fetch = Fetch();
+        const fetch = new Fetch();
         process.on('SIGINT', () => fetch.close());
         process.on('SIGTERM', () => fetch.close());
         Promise.resolve().then(() => fetch(_.defaults({
@@ -84,12 +84,18 @@ if (require.main === module) {
         }, config.options())))
         .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack))
-        .then(() => fetch.close());
+        .then(() => fetch.close())
+        .then(() => {
+            setTimeout(() => {
+                if (process._getActiveHandles)
+                    console.log("Still active on", process.pid, process._getActiveHandles());
+            }, 10000).unref();
+        });
     } else if (process.send) {
         replyTo(process).handle('fetch', payload => {
             return fetch()(payload);
         });
-        let fetch = _.once(() => Fetch());
+        let fetch = _.once(() => new Fetch());
         process.on('disconnect', () => fetch().close());
         process.on('disconnect', () => {
             setTimeout(() => {
@@ -110,7 +116,7 @@ if (require.main === module) {
         const program = usage(new commander.Command());
         const instance = function(options) {
             if (closed) throw Error("Fetch is closed");
-            if (!fetch) fetch = Fetch();
+            if (!fetch) fetch = new Fetch();
             return fetch(options);
         };
         instance.close = function() {

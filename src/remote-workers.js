@@ -50,8 +50,8 @@ process.on('SIGTERM', () => shared.instance && shared.instance.close());
 function createInstance() {
     let check = interrupt(true);
     const queue = workerQueue(createRemoteWorkers, (worker, cmd, options) => {
-        return worker.request(cmd, options).catch(err => {
-            if (check() || queue.isClosed() || !err || !err.message) throw err;
+        return worker.request(cmd, options).catch(async err => {
+            if (await check() || queue.isClosed() || !err || !err.message) throw err;
             else if (options && options.remote_failed) throw err;
             const stillConnected = !!worker.connected && !~err.message.indexOf('Disconnecting');
             if (worker.connected) queue.stopWorker(worker);
@@ -59,14 +59,13 @@ function createInstance() {
             if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.process.pid) {
                 throw err;
             }
-            return new Promise(cb => _.delay(cb, 1000)).then(() => {
-                if (worker.connected) {
-                    logger.warn("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
-                } else {
-                    logger.trace("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
-                }
-                return queue(cmd, _.defaults({remote_failed: stillConnected}, options));
-            });
+            await new Promise(cb => _.delay(cb, 1000));
+            if (worker.connected) {
+                logger.warn("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
+            } else {
+                logger.trace("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
+            }
+            return queue(cmd, _.defaults({remote_failed: stillConnected}, options));
         });
     });
     const disconnectStoppedWorkers = _.debounce(() => {
@@ -102,11 +101,10 @@ function createInstance() {
         strategize(options) {
             return queue('strategize', options);
         },
-        version() {
-            return queue.all('version').then(versions => {
-                const workers = queue.getWorkers();
-                return _.object(workers.map(worker => worker.process.pid), versions);
-            });
+        async version() {
+            const versions = await queue.all('version');
+            const workers = queue.getWorkers();
+            return _.object(workers.map(worker => worker.process.pid), versions);
         }
     });
 }

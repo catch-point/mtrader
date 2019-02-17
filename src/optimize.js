@@ -365,8 +365,8 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
         return fitness(candidate).then(solution => {
             candidates.splice(candidates.indexOf(candidate), 1);
             solutions.push(solution);
-        }).then(() => {
-            if (!solutions.length || check()) return;
+        }).then(async() => {
+            if (!solutions.length || await check()) return;
             const population = solutions.concat(elite);
             const top = _.sortBy(population, 'score').slice(-maxEliteSize);
             const additions = _.difference(top, elite);
@@ -410,8 +410,8 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
         });
     };
     until = until.then(() => Promise.all(candidates.map(rank)));
-    const wait = promise => promise.then(() => {
-        if (promise != until && !check()) return wait(until);
+    const wait = promise => promise.then(async() => {
+        if (promise != until && !await check()) return wait(until);
         else return elite.slice(0).reverse();
     });
     return wait(until);

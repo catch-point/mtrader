@@ -87,10 +87,10 @@ module.exports = function(yahooClient) {
         else if (options.market && !markets[options.market]) return Promise.resolve([]);
         const name = options.market ? options.symbol + '.' + options.market :
             options.yahoo_symbol ? options.yahoo_symbol : options.symbol;
-        return store.open(name, (err, db) => {
+        return store.open(name, async(err, db) => {
             if (err) throw err;
-            else return adjustments(yahoo, db, symbol(options), options)
-              .then(data => filterAdj(data, options));
+            const data = await adjustments(yahoo, db, symbol(options), options);
+            return filterAdj(data, options);
         });
     }, {
         close() {
@@ -128,14 +128,14 @@ function yahoo_symbol(markets, options) {
     }
 }
 
-function yahoo_adjustments(yahoo, db, symbol, options) {
+async function yahoo_adjustments(yahoo, db, symbol, options) {
     expect(options).to.have.property('begin');
     expect(options).to.have.property('tz');
     const mbegin = moment.tz(options.begin, options.tz);
     const since = Math.floor(mbegin.year()/10)+'0-01-01';
     const begin = mbegin.format('YYYY-MM-DD');
-    return db.collection('adjustments')
-      .then(col => col.lockWith([since], () => {
+    const col = await db.collection('adjustments');
+    return col.lockWith([since], async() => {
         if (options.offline && col.exists(since))
             return col.readFrom(since);
         else if (options.offline)
@@ -143,23 +143,22 @@ function yahoo_adjustments(yahoo, db, symbol, options) {
         else if (fresh(col, since, options))
             return col.readFrom(since);
         const asof = moment().tz(options.tz);
-        return yahoo.split(symbol, since, options.tz)
-          .then(splits => yahoo.dividend(symbol, since, options.tz)
-          .then(divs => splits.concat(divs)))
-          .then(data => _.sortBy(data, 'Date'))
-          .then(data => writeAdjPrice(yahoo, symbol, col, since, data, options))
+        const splits = await yahoo.split(symbol, since, options.tz);
+        const divs = await yahoo.dividend(symbol, since, options.tz);
+        const data = _.sortBy(splits.concat(divs), 'Date');
+        return writeAdjPrice(yahoo, symbol, col, since, data, options)
           .then(data => {
             col.propertyOf(since, 'version', minor_version);
             col.propertyOf(since, 'asof', asof);
             return data;
-          }).catch(err => {
+        }).catch(err => {
             if (!col.exists(since)) throw err;
             else return col.readFrom(since).then(data => {
                 logger.warn("Could not load adjustments", err.message);
                 return data;
             }, e2 => Promise.reject(err));
-          });
-    }));
+        });
+    });
 }
 
 function fresh(collection, since, options) {
@@ -169,17 +168,18 @@ function fresh(collection, since, options) {
     return mend.diff(asof, 'hours') < 4;
 }
 
-function writeAdjPrice(yahoo, symbol, col, since, data, options) {
+async function writeAdjPrice(yahoo, symbol, col, since, data, options) {
     if (compatible(col, since) && col.sizeOf(since) == data.length) return col.readFrom(since);
-    else return yahoo.day(symbol, since, options.tz)
-      .then(prices => data.map(datum => {
+    const prices = await yahoo.day(symbol, since, options.tz);
+    const mapped = data.map(datum => {
         const prior = prices[_.sortedIndex(prices, datum, 'Date')-1];
         return _.extend(datum, {
             Dividends: datum.Dividends || null,
             'Stock Splits': datum['Stock Splits'] || null,
             cum_close: prior ? +prior.Close : undefined
         });
-    })).then(data => col.writeTo(data, since));
+    });
+    return col.writeTo(mapped, since);
 }
 
 function compatible(collection, since) {
@@ -187,60 +187,58 @@ function compatible(collection, since) {
     return collection.propertyOf(since, 'version') == minor_version;
 }
 
-function adjustments(yahoo, db, symbol, options) {
-    return yahoo_adjustments(yahoo, db, symbol, options)
-      .then(data => {
-        let adj = 1, adj_dividend_only = 1, adj_split_only = 1;
-        let adj_yahoo_divs = 1, adj_yahoo_price = 1;
-        return data.reduceRight((adjustments, datum) => {
-            const exdate = datum.Date;
-            let dividend = +datum.Dividends * adj_yahoo_divs;
-            let split = parseSplit(datum['Stock Splits']);
-            if (adjustments.length && _.last(adjustments).exdate == exdate) {
-                const last = adjustments.pop();
-                dividend += last.dividend;
-                split *= last.split;
-                // check if split is a manual adjustment for a big dividend
-                if (dividend && split > 1 && split <= 2) { // XLF.ARCA 2016-09-19
-                    adj_yahoo_divs *= split;
-                    adj_yahoo_price *= split;
-                    split = 1;
-                    if (adjustments.length) {
-                        adj_dividend_only = _.last(adjustments).adj_dividend_only;
-                        adj_split_only = _.last(adjustments).adj_split_only;
-                        adj = _.last(adjustments).adj;
-                    } else {
-                        adj_dividend_only = 1;
-                        adj_split_only = 1;
-                        adj = 1;
-                    }
+async function adjustments(yahoo, db, symbol, options) {
+    const data = await yahoo_adjustments(yahoo, db, symbol, options);
+    let adj = 1, adj_dividend_only = 1, adj_split_only = 1;
+    let adj_yahoo_divs = 1, adj_yahoo_price = 1;
+    return data.reduceRight((adjustments, datum) => {
+        const exdate = datum.Date;
+        let dividend = +datum.Dividends * adj_yahoo_divs;
+        let split = parseSplit(datum['Stock Splits']);
+        if (adjustments.length && _.last(adjustments).exdate == exdate) {
+            const last = adjustments.pop();
+            dividend += last.dividend;
+            split *= last.split;
+            // check if split is a manual adjustment for a big dividend
+            if (dividend && split > 1 && split <= 2) { // XLF.ARCA 2016-09-19
+                adj_yahoo_divs *= split;
+                adj_yahoo_price *= split;
+                split = 1;
+                if (adjustments.length) {
+                    adj_dividend_only = _.last(adjustments).adj_dividend_only;
+                    adj_split_only = _.last(adjustments).adj_split_only;
+                    adj = _.last(adjustments).adj;
+                } else {
+                    adj_dividend_only = 1;
+                    adj_split_only = 1;
+                    adj = 1;
                 }
             }
-            // check if reverse split is enough for yahoo to change it dividends
-            if (split < 1/3) {
-                // AAPL.NASDAQ 2014-06-09 not anymore as of 2019-01-11
-                // REM.ARCA 2016-11-07
-                adj_yahoo_divs *= split;
-            }
-            if (split != 1) {
-                adj_split_only /= split;
-                adj /= split;
-            }
-            // heuristic to test if the split has been applied REM.NYSE 2016-11-07
-            if (split != 1 && adjustments.length &&
-                    Math.abs(+datum.cum_close - _.last(adjustments).cum_close) >
-                    Math.abs(+datum.cum_close * adj_split_only - _.last(adjustments).cum_close)) {
-                adj_yahoo_price /= split;
-            }
-            const cum_close = +datum.cum_close / adj_split_only * adj_yahoo_price;
-            if (dividend && +datum.cum_close) {
-                adj_dividend_only *= (cum_close - dividend)/cum_close;
-                adj *= (cum_close - dividend)/cum_close;
-            }
-            adjustments.push({exdate, adj, adj_dividend_only, adj_split_only, cum_close, split, dividend});
-            return adjustments;
-        }, []).reverse();
-    });
+        }
+        // check if reverse split is enough for yahoo to change it dividends
+        if (split < 1/3) {
+            // AAPL.NASDAQ 2014-06-09 not anymore as of 2019-01-11
+            // REM.ARCA 2016-11-07
+            adj_yahoo_divs *= split;
+        }
+        if (split != 1) {
+            adj_split_only /= split;
+            adj /= split;
+        }
+        // heuristic to test if the split has been applied REM.NYSE 2016-11-07
+        if (split != 1 && adjustments.length &&
+                Math.abs(+datum.cum_close - _.last(adjustments).cum_close) >
+                Math.abs(+datum.cum_close * adj_split_only - _.last(adjustments).cum_close)) {
+            adj_yahoo_price /= split;
+        }
+        const cum_close = +datum.cum_close / adj_split_only * adj_yahoo_price;
+        if (dividend && +datum.cum_close) {
+            adj_dividend_only *= (cum_close - dividend)/cum_close;
+            adj *= (cum_close - dividend)/cum_close;
+        }
+        adjustments.push({exdate, adj, adj_dividend_only, adj_split_only, cum_close, split, dividend});
+        return adjustments;
+    }, []).reverse();
 }
 
 /*

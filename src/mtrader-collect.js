@@ -257,10 +257,10 @@ function createSlaveQuote(quote, parent) {
         if (!options.end || moment.tz(options.end, options.tz || moment.tz.guess()).valueOf() >= Date.now())
             return parent.request('quote', options); // latest data requested
         const opts = _.extend({read_only: true}, options);
-        return quote(opts).catch(err => {
+        return quote(opts).catch(async(err) => {
             if (!err || !err.message) throw err;
             else if (!~err.message.indexOf('read_only')) throw err;
-            else if (check()) throw err;
+            else if (await check()) throw err;
             logger.trace("Quoting", options.label || '\b', "from parent node", parent.process.pid);
             return parent.request('quote', _.extend({read_only: false}, options)); // retry using master
         });

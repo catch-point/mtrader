@@ -32,6 +32,7 @@
 
 const fs = require('graceful-fs');
 const path = require('path');
+const util = require('util');
 const _ = require('underscore');
 const awriter = require('./atomic-write.js');
 const config = require('./config.js');
@@ -60,21 +61,20 @@ module.exports = function(fetch) {
 function fetchOptionsFactory(fetch, offline, read_only) {
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const memoizeFirstLookup = _.memoize((symbol, market) => {
-        return readInfo(dir, symbol, market, offline).catch(err => {
+        return readInfo(dir, symbol, market, offline).catch(async(err) => {
             if (offline) throw err;
-            else return fetch({
+            const matches = await fetch({
                 interval: 'lookup',
                 symbol: symbol,
                 market: market
-            }).then(matches => _.first(matches)).then(security => {
-                if (_.isEmpty(security))
-                    throw Error("Unknown symbol: " + (market ? symbol + '.' + market:market));
-                else if (security.symbol == symbol) return security;
-                else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
-            }).then(info => {
-                if (read_only) return info;
-                else return saveInfo(dir, symbol, market, info);
             });
+            const security = _.first(matches);
+            if (_.isEmpty(security))
+                throw Error("Unknown symbol: " + (market ? symbol + '.' + market:market));
+            else if (security.symbol != symbol)
+                throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
+            else if (read_only) return security;
+            else return saveInfo(dir, symbol, market, security);
         });
     }, (symbol, market) => {
         return market ? symbol + ' ' + market : symbol;
@@ -104,23 +104,21 @@ function fetchOptionsFactory(fetch, offline, read_only) {
     };
 }
 
-function readInfo(dir, symbol, market, offline) {
+async function readInfo(dir, symbol, market, offline) {
     const yesterday = offline ? 0 : Date.now() - 24 *60 * 60 *1000;
     const file = getInfoFileName(dir, symbol, market);
-    return new Promise((cb, fail) => {
-        fs.stat(file, (err, stats) => err ? fail(err) : cb(stats));
-    }).then(stats => {
-        if (stats.mtime.valueOf() > yesterday) return file;
-        else throw {file: file, mtime: stats.mtime, message: "too old"};
-    }).then(file => new Promise((cb, fail) => {
-        fs.readFile(file, 'utf-8', (err, data) => err ? fail(err) : cb(data));
-    })).then(data => JSON.parse(data));
+    const stats = await util.promisify(fs.stat)(file);
+    if (stats.mtime.valueOf() <= yesterday)
+        throw Object.assign(Error("too old"), {file: file, mtime: stats.mtime});
+    const data = await util.promisify(fs.readFile)(file, 'utf-8');
+    return JSON.parse(data);
 }
 
-function saveInfo(dir, symbol, market, info) {
+async function saveInfo(dir, symbol, market, info) {
     const file = getInfoFileName(dir, symbol, market);
     const data = JSON.stringify(info, null, '  ') + '\n';
-    return awriter.writeFile(file, data).then(() => info);
+    await awriter.writeFile(file, data);
+    return info;
 }
 
 function getInfoFileName(dir, symbol, market) {

@@ -44,6 +44,7 @@ const expect = require('chai').expect;
 const logger = require('./logger.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
+const Remote = require('./remote-workers.js');
 const Config = require('./mtrader-config.js');
 const config = require('./config.js');
 const date = require('./mtrader-date.js');
@@ -98,20 +99,20 @@ program.command('stop').description("Stops a headless service using the listen i
         process.on('SIGINT', abort);
         process.on('SIGTERM', abort);
         worker.handle('stop', stopped).request('stop').catch(abort);
-    }).catch(err => err && err.stack && logger.debug(err, err.stack)).then(() => worker.disconnect());
+    }).catch(err => err && err.stack && logger.debug(err, err.stack))
+      .then(() => worker.disconnect());
 });
 let program_args_version = false;
-program.on('option:version', function() {
+program.on('option:version', async function() {
     program_args_version = true;
     process.stdout.write(version + '\n');
     if (config('remote_workers')) {
-        const Remote = require('./remote-workers.js');
-        const remote = Remote();
-        remote.version().then(remote_version => {
-            _.forEach(remote_version, (worker_version, worker) => {
-                process.stdout.write(`${worker_version} ${worker}` + '\n');
-            });
-        }).then(remote.close);
+        const remote = new Remote();
+        const remote_version = await remote.version();
+        _.forEach(remote_version, (worker_version, worker) => {
+            process.stdout.write(`${worker_version} ${worker}` + '\n');
+        });
+        return remote.close();
     }
 });
 

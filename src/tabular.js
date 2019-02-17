@@ -40,11 +40,9 @@ const Writable = require('stream').Writable;
 const csv = require('fast-csv');
 const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
-const interrupt = require('./interrupt.js');
 
 module.exports = function(data, options) {
     if (_.isEmpty(data)) return logger.info("Empty result, not writing", options.output || '');
-    const check = interrupt();
     const filename = getOutputFile(options);
     const transpose = options.transpose && options.transpose.toString() != 'false';
     const reverse = options.reverse && options.reverse.toString() != 'false';
@@ -59,7 +57,6 @@ module.exports = function(data, options) {
             .on('error', error)
             .on('data', function(data) {
                 try {
-                    check();
                     objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value));
                 } catch (e) {
                     this.emit('error', e);

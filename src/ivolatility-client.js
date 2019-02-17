@@ -154,7 +154,6 @@ function createDataSinkStore(cacheDir) {
     let total = 0, count = 0;
     const queue = {};
     const helpers = {};
-    const check = interrupt();
     let logProgress = _.noop;
     const keyOf = datum => datum.expiration.substring(0, 2);
     const fork = key => {
@@ -191,7 +190,6 @@ function createDataSinkStore(cacheDir) {
         return forked;
     };
     return _.extend(datum => {
-        check();
         total++;
         const key = keyOf(datum);
         if (!queue[key]) queue[key] = [];
@@ -292,8 +290,8 @@ function createInlineDataSinkStore(cacheDir) {
             }
         }));
     }, iv_symbol_of, 1000);
-    return _.extend(datum => {
-        check();
+    return _.extend(async(datum) => {
+        await check();
         return lookup(datum).then(data => data.add(datum));
     }, {
         flush() {
@@ -335,14 +333,12 @@ function explodeZip(file, reduce, initial) {
 }
 
 function parseZipEntry(entryStream, reduce, initial) {
-    const check = interrupt();
     let result = initial;
     return new Promise((ready, error) => {
         csv.fromStream(entryStream, {headers : true, ignoreEmpty: true})
             .on('error', error)
             .on('data', function(data) {
                 try {
-                    check();
                     const obj = _.mapObject(data, value => _.isFinite(value) ? +value : value);
                     result = reduce(initial, obj);
                 } catch (e) {

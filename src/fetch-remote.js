@@ -67,24 +67,24 @@ module.exports = function() {
         }
     };
 
-    function fetch(options, interrupted, delayed) {
+    async function fetch(options, interrupted, delayed) {
         const check = interrupted || interrupt(true);
         const delay = (delayed || 500) *2;
-        return Fetch().then(client => client.request('fetch', options).catch(err => {
-            if (closing || check() || delay > 5000 || !isConnectionError(err))
+        const client = await Fetch();
+        return client.request('fetch', options).catch(async err => {
+            if (closing || await check() || delay > 5000 || !isConnectionError(err))
                 throw err;
             // connection error wait and try again
             client.connectionError = true;
-            return new Promise(cb => _.delay(cb, delay)).then(() => {
-                if (check()) throw err;
-                else return fetch(options, check, delay).catch(e2 => {
-                    throw err;
-                });
+            await new Promise(cb => _.delay(cb, delay));
+            if (await check()) throw err;
+            else return fetch(options, check, delay).catch(e2 => {
+                throw err;
             });
-        }));
+        });
     }
 
-    function Fetch() {
+    async function Fetch() {
         return promiseFetch = (promiseFetch || Promise.reject()).catch(err => {
             return {process: {connected: false}};
         }).then(fetch => {

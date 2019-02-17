@@ -42,7 +42,6 @@ const awriter = require('./atomic-write.js');
 const minor_version = require('./version.js').minor_version;
 const config = require('./config.js');
 const debounce = require('./debounce.js');
-const interrupt = require('./interrupt.js');
 const logger = require('./logger.js');
 
 /**
@@ -85,21 +84,20 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
             return result;
         });
     }, {
-        flush() {
-            return promiseInitialCount.then(initialCount => sweep(cache, initialCount, poolSize));
+        async flush() {
+            const initialCount = await promiseInitialCount;
+            return sweep(cache, initialCount, poolSize);
         },
-        close() {
+        async close() {
             cache.closed = true;
             cache.emit('close');
-            return promiseInitialCount.then(initialCount => {
-                debounced(cache, initialCount, poolSize);
-                return debounced.close().then(() => {
-                    if (cache.hit) {
-                        const util = Math.round(100 * cache.hit / (cache.hit + cache.miss));
-                        logger.debug("Cache utilization", util + '%');
-                    }
-                })
-            });
+            const initialCount = await promiseInitialCount;
+            debounced(cache, initialCount, poolSize);
+            await debounced.close();
+            if (cache.hit) {
+                const util = Math.round(100 * cache.hit / (cache.hit + cache.miss));
+                logger.debug("Cache utilization", util + '%');
+            }
         }
     });
 };
@@ -447,14 +445,12 @@ function readEntryOptions(baseDir, entry) {
 function readEntryResult(baseDir, entry) {
     const file = path.resolve(getDir(baseDir, entry.hash), entry.result);
     if (entry.type == 'csv') {
-        const check = interrupt();
         return new Promise((ready, error) => {
             const objects = [];
             csv.fromStream(fs.createReadStream(file).on('error', error), {headers : true, ignoreEmpty: true})
                 .on('error', error)
                 .on('data', function(data) {
                     try {
-                        check();
                         objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value));
                     } catch (e) {
                         this.emit('error', e);

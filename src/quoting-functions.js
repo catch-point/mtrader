@@ -53,7 +53,7 @@ module.exports.has = function(name) {
 };
 
 const functions = module.exports.functions = {
-    MAXCORREL: _.extend((quote, dataset, options, expr, duration, expression, criteria) => {
+    MAXCORREL: Object.assign(async (quote, dataset, options, expr, duration, expression, criteria) => {
         const n = asPositiveInteger(duration, "MAXCORREL");
         const arg = Parser({
             constant(value) {
@@ -89,31 +89,29 @@ const functions = module.exports.functions = {
                 criteria: null
             }, options);
         });
-        return Promise.all(optionset.map(options => quote(options))).then(dataset => {
-            return dataset.reduce((hash, data, i) => {
-                hash[optionset[i].index] = data;
-                return hash;
-            }, {});
-        }).then(dataset => {
-            return historic => {
-                const positions = _.last(historic);
-                if (_.size(positions) < 2) return 0;
-                const matrix = _.keys(_.pick(positions, _.isObject)).map((symbol, i, keys) => {
-                    if (i < keys.length -1 && !condition(positions[symbol])) return null;
-                    const data = dataset[symbol];
-                    if (!data) throw Error("Could not find dataset: " + symbol);
-                    let end = _.sortedIndex(data, positions, options.temporalCol);
-                    if (data[end] && data[end][options.temporalCol] == positions[options.temporalCol]) end++;
-                    return _.pluck(data.slice(Math.max(end - n, 0), end), arg);
-                });
-                const last = matrix.pop();
-                const correlations = _.compact(matrix).map(m => {
-                    return statkit.corr(m, last);
-                });
-                if (!correlations.length) return 0;
-                else return _.max(correlations);
-            };
-        });
+        const qdataset = (await Promise.all(optionset.map(options => quote(options))))
+          .reduce((hash, data, i) => {
+            hash[optionset[i].index] = data;
+            return hash;
+        }, {});
+        return historic => {
+            const positions = _.last(historic);
+            if (_.size(positions) < 2) return 0;
+            const matrix = _.keys(_.pick(positions, _.isObject)).map((symbol, i, keys) => {
+                if (i < keys.length -1 && !condition(positions[symbol])) return null;
+                const data = qdataset[symbol];
+                if (!data) throw Error("Could not find dataset: " + symbol);
+                let end = _.sortedIndex(data, positions, options.temporalCol);
+                if (data[end] && data[end][options.temporalCol] == positions[options.temporalCol]) end++;
+                return _.pluck(data.slice(Math.max(end - n, 0), end), arg);
+            });
+            const last = matrix.pop();
+            const correlations = _.compact(matrix).map(m => {
+                return statkit.corr(m, last);
+            });
+            if (!correlations.length) return 0;
+            else return _.max(correlations);
+        };
     }, {
         args: "duration, expression, [criteria]",
         description: "Maximum correlation coefficient among other securities"

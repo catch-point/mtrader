@@ -431,7 +431,7 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
 /**
  * Identifies the entry and exit points and returns an array of these signals
  */
-function readSignals(points, entry, exit, criteria) {
+async function readSignals(points, entry, exit, criteria) {
     if (!points.length) return [];
     const check = interrupt();
     let start = _.sortedIndex(points, entry, 'ending');
@@ -447,8 +447,9 @@ function readSignals(points, entry, exit, criteria) {
     let e = 0;
     const signals = [];
     criteria = criteria || _.constant(true);
-    points.slice(start).reduce((active, point, i) => {
-        check();
+    await points.slice(start).reduce(async(pactive, point, i) => {
+        await check();
+        const active = await pactive;
         const to = start + i;
         const keep = criteria(points.slice(active ? e : to, to+1)) ||
             active && e != to && criteria(points.slice(to, to+1));
@@ -463,7 +464,7 @@ function readSignals(points, entry, exit, criteria) {
             _.last(signals).exit = point;
         }
         return keep;
-    }, false);
+    }, Promise.resolve(false));
     if (exit && signals.length && !_.last(signals).exit) {
         if (_.last(_.last(signals).points).ending < exit.ending) _.last(signals).exit = exit;
         else if (_.last(signals).points.length == 1) signals.pop();

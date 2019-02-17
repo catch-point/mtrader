@@ -32,27 +32,22 @@
 
 const fs = require('graceful-fs');
 const path = require('path');
+const util = require('util');
 const _ = require('underscore');
 
 /**
  * Writes to temporary file followed by an atomic rename to target filename
  */
-module.exports = _.extend(function(fn, filename) {
+module.exports = Object.assign(async function(fn, filename) {
     if (!filename) throw Error("No filename given");
     const part = partFor(filename);
-    return mkdirp(path.dirname(part))
-      .then(dirname => fn(part))
-      .then(result => new Promise((ready, error) => {
-        fs.rename(part, filename, err => {
-            if (err) error(err);
-            else ready(result);
-        });
-    })).catch(cause => new Promise((ready, error) => {
-        fs.unlink(part, err => {
-            if (err) error(cause);
-            else error(cause);
-        });
-    }));
+    const dirname = await mkdirp(path.dirname(part));
+    const result = await fn(part);
+    return util.promisify(fs.rename)(part, filename)
+      .catch(async cause => {
+        await util.promisify(fs.unlink)(part);
+        throw cause;
+    });
 }, {
     mkdirp,
     partFor,
@@ -64,13 +59,15 @@ module.exports = _.extend(function(fn, filename) {
         fs.renameSync(part, filename);
         return filename;
     },
-    writeFile(filename, data) {
-        return mkdirp(path.dirname(filename)).then(dir => new Promise((cb, fail) => {
+    async writeFile(filename, data) {
+        const dir = await mkdirp(path.dirname(filename))
+        const part = await new Promise((cb, fail) => {
             const part = partFor(filename);
             fs.writeFile(part, data, 'utf-8', (err, data) => err ? fail(err) : cb(part));
-        })).then(part => new Promise((cb, fail) => {
+        });
+        return new Promise((cb, fail) => {
             fs.rename(part, filename, err => err ? fail(err) : cb(filename));
-        }));
+        });
     }
 });
 
@@ -80,13 +77,12 @@ module.exports = _.extend(function(fn, filename) {
 function mkdirp(dirname) {
     return new Promise((present, absent) => {
         fs.access(dirname, fs.F_OK, err => err ? absent(err) : present(dirname));
-    }).catch(absent => {
+    }).catch(async absent => {
         if (absent.code != 'ENOENT') throw absent;
         const parent = path.dirname(dirname);
-        return Promise.resolve(parent != dirname && mkdirp(parent))
-          .then(() => new Promise((ready, error) => {
-            fs.mkdir(dirname, err => err ? error(err) : ready(dirname));
-        })).catch(err => {
+        if (parent != dirname) await mkdirp(parent);
+        return util.promisify(fs.mkdir)(dirname)
+          .catch(err => {
             if (err.code == 'EEXIST') return dirname;
             else throw err;
         });

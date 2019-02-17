@@ -384,14 +384,14 @@ function interday(iqclient, adjustments, symbol, options) {
     }
 }
 
-function year(iqclient, adjustments, symbol, options) {
+async function year(iqclient, adjustments, symbol, options) {
     const end = options.end && moment.tz(options.end, options.tz);
-    return month(iqclient, adjustments, symbol, _.defaults({
+    const bars = await month(iqclient, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('year'),
         end: end && (end.isAfter(moment(end).startOf('year')) ? end.endOf('year') : end)
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).year()))
-      .then(years => _.map(years, bars => bars.reduce((year, month) => {
+    }, options));
+    const years = _.groupBy(bars, bar => moment(bar.ending).year());
+    return _.map(years, bars => bars.reduce((year, month) => {
         const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('year', month.ending, options),
@@ -404,17 +404,17 @@ function year(iqclient, adjustments, symbol, options) {
             split: (year.split || 1) * (month.split || 1),
             dividend: (year.dividend || 0) + (month.dividend || 0)
         }, month, year);
-      }, {})));
+      }, {}));
 }
 
-function quarter(iqclient, adjustments, symbol, options) {
+async function quarter(iqclient, adjustments, symbol, options) {
     const end = options.end && moment.tz(options.end, options.tz);
-    return month(iqclient, adjustments, symbol, _.defaults({
+    const bars = await month(iqclient, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('quarter'),
         end: end && (end.isAfter(moment(end).startOf('quarter')) ? end.endOf('quarter') : end)
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-Q')))
-      .then(quarters => _.map(quarters, bars => bars.reduce((quarter, month) => {
+    }, options));
+    const quarters = _.groupBy(bars, bar => moment(bar.ending).format('Y-Q'));
+    return _.map(quarters, bars => bars.reduce((quarter, month) => {
         const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('quarter', month.ending, options),
@@ -427,17 +427,17 @@ function quarter(iqclient, adjustments, symbol, options) {
             split: (quarter.split || 1) * (month.split || 1),
             dividend: (quarter.dividend || 0) + (month.dividend || 0)
         }, month, quarter);
-      }, {})));
+      }, {}));
 }
 
-function month(iqclient, adjustments, symbol, options) {
+async function month(iqclient, adjustments, symbol, options) {
     const end = options.end && moment.tz(options.end, options.tz);
-    return day(iqclient, adjustments, symbol, _.defaults({
+    const bars = await day(iqclient, adjustments, symbol, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('month'),
         end: end && (end.isAfter(moment(end).startOf('month')) ? end.endOf('month') : end)
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-MM')))
-      .then(months => _.map(months, bars => bars.reduce((month, day) => {
+    }, options));
+    const months = _.groupBy(bars, bar => moment(bar.ending).format('Y-MM'));
+    return _.map(months, bars => bars.reduce((month, day) => {
         const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('month', day.ending, options),
@@ -450,18 +450,18 @@ function month(iqclient, adjustments, symbol, options) {
             split: (month.split || 1) * (day.split || 1),
             dividend: (month.dividend || 0) + (day.dividend || 0)
         }, day, month);
-      }, {})));
+      }, {}));
 }
 
-function week(iqclient, adjustments, symbol, options) {
+async function week(iqclient, adjustments, symbol, options) {
     const begin = moment.tz(options.begin, options.tz);
-    return day(iqclient, adjustments, symbol, _.defaults({
+    const bars = await day(iqclient, adjustments, symbol, _.defaults({
         begin: begin.day() === 0 || begin.day() == 6 ? begin.startOf('day') :
             begin.startOf('isoWeek').subtract(1, 'days'),
         end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days')
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW')))
-      .then(weeks => _.map(weeks, bars => bars.reduce((week, day) => {
+    }, options));
+    const weeks = _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW'));
+    return _.map(weeks, bars => bars.reduce((week, day) => {
         const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('isoWeek', day.ending, options),
@@ -474,27 +474,26 @@ function week(iqclient, adjustments, symbol, options) {
             split: (week.split || 1) * (day.split || 1),
             dividend: (week.dividend || 0) + (day.dividend || 0)
         }, day, week);
-      }, {})));
+      }, {}));
 }
 
-function day(iqclient, adjustments, symbol, options) {
-    return Promise.all([
+async function day(iqclient, adjustments, symbol, options) {
+    const [prices, adjusts] = await Promise.all([
         iqclient.day(symbol, options.begin, null, options.tz),
         adjustments && adjustments(options)
-    ]).then(prices_adjustments => {
-        const prices = prices_adjustments[0], adjustments = prices_adjustments[1];
-        return adjRight(prices, adjustments, options, (today, datum, splits, adj) => ({
-            ending: endOf('day', datum.Date_Stamp, options),
-            open: parseCurrency(datum.Open, splits),
-            high: parseCurrency(datum.High, splits),
-            low: parseCurrency(datum.Low, splits),
-            close: parseCurrency(datum.Close, splits) || today.close,
-            volume: parseFloat(datum.Period_Volume) || 0,
-            adj_close: Math.round(
-                parseCurrency(datum.Close, splits) * adj
-                * 1000000) / 1000000 || today.adj_close
-        }));
-    }).then(result => {
+    ]);
+    const result = adjRight(prices, adjusts, options, (today, datum, splits, adj) => ({
+        ending: endOf('day', datum.Date_Stamp, options),
+        open: parseCurrency(datum.Open, splits),
+        high: parseCurrency(datum.High, splits),
+        low: parseCurrency(datum.Low, splits),
+        close: parseCurrency(datum.Close, splits) || today.close,
+        volume: parseFloat(datum.Period_Volume) || 0,
+        adj_close: Math.round(
+            parseCurrency(datum.Close, splits) * adj
+            * 1000000) / 1000000 || today.adj_close
+    }));
+    return Promise.resolve(result).then(result => {
         if (_.last(result) && !_.last(result).close) result.pop();
         if (!options.end) return result;
         const end = moment.tz(options.end || now, options.tz);
@@ -507,38 +506,35 @@ function day(iqclient, adjustments, symbol, options) {
     }).then(bars => includeIntraday(iqclient, adjustments, bars, symbol, options));
 }
 
-function intraday(iqclient, adjustments, symbol, options) {
-    return Promise.all([
+async function intraday(iqclient, adjustments, symbol, options) {
+    const [prices, adjusts] = await Promise.all([
         iqclient.minute(options.minutes, symbol, options.begin, options.end, options.tz),
         adjustments && adjustments(options)
-    ]).then(prices_adjustments => {
-        const prices = prices_adjustments[0], adjustments = prices_adjustments[1];
-        return adjRight(prices, adjustments, options, (today, datum, splits, adj) => ({
-            ending: moment.tz(datum.Time_Stamp, 'America/New_York').tz(options.tz).format(),
-            open: parseFloat(datum.Open),
-            high: parseFloat(datum.High),
-            low: parseFloat(datum.Low),
-            close: parseFloat(datum.Close) || today.close,
-            volume: parseFloat(datum.Period_Volume) || 0,
-            total_volume: parseFloat(datum.Total_Volume),
-            adj_close: Math.round(
-                parseFloat(datum.Close) * adj
-                * 1000000) / 1000000 || today.adj_close
-        })).filter(bar => bar.volume);
-    }).then(result => {
-        if (_.last(result) && !_.last(result).close) result.pop();
-        if (!options.end) return result;
-        const end = moment.tz(options.end, options.tz);
-        if (end.isAfter()) return result;
-        const final = end.format();
-        let last = _.sortedIndex(result, {ending: final}, 'ending');
-        if (result[last] && result[last].ending == final) last++;
-        if (last == result.length) return result;
-        else return result.slice(0, last);
-    });
+    ]);
+    const result = adjRight(prices, adjusts, options, (today, datum, splits, adj) => ({
+        ending: moment.tz(datum.Time_Stamp, 'America/New_York').tz(options.tz).format(),
+        open: parseFloat(datum.Open),
+        high: parseFloat(datum.High),
+        low: parseFloat(datum.Low),
+        close: parseFloat(datum.Close) || today.close,
+        volume: parseFloat(datum.Period_Volume) || 0,
+        total_volume: parseFloat(datum.Total_Volume),
+        adj_close: Math.round(
+            parseFloat(datum.Close) * adj
+            * 1000000) / 1000000 || today.adj_close
+    })).filter(bar => bar.volume);
+    if (_.last(result) && !_.last(result).close) result.pop();
+    if (!options.end) return result;
+    const end = moment.tz(options.end, options.tz);
+    if (end.isAfter()) return result;
+    const final = end.format();
+    let last = _.sortedIndex(result, {ending: final}, 'ending');
+    if (result[last] && result[last].ending == final) last++;
+    if (last == result.length) return result;
+    else return result.slice(0, last);
 }
 
-function includeIntraday(iqclient, adjustments, bars, symbol, options) {
+async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     const now = moment.tz(options.now, options.tz);
     if (now.days() === 6 || !bars.length) return bars;
     const tz = options.tz;
@@ -551,11 +547,12 @@ function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     if (end.isBefore(opensAt)) return bars;
     let adj = _.last(bars).adj_close / _.last(bars).close;
     const test_size = bars.length;
-    return mostRecentTrade(iqclient, adjustments, symbol, _.defaults({
+    const intraday = await mostRecentTrade(iqclient, adjustments, symbol, _.defaults({
         begin: _.last(bars).ending,
         end: end.format(),
         tz: tz
-    }, options)).then(intraday => intraday.reduce((bars, bar) => {
+    }, options));
+    return intraday.reduce((bars, bar) => {
         if (_.last(bars).incomplete) bars.pop(); // remove incomplete (holi)days
         if (adjustments && bar.ending == _.last(bars).ending) {
             adj = _.last(bars).adj_close / bar.close;
@@ -563,7 +560,7 @@ function includeIntraday(iqclient, adjustments, bars, symbol, options) {
             bars.push(_.extend({}, bar, {adj_close: bar.close * adj}));
         }
         return bars;
-    }, bars));
+    }, bars);
 }
 
 async function mostRecentTrade(iqclient, adjustments, symbol, options) {
@@ -597,9 +594,10 @@ async function mostRecentTrade(iqclient, adjustments, symbol, options) {
     }
 }
 
-function rollday(iqclient, adjustments, interval, symbol, options) {
+async function rollday(iqclient, adjustments, interval, symbol, options) {
     const asof = moment().tz(options.tz).format();
-    return intraday(iqclient, adjustments, symbol, options).then(bars => bars.reduce((days, bar) => {
+    const bars = await intraday(iqclient, adjustments, symbol, options);
+    return bars.reduce((days, bar) => {
         const merging = days.length && _.last(days).ending >= bar.ending;
         if (!merging && isBeforeOpen(bar.ending, options)) return days;
         const today = merging ? days.pop() : {};
@@ -614,7 +612,7 @@ function rollday(iqclient, adjustments, interval, symbol, options) {
             incomplete: true
         });
         return days;
-    }, []));
+    }, []);
 }
 
 const months = {
@@ -636,31 +634,30 @@ function isOptionExpired(symbol) {
     return exdate.isValid() && exdate.isBefore();
 }
 
-function summarize(iqclient, symbol, options) {
+async function summarize(iqclient, symbol, options) {
     const now = moment();
     const asof = moment(now).tz(options.tz).format();
-    return iqclient.summary(symbol).then(summary => {
-        const use_mid = summary.decimal_precision && summary.ask && summary.bid;
-        const date = use_mid ? now.tz('America/New_York') :
-            moment.tz(summary.most_recent_trade_date, 'MM/DD/YYYY', 'America/New_York');
-        const time = use_mid ? _.last(_.sortBy([summary.bid_timems, summary.ask_timems])) :
-            summary.most_recent_trade_timems;
-        const ending = moment.tz(date.format('YYYY-MM-DD') + ' ' + time, 'America/New_York').tz(options.tz);
-        const ten = use_mid && Math.pow(10, +summary.decimal_precision);
-        const close = use_mid ? Math.round((+summary.ask + +summary.bid)/2 * ten)/ten :
-            summary.most_recent_trade;
-        if (!close || !ending.isValid() || ending.isAfter(now)) return [];
-        else return [{
-            ending: endOf('day', ending, options),
-            open: +summary.open,
-            high: +summary.high,
-            low: +summary.low,
-            close: close,
-            volume: +summary.total_volume,
-            asof: asof,
-            incomplete: true
-        }];
-    });
+    const summary = await iqclient.summary(symbol);
+    const use_mid = summary.decimal_precision && summary.ask && summary.bid;
+    const date = use_mid ? now.tz('America/New_York') :
+        moment.tz(summary.most_recent_trade_date, 'MM/DD/YYYY', 'America/New_York');
+    const time = use_mid ? _.last(_.sortBy([summary.bid_timems, summary.ask_timems])) :
+        summary.most_recent_trade_timems;
+    const ending = moment.tz(date.format('YYYY-MM-DD') + ' ' + time, 'America/New_York').tz(options.tz);
+    const ten = use_mid && Math.pow(10, +summary.decimal_precision);
+    const close = use_mid ? Math.round((+summary.ask + +summary.bid)/2 * ten)/ten :
+        summary.most_recent_trade;
+    if (!close || !ending.isValid() || ending.isAfter(now)) return [];
+    else return [{
+        ending: endOf('day', ending, options),
+        open: +summary.open,
+        high: +summary.high,
+        low: +summary.low,
+        close: close,
+        volume: +summary.total_volume,
+        asof: asof,
+        incomplete: true
+    }];
 }
 
 function adjustment(base, bar) {

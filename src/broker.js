@@ -35,27 +35,23 @@ const logger = require('./logger.js');
 const Collective2 = require('./broker-collective2.js');
 const expect = require('chai').expect;
 
-module.exports = function(settings) {
+module.exports = async function(settings) {
     let promiseHelpWithSettings, promiseHelpWithOptions;
     if (!promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Collective2);
     if (settings.help) return promiseHelpWithSettings;
-    else return promiseHelpWithSettings
-      .then(help => _.pick(settings, _.flatten(_.map(help, info => _.keys(info.options)))))
-      .then(settings => {
-        const collective2 = Collective2(settings);
-        return _.extend(function(options) {
-            if (!promiseHelpWithOptions) promiseHelpWithOptions = helpWithOptions(collective2);
-            if (options.help) return promiseHelpWithOptions;
-            else return promiseHelpWithOptions
-              .then(help => _.pick(options, _.flatten(_.map(help, info => _.keys(info.options)))))
-              .then(options => {
-                return broker(collective2, options);
-            });
-        }, {
-            close() {
-                return collective2.close();
-            }
-        });
+    const help = await promiseHelpWithSettings;
+    const mini_settings = _.pick(settings, _.flatten(_.map(help, info => _.keys(info.options))));
+    const collective2 = new Collective2(mini_settings);
+    return Object.assign(async function(options) {
+        if (!promiseHelpWithOptions) promiseHelpWithOptions = helpWithOptions(collective2);
+        if (options.help) return promiseHelpWithOptions;
+        const help = await promiseHelpWithOptions;
+        const opts = _.pick(options, _.flatten(_.map(help, info => _.keys(info.options))));
+        return broker(collective2, opts);
+    }, {
+        close() {
+            return collective2.close();
+        }
     });
 };
 

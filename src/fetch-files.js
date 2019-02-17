@@ -52,12 +52,12 @@ module.exports = function() {
     });
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const dirname = config('fetch.files.dirname') || dir;
-    const store = Promise.resolve(storage(dirname));
-    const open = (name, cb) => store.then(store => store.open(name, cb));
+    const store = storage(dirname);
+    const open = (name, cb) => store.open(name, cb);
     return {
-        close() {
-            return Promise.all(_.map(fallbacks, fb => fb.close()))
-                .then(() => store).then(store => store.close());
+        async close() {
+            await Promise.all(_.map(fallbacks, fb => fb.close()))
+            return store.close();
         },
         help: readOrWriteHelp.bind(this, fallbacks, open, 'help'),
         lookup: readOrWriteResult.bind(this, fallbacks, open, 'lookup'),
@@ -68,82 +68,79 @@ module.exports = function() {
 };
 
 function readOrWriteHelp(fallbacks, open, name) {
-    return open(name, (err, db) => {
+    return open(name, async(err, db) => {
         if (err) throw err;
-        return db.collection(name).then(coll => coll.lockWith([name], names => {
-            return Promise.resolve().then(() => {
-                if (coll.exists(name))
-                    return coll.readFrom(name).then(result => result.map(help => _.defaults({
-                        // need to restore columns into objects
-                        options: _.isString(help.options) ?
-                            JSON.parse(help.options) : help.options,
-                        properties: _.isString(help.properties) ?
-                            JSON.parse(help.properties) : help.properties
-                    }, help))).catch(err => {});
-            }).then(result => {
-                if (result)
-                    return result;
-                else if (_.isEmpty(fallbacks))
-                    throw Error("Data file not found " + coll.filenameOf(name));
-                else return help(_.values(fallbacks)).then(result => {
-                    return coll.writeTo(result.map(datum => _.extend({}, datum, {
-                        options: JSON.stringify(datum.options),
-                        properties: JSON.stringify(datum.properties)
-                    })), name).then(() => result);
-                });
+        const coll = await db.collection(name);
+        return coll.lockWith([name], async(names) => {
+            const result = coll.exists(name) && await coll.readFrom(name)
+              .then(result => result.map(help => _.defaults({
+                // need to restore columns into objects
+                options: _.isString(help.options) ?
+                    JSON.parse(help.options) : help.options,
+                properties: _.isString(help.properties) ?
+                    JSON.parse(help.properties) : help.properties
+            }, help))).catch(err => {});
+            if (result)
+                return result;
+            else if (_.isEmpty(fallbacks))
+                throw Error("Data file not found " + coll.filenameOf(name));
+            else return help(_.values(fallbacks)).then(async(result) => {
+                await coll.writeTo(result.map(datum => _.extend({}, datum, {
+                    options: JSON.stringify(datum.options),
+                    properties: JSON.stringify(datum.properties)
+                })), name);
+                return result;
             });
-        }));
+        });
     });
 }
 
-function help(datasources) {
-    return Promise.all(_.map(datasources, datasource => {
-        return datasource.help();
-    })).then(helps => {
-        const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
-        return groups.map(helps => helps.reduce((help, h) => {
-            const options = _.extend({}, h.options, help.options);
-            return {
-                name: help.name || h.name,
-                usage: help.usage || h.usage,
-                description: help.description || h.description,
-                properties: _.union(help.properties, h.properties),
-                options: _.mapObject(options, (option, name) => {
-                    if (option.values && h.options[name] && h.options[name].values) return _.defaults({
-                        values: _.compact(_.flatten([options.values, h.options[name].values], true))
-                    }, option);
-                    else if (option.values || h.options[name] && h.options[name].values) return _.defaults({
-                        values: options.values || h.options[name] && h.options[name].values
-                    }, option);
-                    else return option;
-                })
-            };
-        }, {}));
-    });
+async function help(datasources) {
+    const helps = await Promise.all(_.map(datasources, ds => ds.help()));
+    const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
+    return groups.map(helps => helps.reduce((help, h) => {
+        const options = _.extend({}, h.options, help.options);
+        return {
+            name: help.name || h.name,
+            usage: help.usage || h.usage,
+            description: help.description || h.description,
+            properties: _.union(help.properties, h.properties),
+            options: _.mapObject(options, (option, name) => {
+                if (option.values && h.options[name] && h.options[name].values) return _.defaults({
+                    values: _.compact(_.flatten([options.values, h.options[name].values], true))
+                }, option);
+                else if (option.values || h.options[name] && h.options[name].values) return _.defaults({
+                    values: options.values || h.options[name] && h.options[name].values
+                }, option);
+                else return option;
+            })
+        };
+    }, {}));
 }
 
 function readOrWriteResult(fallbacks, open, cmd, options) {
     const args = _.compact(_.pick(options, 'interval', 'minutes', 'begin', 'end'));
     const name = options.market ? options.symbol + '.' + options.market : options.symbol;
-    return open(name, (err, db) => {
+    return open(name, async(err, db) => {
         if (err) throw err;
-        return db.collection(cmd).then(coll => coll.lockWith([name], names => {
+        const coll = await db.collection(cmd);
+        return coll.lockWith([name], names => {
             const name = _.map(args, arg => safe(arg)).join('.') || 'result';
             if (coll.exists(name)) return coll.readFrom(name);
             else if (_.isEmpty(fallbacks))
                 throw Error("Data file not found " + coll.filenameOf(name));
-            else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(err => {
+            else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(async(err) => {
                 if (!(options.interval == 'lookup' && config(['fetch', source, 'lookup'])) &&
                         !(options.interval == 'fundamental' && config(['fetch', source, 'fundamental'])) &&
                         !_.contains(config(['fetch', source, 'interday']), options.interval) &&
                         !_.contains(config(['fetch', source, 'intraday']), options.interval))
                     throw (err || Error("No fallback available for " + options.interval));
                 const opt = _.defaults({}, options);
-                return fb[cmd](opt).then(result => {
-                    return coll.writeTo(result, name).then(() => result);
-                });
+                const result = await fb[cmd](opt);
+                await coll.writeTo(result, name)
+                return result;
             }), Promise.reject());
-        }));
+        });
     });
 }
 

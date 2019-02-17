@@ -47,16 +47,14 @@ const expect = require('chai').expect;
  */
 module.exports = function(optimize) {
     let promiseHelp;
-    return _.extend(function(options) {
+    return Object.assign(async function(options) {
         if (!promiseHelp) promiseHelp = help(optimize);
         if (options.help) return promiseHelp;
-        else return promiseHelp.then(help => {
-            const fields = _.first(help).properties;
-            const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
-                tz: moment.tz.guess()
-            });
-            return bestsignals(optimize, opts);
+        const keys = _.keys(_.first(await promiseHelp).options);
+        const opts = _.defaults(_.pick(options, keys), {
+            tz: moment.tz.guess()
         });
+        return bestsignals(optimize, opts);
     }, {
         close() {
             return Promise.resolve();
@@ -67,60 +65,54 @@ module.exports = function(optimize) {
 /**
  * Array of one Object with description of module, including supported options
  */
-function help(optimize) {
-    return optimize({help: true}).then(_.first).then(help => {
-        return [{
-            name: 'bestsignals',
-            usage: 'bestsignals(options)',
-            description: "Searches possible signal parameters to find the highest score",
-            properties: ['signal_variable', 'variables'].concat(help.properties),
-            options: _.extend({}, help.options, {
-                signals: {
-                    usage: '[<variable name>,..]',
-                    description: "Array of variable names that should be tested as signals"
-                },
-                signal_variable: {
-                    usage: '<variable name>',
-                    description: "The variable name to use when testing various signals"
-                },
-                signalset: {
-                    usage: '[<signalset>,..]',
-                    description: "Array of signal sets that include array of signals (variable names), hash of variables, default parameters, and possible parameter_values"
-                }
-            })
-        }];
-    });
+async function help(optimize) {
+    const help = _.first(await optimize({help: true}));
+    return [{
+        name: 'bestsignals',
+        usage: 'bestsignals(options)',
+        description: "Searches possible signal parameters to find the highest score",
+        properties: ['signal_variable', 'variables'].concat(help.properties),
+        options: _.extend({}, help.options, {
+            signals: {
+                usage: '[<variable name>,..]',
+                description: "Array of variable names that should be tested as signals"
+            },
+            signal_variable: {
+                usage: '<variable name>',
+                description: "The variable name to use when testing various signals"
+            },
+            signalset: {
+                usage: '[<signalset>,..]',
+                description: "Array of signal sets that include array of signals (variable names), hash of variables, default parameters, and possible parameter_values"
+            }
+        })
+    }];
 }
 
 /**
  * Searches possible signal parameters to determine the best score for a date range
  */
-function bestsignals(optimize, options) {
-    return Promise.all(getSignalSets(options).map((options, set) => {
+async function bestsignals(optimize, options) {
+    const signals = _.flatten(await Promise.all(getSignalSets(options).map(async(options, set) => {
         const signals = _.isString(options.signals) ? options.signals.split(',') :
             _.isEmpty(options.signals) ? ['signal'] :options.signals;
         expect(options).to.have.property('parameter_values');
         expect(options).to.have.property('signals');
-        return Promise.all(signals.map(signal => {
+        const all_signals = _.flatten(await Promise.all(signals.map(signal => {
             return bestsignal(optimize, signal, options);
-        })).then(_.flatten).then(signals => {
-            const count = options.solution_count || 1;
-            return _.sortBy(signals, 'score').slice(-count).reverse();
-        }).then(signals => {
-            if (!options.signalset) return signals;
-            const signalset = _.isArray(options.signalset) ?
-                [options.signalset[set]] : options.signalset;
-            return signals.map(signal => merge(options, signal, {signalset}));
-        });
-    })).then(_.flatten).then(signals => {
+        })));
         const count = options.solution_count || 1;
-        return _.sortBy(signals, 'score').slice(-count).reverse();
-    }).then(solutions => {
+        const rev_signals = _.sortBy(all_signals, 'score').slice(-count).reverse();
+        if (!options.signalset) return rev_signals;
+        const signalset = _.isArray(options.signalset) ?
+            [options.signalset[set]] : options.signalset;
+        return rev_signals.map(signal => merge(options, signal, {signalset}));
+    })));
+    const count = options.solution_count || 1;
+    const solutions = _.sortBy(signals, 'score').slice(-count).reverse();
+    if (options.solution_count)
         return solutions.map(solution => formatSignal(solution, options));
-    }).then(solutions => {
-        if (options.solution_count) return solutions;
-        else return _.first(solutions);
-    });
+    else return formatSignal(_.first(solutions), options);
 }
 
 /**
@@ -144,24 +136,24 @@ function getSignalSets(options) {
 /**
  * Optimizes signal parameter values to determine the ones with the best scores
  */
-function bestsignal(optimize, signal, options) {
+async function bestsignal(optimize, signal, options) {
     const pnames = getParameterNames(signal, options);
     const pvalues = pnames.map(name => options.parameter_values[name]);
     const signal_variable = options.signal_variable || 'signal';
     const signal_vars = signal_variable != signal ? {[signal_variable]: signal} : {};
-    return optimize(_.defaults({
+    const solutions = await optimize(_.defaults({
         label: signal + (options.label ? ' ' + options.label : ''),
         solution_count: options.solution_count || 1,
         variables: _.defaults(signal_vars, options.variables),
         parameter_values: _.object(pnames, pvalues)
-    }, options))
-      .then(solutions => solutions.map((solution, i) => _.defaults({
+    }, options));
+    return solutions.map((solution, i) => _.defaults({
         score: solution.score,
         signal_variable: signal_variable,
         variables: _.defaults({[signal_variable]: signal}, options.variables),
         parameters: solution.parameters,
         parameter_values: _.object(pnames, pvalues)
-    }, options)));
+    }, options));
 }
 
 /**

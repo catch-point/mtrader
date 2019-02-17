@@ -132,22 +132,22 @@ module.exports = function(process) {
             process.once(event, listener.bind(this));
             return this;
         },
-        send(cmd, payload) {
+        async send(cmd, payload) {
             inc(stats, cmd, 'messages_sent');
-            const connect = !process.connecting ? Promise.resolve() :
-                new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
-            return connect.then(() => new Promise(cb => process.send({
+            if (process.connecting)
+                await new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
+            return new Promise(cb => process.send({
                 cmd: cmd,
                 payload: payload
             }, cb)).then(err => {
                 if (err) throw err;
-            }));
+            });
         },
-        request(cmd, payload) {
+        async request(cmd, payload) {
             inc(stats, cmd, 'requests_sent');
-            const connect = !process.connecting ? Promise.resolve() :
-                new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
-            return connect.then(() => new Promise((response, error) => {
+            if (process.connecting)
+                await new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
+            return new Promise((response, error) => {
                 const id = nextId(cmd);
                 queue.add(id, {
                     onresponse: response,
@@ -162,7 +162,7 @@ module.exports = function(process) {
                 }, err => {
                     if (err) error(err);
                 });
-            }));
+            });
         },
         handle(cmd, handler) {
             handlers[cmd] = handler;

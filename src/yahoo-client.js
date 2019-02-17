@@ -57,29 +57,28 @@ module.exports = function() {
 };
 
 function promiseHistoryAgent() {
-    const createAgent = symbol => {
+    const createAgent = async symbol => {
         const options = url.parse(quote.replace('{symbol}', encodeURIComponent(symbol)));
         const headers = options.headers = {};
-        return promiseText(options).then(body => {
-            const keyword = '{"crumb":"';
-            let start = 0, end = 0;
-            do {
-                start = body.indexOf(keyword, start) + keyword.length;
-                end = body.indexOf('"', start);
-            } while (start > 0 && body.substring(start-1, end+1)=='"{crumb}"');
-            if (start < 0 && end < 0) return promiseText;
-            try {
-                const crumb = encodeURIComponent(JSON.parse(body.substring(start-1, end+1)));
-                return query => {
-                    const options = url.parse(query.replace('{crumb}', crumb));
-                    options.headers = headers;
-                    return promiseText(options);
-                };
-            } catch(err) {
-                logger.error("Could not find yahoo crumb", body.substring(start-1, end+1));
-                throw err;
-            }
-        });
+        const body = await promiseText(options);
+        const keyword = '{"crumb":"';
+        let start = 0, end = 0;
+        do {
+            start = body.indexOf(keyword, start) + keyword.length;
+            end = body.indexOf('"', start);
+        } while (start > 0 && body.substring(start-1, end+1)=='"{crumb}"');
+        if (start < 0 && end < 0) return promiseText;
+        try {
+            const crumb = encodeURIComponent(JSON.parse(body.substring(start-1, end+1)));
+            return query => {
+                const options = url.parse(query.replace('{crumb}', crumb));
+                options.headers = headers;
+                return promiseText(options);
+            };
+        } catch(err) {
+            logger.error("Could not find yahoo crumb", body.substring(start-1, end+1));
+            throw err;
+        }
     };
     const agent = expire(createAgent, 60 * 1000);
     return query => {

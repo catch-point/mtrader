@@ -136,8 +136,8 @@ function collective2(collect, broker, options) {
                 logger.debug("collective2", "desired", symbol, JSON.stringify(desired[symbol]));
             return signals.concat(update);
         }, []);
-    })).then(signals => signals.reduce((promise, signal) => promise.then(result => {
-        check();
+    })).then(signals => signals.reduce((promise, signal) => promise.then(async(result) => {
+        await check();
         if (signal && signal.action) return broker(signal);
         else if (_.isString(signal)) return broker({action: 'cancelSignal', signalid: signal});
         else throw Error("Unknown signal: " + JSON.stringify(signal));

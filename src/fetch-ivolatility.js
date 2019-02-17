@@ -152,7 +152,7 @@ const months = {
     S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
 };
 const strike_format = d3.format("08d");
-function loadIvolatility(ivolatility, options) {
+async function loadIvolatility(ivolatility, options) {
     const symbol = options.symbol;
     const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) throw Error(`Unknown option symbol format ${symbol}`);
@@ -167,8 +167,8 @@ function loadIvolatility(ivolatility, options) {
     const cp = cmonth ? 'C' : 'P';
     const strike = strike_format(+m[5] * 1000);
     const iv_symbol = `${underlying}${yy}${mo}${day}${cp}${strike}`;
-    return ivolatility(_.defaults({}, options, {iv_symbol}))
-      .then(data => data.map(datum => {
+    const data = await ivolatility(_.defaults({}, options, {iv_symbol}))
+    return data.map(datum => {
         const mid = Math.round((datum.ask + datum.bid)*100/2)/100;
         const mdy = datum.date.match(/^(\d\d)\/(\d\d)\/(\d\d\d\d)$/);
         const closes = moment.tz(`${mdy[3]}-${mdy[1]}-${mdy[2]} ${options.marketClosesAt}`, options.tz);
@@ -181,7 +181,7 @@ function loadIvolatility(ivolatility, options) {
             volume: datum.volume,
             adj_close: mid
         };
-    }));
+    });
 }
 
 function isOptionActive(symbol, begin, end) {
@@ -218,7 +218,7 @@ function day(readTable, delegate, options) {
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
         else return result.slice(0, last);
-    }).then(adata => {
+    }).then(async(adata) => {
         if (!delegate) return adata;
         if (adata.length) {
             if (now.days() === 0 || now.days() === 6) return adata;
@@ -231,35 +231,34 @@ function day(readTable, delegate, options) {
             if (end.isBefore(opensAt)) return adata;
             if (!isOptionActive(options.symbol, opensAt, now)) return adata;
         }
-        return delegate.interday(_.defaults({
+        const bdata = await delegate.interday(_.defaults({
             interval: 'day',
             begin: adata.length ? _.last(adata).ending : options.begin
-        }, options)).then(bdata => {
-            const cdata = new Array(Math.max(adata.length, bdata.length));
-            let a = 0, b = 0, c = 0;
-            while (a < adata.length || b < bdata.length) {
-                if (a >= adata.length) cdata[c++] = bdata[b++];
-                else if (b >= bdata.length) cdata[c++] = adata[a++];
-                else if (adata[a].ending < bdata[b].ending) cdata[c++] = adata[a++];
-                else if (adata[a].ending > bdata[b].ending) cdata[c++] = bdata[b++];
-                else {
-                    b++;
-                    cdata[c++] = adata[a++];
-                }
+        }, options));
+        const cdata = new Array(Math.max(adata.length, bdata.length));
+        let a = 0, b = 0, c = 0;
+        while (a < adata.length || b < bdata.length) {
+            if (a >= adata.length) cdata[c++] = bdata[b++];
+            else if (b >= bdata.length) cdata[c++] = adata[a++];
+            else if (adata[a].ending < bdata[b].ending) cdata[c++] = adata[a++];
+            else if (adata[a].ending > bdata[b].ending) cdata[c++] = bdata[b++];
+            else {
+                b++;
+                cdata[c++] = adata[a++];
             }
-            return cdata;
-        });
+        }
+        return cdata;
     });
 }
 
-function year(day, options) {
+async function year(day, options) {
     const end = options.end && moment.tz(options.end, options.tz);
-    return month(day, _.defaults({
+    const bars = await month(day, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('year'),
         end: end && (end.isAfter(moment(end).startOf('year')) ? end.endOf('year') : end)
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).year()))
-      .then(years => _.map(years, bars => bars.reduce((year, month) => {
+    }, options));
+    const years = _.groupBy(bars, bar => moment(bar.ending).year());
+    return _.map(years, bars => bars.reduce((year, month) => {
         const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('year', month.ending, options),
@@ -270,17 +269,17 @@ function year(day, options) {
             volume: year.volume + month.volume || year.volume || month.volume,
             adj_close: month.adj_close
         }, month, year);
-      }, {})));
+      }, {}));
 }
 
-function quarter(day, options) {
+async function quarter(day, options) {
     const end = options.end && moment.tz(options.end, options.tz);
-    return month(day, _.defaults({
+    const bars = await month(day, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('quarter'),
         end: end && (end.isAfter(moment(end).startOf('quarter')) ? end.endOf('quarter') : end)
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-Q')))
-      .then(quarters => _.map(quarters, bars => bars.reduce((quarter, month) => {
+    }, options));
+    const quarters = _.groupBy(bars, bar => moment(bar.ending).format('Y-Q'));
+    return _.map(quarters, bars => bars.reduce((quarter, month) => {
         const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('quarter', month.ending, options),
@@ -291,17 +290,17 @@ function quarter(day, options) {
             volume: quarter.volume + month.volume || quarter.volume || month.volume,
             adj_close: month.adj_close
         }, month, quarter);
-      }, {})));
+      }, {}));
 }
 
-function month(day, options) {
+async function month(day, options) {
     const end = options.end && moment.tz(options.end, options.tz);
-    return day(_.defaults({
+    const bars = await day(_.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('month'),
         end: end && (end.isAfter(moment(end).startOf('month')) ? end.endOf('month') : end)
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-MM')))
-      .then(months => _.map(months, bars => bars.reduce((month, day) => {
+    }, options));
+    const months = _.groupBy(bars, bar => moment(bar.ending).format('Y-MM'));
+    return _.map(months, bars => bars.reduce((month, day) => {
         const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('month', day.ending, options),
@@ -312,18 +311,18 @@ function month(day, options) {
             volume: month.volume + day.volume || month.volume || day.volume,
             adj_close: day.adj_close
         }, day, month);
-      }, {})));
+      }, {}));
 }
 
-function week(day, options) {
+async function week(day, options) {
     const begin = moment.tz(options.begin, options.tz);
-    return day(_.defaults({
+    const bars = await day(_.defaults({
         begin: begin.day() === 0 || begin.day() == 6 ? begin.startOf('day') :
             begin.startOf('isoWeek').subtract(1, 'days'),
         end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days')
-    }, options))
-      .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW')))
-      .then(weeks => _.map(weeks, bars => bars.reduce((week, day) => {
+    }, options));
+    const weeks = _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW'));
+    return _.map(weeks, bars => bars.reduce((week, day) => {
         const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('isoWeek', day.ending, options),
@@ -334,7 +333,7 @@ function week(day, options) {
             volume: week.volume + day.volume || week.volume || day.volume,
             adj_close: day.adj_close
         }, day, week);
-      }, {})));
+      }, {}));
 }
 
 function adjustment(base, bar) {

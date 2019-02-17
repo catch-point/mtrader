@@ -166,12 +166,12 @@ function createQueue(createWorkers) {
         const slave = chooseSlaveWorker(queue.getWorkers(), master, options);
         const opts = slave == master ? options :
             _.extend({read_only: true}, options);
-        return slave.request('quote', opts).catch(err => {
+        return slave.request('quote', opts).catch(async(err) => {
             if (!err || !err.message) throw err;
             else if (!~err.message.indexOf('read_only')) throw err;
             else if (!opts.read_only || _.has(options, 'read_only')) throw err;
             else if (slave == getMasterWorker(queue.getWorkers(), options)) throw err;
-            else if (check()) throw err;
+            else if (await check()) throw err;
             logger.debug("Retrying", options.label || '\b', "using master node", master.process.pid);
             return queue(_.extend({read_only: false}, options)); // retry using master
         });

@@ -37,7 +37,6 @@ const csv = require('fast-csv');
 const expect = require('chai').expect;
 const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
-const interrupt = require('./interrupt.js');
 const debounce = require('./debounce.js');
 const cache = require('./memoize-cache.js');
 
@@ -366,7 +365,6 @@ function mergeMetadata(part, filename, metadata) {
 }
 
 function readTable(filename, size) {
-    const check = interrupt();
     return new Promise((ready, error) => {
         const objects = _.isFinite(size) ? new Array(size) : new Array();
         objects.length = 0;
@@ -374,7 +372,6 @@ function readTable(filename, size) {
             .on('error', error)
             .on('data', function(data) {
                 try {
-                    check();
                     objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value));
                 } catch (e) {
                     this.emit('error', e);

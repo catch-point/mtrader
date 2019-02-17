@@ -48,21 +48,20 @@ const expect = require('chai').expect;
  */
 module.exports = function(quote, collectFn) {
     let promiseHelp, self;
-    return self = _.extend(function(options) {
+    return self = Object.assign(async function(options) {
         if (!promiseHelp) promiseHelp = help(quote);
         expect(options).to.be.an('object');
         if (options.help) return promiseHelp;
-        else return promiseHelp.then(help => {
-            const fields = _.first(help).properties;
-            const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
-                indexCol: '$index',
-                symbolCol: '$symbol',
-                marketCol: '$market',
-                temporalCol: '$temporal',
-                tz: moment.tz.guess()
-            });
-            return collect(quote, collectFn || self, fields, opts);
+        const keys = _.keys(_.first(await promiseHelp).options);
+        const fields = _.first(await promiseHelp).properties;
+        const opts = _.defaults(_.pick(options, keys), {
+            indexCol: '$index',
+            symbolCol: '$symbol',
+            marketCol: '$market',
+            temporalCol: '$temporal',
+            tz: moment.tz.guess()
         });
+        return collect(quote, collectFn || self, fields, opts);
     }, {
         close() {
             return Promise.resolve();
@@ -73,61 +72,60 @@ module.exports = function(quote, collectFn) {
 /**
  * Array of one Object with description of module, including supported options
  */
-function help(quote) {
-    return quote({help: true}).then(_.first).then(help => {
-        return [{
-            name: 'collect',
-            usage: 'collect(options)',
-            description: "Evaluates columns using historic security data",
-            properties: help.properties,
-            options: _.extend({}, _.omit(help.options, ['symbol','market','pad_begin','pad_end']), {
-                portfolio: {
-                    usage: 'symbol.market,..',
-                    description: "Sets the set of securities or nested protfolios to collect data on"
-                },
-                filter: {
-                    usage: '<expression>',
-                    description: "An expression (possibly of an rolling function) of each included security bar that must be true to be included in the result. The result of these expressions have no impact on rolling functions, unlike criteria, which is applied earlier."
-                },
-                precedence: {
-                    usage: '<expression>',
-                    description: "The order that securities should be checked for inclusion in the result. A comma separated list of expressions can be provided and each may be wrapped in a DESC function to indicate the order should be reversed."
-                },
-                order: {
-                    usage: '<expression>,..',
-                    description: "The order that the output should be sorted by. A comma separated list of expressions can be provided and each may be wrapped in a DESC function to indicate the order should be reversed."
-                },
-                pad_leading: {
-                    usage: '<number of workdays>',
-                    description: "Number of workdays (Mon-Fri) to processes before the result (as a warm up)"
-                },
-                reset_every: {
-                    usage: 'P1Y',
-                    description: "Sets the duration that collect should run before resetting any preceeding values"
-                },
-                head: {
-                    usage: '<number of rows>',
-                    description: "Limits the rows in the result to the given first few"
-                },
-                tail: {
-                    usage: '<number of rows>',
-                    description: "Include the given last few rows in the result"
-                },
-                tz: {
-                    description: "Timezone formatted using the identifier in the tz database"
-                },
-                id: {
-                    description: "Unique alphanumeric identifier among its peers (optional)"
-                }
-            })
-        }];
-    });
+async function help(quote) {
+    const help = _.first(await quote({help: true}));
+    return [{
+        name: 'collect',
+        usage: 'collect(options)',
+        description: "Evaluates columns using historic security data",
+        properties: help.properties,
+        options: _.extend({}, _.omit(help.options, ['symbol','market','pad_begin','pad_end']), {
+            portfolio: {
+                usage: 'symbol.market,..',
+                description: "Sets the set of securities or nested protfolios to collect data on"
+            },
+            filter: {
+                usage: '<expression>',
+                description: "An expression (possibly of an rolling function) of each included security bar that must be true to be included in the result. The result of these expressions have no impact on rolling functions, unlike criteria, which is applied earlier."
+            },
+            precedence: {
+                usage: '<expression>',
+                description: "The order that securities should be checked for inclusion in the result. A comma separated list of expressions can be provided and each may be wrapped in a DESC function to indicate the order should be reversed."
+            },
+            order: {
+                usage: '<expression>,..',
+                description: "The order that the output should be sorted by. A comma separated list of expressions can be provided and each may be wrapped in a DESC function to indicate the order should be reversed."
+            },
+            pad_leading: {
+                usage: '<number of workdays>',
+                description: "Number of workdays (Mon-Fri) to processes before the result (as a warm up)"
+            },
+            reset_every: {
+                usage: 'P1Y',
+                description: "Sets the duration that collect should run before resetting any preceeding values"
+            },
+            head: {
+                usage: '<number of rows>',
+                description: "Limits the rows in the result to the given first few"
+            },
+            tail: {
+                usage: '<number of rows>',
+                description: "Include the given last few rows in the result"
+            },
+            tz: {
+                description: "Timezone formatted using the identifier in the tz database"
+            },
+            id: {
+                description: "Unique alphanumeric identifier among its peers (optional)"
+            }
+        })
+    }];
 }
 
 /**
  * Computes column values given expressions and variables in options
  */
-function collect(quote, callCollect, fields, options) {
+async function collect(quote, callCollect, fields, options) {
     const duration = options.reset_every && moment.duration(options.reset_every);
     const begin = moment.tz(options.begin, options.tz);
     const end = moment.tz(options.end || options.now, options.tz);
@@ -170,9 +168,8 @@ function collect(quote, callCollect, fields, options) {
             begin: segment, end: options.end
         }, compacted);
     }).map(opts => compactPortfolio(fields, opts.begin, opts.end, opts.tz || options.tz, opts));
-    return Promise.all(optionset.map(opts => callCollect(opts))).then(dataset => {
-        return _.flatten(dataset, true);
-    });
+    const dataset = await Promise.all(optionset.map(opts => callCollect(opts)))
+    return _.flatten(dataset, true);
 }
 
 /**
@@ -690,8 +687,8 @@ function collectDataset(dataset, parser, columns, options) {
     const pcolumns = promiseColumns(parser, columns, options);
     const pcriteria = promiseFilter(parser, options.criteria);
     const precedence = getOrderBy(options.precedence, columns, options);
-    return pcolumns.then(fcolumns => pcriteria.then(criteria => {
-        return reduceInterval(dataset, options.temporalCol, (result, points) => {
+    return pcolumns.then(fcolumns => pcriteria.then(async(criteria) => {
+        return await reduceInterval(dataset, options.temporalCol, (result, points) => {
             const positions = sortBy(points, precedence);
             const row = result.length;
             result[row] = positions.reduce((retained, point) => {
@@ -771,10 +768,10 @@ function getOrderBy(expr, columns, options) {
 /**
  * Takes the quote.js results as an array and matches the results by temporal date calling cb.
  */
-function reduceInterval(dataset, temporal, cb, memo) {
+async function reduceInterval(dataset, temporal, cb, memo) {
     const check = interrupt();
     while (dataset.some(list => list.length)) {
-        check();
+        await check();
         const ending = _.first(_.compact(_.pluck(dataset.map(list => _.first(list)), temporal)).sort());
         const points = dataset.reduce((result,list) => {
             while (list.length && _.first(list)[temporal] == ending) {

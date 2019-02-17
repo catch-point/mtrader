@@ -541,8 +541,8 @@ function promiseSocket(previous, createNewSocket) {
     return (previous || Promise.reject()).then(function(socket){
         if (!socket.destroyed) return socket;
         else throw Error("Socket not connected");
-    }).catch(err => {
-        if (check()) throw err;
+    }).catch(async(err) => {
+        if (await check()) throw err;
         return createNewSocket();
     });
 }
@@ -587,7 +587,6 @@ function promiseNewLookupSocket(blacklist, pending, port, retry) {
 }
 
 function promiseNewLevel1Socket(blacklist, watching, port, retry) {
-    const check = interrupt(true);
     const fundamentalFormat = ['type', 'symbol', 'market_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'market_root'];
     const summaryFormat = ['type', 'symbol', 'close', 'most_recent_trade_date', 'open', 'high', 'low', 'most_recent_trade_timems', 'most_recent_trade', 'bid_timems', 'bid', 'ask_timems', 'ask', 'total_volume', 'decimal_precision'];
     return openSocket(port).then(function(socket) {
@@ -645,8 +644,8 @@ function promiseNewLevel1Socket(blacklist, watching, port, retry) {
 
 function promiseNewAdminSocket(port, command, env, productId, productVersion) {
     const check = interrupt(true);
-    return openSocket(port).catch(err => {
-        if (check()) throw err;
+    return openSocket(port).catch(async(err) => {
+        if (await check()) throw err;
         if (command && err.code == 'ECONNREFUSED') {
             // try launching command first
             return new Promise((ready, exit) => {
@@ -660,12 +659,12 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
                     else ready();
                 }).unref();
                 ready();
-            }).then(() => openSocket(port)).catch(err => {
-                if (check()) throw err;
+            }).then(() => openSocket(port)).catch(async(err) => {
+                if (await check()) throw err;
                 if (err.code == 'ECONNREFUSED')
                     return new Promise(cb => _.delay(cb, 1000))
-                        .then(() => openSocket(port)).catch(err => {
-                            if (check()) throw err;
+                        .then(() => openSocket(port)).catch(async(err) => {
+                            if (await check()) throw err;
                             if (err.code == 'ECONNREFUSED')
                                 return new Promise(cb => _.delay(cb, 4000))
                                     .then(() => openSocket(port));

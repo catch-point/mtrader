@@ -50,7 +50,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
     const cache = {};
     const debounced = debounce(sweep, 10000, maxPoolSize);
     const releaseEntry = release.bind(this, debounced, size, cache);
-    const cached = function() {
+    const cached = async function() {
         const cb = _.isFunction(_.last(arguments)) ? _.last(arguments) : (err, result) => {
             if (err) throw err;
             else return result;
@@ -58,14 +58,13 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
         const args = _.isFunction(_.last(arguments)) ? _.initial(arguments) : arguments;
         const key = hash.apply(cached, args);
         if (cache[key] && cache[key].closing) {
-            return cache[key].closing.then(() => {
-                const entry = cache[key] = {
-                    id: key,
-                    result: func.apply(cached, args),
-                    registered: 0
-                };
-                return aquireEntry(releaseEntry, entry, cb);
-            });
+            await cache[key].closing;
+            const entry = cache[key] = {
+                id: key,
+                result: func.apply(cached, args),
+                registered: 0
+            };
+            return aquireEntry(releaseEntry, entry, cb);
         } else if (cache[key]) {
             const entry = cache[key];
             return aquireEntry(releaseEntry, entry, cb);

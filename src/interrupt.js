@@ -45,9 +45,11 @@ process.on('SIGINT', () => {
 
 module.exports = function(returnValue) {
     const base = interrupted;
-    if (arguments.length) return () => {
+    if (arguments.length) return async() => {
+        await new Promise(cb => cb());
         if (base != interrupted) return returnValue;
-    }; else return () => {
+    }; else return async() => {
+        await new Promise(cb => cb());
         if (base != interrupted) throw Error(signal);
     };
 }

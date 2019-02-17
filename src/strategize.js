@@ -207,8 +207,8 @@ function strategizeSome(bestsignals, prng, searchLeg, parser, termAt, started, o
         if (strategy.legs.length == 1) return latestScore;
         const withoutIt = isolations[i];
         return evaluate(bestsignals, scores, withoutIt, latest).then(score => latestScore - score);
-    })).then(contribs => {
-        if (check()) return msignals;
+    })).then(async(contribs) => {
+        if (await check()) return msignals;
         const label = options.label || '\b';
         logger.log("Strategize", label, "base", latest.variables[strategy_var], latestScore);
         const cost = getStrategyCost(strategy.expr, options);
@@ -237,7 +237,6 @@ function strategizeSome(bestsignals, prng, searchLeg, parser, termAt, started, o
  * Recursively tries to find the best strategy, until no more improvements can be made
  */
 function strategizeAll(bestsignals, searchLeg, parser, started, options, scores, state) {
-    const check = interrupt(true);
     _.defaults(state, {exhausted: [false], scores: []});
     const strategy_var = options.strategy_variable;
     const latest = state.signals[strategy_var];
@@ -377,13 +376,13 @@ function searchLeg(bestsignals, prng, parser, terminateAt, max_attempts, scores,
     let leg_signals = _.extend({}, signals, {[strategy_var]: latest});
     let attempts = 1;
     const next = search.bind(this, bestsignalFn, moreStrategiesFn);
-    const cb = next_signals => {
+    const cb = async(next_signals) => {
         const best = next_signals[strategy_var];
         const next_expr = best.variables[strategy_var];
         const disjunction_cost = latest.disjunction_cost;
         const better = empty ? best.score > best.cost + disjunction_cost :
             latest.score - latest.cost < best.score - best.cost;
-        if (better || attempts >= max_attempts || check() || Date.now() > terminateAt)
+        if (better || attempts >= max_attempts || await check() || Date.now() > terminateAt)
             return Promise.resolve(next_signals);
         attempts = _.isEqual(next_signals, leg_signals) ? attempts + 1 : 0;
         leg_signals = next_signals;
