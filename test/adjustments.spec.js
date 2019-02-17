@@ -196,4 +196,31 @@ describe("adjustments", function() {
             tz: tz
         }).should.eventually.be.like([]);
     });
+    it("should adjust first dividend", function() {
+        return adjustments({
+            symbol: 'SPY',
+            market: 'ARCA',
+            begin: '2017-03-15',
+            tz: tz
+        }).then(adjustments => {
+            var end = '2017-03-21';
+            var idx = _.sortedIndex(adjustments, {exdate: end}, 'exdate');
+            var after = adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
+            return adjustments
+              .filter(datum => datum.exdate <= end)
+              .map(datum => _.extend(datum, {
+                adj: datum.adj / after.adj,
+                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
+                adj_split_only: datum.adj_split_only / after.adj_split_only
+              }));
+        }).should.eventually.be.like([{
+            exdate: '2017-03-17',
+            adj: 0.9956683997931635,
+            adj_dividend_only: 0.9956683997931635,
+            adj_split_only: 1,
+            cum_close: 238.479996,
+            split: 1,
+            dividend: 1.033
+        }]);
+    });
 });

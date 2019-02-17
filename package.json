@@ -20,14 +20,27 @@
     "yauzl": "^2.10.0"
   },
   "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-plugin-istanbul": "^5.1.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-register": "^6.26.0",
+    "chai": "^3.5.0",
     "chai-as-promised": "^6.0.0",
-    "mocha": "^3.1.2",
-    "nyc": "^11.6.0"
+    "cross-env": "^5.2.0",
+    "mocha": "^3.5.3",
+    "nyc": "^11.9.0"
   },
   "scripts": {
     "test": "mocha",
     "inspect": "mocha --debug-brk --inspect",
-    "coverage": "nyc --reporter=html mocha"
+    "coverage": "cross-env NODE_ENV=test nyc --reporter=html mocha"
+  },
+  "nyc": {
+    "require": [
+      "babel-register"
+    ],
+    "sourceMap": false,
+    "instrument": false
   },
   "repository": {
     "type": "git",

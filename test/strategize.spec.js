@@ -43,7 +43,7 @@ const createTempDir = require('./create-temp-dir.js');
 
 describe("strategize", function() {
     this.timeout(240000);
-    var fetch, quote, collect, optimize, bestsignals;
+    var fetch, quote, collect, optimize, bestsignals, strategize;
     before(function() {
         config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', path.resolve(__dirname, '../tmp/strategize'));
