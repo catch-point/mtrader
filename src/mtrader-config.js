@@ -30,15 +30,17 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+'use strict';
 
 const _ = require('underscore');
 const logger = require('./logger.js');
 const config = require('./config.js');
 const merge = require('./merge.js');
+const version = require('./version.js').version;
 const readCallSave = require('./read-call-save.js');
 
 if (require.main === module) {
-    var program = require('commander').version(require('./version.js').version)
+    var program = require('commander').version(version)
         .description("View or change stored options")
         .usage('<name> [value] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")

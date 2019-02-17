@@ -30,6 +30,7 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+'use strict';
 
 const net = require('net');
 const path = require('path');
@@ -45,6 +46,7 @@ const workerQueue = require('./worker-queue.js');
 const Remote = require('./remote-workers.js');
 const Cache = require('./disk-cache.js');
 const config = require('./config.js');
+const version = require('./version.js').version;
 const Fetch = require('./mtrader-fetch.js');
 const Quote = require('./mtrader-quote.js');
 const Collect = require('./collect.js');
@@ -55,7 +57,7 @@ const readCallSave = require('./read-call-save.js');
 const WORKER_COUNT = require('os').cpus().length;
 
 function usage(command) {
-    return command.version(require('./version.js').version)
+    return command.version(version)
         .description("Collects historic portfolio data")
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")

@@ -30,6 +30,7 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+'use strict';
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
@@ -41,10 +42,11 @@ const Bestsignals = require('./bestsignals.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
+const version = require('./version.js').version;
 const Optimize = require('./mtrader-optimize.js');
 
 function usage(command) {
-    return command.version(require('./version.js').version)
+    return command.version(version)
         .description("Determines the best signals for the given portfolio")
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")

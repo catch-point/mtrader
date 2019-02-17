@@ -30,11 +30,13 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+'use strict';
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const logger = require('./logger.js');
 const config = require('./config.js');
+const version = require('./version.js').version;
 
 var months = _.once(function() {
     var date = moment('2010-01-01');
@@ -67,7 +69,7 @@ var days = _.once(function() {
 });
 
 if (require.main === module) {
-    var program = require('commander').version(require('./version.js').version)
+    var program = require('commander').version(version)
         .description("Date manipulation")
         .usage('<format> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")

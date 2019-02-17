@@ -30,6 +30,7 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+'use strict';
 
 const fs = require('graceful-fs');
 const path = require('path');
@@ -191,7 +192,7 @@ function createInstance() {
     var strategize = new Strategize();
     var servers = [];
     var closed;
-    return {
+    return Object.assign(new.target ? this : {}, {
         config: config,
         date: date,
         lookup(options) {
@@ -254,7 +255,7 @@ function createInstance() {
             servers.push(server);
             return server;
         }
-    };
+    });
 }
 
 function listen(mtrader, address) {

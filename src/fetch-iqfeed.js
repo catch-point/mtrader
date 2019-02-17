@@ -28,6 +28,7 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+'use strict';
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
@@ -124,20 +125,21 @@ function help() {
 
 module.exports = function() {
     var helpInfo = help();
-    return register({
+    var self = new.target ? this : {};
+    return register(Object.assign(self, {
         close() {
-            return unregister(this);
+            return unregister(self);
         },
         help() {
             return Promise.resolve(helpInfo);
         },
-        open: sharedInstance.bind(this, 'open'),
-        lookup: sharedInstance.bind(this, 'lookup'),
-        fundamental: sharedInstance.bind(this, 'fundamental'),
-        interday: sharedInstance.bind(this, 'interday'),
-        intraday: sharedInstance.bind(this, 'intraday'),
-        rollday: sharedInstance.bind(this, 'rollday'),
-    });
+        open: sharedInstance.bind(self, 'open'),
+        lookup: sharedInstance.bind(self, 'lookup'),
+        fundamental: sharedInstance.bind(self, 'fundamental'),
+        interday: sharedInstance.bind(self, 'interday'),
+        intraday: sharedInstance.bind(self, 'intraday'),
+        rollday: sharedInstance.bind(self, 'rollday'),
+    }));
 };
 
 var shared_instance, instance_timer;

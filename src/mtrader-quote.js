@@ -30,6 +30,7 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+'use strict';
 
 const path = require('path');
 const _ = require('underscore');
@@ -47,12 +48,13 @@ const expect = require('chai').expect;
 const common = require('./common-functions.js');
 const lookback = require('./lookback-functions.js');
 const indicator = require('./indicator-functions.js');
+const version = require('./version.js').version;
 const Fetch = require('./mtrader-fetch.js');
 
 const WORKER_COUNT = require('os').cpus().length;
 
 function usage(command) {
-    return command.version(require('./version.js').version)
+    return command.version(version)
         .description("Quotes historical data for the given symbol")
         .usage('<symbol.market> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")

@@ -30,6 +30,7 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
+'use strict';
 
 const _ = require('underscore');
 const commander = require('commander');
@@ -39,9 +40,10 @@ const tabular = require('./tabular.js');
 const Fetch = require('./fetch.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
+const version = require('./version.js').version;
 
 function usage(command) {
-    return command.version(require('./version.js').version)
+    return command.version(version)
         .description("Fetches remote data for the given symbol")
         .usage('<interval> <symbol.market> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
