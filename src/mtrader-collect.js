@@ -92,13 +92,13 @@ function usage(command) {
 }
 
 if (require.main === module) {
-    var program = usage(commander).parse(process.argv);
+    const program = usage(commander).parse(process.argv);
     if (program.args.length || !process.send) {
-        var collect = createInstance(program);
+        const collect = createInstance(program);
         process.on('SIGHUP', () => collect.reload());
         process.on('SIGINT', () => collect.close());
         process.on('SIGTERM', () => collect.close());
-        var args = program.args.length ? program.args : [''];
+        const args = program.args.length ? program.args : [''];
         Promise.all(args.map(name => readCallSave(name, collect)))
           .then(results => [].concat(...results))
           .then(result => tabular(result, config()))
@@ -108,8 +108,8 @@ if (require.main === module) {
         spawn();
     }
 } else {
-    var prog = usage(new commander.Command());
-    var shared = module.exports = share(() => createInstance(prog));
+    const prog = usage(new commander.Command());
+    const shared = module.exports = share(() => createInstance(prog));
     process.on('SIGTERM', () => sharedinstance && shared.instance.close(true));
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
     process.on('SIGINT', () => shared.instance && shared.instance.reset()
@@ -117,11 +117,11 @@ if (require.main === module) {
 }
 
 function createInstance(program) {
-    var promiseKeys, closed;
-    var fetch = new Fetch();
-    var quote = new Quote();
-    var inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
-    var instance = function(options) {
+    let promiseKeys, closed;
+    const fetch = new Fetch();
+    const quote = new Quote();
+    let inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
+    const instance = function(options) {
         if (closed) throw Error("Collect is closed");
         if (!promiseKeys) {
             promiseKeys = direct({help: true})
@@ -167,17 +167,17 @@ function createInstance(program) {
             cache = createCache(direct, local, remote);
         }
     };
-    var direct = Collect(quote, instance);
-    var localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance);
-    var local = createQueue(localWorkers);
-    var remote = Remote();
-    var cache = createCache(direct, local, remote);
+    const direct = Collect(quote, instance);
+    const localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance);
+    let local = createQueue(localWorkers);
+    let remote = Remote();
+    let cache = createCache(direct, local, remote);
     return instance;
 }
 
 function trimOptions(keys, options) {
     if (!_.isObject(options)) return options;
-    var array = _.isArray(options.portfolio) ? options.portfolio :
+    const array = _.isArray(options.portfolio) ? options.portfolio :
         _.isString(options.portfolio) ? options.portfolio.split(',') :
         [options.portfolio];
     return _.extend(_.pick(options, keys), {
@@ -186,10 +186,10 @@ function trimOptions(keys, options) {
 }
 
 function createCache(direct, local, remote) {
-    var collect_cache_size = config('collect_cache_size');
+    const collect_cache_size = config('collect_cache_size');
     if (!_.isFinite(config('collect_cache_size'))) return null;
-    var cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    var dir = path.resolve(cache_dir, 'collect');
+    const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const dir = path.resolve(cache_dir, 'collect');
     return Cache(dir, function(options) {
         if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
         else if (options.help || isSplitting(options)) return direct(options);
@@ -206,15 +206,15 @@ function beforeTimestamp(past, options) {
 
 function isSplitting(options) {
     if (!options.reset_every) return false;
-    var reset_every = moment.duration(options.reset_every);
-    var begin = moment(options.begin);
-    var end = moment(options.end || options.now);
+    const reset_every = moment.duration(options.reset_every);
+    const begin = moment(options.begin);
+    const end = moment(options.end || options.now);
     return begin.add(Math.abs(reset_every.asMilliseconds())*1.5, 'milliseconds').isBefore(end);
 }
 
 function isLeaf(options) {
     if (!options.portfolio) return false;
-    var portfolio = _.isArray(options.portfolio) ? options.portfolio : [options.portfolio];
+    const portfolio = _.isArray(options.portfolio) ? options.portfolio : [options.portfolio];
     return portfolio.some(_.isString);
 }
 
@@ -228,7 +228,7 @@ function createQueue(createWorkers, onerror) {
 }
 
 function createLocalWorkers(program, fetch, quote, collect) {
-    var count = _.isFinite(config('workers')) ? config('workers') : WORKER_COUNT;
+    const count = _.isFinite(config('workers')) ? config('workers') : WORKER_COUNT;
     return _.range(count).map(() => {
         return replyTo(config.fork(module.filename, program))
           .handle('fetch', payload => fetch(payload))
@@ -238,25 +238,25 @@ function createLocalWorkers(program, fetch, quote, collect) {
 }
 
 function spawn() {
-    var parent = replyTo(process).handle('collect', payload => {
+    const parent = replyTo(process).handle('collect', payload => {
         return collect()(payload);
     });
-    var quote = require('./quote.js')(callFetch.bind(this, parent));
-    var quoteFn = createSlaveQuote(quote, parent);
-    var collect = _.once(() => new Collect(quoteFn, callCollect.bind(this, parent)));
+    const quote = require('./quote.js')(callFetch.bind(this, parent));
+    const quoteFn = createSlaveQuote(quote, parent);
+    const collect = _.once(() => new Collect(quoteFn, callCollect.bind(this, parent)));
     process.on('disconnect', () => collect().close().then(quote.close));
     process.on('SIGINT', () => collect().close().then(quote.close));
     process.on('SIGTERM', () => collect().close().then(quote.close));
 }
 
 function createSlaveQuote(quote, parent) {
-    var check = interrupt(true);
+    const check = interrupt(true);
     return function(options) {
         if (_.has(options, 'read_only') && !options.read_only)
             return parent.request('quote', options); // write requested
         if (!options.end || moment.tz(options.end, options.tz || moment.tz.guess()).valueOf() >= Date.now())
             return parent.request('quote', options); // latest data requested
-        var opts = _.extend({read_only: true}, options);
+        const opts = _.extend({read_only: true}, options);
         return quote(opts).catch(err => {
             if (!err || !err.message) throw err;
             else if (!~err.message.indexOf('read_only')) throw err;
@@ -337,13 +337,13 @@ help(app, 'ASC', `
 }
 
 function functionHelp(name, fn) {
-    var source = fn.toString();
-    var m = source.match(/^[^(]*\(([^)]*)\)/);
-    var args = _.isString(fn.args) ? fn.args : _.property(1)(m) || '';
-    var usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
-    var body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
-    var desc = fn.description ? '\n  ' + wrap(fn.description, '  ', 80) + '\n' : body;
-    var seeAlso = fn.seeAlso ? '\n  See also:\n' + fn.seeAlso.map(name => {
+    const source = fn.toString();
+    const m = source.match(/^[^(]*\(([^)]*)\)/);
+    const args = _.isString(fn.args) ? fn.args : _.property(1)(m) || '';
+    const usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
+    const body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
+    const desc = fn.description ? '\n  ' + wrap(fn.description, '  ', 80) + '\n' : body;
+    const seeAlso = fn.seeAlso ? '\n  See also:\n' + fn.seeAlso.map(name => {
         return '    help ' + name + '  ';
     }).join('\n') + '\n' : '';
     return usage + desc + seeAlso;
@@ -351,20 +351,20 @@ function functionHelp(name, fn) {
 
 function listFunctions(functions) {
     return listOptions(_.mapObject(functions, (fn, name) => {
-        var source = fn.toString();
-        var m = source.match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/) ||
+        const source = fn.toString();
+        const m = source.match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/) ||
             source.match(/^[^(]*\(([^)]*)\)/);
-        var args = fn.args || _.property(1)(m) || '';
-        var desc = fn.description || name + '(' + args + ')';
+        const args = fn.args || _.property(1)(m) || '';
+        const desc = fn.description || name + '(' + args + ')';
         return {description:  desc};
     }));
 }
 
 function listOptions(options) {
-    var buf = [];
-    var left = Math.max(_.max(_.keys(options).map(name => name.length)), 5) + 8;
-    var indent = new Array(left+1).join(' ');
-    var width = 80 - indent.length;
+    const buf = [];
+    const left = Math.max(_.max(_.keys(options).map(name => name.length)), 5) + 8;
+    const indent = new Array(left+1).join(' ');
+    const width = 80 - indent.length;
     _.each(options, (option, name) => {
         buf.push(indent.substring(0,6));
         buf.push(name);
@@ -376,14 +376,14 @@ function listOptions(options) {
 }
 
 function wrap(desc, indent, len) {
-    var buf = [];
+    const buf = [];
     if (desc && desc.length < len - indent.length) {
         buf.push(desc);
     } else if (desc) {
-        var width = len - indent.length;
-        var remain = desc.trim();
+        const width = len - indent.length;
+        let remain = desc.trim();
         while (remain) {
-            var idx = remain.lastIndexOf(' ', width);
+            let idx = remain.lastIndexOf(' ', width);
             if (idx <= 0) idx = remain.indexOf(' ', width);
             if (idx <= 0 || remain.length < width) idx = remain.length;
             buf.push(remain.substring(0, idx));

@@ -41,8 +41,8 @@ const expect = require('chai').expect;
  * previous calls to one of the given methods.
  */
 module.exports = function(handlers) {
-    var subs = parseVariables(handlers && handlers.substitutions);
-    var _handlers = {
+    const subs = parseVariables(handlers && handlers.substitutions);
+    const _handlers = {
         constant(value) {
             if (!handlers || !handlers.constant) return JSON.stringify(value);
             else return handlers.constant(value);
@@ -87,12 +87,12 @@ module.exports = function(handlers) {
         parseCriteriaList(exprs) {
             if (_.isEmpty(exprs)) return [];
             if (!_.isArray(exprs) && !_.isString(exprs)) expect(exprs).to.be.a('string');
-            var list = _.isArray(exprs) ?
+            const list = _.isArray(exprs) ?
                 _.flatten(exprs.map(val=>parseExpressions(val, subs)), true) :
                 parseExpressions(exprs, subs);
-            var i=0;
+            let i=0;
             while (i<list.length) {
-                var expr = list[i];
+                const expr = list[i];
                 if (_.first(expr) != 'AND') i++;
                 else list.splice(i, 1, expr[1], expr[2]);
             }
@@ -108,8 +108,8 @@ module.exports = function(handlers) {
  */
 function parseVariables(exprs) {
     if (!exprs) return {};
-    var variables = _.mapObject(_.pick(exprs, (val,key)=>val!=key), val => parseExpression(val));
-    var handlers = {
+    const variables = _.mapObject(_.pick(exprs, (val,key)=>val!=key), val => parseExpression(val));
+    const handlers = {
         constant(value) {
             return [];
         },
@@ -121,14 +121,14 @@ function parseVariables(exprs) {
             return _.uniq(_.flatten(args, true));
         }
     };
-    var references = _.mapObject(variables, (expr, name) => {
-        var reference = invokeHandler(expr, handlers);
+    const references = _.mapObject(variables, (expr, name) => {
+        const reference = invokeHandler(expr, handlers);
         if (!_.contains(reference, name)) return reference;
         else throw Error("Expression cannot reference itself: " + name);
     });
     while (_.reduce(references, (more, reference, name) => {
         if (!reference.length) return more;
-        var second = _.uniq(_.flatten(reference.map(ref => references[ref]), true));
+        const second = _.uniq(_.flatten(reference.map(ref => references[ref]), true));
         if (_.contains(second, name)) throw Error("Circular Reference " + name);
         variables[name] = inline(variables[name], variables);
         references[name] = second;
@@ -138,7 +138,7 @@ function parseVariables(exprs) {
 }
 
 function parseExpression(str, substitutions, handlers) {
-    var list = parseExpressions(str, substitutions);
+    const list = parseExpressions(str, substitutions);
     if (!list.length) throw Error("No input: " + str);
     if (list.length > 1) throw Error("Did not expect multiple expressions: " + str);
     try {
@@ -150,7 +150,7 @@ function parseExpression(str, substitutions, handlers) {
 }
 
 function parseExpressions(str, substitutions) {
-    var expressions = parseExpressionList(str == null ? '' : str.toString());
+    const expressions = parseExpressionList(str == null ? '' : str.toString());
     if (_.isEmpty(substitutions)) return expressions;
     else return expressions.map(expr => inline(expr, substitutions));
 }
@@ -167,8 +167,8 @@ function inline(expr, substitutions) {
 
 function invokeHandler(expr, handlers) {
     if (_.isArray(expr)) {
-        var args = _.rest(expr).map(expr => invokeHandler(expr, handlers));
-        var fn = handlers.expression(serialize(expr), _.first(expr), args);
+        const args = _.rest(expr).map(expr => invokeHandler(expr, handlers));
+        const fn = handlers.expression(serialize(expr), _.first(expr), args);
         if (!_.isUndefined(fn)) return fn;
         else throw Error("Unknown function: " + _.first(expr));
     } else if (_.isString(expr) && expr.charAt(0) == '"') {
@@ -200,9 +200,9 @@ const operators = {
 
 function serialize(expr) {
     if (_.isArray(expr) && operators[_.first(expr)]) {
-        var operator = operators[_.first(expr)];
-        var exprs = _.rest(expr).map((arg, i) => {
-            var aop = operators[_.first(arg)];
+        const operator = operators[_.first(expr)];
+        const exprs = _.rest(expr).map((arg, i) => {
+            const aop = operators[_.first(arg)];
             if (!_.isArray(arg) || !aop || aop.priority < operator.priority)
                 return serialize(arg);
             else if (aop.priority == operator.priority && operator.associative)
@@ -223,9 +223,9 @@ function serialize(expr) {
 }
 
 function parseExpressionList(str) {
+    let index = 0;
     try {
-        var index = 0;
-        var expressions = [parseExpression()];
+        const expressions = [parseExpression()];
         while (peek() == ',') {
             index++;
             expressions.push(parseExpression());
@@ -240,23 +240,23 @@ function parseExpressionList(str) {
         return parseConditionalOrExpression();
     }
     function parseConditionalOrExpression() {
-        var lhs = parseConditionalAndExpression();
+        const lhs = parseConditionalAndExpression();
         if (peek() != 'O' && peek() != 'o') return lhs;
-        var or = str.substring(index,index+2);
+        const or = str.substring(index,index+2);
         if ('OR' != or && 'or' != or || isWord(str[index+2])) return lhs;
         index+= 2;
         return ['OR', lhs, parseConditionalOrExpression()];
     }
     function parseConditionalAndExpression() {
-        var lhs = parseLogicalExpression();
+        const lhs = parseLogicalExpression();
         if (peek() != 'A' && peek() != 'a') return lhs;
-        var and = str.substring(index,index+3);
+        const and = str.substring(index,index+3);
         if ('AND' != and && 'and' != and || isWord(str[index+3])) return lhs;
         index+= 3;
         return ['AND', lhs, parseConditionalAndExpression()];
     }
     function parseLogicalExpression() {
-        var lhs = parseNumericExpression();
+        const lhs = parseNumericExpression();
         if (peek() == '=') {
             index++;
             return ['EQUALS', lhs, parseLogicalExpression()];
@@ -286,7 +286,7 @@ function parseExpressionList(str) {
         return parseAdditiveExpression();
     }
     function parseAdditiveExpression() {
-        var lhs = parseMultiplicativeExpression();
+        let lhs = parseMultiplicativeExpression();
         while(peek() == '+' || peek() == '-') {
             if (peek() == '+') {
                 index++;
@@ -299,7 +299,7 @@ function parseExpressionList(str) {
         return lhs;
     }
     function parseMultiplicativeExpression() {
-        var lhs = parseUnaryExpression();
+        let lhs = parseUnaryExpression();
         while(peek() == '*' || peek() == '×' || peek() == '/' || peek() == '%') {
             if (peek() == '*' || peek() == '×') {
                 index++;
@@ -333,7 +333,7 @@ function parseExpressionList(str) {
     function parseBrackettedExpression() {
         if (peek() == '(') {
             expect('(');
-            var expr = parseExpression();
+            const expr = parseExpression();
             expect(')');
             return expr;
         } else if (isLetter(peek()) || peek() == '_') {
@@ -349,8 +349,8 @@ function parseExpressionList(str) {
         }
     }
     function parseVariableOrCall() {
-        var word = parseWord();
-        var indicator = peek() == '.';
+        let word = parseWord();
+        const indicator = peek() == '.';
         if (indicator) {
             index++;
             // fields and indicator functions maybe prefixed with interval
@@ -358,7 +358,7 @@ function parseExpressionList(str) {
         }
         if (peek() != '(') return word;
         expect('(');
-        var args = peek() == ')' ? [] : [parseExpression()];
+        const args = peek() == ')' ? [] : [parseExpression()];
         while (peek() == ',') {
             index++;
             args.push(parseExpression());
@@ -368,17 +368,17 @@ function parseExpressionList(str) {
     }
     function parseWord() {
         if (!isWord(peek())) expect("word");
-        var start = index;
+        const start = index;
         while (index < str.length && isWord(str[index]))
             index++;
         return str.substring(start, index);
     }
     function parseString() {
-        var quote = peek();
-        var start = index;
+        const quote = peek();
+        const start = index;
         if (!isQuote(quote)) expect("quote");
         else expect(quote);
-        var buf = ['"'];
+        const buf = ['"'];
         while (index < str.length && str[index] != quote) {
             if (str[index] == '"' || str[index] == '\\' && str[index+1] != "'") buf.push('\\');
             if (str[index] == '\\') index++;
@@ -390,15 +390,15 @@ function parseExpressionList(str) {
         return JSON.stringify(JSON.parse(buf.join('')));
     }
     function parseTemplate() {
-        var start = index;
+        const start = index;
         if (peek() != '`') expect("back-tick");
         else expect('`');
-        var template = parseTemplateLiteral();
+        let template = parseTemplateLiteral();
         while (peek() == '{') {
             expect('{');
-            var expression = parseExpression();
+            const expression = parseExpression();
             expect('}');
-            var literal = parseTemplateLiteral();
+            const literal = parseTemplateLiteral();
             if (_.isArray(template) && template[0] == 'CONCAT') {
                 template.push(expression, literal);
             } else {
@@ -409,8 +409,8 @@ function parseExpressionList(str) {
         return template;
     }
     function parseTemplateLiteral() {
-        var start = index;
-        var buf = ['"'];
+        const start = index;
+        const buf = ['"'];
         while (index < str.length && str[index] != '`' && (str[index] != '{' || str[index+1] == '{')) {
             if (str[index] == '"' || str[index] == '\\' && str[index+1] != '`') buf.push('\\');
             if (str[index] == '\\') index++;
@@ -424,7 +424,7 @@ function parseExpressionList(str) {
     }
     function parseNumber() {
         if (!isNumber(peek()) && peek() != '-') expect("number");
-        var start = index;
+        const start = index;
         if (peek() == '-') index++;
         if (!isNumber(str[index])) expect("number");
         while(isNumber(str[index])) index++;

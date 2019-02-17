@@ -60,7 +60,7 @@ const Strategize = require('./mtrader-strategize.js');
 const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
 
-var program = require('commander')
+const program = require('commander')
     .description(version.description)
     .command('config <name> [value]', "View or change stored options")
     .command('date <format>', "Formats the time now")
@@ -89,9 +89,9 @@ program.command('start').description("Start a headless service on the listen int
     if (!config('listen')) throw Error("Service listen address is required to start service");
 });
 program.command('stop').description("Stops a headless service using the listen interface").action(() => {
-    var address = config('listen');
+    const address = config('listen');
     if (!address) throw Error("Service listen address is required to stop service");
-    var worker = replyTo(remote(address, {checkServerIdentity: _.noop}))
+    const worker = replyTo(remote(address, {checkServerIdentity: _.noop}))
         .on('error', err => logger.debug(err, err.stack))
         .on('error', () => worker.disconnect());
     return new Promise((stopped, abort) => {
@@ -100,13 +100,13 @@ program.command('stop').description("Stops a headless service using the listen i
         worker.handle('stop', stopped).request('stop').catch(abort);
     }).catch(err => err && err.stack && logger.debug(err, err.stack)).then(() => worker.disconnect());
 });
-var program_args_version = false;
+let program_args_version = false;
 program.on('option:version', function() {
     program_args_version = true;
     process.stdout.write(version + '\n');
     if (config('remote_workers')) {
-        var Remote = require('./remote-workers.js');
-        var remote = Remote();
+        const Remote = require('./remote-workers.js');
+        const remote = Remote();
         remote.version().then(remote_version => {
             _.forEach(remote_version, (worker_version, worker) => {
                 process.stdout.write(`${worker_version} ${worker}` + '\n');
@@ -122,7 +122,7 @@ if (require.main === module) {
         program.addImplicitHelpCommand();
         program.executeSubCommand = _.wrap(program.executeSubCommand, (fn, argv, args, unknown) => {
             // include known options in sub-command
-            var arg = [].concat(
+            const arg = [].concat(
                 args,
                 ['--prefix', config('prefix')],
                 parseKnownOptions(program, argv)
@@ -132,8 +132,8 @@ if (require.main === module) {
         program.parse(process.argv);
     }
     if (!program_args_version && _.isEmpty(program.args)) {
-        var app = new shell({isShell: true});
-        var settings = {shell: app, introduction: true};
+        const app = new shell({isShell: true});
+        const settings = {shell: app, introduction: true};
         app.configure(function(){
             app.use(shell.history(settings));
             app.use(shell.completer(settings));
@@ -142,7 +142,7 @@ if (require.main === module) {
             app.use(shellError(settings));
         });
         settings.sensitive = null; // disable case insensitivity in commands
-        var mtrader = createInstance();
+        const mtrader = createInstance();
         mtrader.shell(app);
         process.on('SIGINT', () => app.quit());
         process.on('SIGTERM', () => app.quit());
@@ -154,8 +154,8 @@ if (require.main === module) {
     } else if (!program_args_version && config('listen') &&
             !~['stop','config','fetch','version'].indexOf(program.args[0]) &&
             !~['stop','config','fetch','version'].indexOf(program.args[0].name && program.args[0].name())) {
-        var mtrader = createInstance();
-        var server = mtrader.listen(config('listen'));
+        const mtrader = createInstance();
+        const server = mtrader.listen(config('listen'));
         process.on('SIGINT', () => mtrader.close());
         process.on('SIGTERM', () => mtrader.close());
         server.on('close', () => mtrader.close());
@@ -174,7 +174,7 @@ function parseKnownOptions(program, argv) {
     return _.filter(argv, (arg, i) => {
         if (program.optionFor(arg)) return true;
         else if (i === 0) return false;
-        var prior = program.optionFor(argv[i-1]);
+        const prior = program.optionFor(argv[i-1]);
         // if prior option is required or optional and not a flag
         return prior && prior.required && arg ||
             prior && prior.optional && ('-' != arg[0] || '-' == arg);
@@ -182,16 +182,16 @@ function parseKnownOptions(program, argv) {
 }
 
 function createInstance() {
-    var config = new Config();
-    var date = new Dater();
-    var fetch = new Fetch();
-    var quote = new Quote();
-    var collect = new Collect();
-    var optimize = new Optimize();
-    var bestsignals = new Bestsignals();
-    var strategize = new Strategize();
-    var servers = [];
-    var closed;
+    const config = new Config();
+    const date = new Dater();
+    const fetch = new Fetch();
+    const quote = new Quote();
+    const collect = new Collect();
+    const optimize = new Optimize();
+    const bestsignals = new Bestsignals();
+    const strategize = new Strategize();
+    const servers = [];
+    let closed;
     return Object.assign(new.target ? this : {}, {
         config: config,
         date: date,
@@ -245,9 +245,9 @@ function createInstance() {
             ]).catch(err => console.error("Could not complete shell setup", err));
         },
         listen(address) {
-            var server = listen(this, address);
+            const server = listen(this, address);
             server.once('close', () => {
-                var idx = servers.indexOf(server);
+                const idx = servers.indexOf(server);
                 if (idx >= 0) {
                     servers.splice(idx, 1);
                 }
@@ -259,10 +259,10 @@ function createInstance() {
 }
 
 function listen(mtrader, address) {
-    var timeout = config('tls.timeout');
-    var addr = parseLocation(address, false);
-    var auth = addr.auth ? 'Basic ' + new Buffer(addr.auth).toString('base64') : undefined;
-    var server = addr.protocol == 'https:' || addr.protocol == 'wss:' ? https.createServer({
+    const timeout = config('tls.timeout');
+    const addr = parseLocation(address, false);
+    const auth = addr.auth ? 'Basic ' + new Buffer(addr.auth).toString('base64') : undefined;
+    const server = addr.protocol == 'https:' || addr.protocol == 'wss:' ? https.createServer({
         key: readFileSync(config('tls.key_pem')),
         passphrase: readBase64FileSync(config('tls.passphrase_base64')),
         cert: readFileSync(config('tls.cert_pem')),
@@ -283,7 +283,7 @@ function listen(mtrader, address) {
     server.on('upgrade', (request, socket, head) => {
         if (wsserver.shouldHandle(request)) return;
         else if (socket.writable) {
-            var msg = `Try using mtrader/${version}\r\n`;
+            const msg = `Try using mtrader/${version}\r\n`;
             socket.write(
                 `HTTP/1.1 400 ${http.STATUS_CODES[400]}\r\n` +
                 `Server: mtrader/${version}\r\n` +
@@ -299,13 +299,13 @@ function listen(mtrader, address) {
     server.on('request', (request, response) => {
         response.setHeader('Server', 'mtrader/' + version);
         if (wsserver.shouldHandle(request)) return;
-        var msg = `Try using mtrader/${version}\r\n`;
+        const msg = `Try using mtrader/${version}\r\n`;
         response.statusCode = 404;
         response.setHeader('Content-Type', 'text/plain');
         response.setHeader('Content-Length', Buffer.byteLength(msg));
         response.end(msg);
     });
-    var wsserver = new ws.Server({
+    const wsserver = new ws.Server({
         server: server, path: addr.path,
         clientTracking: true,
         perMessageDeflate: config('tls.perMessageDeflate')!=null ? config('tls.perMessageDeflate') : true,
@@ -317,14 +317,14 @@ function listen(mtrader, address) {
         headers.push('Server: mtrader/' + version);
     });
     wsserver.on('connection', (ws, message) => {
-        var socket = message.socket;
+        const socket = message.socket;
         if (timeout) {
             socket.setTimeout(timeout);
             socket.on('timeout', () => ws.ping());
         }
-        var label = socket.remoteAddress + ':' + socket.remotePort
+        const label = socket.remoteAddress + ':' + socket.remotePort
         logger.log("Client", label, "connected");
-        var process = remote(ws, label).on('error', err => {
+        const process = remote(ws, label).on('error', err => {
             logger.error(err, err.stack);
             ws.close();
         }).on('disconnect', () => {
@@ -343,7 +343,7 @@ function listen(mtrader, address) {
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
             .handle('stop', () => {
                 try {
-                    var stop = JSON.stringify({cmd:'stop'}) + '\r\n\r\n';
+                    const stop = JSON.stringify({cmd:'stop'}) + '\r\n\r\n';
                     wsserver.clients.forEach(client => {
                         if (client.readyState == 1) client.send(stop);
                     });
@@ -354,7 +354,7 @@ function listen(mtrader, address) {
     }).on('error', err => logger.error(err, err.stack))
       .on('listening', () => logger.info("Service listening on port", server.address().port));
     server.once('close', () => logger.log("Service has closed", address));
-    var server_close = server.close;
+    const server_close = server.close;
     server.close = () => {
         server_close.call(server);
         wsserver.clients.forEach(client => client.close());
@@ -373,13 +373,13 @@ function readBase64FileSync(filename) {
 
 function readFileSync(filename) {
     if (filename) {
-        var file = path.resolve(config('prefix'), filename);
+        const file = path.resolve(config('prefix'), filename);
         return fs.readFileSync(file, {encoding: 'utf-8'});
     }
 }
 
 function parseLocation(location, secure) {
-    var parsed = typeof location == 'number' || location.match(/^\d+$/) ? {port: +location} :
+    const parsed = typeof location == 'number' || location.match(/^\d+$/) ? {port: +location} :
         ~location.indexOf('//') ? url.parse(location) :
         secure ? url.parse('wss://' + location) :
         url.parse('ws://' + location);

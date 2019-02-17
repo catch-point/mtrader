@@ -39,7 +39,7 @@ const _ = require('underscore');
  */
 module.exports = _.extend(function(fn, filename) {
     if (!filename) throw Error("No filename given");
-    var part = partFor(filename);
+    const part = partFor(filename);
     return mkdirp(path.dirname(part))
       .then(dirname => fn(part))
       .then(result => new Promise((ready, error) => {
@@ -57,16 +57,16 @@ module.exports = _.extend(function(fn, filename) {
     mkdirp,
     partFor,
     writeFileSync(filename, data) {
-        var dirname = path.dirname(filename);
+        const dirname = path.dirname(filename);
         mkdirpSync(dirname);
-        var part = partFor(filename);
+        const part = partFor(filename);
         fs.writeFileSync(part, data);
         fs.renameSync(part, filename);
         return filename;
     },
     writeFile(filename, data) {
         return mkdirp(path.dirname(filename)).then(dir => new Promise((cb, fail) => {
-            var part = partFor(filename);
+            const part = partFor(filename);
             fs.writeFile(part, data, 'utf-8', (err, data) => err ? fail(err) : cb(part));
         })).then(part => new Promise((cb, fail) => {
             fs.rename(part, filename, err => err ? fail(err) : cb(filename));
@@ -82,7 +82,7 @@ function mkdirp(dirname) {
         fs.access(dirname, fs.F_OK, err => err ? absent(err) : present(dirname));
     }).catch(absent => {
         if (absent.code != 'ENOENT') throw absent;
-        var parent = path.dirname(dirname);
+        const parent = path.dirname(dirname);
         return Promise.resolve(parent != dirname && mkdirp(parent))
           .then(() => new Promise((ready, error) => {
             fs.mkdir(dirname, err => err ? error(err) : ready(dirname));
@@ -98,7 +98,7 @@ function mkdirpSync(dirname) {
         fs.accessSync(dirname, fs.F_OK);
     } catch(absent) {
         if (absent.code != 'ENOENT') throw absent;
-        var parent = path.dirname(dirname);
+        const parent = path.dirname(dirname);
         if (parent != dirname) mkdirpSync(parent);
     }
     try {
@@ -112,7 +112,7 @@ function mkdirpSync(dirname) {
 /**
  * Provides a some what unique filename suffix
  */
-var seq = Date.now() % 32768;
+let seq = Date.now() % 32768;
 function partFor(filename) {
     return filename + '.part' + process.pid.toString(36) + (++seq).toString(36);
 }

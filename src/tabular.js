@@ -44,16 +44,16 @@ const interrupt = require('./interrupt.js');
 
 module.exports = function(data, options) {
     if (_.isEmpty(data)) return logger.info("Empty result, not writing", options.output || '');
-    var check = interrupt();
-    var filename = getOutputFile(options);
-    var transpose = options.transpose && options.transpose.toString() != 'false';
-    var reverse = options.reverse && options.reverse.toString() != 'false';
-    var append = filename && options.append && options.append.toString() != 'false';
+    const check = interrupt();
+    const filename = getOutputFile(options);
+    const transpose = options.transpose && options.transpose.toString() != 'false';
+    const reverse = options.reverse && options.reverse.toString() != 'false';
+    const append = filename && options.append && options.append.toString() != 'false';
     if (transpose && append) throw Error("Cannot append to a transposed file");
     return Promise.resolve(append ? new Promise(cb => {
         fs.access(filename, fs.R_OK, err => err ? cb(false) : cb(true));
     }).then(present => new Promise((ready, error) => {
-        var objects = [];
+        const objects = [];
         if (!present) return ready(objects);
         csv.fromStream(fs.createReadStream(filename).on('error', error), {headers : true, ignoreEmpty: true})
             .on('error', error)
@@ -75,19 +75,19 @@ module.exports = function(data, options) {
 
 function writeData(transpose, reverse, filename, data) {
     return new Promise((finished, error) => {
-        var output = createWriteStream(filename).on('error', error);
+        const output = createWriteStream(filename).on('error', error);
         output.on('finish', finished);
         if (transpose) {
-            var writer = csv.createWriteStream({
+            const writer = csv.createWriteStream({
                 headers: false,
                 rowDelimiter: '\r\n',
                 includeEndRowDelimiter: true
             });
             writer.pipe(output);
             if (_.isArray(data)) {
-                var keys = data.reduce((keys, datum) => _.union(keys, _.keys(datum)), []);
-                var rows = keys.map(key => {
-                    var values = _.pluck(data, key);
+                const keys = data.reduce((keys, datum) => _.union(keys, _.keys(datum)), []);
+                const rows = keys.map(key => {
+                    const values = _.pluck(data, key);
                     if (reverse) values.reverse();
                     return [key].concat(values);
                 });
@@ -97,7 +97,7 @@ function writeData(transpose, reverse, filename, data) {
             }
             writer.end();
         } else {
-            var writer = csv.createWriteStream({
+            const writer = csv.createWriteStream({
                 headers: _.union(_.keys(_.first(data)), _.keys(_.last(data))),
                 rowDelimiter: '\r\n',
                 includeEndRowDelimiter: true
@@ -112,18 +112,18 @@ function writeData(transpose, reverse, filename, data) {
 }
 
 function getOutputFile(options) {
-    var output = options.output;
+    const output = options.output;
     if (output) return output;
     else if (!options.launch) return null;
-    var name = process.title.replace(/.*\//,'').replace(/\W/g,'') +
+    const name = process.title.replace(/.*\//,'').replace(/\W/g,'') +
         process.pid + Date.now().toString(16) + '.csv';
     return path.resolve(os.tmpdir(), name);
 }
 
 function createWriteStream(outputFile) {
     if (outputFile) return fs.createWriteStream(outputFile);
-    var delegate = process.stdout;
-    var output = Object.create(Writable.prototype);
+    const delegate = process.stdout;
+    const output = Object.create(Writable.prototype);
     output.cork = delegate.cork.bind(delegate);
     output.end = function(chunk) {
         if (chunk) delegate.write.apply(delegate, arguments);
@@ -137,12 +137,12 @@ function createWriteStream(outputFile) {
 }
 
 function launchOutput(outputFile, options) {
-    var launch = options.launch;
+    const launch = options.launch;
     if (!launch) return outputFile;
-    var command = (_.isArray(launch) ? launch : launch.split(' ')).concat(outputFile);
+    const command = (_.isArray(launch) ? launch : launch.split(' ')).concat(outputFile);
     return new Promise((ready, exit) => {
         logger.debug("launching", command);
-        var p = spawn(_.first(command), _.rest(command), {
+        const p = spawn(_.first(command), _.rest(command), {
             detached: true,
             stdio: 'inherit'
         }).on('error', exit).on('exit', code => {

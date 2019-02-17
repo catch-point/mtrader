@@ -44,23 +44,23 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 module.exports = function() {
-    var datasources;
-    var markets = config('markets');
-    var self = function(options) {
+    let datasources;
+    const markets = config('markets');
+    const self = function(options) {
         datasources = datasources || promiseDatasources();
         return datasources.then(datasources => {
             if (options.help || options.interval == 'help')
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
-            var market = options.market;
+            const market = options.market;
             if (market && !markets[market]) {
-                var others = _.flatten(_.map(datasources, _.keys));
+                const others = _.flatten(_.map(datasources, _.keys));
                 expect(market).to.be.oneOf(_.uniq(_.union(_.keys(markets), others)));
             }
-            var opt = market ? _.extend(
+            const opt = market ? _.extend(
                 _.omit(markets[market], 'datasources', 'label', 'description'),
                 options
             ) : options;
-            var interval = options.interval;
+            const interval = options.interval;
             switch(interval) {
                 case 'lookup': return lookup(datasources.lookup, opt);
                 case 'fundamental': return fundamental(datasources.fundamental, opt);
@@ -89,7 +89,7 @@ module.exports = function() {
  * hash of intervals -> market -> source
  */
 function promiseDatasources() {
-    var sources = _.compact([
+    const sources = _.compact([
         config('fetch.files.enabled') && files(),
         config('fetch.blended.enabled') && blended(),
         config('fetch.ivolatility.enabled') && ivolatility(),
@@ -98,7 +98,7 @@ function promiseDatasources() {
         config('fetch.remote.enabled') && remote()
     ]);
     if (_.isEmpty(sources)) {
-        sources = [yahoo()];
+        sources.push(yahoo());
     }
     return Promise.all(sources.map(source => source.help()))
       .then(result => result.reduce((datasources, help, i) => {
@@ -109,7 +109,7 @@ function promiseDatasources() {
                 }, datasources);
             } else if (info.name == 'intraday' && info.options.minutes.values) {
                 return info.options.minutes.values.reduce((datasources, minutes) => {
-                    var interval = 'm' + minutes;
+                    const interval = 'm' + minutes;
                     return addSource(datasources, interval, info.options.market.values, sources[i]);
                 }, datasources);
             } else {
@@ -136,14 +136,14 @@ function close(datasources) {
 }
 
 function help(datasources) {
-    var marketOptions = _.uniq(_.flatten(_.map(config('markets'), _.keys), true));
+    const marketOptions = _.uniq(_.flatten(_.map(config('markets'), _.keys), true));
     return Promise.all(_.map(datasources, datasource => {
         return datasource.help();
     })).then(helps => {
-        var groups = _.values(_.groupBy(_.flatten(helps), 'name'));
+        const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
         return groups.map(helps => helps.reduce((help, h) => {
-            var lookupProperties = h.name == 'lookup' ? marketOptions : [];
-            var options = _.extend({
+            const lookupProperties = h.name == 'lookup' ? marketOptions : [];
+            const options = _.extend({
                 interval: {values: h.name == 'lookup' || h.name == 'fundamental' ? [h.name] : []}
             }, _.omit(h.options, marketOptions), help.options);
             return {
@@ -177,18 +177,18 @@ function lookup(datasources, options) {
     expect(options).to.be.like({
         symbol: /^\S+$/
     });
-    var market = options.market;
+    const market = options.market;
     if (market) expect(market).to.be.oneOf(_.keys(datasources));
-    var symbol = options.symbol.toUpperCase();
-    var same = new RegExp('^' + symbol.replace(/\W/g, '\\W') + '$');
-    var almost = new RegExp('\\b' + symbol.replace(/\W/g, '.*') + '\\b');
-    var sources = market ? datasources[market] : _.uniq(_.flatten(_.values(datasources)));
-    var results = _.map(sources, datasource => {
+    const symbol = options.symbol.toUpperCase();
+    const same = new RegExp('^' + symbol.replace(/\W/g, '\\W') + '$');
+    const almost = new RegExp('\\b' + symbol.replace(/\W/g, '.*') + '\\b');
+    const sources = market ? datasources[market] : _.uniq(_.flatten(_.values(datasources)));
+    const results = _.map(sources, datasource => {
         return datasource.lookup(_.defaults({
             symbol: symbol,
             market: market || undefined
         }, options)).then(list => list.map(item => {
-            var same_item = item.symbol == symbol || item.symbol.match(same);
+            const same_item = item.symbol == symbol || item.symbol.match(same);
             return _.defaults({
                 symbol: same_item ? symbol : item.symbol,
                 market: item.market,
@@ -196,7 +196,7 @@ function lookup(datasources, options) {
             }, item);
         }));
     });
-    var error;
+    let error;
     return results.reduce((promise, data) => promise.then(result => {
         return data.then(o => o ? result.concat(o) : result, err => {
             if (!error) error = err;
@@ -211,11 +211,11 @@ function lookup(datasources, options) {
         _.groupBy(rows, row => row.symbol + ':' + row.market),
         group => _.defaults.apply(_, group)
     )).then(rows => {
-        var keys = rows.reduce((keys, row) => _.union(keys, _.keys(row)), []);
-        var nil = _.object(keys, keys.map(key => null));
+        const keys = rows.reduce((keys, row) => _.union(keys, _.keys(row)), []);
+        const nil = _.object(keys, keys.map(key => null));
         return rows.map(row => _.defaults(row, nil));
     }).then(rows => _.sortBy(rows, row => {
-        var score = 0;
+        let score = 0;
         if (row.symbol != symbol) score++;
         if (!row.symbol.match(almost)) score+= 2;
         if (market && row.market != market) score+= 3;
@@ -229,8 +229,8 @@ function fundamental(datasources, options) {
         symbol: /^\S+$/,
         market: ex => expect(ex).to.be.oneOf(_.keys(datasources))
     });
-    var now = moment();
-    var error;
+    const now = moment();
+    let error;
     return datasources[options.market].map(datasource => {
         return datasource.fundamental(options);
     }).reduce((promise, data) => promise.then(result => {
@@ -260,13 +260,13 @@ function interday(datasources, options) {
         market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });
-    var now = moment().tz(options.tz);
-    var begin = options.begin ? moment.tz(options.begin, options.tz) :
+    const now = moment().tz(options.tz);
+    const begin = options.begin ? moment.tz(options.begin, options.tz) :
         moment(now).startOf('month').subtract(1, 'month');
-    var early = begin.year() < now.year() - 5 ?
+    const early = begin.year() < now.year() - 5 ?
         moment(now).subtract(5,'years').format('Y-MM-DD') : // results okay if >5yrs
         moment(begin).add(1,'weeks').format('Y-MM-DD'); // or starts within a week
-    var opts = _.defaults({
+    const opts = _.defaults({
         begin: begin.format()
     }, options);
     return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
@@ -286,8 +286,8 @@ function interday(datasources, options) {
         if (_.isArray(err)) return err;
         else throw err;
     }).then(results => {
-        var aWeek = 5 * 24 * 60 * 60 * 1000;
-        var latest = _.last(results);
+        const aWeek = 5 * 24 * 60 * 60 * 1000;
+        const latest = _.last(results);
         if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {
             // latest line might yet be incomplete (or not yet finalized/adjusted)
             latest.asof = now.format();
@@ -303,11 +303,11 @@ function intraday(datasources, options) {
         market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });
-    var now = moment().tz(options.tz);
-    var opts = options.begin ? options : _.defaults({
+    const now = moment().tz(options.tz);
+    const opts = options.begin ? options : _.defaults({
         begin: moment(now).startOf('day').format()
     }, options);
-    var minutes = opts.minutes || +opts.interval.substring(1);
+    const minutes = opts.minutes || +opts.interval.substring(1);
     return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
         return datasource.intraday(_.defaults({
             minutes: +minutes
@@ -320,8 +320,8 @@ function intraday(datasources, options) {
             throw err;
         });
     }), Promise.reject()).then(results => {
-        var aWeek = 5 * 24 * 60 * 60 * 1000;
-        var latest = _.last(results);
+        const aWeek = 5 * 24 * 60 * 60 * 1000;
+        const latest = _.last(results);
         if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {
             // first line might yet be incomplete (or not yet finalized/adjusted)
             latest.asof = now.format();

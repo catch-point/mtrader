@@ -49,8 +49,8 @@ const logger = require('./logger.js');
  * Caches fn results to disk in baseDir
  */
 module.exports = function(baseDir, fn, poolSize, loadFactor) {
-    var maxPoolSize = Math.ceil(poolSize / (loadFactor || 0.75));
-    var cache = _.extend(new EventEmitter(), {
+    const maxPoolSize = Math.ceil(poolSize / (loadFactor || 0.75));
+    const cache = _.extend(new EventEmitter(), {
         added: 0,
         removed: 0,
         hit: 0,
@@ -64,15 +64,15 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
         prefix: Date.now().toString(36),
         seq: Math.floor(Math.random() * Math.pow(8, 8))
     });
-    var promiseInitialCount = countEntries(cache)
+    const promiseInitialCount = countEntries(cache)
         .catch(err => !cache.closed && logger.error("Could not initialize cache", err));
-    var debounced = debounce(function(){
+    const debounced = debounce(function(){
         cache.prefix = Date.now().toString(36);
         return sweep.apply(this, arguments).catch(err => logger.debug(err.message));
     }, 10000, maxPoolSize);
     return _.extend(function(options) {
-        var opts = _.omit(options, _.isUndefined);
-        var hash = readHash(opts);
+        const opts = _.omit(options, _.isUndefined);
+        const hash = readHash(opts);
         expect(hash).to.be.a('string');
         return getResult(cache, hash, opts, fn, options, result => {
             promiseInitialCount.then(initialCount => {
@@ -95,7 +95,7 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
                 debounced(cache, initialCount, poolSize);
                 return debounced.close().then(() => {
                     if (cache.hit) {
-                        var util = Math.round(100 * cache.hit / (cache.hit + cache.miss));
+                        const util = Math.round(100 * cache.hit / (cache.hit + cache.miss));
                         logger.debug("Cache utilization", util + '%');
                     }
                 })
@@ -115,8 +115,8 @@ function countEntries(cache) {
  * Computes a hash for the given object
  */
 function readHash(opts) {
-    var data = JSON.stringify(opts);
-    var hash = crypto.createHash('sha256');
+    const data = JSON.stringify(opts);
+    const hash = crypto.createHash('sha256');
     return hash.update(data).digest('base64');
 }
 
@@ -124,12 +124,12 @@ function readHash(opts) {
  * Reads the cached result from disk or creates a new cache entry
  */
 function getResult(cache, hash, opts, fn, options, cb) {
-    var memhit = cache.pending[hash] && cache.pending[hash].find(entry => {
+    const memhit = cache.pending[hash] && cache.pending[hash].find(entry => {
         return entry.version == minor_version && _.isEqual(entry.opts, opts);
     });
     if (memhit) return memhit.promise;
-    var cacheMiss = {};
-    var dir = getDir(cache.baseDir, hash);
+    const cacheMiss = {};
+    const dir = getDir(cache.baseDir, hash);
     return lock(cache, () => getEntry(cache, hash, opts)
       .catch(err => logger.warn("Could not read entry", hash, err))
       .then(entry => {
@@ -155,9 +155,9 @@ function getResult(cache, hash, opts, fn, options, cb) {
  * Removes marked cached entries from disk and increases the age of other cached entries
  */
 function sweep(cache, initialCount, poolSize) {
-    var started = Date.now();
-    var access = cache.hit + cache.miss - cache.access;
-    var added = cache.added - cache.removed;
+    const started = Date.now();
+    const access = cache.hit + cache.miss - cache.access;
+    const added = cache.added - cache.removed;
     return reduceEntries(cache, (count, entry) => {
         if (entry.marked)
             return deleteEntry(cache.baseDir, entry)
@@ -168,9 +168,9 @@ function sweep(cache, initialCount, poolSize) {
               .then(() => count + 1)
               .catch(err => logger.debug("Could not update", entry, err) || count);
     }, 0).then(count => {
-        var removed = initialCount - count + cache.added - cache.removed;
+        const removed = initialCount - count + cache.added - cache.removed;
         if (removed > 0) {
-            var elapse = moment.duration(Date.now() - started);
+            const elapse = moment.duration(Date.now() - started);
             if (elapse.asSeconds() > 1)
                 logger.log("Sweep removed", removed, "of", removed+count, "in", elapse.asSeconds()+'s');
         }
@@ -189,7 +189,7 @@ function sweep(cache, initialCount, poolSize) {
  * Marks the oldest cache entries for removal
  */
 function mark(cache, count, poolSize) {
-    var size = count - poolSize;
+    const size = count - poolSize;
     if (size <= 0) return Promise.resolve();
     return reduceEntries(cache, (oldest, entry) => {
         if (oldest.length < size || entry.age > _.first(oldest).age) {
@@ -234,8 +234,8 @@ function lock(cache, cb) {
  * Ensures that cb is running exclusively for the given baseDir
  */
 function flock(cache, cb) {
-    var lock_file = path.resolve(cache.baseDir, ".~lock.pid");
-    var cleanup = () => deleteFile(cache.baseDir, lock_file);
+    const lock_file = path.resolve(cache.baseDir, ".~lock.pid");
+    const cleanup = () => deleteFile(cache.baseDir, lock_file);
     return awriter.mkdirp(cache.baseDir).then(() => aquireLock(cache, lock_file))
       .then(() => Promise.resolve(cb())
       .then(result => cleanup().then(() => result),
@@ -252,16 +252,16 @@ function aquireLock(cache, lock_file) {
     return attemptLock(lock_file).catch(err => new Promise((locked, error) => {
         if (cache.closed) return error(Error(`Process ${process.pid} could not aquire lock ${lock_file}`));
         logger.log(err.message);
-        var cleanup = () => {
+        const cleanup = () => {
             if (watcher) watcher.close();
             cache.removeListener('close', onclose);
         };
-        var onclose = () => {
+        const onclose = () => {
             cleanup();
             error(Error(`Process ${process.pid} could not aquire lock in time ${lock_file}`));
         };
         cache.on('close', onclose);
-        var watcher = fs.watch(lock_file, {persistent:false}, () => attemptLock(lock_file).then(() => {
+        const watcher = fs.watch(lock_file, {persistent:false}, () => attemptLock(lock_file).then(() => {
             cleanup();
             locked();
         }, err => logger.log(err.message))).on('error', err =>{
@@ -296,7 +296,7 @@ function attemptLock(lock_file) {
     }, err => new Promise(ready => {
         fs.unlink(lock_file, ready);
     }).then(() => attemptLock(lock_file), err => {
-        var msg = `Process ${process.pid} is trying to lock ${lock_file}`;
+        const msg = `Process ${process.pid} is trying to lock ${lock_file}`;
         logger.debug(msg, err);
         throw Error(msg);
     })));
@@ -306,7 +306,7 @@ function attemptLock(lock_file) {
  * Reads a cache entry from disk and resets its age
  */
 function getEntry(cache, hash, opts) {
-    var dir = getDir(cache.baseDir, hash);
+    const dir = getDir(cache.baseDir, hash);
     return new Promise(cb => {
         fs.readdir(dir, (err, files) => cb(err ? [] : files));
     }).then(files => files.filter(isMetadata))
@@ -328,14 +328,14 @@ function getEntry(cache, hash, opts) {
  */
 function createCacheEntry(cache, hash, fn, options, cb) {
     expect(hash).to.be.a('string');
-    var miss = {
+    const miss = {
         hash: hash,
         age: 0,
         marked: false,
         version: minor_version,
         label: options.label,
         promise: new Promise(cb => cb(fn(options))).then(result => {
-            var opts = _.omit(options, _.isUndefined);
+            const opts = _.omit(options, _.isUndefined);
             return writePendingEntryResult(cache, miss, opts, result);
         }).then(result => {
             removePendingEntry(cache, miss);
@@ -346,7 +346,7 @@ function createCacheEntry(cache, hash, fn, options, cb) {
             throw err;
         })
     };
-    var array = (cache.pending[hash] || []);
+    const array = (cache.pending[hash] || []);
     array.unshift(miss);
     cache.pending[hash] = array;
     return miss.promise;
@@ -356,8 +356,8 @@ function createCacheEntry(cache, hash, fn, options, cb) {
  * Remove a pending cache entry from memory
  */
 function removePendingEntry(cache, entry) {
-    var array = cache.pending[entry.hash];
-    var idx = array.indexOf(entry);
+    const array = cache.pending[entry.hash];
+    const idx = array.indexOf(entry);
     if (idx < 0) throw Error(`Pending entry is missing: ${JSON.stringify(entry)}`);
     if (array.length == 1) delete cache.pending[entry.hash];
     else array.splice(idx, 1);
@@ -384,16 +384,16 @@ function readEntryMetadata(file) {
  * Writes the result to disk
  */
 function writePendingEntryResult(cache, entry, opts, result) {
-    var dir = getDir(cache.baseDir, entry.hash);
+    const dir = getDir(cache.baseDir, entry.hash);
     return awriter.mkdirp(dir).then(() => {
-        var filename = cache.prefix + (++cache.seq).toString(36);
-        var file = path.resolve(dir, filename);
+        const filename = cache.prefix + (++cache.seq).toString(36);
+        const file = path.resolve(dir, filename);
         if (_.isArray(result)) {
             return new Promise((finished, error) => {
-                var output = fs.createWriteStream(file + '.result.csv');
+                const output = fs.createWriteStream(file + '.result.csv');
                 output.on('finish', finished);
                 output.on('error', error);
-                var writer = csv.createWriteStream({
+                const writer = csv.createWriteStream({
                     headers: _.union(_.keys(_.first(result)), _.keys(_.last(result))),
                     rowDelimiter: '\r\n',
                     includeEndRowDelimiter: true
@@ -435,7 +435,7 @@ function writePendingEntryResult(cache, entry, opts, result) {
  * Reads the options that were passed to fn for this cached entry
  */
 function readEntryOptions(baseDir, entry) {
-    var file = path.resolve(getDir(baseDir, entry.hash), entry.options);
+    const file = path.resolve(getDir(baseDir, entry.hash), entry.options);
     return new Promise((ready, error) => {
         fs.readFile(file, (err, data) => err ? error(err) : ready(data));
     }).then(JSON.parse.bind(JSON));
@@ -445,11 +445,11 @@ function readEntryOptions(baseDir, entry) {
  * Reads the cached result from disk
  */
 function readEntryResult(baseDir, entry) {
-    var file = path.resolve(getDir(baseDir, entry.hash), entry.result);
+    const file = path.resolve(getDir(baseDir, entry.hash), entry.result);
     if (entry.type == 'csv') {
-        var check = interrupt();
+        const check = interrupt();
         return new Promise((ready, error) => {
-            var objects = [];
+            const objects = [];
             csv.fromStream(fs.createReadStream(file).on('error', error), {headers : true, ignoreEmpty: true})
                 .on('error', error)
                 .on('data', function(data) {
@@ -475,8 +475,8 @@ function readEntryResult(baseDir, entry) {
  * Write the (modified) cache entry to disk
  */
 function writeEntryMetadata(cache, entry) {
-    var dir = getDir(cache.baseDir, entry.hash);
-    var file = path.resolve(dir, entry.metadata);
+    const dir = getDir(cache.baseDir, entry.hash);
+    const file = path.resolve(dir, entry.metadata);
     return writeObject(cache, file, entry);
 }
 
@@ -484,7 +484,7 @@ function writeEntryMetadata(cache, entry) {
  * Writes a JSON object to a file
  */
 function writeObject(cache, file, object) {
-    var data = JSON.stringify(object, null, ' ');
+    const data = JSON.stringify(object, null, ' ');
     return awriter.writeFile(file, data).then(() => object);
 }
 
@@ -493,7 +493,7 @@ function writeObject(cache, file, object) {
  */
 function deleteEntry(baseDir, entry) {
     if (!entry.metadata) return Promise.resolve(); // already deleted
-    var dir = getDir(baseDir, entry.hash);
+    const dir = getDir(baseDir, entry.hash);
     return Promise.all([
         deleteFile(dir, entry.metadata),
         deleteFile(dir, entry.options),
@@ -514,9 +514,9 @@ function deleteEntry(baseDir, entry) {
  * Attempts to delete the given entry file and its related files
  */
 function deleteEntryFile(file) {
-    var prefix = path.basename(file, 'entry.json');
+    const prefix = path.basename(file, 'entry.json');
     return new Promise((ready, error) => {
-        var dir = path.dirname(file);
+        const dir = path.dirname(file);
         fs.readdir(dir, (err, files) => err ? error(err) : ready(files));
     }).then(files => Promise.all(files.map(file => {
         if (file.indexOf(prefix) === 0) return deleteFile(dir, file)
@@ -529,7 +529,7 @@ function deleteEntryFile(file) {
  */
 function deleteFile(dir, filename) {
     return new Promise((ready, error) => {
-        var file = path.resolve(dir, filename);
+        const file = path.resolve(dir, filename);
         fs.unlink(file, err => err ? error(err) : ready());
     });
 }

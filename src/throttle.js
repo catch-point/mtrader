@@ -33,21 +33,21 @@
 process.setMaxListeners(process.getMaxListeners()+1);
 
 module.exports = function(fn, limit) {
-    var max = limit || 1;
-    var currently = 0;
-    var queue = [];
-    var next = function(){
+    const max = limit || 1;
+    let currently = 0;
+    const queue = [];
+    const next = function(){
         if (currently < max && queue.length) {
             currently++;
             queue.shift().call();
         }
     };
     return function(/* arguments */) {
-        var context = this;
-        var args = arguments;
+        const context = this;
+        const args = arguments;
         return new Promise(function(callback, abort){
             queue.push(() => {
-                var idx = pending.indexOf(abort);
+                const idx = pending.indexOf(abort);
                 if (idx < 0) return next();
                 delete pending[idx];
                 callback();
@@ -68,14 +68,14 @@ module.exports = function(fn, limit) {
     };
 };
 
-var pending = [];
+const pending = [];
 process.on('SIGINT', () => {
-    var err = Error('SIGINT');
+    const err = Error('SIGINT');
     pending.splice(0).forEach(task => {
         task(Promise.reject(err));
     });
 }).on('SIGTERM', () => {
-    var err = Error('SIGTERM');
+    const err = Error('SIGTERM');
     pending.splice(0).forEach(task => {
         task(Promise.reject(err));
     });

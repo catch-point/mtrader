@@ -41,13 +41,12 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 module.exports = function() {
-    var promiseFetch;
-    var closing = false;
+    let promiseFetch, closing;
     if (!config('fetch.remote.location')) throw Error("No remote location configured");
     return {
         close() {
-            closing = true;
-            return (promiseFetch || Promise.reject()).then(fetch => {
+            if (closing) return closing;
+            return closing = (promiseFetch || Promise.reject()).then(fetch => {
                 if (fetch.process.connected || fetch.process.connecting) return fetch.disconnect();
             }, err => {});
         },
@@ -69,8 +68,8 @@ module.exports = function() {
     };
 
     function fetch(options, interrupted, delayed) {
-        var check = interrupted || interrupt(true);
-        var delay = (delayed || 500) *2;
+        const check = interrupted || interrupt(true);
+        const delay = (delayed || 500) *2;
         return Fetch().then(client => client.request('fetch', options).catch(err => {
             if (closing || check() || delay > 5000 || !isConnectionError(err))
                 throw err;
@@ -92,9 +91,9 @@ module.exports = function() {
             if (fetch.connectionError) fetch.disconnect();
             else if (fetch.process.connected || fetch.process.connecting) return fetch;
             if (closing) throw Error("Closing remote connection");
-            var location = config('fetch.remote.location');
+            const location = config('fetch.remote.location');
             logger.log(`Connecting ${location} from ${process.pid}`);
-            var connection = remote(location);
+            const connection = remote(location);
             return replyTo(connection)
                 .handle('stop', () => connection.disconnect());
         });

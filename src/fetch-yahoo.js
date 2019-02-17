@@ -40,7 +40,7 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 function help() {
-    var commonOptions = {
+    const commonOptions = {
         symbol: {
             description: "Ticker symbol used by the market"
         },
@@ -52,14 +52,14 @@ function help() {
             description: "Symbol for security as used by The Yahoo! Network"
         }
     };
-    var lookup = {
+    const lookup = {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix on the Yahoo! network",
         properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'type', 'typeDisp'],
         options: commonOptions
     };
-    var interday = {
+    const interday = {
         name: "interday",
         usage: "interday(options)",
         description: "Historic data for a security on the Yahoo! network",
@@ -93,16 +93,16 @@ function help() {
 }
 
 module.exports = function() {
-    var helpInfo = help();
-    var markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
-    var symbol = yahoo_symbol.bind(this, markets);
-    var yahoo = _.mapObject(yahooClient(), (fn, name) => {
+    const helpInfo = help();
+    const markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
+    const symbol = yahoo_symbol.bind(this, markets);
+    const yahoo = _.mapObject(yahooClient(), (fn, name) => {
         if (!_.isFunction(fn) || name == 'close') return fn;
         else return cache(fn, function() {
             return JSON.stringify(_.toArray(arguments));
         });
     });
-    var adjustments = Adjustments(yahoo);
+    const adjustments = Adjustments(yahoo);
     return {
         close() {
             return Promise.all(_.map(yahoo, (fn, name) => {
@@ -117,26 +117,26 @@ module.exports = function() {
             return Promise.resolve(helpInfo);
         },
         lookup(options) {
-            var langs = _.uniq(_.compact(_.map(markets, market =>
+            const langs = _.uniq(_.compact(_.map(markets, market =>
                     market.datasources.yahoo && market.datasources.yahoo.marketLang
                 )));
             return Promise.all(langs.map(marketLang =>
                 yahoo.lookup(symbol(options), marketLang)
             )).then(rows => _.flatten(rows, true)).then(rows => rows.filter(row => {
-                var suffix = options.yahooSuffix || '';
+                const suffix = options.yahooSuffix || '';
                 return !suffix || row.symbol.indexOf(suffix) == row.symbol.length - suffix.length;
             })).then(rows => rows.map(row => {
-                var sym = row.symbol;
-                var sources = options.market ? {[options.market]: options} :
+                const sym = row.symbol;
+                const sources = options.market ? {[options.market]: options} :
                     _.pick(_.mapObject(markets, market =>
                         market.datasources.yahoo
                     ), source =>
                         source && _.contains(source.exchs, row.exch)
                     );
-                var ds = _.find(sources);
-                var suffix = ds && ds.yahooSuffix || '';
-                var endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
-                var symbol = endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
+                const ds = _.find(sources);
+                const suffix = ds && ds.yahooSuffix || '';
+                const endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
+                const symbol = endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
                 return {
                     symbol: symbol,
                     yahoo_symbol: row.symbol,
@@ -186,8 +186,8 @@ function yahoo_symbol(markets, options) {
         expect(options).to.be.like({
             symbol: /^\S+$/
         });
-        var source = markets[options.market].datasources.yahoo;
-        var suffix = source.yahooSuffix || '';
+        const source = markets[options.market].datasources.yahoo;
+        const suffix = source.yahooSuffix || '';
         if (!suffix && options.symbol.match(/^\w+$/))
             return options.symbol;
         else
@@ -212,7 +212,7 @@ function year(yahoo, adjustments, symbol, options) {
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).year()))
       .then(years => _.map(years, bars => bars.reduce((year, month) => {
-        var adj = adjustment(_.last(bars), month);
+        const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('year', month.ending, options),
             open: year.open || adj(month.open),
@@ -234,7 +234,7 @@ function quarter(yahoo, adjustments, symbol, options) {
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-Q')))
       .then(quarters => _.map(quarters, bars => bars.reduce((quarter, month) => {
-        var adj = adjustment(_.last(bars), month);
+        const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('quarter', month.ending, options),
             open: quarter.open || adj(month.open),
@@ -256,7 +256,7 @@ function month(yahoo, adjustments, symbol, options) {
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-MM')))
       .then(months => _.map(months, bars => bars.reduce((month, day) => {
-        var adj = adjustment(_.last(bars), day);
+        const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('month', day.ending, options),
             open: month.open || adj(day.open),
@@ -278,7 +278,7 @@ function week(yahoo, adjustments, symbol, options) {
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW')))
       .then(weeks => _.map(weeks, bars => bars.reduce((week, day) => {
-        var adj = adjustment(_.last(bars), day);
+        const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('isoWeek', day.ending, options),
             open: week.open || adj(day.open),
@@ -298,7 +298,7 @@ function day(yahoo, adjustments, symbol, options) {
         yahoo.day(symbol, options.begin, options.tz),
         adjustments(options)
     ]).then(prices_adjustments => {
-        var prices = prices_adjustments[0], adjustments = prices_adjustments[1];
+        const prices = prices_adjustments[0], adjustments = prices_adjustments[1];
         return adjRight(prices, adjustments, options, (today, datum, splits, adj) => ({
             ending: endOf('day', datum.Date, options),
             open: parseCurrency(datum.Open, splits),
@@ -313,9 +313,9 @@ function day(yahoo, adjustments, symbol, options) {
     }).then(result => {
         if (_.last(result) && !_.last(result).close) result.pop();
         if (!options.end) return result;
-        var final = endOf('day', options.end, options);
+        const final = endOf('day', options.end, options);
         if (moment(final).isAfter()) return result;
-        var last = _.sortedIndex(result, {ending: final}, 'ending');
+        let last = _.sortedIndex(result, {ending: final}, 'ending');
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
         else return result.slice(0, last);
@@ -323,7 +323,7 @@ function day(yahoo, adjustments, symbol, options) {
 }
 
 function adjustment(base, bar) {
-    var scale = bar.adj_close/bar.close * base.close / base.adj_close;
+    const scale = bar.adj_close/bar.close * base.close / base.adj_close;
     return Math.abs(scale -1) > 0.000001 ? price => {
         return Math.round(price * scale * 1000000) / 1000000;
     } : price => {
@@ -332,15 +332,14 @@ function adjustment(base, bar) {
 }
 
 function adjRight(bars, adjustments, options, cb) {
-    var result = [];
-    var today = null;
-    var msplit = 1;
-    var a = adjustments.length;
-    for (var i=bars.length -1; i>=0; i--) {
-        var div = 0;
-        var split = 1;
+    const result = [];
+    let today = null;
+    let adj, msplit = 1;
+    let a = adjustments.length;
+    for (let i=bars.length -1; i>=0; i--) {
+        let div = 0, split = 1;
         while (a > 0 && adjustments[a-1].exdate > bars[i].Date) {
-            var adj = adjustments[--a];
+            adj = adjustments[--a];
             div += adj.dividend;
             split = split * adj.split;
             msplit = adj.cum_close / bars[i].Close || 1;
@@ -362,11 +361,11 @@ function adjRight(bars, adjustments, options, cb) {
 }
 
 function endOf(unit, begin, options) {
-    var ending = moment.tz(begin, options.tz).endOf(unit);
+    const ending = moment.tz(begin, options.tz).endOf(unit);
     if (!ending.isValid()) throw Error("Invalid date " + begin);
     if (ending.days() === 0) ending.subtract(2, 'days');
     else if (ending.days() == 6) ending.subtract(1, 'days');
-    var closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
+    const closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
     if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
     return closes.format();
 }

@@ -41,7 +41,7 @@ const logger = require('./logger.js');
  */
 module.exports = function(expr, name, args, options) {
     if (functions[name]) {
-        var columnName = Parser({
+        const columnName = Parser({
             constant(value) {
                 return value;
             },
@@ -61,8 +61,8 @@ module.exports.has = function(name) {
 };
 
 module.exports.getVariables = function(expr, options) {
-    var variables = [];
-    var parser = Parser({
+    const variables = [];
+    const parser = Parser({
         constant(value) {
             return _.constant(value);
         },
@@ -72,14 +72,14 @@ module.exports.getVariables = function(expr, options) {
         },
         expression(expr, name, args) {
             if (module.exports.has(name)) {
-                var columnName;
+                let columnName;
                 args.forEach(arg => {
-                    var value = arg && arg();
+                    const value = arg && arg();
                     if (!_.isString(value)) return;
                     if (!columnName) columnName = value;
-                    var compare = _.contains(['<', '>', '='], value.charAt(0));
-                    var rel = compare || value.indexOf('!=') === 0;
-                    var expr = rel ? columnName + value : value;
+                    const compare = _.contains(['<', '>', '='], value.charAt(0));
+                    const rel = compare || value.indexOf('!=') === 0;
+                    const expr = rel ? columnName + value : value;
                     parser.parse(expr);
                 });
                 return _.constant(0);
@@ -91,18 +91,18 @@ module.exports.getVariables = function(expr, options) {
         }
     });
     try {
-        var parsed = parser.parse(expr);
+        const parsed = parser.parse(expr);
     } catch(e) {
         logger.debug(expr, e);
     }
     return variables;
 };
 
-var functions = module.exports.functions = {
+const functions = module.exports.functions = {
     PREC: _.extend((options, name, columnExpr, defaultValue) => {
         return positions => {
-            var keys = _.keys(_.pick(_.last(positions), _.isObject));
-            var previously = positions[positions.length -2];
+            const keys = _.keys(_.pick(_.last(positions), _.isObject));
+            const previously = positions[positions.length -2];
             if (keys.length > 1)
                 return _.last(positions)[keys[keys.length-2]][name];
             else if (previously)
@@ -118,14 +118,14 @@ var functions = module.exports.functions = {
     }),
     COUNTPREC: _.extend((options, name, columnExpr, numberOfIntervals, criteria) => {
         return positions => {
-            var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
-            var len = positions.length -1;
-            var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+            const num = numberOfIntervals ? numberOfIntervals(positions) : 0;
+            const len = positions.length -1;
+            const bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
             if (!name) return bars.length -1;
-            var condition = name && parseCriteria(name, criteria, positions, options);
-            var values = _.pluck(_.initial(bars).filter(condition), name);
+            const condition = name && parseCriteria(name, criteria, positions, options);
+            const values = _.pluck(_.initial(bars).filter(condition), name);
             return values.filter(val => val === 0 || val).length;
         };
     }, {
@@ -134,13 +134,13 @@ var functions = module.exports.functions = {
     }),
     SUMPREC: _.extend((options, name, columnExpr, numberOfIntervals, criteria) => {
         return positions => {
-            var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
-            var len = positions.length -1;
-            var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+            const num = numberOfIntervals ? numberOfIntervals(positions) : 0;
+            const len = positions.length -1;
+            const bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var condition = parseCriteria(name, criteria, positions, options);
-            var values = _.pluck(_.initial(bars).filter(condition), name);
+            const condition = parseCriteria(name, criteria, positions, options);
+            const values = _.pluck(_.initial(bars).filter(condition), name);
             return values.filter(_.isFinite).reduce((a, b) => a + b, 0);
         };
     }, {
@@ -149,13 +149,13 @@ var functions = module.exports.functions = {
     }),
     MAXPREC: _.extend((options, name, columnExpr, numberOfIntervals, criteria) => {
         return positions => {
-            var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
-            var len = positions.length -1;
-            var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+            const num = numberOfIntervals ? numberOfIntervals(positions) : 0;
+            const len = positions.length -1;
+            const bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var condition = parseCriteria(name, criteria, positions, options);
-            var values = _.pluck(_.initial(bars).filter(condition), name).filter(_.isFinite);
+            const condition = parseCriteria(name, criteria, positions, options);
+            const values = _.pluck(_.initial(bars).filter(condition), name).filter(_.isFinite);
             if (values.length) return values.reduce((a, b) => Math.max(a, b));
             else return null;
         };
@@ -165,13 +165,13 @@ var functions = module.exports.functions = {
     }),
     MINPREC: _.extend((options, name, columnExpr, numberOfIntervals, criteria) => {
         return positions => {
-            var num = numberOfIntervals ? numberOfIntervals(positions) : 0;
-            var len = positions.length -1;
-            var bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
+            const num = numberOfIntervals ? numberOfIntervals(positions) : 0;
+            const len = positions.length -1;
+            const bars = _.flatten(positions.slice(Math.max(len - num, 0)).map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var condition = parseCriteria(name, criteria, positions, options);
-            var values = _.pluck(_.initial(bars).filter(condition), name).filter(_.isFinite);
+            const condition = parseCriteria(name, criteria, positions, options);
+            const values = _.pluck(_.initial(bars).filter(condition), name).filter(_.isFinite);
             if (values.length) return values.reduce((a, b) => Math.min(a, b));
             else return null;
         };
@@ -181,10 +181,10 @@ var functions = module.exports.functions = {
     }),
     LOOKUP: _.extend((options, name, columnExpr, criteria) => {
         return positions => {
-            var condition = parseCriteria(name, criteria, positions, options);
-            for (var p=positions.length-1; p>=0; p--) {
-                var bars = _.values(positions[p]).filter(ctx => _.isObject(ctx));
-                for (var b = bars.length-1; b>=0; b--) {
+            const condition = parseCriteria(name, criteria, positions, options);
+            for (let p=positions.length-1; p>=0; p--) {
+                const bars = _.values(positions[p]).filter(ctx => _.isObject(ctx));
+                for (let b = bars.length-1; b>=0; b--) {
                     if (condition(bars[b])) return bars[b][name];
                 }
             }
@@ -196,9 +196,9 @@ var functions = module.exports.functions = {
     }),
     PREV: _.extend((options, name, columnExpr, defaultValue) => {
         return positions => {
-            var key = _.last(_.keys(_.last(positions)));
-            for (var i=positions.length-2; i>=0; i--) {
-                var previously = positions[i];
+            const key = _.last(_.keys(_.last(positions)));
+            for (let i=positions.length-2; i>=0; i--) {
+                const previously = positions[i];
                 if (_.has(previously, key)) return previously[key][name];
             }
             if (defaultValue) return defaultValue(positions);
@@ -211,13 +211,13 @@ var functions = module.exports.functions = {
     COUNTPREV: _.extend((options, name, columnExpr, numberOfValues, criteria) => {
         return positions => {
             if (positions.length < 2) return 0;
-            var num = numberOfValues ? numberOfValues(positions) : 0;
-            var key = _.last(_.keys(_.last(positions)));
-            var len = positions.length -1;
-            var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            const num = numberOfValues ? numberOfValues(positions) : 0;
+            const key = _.last(_.keys(_.last(positions)));
+            const len = positions.length -1;
+            const previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
             if (!name) return bars.length -1;
-            var condition = name && parseCriteria(name, criteria, positions, options);
-            var values = _.pluck(previous.filter(condition), name);
+            const condition = name && parseCriteria(name, criteria, positions, options);
+            const values = _.pluck(previous.filter(condition), name);
             return _.filter(values, val => val === 0 || val).length;
         };
     }, {
@@ -227,12 +227,12 @@ var functions = module.exports.functions = {
     SUMPREV: _.extend((options, name, columnExpr, numberOfValues, criteria) => {
         return positions => {
             if (positions.length < 2) return 0;
-            var num = numberOfValues ? numberOfValues(positions) : 0;
-            var key = _.last(_.keys(_.last(positions)));
-            var len = positions.length -1;
-            var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
-            var condition = parseCriteria(name, criteria, positions, options);
-            var values = _.pluck(previous.filter(condition), name);
+            const num = numberOfValues ? numberOfValues(positions) : 0;
+            const key = _.last(_.keys(_.last(positions)));
+            const len = positions.length -1;
+            const previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            const condition = parseCriteria(name, criteria, positions, options);
+            const values = _.pluck(previous.filter(condition), name);
             return values.reduce((a, b) => (a || 0) + (b || 0), 0);
         };
     }, {
@@ -242,12 +242,12 @@ var functions = module.exports.functions = {
     MAXPREV: _.extend((options, name, columnExpr, numberOfValues, criteria) => {
         return positions => {
             if (positions.length < 2) return null;
-            var num = numberOfValues ? numberOfValues(positions) : 0;
-            var key = _.last(_.keys(_.last(positions)));
-            var len = positions.length -1;
-            var condition = parseCriteria(name, criteria, positions, options);
-            var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
-            var values = _.pluck(previous.filter(condition), name).filter(_.isFinite);
+            const num = numberOfValues ? numberOfValues(positions) : 0;
+            const key = _.last(_.keys(_.last(positions)));
+            const len = positions.length -1;
+            const condition = parseCriteria(name, criteria, positions, options);
+            const previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            const values = _.pluck(previous.filter(condition), name).filter(_.isFinite);
             if (values.length) return values.reduce((a, b) => Math.max(a, b));
             else return null;
         };
@@ -258,12 +258,12 @@ var functions = module.exports.functions = {
     MINPREV: _.extend((options, name, columnExpr, numberOfValues, criteria) => {
         return positions => {
             if (positions.length < 2) return null;
-            var num = numberOfValues ? numberOfValues(positions) : 0;
-            var key = _.last(_.keys(_.last(positions)));
-            var len = positions.length -1;
-            var condition = parseCriteria(name, criteria, positions, options);
-            var previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
-            var values = _.pluck(previous.filter(condition), name).filter(_.isFinite);
+            const num = numberOfValues ? numberOfValues(positions) : 0;
+            const key = _.last(_.keys(_.last(positions)));
+            const len = positions.length -1;
+            const condition = parseCriteria(name, criteria, positions, options);
+            const previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            const values = _.pluck(previous.filter(condition), name).filter(_.isFinite);
             if (values.length) return values.reduce((a, b) => Math.min(a, b));
             else return null;
         };
@@ -273,11 +273,11 @@ var functions = module.exports.functions = {
     }),
     COUNTTOTAL: _.extend((options, name, columnExpr) => {
         return positions => {
-            var bars = _.flatten(positions.map(positions => {
+            const bars = _.flatten(positions.map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
             if (!name) return bars.length;
-            var values = _.pluck(_.initial(bars), name);
+            const values = _.pluck(_.initial(bars), name);
             values.push(columnExpr(positions));
             return values.filter(val => val === 0 || val).length;
         };
@@ -287,10 +287,10 @@ var functions = module.exports.functions = {
     }),
     SUMTOTAL: _.extend((options, name, columnExpr) => {
         return positions => {
-            var bars = _.flatten(positions.map(positions => {
+            const bars = _.flatten(positions.map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var values = _.pluck(_.initial(bars), name);
+            const values = _.pluck(_.initial(bars), name);
             values.push(columnExpr(positions));
             return values.filter(_.isFinite).reduce((a, b) => a + b, 0);
         };
@@ -300,10 +300,10 @@ var functions = module.exports.functions = {
     }),
     MINTOTAL: _.extend((options, name, columnExpr) => {
         return positions => {
-            var bars = _.flatten(positions.map(positions => {
+            const bars = _.flatten(positions.map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var values = _.pluck(_.initial(bars), name);
+            const values = _.pluck(_.initial(bars), name);
             values.push(columnExpr(positions));
             return _.first(_.sortBy(values));
         };
@@ -313,10 +313,10 @@ var functions = module.exports.functions = {
     }),
     MAXTOTAL: _.extend((options, name, columnExpr) => {
         return positions => {
-            var bars = _.flatten(positions.map(positions => {
+            const bars = _.flatten(positions.map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var values = _.pluck(_.initial(bars), name);
+            const values = _.pluck(_.initial(bars), name);
             values.push(columnExpr(positions));
             return _.last(_.sortBy(values));
         };
@@ -326,12 +326,12 @@ var functions = module.exports.functions = {
     }),
     MEDIANTOTAL: _.extend((options, name, columnExpr) => {
         return positions => {
-            var bars = _.flatten(positions.map(positions => {
+            const bars = _.flatten(positions.map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var values = _.pluck(_.initial(bars), name);
+            const values = _.pluck(_.initial(bars), name);
             values.push(columnExpr(positions));
-            var sorted = _.sortBy(values);
+            const sorted = _.sortBy(values);
             if (sorted.length == 1) return sorted[0];
             else if (sorted.length % 2 == 1) return sorted[(sorted.length-1) / 2];
             else return (sorted[sorted.length/2-1] + sorted[sorted.length/2])/2;
@@ -342,14 +342,14 @@ var functions = module.exports.functions = {
     }),
     STDEVTOTAL: _.extend((options, name, columnExpr) => {
         return positions => {
-            var bars = _.flatten(positions.map(positions => {
+            const bars = _.flatten(positions.map(positions => {
                 return _.values(positions).filter(ctx => _.isObject(ctx));
             }), true);
-            var values = _.pluck(_.initial(bars), name);
+            const values = _.pluck(_.initial(bars), name);
             values.push(columnExpr(positions));
-            var avg = values.reduce((a,b)=>a+b,0) / values.length;
-            var sd = Math.sqrt(values.map(function(num){
-                var diff = num - avg;
+            const avg = values.reduce((a,b)=>a+b,0) / values.length;
+            const sd = Math.sqrt(values.map(function(num){
+                const diff = num - avg;
                 return diff * diff;
             }).reduce((a,b)=>a+b,0) / Math.max(values.length,1));
             return sd || 1;
@@ -370,8 +370,8 @@ function parseCriteria(columnName, criteria, positions, options) {
     if (_.contains(['<', '>', '='], criteria.charAt(0)) || criteria.indexOf('!=') === 0)
         return parseCriteria(columnName, columnName + criteria, positions, options);
     try {
-        var expression = false;
-        var parsed = Parser({
+        let expression = false;
+        const parsed = Parser({
             constant(value) {
                 return _.constant(value);
             },

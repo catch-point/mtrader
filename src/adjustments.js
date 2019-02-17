@@ -76,16 +76,16 @@ function help() {
 }
 
 module.exports = function(yahooClient) {
-    var helpInfo = help();
-    var dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    var store = storage(dir);
-    var markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
-    var symbol = yahoo_symbol.bind(this, markets);
-    var yahoo = yahooClient || Yahoo();
+    const helpInfo = help();
+    const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const store = storage(dir);
+    const markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
+    const symbol = yahoo_symbol.bind(this, markets);
+    const yahoo = yahooClient || Yahoo();
     return _.extend(options => {
         if (options.help) return Promise.resolve(helpInfo);
         else if (options.market && !markets[options.market]) return Promise.resolve([]);
-        var name = options.market ? options.symbol + '.' + options.market :
+        const name = options.market ? options.symbol + '.' + options.market :
             options.yahoo_symbol ? options.yahoo_symbol : options.symbol;
         return store.open(name, (err, db) => {
             if (err) throw err;
@@ -109,8 +109,8 @@ function yahoo_symbol(markets, options) {
         expect(options).to.be.like({
             symbol: /^\S+$/
         });
-        var source = markets[options.market].datasources.yahoo;
-        var suffix = source.yahooSuffix || '';
+        const source = markets[options.market].datasources.yahoo;
+        const suffix = source.yahooSuffix || '';
         if (!suffix && options.symbol.match(/^\w+$/))
             return options.symbol;
         else
@@ -131,9 +131,9 @@ function yahoo_symbol(markets, options) {
 function yahoo_adjustments(yahoo, db, symbol, options) {
     expect(options).to.have.property('begin');
     expect(options).to.have.property('tz');
-    var mbegin = moment.tz(options.begin, options.tz);
-    var since = Math.floor(mbegin.year()/10)+'0-01-01';
-    var begin = mbegin.format('YYYY-MM-DD');
+    const mbegin = moment.tz(options.begin, options.tz);
+    const since = Math.floor(mbegin.year()/10)+'0-01-01';
+    const begin = mbegin.format('YYYY-MM-DD');
     return db.collection('adjustments')
       .then(col => col.lockWith([since], () => {
         if (options.offline && col.exists(since))
@@ -142,7 +142,7 @@ function yahoo_adjustments(yahoo, db, symbol, options) {
             throw Error(`Could not read adjustments, try again without the offline flag ${err.message}`);
         else if (fresh(col, since, options))
             return col.readFrom(since);
-        var asof = moment().tz(options.tz);
+        const asof = moment().tz(options.tz);
         return yahoo.split(symbol, since, options.tz)
           .then(splits => yahoo.dividend(symbol, since, options.tz)
           .then(divs => splits.concat(divs)))
@@ -164,8 +164,8 @@ function yahoo_adjustments(yahoo, db, symbol, options) {
 
 function fresh(collection, since, options) {
     if (!compatible(collection, since)) return false;
-    var mend = moment.tz(options.end || options.now, options.tz);
-    var asof = moment.tz(collection.propertyOf(since, 'asof'), options.tz);
+    const mend = moment.tz(options.end || options.now, options.tz);
+    const asof = moment.tz(collection.propertyOf(since, 'asof'), options.tz);
     return mend.diff(asof, 'hours') < 4;
 }
 
@@ -173,7 +173,7 @@ function writeAdjPrice(yahoo, symbol, col, since, data, options) {
     if (compatible(col, since) && col.sizeOf(since) == data.length) return col.readFrom(since);
     else return yahoo.day(symbol, since, options.tz)
       .then(prices => data.map(datum => {
-        var prior = prices[_.sortedIndex(prices, datum, 'Date')-1];
+        const prior = prices[_.sortedIndex(prices, datum, 'Date')-1];
         return _.extend(datum, {
             Dividends: datum.Dividends || null,
             'Stock Splits': datum['Stock Splits'] || null,
@@ -190,14 +190,14 @@ function compatible(collection, since) {
 function adjustments(yahoo, db, symbol, options) {
     return yahoo_adjustments(yahoo, db, symbol, options)
       .then(data => {
-        var adj = 1, adj_dividend_only = 1, adj_split_only = 1;
-        var adj_yahoo_divs = 1, adj_yahoo_price = 1;
+        let adj = 1, adj_dividend_only = 1, adj_split_only = 1;
+        let adj_yahoo_divs = 1, adj_yahoo_price = 1;
         return data.reduceRight((adjustments, datum) => {
-            var exdate = datum.Date;
-            var dividend = +datum.Dividends * adj_yahoo_divs;
-            var split = parseSplit(datum['Stock Splits']);
+            const exdate = datum.Date;
+            let dividend = +datum.Dividends * adj_yahoo_divs;
+            let split = parseSplit(datum['Stock Splits']);
             if (adjustments.length && _.last(adjustments).exdate == exdate) {
-                var last = adjustments.pop();
+                const last = adjustments.pop();
                 dividend += last.dividend;
                 split *= last.split;
                 // check if split is a manual adjustment for a big dividend
@@ -232,7 +232,7 @@ function adjustments(yahoo, db, symbol, options) {
                     Math.abs(+datum.cum_close * adj_split_only - _.last(adjustments).cum_close)) {
                 adj_yahoo_price /= split;
             }
-            var cum_close = +datum.cum_close / adj_split_only * adj_yahoo_price;
+            const cum_close = +datum.cum_close / adj_split_only * adj_yahoo_price;
             if (dividend && +datum.cum_close) {
                 adj_dividend_only *= (cum_close - dividend)/cum_close;
                 adj *= (cum_close - dividend)/cum_close;
@@ -250,13 +250,13 @@ function adjustments(yahoo, db, symbol, options) {
  */
 function parseSplit(stock_splits) {
     if (!stock_splits) return 1;
-    var splits = stock_splits.split('/');
+    const splits = stock_splits.split('/');
     return +splits[1] / +splits[0];
 }
 
 function filterAdj(adjustments, options) {
     if (!adjustments.length) return adjustments;
-    var begin = moment.tz(options.begin, options.tz).format('YYYY-MM-DD');
+    const begin = moment.tz(options.begin, options.tz).format('YYYY-MM-DD');
     if (_.first(adjustments).exdate >= begin) return adjustments;
     else return adjustments.filter(datum => datum.exdate >= begin);
 }

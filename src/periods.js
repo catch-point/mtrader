@@ -43,7 +43,7 @@ module.exports = function(options) {
         tz: tz => moment.tz.zone(tz)
         
     });
-    var period = intervals[options.interval];
+    const period = intervals[options.interval];
     return {
         value: period.value,
         millis: period.millis,
@@ -61,62 +61,62 @@ module.exports.sort = periods => _.sortBy(periods, period => {
     return _.isString(period) ? intervals[period].millis : period.millis;
 });
 
-var m1 = {
+const m1 = {
     value: 'm1',
     millis: 60 * 1000,
     floor: function(ex, dateTime, amount) {
         return moment.tz(dateTime, ex.tz).startOf('minute');
     },
     ceil: function(ex, dateTime) {
-        var start = m1.floor(ex, dateTime);
+        const start = m1.floor(ex, dateTime);
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.add(1, 'minutes');
         return start;
     },
     inc: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var start = m1.ceil(ex, dateTime);
-        var hours = marketHours(ex, start);
+        const start = m1.ceil(ex, dateTime);
+        const hours = marketHours(ex, start);
         if (start.isBefore(hours.opens))
             return m1.inc(ex, hours.opens, amount);
         if (start.isAfter(hours.closes))
             return m1.inc(ex, hours.opens.add(1, 'days'), amount);
-        var weeks = Math.floor(amount /5 /hours.minInDay);
+        const weeks = Math.floor(amount /5 /hours.minInDay);
         if (weeks)
             return m1.inc(ex, start.add(weeks, 'weeks'), Math.round(amount - weeks *5 *hours.minInDay));
-        var untilClose = hours.closes.diff(start, 'minutes');
+        const untilClose = hours.closes.diff(start, 'minutes');
         if (untilClose < amount)
             return m1.inc(ex, hours.opens.add(1, 'days'), amount - untilClose);
         return start.add(amount, 'minutes');
     },
     dec: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var start = m1.floor(ex, dateTime);
-        var hours = marketHours(ex, start, true);
+        const start = m1.floor(ex, dateTime);
+        const hours = marketHours(ex, start, true);
         if (start.isBefore(hours.opens))
             return m1.dec(ex, hours.closes.subtract(1, 'days'), amount);
         if (start.isAfter(hours.closes))
             return m1.dec(ex, hours.closes, amount);
-        var weeks = Math.floor(amount /5 /hours.minInDay);
+        const weeks = Math.floor(amount /5 /hours.minInDay);
         if (weeks)
             return m1.dec(ex, start.subtract(weeks, 'weeks'), Math.round(amount - weeks *5 *hours.minInDay));
-        var sinceOpen = start.diff(hours.opens, 'minutes');
+        const sinceOpen = start.diff(hours.opens, 'minutes');
         if (sinceOpen < amount)
             return m1.dec(ex, hours.closes.subtract(1, 'days'), amount - sinceOpen);
         return start.subtract(amount, 'minutes');
     },
     diff: function(ex, to, from) {
-        var start = m1.inc(ex, from, 0);
-        var end = m1.dec(ex, to, 0);
+        const start = m1.inc(ex, from, 0);
+        const end = m1.dec(ex, to, 0);
         if (end.isBefore(start) && moment(to).isBefore(from))
             return -1 * m1.diff(ex, from, to);
         else if (end.isBefore(start))
             return 0;
-        var hours = marketHours(ex, start);
-        var weeks = end.diff(start, 'weeks');
+        const hours = marketHours(ex, start);
+        const weeks = end.diff(start, 'weeks');
         if (weeks)
             return weeks * 5 * hours.minInDay + m1.diff(ex, end, start.add(weeks, 'weeks'));
-        var days = end.diff(start, 'days');
+        const days = end.diff(start, 'days');
         if (days && start.day() < end.day())
             return days * hours.minInDay + m1.diff(ex, end, start.add(days, 'days'));
         else if (end.isAfter(hours.closes))
@@ -124,7 +124,7 @@ var m1 = {
         else return end.diff(start, 'minutes');
     }
 };
-var m2 = {
+const m2 = {
     value: 'm2',
     millis: 2 * 60 * 1000,
     floor: function(ex, dateTime) {
@@ -140,13 +140,13 @@ var m2 = {
         return m1.dec(ex, m2.floor(ex, dateTime), amount * 2);
     },
     diff: function(ex, to, from) {
-        var minutes = m1.diff(ex, to, from);
+        const minutes = m1.diff(ex, to, from);
         if (minutes < 0)
             return Math.ceil(minutes /2);
         return Math.floor(minutes /2);
     }
 };
-var m5 = {
+const m5 = {
     value: 'm5',
     millis: 5 * 60 * 1000,
     floor: function(ex, dateTime) {
@@ -162,13 +162,13 @@ var m5 = {
         return m1.dec(ex, m5.floor(ex, dateTime), amount * 5);
     },
     diff: function(ex, to, from) {
-        var minutes = m1.diff(ex, to, from);
+        const minutes = m1.diff(ex, to, from);
         if (minutes < 0)
             return Math.ceil(minutes /5);
         return Math.floor(minutes /5);
     }
 };
-var m10 = {
+const m10 = {
     value: 'm10',
     millis: 10 * 60 * 1000,
     floor: function(ex, dateTime) {
@@ -184,13 +184,13 @@ var m10 = {
         return m1.dec(ex, m10.floor(ex, dateTime), amount * 10);
     },
     diff: function(ex, to, from) {
-        var minutes = m1.diff(ex, to, from);
+        const minutes = m1.diff(ex, to, from);
         if (minutes < 0)
             return Math.ceil(minutes /10);
         return Math.floor(minutes /10);
     }
 };
-var m15 = {
+const m15 = {
     value: 'm15',
     millis: 15 * 60 * 1000,
     floor: function(ex, dateTime) {
@@ -206,13 +206,13 @@ var m15 = {
         return m1.dec(ex, m15.floor(ex, dateTime), amount * 15);
     },
     diff: function(ex, to, from) {
-        var minutes = m1.diff(ex, to, from);
+        const minutes = m1.diff(ex, to, from);
         if (minutes < 0)
             return Math.ceil(minutes /15);
         return Math.floor(minutes /15);
     }
 };
-var m20 = {
+const m20 = {
     value: 'm20',
     millis: 20 * 60 * 1000,
     floor: function(ex, dateTime) {
@@ -228,13 +228,13 @@ var m20 = {
         return m1.dec(ex, m20.floor(ex, dateTime), amount * 20);
     },
     diff: function(ex, to, from) {
-        var minutes = m1.diff(ex, to, from);
+        const minutes = m1.diff(ex, to, from);
         if (minutes < 0)
             return Math.ceil(minutes /20);
         return Math.floor(minutes /20);
     }
 };
-var m30 = {
+const m30 = {
     value: 'm30',
     millis: 30 * 60 * 1000,
     floor: function(ex, dateTime) {
@@ -250,38 +250,38 @@ var m30 = {
         return m1.dec(ex, m30.floor(ex, dateTime), amount * 30);
     },
     diff: function(ex, to, from) {
-        var minutes = m1.diff(ex, to, from);
+        const minutes = m1.diff(ex, to, from);
         if (minutes < 0)
             return Math.ceil(minutes /30);
         return Math.floor(minutes /30);
     }
 };
-var m60 = {
+const m60 = {
     value: 'm60',
     millis: 60 * 60 * 1000,
     floor: function(ex, dateTime) {
         return moment.tz(dateTime, ex.tz).startOf('hour');
     },
     ceil: function(ex, dateTime) {
-        var start = m60.floor(ex, dateTime);
+        const start = m60.floor(ex, dateTime);
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.add(1, 'hours');
         return start;
     },
     inc: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var date = moment.tz(dateTime, ex.tz);
-        var opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
-        var start = opens.valueOf() == date.valueOf() ? date.startOf('hour') : m60.ceil(ex, dateTime);
-        var hours = marketHours(ex, start);
+        const date = moment.tz(dateTime, ex.tz);
+        const opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
+        const start = opens.valueOf() == date.valueOf() ? date.startOf('hour') : m60.ceil(ex, dateTime);
+        const hours = marketHours(ex, start);
         if (hours.opens.diff(start, 'hours') > 0)
             return m60.inc(ex, hours.opens, amount);
         if (start.diff(hours.closes, 'hours') > 0)
             return m60.inc(ex, hours.opens.add(1, 'days'), amount);
-        var weeks = Math.floor(amount /5 /hours.hoursInDay);
+        const weeks = Math.floor(amount /5 /hours.hoursInDay);
         if (weeks)
             return m60.inc(ex, start.add(weeks, 'weeks'), Math.round(amount - weeks *5 *hours.hoursInDay));
-        var untilClose = Math.ceil(hours.closes.diff(start, 'hours', true));
+        const untilClose = Math.ceil(hours.closes.diff(start, 'hours', true));
         if (untilClose < amount)
             return m60.inc(ex, hours.opens.add(1, 'days'), amount - untilClose);
         if (amount === 0 && hours.opens.hour() == start.hour())
@@ -290,34 +290,34 @@ var m60 = {
     },
     dec: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var start = m60.floor(ex, dateTime);
-        var hours = marketHours(ex, start, true);
+        const start = m60.floor(ex, dateTime);
+        const hours = marketHours(ex, start, true);
         if (hours.opens.diff(start, 'hours') > 0)
             return m60.dec(ex, hours.closes.subtract(1, 'days'), amount);
         if (start.diff(hours.closes, 'hours') > 0)
             return m60.dec(ex, hours.closes, amount);
-        var weeks = Math.floor(amount /5 /hours.hoursInDay);
+        const weeks = Math.floor(amount /5 /hours.hoursInDay);
         if (weeks)
             return m60.dec(ex, start.subtract(weeks, 'weeks'), Math.round(amount - weeks *5 *hours.hoursInDay));
-        var sinceOpen = Math.ceil(start.diff(hours.opens, 'hours', true));
+        const sinceOpen = Math.ceil(start.diff(hours.opens, 'hours', true));
         if (sinceOpen < amount)
             return m60.dec(ex, hours.closes.subtract(1, 'days'), amount - sinceOpen);
-        var result = start.subtract(amount, 'hours');
+        const result = start.subtract(amount, 'hours');
         if (hours.opens.hour() == result.hour()) return result.minute(hours.opens.minute());
         else return result;
     },
     diff: function(ex, to, from) {
-        var start = m60.inc(ex, from, 0);
-        var end = m60.dec(ex, to, 0);
+        const start = m60.inc(ex, from, 0);
+        const end = m60.dec(ex, to, 0);
         if (end.isBefore(start) && moment(to).isBefore(from))
             return -1 * m60.diff(ex, from, to);
         else if (end.isBefore(start))
             return 0;
-        var hours = marketHours(ex, start);
-        var weeks = end.diff(start, 'weeks');
+        const hours = marketHours(ex, start);
+        const weeks = end.diff(start, 'weeks');
         if (weeks)
             return weeks * 5 * hours.hoursInDay + m60.diff(ex, end, start.add(weeks, 'weeks'));
-        var days = end.diff(start, 'days');
+        const days = end.diff(start, 'days');
         if (days && start.day() < end.day())
             return days * hours.hoursInDay + m60.diff(ex, end, start.add(days, 'days'));
         else if (end.isAfter(hours.closes))
@@ -326,36 +326,36 @@ var m60 = {
         else return Math.ceil(end.diff(start, 'hours', true));
     }
 };
-var m120 = {
+const m120 = {
     value: 'm120',
     millis: 120 * 60 * 1000,
     floor: function(ex, dateTime) {
-        var start = m60.floor(ex, dateTime);
+        const start = m60.floor(ex, dateTime);
         if (start.hour() % 2) return start.subtract(1, 'hours');
         return start;
     },
     ceil: function(ex, dateTime) {
-        var start = m60.ceil(ex, dateTime);
+        const start = m60.ceil(ex, dateTime);
         if (start.hour() % 2) return start.add(1, 'hours');
         return start;
     },
     inc: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var date = moment.tz(dateTime, ex.tz);
-        var opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
-        var start = opens.valueOf() == date.valueOf() ? m120.floor(ex, opens) : m120.ceil(ex, dateTime);
-        var hours = marketHours(ex, start);
-        var floorOpens = m120.floor(ex, hours.opens);
-        var ceilCloses = m120.ceil(ex, hours.closes);
+        const date = moment.tz(dateTime, ex.tz);
+        const opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
+        const start = opens.valueOf() == date.valueOf() ? m120.floor(ex, opens) : m120.ceil(ex, dateTime);
+        const hours = marketHours(ex, start);
+        const floorOpens = m120.floor(ex, hours.opens);
+        const ceilCloses = m120.ceil(ex, hours.closes);
         if (start.valueOf() < floorOpens.valueOf())
             return m120.inc(ex, hours.opens, amount);
         if (start.valueOf() > ceilCloses.valueOf())
             return m120.inc(ex, hours.opens.add(1, 'days'), amount);
-        var hoursInDay = Math.ceil(hours.hoursInDay /2);
-        var weeks = Math.floor(amount /5 /hoursInDay);
+        const hoursInDay = Math.ceil(hours.hoursInDay /2);
+        const weeks = Math.floor(amount /5 /hoursInDay);
         if (weeks)
             return m120.inc(ex, start.add(weeks, 'weeks'), Math.round(amount - weeks *5 *hoursInDay));
-        var untilClose = Math.ceil(ceilCloses.diff(start, 'hours', true) /2);
+        const untilClose = Math.ceil(ceilCloses.diff(start, 'hours', true) /2);
         if (untilClose < amount)
             return m120.inc(ex, ceilCloses, amount - untilClose);
         if (amount === 0 && floorOpens.valueOf() == start.valueOf())
@@ -364,39 +364,39 @@ var m120 = {
     },
     dec: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var start = m120.floor(ex, dateTime);
-        var hours = marketHours(ex, start, true);
-        var floorOpens = m120.floor(ex, hours.opens);
-        var ceilCloses = m120.ceil(ex, hours.closes);
+        const start = m120.floor(ex, dateTime);
+        const hours = marketHours(ex, start, true);
+        const floorOpens = m120.floor(ex, hours.opens);
+        const ceilCloses = m120.ceil(ex, hours.closes);
         if (start.valueOf() < floorOpens.valueOf())
             return m120.dec(ex, hours.closes.subtract(1, 'days'), amount);
         if (start.valueOf() > ceilCloses.valueOf())
             return m120.dec(ex, hours.closes, amount);
-        var hoursInDay = Math.ceil(hours.hoursInDay /2);
-        var weeks = Math.floor(amount /5 /hoursInDay);
+        const hoursInDay = Math.ceil(hours.hoursInDay /2);
+        const weeks = Math.floor(amount /5 /hoursInDay);
         if (weeks)
             return m120.dec(ex,start.subtract(weeks,'weeks'),Math.round(amount - weeks *5 *hoursInDay));
-        var sinceOpen = Math.ceil(start.diff(floorOpens, 'hours', true) /2);
+        const sinceOpen = Math.ceil(start.diff(floorOpens, 'hours', true) /2);
         if (sinceOpen < amount)
             return m120.dec(ex, floorOpens, amount - sinceOpen);
-        var result = start.subtract(amount*2, 'hours');
+        const result = start.subtract(amount*2, 'hours');
         if (floorOpens.valueOf() == result.valueOf()) return hours.opens;
         else return result;
     },
     diff: function(ex, to, from) {
-        var start = m120.inc(ex, from, 0);
-        var end = m120.dec(ex, to, 0);
+        const start = m120.inc(ex, from, 0);
+        const end = m120.dec(ex, to, 0);
         if (end.isBefore(start) && moment(to).isBefore(from))
             return -1 * m120.diff(ex, from, to);
         else if (end.isBefore(start))
             return 0;
-        var hours = marketHours(ex, start);
-        var ceilCloses = m120.ceil(ex, hours.closes);
-        var hoursInDay = Math.ceil(hours.hoursInDay /2);
-        var weeks = end.diff(start, 'weeks');
+        const hours = marketHours(ex, start);
+        const ceilCloses = m120.ceil(ex, hours.closes);
+        const hoursInDay = Math.ceil(hours.hoursInDay /2);
+        const weeks = end.diff(start, 'weeks');
         if (weeks)
             return weeks * 5 * hoursInDay + m120.diff(ex, end, start.add(weeks, 'weeks'));
-        var days = end.diff(start, 'days');
+        const days = end.diff(start, 'days');
         if (days && start.day() < end.day())
             return days * hoursInDay + m120.diff(ex, end, start.add(days, 'days'));
         else if (end.isAfter(ceilCloses))
@@ -404,38 +404,38 @@ var m120 = {
         else return Math.ceil(end.diff(start, 'hours', true) /2);
     }
 };
-var m240 = {
+const m240 = {
     value: 'm240',
     millis: 240 * 60 * 1000,
     floor: function(ex, dateTime) {
-        var start = m120.floor(ex, dateTime);
+        const start = m120.floor(ex, dateTime);
         if (start.hour() % 4) return start.subtract(2, 'hours');
         return start;
     },
     ceil: function(ex, dateTime) {
-        var start = m120.ceil(ex, dateTime);
+        const start = m120.ceil(ex, dateTime);
         if (start.hour() % 4) return start.add(2, 'hours');
         return start;
     },
     inc: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var date = moment.tz(dateTime, ex.tz);
-        var opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
-        var start = opens.valueOf() == date.valueOf() ? m240.floor(ex, opens) : m240.ceil(ex, dateTime);
-        var hours = marketHours(ex, start);
-        var floorOpens = m120.floor(ex, hours.opens);
-        var ceilCloses = m240.ceil(ex, hours.closes);
+        const date = moment.tz(dateTime, ex.tz);
+        const opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
+        const start = opens.valueOf() == date.valueOf() ? m240.floor(ex, opens) : m240.ceil(ex, dateTime);
+        const hours = marketHours(ex, start);
+        const floorOpens = m120.floor(ex, hours.opens);
+        const ceilCloses = m240.ceil(ex, hours.closes);
         if (date.valueOf() < floorOpens.valueOf() && dateTime.isSame(hours.opens))
             throw Error("cycle");
         if (date.valueOf() < floorOpens.valueOf())
             return m240.inc(ex, hours.opens, amount);
         if (start.valueOf() > ceilCloses.valueOf())
             return m240.inc(ex, hours.opens.add(1, 'days'), amount);
-        var hoursInDay = Math.ceil(hours.hoursInDay /4);
-        var weeks = Math.floor(amount /5 /hoursInDay);
+        const hoursInDay = Math.ceil(hours.hoursInDay /4);
+        const weeks = Math.floor(amount /5 /hoursInDay);
         if (weeks)
             return m240.inc(ex, start.add(weeks, 'weeks'), Math.round(amount - weeks *5 *hoursInDay));
-        var untilClose = Math.ceil(ceilCloses.diff(start, 'hours', true) /4);
+        const untilClose = Math.ceil(ceilCloses.diff(start, 'hours', true) /4);
         if (untilClose < amount)
             return m240.inc(ex, ceilCloses, amount - untilClose);
         if (amount === 0 && floorOpens.valueOf() == start.valueOf())
@@ -444,39 +444,39 @@ var m240 = {
     },
     dec: function(ex, dateTime, amount) {
         if (amount < 0) throw Error("Amount must be >= 0");
-        var start = m240.floor(ex, dateTime);
-        var hours = marketHours(ex, start, true);
-        var floorOpens = m240.floor(ex, hours.opens);
-        var ceilCloses = m240.ceil(ex, hours.closes);
+        const start = m240.floor(ex, dateTime);
+        const hours = marketHours(ex, start, true);
+        const floorOpens = m240.floor(ex, hours.opens);
+        const ceilCloses = m240.ceil(ex, hours.closes);
         if (start.valueOf() < floorOpens.valueOf())
             return m240.dec(ex, hours.closes.subtract(1, 'days'), amount);
         if (start.valueOf() > ceilCloses.valueOf())
             return m240.dec(ex, hours.closes, amount);
-        var hoursInDay = Math.ceil(hours.hoursInDay /4);
-        var weeks = Math.floor(amount /5 /hoursInDay);
+        const hoursInDay = Math.ceil(hours.hoursInDay /4);
+        const weeks = Math.floor(amount /5 /hoursInDay);
         if (weeks)
             return m240.dec(ex,start.subtract(weeks,'weeks'),Math.round(amount - weeks *5 *hoursInDay));
-        var sinceOpen = Math.ceil(start.diff(floorOpens, 'hours', true) /4);
+        const sinceOpen = Math.ceil(start.diff(floorOpens, 'hours', true) /4);
         if (sinceOpen < amount)
             return m240.dec(ex, floorOpens, amount - sinceOpen);
-        var result = start.subtract(amount*4, 'hours');
+        const result = start.subtract(amount*4, 'hours');
         if (floorOpens.valueOf() == result.valueOf()) return hours.opens;
         else return result;
     },
     diff: function(ex, to, from) {
-        var start = m240.inc(ex, from, 0);
-        var end = m240.dec(ex, to, 0);
+        const start = m240.inc(ex, from, 0);
+        const end = m240.dec(ex, to, 0);
         if (end.isBefore(start) && moment(to).isBefore(from))
             return -1 * m240.diff(ex, from, to);
         else if (end.isBefore(start))
             return 0;
-        var hours = marketHours(ex, start);
-        var ceilCloses = m240.ceil(ex, hours.closes);
-        var hoursInDay = Math.ceil(hours.hoursInDay /4);
-        var weeks = end.diff(start, 'weeks');
+        const hours = marketHours(ex, start);
+        const ceilCloses = m240.ceil(ex, hours.closes);
+        const hoursInDay = Math.ceil(hours.hoursInDay /4);
+        const weeks = end.diff(start, 'weeks');
         if (weeks)
             return weeks * 5 * hoursInDay + m240.diff(ex, end, start.add(weeks, 'weeks'));
-        var days = end.diff(start, 'days');
+        const days = end.diff(start, 'days');
         if (days && start.day() < end.day())
             return days * hoursInDay + m240.diff(ex, end, start.add(days, 'days'));
         else if (end.isAfter(ceilCloses))
@@ -484,48 +484,48 @@ var m240 = {
         else return Math.ceil(end.diff(start, 'hours', true) /4);
     }
 };
-var day = {
+const day = {
     value: 'day',
     millis: 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
         return moment.tz(dateTime, ex.tz).startOf('day');
     },
     ceil: function(ex, dateTime) {
-        var start = day.floor(ex, dateTime);
+        const start = day.floor(ex, dateTime);
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.add(1, 'days');
         return start;
     },
     inc: function(ex, dateTime, amount) {
-        var start = day.ceil(ex, dateTime);
-        var wd = start.isoWeekday();
+        const start = day.ceil(ex, dateTime);
+        const wd = start.isoWeekday();
         if (wd > 5)
             return day.inc(ex, start.add(8 - wd, 'days'), amount);
-        var w = Math.floor((wd -1 + amount) / 5);
-        var days = amount - w *5;
+        const w = Math.floor((wd -1 + amount) / 5);
+        const days = amount - w *5;
         if (wd + days < 6)
             return start.isoWeek(start.isoWeek() + w).isoWeekday(wd + days);
         else return start.isoWeek(start.isoWeek() + w).isoWeekday(wd +2 + days);
     },
     dec: function(ex, dateTime, amount) {
-        var start = day.floor(ex, dateTime);
-        var wd = start.isoWeekday();
+        const start = day.floor(ex, dateTime);
+        const wd = start.isoWeekday();
         if (wd == 1)
             return day.dec(ex, start.subtract(2, 'days'), amount)
         else if (wd == 7)
             return day.dec(ex, start.subtract(1, 'days'), amount);
-        var w = Math.floor(amount / 5);
-        var days = amount - w*5;
+        const w = Math.floor(amount / 5);
+        const days = amount - w*5;
         if (wd > days)
             return start.isoWeek(start.isoWeek() - w).isoWeekday(wd - days);
         else return start.isoWeek(start.isoWeek() - w).isoWeekday(wd -2 - days);
     },
     diff: function(ex, to, from) {
-        var start = moment.tz(from, ex.tz);
-        var end = moment.tz(to, ex.tz);
+        const start = moment.tz(from, ex.tz);
+        const end = moment.tz(to, ex.tz);
         if (end.isBefore(start))
             return -1 * day.diff(ex, from, to);
-        var weeks = end.diff(start, 'weeks');
+        const weeks = end.diff(start, 'weeks');
         if (weeks)
             return weeks * 5 + day.diff(ex, end, start.add(weeks, 'weeks'));
         else if (start.isoWeekday() > 5)
@@ -538,95 +538,95 @@ var day = {
             return Math.max(end.diff(start, 'days') -2, 0);
     }
 };
-var week = {
+const week = {
     value: 'week',
     millis: 7 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
         return moment.tz(dateTime, ex.tz).startOf('isoweek');
     },
     ceil: function(ex, dateTime) {
-        var start = moment.tz(dateTime, ex.tz).startOf('isoweek');
+        const start = moment.tz(dateTime, ex.tz).startOf('isoweek');
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.isoWeek(start.isoWeek() + 1);
         return start;
     },
     inc: function(ex, dateTime, amount) {
-        var start = week.ceil(ex, dateTime);
+        const start = week.ceil(ex, dateTime);
         return start.isoWeek(start.isoWeek() + amount);
     },
     dec: function(ex, dateTime, amount) {
-        var start = week.floor(ex, dateTime);
+        const start = week.floor(ex, dateTime);
         return start.isoWeek(start.isoWeek() + -amount);
     },
     diff: function(ex, to, from) {
-        var start = moment.tz(from, ex.tz);
-        var end = moment.tz(to, ex.tz);
+        const start = moment.tz(from, ex.tz);
+        const end = moment.tz(to, ex.tz);
         return end.diff(start, 'weeks');
     }
 };
-var month = {
+const month = {
     value: 'month',
     millis: 31 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
         return moment.tz(dateTime, ex.tz).startOf('month');
     },
     ceil: function(ex, dateTime) {
-        var start = moment.tz(dateTime, ex.tz).startOf('month');
+        const start = moment.tz(dateTime, ex.tz).startOf('month');
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.month(start.month() + 1);
         return start;
     },
     inc: function(ex, dateTime, amount) {
-        var start = month.ceil(ex, dateTime);
+        const start = month.ceil(ex, dateTime);
         return start.month(start.month() + amount);
     },
     dec: function(ex, dateTime, amount) {
-        var start = month.floor(ex, dateTime);
+        const start = month.floor(ex, dateTime);
         return start.month(start.month() + -amount);
     },
     diff: function(ex, to, from) {
-        var start = moment.tz(from, ex.tz);
-        var end = moment.tz(to, ex.tz);
+        const start = moment.tz(from, ex.tz);
+        const end = moment.tz(to, ex.tz);
         return end.diff(start, 'months');
     }
 };
-var quarter = {
+const quarter = {
     value: 'quarter',
     millis: 3 * 31 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
         return moment.tz(dateTime, ex.tz).startOf('quarter');
     },
     ceil: function(ex, dateTime) {
-        var start = quarter.floor(ex, dateTime);
+        const start = quarter.floor(ex, dateTime);
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.add(3, 'months');
         return start;
     },
     inc: function(ex, dateTime, amount) {
-        var start = quarter.ceil(ex, dateTime);
+        const start = quarter.ceil(ex, dateTime);
         return start.add(3 * amount, 'months');
     },
     dec: function(ex, dateTime, amount) {
-        var start = quarter.floor(ex, dateTime);
+        const start = quarter.floor(ex, dateTime);
         return start.subtract(3 * amount, 'months');
     },
     diff: function(ex, to, from) {
-        var start = quarter.ceil(ex, from);
-        var end = quarter.floor(ex, to);
-        var months = end.diff(start, 'months');
+        const start = quarter.ceil(ex, from);
+        const end = quarter.floor(ex, to);
+        const months = end.diff(start, 'months');
         if (months < 0)
             return Math.ceil(months /3);
         return Math.floor(months /3);
     }
 };
-var year = {
+const year = {
     value: 'year',
     millis: 365 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
         return moment.tz(dateTime, ex.tz).startOf('year');
     },
     ceil: function(ex, dateTime) {
-        var start = year.floor(ex, dateTime);
+        const start = year.floor(ex, dateTime);
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.add(1, 'years');
         return start;
@@ -638,12 +638,12 @@ var year = {
         return moment.tz(dateTime, ex.tz).subtract(amount, 'years');
     },
     diff: function(ex, to, from) {
-        var start = moment.tz(from, ex.tz);
-        var end = moment.tz(to, ex.tz);
+        const start = moment.tz(from, ex.tz);
+        const end = moment.tz(to, ex.tz);
         return end.diff(start, 'years');
     }
 };
-var intervals = {
+const intervals = {
     m1: m1,
     m2: m2,
     m5: m5,
@@ -664,9 +664,9 @@ var intervals = {
 module.exports.values = _.keys(intervals);
 
 function marketHours(ex, start, before) {
-    var h24 = ex.marketOpensAt == ex.marketClosesAt;
-    var opens = moment.tz(start.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
-    var closes = h24 ? moment(opens) : moment.tz(start.format('YYYY-MM-DD') + 'T' + ex.marketClosesAt, ex.tz);
+    const h24 = ex.marketOpensAt == ex.marketClosesAt;
+    const opens = moment.tz(start.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
+    const closes = h24 ? moment(opens) : moment.tz(start.format('YYYY-MM-DD') + 'T' + ex.marketClosesAt, ex.tz);
     if (!opens.isBefore(closes) && opens.isBefore(start))
         closes.add(1, 'days');
     else if (!closes.isAfter(opens) && closes.isAfter(start))
@@ -682,7 +682,7 @@ function marketHours(ex, start, before) {
         opens.add(1, 'days');
         closes.add(1, 'days');
     }
-    var wd = closes.isoWeekday();
+    const wd = closes.isoWeekday();
     if (wd > 5 && before) {
         opens.subtract(wd - 5, 'days');
         closes.subtract(wd - 5, 'days');
@@ -690,7 +690,7 @@ function marketHours(ex, start, before) {
         opens.add(8 - wd, 'days');
         closes.add(8 - wd, 'days');
     }
-    var minInDay = h24 ? 24*60 : closes.diff(opens, 'minutes');
-    var hoursInDay = h24 ? 24 : Math.ceil(closes.diff(opens, 'hours', true));
+    const minInDay = h24 ? 24*60 : closes.diff(opens, 'minutes');
+    const hoursInDay = h24 ? 24 : Math.ceil(closes.diff(opens, 'hours', true));
     return {opens, closes, minInDay, hoursInDay};
 }

@@ -36,13 +36,13 @@ const Collective2 = require('./broker-collective2.js');
 const expect = require('chai').expect;
 
 module.exports = function(settings) {
-    var promiseHelpWithSettings, promiseHelpWithOptions;
+    let promiseHelpWithSettings, promiseHelpWithOptions;
     if (!promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Collective2);
     if (settings.help) return promiseHelpWithSettings;
     else return promiseHelpWithSettings
       .then(help => _.pick(settings, _.flatten(_.map(help, info => _.keys(info.options)))))
       .then(settings => {
-        var collective2 = Collective2(settings);
+        const collective2 = Collective2(settings);
         return _.extend(function(options) {
             if (!promiseHelpWithOptions) promiseHelpWithOptions = helpWithOptions(collective2);
             if (options.help) return promiseHelpWithOptions;

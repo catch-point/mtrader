@@ -50,14 +50,14 @@ const MAX_POPULATION = 8;
  * using an evolution strategy with collect as the fitnenss test
  */
 module.exports = function(collect) {
-    var promiseHelp;
-    var prng = new Alea();
+    let promiseHelp;
+    let prng = new Alea();
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(collect);
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
-            var fields = _.first(help).properties;
-            var opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
+            const fields = _.first(help).properties;
+            const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
                 tz: moment.tz.guess(),
                 parameter_values: {},
                 optimize_termination: options.termination
@@ -146,15 +146,15 @@ function help(collect) {
 function optimize(collect, prng, options) {
     expect(options).to.have.property('parameter_values');
     expect(options).to.have.property('eval_score');
-    var started = Date.now();
-    var count = options.solution_count || 1;
-    var pnames = _.keys(options.parameter_values);
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var space = createSearchSpace(pnames, options);
+    const started = Date.now();
+    const count = options.solution_count || 1;
+    const pnames = _.keys(options.parameter_values);
+    const pvalues = pnames.map(name => options.parameter_values[name]);
+    const space = createSearchSpace(pnames, options);
     return searchParameters(collect, prng, pnames, count, space, options).then(solutions => {
         if (_.isEmpty(solutions))
             throw Error("Could not create population for " + options.label);
-        var duration = moment.duration(_.max(_.pluck(solutions, 'foundAt')) - started);
+        const duration = moment.duration(_.max(_.pluck(solutions, 'foundAt')) - started);
         if (!_.isEmpty(solutions) && solutions[0].pindex.length)
             logger.log("Found local extremum", options.label || '\b', solutions[0].pindex.map((idx, i) => pvalues[i][idx]).join(','), "in", duration.humanize(), solutions[0].score);
         else if (!_.isEmpty(solutions))
@@ -175,13 +175,13 @@ function optimize(collect, prng, options) {
  * Searches the parameter values returning count results
  */
 function searchParameters(collect, prng, pnames, count, space, options) {
-    var terminateAt = options.optimize_termination &&
+    const terminateAt = options.optimize_termination &&
         moment().add(moment.duration(options.optimize_termination)).valueOf();
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var size = options.population_size || Math.max(
+    const pvalues = pnames.map(name => options.parameter_values[name]);
+    const size = options.population_size || Math.max(
         Math.min(Math.ceil(pvalues.map(_.size).reduce((a,b)=>a+b,0)/2), MAX_POPULATION),
         _.max(pvalues.map(_.size)), count * 2, MIN_POPULATION);
-    var createPopulation = options.sample_duration || options.sample_count ?
+    const createPopulation = options.sample_duration || options.sample_count ?
         sampleSolutions(collect, prng, pnames, space, size, options) :
         initialPopulation(prng, pnames, space, size, options);
     return Promise.resolve(createPopulation).then(population => {
@@ -189,8 +189,8 @@ function searchParameters(collect, prng, pnames, count, space, options) {
             return [];
         if (population.length > 1)
             logger.debug("Initial population of", population.length, options.label || '\b');
-        var fitnessFn = fitness(collect, options, pnames);
-        var mutationFn = mutation.bind(this, prng, pvalues, space);
+        const fitnessFn = fitness(collect, options, pnames);
+        const mutationFn = mutation.bind(this, prng, pvalues, space);
         return adapt(fitnessFn, mutationFn, pnames, terminateAt, options, population, size);
     }).then(solutions => {
         return _.sortBy(solutions.reverse(), 'score').slice(-count).reverse();
@@ -201,17 +201,17 @@ function searchParameters(collect, prng, pnames, count, space, options) {
  * Simple in-memory cache of candidates to avoid re-evaluating them again
  */
 function createSearchSpace(pnames, options) {
-    var hash = {};
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var parser = Parser({
+    const hash = {};
+    const pvalues = pnames.map(name => options.parameter_values[name]);
+    const parser = Parser({
         constant(value) {
             return _.constant(value);
         },
         variable(name) {
-            var idx = pnames.indexOf(name);
+            const idx = pnames.indexOf(name);
             if (idx >= 0) return pindex => pvalues[idx][pindex[idx]];
-            var p = _.property(name);
-            var value = p(options.parameters) || p(options.parameters);
+            const p = _.property(name);
+            const value = p(options.parameters) || p(options.parameters);
             return _.constant(value);
         },
         expression(expr, name, args) {
@@ -219,10 +219,10 @@ function createSearchSpace(pnames, options) {
             else throw Error("Cannot use " + name + " in eval_validity");
         }
     });
-    var validity = parser.parseCriteriaList(options.eval_validity);
-    var invalid = ctx => !!validity.find(fn => !fn(ctx));
+    const validity = parser.parseCriteriaList(options.eval_validity);
+    const invalid = ctx => !!validity.find(fn => !fn(ctx));
     return candidate => {
-        var key = candidate.pindex.join(',');
+        const key = candidate.pindex.join(',');
         if (hash[key] || invalid(candidate.pindex)) return false;
         hash[key] = candidate;
         return true;
@@ -233,25 +233,25 @@ function createSearchSpace(pnames, options) {
  * Creates an initial population from the best result of a set of sample periods
  */
 function sampleSolutions(collect, prng, pnames, space, size, options) {
-    var begin = moment(options.begin);
-    var end = moment(options.end || options.now);
+    const begin = moment(options.begin);
+    const end = moment(options.end || options.now);
     if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
     if (!end.isValid()) throw Error("Invalid end date: " + options.end);
-    var until = options.sample_duration ?
+    const until = options.sample_duration ?
         moment(end).subtract(moment.duration(options.sample_duration)) : begin;
-    var count = options.sample_count || 1;
-    var period = createDuration(begin, until, count);
-    var unit = getDurationUnit(period, count);
-    var duration = options.sample_duration ?
+    const count = options.sample_count || 1;
+    const period = createDuration(begin, until, count);
+    const unit = getDurationUnit(period, count);
+    const duration = options.sample_duration ?
         moment.duration(options.sample_duration) : moment.duration(end.diff(begin));
     if (duration && duration.asMilliseconds()<=0) throw Error("Invalid duration: " + options.sample_duration);
-    var period_units = Math.max(period.as(unit), 0);
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var termination = options.sample_termination || options.optimize_termination &&
+    const period_units = Math.max(period.as(unit), 0);
+    const pvalues = pnames.map(name => options.parameter_values[name]);
+    const termination = options.sample_termination || options.optimize_termination &&
         moment.duration(moment.duration(options.optimize_termination).asSeconds()/3000).toISOString();
-    var optionset = _.range(count).map(() => {
-        var periodBegin = period_units ? moment(begin).add(Math.round(prng() * period_units), unit) : begin
-        var periodEnd = moment(periodBegin).add(duration);
+    const optionset = _.range(count).map(() => {
+        let periodBegin = period_units ? moment(begin).add(Math.round(prng() * period_units), unit) : begin
+        let periodEnd = moment(periodBegin).add(duration);
         if (!periodEnd.isBefore(end)) {
             periodEnd = end;
             if (periodBegin.isAfter(begin)) {
@@ -264,29 +264,29 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
             population_size: options.sample_population_size || options.population_size
         }, _.omit(options, ['sample_duration', 'sample_count']));
     });
-    var space_factory = period_units ? createSearchSpace : _.constant(space);
+    const space_factory = period_units ? createSearchSpace : _.constant(space);
     return Promise.all(optionset.map(opts => {
-        var sample_space = space_factory(pnames, options);
+        const sample_space = space_factory(pnames, options);
         return searchParameters(collect, prng, pnames, opts.population_size, sample_space, opts);
     })).then(results => {
-        var parameters = _.pick(options.parameters, pnames);
-        var pool = _.compact(_.flatten(_.zip.apply(_, results)));
-        var sorted = period_units ? pool : _.sortBy(pool.reverse(), 'score').reverse();
-        var population = sorted.reduce((population, solution) => {
-            var candidate = {pindex: solution.pindex};
+        const parameters = _.pick(options.parameters, pnames);
+        const pool = _.compact(_.flatten(_.zip.apply(_, results)));
+        const sorted = period_units ? pool : _.sortBy(pool.reverse(), 'score').reverse();
+        const population = sorted.reduce((population, solution) => {
+            const candidate = {pindex: solution.pindex};
             if (population.length < size && (!period_units || space(candidate))) {
                 population.push(candidate);
             }
             return population;
         }, []);
-        var seed = _.isEmpty(parameters) ? null :
+        const seed = _.isEmpty(parameters) ? null :
             {pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))};
         if (seed && space(seed)) {
             population.push(seed);
         }
-        var mutate = mutation(prng, pvalues, space, population);
-        for (var i=0; i/2<size && population.length < size; i++) {
-            var mutant = mutate(seed);
+        const mutate = mutation(prng, pvalues, space, population);
+        for (let i=0; i/2<size && population.length < size; i++) {
+            const mutant = mutate(seed);
             if (mutant) population.push(mutant);
         }
         return population;
@@ -297,18 +297,18 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
  * Creates a random initial population, but also includes the default parameters.
  */
 function initialPopulation(prng, pnames, space, size, options) {
-    var parameters = _.pick(options.parameters, pnames);
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var population = [];
-    var seed = _.isEmpty(parameters) ? null : {
+    const parameters = _.pick(options.parameters, pnames);
+    const pvalues = pnames.map(name => options.parameter_values[name]);
+    const population = [];
+    const seed = _.isEmpty(parameters) ? null : {
         pindex: pvalues.map((values, p) => values.indexOf(parameters[pnames[p]]))
     };
     if (seed && space(seed)) {
         population.push(seed);
     }
-    var mutate = mutation(prng, pvalues, space);
-    for (var i=0; i<size*2 && population.length < size; i++) {
-        var mutant = mutate(seed);
+    const mutate = mutation(prng, pvalues, space);
+    for (let i=0; i<size*2 && population.length < size; i++) {
+        const mutant = mutate(seed);
         if (mutant) population.push(mutant);
     }
     return population;
@@ -318,19 +318,19 @@ function initialPopulation(prng, pnames, space, size, options) {
  * Creates the fitness function for a set of parameter values
  */
 function fitness(collect, options, pnames) {
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var score_column = getScoreColumn(options);
-    var transient = _.isBoolean(options.transient) ? options.transient :
+    const pvalues = pnames.map(name => options.parameter_values[name]);
+    const score_column = getScoreColumn(options);
+    const transient = _.isBoolean(options.transient) ? options.transient :
         isLookbackParameter(pnames, options);
     return function(candidate) {
-        var params = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
-        var parameters = _.defaults(params, options.parameters);
-        var label = pnames.length ? (options.label ? options.label + ' ' : '') +
+        const params = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
+        const parameters = _.defaults(params, options.parameters);
+        const label = pnames.length ? (options.label ? options.label + ' ' : '') +
                 candidate.pindex.map((idx,i) => {
             return options.parameter_values[pnames[i]][idx];
         }).join(',') : options.label;
-        var picked = ['portfolio', 'columns', 'variables', 'parameters', 'filter', 'precedence', 'order', 'pad_leading', 'reset_every', 'tail', 'transient'];
-        var opts = _.defaults({
+        const picked = ['portfolio', 'columns', 'variables', 'parameters', 'filter', 'precedence', 'order', 'pad_leading', 'reset_every', 'tail', 'transient'];
+        const opts = _.defaults({
             tail: 1,
             transient: transient,
             label: label,
@@ -352,27 +352,27 @@ function fitness(collect, options, pnames) {
  * Cycles between candidate selection and mutation until the score of the best/worst selected solution is the same for `stale` number of iterations
  */
 function adapt(fitness, mutation, pnames, terminateAt, options, population, size) {
-    var check = interrupt(true);
-    var maxEliteSize = Math.max(options.solution_count || 1, Math.floor(size/2));
-    var generation = size - maxEliteSize || 1;
-    var elite = []; // elite solutions best one last
-    var solutions = []; // unsorted solutions with a score
-    var candidates = population.slice(0); // solutions without a score
-    var strength = 0;
-    var counter = 0;
-    var until = Promise.resolve();
-    var rank = candidate => {
+    const check = interrupt(true);
+    const maxEliteSize = Math.max(options.solution_count || 1, Math.floor(size/2));
+    const generation = size - maxEliteSize || 1;
+    let elite = []; // elite solutions best one last
+    const solutions = []; // unsorted solutions with a score
+    const candidates = population.slice(0); // solutions without a score
+    let strength = 0;
+    let counter = 0;
+    let until = Promise.resolve();
+    const rank = candidate => {
         return fitness(candidate).then(solution => {
             candidates.splice(candidates.indexOf(candidate), 1);
             solutions.push(solution);
         }).then(() => {
             if (!solutions.length || check()) return;
-            var population = solutions.concat(elite);
-            var top = _.sortBy(population, 'score').slice(-maxEliteSize);
-            var additions = _.difference(top, elite);
-            var better = _.difference(_.pluck(top, 'score'), _.pluck(elite, 'score')).length;
+            const population = solutions.concat(elite);
+            const top = _.sortBy(population, 'score').slice(-maxEliteSize);
+            const additions = _.difference(top, elite);
+            const better = _.difference(_.pluck(top, 'score'), _.pluck(elite, 'score')).length;
             if (better || counter % generation === 0) {
-                var best = _.last(top);
+                const best = _.last(top);
                 if (best.pindex.length) logger.debug("Optimize",
                   options.label || '\b', options.begin,
                   "G" + Math.floor(counter/generation),
@@ -383,17 +383,17 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
                 }).join(','), ':', best.score);
             }
             if (better) {
-                var now = Date.now();
+                const now = Date.now();
                 additions.forEach(solution => solution.foundAt = now);
                 elite = top;
                 strength = 0;
             }
             if (!terminateAt || terminateAt > Date.now()) {
-                var ranking = [];
+                const ranking = [];
                 while (!ranking.length && strength < generation/pnames.length*2) {
-                    var mutate = mutation(elite, strength);
-                    for (var i=0; i<size*2 && elite.length+candidates.length<size; i++) {
-                        var mutant = mutate(additions[i], _.last(elite));
+                    const mutate = mutation(elite, strength);
+                    for (let i=0; i<size*2 && elite.length+candidates.length<size; i++) {
+                        const mutant = mutate(additions[i], _.last(elite));
                         if (mutant) {
                             candidates.push(mutant);
                             ranking.push(rank(mutant));
@@ -410,7 +410,7 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
         });
     };
     until = until.then(() => Promise.all(candidates.map(rank)));
-    var wait = promise => promise.then(() => {
+    const wait = promise => promise.then(() => {
         if (promise != until && !check()) return wait(until);
         else return elite.slice(0).reverse();
     });
@@ -421,29 +421,29 @@ function adapt(fitness, mutation, pnames, terminateAt, options, population, size
  * Takes the solutions and adds mutated candidates using the gaussian distribution of the solution set
  */
 function mutation(prng, pvalues, space, solutions, strength) {
-    var empty = _.isEmpty(solutions);
-    var one = solutions && solutions.length == 1;
-    var mutations = pvalues.map((values,i) => {
-        var vals = empty || one ? _.range(values.length) : _.map(solutions, sol => sol.pindex[i]);
-        var avg = one ? solutions[0].pindex[i] : vals.reduce((a,b) => a + b) / vals.length;
-        var stdev = vals.length>1 ? statkit.std(vals) : 0;
-        var window = Math.min(stdev + (strength || 0), Math.ceil(values.length/2));
+    const empty = _.isEmpty(solutions);
+    const one = solutions && solutions.length == 1;
+    const mutations = pvalues.map((values,i) => {
+        const vals = empty || one ? _.range(values.length) : _.map(solutions, sol => sol.pindex[i]);
+        const avg = one ? solutions[0].pindex[i] : vals.reduce((a,b) => a + b) / vals.length;
+        const stdev = vals.length>1 ? statkit.std(vals) : 0;
+        const window = Math.min(stdev + (strength || 0), Math.ceil(values.length/2));
         return function(value) {
-            var val = arguments.length ? value : avg;
-            var target = statkit.norminv(prng()) * window + val;
-            var abs = Math.abs(target % (values.length * 2));
+            const val = arguments.length ? value : avg;
+            const target = statkit.norminv(prng()) * window + val;
+            const abs = Math.abs(target % (values.length * 2));
             return abs >= values.length ?
                 Math.ceil(values.length * 2 - abs) - 1 : Math.floor(abs);
         };
     });
     return function(...solutions) {
-        var result = solutions.reduce((result, solution) => {
+        const result = solutions.reduce((result, solution) => {
             if (result || !solution) return result;
-            var mutated = {pindex: mutations.map((fn, i) => fn(solution.pindex[i]))};
+            const mutated = {pindex: mutations.map((fn, i) => fn(solution.pindex[i]))};
             if (space(mutated)) return mutated;
         }, null);
         if (result) return result;
-        var candidate = {pindex: mutations.map(fn => fn())};
+        const candidate = {pindex: mutations.map(fn => fn())};
         if (space(candidate)) return candidate;
         else return null;
     };
@@ -453,8 +453,8 @@ function mutation(prng, pvalues, space, solutions, strength) {
  * Splits the date range begin-end up into even count segments along major divisions (year,month,day)
  */
 function createDuration(begin, end, count) {
-    var duration = moment.duration(end.diff(begin));
-    var unit = getDurationUnit(duration, count);
+    const duration = moment.duration(end.diff(begin));
+    const unit = getDurationUnit(duration, count);
     return moment.duration(duration.as(unit), unit);
 }
 
@@ -463,7 +463,7 @@ function createDuration(begin, end, count) {
  */
 function getDurationUnit(duration, count) {
     return ['years', 'months', 'weeks', 'days', 'hours', 'minutes'].reduce((result, unit) => {
-        var number = duration.as(unit);
+        const number = duration.as(unit);
         if (!result && number > count && Math.abs(number - Math.round(number)) < 0.1)
             return unit;
         else return result;
@@ -474,10 +474,10 @@ function getDurationUnit(duration, count) {
  * Chooses a score column name that does not conflict with existing columns
  */
 function getScoreColumn(options) {
-    var score_column = 'score';
+    let score_column = 'score';
     if (options.eval_score) {
         // find a unique column
-        for (var i=0; _.has(options.columns, score_column); i++) {
+        for (let i=0; _.has(options.columns, score_column); i++) {
             score_column = 'score' + i;
         }
     } else if (!options.columns[score_column]) {
@@ -491,7 +491,7 @@ function getScoreColumn(options) {
  * Lookback functions are aggressively cached by quote.js unless transient flag is set.
  */
 function isLookbackParameter(pnames, options) {
-    var parser = Parser({
+    const parser = Parser({
         constant(value) {
             return {};
         },
@@ -499,9 +499,9 @@ function isLookbackParameter(pnames, options) {
             return {variables:[name]};
         },
         expression(expr, name, args) {
-            var lookbacks = lookback.has(name) && [name];
+            const lookbacks = lookback.has(name) && [name];
             return args.reduce((memo, arg) => {
-                var lookbackParams = lookbacks && _.intersection(pnames, arg.variables);
+                const lookbackParams = lookbacks && _.intersection(pnames, arg.variables);
                 return {
                     variables: _.union(memo.variables, arg.variables),
                     lookbacks: _.union(lookbacks, memo.lookbacks, arg.lookbacks),
@@ -510,7 +510,7 @@ function isLookbackParameter(pnames, options) {
             }, {});
         }
     });
-    var lookbackParams = _.uniq(_.flatten(_.compact(parser.parse(_.flatten(_.compact([
+    const lookbackParams = _.uniq(_.flatten(_.compact(parser.parse(_.flatten(_.compact([
         _.values(options.columns), _.values(options.variables),
         options.criteria, options.filter, options.precedence, options.order
     ]))).map(item => item.lookbackParams))));

@@ -38,22 +38,22 @@ const logger = require('./logger.js');
 process.setMaxListeners(process.getMaxListeners()+1);
 
 module.exports = function(url) {
-    var pending = _.isString(url) ? {url: url} : _.clone(url);
+    const pending = _.isString(url) ? {url: url} : _.clone(url);
     return new Promise(function(resolve, reject) {
         pending.onerror = reject;
         outstanding.push(pending);
         logger.log(url.path || url);
-        var protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
+        const protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
         protocol.get(url, res => {
-            var buffer = [];
+            const buffer = [];
             saveCookies(url.headers, res.headers);
             res.setEncoding('utf8');
             res.on('data', data => {
                 buffer.push(data);
             }).on('end', () => {
                 clear(pending);
-                var code = res.statusCode;
-                var body = buffer.join('');
+                const code = res.statusCode;
+                const body = buffer.join('');
                 if (code == 404 || code == 410) {
                     resolve();
                 } else if (code != 200 && code != 203) {
@@ -67,22 +67,22 @@ module.exports = function(url) {
     });
 }
 
-var outstanding = [];
+const outstanding = [];
 
 process.on('SIGINT', () => {
-    var error = Error('SIGINT');
+    const error = Error('SIGINT');
     outstanding.forEach(pending => {
         pending.onerror(error);
     });
 }).on('SIGTERM', () => {
-    var error = Error('SIGTERM');
+    const error = Error('SIGTERM');
     outstanding.forEach(pending => {
         pending.onerror(error);
     });
 });
 
 function clear(pending) {
-    var idx = outstanding.indexOf(pending);
+    const idx = outstanding.indexOf(pending);
     if (idx >= 0) {
         outstanding.splice(1, idx);
     }
@@ -90,12 +90,12 @@ function clear(pending) {
 
 function saveCookies(req, res) {
     if (!_.isEmpty(res['set-cookie']) && req) {
-        var keys = _.object(_.keys(req).map(k=>k.toLowerCase()), _.keys(req));
-        var key = keys.cookie || 'Cookie';
-        var cookies = req[key] || "";
+        const keys = _.object(_.keys(req).map(k=>k.toLowerCase()), _.keys(req));
+        const key = keys.cookie || 'Cookie';
+        let cookies = req[key] || "";
         res['set-cookie'].forEach(cookie => {
-            var idx = cookie.indexOf(';');
-            var pair = cookie.substring(0, idx > 0 ? idx : cookie.length);
+            const idx = cookie.indexOf(';');
+            const pair = cookie.substring(0, idx > 0 ? idx : cookie.length);
             cookies = cookies ? cookies + "; " + pair : pair;
         });
         req[key] = cookies;
@@ -103,12 +103,12 @@ function saveCookies(req, res) {
 }
 
 function titleOf(html, status) {
-    var lower = html.toLowerCase();
-    var start = lower.indexOf('<title');
-    var end = lower.indexOf('</title>');
+    const lower = html.toLowerCase();
+    const start = lower.indexOf('<title');
+    const end = lower.indexOf('</title>');
     if (start < 0 || end < 0) return status;
-    var text = html.substring(html.indexOf('>', start) + 1, end);
-    var decoded = text.replace('&lt;','<').replace('&gt;', '>').replace('&amp;', '&');
+    const text = html.substring(html.indexOf('>', start) + 1, end);
+    const decoded = text.replace('&lt;','<').replace('&gt;', '>').replace('&amp;', '&');
     if (decoded.indexOf(status) >= 0) return decoded;
     else return decoded + ' ' + status;
 }

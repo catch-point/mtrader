@@ -36,15 +36,15 @@ const _ = require('underscore');
  * Recursively merges object properties together into a new object
  */
 module.exports = function merge() {
-    var length = arguments.length;
-    var obj = {};
+    const length = arguments.length;
+    const obj = {};
     if (length < 1) return obj;
-    for (var index = 0; index < length; index++) {
-        var source = arguments[index],
-        keys = _.allKeys(source),
-        l = keys.length;
-        for (var i = 0; i < l; i++) {
-            var key = keys[i];
+    for (let index = 0; index < length; index++) {
+        const source = arguments[index];
+        const keys = _.allKeys(source);
+        const l = keys.length;
+        for (let i = 0; i < l; i++) {
+            const key = keys[i];
             if (_.isObject(obj[key]) && !_.isArray(obj[key]))
                 obj[key] = merge(obj[key], source[key]);
             else

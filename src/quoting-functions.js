@@ -52,10 +52,10 @@ module.exports.has = function(name) {
     return !!functions[name];
 };
 
-var functions = module.exports.functions = {
+const functions = module.exports.functions = {
     MAXCORREL: _.extend((quote, dataset, options, expr, duration, expression, criteria) => {
-        var n = asPositiveInteger(duration, "MAXCORREL");
-        var arg = Parser({
+        const n = asPositiveInteger(duration, "MAXCORREL");
+        const arg = Parser({
             constant(value) {
                 return [value];
             },
@@ -67,12 +67,12 @@ var functions = module.exports.functions = {
             }
         }).parse(expr)[2];
         if (!arg) throw Error("Unrecongized call to MAXCORREL: " + expr);
-        var filtered = dataset.filter(data => !_.isEmpty(data));
+        const filtered = dataset.filter(data => !_.isEmpty(data));
         if (filtered.length < 2) return positions => 0;
-        var condition = parseCriteria(arg, criteria, options);
-        var optionset = filtered.map(data => {
-            var first = _.first(data);
-            var last = _.last(data);
+        const condition = parseCriteria(arg, criteria, options);
+        const optionset = filtered.map(data => {
+            const first = _.first(data);
+            const last = _.last(data);
             return _.defaults({
                 index: first[options.indexCol],
                 symbol: first[options.symbolCol],
@@ -96,18 +96,18 @@ var functions = module.exports.functions = {
             }, {});
         }).then(dataset => {
             return historic => {
-                var positions = _.last(historic);
+                const positions = _.last(historic);
                 if (_.size(positions) < 2) return 0;
-                var matrix = _.keys(_.pick(positions, _.isObject)).map((symbol, i, keys) => {
+                const matrix = _.keys(_.pick(positions, _.isObject)).map((symbol, i, keys) => {
                     if (i < keys.length -1 && !condition(positions[symbol])) return null;
-                    var data = dataset[symbol];
+                    const data = dataset[symbol];
                     if (!data) throw Error("Could not find dataset: " + symbol);
-                    var end = _.sortedIndex(data, positions, options.temporalCol);
+                    let end = _.sortedIndex(data, positions, options.temporalCol);
                     if (data[end] && data[end][options.temporalCol] == positions[options.temporalCol]) end++;
                     return _.pluck(data.slice(Math.max(end - n, 0), end), arg);
                 });
-                var last = matrix.pop();
-                var correlations = _.compact(matrix).map(m => {
+                const last = matrix.pop();
+                const correlations = _.compact(matrix).map(m => {
                     return statkit.corr(m, last);
                 });
                 if (!correlations.length) return 0;
@@ -122,7 +122,7 @@ var functions = module.exports.functions = {
 
 function asPositiveInteger(calc, msg) {
     try {
-        var n = calc();
+        const n = calc();
         if (n > 0 && _.isFinite(n) && Math.round(n) == n) return n;
     } catch (e) {}
     throw Error("Expected a literal positive interger in " + msg + " not " + n);
@@ -138,8 +138,8 @@ function parseCriteria(columnName, criteria, options) {
     if (_.contains(['<', '>', '=', '!'], criteria.charAt(0)))
         return parseCriteria(columnName, columnName + criteria, options);
     try {
-        var expression = false;
-        var parsed = Parser({
+        let expression = false;
+        const parsed = Parser({
             constant(value) {
                 return _.constant(value);
             },

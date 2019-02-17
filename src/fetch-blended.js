@@ -47,15 +47,15 @@ const storage = require('./storage.js');
 const expect = require('chai').expect;
 
 module.exports = function() {
-    var cfg = config('fetch.blended.config') ?
+    const cfg = config('fetch.blended.config') ?
         readConfig(config('fetch.blended.config')) : config('fetch.blended');
     if (_.isEmpty(cfg)) throw Error("Missing fetch blended config");
     expect(cfg).to.have.property('delegate').that.is.oneOf(['remote', 'iqfeed', 'yahoo', 'files']);
     expect(cfg).to.have.property('assets').that.is.an('array');
-    var delegate = cfg.delegate == 'remote' ? remote() :
+    const delegate = cfg.delegate == 'remote' ? remote() :
         cfg.delegate == 'iqfeed' ? iqfeed() :
         cfg.delegate == 'files' ? files() : yahoo();
-    var markets = _.uniq(cfg.assets.map(asset => asset.market));
+    const markets = _.uniq(cfg.assets.map(asset => asset.market));
     return {
         close() {
             return Promise.resolve(delegate && delegate.close());
@@ -73,7 +73,7 @@ module.exports = function() {
         intraday: delegateCall.bind(this, delegate, cfg, 'intraday'),
         interday: options => {
             expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
-            var dayFn = day.bind(this, blendCall.bind(this, delegate, cfg, 'interday'));
+            const dayFn = day.bind(this, blendCall.bind(this, delegate, cfg, 'interday'));
             switch(options.interval) {
                 case 'year': return year(dayFn, options);
                 case 'quarter': return quarter(dayFn, options);
@@ -90,42 +90,42 @@ module.exports = function() {
 };
 
 function readConfig(name) {
-    var filename = config.resolve(name);
-    var base = path.dirname(filename);
-    var cfg = _.extend({base}, config.read(filename), config('fetch.blended'));
-    var dname = cfg.delegate;
+    const filename = config.resolve(name);
+    const base = path.dirname(filename);
+    const cfg = _.extend({base}, config.read(filename), config('fetch.blended'));
+    const dname = cfg.delegate;
     if (!dname) throw Error("Missing fetch.blended.delegate");
     return cfg;
 }
 
 function lookup(delegate, cfg, cmd, options) {
     return delegateCall(delegate, cfg, cmd, options).then(result => result.map(item => {
-        var asset = cfg.assets.find(a => _.matcher(a.underlying)(item));
+        const asset = cfg.assets.find(a => _.matcher(a.underlying)(item));
         return _.defaults(_.omit(asset, 'underlying', 'blend'), item);
     }));
 }
 
 function delegateCall(delegate, cfg, cmd, options) {
-    var asset = findAsset(cfg, cmd, options);
-    var market = asset && asset.underlying && asset.underlying.market ?
+    const asset = findAsset(cfg, cmd, options);
+    const market = asset && asset.underlying && asset.underlying.market ?
         _.omit(config('markets')[asset.underlying.market], 'datasources', 'label', 'description') : null;
-    var opts = !asset || !asset.underlying ? options :
+    const opts = !asset || !asset.underlying ? options :
         _.defaults({}, asset && asset.underlying, market, options);
     return delegate[cmd](opts);
 }
 
 function blendCall(delegate, cfg, cmd, options) {
-    var asset = findAsset(cfg, cmd, options);
+    const asset = findAsset(cfg, cmd, options);
     if (!asset || !asset.blend)
         return delegateCall(delegate, cfg, cmd, _.defaults({interval: 'day'}, options));
-    var end = options.end && moment.tz(options.end, options.tz).format();
+    const end = options.end && moment.tz(options.end, options.tz).format();
     return asset.blend.reduceRight((promise, blend, i) => promise.then(result => {
         return readData(cfg, blend, options).then(part => {
             if (i == asset.blend.length-1) {
-                var begining = _.isEmpty(part) && moment.tz(options.begin, options.tz).format();
-                var ending = !_.isEmpty(part) && _.last(part).ending;
-                var earlier = _.last(_.sortBy(_.compact([begining, ending])));
-                var later = _.last(_.sortBy(_.compact([end, ending])));
+                const begining = _.isEmpty(part) && moment.tz(options.begin, options.tz).format();
+                const ending = !_.isEmpty(part) && _.last(part).ending;
+                const earlier = _.last(_.sortBy(_.compact([begining, ending])));
+                const later = _.last(_.sortBy(_.compact([end, ending])));
                 return delegateCall(delegate, cfg, cmd, _.defaults({
                     interval: 'day',
                     begin: earlier,
@@ -139,14 +139,14 @@ function blendCall(delegate, cfg, cmd, options) {
             }
         }).then(part => {
             if (_.isEmpty(result)) return part;
-            var next = _.last(part);
-            var overlap = _.sortedIndex(result, next, 'ending');
+            const next = _.last(part);
+            let overlap = _.sortedIndex(result, next, 'ending');
             if (!result[overlap] || result[overlap].ending > next.ending) overlap--;
             if (!result[overlap])
                 return part.concat(result);
             else if (next.adj_close == result[overlap].adj_close)
                 return part.concat(result.slice(overlap+1));
-            var scale = result[overlap].adj_close / next.adj_close;
+            const scale = result[overlap].adj_close / next.adj_close;
             return part.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}))
                 .concat(result.slice(overlap+1));
         });
@@ -160,7 +160,7 @@ function findAsset(cfg, cmd, options) {
 
 function readData(cfg, blend, options) {
     if (!blend.data) expect(blend).to.have.property('filename');
-    var file = blend.filename && path.resolve(cfg.base, blend.filename);
+    const file = blend.filename && path.resolve(cfg.base, blend.filename);
     return Promise.resolve(file ? new Promise((present, absent) => {
         fs.access(file, fs.R_OK, err => err ? absent(err) : present(file));
     }).then(present => readTable(file), absent => {
@@ -169,9 +169,9 @@ function readData(cfg, blend, options) {
 }
 
 function readTable(filename) {
-    var check = interrupt();
+    const check = interrupt();
     return new Promise((ready, error) => {
-        var objects = new Array();
+        const objects = new Array();
         csv.fromStream(fs.createReadStream(filename), {headers : true, ignoreEmpty: true})
             .on('error', error)
             .on('data', function(data) {
@@ -188,17 +188,17 @@ function readTable(filename) {
 
 function day(readTable, options) {
     return readTable(options).then(result => {
-        var begin = moment.tz(options.begin, options.tz);
-        var start = begin.format();
-        var first = _.sortedIndex(result, {ending: start}, 'ending');
+        const begin = moment.tz(options.begin, options.tz);
+        const start = begin.format();
+        const first = _.sortedIndex(result, {ending: start}, 'ending');
         if (first < 1) return result;
         else return result.slice(first);
     }).then(result => {
         if (!options.end) return result;
-        var end = moment.tz(options.end || now, options.tz);
+        const end = moment.tz(options.end || now, options.tz);
         if (end.isAfter()) return result;
-        var final = end.format();
-        var last = _.sortedIndex(result, {ending: final}, 'ending');
+        const final = end.format();
+        let last = _.sortedIndex(result, {ending: final}, 'ending');
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
         else return result.slice(0, last);
@@ -206,14 +206,14 @@ function day(readTable, options) {
 }
 
 function year(day, options) {
-    var end = options.end && moment.tz(options.end, options.tz);
+    const end = options.end && moment.tz(options.end, options.tz);
     return month(day, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('year'),
         end: end && (end.isAfter(moment(end).startOf('year')) ? end.endOf('year') : end)
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).year()))
       .then(years => _.map(years, bars => bars.reduce((year, month) => {
-        var adj = adjustment(_.last(bars), month);
+        const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('year', month.ending, options),
             open: year.open || adj(month.open),
@@ -227,14 +227,14 @@ function year(day, options) {
 }
 
 function quarter(day, options) {
-    var end = options.end && moment.tz(options.end, options.tz);
+    const end = options.end && moment.tz(options.end, options.tz);
     return month(day, _.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('quarter'),
         end: end && (end.isAfter(moment(end).startOf('quarter')) ? end.endOf('quarter') : end)
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-Q')))
       .then(quarters => _.map(quarters, bars => bars.reduce((quarter, month) => {
-        var adj = adjustment(_.last(bars), month);
+        const adj = adjustment(_.last(bars), month);
         return _.defaults({
             ending: endOf('quarter', month.ending, options),
             open: quarter.open || adj(month.open),
@@ -248,14 +248,14 @@ function quarter(day, options) {
 }
 
 function month(day, options) {
-    var end = options.end && moment.tz(options.end, options.tz);
+    const end = options.end && moment.tz(options.end, options.tz);
     return day(_.defaults({
         begin: moment.tz(options.begin, options.tz).startOf('month'),
         end: end && (end.isAfter(moment(end).startOf('month')) ? end.endOf('month') : end)
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('Y-MM')))
       .then(months => _.map(months, bars => bars.reduce((month, day) => {
-        var adj = adjustment(_.last(bars), day);
+        const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('month', day.ending, options),
             open: month.open || adj(day.open),
@@ -269,7 +269,7 @@ function month(day, options) {
 }
 
 function week(day, options) {
-    var begin = moment.tz(options.begin, options.tz);
+    const begin = moment.tz(options.begin, options.tz);
     return day(_.defaults({
         begin: begin.day() === 0 || begin.day() == 6 ? begin.startOf('day') :
             begin.startOf('isoWeek').subtract(1, 'days'),
@@ -277,7 +277,7 @@ function week(day, options) {
     }, options))
       .then(bars => _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW')))
       .then(weeks => _.map(weeks, bars => bars.reduce((week, day) => {
-        var adj = adjustment(_.last(bars), day);
+        const adj = adjustment(_.last(bars), day);
         return _.defaults({
             ending: endOf('isoWeek', day.ending, options),
             open: week.open || adj(day.open),
@@ -291,20 +291,20 @@ function week(day, options) {
 }
 
 function adjustment(base, bar) {
-    var scale = bar.adj_close/bar.close * base.close / base.adj_close;
+    const scale = bar.adj_close/bar.close * base.close / base.adj_close;
     if (Math.abs(scale -1) < 0.000001) return _.identity;
     else return price => Math.round(price * scale * 10000) / 10000;
 }
 
 function endOf(unit, date, options) {
-    var start = moment.tz(date, options.tz);
+    const start = moment.tz(date, options.tz);
     if (!start.isValid()) throw Error("Invalid date " + date);
-    var ending = moment(start).endOf(unit);
-    var days = 0;
+    let ending = moment(start).endOf(unit);
+    let days = 0, closes;
     do {
         if (ending.days() === 0) ending.subtract(2, 'days');
         else if (ending.days() == 6) ending.subtract(1, 'days');
-        var closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
+        closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
         if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
         if (closes.isBefore(start)) ending = moment(start).add(++days, 'days').endOf(unit);
     } while (closes.isBefore(start));

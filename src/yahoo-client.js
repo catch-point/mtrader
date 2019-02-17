@@ -44,8 +44,8 @@ const autoc = "http://d.yimg.com/aq/autoc";
 const quotes = "http://download.finance.yahoo.com/d/quotes.csv";
 
 module.exports = function() {
-    var agent = promiseHistoryAgent();
-    var throttled = throttlePromise(agent, 2);
+    const agent = promiseHistoryAgent();
+    const throttled = throttlePromise(agent, 2);
     return {
         close() {},
         lookup: lookupSymbol.bind(this, _.memoize(throttlePromise(listSymbols, 2))),
@@ -57,21 +57,21 @@ module.exports = function() {
 };
 
 function promiseHistoryAgent() {
-    var createAgent = symbol => {
-        var options = url.parse(quote.replace('{symbol}', encodeURIComponent(symbol)));
-        var headers = options.headers = {};
+    const createAgent = symbol => {
+        const options = url.parse(quote.replace('{symbol}', encodeURIComponent(symbol)));
+        const headers = options.headers = {};
         return promiseText(options).then(body => {
-            var keyword = '{"crumb":"';
-            var start = 0, end = 0;
+            const keyword = '{"crumb":"';
+            let start = 0, end = 0;
             do {
                 start = body.indexOf(keyword, start) + keyword.length;
                 end = body.indexOf('"', start);
             } while (start > 0 && body.substring(start-1, end+1)=='"{crumb}"');
             if (start < 0 && end < 0) return promiseText;
             try {
-                var crumb = encodeURIComponent(JSON.parse(body.substring(start-1, end+1)));
+                const crumb = encodeURIComponent(JSON.parse(body.substring(start-1, end+1)));
                 return query => {
-                    var options = url.parse(query.replace('{crumb}', crumb));
+                    const options = url.parse(query.replace('{crumb}', crumb));
                     options.headers = headers;
                     return promiseText(options);
                 };
@@ -81,9 +81,9 @@ function promiseHistoryAgent() {
             }
         });
     };
-    var agent = expire(createAgent, 60 * 1000);
+    const agent = expire(createAgent, 60 * 1000);
     return query => {
-        var url = _.keys(query).reduce((url, key) => {
+        const url = _.keys(query).reduce((url, key) => {
             return url.replace('{' + key + '}', query[key]);
         }, download);
         return agent(query.symbol)
@@ -99,11 +99,11 @@ function promiseHistoryAgent() {
 }
 
 function expire(func, after) {
-    var result;
-    var previous = 0;
+    let result;
+    let previous = 0;
     return function() {
-        var now = _.now();
-        var remaining = after - (now - previous);
+        const now = _.now();
+        const remaining = after - (now - previous);
         if (remaining <= 0 || remaining > after) {
             previous = now;
             result = func.apply(this, arguments);
@@ -116,7 +116,7 @@ function loadTable(loadCSV, interval, events, symbol, begin, tz) {
     expect(loadCSV).to.be.a('function');
     expect(interval).to.be.oneOf(['1mo','1wk','1d']);
     expect(symbol).to.be.a('string').and.match(/^\S+$/);
-    var options = _.extend({
+    const options = _.extend({
         symbol: symbol,
         events: events
     }, periods(interval, begin, tz));
@@ -125,11 +125,11 @@ function loadTable(loadCSV, interval, events, symbol, begin, tz) {
 
 function periods(interval, begin, tz) {
     expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
-    var mb = moment.tz(begin, tz);
+    const mb = moment.tz(begin, tz);
     if (!mb.isValid()) throw Error("Invalid begin date " + begin);
-    var start = interval == '1mo' ? mb.startOf('month') :
+    const start = interval == '1mo' ? mb.startOf('month') :
         interval == '1wk' ? mb.startOf('isoWeek') : mb.startOf('day');
-    var end = moment().tz(tz).startOf('day');
+    const end = moment().tz(tz).startOf('day');
     return {
         period1: start.valueOf()/1000,
         period2: end.valueOf()/1000,
@@ -138,8 +138,8 @@ function periods(interval, begin, tz) {
 }
 
 function lookupSymbol(listSymbols, symbol, marketLang) {
-    var root = symbol.replace(/^\W+/, '').replace(/\W.*$/, '');
-    var url = [
+    const root = symbol.replace(/^\W+/, '').replace(/\W.*$/, '');
+    const url = [
         autoc,
         "?callback=YAHOO.util.ScriptNodeDataSource.callbacks",
         "&lang=", marketLang || 'en-US',
@@ -168,8 +168,9 @@ function parseJSON(text) {
     } catch (e) {
         // Yahoo does not escape special characters in company name
         // like double quotes or control chars, causing the block to end abruptly
-        var regex = /{"symbol":"([^{]*)","name": "([^{]*)","exch": "([^{]*)","type": "([^{]*)","exchDisp":"([^{]*)","typeDisp":"([^{]*)"}/g;
-        var m, result = [];
+        const regex = /{"symbol":"([^{]*)","name": "([^{]*)","exch": "([^{]*)","type": "([^{]*)","exchDisp":"([^{]*)","typeDisp":"([^{]*)"}/g;
+        const result = [];
+        let m;
         while (m = regex.exec(text)) {
             result.push({
                 symbol: m[1],
@@ -188,14 +189,14 @@ function parseCSV(text) {
     if (!text) return [];
     return _.compact(text.split(/\r?\n/)).map(function(line) {
         if (line.indexOf(',') < 0) return [line];
-        var m;
-        var row = [];
-        var regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+        let m;
+        const row = [];
+        const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
         if (line.charAt(0) == ',') {
             row.push('');
         }
         while (m = regex.exec(line)) {
-            var string = m[1] || m[2] || '';
+            const string = m[1] || m[2] || '';
             row.push(string.trim());
         }
         return row;
@@ -203,7 +204,7 @@ function parseCSV(text) {
 }
 
 function rows2objects(rows) {
-    var headers = [];
+    let headers = [];
     return rows.reduce(function(points, row){
         if (headers.length && headers.length == row.length) {
             points.push(_.object(headers, row));

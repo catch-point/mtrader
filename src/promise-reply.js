@@ -37,19 +37,19 @@ const AssertionError = require('chai').AssertionError;
 process.setMaxListeners(process.getMaxListeners()+1);
 
 module.exports = function(process) {
-    var seq = 0;
-    var handlers = {};
-    var quitting = false;
-    var onquit = error => {
+    let seq = 0;
+    const handlers = {};
+    let quitting = false;
+    const onquit = error => {
         quitting = true;
         _.compact(queue.keys().map(id => queue.remove(id))).forEach(pending => {
             pending.onerror(error);
         });
         if (process.connected) process.disconnect();
     };
-    var ondisconnect = [];
-    var queue = createQueue(onquit, process.pid);
-    var stats = {};
+    const ondisconnect = [];
+    const queue = createQueue(onquit, process.pid);
+    const stats = {};
     process.setMaxListeners(0);
     process.on('disconnect', () => {
         try {
@@ -61,7 +61,7 @@ module.exports = function(process) {
     }).on('message', msg => {
         if (msg.cmd && msg.cmd.indexOf('reply_to_') === 0 && queue.has(msg.in_reply_to)) {
             inc(stats, msg.cmd.substring('reply_to_'.length), 'replies_rec');
-            var pending = queue.remove(msg.in_reply_to);
+            const pending = queue.remove(msg.in_reply_to);
             try {
                 if (!_.has(msg, 'error'))
                     return pending.onresponse(msg.payload);
@@ -110,7 +110,7 @@ module.exports = function(process) {
             logger.debug("Unknown message", msg);
         }
     });
-    var self;
+    let self;
     return self = {
         stats: stats,
         get connected() {
@@ -134,7 +134,7 @@ module.exports = function(process) {
         },
         send(cmd, payload) {
             inc(stats, cmd, 'messages_sent');
-            var connect = !process.connecting ? Promise.resolve() :
+            const connect = !process.connecting ? Promise.resolve() :
                 new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
             return connect.then(() => new Promise(cb => process.send({
                 cmd: cmd,
@@ -145,10 +145,10 @@ module.exports = function(process) {
         },
         request(cmd, payload) {
             inc(stats, cmd, 'requests_sent');
-            var connect = !process.connecting ? Promise.resolve() :
+            const connect = !process.connecting ? Promise.resolve() :
                 new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
             return connect.then(() => new Promise((response, error) => {
-                var id = nextId(cmd);
+                const id = nextId(cmd);
                 queue.add(id, {
                     onresponse: response,
                     onerror: error,
@@ -178,7 +178,7 @@ module.exports = function(process) {
     };
 
     function nextId(prefix) {
-        var id;
+        let id;
         do {
             id = prefix + (++seq).toString(16);
         } while(queue.has(id));
@@ -186,16 +186,16 @@ module.exports = function(process) {
     }
 };
 
-var monitor;
-var instances = [];
+let monitor;
+let instances = [];
 
 process.on('SIGINT', () => {
-    var error = Error('SIGINT');
+    const error = Error('SIGINT');
     instances.forEach(queue => {
         queue.abort(error);
     });
 }).on('SIGTERM', () => {
-    var error = Error('SIGTERM');
+    const error = Error('SIGTERM');
     instances.forEach(queue => {
         queue.abort(error);
     });
@@ -216,20 +216,20 @@ function inc(stats, cmd, opt) {
 }
 
 function createQueue(onquit, pid) {
-    var outstanding = {};
-    var closed = false;
-    var queue = {
+    const outstanding = {};
+    let closed = false;
+    const queue = {
         add(id, pending) {
             if (closed) throw Error("Disconnected");
             outstanding[id] = _.extend({}, pending);
             if (!monitor) monitor = setInterval(() => {
-                var outstanding = _.flatten(instances.map(o => _.values(o.outstanding)));
+                const outstanding = _.flatten(instances.map(o => _.values(o.outstanding)));
                 if (_.isEmpty(outstanding)) {
                     clearInterval(monitor);
                     monitor = null;
                 } else {
-                    var marked = _.filter(outstanding, 'marked');
-                    var labels = _.uniq(marked.map(label));
+                    const marked = _.filter(outstanding, 'marked');
+                    const labels = _.uniq(marked.map(label));
                     if (!_.isEmpty(labels))
                         logger.info("Still processing", labels.join(' and '), "from process", pid);
                     _.reject(marked, 'logged').forEach(pending => {
@@ -269,7 +269,7 @@ function createQueue(onquit, pid) {
         },
         close() {
             closed = true;
-            var idx = instances.indexOf(queue);
+            const idx = instances.indexOf(queue);
             if (idx >= 0) {
                 instances.splice(1, idx);
             }

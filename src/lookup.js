@@ -43,10 +43,10 @@ const expect = require('chai').use(like).expect;
  * @returns a function that returns an object about the security in the given options
  */
 module.exports = function(fetch) {
-    var fetchOnline = fetchOptionsFactory(fetch, false, false);
-    var fetchReadOnly = fetchOptionsFactory(fetch, false, true);
-    var fetchOffline = fetchOptionsFactory(fetch, true, true);
-    var self = function(options) {
+    const fetchOnline = fetchOptionsFactory(fetch, false, false);
+    const fetchReadOnly = fetchOptionsFactory(fetch, false, true);
+    const fetchOffline = fetchOptionsFactory(fetch, true, true);
+    const self = function(options) {
         return options.offline ? fetchOffline(options) :
             options.read_only ? fetchReadOnly(options) : fetchOnline(options);
     };
@@ -58,8 +58,8 @@ module.exports = function(fetch) {
  * @returns a function that returns an object about the security in the given options
  */
 function fetchOptionsFactory(fetch, offline, read_only) {
-    var dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    var memoizeFirstLookup = _.memoize((symbol, market) => {
+    const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const memoizeFirstLookup = _.memoize((symbol, market) => {
         return readInfo(dir, symbol, market, offline).catch(err => {
             if (offline) throw err;
             else return fetch({
@@ -81,10 +81,10 @@ function fetchOptionsFactory(fetch, offline, read_only) {
     });
     return function(options) {
         expect(options).to.have.property('symbol');
-        var symbol = options.symbol.toUpperCase();
-        var market = options.market;
-        var markets = config('markets');
-        var args = _.toArray(arguments);
+        const symbol = options.symbol.toUpperCase();
+        const market = options.market;
+        const markets = config('markets');
+        const args = _.toArray(arguments);
         return memoizeFirstLookup(symbol, market).then(security => {
             return _.defaults(
                 _.omit(markets[security.market] || {}, 'datasources', 'label', 'description'),
@@ -105,8 +105,8 @@ function fetchOptionsFactory(fetch, offline, read_only) {
 }
 
 function readInfo(dir, symbol, market, offline) {
-    var yesterday = offline ? 0 : Date.now() - 24 *60 * 60 *1000;
-    var file = getInfoFileName(dir, symbol, market);
+    const yesterday = offline ? 0 : Date.now() - 24 *60 * 60 *1000;
+    const file = getInfoFileName(dir, symbol, market);
     return new Promise((cb, fail) => {
         fs.stat(file, (err, stats) => err ? fail(err) : cb(stats));
     }).then(stats => {
@@ -118,13 +118,13 @@ function readInfo(dir, symbol, market, offline) {
 }
 
 function saveInfo(dir, symbol, market, info) {
-    var file = getInfoFileName(dir, symbol, market);
-    var data = JSON.stringify(info, null, '  ') + '\n';
+    const file = getInfoFileName(dir, symbol, market);
+    const data = JSON.stringify(info, null, '  ') + '\n';
     return awriter.writeFile(file, data).then(() => info);
 }
 
 function getInfoFileName(dir, symbol, market) {
-    var name = market ? symbol + '.' + market : symbol;
+    const name = market ? symbol + '.' + market : symbol;
     return path.resolve(dir, safe(name), 'info.json');
 }
 

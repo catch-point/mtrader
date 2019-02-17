@@ -47,15 +47,14 @@ const expect = require('chai').expect;
  * @returns a function that returns array of row objects based on given options.
  */
 module.exports = function(quote, collectFn) {
-    var promiseHelp;
-    var self;
+    let promiseHelp, self;
     return self = _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(quote);
         expect(options).to.be.an('object');
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
-            var fields = _.first(help).properties;
-            var opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
+            const fields = _.first(help).properties;
+            const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
                 indexCol: '$index',
                 symbolCol: '$symbol',
                 marketCol: '$market',
@@ -129,25 +128,25 @@ function help(quote) {
  * Computes column values given expressions and variables in options
  */
 function collect(quote, callCollect, fields, options) {
-    var duration = options.reset_every && moment.duration(options.reset_every);
-    var begin = moment.tz(options.begin, options.tz);
-    var end = moment.tz(options.end || options.now, options.tz);
+    const duration = options.reset_every && moment.duration(options.reset_every);
+    const begin = moment.tz(options.begin, options.tz);
+    const end = moment.tz(options.end || options.now, options.tz);
     if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
     if (!end.isValid()) throw Error("Invalid end date: " + options.end);
-    var segments = [];
+    const segments = [];
     if (!options.reset_every) {
         segments.push(options.begin);
     } else if (duration && duration.asMilliseconds()>0) {
         segments.push(options.begin);
-        var start = begin.add(duration);
-        var stop = end.subtract(duration.asMilliseconds()*0.05, 'milliseconds');
+        const start = begin.add(duration);
+        const stop = end.subtract(duration.asMilliseconds()*0.05, 'milliseconds');
         while (start.isBefore(stop)) {
             segments.push(start.format());
             start.add(duration);
         }
     } else if (duration && duration.asMilliseconds()<=0) {
-        var start = end.add(duration);
-        var stop = begin.subtract(duration.asMilliseconds()*0.05, 'milliseconds');
+        const start = end.add(duration);
+        const stop = begin.subtract(duration.asMilliseconds()*0.05, 'milliseconds');
         while (start.isAfter(stop)) {
             segments.unshift(start.format());
             start.add(duration);
@@ -156,11 +155,11 @@ function collect(quote, callCollect, fields, options) {
     } else {
         throw Error("Invalid duration: " + options.reset_every);
     }
-    var compacted = compactPortfolio(fields, options.begin, options.end, options.tz, options);
+    const compacted = compactPortfolio(fields, options.begin, options.end, options.tz, options);
     if (segments.length < 2) {// only one period
         return collectDuration(quote, callCollect, fields, compacted);
     }
-    var optionset = segments.map((segment, i, segments) => {
+    const optionset = segments.map((segment, i, segments) => {
         if (i === 0) return _.defaults({
             begin: options.begin, end: segments[i+1]
         }, compacted);
@@ -183,25 +182,25 @@ function collectDuration(quote, callCollect, fields, options) {
     expect(options).to.have.property('portfolio');
     expect(options).to.have.property('begin');
     expect(options).to.have.property('columns').that.is.an('object');
-    var illegal = _.intersection(_.keys(options.variables), fields);
+    const illegal = _.intersection(_.keys(options.variables), fields);
     if (illegal.length) expect(options.variables).not.to.have.property(_.first(illegal));
-    var portfolio = getPortfolio(options.portfolio, options);
-    var optional = _.difference(_.uniq(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true)), fields);
-    var defaults = _.object(optional, optional.map(v => null));
-    var avail = _.union(fields, optional);
+    const portfolio = getPortfolio(options.portfolio, options);
+    const optional = _.difference(_.uniq(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true)), fields);
+    const defaults = _.object(optional, optional.map(v => null));
+    const avail = _.union(fields, optional);
     checkCircularVariableReference(fields, options);
-    var zipColumns = parseNeededColumns(avail, options);
-    var columns = _.object(zipColumns);
-    var columnNames = _.object(_.keys(options.columns), zipColumns.map(_.first));
-    var simpleColumns = getSimpleColumns(columns, options);
-    var criteria = getSimpleCriteria(columns, options);
+    const zipColumns = parseNeededColumns(avail, options);
+    const columns = _.object(zipColumns);
+    const columnNames = _.object(_.keys(options.columns), zipColumns.map(_.first));
+    const simpleColumns = getSimpleColumns(columns, options);
+    const criteria = getSimpleCriteria(columns, options);
     return Promise.all(portfolio.map(opts => {
         if (opts.id == null) throw Error(`Missing portfolio ID ${opts.label}`);
-        var index = '#' + opts.id.toString() + (options.columns[options.indexCol] ?
+        const index = '#' + opts.id.toString() + (options.columns[options.indexCol] ?
             '.' + JSON.parse(options.columns[options.indexCol]).substring(1) : '');
         if (opts.portfolio) {
             if (~_.flatten([opts.portfolio]).indexOf(null)) throw Error(`Portfolio cannot contain null in ${opts.id} ${opts.portfolio}`);
-            var parser = Parser({
+            const parser = Parser({
                 variable(name){
                     return opts.columns && opts.columns[name] || name;
                 },
@@ -209,11 +208,11 @@ function collectDuration(quote, callCollect, fields, options) {
                     return name + '(' + args.join(',') + ')';
                 }
             });
-            var columns = parser.parse(simpleColumns);
-            var filter = [opts.filter, parser.parse(criteria)];
-            var nestedColumns = _.flatten(_.flatten([opts.portfolio]).map(p => _.keys(p.columns)));
-            var existing_vars = _.union(_.keys(opts.columns), _.keys(opts.variables), nestedColumns);
-            var params = _.omit(defaults, existing_vars);
+            const columns = parser.parse(simpleColumns);
+            const filter = [opts.filter, parser.parse(criteria)];
+            const nestedColumns = _.flatten(_.flatten([opts.portfolio]).map(p => _.keys(p.columns)));
+            const existing_vars = _.union(_.keys(opts.columns), _.keys(opts.variables), nestedColumns);
+            const params = _.omit(defaults, existing_vars);
             return callCollect(_.defaults({
                 columns: _.extend(columns, {
                     [options.indexCol]: JSON.stringify(index),
@@ -239,21 +238,21 @@ function collectDuration(quote, callCollect, fields, options) {
             }, opts));
         }
     })).then(dataset => {
-        var parser = createParser(quote, dataset, columns, _.keys(simpleColumns), options);
+        const parser = createParser(quote, dataset, columns, _.keys(simpleColumns), options);
         return collectDataset(dataset, parser, columns, options);
     }).then(collection => {
-        var begin = moment.tz(options.begin, options.tz).toISOString();
-        var start = _.sortedIndex(collection, {[options.temporalCol]: begin}, options.temporalCol);
+        const begin = moment.tz(options.begin, options.tz).toISOString();
+        const start = _.sortedIndex(collection, {[options.temporalCol]: begin}, options.temporalCol);
         if (start <= 0) return collection;
         else return collection.slice(start);
     }).then(collection => collection.reduce((result, points) => {
-        var filter = getOrderBy(options.filter, columns, options);
-        var objects = _.values(points).filter(_.isObject)
+        const filter = getOrderBy(options.filter, columns, options);
+        const objects = _.values(points).filter(_.isObject)
             .filter(point => !filter.find(criteria => criteria.by && !criteria.by(point)));
         if (!_.isEmpty(objects)) result.push.apply(result, objects);
         return result;
     }, [])).then(result => {
-        var order = getOrderBy(options.order, columns, options);
+        const order = getOrderBy(options.order, columns, options);
         return sortBy(result, order);
     }).then(result => {
         if (options.head && options.tail)
@@ -272,11 +271,11 @@ function collectDuration(quote, callCollect, fields, options) {
  * Looks for column/variable circular reference and if found throws an Error
  */
 function checkCircularVariableReference(fields, options) {
-    var variables = _.extend({}, getColumnVariables(fields, options), options.variables);
-    var references = getReferences(variables);
+    const variables = _.extend({}, getColumnVariables(fields, options), options.variables);
+    const references = getReferences(variables);
     _.each(references, (reference, name) => {
         if (_.contains(reference, name)) {
-            var path = _.sortBy(_.keys(references).filter(n => _.contains(references[n], n) && _.contains(references[n], name)));
+            const path = _.sortBy(_.keys(references).filter(n => _.contains(references[n], n) && _.contains(references[n], name)));
             throw Error("Circular variable reference " + path.join(',') + ": " + variables[name]);
         }
     });
@@ -287,10 +286,10 @@ function checkCircularVariableReference(fields, options) {
  * variables, parameters, subcollect, and fields
  */
 function getColumnVariables(fields, options) {
-    var pnames = _.keys(options.parameters);
-    var varnames = _.keys(options.variables);
-    var portfolio = getPortfolio(options.portfolio, options);
-    var inherited = _.uniq(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true));
+    const pnames = _.keys(options.parameters);
+    const varnames = _.keys(options.variables);
+    const portfolio = getPortfolio(options.portfolio, options);
+    const inherited = _.uniq(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true));
     return _.omit(options.columns, pnames.concat(varnames, inherited, fields));
 }
 
@@ -298,7 +297,7 @@ function getColumnVariables(fields, options) {
  * Hash of variable names to array of variable names it depends on
  */
 function getReferences(variables, includeRolling) {
-    var references = Parser({
+    const references = Parser({
         constant(value) {
             return [];
         },
@@ -312,11 +311,11 @@ function getReferences(variables, includeRolling) {
             else return _.uniq(_.flatten(args, true));
         }
     }).parse(_.mapObject(variables, valOrNull));
-    var follow = _.clone(references);
+    const follow = _.clone(references);
     while (_.reduce(follow, (more, reference, name) => {
         if (!reference.length) return more;
-        var followed = _.uniq(_.flatten(reference.map(ref => ref == name ? [] : follow[ref]), true));
-        var cont = more || follow[name].length != followed.length ||
+        const followed = _.uniq(_.flatten(reference.map(ref => ref == name ? [] : follow[ref]), true));
+        const cont = more || follow[name].length != followed.length ||
             followed.length != _.intersection(follow[name], followed).length;
         follow[name] = followed;
         references[name] = reference.reduce((union, ref) => {
@@ -335,32 +334,32 @@ function valOrNull(value) {
  * Potentially reduces the number of portfolios by filtering on begin/end
  */
 function compactPortfolio(fields, begin, end, tz, options) {
-    var portfolio = options.portfolio;
-    var array = _.isArray(portfolio) ? portfolio :
+    const portfolio = options.portfolio;
+    const array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :
         _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
         expect(portfolio).to.be.a('string');
-    var leading = !options.pad_leading ? begin :
+    const leading = !options.pad_leading ? begin :
         common('WORKDAY', [_.constant(begin), _.constant(-options.pad_leading)], {tz})();
-    var mbegin = moment.tz(leading, tz);
-    var mend = moment.tz(end || options.now, tz);
-    var compacted = _.compact(array.map((subcollect, idx) => {
+    const mbegin = moment.tz(leading, tz);
+    const mend = moment.tz(end || options.now, tz);
+    const compacted = _.compact(array.map((subcollect, idx) => {
         if (!_.isObject(subcollect)) return subcollect;
-        var stz = subcollect.tz || tz;
-        var sbegin = subcollect.begin && moment.tz(subcollect.begin, stz);
-        var send = subcollect.end && moment.tz(subcollect.end, stz);
+        const stz = subcollect.tz || tz;
+        const sbegin = subcollect.begin && moment.tz(subcollect.begin, stz);
+        const send = subcollect.end && moment.tz(subcollect.end, stz);
         if (send && !send.isAfter(mbegin) || sbegin && !sbegin.isBefore(mend)) return null;
-        var begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
-        var end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
-        var compact = compactPortfolio(fields, begin, end, stz, subcollect);
+        const begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
+        const end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
+        const compact = compactPortfolio(fields, begin, end, stz, subcollect);
         if (compact.id != null) return compact;
         else return _.extend({id: 'c' + idx}, compact);
     }));
     if (array.every((item, i) => item == compacted[i])) return options;
-    var before = _.uniq(_.flatten(array.map(subcollect => _.keys(subcollect.columns))));
-    var after = _.uniq(_.flatten(compacted.map(subcollect => _.keys(subcollect.columns))));
-    var missing = _.difference(before, after, _.keys(options.variables), _.keys(options.parameters), fields);
-    var params = _.object(missing, missing.map(v => null));
+    const before = _.uniq(_.flatten(array.map(subcollect => _.keys(subcollect.columns))));
+    const after = _.uniq(_.flatten(compacted.map(subcollect => _.keys(subcollect.columns))));
+    const missing = _.difference(before, after, _.keys(options.variables), _.keys(options.parameters), fields);
+    const params = _.object(missing, missing.map(v => null));
     return _.defaults({
         portfolio: compacted,
         parameters: _.defaults({}, options.parameters, params)
@@ -371,23 +370,23 @@ function compactPortfolio(fields, begin, end, tz, options) {
  * Parses a comma separated list into symbol/market pairs.
  */
 function getPortfolio(portfolio, options) {
-    var opts = _.omit(options, [
+    const opts = _.omit(options, [
         'portfolio', 'columns', 'variables', 'criteria', 'filter', 'precedence', 'order', 'pad_leading', 'tail', 'head', 'begin', 'reset_every'
     ]);
-    var array = _.isArray(portfolio) ? portfolio :
+    const array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :
         _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
         expect(portfolio).to.be.a('string');
     if (_.isEmpty(_.compact(array)) && !options.portfolio) throw Error(`Missing portfolio ${options.label}`);
     else if (_.isEmpty(_.compact(array))) throw Error(`No portfolio matches this time frame ${options.label}`);
-    var begin = !options.pad_leading ? options.begin :
+    const begin = !options.pad_leading ? options.begin :
         common('WORKDAY', [_.constant(options.begin), _.constant(-options.pad_leading)], options)();
-    var mbegin = moment.tz(begin, options.tz);
-    var mend = moment.tz(options.end || options.now, options.tz);
+    const mbegin = moment.tz(begin, options.tz);
+    const mend = moment.tz(options.end || options.now, options.tz);
     return _.compact(array.map(symbolExchange => {
         if (_.isObject(symbolExchange)) return symbolExchange;
         else if (!symbolExchange) return null;
-        var m = symbolExchange.match(/^(\S+)\W(\w+)$/);
+        const m = symbolExchange.match(/^(\S+)\W(\w+)$/);
         if (!m) throw Error("Unexpected symbol.market: " + symbolExchange);
         return {
             label: symbolExchange,
@@ -395,13 +394,13 @@ function getPortfolio(portfolio, options) {
             market: m[2]
         };
     }).map((subcollect, idx) => {
-        var sbegin = subcollect.begin && moment.tz(subcollect.begin, subcollect.tz || options.tz);
-        var send = subcollect.end && moment.tz(subcollect.end, subcollect.tz || options.tz);
+        const sbegin = subcollect.begin && moment.tz(subcollect.begin, subcollect.tz || options.tz);
+        const send = subcollect.end && moment.tz(subcollect.end, subcollect.tz || options.tz);
         if (send && !send.isAfter(mbegin) || sbegin && sbegin.isAfter(mend))
             throw Error(`Expected ${subcollect.label} to be removed in compactPortfolio`);
-        var id = subcollect.id == null ? 'q' + idx : subcollect.id;
-        var begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
-        var end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
+        const id = subcollect.id == null ? 'q' + idx : subcollect.id;
+        const begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
+        const end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
         return _.defaults({id, begin, end}, subcollect, opts);
     }));
 }
@@ -411,26 +410,26 @@ function getPortfolio(portfolio, options) {
  * and add variables that are not substituted, with filter and order expressions
  */
 function parseNeededColumns(fields, options) {
-    var varnames = getVariables(fields, options);
-    var normalizer = createNormalizeParser(varnames, options);
-    var columns = _.mapObject(options.columns, expr => normalizer.parse(expr || 'NULL()'));
-    var conflicts = _.intersection(_.keys(_.omit(columns, (v, k) => v==k)),
+    const varnames = getVariables(fields, options);
+    const normalizer = createNormalizeParser(varnames, options);
+    const columns = _.mapObject(options.columns, expr => normalizer.parse(expr || 'NULL()'));
+    const conflicts = _.intersection(_.keys(_.omit(columns, (v, k) => v==k)),
         _.union(fields, _.keys(options.variables))
     );
-    var masked = _.object(conflicts, conflicts.map(name => {
+    const masked = _.object(conflicts, conflicts.map(name => {
         if (!~conflicts.indexOf(columns[name])) return columns[name];
-        var seq = 2;
+        let seq = 2;
         while (~conflicts.indexOf(name + seq)) seq++;
         return name + seq;
     }));
-    var result = [];
-    var needed = _.reduce(options.columns, (needed, expr, key) => {
-        var value = columns[key];
+    const result = [];
+    const needed = _.reduce(options.columns, (needed, expr, key) => {
+        const value = columns[key];
         needed[masked[key] || key] = value;
         result.push([masked[key] || key, value]);
         return needed;
     }, {});
-    var variables = varnames.reduce((variables, name) => {
+    const variables = varnames.reduce((variables, name) => {
         if (_.has(options.variables, name)) {
             variables[name] = normalizer.parse(options.variables[name]);
             result.push([name, variables[name]]);
@@ -440,10 +439,10 @@ function parseNeededColumns(fields, options) {
         }
         return variables;
     }, {});
-    var filterOrder = normalizer.parseCriteriaList(_.flatten(_.compact([
+    const filterOrder = normalizer.parseCriteriaList(_.flatten(_.compact([
         options.filter, options.order
     ]), true));
-    var isVariablePresent = Parser({
+    const isVariablePresent = Parser({
         constant(value) {
             return false;
         },
@@ -454,7 +453,7 @@ function parseNeededColumns(fields, options) {
             return args.find(_.identity) || false;
         }
     }).parse;
-    var neededFilterOrder = filterOrder.filter(expr => {
+    const neededFilterOrder = filterOrder.filter(expr => {
         if (needed[expr] || variables[expr]) return false;
         else return isVariablePresent(expr);
     });
@@ -467,7 +466,7 @@ function parseNeededColumns(fields, options) {
  * and variables used multiple times in a single expression
  */
 function getVariables(fields, options) {
-    var parser = Parser({
+    const parser = Parser({
         constant(value) {
             return _.isString(value) ? value : null;
         },
@@ -492,19 +491,19 @@ function getVariables(fields, options) {
             }, {});
         }
     });
-    var exprs = parser.parseCriteriaList(_.flatten(_.compact([
+    let exprs = parser.parseCriteriaList(_.flatten(_.compact([
         _.compact(_.values(options.columns)),
         options.criteria, options.filter, options.precedence
     ]), true));
-    var more_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
+    let more_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
     while (more_vars.length) {
-        var old_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
-        var additional = parser.parseCriteriaList(_.compact(_.values(_.pick(options.variables, more_vars))));
+        const old_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
+        const additional = parser.parseCriteriaList(_.compact(_.values(_.pick(options.variables, more_vars))));
         exprs = exprs.concat(additional);
-        var new_vars = _.uniq(_.flatten(additional.map(_.keys), true));
+        const new_vars = _.uniq(_.flatten(additional.map(_.keys), true));
         more_vars = _.difference(new_vars, old_vars);
     }
-    var multiples = _.uniq(_.flatten(exprs.map(expr => _.keys(expr).filter(name => expr[name] > 1)), true));
+    const multiples = _.uniq(_.flatten(exprs.map(expr => _.keys(expr).filter(name => expr[name] > 1)), true));
     return _.union(_.keys(getColumnVariables(fields, options)), multiples);
 }
 
@@ -526,7 +525,7 @@ function createNormalizeParser(variables, options) {
  * that can safely be inlined in expressions
  */
 function getSubstitutions(variables, options) {
-    var params = _.mapObject(_.pick(options.parameters, (val,key) => {
+    const params = _.mapObject(_.pick(options.parameters, (val,key) => {
         return _.isString(val) || _.isNumber(val) || _.isNull(val);
     }), val => stringify(val));
     return _.mapObject(_.omit(_.defaults(options.variables, params), variables), valOrNull);
@@ -548,9 +547,9 @@ function stringify(value) {
  * variables are inlined in the arguments for expressions that used in lookback functions.
  */
 function getSimpleColumns(columns, options) {
-    var colParser = createColumnParser(columns, options);
-    var formatColumns = _.map(columns, expr => colParser.parse(expr).columns).reduce((a,b)=>_.extend(a,b), {});
-    var criteriaColumns = _.pluck(colParser.parseCriteriaList(_.flatten(_.compact([
+    const colParser = createColumnParser(columns, options);
+    const formatColumns = _.map(columns, expr => colParser.parse(expr).columns).reduce((a,b)=>_.extend(a,b), {});
+    const criteriaColumns = _.pluck(colParser.parseCriteriaList(_.flatten(_.compact([
         options.criteria, options.filter, options.precedence, options.order
     ]), true)), 'columns').reduce((a,b)=>_.extend(a,b), {});
     return _.defaults(formatColumns, criteriaColumns);
@@ -562,9 +561,9 @@ function getSimpleColumns(columns, options) {
  * Only expressions that are to be evaluated before criteria is processed.
  */
 function createColumnParser(columns, options) {
-    var inline = createInlineParser(columns, options);
-    var parsedColumns = {};
-    var parser = Parser({
+    const inline = createInlineParser(columns, options);
+    const parsedColumns = {};
+    const parser = Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
             return {complex: false, columns: {}};
@@ -578,15 +577,15 @@ function createColumnParser(columns, options) {
             else return {complex: false, columns: {}}; // parse column later
         },
         expression(expr, name, args) {
-            var order = name == 'DESC' || name == 'ASC';
-            var complex = _.some(args, arg => arg.complex);
-            var nested = {
+            const order = name == 'DESC' || name == 'ASC';
+            const complex = _.some(args, arg => arg.complex);
+            const nested = {
                 complex: true,
                 columns: _.pluck(args, 'columns').reduce((a,b)=>_.extend(a,b), {})
             };
             if (quoting.has(name)) return {complex: true, columns: {}};
             else if (order || rolling.has(name) || complex) return nested;
-            var inlined = inline(expr);
+            const inlined = inline(expr);
             if (common.has(name) && inlined.length > 512) return nested;
             else return {complex: false, columns: {[expr]: inlined}}; // lookback
         }
@@ -601,17 +600,17 @@ function createColumnParser(columns, options) {
  */
 function getSimpleCriteria(columns, options) {
     if (_.isEmpty(options.criteria)) return [];
-    var inline = createInlineParser(columns, options);
-    var parsedColumns = {};
-    var parser = Parser({
+    const inline = createInlineParser(columns, options);
+    const parsedColumns = {};
+    const parser = Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         variable(name) {
             if (!columns[name] || columns[name]==name) return name;
             else return parsedColumns[name] = parsedColumns[name] || parser.parse(columns[name]);
         },
         expression(expr, name, args) {
-            var order = name == 'DESC' || name == 'ASC';
-            var complex = _.some(args, _.isNull);
+            const order = name == 'DESC' || name == 'ASC';
+            const complex = _.some(args, _.isNull);
             if (quoting.has(name)) return null;
             else if (order || rolling.has(name) || complex) return null;
             else return inline(expr);
@@ -624,8 +623,8 @@ function getSimpleCriteria(columns, options) {
  * Parser that inlines all variables in resulting normalized expressions
  */
 function createInlineParser(columns, options) {
-    var incols = {};
-    var inline = Parser({
+    const incols = {};
+    const inline = Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
             return _.constant(value);
@@ -637,13 +636,13 @@ function createInlineParser(columns, options) {
         expression(expr, name, args) {
             if (common.has(name) && args.every(_.isFunction))
                 return common(name, args, options);
-            var values = args.map(arg => _.isFunction(arg) ? stringify(arg()) : arg);
+            const values = args.map(arg => _.isFunction(arg) ? stringify(arg()) : arg);
             return name + '(' + values.join(',') + ')';
         }
     });
-    var formatter = Parser();
+    const formatter = Parser();
     return function(expr) {
-        var parsed = inline.parse(expr);
+        const parsed = inline.parse(expr);
         return formatter.parse(_.isFunction(parsed) ? stringify(parsed()) : parsed);
     };
 }
@@ -652,11 +651,11 @@ function createInlineParser(columns, options) {
  * Creates an expression parser that recognizes the rolling/quote functions.
  */
 function createParser(quote, dataset, columns, cached, options) {
-    var external = _.memoize((expr, name, args) => {
+    const external = _.memoize((expr, name, args) => {
         return quoting(expr, name, args, quote, dataset, options);
     });
-    var pCols = {};
-    var parser = Parser({
+    const pCols = {};
+    const parser = Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
             return positions => value;
@@ -671,7 +670,7 @@ function createParser(quote, dataset, columns, cached, options) {
             if (_.contains(cached, expr))
                 return ctx => _.last(_.values(_.last(ctx)))[expr];
             else return Promise.all(args).then(args => {
-                var fn = common(name, args, options) ||
+                const fn = common(name, args, options) ||
                     rolling(expr, name, args, options) ||
                     external(expr, name, args);
                 if (fn) return fn;
@@ -688,16 +687,16 @@ function createParser(quote, dataset, columns, cached, options) {
  * Combines the quote.js results into a single array containing retained securities.
  */
 function collectDataset(dataset, parser, columns, options) {
-    var pcolumns = promiseColumns(parser, columns, options);
-    var pcriteria = promiseFilter(parser, options.criteria);
-    var precedence = getOrderBy(options.precedence, columns, options);
+    const pcolumns = promiseColumns(parser, columns, options);
+    const pcriteria = promiseFilter(parser, options.criteria);
+    const precedence = getOrderBy(options.precedence, columns, options);
     return pcolumns.then(fcolumns => pcriteria.then(criteria => {
         return reduceInterval(dataset, options.temporalCol, (result, points) => {
-            var positions = sortBy(points, precedence);
-            var row = result.length;
+            const positions = sortBy(points, precedence);
+            const row = result.length;
             result[row] = positions.reduce((retained, point) => {
-                var key = point[options.indexCol];
-                var pending = _.extend({}, retained, {
+                const key = point[options.indexCol];
+                const pending = _.extend({}, retained, {
                     [key]: point
                 });
                 result[row] = pending;
@@ -716,14 +715,14 @@ function collectDataset(dataset, parser, columns, options) {
  * @returns a map of functions that can compute the column values for a given row.
  */
 function promiseColumns(parser, columns, options) {
-    var map = parser.parse(columns);
+    const map = parser.parse(columns);
     return Promise.all(_.values(map))
       .then(values => _.object(_.keys(map), values))
       .then(columns => {
-        var indexCol = options.indexCol;
-        var symbolCol = options.symbolCol;
-        var marketCol = options.marketCol;
-        var temporalCol = options.temporalCol;
+        const indexCol = options.indexCol;
+        const symbolCol = options.symbolCol;
+        const marketCol = options.marketCol;
+        const temporalCol = options.temporalCol;
         if (!columns[indexCol]) return columns;
         // nested collect pass through these columns as-is
         columns[indexCol] = ctx => _.last(_.values(_.last(ctx)))[indexCol];
@@ -759,9 +758,9 @@ function getOrderBy(expr, columns, options) {
         expression(expr, name, args) {
             if (name == 'DESC') return {desc: true, by: _.first(args).by};
             else if (name == 'ASC') return {desc: false, by:  _.first(args).by};
-            var fargs = args.map(arg => arg.by);
-            var fn = common(name, fargs, options);
-            var fail = ctx => {
+            const fargs = args.map(arg => arg.by);
+            const fn = common(name, fargs, options);
+            const fail = ctx => {
                 throw Error("Only common functions can be used here: " + expr);
             };
             return {by: ctx => _.has(ctx, expr) ? ctx[expr] : fn ? fn(ctx) : fail()};
@@ -773,11 +772,11 @@ function getOrderBy(expr, columns, options) {
  * Takes the quote.js results as an array and matches the results by temporal date calling cb.
  */
 function reduceInterval(dataset, temporal, cb, memo) {
-    var check = interrupt();
+    const check = interrupt();
     while (dataset.some(list => list.length)) {
         check();
-        var ending = _.first(_.compact(_.pluck(dataset.map(list => _.first(list)), temporal)).sort());
-        var points = dataset.reduce((result,list) => {
+        const ending = _.first(_.compact(_.pluck(dataset.map(list => _.first(list)), temporal)).sort());
+        const points = dataset.reduce((result,list) => {
             while (list.length && _.first(list)[temporal] == ending) {
                 result.push(list.shift());
             }
@@ -795,10 +794,10 @@ function reduceInterval(dataset, temporal, cb, memo) {
 function sortBy(array, order) {
     if (_.isEmpty(order)) return array;
     else return _.range(array.length).sort((left, right) => {
-        var ret = order.reduce((r, o) => {
+        const ret = order.reduce((r, o) => {
             if (r != 0) return r;
-            var a = o.by(array[left]);
-            var b = o.by(array[right]);
+            const a = o.by(array[left]);
+            const b = o.by(array[right]);
             if (a === b) {
                 return 0;
             } else if (!o.desc) {

@@ -41,21 +41,21 @@ const config = require('./config.js');
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-var shared = module.exports = share(createInstance);
+const shared = module.exports = share(createInstance);
 
 process.on('SIGHUP', () => shared.instance && shared.instance.reload());
 process.on('SIGINT', () => shared.instance && shared.instance.close());
 process.on('SIGTERM', () => shared.instance && shared.instance.close());
 
 function createInstance() {
-    var check = interrupt(true);
-    var queue = workerQueue(createRemoteWorkers, (worker, cmd, options) => {
+    let check = interrupt(true);
+    const queue = workerQueue(createRemoteWorkers, (worker, cmd, options) => {
         return worker.request(cmd, options).catch(err => {
             if (check() || queue.isClosed() || !err || !err.message) throw err;
             else if (options && options.remote_failed) throw err;
-            var stillConnected = !!worker.connected && !~err.message.indexOf('Disconnecting');
+            const stillConnected = !!worker.connected && !~err.message.indexOf('Disconnecting');
             if (worker.connected) queue.stopWorker(worker);
-            var addresses = getRemoteWorkerAddresses();
+            const addresses = getRemoteWorkerAddresses();
             if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.process.pid) {
                 throw err;
             }
@@ -69,10 +69,10 @@ function createInstance() {
             });
         });
     });
-    var disconnectStoppedWorkers = _.debounce(() => {
+    const disconnectStoppedWorkers = _.debounce(() => {
         return queue.getStoppedWorkers().forEach(worker => worker.disconnect());
     }, 500);
-    var reload = queue.reload;
+    const reload = queue.reload;
     return _.extend(queue, {
         reload: _.debounce(function() {
             check = interrupt(true);
@@ -104,7 +104,7 @@ function createInstance() {
         },
         version() {
             return queue.all('version').then(versions => {
-                var workers = queue.getWorkers();
+                const workers = queue.getWorkers();
                 return _.object(workers.map(worker => worker.process.pid), versions);
             });
         }
@@ -112,9 +112,9 @@ function createInstance() {
 }
 
 function createRemoteWorkers(check_queue) {
-    var queue = this;
-    var remote_workers = getRemoteWorkerAddresses();
-    var remoteWorkers = remote_workers.map(address => {
+    const queue = this;
+    const remote_workers = getRemoteWorkerAddresses();
+    const remoteWorkers = remote_workers.map(address => {
         return replyTo(remote(address)).on('connect', function() {
             if (!queue.getStoppedWorkers().find(w => w.connected && w.process.pid == this.process.pid))
                 logger.log("Worker", this.process.pid, "is connected");
@@ -126,10 +126,10 @@ function createRemoteWorkers(check_queue) {
                 logger.log("Worker", this.process.pid, "has disconnected");
         }).on('error', err => logger.warn(err.message || err));
     });
-    var nice = config('nice');
+    const nice = config('nice');
     Promise.all(remoteWorkers.map(worker => worker.request('worker_count').catch(err => err)))
       .then(counts => {
-        var errors = counts.filter((count, i) => {
+        const errors = counts.filter((count, i) => {
             if (!isFinite(count)) return count;
             else if (!nice || !_.isFinite(nice)) remoteWorkers[i].count = count;
             else remoteWorkers[i].count = Math.ceil(count * (1 - nice/100));

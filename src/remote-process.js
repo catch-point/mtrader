@@ -46,7 +46,7 @@ const EOM = '\r\n\r\n';
 
 const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
 
-var remote = module.exports = function(socket, options) {
+const remote = module.exports = function(socket, options) {
     if (!socket) throw Error("No remote location given");
     if (typeof socket == 'string' || typeof socket == 'number')
         return remote(new ws(parseLocation(socket, false).href, _.extend({
@@ -70,16 +70,16 @@ var remote = module.exports = function(socket, options) {
             headers: {'User-Agent': 'mtrader/' + version},
             agent: false
         }, options)), _.extend({label: socket}, options));
-    var buf = '';
-    var label = options.label;
-    var timeout = config('tls.timeout');
-    var emitter = new EventEmitter();
+    let buf = '';
+    const label = options.label;
+    const timeout = config('tls.timeout');
+    const emitter = new EventEmitter();
     socket.on('open', () => {
         if (timeout) {
             // remove handshakeTimeout event handler
             socket._socket.removeAllListeners('timeout');
             socket._socket.setTimeout(timeout/2);
-            var pings = 0;
+            let pings = 0;
             socket._socket.on('timeout', () => pings++ ? socket.close() : socket.ping());
             socket._socket.on('pong', () => ping--);
         }
@@ -88,7 +88,7 @@ var remote = module.exports = function(socket, options) {
         emitter.emit('connect');
     }).on('message', data => {
         try {
-            var chunks = data.split('\r\n\r\n');
+            let chunks = data.split('\r\n\r\n');
             if (buf) chunks[0] = buf + chunks[0];
             buf = chunks.pop();
             if (_.isEmpty(chunks) && ~buf.lastIndexOf(EOM)) {
@@ -143,13 +143,13 @@ function readBase64FileSync(filename) {
 
 function readFileSync(filename) {
     if (filename) {
-        var file = path.resolve(config('prefix'), filename);
+        const file = path.resolve(config('prefix'), filename);
         return fs.readFileSync(file, {encoding: 'utf-8'});
     }
 }
 
 function parseLocation(location, secure) {
-    var parsed = typeof location == 'number' || location.match(/^\d+$/) ? {port: +location} :
+    const parsed = typeof location == 'number' || location.match(/^\d+$/) ? {port: +location} :
         ~location.indexOf('//') ? url.parse(location) :
         secure ? url.parse('wss://' + location) :
         url.parse('ws://' + location);

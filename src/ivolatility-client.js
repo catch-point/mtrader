@@ -50,12 +50,12 @@ const storage = require('./storage.js');
 const expect = require('chai').expect;
 
 module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
-    var store = storage(cacheDir);
-    var checkForUpdatesFn = checkForUpdates.bind(this, cacheDir, downloadDir, auth_file, downloadType);
-    var checkTormorrow;
-    var another_six_hours = 6 * 60 * 60 * 1000;
-    var another_21_hours = 21 * 60 * 60 * 1000;
-    var processEveryDay = () => {
+    const store = storage(cacheDir);
+    const checkForUpdatesFn = checkForUpdates.bind(this, cacheDir, downloadDir, auth_file, downloadType);
+    let checkTormorrow, processing;
+    const another_six_hours = 6 * 60 * 60 * 1000;
+    const another_21_hours = 21 * 60 * 60 * 1000;
+    const processEveryDay = () => {
         return processing = checkForUpdatesFn().then(result => {
             store.flush();
             checkTormorrow = setTimeout(() => {
@@ -64,13 +64,13 @@ module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
             checkTormorrow.unref();
         });
     };
-    var processing = processEveryDay();
+    processing = processEveryDay();
     return {
         listAvailableDownloads(dType) {
-            var token = auth_file ? fs.readFileSync(auth_file, 'utf8').trim() : '';
-            var auth = new Buffer.from(token, 'base64').toString().split(/:/);
-            var username = auth[0];
-            var password = auth[1];
+            const token = auth_file ? fs.readFileSync(auth_file, 'utf8').trim() : '';
+            const auth = new Buffer.from(token, 'base64').toString().split(/:/);
+            const username = auth[0];
+            const password = auth[1];
             return listAvailableDownloads(username, password, dType || downloadType);
         },
         downloadUpdates(dType) {
@@ -86,13 +86,13 @@ module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
         },
         interday(options) {
             expect(options).to.have.property('iv_symbol');
-            var symbol = options.iv_symbol;
+            const symbol = options.iv_symbol;
             expect(symbol).to.be.like(/^(\w+)(\d\d)(\d\d)(\d\d)([CP])(\d{8})$/);
-            var m = symbol.match(/^(\w+)(\d\d)(\d\d)(\d\d)([CP])(\d{8})$/);
-            var [, underlying, yy, month, day] = m;
-            var cc = +yy<50 ? 2000 : 1900;
-            var year = cc + +yy;
-            var expiry_date = `${year}-${month}-${day}`;
+            const m = symbol.match(/^(\w+)(\d\d)(\d\d)(\d\d)([CP])(\d{8})$/);
+            const [, underlying, yy, month, day] = m;
+            const cc = +yy<50 ? 2000 : 1900;
+            const year = cc + +yy;
+            const expiry_date = `${year}-${month}-${day}`;
             return processing.then(() => store.open(underlying, (err, db) => {
                 if (err) throw err;
                 return db.collection(expiry_date).then(collection => {
@@ -114,9 +114,9 @@ function checkForUpdates(cacheDir, downloadDir, auth_file, downloadType) {
 function processNewFiles(cacheDir, downloadDir) {
     return readMetadata(downloadDir).then(metadata => {
         return listNewFiles(downloadDir, metadata).then(files => files.reduce((wait, file) => wait.then(() => {
-            var filename = path.resolve(downloadDir, file);
+            const filename = path.resolve(downloadDir, file);
             return explodeZip(filename, (stats, entryStream, entryName) => {
-                var sink = createDataSinkStore(cacheDir);
+                const sink = createDataSinkStore(cacheDir);
                 return parseZipEntry(entryStream, (stats, datum) => {
                     sink(datum);
                     if (!~stats.symbols.indexOf(datum.symbol)) {
@@ -135,7 +135,7 @@ function processNewFiles(cacheDir, downloadDir) {
                     return sink.close(entryName).then(() => Promise.reject(err));
                 });
             }, {file, symbols:[], exchanges:[], expirations:[]}).then(stats => {
-                var idx = metadata.entries.findIndex(entry => entry.file == file);
+                const idx = metadata.entries.findIndex(entry => entry.file == file);
                 if (idx<0) metadata.entries.push(stats);
                 else metadata.entries[idx] = stats;
                 return stats;
@@ -149,22 +149,22 @@ function processNewFiles(cacheDir, downloadDir) {
 }
 
 function createDataSinkStore(cacheDir) {
-    var every_minute = 60 * 1000;
-    var cleanup, error, abort;
-    var total = 0, count = 0;
-    var queue = {};
-    var helpers = {};
-    var check = interrupt();
-    var logProgress = _.noop;
-    var keyOf = datum => datum.expiration.substring(0, 2);
-    var fork = key => {
-        var forked = child_process.fork(module.filename, [cacheDir]);
+    const every_minute = 60 * 1000;
+    let cleanup, error, abort;
+    let total = 0, count = 0;
+    const queue = {};
+    const helpers = {};
+    const check = interrupt();
+    let logProgress = _.noop;
+    const keyOf = datum => datum.expiration.substring(0, 2);
+    const fork = key => {
+        const forked = child_process.fork(module.filename, [cacheDir]);
         forked.on('message', msg => {
             if (count) logProgress(count/total);
             if (abort) {
                 forked.send({cmd:'close'});
             } else if (msg && msg.cmd == 'ready' && queue[key].length) {
-                var payload = queue[key].splice(0, Math.min(queue[key].length, 100));
+                const payload = queue[key].splice(0, Math.min(queue[key].length, 100));
                 forked.send({cmd: 'store', payload});
                 count+= payload.length;
             } else if (msg && msg.cmd == 'ready' && cleanup) {
@@ -172,7 +172,7 @@ function createDataSinkStore(cacheDir) {
             } else if (msg && msg.cmd == 'ready') {
                 _.defer(() => {
                     if (queue[key].length) {
-                        var payload = queue[key].splice(0, Math.min(queue[key].length, 100));
+                        const payload = queue[key].splice(0, Math.min(queue[key].length, 100));
                         forked.send({cmd: 'store', payload});
                         count+= payload.length;
                     } else {
@@ -193,7 +193,7 @@ function createDataSinkStore(cacheDir) {
     return _.extend(datum => {
         check();
         total++;
-        var key = keyOf(datum);
+        const key = keyOf(datum);
         if (!queue[key]) queue[key] = [];
         queue[key].push(datum);
         try {
@@ -206,7 +206,7 @@ function createDataSinkStore(cacheDir) {
     }, {
         close(entryName) {
             return new Promise((ready, fail) => {
-                var logProgressNow = progress => {
+                const logProgressNow = progress => {
                     logger.log("Processing ivolatility", entryName, Math.round(progress*100), "% complete");
                 };
                 logProgress = _.throttle(logProgressNow, every_minute, {trailing: false});
@@ -230,12 +230,12 @@ function createDataSinkStore(cacheDir) {
 
 
 if (require.main === module && process.send) {
-    var cacheDir = process.argv[2];
-    var sink = createInlineDataSinkStore(cacheDir);
-    var ready = () => {
+    const cacheDir = process.argv[2];
+    const sink = createInlineDataSinkStore(cacheDir);
+    const ready = () => {
         process.send({cmd:'ready'});
     };
-    var error = err => {
+    const error = err => {
         process.send({cmd:'error', message: err.stack || err.message || err});
     };
     process.on('message', msg => {
@@ -250,22 +250,22 @@ if (require.main === module && process.send) {
     ready();
 }
 
-var counter = 0;
-var strike_format = d3.format("08d");
+let counter = 0;
+const strike_format = d3.format("08d");
 function createInlineDataSinkStore(cacheDir) {
-    var check = interrupt();
-    var store = storage(cacheDir);
-    var iv_symbol_of = datum => {
-        var yymmdd = datum.expiration.replace(/(\d\d)\/(\d\d)\/\d\d(\d\d)/, '$3$1$2');
-        var cp = datum['call/put'];
-        var strike = strike_format(+datum.strike * 1000);
+    const check = interrupt();
+    const store = storage(cacheDir);
+    const iv_symbol_of = datum => {
+        const yymmdd = datum.expiration.replace(/(\d\d)\/(\d\d)\/\d\d(\d\d)/, '$3$1$2');
+        const cp = datum['call/put'];
+        const strike = strike_format(+datum.strike * 1000);
         return `${datum.symbol}${yymmdd}${cp}${strike}`;
     };
-    var lookup = cache(datum => {
-        var date = mdy2ymd(datum.expiration);
-        var dbname = datum.symbol;
-        var iv_symbol = iv_symbol_of(datum);
-        var entryId = ++counter;
+    const lookup = cache(datum => {
+        const date = mdy2ymd(datum.expiration);
+        const dbname = datum.symbol;
+        const iv_symbol = iv_symbol_of(datum);
+        const entryId = ++counter;
         return store.open(dbname, (err, db) => {
             if (err) throw err;
             return db.collection(date).then(collection => {
@@ -274,7 +274,7 @@ function createInlineDataSinkStore(cacheDir) {
             });
         }).then(array => ({
             add(datum) {
-                var idx = _.sortedIndex(array, datum, datum => mdy2ymd(datum.date));
+                const idx = _.sortedIndex(array, datum, datum => mdy2ymd(datum.date));
                 if (array[idx] && array[idx].date == datum.date) {
                     array[idx] = datum;
                 } else {
@@ -310,10 +310,10 @@ function mdy2ymd(mdy) {
 }
 
 function explodeZip(file, reduce, initial) {
-    var result = initial;
+    let result = initial;
     logger.info("Extracting", file);
     return new Promise((ready, error) => {
-        var entries = [];
+        const entries = [];
         yauzl.open(file, {lazyEntries: true}, (err, zipfile) => {
             if (err) return error(err);
             zipfile.readEntry();
@@ -335,15 +335,15 @@ function explodeZip(file, reduce, initial) {
 }
 
 function parseZipEntry(entryStream, reduce, initial) {
-    var check = interrupt();
-    var result = initial;
+    const check = interrupt();
+    let result = initial;
     return new Promise((ready, error) => {
         csv.fromStream(entryStream, {headers : true, ignoreEmpty: true})
             .on('error', error)
             .on('data', function(data) {
                 try {
                     check();
-                    var obj = _.mapObject(data, value => _.isFinite(value) ? +value : value);
+                    const obj = _.mapObject(data, value => _.isFinite(value) ? +value : value);
                     result = reduce(initial, obj);
                 } catch (e) {
                     this.emit('error', e);
@@ -356,7 +356,7 @@ function listNewFiles(downloadDir, metadata) {
     return listZipFiles(downloadDir)
       .then(files => Promise.all(files.map(file => mtime(path.resolve(downloadDir, file))
       .then(mtime => {
-        var entry = metadata.entries.find(entry => entry.file == file);
+        const entry = metadata.entries.find(entry => entry.file == file);
         if (!entry) return file;
         else return null;
     }))).then(updated => _.compact(updated)));
@@ -374,7 +374,7 @@ function listZipFiles(downloadDir) {
 }
 
 function readMetadata(dirname) {
-    var filename = path.resolve(dirname, 'index.json');
+    const filename = path.resolve(dirname, 'index.json');
     return new Promise((present, absent) => {
         fs.access(filename, fs.R_OK, err => err ? absent(err) : present(dirname));
     }).then(present => new Promise((ready, error) => {
@@ -397,7 +397,7 @@ function readMetadata(dirname) {
 }
 
 function writeMetadata(dirname, metadata) {
-    var filename = path.resolve(dirname, 'index.json');
+    const filename = path.resolve(dirname, 'index.json');
     return awriter(filename => {
         return new Promise((ready, error) => {
             fs.writeFile(filename, JSON.stringify(metadata, null, ' '), err => {
@@ -415,10 +415,10 @@ function mtime(filename) {
 }
 
 function downloadUpdates(downloadDir, auth_file, downloadType) {
-    var token = auth_file ? fs.readFileSync(auth_file, 'utf8').trim() : '';
-    var auth = new Buffer.from(token, 'base64').toString().split(/:/);
-    var username = auth[0];
-    var password = auth[1];
+    const token = auth_file ? fs.readFileSync(auth_file, 'utf8').trim() : '';
+    const auth = new Buffer.from(token, 'base64').toString().split(/:/);
+    const username = auth[0];
+    const password = auth[1];
     return readMetadata(downloadDir).then(metadata => {
         return listAvailableDownloads(username, password, downloadType, metadata.mtime)
           .then(fileUrls => absentFileUrls(downloadDir, fileUrls))
@@ -427,15 +427,15 @@ function downloadUpdates(downloadDir, auth_file, downloadType) {
 }
 
 function listAvailableDownloads(username, password, downloadType, mtime) {
-    var point = moment(mtime);
-    var fileUid = 'https://www.ivolatility.com/loadCSV?fileUid=';
-    var order_id = 'http://www.ivolatility.com/data_download.csv?order_id=';
-    var order_uid = '&order_uid=';
-    var host = url.parse('http://www.ivolatility.com/dd-server/history');
+    const point = moment(mtime);
+    const fileUid = 'https://www.ivolatility.com/loadCSV?fileUid=';
+    const order_id = 'http://www.ivolatility.com/data_download.csv?order_id=';
+    const order_uid = '&order_uid=';
+    const host = url.parse('http://www.ivolatility.com/dd-server/history');
     return retrieveCookies(username, password).then(cookies => {
-        var userIdCookie = cookies.find(cookie => cookie.startsWith("IV%5FUID="));
-        var userId = userIdCookie.substring(userIdCookie.indexOf('=')+1);
-        var payload = querystring.stringify({
+        const userIdCookie = cookies.find(cookie => cookie.startsWith("IV%5FUID="));
+        const userId = userIdCookie.substring(userIdCookie.indexOf('=')+1);
+        const payload = querystring.stringify({
             pageSize: 10,
             userId: userId,
             limit: 10,
@@ -445,12 +445,12 @@ function listAvailableDownloads(username, password, downloadType, mtime) {
         });
         logger.debug("Checking for new ivolatility.com downloads using ID", userId, username);
         return new Promise((ready, error) => {
-            var req = http.request(_.extend({method: 'POST', headers: {
+            const req = http.request(_.extend({method: 'POST', headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Content-Length': Buffer.byteLength(payload),
                 Cookie: cookies.join('; ')
             }}, host), res => {
-                var buffer = [];
+                const buffer = [];
                 res.setEncoding('utf8');
                 res.on('data', chunk => {if (chunk) buffer.push(chunk)});
                 res.on('error', error).on('end', () => {
@@ -475,8 +475,8 @@ function listAvailableDownloads(username, password, downloadType, mtime) {
 }
 
 function retrieveCookies(username, password) {
-    var host = url.parse('https://www.ivolatility.com/login.j');
-    var payload = querystring.stringify({
+    const host = url.parse('https://www.ivolatility.com/login.j');
+    const payload = querystring.stringify({
         username,
         password,
         service_name: 'Home Page',
@@ -484,7 +484,7 @@ function retrieveCookies(username, password) {
         login__is__sent: 1
     });
     return new Promise((ready, error) => {
-        var req = https.request(_.extend({method: 'POST', headers: {
+        const req = https.request(_.extend({method: 'POST', headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'Content-Length': Buffer.byteLength(payload)
         }}, host), res => {
@@ -501,8 +501,8 @@ function retrieveCookies(username, password) {
 
 function absentFileUrls(downloadDir, fileUrls) {
     return Promise.all(fileUrls.map(fileUrl => {
-        var fileUid = fileUrl.substring(fileUrl.lastIndexOf('=')+1);
-        var filename = path.resolve(downloadDir, fileUid + '.zip');
+        const fileUid = fileUrl.substring(fileUrl.lastIndexOf('=')+1);
+        const filename = path.resolve(downloadDir, fileUid + '.zip');
         return new Promise(absent => {
             fs.access(filename, fs.R_OK, err => err ? absent(fileUrl) : absent());
         });
@@ -511,13 +511,13 @@ function absentFileUrls(downloadDir, fileUrls) {
 
 function downloadFiles(downloadDir, fileUrls) {
     return Promise.all(fileUrls.map(fileUrl => {
-        var fileUid = fileUrl.substring(fileUrl.lastIndexOf('=')+1);
-        var filename = path.resolve(downloadDir, fileUid + '.zip');
+        const fileUid = fileUrl.substring(fileUrl.lastIndexOf('=')+1);
+        const filename = path.resolve(downloadDir, fileUid + '.zip');
         return awriter(filename => new Promise((ready, error) => {
-            var file = fs.createWriteStream(filename);
+            const file = fs.createWriteStream(filename);
             logger.info("Downloading", fileUrl);
-            var protocol = fileUrl.startsWith('https') ? https : http;
-            var req = protocol.get(fileUrl, res => {
+            const protocol = fileUrl.startsWith('https') ? https : http;
+            const req = protocol.get(fileUrl, res => {
                 if (res.statusCode == 200 || res.statusCode == 203) {
                     res.pipe(file);
                     res.on('error', error).on('end', () => {

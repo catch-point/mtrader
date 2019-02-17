@@ -44,22 +44,22 @@ const logger = require('./logger.js');
  * called from the returned function and those results are returned from it.
  */
 module.exports = function(func, hashFn, poolSize, loadFactor) {
-    var size = _.isFinite(hashFn) ? hashFn : poolSize || 1;
-    var maxPoolSize = Math.ceil(size / ((_.isFinite(hashFn) ? poolSize : loadFactor) || 0.75));
-    var hash = _.isFunction(hashFn) ? hashFn : _.identity.bind(_);
-    var cache = {};
-    var debounced = debounce(sweep, 10000, maxPoolSize);
-    var releaseEntry = release.bind(this, debounced, size, cache);
-    var cached = function() {
-        var cb = _.isFunction(_.last(arguments)) ? _.last(arguments) : (err, result) => {
+    const size = _.isFinite(hashFn) ? hashFn : poolSize || 1;
+    const maxPoolSize = Math.ceil(size / ((_.isFinite(hashFn) ? poolSize : loadFactor) || 0.75));
+    const hash = _.isFunction(hashFn) ? hashFn : _.identity.bind(_);
+    const cache = {};
+    const debounced = debounce(sweep, 10000, maxPoolSize);
+    const releaseEntry = release.bind(this, debounced, size, cache);
+    const cached = function() {
+        const cb = _.isFunction(_.last(arguments)) ? _.last(arguments) : (err, result) => {
             if (err) throw err;
             else return result;
         };
-        var args = _.isFunction(_.last(arguments)) ? _.initial(arguments) : arguments;
-        var key = hash.apply(cached, args);
+        const args = _.isFunction(_.last(arguments)) ? _.initial(arguments) : arguments;
+        const key = hash.apply(cached, args);
         if (cache[key] && cache[key].closing) {
             return cache[key].closing.then(() => {
-                var entry = cache[key] = {
+                const entry = cache[key] = {
                     id: key,
                     result: func.apply(cached, args),
                     registered: 0
@@ -67,10 +67,10 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
                 return aquireEntry(releaseEntry, entry, cb);
             });
         } else if (cache[key]) {
-            var entry = cache[key];
+            const entry = cache[key];
             return aquireEntry(releaseEntry, entry, cb);
         } else {
-            var entry = cache[key] = {
+            const entry = cache[key] = {
                 id: key,
                 result: func.apply(this, args),
                 registered: 0
@@ -122,7 +122,7 @@ function createEntry(key, func, args) {
 function aquireEntry(releaseEntry, entry, cb) {
     try {
         aquire(entry);
-        var next = entry.result && _.isFunction(entry.result.then) ?
+        const next = entry.result && _.isFunction(entry.result.then) ?
             entry.result.then(
                 result => cb.call(this, null, result),
                 err => cb.call(this, err)
@@ -156,7 +156,7 @@ function release(sweep, size, cache, entry) {
 }
 
 function mark(cache) {
-    var oldest = _.reject(cache, 'marked').reduce((oldest, base) => {
+    const oldest = _.reject(cache, 'marked').reduce((oldest, base) => {
         if (base.registered || oldest && oldest.age >= base.age)
             return oldest;
         else
@@ -169,7 +169,7 @@ function mark(cache) {
 function sweep(cache) {
     return Promise.all(_.map(_.pick(cache, _.property('marked')), (entry, id) => {
         if (entry.closing) return entry.closing;
-        var closing = closeEntry(entry);
+        const closing = closeEntry(entry);
         if (!closing) delete cache[id];
         else return entry.closing = Promise.resolve(closing).then(result => {
             delete cache[id];
@@ -187,7 +187,7 @@ function closeEntry(entry) {
             return entry.result
                 .then(obj => _.isFunction(obj.close) ? obj.close() : obj);
         } else if (entry.result && _.isFunction(entry.result.close)) {
-            var closing = entry.result.close();
+            const closing = entry.result.close();
             if (closing && _.isFunction(closing.then)) return closing;
         }
     } catch(err) {

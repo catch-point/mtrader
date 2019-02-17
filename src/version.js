@@ -32,9 +32,9 @@
 
 const _ = require('underscore');
 
-var pkg = require('../package.json');
-var resolved = require('../package.json')._resolved;
-var gitHead = pkg.gitHead || resolved && ~resolved.indexOf('#') &&
+const pkg = require('../package.json');
+const resolved = require('../package.json')._resolved;
+const gitHead = pkg.gitHead || resolved && ~resolved.indexOf('#') &&
     resolved.substring(resolved.indexOf('#') + 1);
 
 /**

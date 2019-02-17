@@ -37,14 +37,14 @@
  * closed more then the number of times the given factory function is called.
  */
 module.exports = function(factory) {
-    var used = 0;
-    var shared = function() {
+    let used = 0;
+    const shared = function() {
         used++;
         if (shared.instance) return shared.instance;
-        var self = shared.instance = factory.apply(this, arguments);
-        var closed = false;
+        const self = shared.instance = factory.apply(this, arguments);
+        let closed = false;
         used = 1;
-        var close_handler = self.close ? self.close.bind(self) : () => Promise.resolve();
+        const close_handler = self.close ? self.close.bind(self) : () => Promise.resolve();
         self.close = function(force) {
             return Promise.resolve().then(() => {
                 if (closed || --used && !force) return Promise.resolve();

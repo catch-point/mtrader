@@ -38,29 +38,29 @@ const logger = require('./logger.js');
 const config = require('./config.js');
 const version = require('./version.js').version;
 
-var months = _.once(function() {
-    var date = moment('2010-01-01');
+const months = _.once(function() {
+    const date = moment('2010-01-01');
     return _.range(0, 12).reduce((months, m) => {
-        var mdate = date.month(m);
+        const mdate = date.month(m);
         months[mdate.format('MMM')] = m;
         months[mdate.format('MMMM')] = m;
         return months;
     }, {});
 });
 
-var dates = _.once(function() {
-    var date = moment('2010-03-01');
+const dates = _.once(function() {
+    const date = moment('2010-03-01');
     return _.range(1, 32).reduce((dates, d) => {
-        var mdate = date.date(d);
+        const mdate = date.date(d);
         dates[mdate.format('Do')] = d;
         return dates;
     }, {});
 });
 
-var days = _.once(function() {
-    var date = moment('2010-03-01');
+const days = _.once(function() {
+    const date = moment('2010-03-01');
     return _.range(0, 7).reduce((days, d) => {
-        var mdate = date.day(d);
+        const mdate = date.day(d);
         days[mdate.format('dd')] = d;
         days[mdate.format('ddd')] = d;
         days[mdate.format('dddd')] = d;
@@ -69,7 +69,7 @@ var days = _.once(function() {
 });
 
 if (require.main === module) {
-    var program = require('commander').version(version)
+    const program = require('commander').version(version)
         .description("Date manipulation")
         .usage('<format> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -86,7 +86,7 @@ if (require.main === module) {
         .parse(process.argv);
     if (program.args.length) {
         try {
-            var format = program.args.join(' ');
+            const format = program.args.join(' ');
             console.log(formatDate(format, config()));
         } catch(err) {
             logger.error(err, err.stack);
@@ -105,15 +105,15 @@ module.exports = function() {
 };
 
 function formatDate(format, options) {
-    var tz = options.tz || moment.tz.guess();
-    var date = moment.tz(options.now, tz);
-    var durations = _.isArray(options.duration) ? options.duration :
+    const tz = options.tz || moment.tz.guess();
+    const date = moment.tz(options.now, tz);
+    const durations = _.isArray(options.duration) ? options.duration :
         _.isString(options.duration) ? options.duration.split(',') : [];
-    var startOf = ['year', 'month', 'quarter', 'week', 'isoWeek',
+    const startOf = ['year', 'month', 'quarter', 'week', 'isoWeek',
             'day', 'date', 'hour', 'minute', 'second'];
-    var advanced = durations.reduce((date, d) => {
+    const advanced = durations.reduce((date, d) => {
         if (d.match(/^[PYMWDTHMS0-9\-\+,.:]+$/)) return date.add(moment.duration(d));
-        var advanced = ~startOf.indexOf(d) ? moment(date).startOf(d) :
+        const advanced = ~startOf.indexOf(d) ? moment(date).startOf(d) :
             _.has(months(), d) ? moment(date).month(months()[d]) :
             _.has(dates(), d) ? moment(date).date(dates()[d]) :
             _.has(days(), d) ? moment(date).day(days()[d]) : null;
@@ -130,7 +130,7 @@ function formatDate(format, options) {
 module.exports.shell = function(app) {
     app.cmd('date :format', "Show the time now for this session", (cmd, sh, cb) => {
         try {
-            var value = formatDate(cmd.params.format, config());
+            const value = formatDate(cmd.params.format, config());
             sh.white(value).ln();
             sh.prompt();
         } catch(err) {
@@ -157,14 +157,14 @@ help(app, 'date', `
 };
 
 function wrap(desc, indent, len) {
-    var buf = [];
+    const buf = [];
     if (desc && desc.length < len - indent.length) {
         buf.push(desc);
     } else if (desc) {
-        var width = len - indent.length;
-        var remain = desc.trim();
+        const width = len - indent.length;
+        let remain = desc.trim();
         while (remain) {
-            var idx = remain.lastIndexOf(' ', width);
+            let idx = remain.lastIndexOf(' ', width);
             if (idx <= 0) idx = remain.indexOf(' ', width);
             if (idx <= 0 || remain.length < width) idx = remain.length;
             buf.push(remain.substring(0, idx));

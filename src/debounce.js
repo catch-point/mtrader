@@ -42,11 +42,11 @@ const _ = require('underscore');
  * @param max the number of attempted invocation before giving up on waiting
  */
 module.exports = function(func, wait, max) {
-    var timeout, args, context, timestamp, result;
-    var counter = 0;
+    let timeout, args, context, timestamp, result;
+    let counter = 0;
 
-    var later = function() {
-      var last = Date.now() - timestamp;
+    const later = function() {
+      const last = Date.now() - timestamp;
 
       if (last < wait && last >= 0 && (!max || counter < max)) {
         timeout = setTimeout(later, wait - last);
@@ -58,7 +58,7 @@ module.exports = function(func, wait, max) {
       }
     };
 
-    var self = function() {
+    const self = function() {
       context = this;
       args = arguments;
       counter++;

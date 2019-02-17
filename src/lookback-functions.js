@@ -39,21 +39,21 @@ const expect = require('chai').use(like).expect;
 
 module.exports = function(name, args, options) {
     if (!functions[name]) return;
-    var intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
+    const intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
     if (intervals.length > 1)
         throw Error("The function " + name + " can only be used with a single interval, not " + intervals.join(' and '));
     if (intervals.length < 1)
         throw Error("The function " + name + " must be used with fields");
-    var interval = intervals.length == 1 ? _.first(intervals) : undefined;
-    var wargs = args.map(fn => {
+    const interval = intervals.length == 1 ? _.first(intervals) : undefined;
+    const wargs = args.map(fn => {
         if (_.has(fn, 'warmUpLength')) return fn;
         else return _.extend(fn, {warmUpLength: 0});
     });
-    var fn = functions[name].apply(this, [_.defaults({
+    const fn = functions[name].apply(this, [_.defaults({
         interval: interval
     }, options)].concat(wargs));
-    var len = _.max([fn.warmUpLength].concat(_.pluck(wargs, 'warmUpLength')));
-    var n = len +1;
+    const len = _.max([fn.warmUpLength].concat(_.pluck(wargs, 'warmUpLength')));
+    const n = len +1;
     return _.extend(bars => {
         if (bars.length <= n) return fn(bars);
         else return fn(bars.slice(bars.length - n));
@@ -68,10 +68,10 @@ module.exports.has = function(name) {
     return !!functions[name];
 };
 
-var functions = module.exports.functions = {
+const functions = module.exports.functions = {
     /* Offset value N periods ago */
     OFFSET(opts, n_periods, calc) {
-        var n = asPositiveInteger(n_periods, "OFFSET");
+        const n = asPositiveInteger(n_periods, "OFFSET");
         return _.extend(bars => {
             return calc(bars.slice(0, bars.length - n));
         }, {
@@ -80,9 +80,9 @@ var functions = module.exports.functions = {
     },
     /* Highest historic Maximum */
     HIGHEST(opts, n_periods, calc) {
-        var n = asPositiveInteger(n_periods, "HIGHEST");
+        const n = asPositiveInteger(n_periods, "HIGHEST");
         return _.extend(bars => {
-            var maximum = _.max(getValues(n, calc, bars));
+            const maximum = _.max(getValues(n, calc, bars));
             if (_.isFinite(maximum)) return maximum;
             else return undefined;
         }, {
@@ -91,9 +91,9 @@ var functions = module.exports.functions = {
     },
     /* Lowest historic Minimum */
     LOWEST(opts, num, calc) {
-        var n = asPositiveInteger(num, "LOWEST");
+        const n = asPositiveInteger(num, "LOWEST");
         return _.extend(bars => {
-            var minimum = _.min(getValues(n, calc, bars));
+            const minimum = _.min(getValues(n, calc, bars));
             if (_.isFinite(minimum)) return minimum;
             else return undefined;
         }, {
@@ -101,11 +101,11 @@ var functions = module.exports.functions = {
         });
     },
     DIRECTION: _.extend((opts, n_periods, calc) => {
-        var n = asPositiveInteger(n_periods, "DIRECTION");
+        const n = asPositiveInteger(n_periods, "DIRECTION");
         return _.extend(bars => {
-            var values = getValues(n, calc, bars);
-            var currently = _.last(values);
-            for (var i=values.length -2; i>=0; i--) {
+            const values = getValues(n, calc, bars);
+            const currently = _.last(values);
+            for (let i=values.length -2; i>=0; i--) {
                 if (values[i] < currently) return 1;
                 else if (values[i] > currently) return -1;
             }
@@ -119,10 +119,10 @@ var functions = module.exports.functions = {
     }),
     /* Age Of High */
     AOH(opts, num, high) {
-        var n = asPositiveInteger(num, "AOH");
+        const n = asPositiveInteger(num, "AOH");
         return _.extend(bars => {
-            var highs = getValues(n, high, bars);
-            var highest = _.max(highs);
+            const highs = getValues(n, high, bars);
+            const highest = _.max(highs);
             return bars.length - highs.indexOf(highest) -1;
         }, {
             warmUpLength: n -1
@@ -130,9 +130,9 @@ var functions = module.exports.functions = {
     },
     /* Simple Moveing Average */
     SMA(opts, num, calc) {
-        var n = asPositiveInteger(num, "SMA");
+        const n = asPositiveInteger(num, "SMA");
         return _.extend(bars => {
-            var values = getValues(n, calc, bars);
+            const values = getValues(n, calc, bars);
             return sum(values) / values.length;
         }, {
             warmUpLength: n + calc.warmUpLength -1
@@ -140,13 +140,13 @@ var functions = module.exports.functions = {
     },
     /* Exponential Moveing Average */
     EMA(opts, num, calc) {
-        var n = asPositiveInteger(num, "EMA");
+        const n = asPositiveInteger(num, "EMA");
         return _.extend(bars => {
-            var values = getValues(n * 10, calc, bars);
+            const values = getValues(n * 10, calc, bars);
             if (n == 1) return _.last(values);
-            var a = 2 / (n + 1);
-            var firstN = values.slice(0, n);
-            var sma = _.reduce(firstN, function(memo, value, index){
+            const a = 2 / (n + 1);
+            const firstN = values.slice(0, n);
+            const sma = _.reduce(firstN, function(memo, value, index){
                 return memo + value;
             }, 0) / firstN.length;
             return _.reduce(values.slice(n), function(memo, value, index){
@@ -157,16 +157,16 @@ var functions = module.exports.functions = {
         });
     },
     PF(opts, num, calc) {
-        var n = asPositiveInteger(num, "PF");
+        const n = asPositiveInteger(num, "PF");
         return _.extend(bars => {
-            var prices = getValues(n+1, calc, bars);
-            var changes = prices.map((price, i, prices) => {
+            const prices = getValues(n+1, calc, bars);
+            const changes = prices.map((price, i, prices) => {
                 if (i === 0) return 0;
-                var prior = prices[i-1];
+                const prior = prices[i-1];
                 return price - prior;
             });
-            var profit = 0;
-            var loss = 0;
+            let profit = 0;
+            let loss = 0;
             changes.forEach(change => {
                 if (change > 0) {
                     profit += change;
@@ -180,17 +180,17 @@ var functions = module.exports.functions = {
         });
     },
     LRS: _.extend((opts, n, expression) => {
-        var len = asPositiveInteger(n, "LRS");
+        const len = asPositiveInteger(n, "LRS");
         return _.extend(bars => {
-            var values = getValues(len, expression, bars);
-            var n = values.length;
-            var sx = values.reduce((s, y, x) => s + x, 0);
-            var sy = values.reduce((s, y, x) => s + y, 0);
-            var sxx = values.reduce((s, y, x) => s + x * x, 0);
-            var sxy = values.reduce((s, y, x) => s + x * y, 0);
-            var det = sxx*n - sx*sx;
-            var a = (sxy*n - sy*sx)/det;
-            var sma = sy/n;
+            const values = getValues(len, expression, bars);
+            const n = values.length;
+            const sx = values.reduce((s, y, x) => s + x, 0);
+            const sy = values.reduce((s, y, x) => s + y, 0);
+            const sxx = values.reduce((s, y, x) => s + x * x, 0);
+            const sxy = values.reduce((s, y, x) => s + x * y, 0);
+            const det = sxx*n - sx*sx;
+            const a = (sxy*n - sy*sx)/det;
+            const sma = sy/n;
             return a*100/sma;
         }, {
             warmUpLength: len * 10 + expression.warmUpLength - 1
@@ -199,20 +199,20 @@ var functions = module.exports.functions = {
         description: "Linear Regression Slope as a percentage"
     }),
     R2: _.extend((opts, n, expression) => {
-        var len = asPositiveInteger(n, "R2");
+        const len = asPositiveInteger(n, "R2");
         return _.extend(bars => {
-            var values = getValues(len, expression, bars);
-            var n = values.length;
-            var sx = values.reduce((s, y, x) => s + x, 0);
-            var sy = values.reduce((s, y, x) => s + y, 0);
-            var sxx = values.reduce((s, y, x) => s + x * x, 0);
-            var sxy = values.reduce((s, y, x) => s + x * y, 0);
-            var det = sxx*n - sx*sx;
-            var a = (sxy*n - sy*sx)/det;
-            var b = (sy*sxx - sx*sxy)/det;
-            var sma = sy/n;
-            var see = values.reduce((s, y, x) => s + Math.pow(a*x+b - y, 2), 0);
-            var smm = values.reduce((s, y, x) => s + Math.pow(sma - y, 2), 0);
+            const values = getValues(len, expression, bars);
+            const n = values.length;
+            const sx = values.reduce((s, y, x) => s + x, 0);
+            const sy = values.reduce((s, y, x) => s + y, 0);
+            const sxx = values.reduce((s, y, x) => s + x * x, 0);
+            const sxy = values.reduce((s, y, x) => s + x * y, 0);
+            const det = sxx*n - sx*sx;
+            const a = (sxy*n - sy*sx)/det;
+            const b = (sy*sxx - sx*sxy)/det;
+            const sma = sy/n;
+            const see = values.reduce((s, y, x) => s + Math.pow(a*x+b - y, 2), 0);
+            const smm = values.reduce((s, y, x) => s + Math.pow(sma - y, 2), 0);
             return 100 - see*100/smm;
         }, {
             warmUpLength: len * 10 + expression.warmUpLength - 1
@@ -222,12 +222,12 @@ var functions = module.exports.functions = {
     }),
     /* Standard Deviation */
     STDEV(opts, num, calc) {
-        var n = asPositiveInteger(num, "STDEV");
+        const n = asPositiveInteger(num, "STDEV");
         return _.extend(bars => {
-            var prices = getValues(n, calc, bars);
-            var avg = sum(prices) / prices.length;
-            var sd = Math.sqrt(sum(prices.map(function(num){
-                var diff = num - avg;
+            const prices = getValues(n, calc, bars);
+            const avg = sum(prices) / prices.length;
+            const sd = Math.sqrt(sum(prices.map(function(num){
+                const diff = num - avg;
                 return diff * diff;
             })) / Math.max(prices.length,1));
             return sd || 1;
@@ -237,25 +237,25 @@ var functions = module.exports.functions = {
     },
     /* Relative Strength Index */
     RSI(opts, num, calc) {
-        var n = asPositiveInteger(num, "RSI");
+        const n = asPositiveInteger(num, "RSI");
         return _.extend(bars => {
-            var values = getValues(n +250, calc, bars);
-            var gains = values.map(function(value, i, values){
-                var change = value - values[i-1];
+            const values = getValues(n +250, calc, bars);
+            const gains = values.map(function(value, i, values){
+                const change = value - values[i-1];
                 if (change > 0) return change;
                 return 0;
             }).slice(1);
-            var losses = values.map(function(value, i, values){
-                var change = value - values[i-1];
+            const losses = values.map(function(value, i, values){
+                const change = value - values[i-1];
                 if (change < 0) return change;
                 return 0;
             }).slice(1);
-            var firstGains = gains.slice(0, n);
-            var firstLosses = losses.slice(0, n);
-            var gain = gains.slice(n).reduce(function(smoothed, gain){
+            const firstGains = gains.slice(0, n);
+            const firstLosses = losses.slice(0, n);
+            const gain = gains.slice(n).reduce(function(smoothed, gain){
                 return (smoothed * (n-1) + gain) / n;
             }, sum(firstGains) / firstGains.length);
-            var loss = losses.slice(n).reduce(function(smoothed, loss){
+            const loss = losses.slice(n).reduce(function(smoothed, loss){
                 return (smoothed * (n-1) + loss) / n;
             }, sum(firstLosses) / firstLosses.length);
             if (loss === 0) return 100;
@@ -266,18 +266,18 @@ var functions = module.exports.functions = {
     },
     /* Prior value N days ago */
     PRIOR: _.extend((opts, days, field) => {
-        var d = asPositiveInteger(days, "PRIOR");
-        var dayLength = getDayLength(opts);
-        var n = Math.ceil((d + 1) * dayLength);
+        const d = asPositiveInteger(days, "PRIOR");
+        const dayLength = getDayLength(opts);
+        const n = Math.ceil((d + 1) * dayLength);
         return _.extend(bars => {
-            var day = periods(_.defaults({interval:'day'}, opts));
-            var ending = day.dec(_.last(bars).ending, d);
+            const day = periods(_.defaults({interval:'day'}, opts));
+            const ending = day.dec(_.last(bars).ending, d);
             if (!ending.isValid()) return null;
-            var closes = ending.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt;
-            var prior = moment.tz(closes, opts.tz).format();
-            var end = _.sortedIndex(bars, {ending: prior}, 'ending');
+            const closes = ending.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt;
+            const prior = moment.tz(closes, opts.tz).format();
+            let end = _.sortedIndex(bars, {ending: prior}, 'ending');
             if (bars[end] && bars[end].ending == prior) end++;
-            var start = Math.max(end - field.warmUpLength -1, 0);
+            const start = Math.max(end - field.warmUpLength -1, 0);
             return field(bars.slice(start, end));
         }, {
             fields: ['ending'],
@@ -288,18 +288,18 @@ var functions = module.exports.functions = {
     }),
     /* Since N days ago */
     SINCE: _.extend((opts, days, calc) => {
-        var d = asPositiveInteger(days, "SINCE");
-        var dayLength = getDayLength(opts);
-        var n = Math.ceil((d + 1) * dayLength);
+        const d = asPositiveInteger(days, "SINCE");
+        const dayLength = getDayLength(opts);
+        const n = Math.ceil((d + 1) * dayLength);
         return _.extend(bars => {
             if (_.isEmpty(bars)) return calc(bars);
-            var ending = moment.tz(_.last(bars).ending, opts.tz);
-            var day = periods(_.defaults({interval:'day'}, opts));
-            var since = day.dec(ending, d-1).format();
-            var start = _.sortedIndex(bars, {ending: since}, 'ending');
+            const ending = moment.tz(_.last(bars).ending, opts.tz);
+            const day = periods(_.defaults({interval:'day'}, opts));
+            const since = day.dec(ending, d-1).format();
+            let start = _.sortedIndex(bars, {ending: since}, 'ending');
             if (bars[start] && bars[start].ending == since) start++;
             if (start >= bars.length) return calc([]);
-            var end = Math.min(start + calc.warmUpLength +1, bars.length);
+            const end = Math.min(start + calc.warmUpLength +1, bars.length);
             return calc(bars.slice(start, end));
         }, {
             fields: ['ending'],
@@ -310,20 +310,20 @@ var functions = module.exports.functions = {
     }),
     /* Past N days */
     PAST: _.extend((opts, days, calc) => {
-        var d = asPositiveInteger(days, "PAST");
-        var dayLength = getDayLength(opts);
-        var n = Math.ceil((d + 1) * dayLength);
+        const d = asPositiveInteger(days, "PAST");
+        const dayLength = getDayLength(opts);
+        const n = Math.ceil((d + 1) * dayLength);
         return _.extend(bars => {
             if (_.isEmpty(bars)) return calc(bars);
-            var ending = moment.tz(_.last(bars).ending, opts.tz);
-            var day = periods(_.defaults({interval:'day'}, opts));
-            var diff = ending.diff(day.dec(ending, d), 'days');
-            var days = ending.isoWeekday() == 7 ? diff + 1 : diff;
-            var since = ending.subtract(days, 'days').format();
-            var start = _.sortedIndex(bars, {ending: since}, 'ending');
+            const ending = moment.tz(_.last(bars).ending, opts.tz);
+            const day = periods(_.defaults({interval:'day'}, opts));
+            const diff = ending.diff(day.dec(ending, d), 'days');
+            const days = ending.isoWeekday() == 7 ? diff + 1 : diff;
+            const since = ending.subtract(days, 'days').format();
+            let start = _.sortedIndex(bars, {ending: since}, 'ending');
             if (bars[start] && bars[start].ending == since) start++;
             if (start >= bars.length) return calc([]);
-            var end = Math.min(start + calc.warmUpLength +1, bars.length);
+            const end = Math.min(start + calc.warmUpLength +1, bars.length);
             return calc(bars.slice(start, end));
         }, {
             fields: ['ending'],
@@ -334,35 +334,35 @@ var functions = module.exports.functions = {
     }),
     /* Normal Market Hour Session */
     SESSION(opts, calc) {
-        var dayLength = getDayLength(opts);
-        var n = Math.ceil(dayLength);
+        const dayLength = getDayLength(opts);
+        const n = Math.ceil(dayLength);
         return _.extend(bars => {
             if (_.isEmpty(bars))
                 return calc(bars);
-            var start = "2000-01-01T".length;
-            var first = moment.tz(_.first(bars).ending, opts.tz);
-            var last = moment.tz(_.last(bars).ending, opts.tz);
-            var opens = moment.tz(first.format('YYYY-MM-DD') + 'T' + opts.marketOpensAt, opts.tz);
-            var closes = moment.tz(last.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt, opts.tz);
-            var ohms = opens.hour() *60 *60 + opens.minute() *60 + opens.seconds();
-            var chms = closes.hour() *60 *60 + closes.minute() *60 + closes.seconds();
+            const start = "2000-01-01T".length;
+            const first = moment.tz(_.first(bars).ending, opts.tz);
+            const last = moment.tz(_.last(bars).ending, opts.tz);
+            const opens = moment.tz(first.format('YYYY-MM-DD') + 'T' + opts.marketOpensAt, opts.tz);
+            const closes = moment.tz(last.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt, opts.tz);
+            const ohms = opens.hour() *60 *60 + opens.minute() *60 + opens.seconds();
+            const chms = closes.hour() *60 *60 + closes.minute() *60 + closes.seconds();
             if (ohms == chms)
                 return calc(bars); // 24 hour market
             if (opens.isDST() == closes.isDST() && closes.diff(opens, 'months') < 2) {
                 // Use string comparison for faster filter
-                var after = opens.format().substring(start);
-                var before = closes.format().substring(start);
+                const after = opens.format().substring(start);
+                const before = closes.format().substring(start);
                 return calc(bars.filter(after < before ? function(bar) {
-                    var time = bar.ending.substring(start);
+                    const time = bar.ending.substring(start);
                     return after < time && time <= before;
                 } : function(bar) {
-                    var time = bar.ending.substring(start);
+                    const time = bar.ending.substring(start);
                     return after < time || time <= before;
                 }));
             } else {
                 return calc(bars.filter(function(bar){
-                    var ending = moment.tz(bar.ending, opts.tz);
-                    var hms = ending.hour() *60 *60 + ending.minute() *60 + ending.seconds();
+                    const ending = moment.tz(bar.ending, opts.tz);
+                    const hms = ending.hour() *60 *60 + ending.minute() *60 + ending.seconds();
                     return ohms < hms && hms <= chms;
                 }));
             }
@@ -373,22 +373,22 @@ var functions = module.exports.functions = {
     },
     /* use only this Time Of Day */
     TOD(opts, calc) {
-        var dayLength = getDayLength(opts);
+        const dayLength = getDayLength(opts);
         return _.extend(bars => {
             if (_.isEmpty(bars))
                 return calc(bars);
-            var start = "2000-01-01T".length;
-            var step = Math.round(dayLength/2);
-            var last = bars.length -1;
-            var filtered = [_.last(bars)];
-            var suffix = _.last(bars).ending.substring(start);
+            const start = "2000-01-01T".length;
+            let step = Math.round(dayLength/2);
+            let last = bars.length -1;
+            const filtered = [_.last(bars)];
+            let suffix = _.last(bars).ending.substring(start);
             while (filtered.length <= calc.warmUpLength) {
                 if (last >= step && bars[last - step].ending.substring(start) == suffix) {
                     filtered.push(bars[last - step]);
                     last -= step;
                 } else {
-                    var idx, formatted;
-                    var iter = moment.tz(bars[last].ending, opts.tz);
+                    let idx, formatted;
+                    const iter = moment.tz(bars[last].ending, opts.tz);
                     do {
                         iter.subtract(1, 'day');
                         formatted = iter.format();
@@ -408,34 +408,34 @@ var functions = module.exports.functions = {
         });
     },
     VAR(opts, chance, duration, calc) {
-        var pct = asPositiveInteger(chance, "VAR")/100;
-        var n = asPositiveInteger(duration, "VAR");
+        const pct = asPositiveInteger(chance, "VAR")/100;
+        const n = asPositiveInteger(duration, "VAR");
         return _.extend(bars => {
-            var prices = getValues(n+1, calc, bars);
-            var change = _.rest(prices).map((price, i) => {
+            const prices = getValues(n+1, calc, bars);
+            const change = _.rest(prices).map((price, i) => {
                 return (price - prices[i]) / prices[i];
             });
             if (!change.length) return 0;
-            var avg = change.reduce((a, b) => a + b) / change.length;
-            var stdev = statkit.std(change);
+            const avg = change.reduce((a, b) => a + b) / change.length;
+            const stdev = statkit.std(change);
             return -(statkit.norminv(pct) * stdev + avg);
         }, {
             warmUpLength: n + calc.warmUpLength
         });
     },
     CVAR(opts, chance, duration, calc) {
-        var pct = asPositiveInteger(chance, "CVAR")/100;
-        var n = asPositiveInteger(duration, "CVAR");
+        const pct = asPositiveInteger(chance, "CVAR")/100;
+        const n = asPositiveInteger(duration, "CVAR");
         return _.extend(bars => {
-            var prices = getValues(n+1, calc, bars);
-            var change = _.rest(prices).map((price, i) => {
+            const prices = getValues(n+1, calc, bars);
+            const change = _.rest(prices).map((price, i) => {
                 return (price - prices[i]) / prices[i];
             });
             if (!change.length) return 0;
-            var avg = change.reduce((a, b) => a + b) / change.length;
-            var stdev = statkit.std(change);
-            var risk = statkit.norminv(pct) * stdev + avg;
-            var shortfall = change.filter(chg => chg < risk);
+            const avg = change.reduce((a, b) => a + b) / change.length;
+            const stdev = statkit.std(change);
+            const risk = statkit.norminv(pct) * stdev + avg;
+            const shortfall = change.filter(chg => chg < risk);
             if (!shortfall.length) return -risk;
             else return -shortfall.reduce((a, b) => a + b) / shortfall.length;
         }, {
@@ -450,7 +450,7 @@ _.forEach(functions, fn => {
 
 function asPositiveInteger(calc, msg) {
     try {
-        var n = calc();
+        const n = calc();
         if (n > 0 && _.isFinite(n) && Math.round(n) == n) return n;
     } catch (e) {}
     throw Error("Expected a literal positive interger in " + msg + " not " + n);
@@ -465,8 +465,8 @@ function getDayLength(opts) {
     });
     if (opts.premarketOpensAt == opts.afterHoursClosesAt)
         return 24 * 60 * 60 * 1000 / preiods(opts).millis;
-    var opens = moment.tz('2010-03-01T' + opts.premarketOpensAt, opts.tz);
-    var closes = moment.tz('2010-03-01T' + opts.afterHoursClosesAt, opts.tz);
+    const opens = moment.tz('2010-03-01T' + opts.premarketOpensAt, opts.tz);
+    const closes = moment.tz('2010-03-01T' + opts.afterHoursClosesAt, opts.tz);
     if (!opens.isValid())
         throw Error("Invalid premarketOpensAt: " + opts.premarketOpensAt);
     if (!closes.isValid())
@@ -477,11 +477,11 @@ function getDayLength(opts) {
 
 function getValues(size, calc, bars) {
     if (!bars) return [];
-    var n = calc.warmUpLength +1;
-    var m = Math.min(size, bars.length);
-    var values = new Array(m);
-    var start = bars.length - m;
-    for (var i=start; i<bars.length; i++) {
+    const n = calc.warmUpLength +1;
+    const m = Math.min(size, bars.length);
+    const values = new Array(m);
+    const start = bars.length - m;
+    for (let i=start; i<bars.length; i++) {
         values[i - start] = calc(bars.slice(Math.max(i - n + 1, 0), i + 1));
     }
     return values;

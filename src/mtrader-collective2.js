@@ -75,9 +75,9 @@ function usage(command) {
 }
 
 if (require.main === module) {
-    var program = usage(commander).parse(process.argv);
+    const program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var position = createInstance(program);
+        const position = createInstance(program);
         process.on('SIGINT', () => position.close());
         process.on('SIGTERM', () => position.close());
         Promise.all(program.args.map(name => {
@@ -95,10 +95,10 @@ if (require.main === module) {
 }
 
 function createInstance(program) {
-    var collect = new Collect();
-    var position = new Position(collect);
-    var promiseKeys, closed;
-    var instance = function(options) {
+    const collect = new Collect();
+    const position = new Position(collect);
+    let promiseKeys, closed;
+    const instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = position({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
@@ -153,10 +153,10 @@ option.seeAlso.reduce((buf, also) => buf + `
 }
 
 function listOptions(options) {
-    var buf = [];
-    var left = Math.max(_.max(_.keys(options).map(name => name.length)), 5) + 8;
-    var indent = new Array(left+1).join(' ');
-    var width = 80 - indent.length;
+    const buf = [];
+    const left = Math.max(_.max(_.keys(options).map(name => name.length)), 5) + 8;
+    const indent = new Array(left+1).join(' ');
+    const width = 80 - indent.length;
     _.each(options, (option, name) => {
         buf.push(indent.substring(0,6));
         buf.push(name);
@@ -168,14 +168,14 @@ function listOptions(options) {
 }
 
 function wrap(desc, indent, len) {
-    var buf = [];
+    const buf = [];
     if (desc && desc.length < len - indent.length) {
         buf.push(desc);
     } else if (desc) {
-        var width = len - indent.length;
-        var remain = desc.trim();
+        const width = len - indent.length;
+        let remain = desc.trim();
         while (remain) {
-            var idx = remain.lastIndexOf(' ', width);
+            let idx = remain.lastIndexOf(' ', width);
             if (idx <= 0) idx = remain.indexOf(' ', width);
             if (idx <= 0 || remain.length < width) idx = remain.length;
             buf.push(remain.substring(0, idx));

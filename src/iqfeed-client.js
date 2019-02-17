@@ -43,19 +43,19 @@ const expect = require('chai').use(like).expect;
 
 module.exports = function(command, env, productId, productVersion) {
     if (command) expect(command).to.be.an('array');
-    var adminPromise;
-    var admin = function(){
+    let adminPromise;
+    const admin = function(){
         return adminPromise = promiseSocket(adminPromise,
             promiseNewAdminSocket.bind(this, 9300, command, env, productId, productVersion));
     };
-    var lookup = historical(nextval, admin);
-    var throttled = promiseThrottle(lookup, 100);
-    var level1 = watch(admin);
-    var promised_markets, promised_types;
-    var promiseMarkets = function() {
+    const lookup = historical(nextval, admin);
+    const throttled = promiseThrottle(lookup, 100);
+    const level1 = watch(admin);
+    let promised_markets, promised_types;
+    const promiseMarkets = function() {
         return promised_markets = (promised_markets || Promise.reject()).catch(err => slm(admin));
     };
-    var promiseTypes = function() {
+    const promiseTypes = function() {
         return promised_types = (promised_types || Promise.reject()).catch(err => sst(admin));
     };
     return {
@@ -72,16 +72,16 @@ module.exports = function(command, env, productId, productVersion) {
         },
         lookup(symbol, listed_markets) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            var listed_markets_ar = _.compact(_.flatten([listed_markets]));
-            var listed_market = listed_markets_ar.length == 1 ? listed_markets_ar[0] : null;
+            const listed_markets_ar = _.compact(_.flatten([listed_markets]));
+            const listed_market = listed_markets_ar.length == 1 ? listed_markets_ar[0] : null;
             if (listed_market == 'OPRA') {
-                var opra = lookupOptions(symbol);
+                const opra = lookupOptions(symbol);
                 if (opra) return Promise.resolve([opra]);
             }
             return promiseMarkets().then(markets => {
                 return promiseTypes().then(types => {
-                    var values = listed_markets_ar.map(market => {
-                        var id = markets.indexOf(market);
+                    const values = listed_markets_ar.map(market => {
+                        const id = markets.indexOf(market);
                         if (id >= 0) return id;
                         else return market;
                     });
@@ -91,7 +91,7 @@ module.exports = function(command, env, productId, productVersion) {
                         type: 'e',
                         value: values.join(' ')
                     }).then(lines => lines.map(line => {
-                        var row = line.split(',', 5);
+                        const row = line.split(',', 5);
                         return _.extend({
                             symbol: row[1],
                             listed_market: markets[parseInt(row[2])] || row[2],
@@ -129,8 +129,8 @@ module.exports = function(command, env, productId, productVersion) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             if (end) expect(begin).to.be.below(end);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
-            var now = moment().tz(tz);
-            var earliest = moment.tz(begin, tz);
+            const now = moment().tz(tz);
+            const earliest = moment.tz(begin, tz);
             if (!earliest.isValid()) throw Error("Invalid begin date " + begin);
             if (isOptionExpired(symbol, earliest, end, tz)) return Promise.resolve([]);
             return hmx(throttled, {
@@ -146,8 +146,8 @@ module.exports = function(command, env, productId, productVersion) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             if (end) expect(begin).to.be.below(end);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
-            var now = moment().tz(tz);
-            var earliest = moment.tz(begin, tz);
+            const now = moment().tz(tz);
+            const earliest = moment.tz(begin, tz);
             if (!earliest.isValid()) throw Error("Invalid begin date " + begin);
             if (isOptionExpired(symbol, earliest, end, tz)) return Promise.resolve([]);
             return hwx(throttled, {
@@ -163,11 +163,11 @@ module.exports = function(command, env, productId, productVersion) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             if (end) expect(begin).to.be.below(end);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
-            var b = moment.tz(begin, tz);
-            var e = end && moment.tz(end, tz);
+            const b = moment.tz(begin, tz);
+            const e = end && moment.tz(end, tz);
             if (!b.isValid()) throw Error("Invalid begin date " + begin);
             if (e && !e.isValid()) throw Error("Invalid end date " + end);
-            var now = moment().tz(tz);
+            const now = moment().tz(tz);
             if (isOptionExpired(symbol, b, e, tz)) return Promise.resolve([]);
             return hdt(throttled, {
                 symbol: symbol,
@@ -181,12 +181,12 @@ module.exports = function(command, env, productId, productVersion) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             if (end) expect(begin).to.be.below(end);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
-            var now = moment().tz('America/New_York');
-            var b = moment.tz(begin, 'America/New_York');
+            const now = moment().tz('America/New_York');
+            const b = moment.tz(begin, 'America/New_York');
             if (!b.isValid()) throw Error("Invalid begin date " + begin);
             // include interval ending at begin
             b.minutes(minutes*(Math.ceil(b.minutes()/minutes)-1));
-            var e = end && moment.tz(end, 'America/New_York');
+            const e = end && moment.tz(end, 'America/New_York');
             if (e && !e.isValid()) throw Error("Invalid end date " + end);
             if (e) e.minutes(minutes*Math.floor(e.minutes()/minutes)).subtract(1,'s');
             if (isOptionExpired(symbol, b, e, tz)) return Promise.resolve([]);
@@ -201,40 +201,40 @@ module.exports = function(command, env, productId, productVersion) {
     };
 }
 
-var sequence_counter = Date.now() % 32768;
+let sequence_counter = Date.now() % 32768;
 function nextval() {
     return ++sequence_counter;
 }
 
-var calls = {
+const calls = {
     A: 'JAN', B: 'FEB', C: 'MAR', D: 'APR', E: 'MAY', F: 'JUN',
     G: 'JUL', H: 'AUG', I: 'SEP', J: 'OCT', K: 'NOV', L: 'DEC'
 };
-var puts = {
+const puts = {
     M: 'JAN', N: 'FEB', O: 'MAR', P: 'APR', Q: 'MAY', R: 'JUN',
     S: 'JUL', T: 'AUG', U: 'SEP', V: 'OCT', W: 'NOV', X: 'DEC'
 };
-var months = {
+const months = {
     A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
     G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
     M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
     S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
 };
-var strike_format = d3.format(".2f");
+const strike_format = d3.format(".2f");
 function lookupOptions(symbol) {
-    var m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return null;
-    var underlying = m[1];
-    var yy = +m[2];
-    var cc = yy<50 ? 2000 : 1900;
-    var year = cc + yy;
-    var day = m[3];
-    var mo = months[m[4]];
-    var cmonth = calls[m[4]];
-    var pmonth = puts[m[4]];
-    var pc = cmonth ? 'C' : 'P';
-    var month = cmonth || pmonth;
-    var strike = strike_format(+m[5]);
+    const underlying = m[1];
+    const yy = +m[2];
+    const cc = yy<50 ? 2000 : 1900;
+    const year = cc + yy;
+    const day = m[3];
+    const mo = months[m[4]];
+    const cmonth = calls[m[4]];
+    const pmonth = puts[m[4]];
+    const pc = cmonth ? 'C' : 'P';
+    const month = cmonth || pmonth;
+    const strike = strike_format(+m[5]);
     return {
         symbol: symbol,
         listed_market: 'OPRA',
@@ -246,15 +246,15 @@ function lookupOptions(symbol) {
 }
 
 function isOptionExpired(symbol, begin, end, tz) {
-    var m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return false;
-    var yy = +m[2];
-    var cc = yy<50 ? 2000 : 1900;
-    var year = cc + yy;
-    var mo = months[m[4]];
-    var day = m[3];
-    var exdate = moment.tz(`${year}-${mo}-${day}`,tz);
-    var issued = mo == '01' ?
+    const yy = +m[2];
+    const cc = yy<50 ? 2000 : 1900;
+    const year = cc + yy;
+    const mo = months[m[4]];
+    const day = m[3];
+    const exdate = moment.tz(`${year}-${mo}-${day}`,tz);
+    const issued = mo == '01' ?
         moment(exdate).subtract(3, 'years') :
         moment(exdate).subtract(9, 'months');
     if (exdate.endOf('day').isBefore(begin))
@@ -355,14 +355,14 @@ function listOf(cmd, ready) {
       .then(socket => promiseSend('S,SET PROTOCOL,5.1', socket)
       .then(socket => new Promise((ready, error) => {
         socket.on('close', err => err && error(err));
-        var listed = [];
+        const listed = [];
         onreceive(socket, function(line) {
-            var values = line.split(',');
+            const values = line.split(',');
             if ('!ENDMSG!' == values[0]) {
                 ready(listed);
                 return false;
             } else if ('E' == values[0]) {
-                var msg = line.replace(/E,!?/,'').replace(/!?,*$/,'');
+                const msg = line.replace(/E,!?/,'').replace(/!?,*$/,'');
                 error(Error(msg));
                 return false;
             } else if (isFinite(values[0])) {
@@ -379,17 +379,17 @@ function listOf(cmd, ready) {
 }
 
 function historical(nextval, ready) {
-    var blacklist = {};
-    var pending = {};
-    var lookupPromise;
-    var closing;
-    var mark = () => {
-        var marked = _.pick(pending, _.property('marked'));
+    const blacklist = {};
+    let pending = {};
+    let lookupPromise;
+    let closing, marker;
+    const mark = () => {
+        const marked = _.pick(pending, _.property('marked'));
         if (!closing && !_.isEmpty(marked)) {
             lookup().then(function(socketId){
                 _.map(marked, (item, id) => {
                     if (pending[id]) {
-                        var adj = item.socketId == socketId ? "same" : "new";
+                        const adj = item.socketId == socketId ? "same" : "new";
                         logger.warn(`Resending ${symbol} ${item.cmd} on ${adj} socket ${socketId}`);
                         delete pending[id];
                         submit(nextval, pending, socketId, item);
@@ -407,14 +407,14 @@ function historical(nextval, ready) {
         _.forEach(pending, item => item.marked = true);
         return marker = setTimeout(mark, 60000).unref();
     };
-    var marker = mark();
-    var lookup = function(){
+    marker = mark();
+    const lookup = function(){
         if (closing) throw closing;
         return lookupPromise = promiseSocket(lookupPromise, function(){
             return ready().then(function(){
                 return promiseNewLookupSocket(blacklist, pending, 9100, lookup);
             }, err => { // not ready, aborting
-                var deleted = pending;
+                const deleted = pending;
                 pending = {};
                 _.each(deleted, item => {
                     item.error(err);
@@ -446,7 +446,7 @@ function historical(nextval, ready) {
 }
 
 function submit(nextval, pending, socketId, item) {
-    var id = nextval();
+    const id = nextval();
     pending[id] = {
         symbol: item.symbol,
         cmd: item.args.join(',').replace('[RequestID]', id),
@@ -466,10 +466,10 @@ function submit(nextval, pending, socketId, item) {
 }
 
 function watch(ready) {
-    var blacklist = {};
-    var watching = {};
-    var level1Promise;
-    var level1 = function(){
+    const blacklist = {};
+    const watching = {};
+    let level1Promise;
+    const level1 = function(){
         return level1Promise = promiseSocket(level1Promise, function(){
             return ready().then(function(){
                 return promiseNewLevel1Socket(blacklist, watching, 5009, level1);
@@ -484,8 +484,8 @@ function watch(ready) {
                 throw Error("Missing symbol in " + JSON.stringify(options));
             return level1().then(function(socketId){
                 return new Promise(function(callback, onerror){
-                    var symbol = options.symbol;
-                    var pending = {
+                    const symbol = options.symbol;
+                    const pending = {
                         symbol: symbol,
                         socketId: socketId,
                         fundamental: function(result) {
@@ -503,7 +503,7 @@ function watch(ready) {
                         update: function(result) {
                             try {
                                 if (options.update) {
-                                    var ret = options.update(result);
+                                    const ret = options.update(result);
                                     if (ret) return ret;
                                 }
                             } catch(e) {
@@ -516,7 +516,7 @@ function watch(ready) {
                             return onerror(e);
                         }
                     };
-                    var cmd = (_.isEmpty(watching[symbol]) ? 't' : 'f') + symbol;
+                    const cmd = (_.isEmpty(watching[symbol]) ? 't' : 'f') + symbol;
                     if (!watching[symbol]) {
                         watching[symbol] = [];
                     }
@@ -537,7 +537,7 @@ function deregister(watching, socketId, symbol, pending) {
 }
 
 function promiseSocket(previous, createNewSocket) {
-    var check = interrupt(true);
+    const check = interrupt(true);
     return (previous || Promise.reject()).then(function(socket){
         if (!socket.destroyed) return socket;
         else throw Error("Socket not connected");
@@ -555,7 +555,7 @@ function promiseNewLookupSocket(blacklist, pending, port, retry) {
                 if (error) _.delay(retry, 1000);
             });
             onreceive(socket, function(line) {
-                var id = line.substring(0, line.indexOf(','));
+                const id = line.substring(0, line.indexOf(','));
                 if (line.indexOf(id + ',!ENDMSG!,') === 0) {
                     if (pending[id]) {
                         pending[id].callback(pending[id].buffer);
@@ -563,7 +563,7 @@ function promiseNewLookupSocket(blacklist, pending, port, retry) {
                     }
                 } else if (line.indexOf(id + ',E,') === 0) {
                     if (pending[id]) {
-                        var error = line.replace(/\w+,E,!?/,'').replace(/!?,*$/,'');
+                        const error = line.replace(/\w+,E,!?/,'').replace(/!?,*$/,'');
                         if ("NO_DATA" != error) {
                             blacklist[pending[id].symbol] = error;
                             pending[id].error(Error(error + " for " + pending[id].cmd));
@@ -587,9 +587,9 @@ function promiseNewLookupSocket(blacklist, pending, port, retry) {
 }
 
 function promiseNewLevel1Socket(blacklist, watching, port, retry) {
-    var check = interrupt(true);
-    var fundamentalFormat = ['type', 'symbol', 'market_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'market_root'];
-    var summaryFormat = ['type', 'symbol', 'close', 'most_recent_trade_date', 'open', 'high', 'low', 'most_recent_trade_timems', 'most_recent_trade', 'bid_timems', 'bid', 'ask_timems', 'ask', 'total_volume', 'decimal_precision'];
+    const check = interrupt(true);
+    const fundamentalFormat = ['type', 'symbol', 'market_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'market_root'];
+    const summaryFormat = ['type', 'symbol', 'close', 'most_recent_trade_date', 'open', 'high', 'low', 'most_recent_trade_timems', 'most_recent_trade', 'bid_timems', 'bid', 'ask_timems', 'ask', 'total_volume', 'decimal_precision'];
     return openSocket(port).then(function(socket) {
         return promiseSend('S,SET PROTOCOL,5.1', socket)
           .then(send.bind(this, 'S,SELECT UPDATE FIELDS,Close,Most Recent Trade Date,Open,High,Low,Most Recent Trade TimeMS,Most Recent Trade,Bid TimeMS,Bid,Ask TimeMS,Ask,Total Volume,Decimal Precision'))
@@ -599,30 +599,30 @@ function promiseNewLevel1Socket(blacklist, watching, port, retry) {
                 if (error) _.delay(retry, 1000);
             });
             onreceive(socket, function(line) {
-                var row = line.split(',');
+                const row = line.split(',');
                 if ('T' == row[0]) { // Time
                     return false;
                 } else if ('n' == row[0]) { // Symbol not found
-                    var symbol = row[1];
+                    const symbol = row[1];
                     _.each(watching[symbol], function(item){
                         item.error(Error("Symbol not found: " + symbol));
                     });
                     return false;
                 } else if ('F' == row[0]) { // Fundamental
-                    var trim = String.prototype.trim.call.bind(String.prototype.trim);
-                    var object = _.omit(_.object(fundamentalFormat, row.map(trim)), _.isEmpty);
+                    const trim = String.prototype.trim.call.bind(String.prototype.trim);
+                    const object = _.omit(_.object(fundamentalFormat, row.map(trim)), _.isEmpty);
                     _.each(watching[object.symbol], function(item){
                         item.fundamental(object);
                     });
                     return false;
                 } else if ('P' == row[0]) { // Summary
-                    var object = _.object(summaryFormat, row);
+                    const object = _.object(summaryFormat, row);
                     _.each(watching[object.symbol], function(item){
                         item.summary(object);
                     });
                     return false;
                 } else if ('Q' == row[0]) { // Update
-                    var object = _.object(summaryFormat, row);
+                    const object = _.object(summaryFormat, row);
                     _.each(watching[object.symbol], function(item){
                         item.update(object);
                     });
@@ -644,14 +644,14 @@ function promiseNewLevel1Socket(blacklist, watching, port, retry) {
 }
 
 function promiseNewAdminSocket(port, command, env, productId, productVersion) {
-    var check = interrupt(true);
+    const check = interrupt(true);
     return openSocket(port).catch(err => {
         if (check()) throw err;
         if (command && err.code == 'ECONNREFUSED') {
             // try launching command first
             return new Promise((ready, exit) => {
                 logger.debug("launching", command);
-                var p = spawn(_.first(command), _.rest(command), {
+                const p = spawn(_.first(command), _.rest(command), {
                     env: _.extend({}, process.env, env),
                     detached: true,
                     stdio: 'ignore'
@@ -679,8 +679,8 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
     }).then(function(socket) {
         return promiseSend('S,CONNECT', socket).then(function(socket){
             return new Promise(function(callback, abort) {
-                var registration;
-                var warning = _.throttle(msg => logger.warn(msg), 10000, {trailing: false});
+                let registration;
+                const warning = _.throttle(msg => logger.warn(msg), 10000, {trailing: false});
                 socket.on('error', error => {
                     logger.error("IQFeed", error, error.stack);
                     abort(error);
@@ -688,7 +688,7 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
                 onreceive(socket, function(line) {
                     if (line && line.indexOf("S,STATS,") >= 0) {
                         if (line.indexOf("Not Connected") > 0) {
-                            var msg = "S,REGISTER CLIENT APP," + productId + "," + productVersion;
+                            const msg = "S,REGISTER CLIENT APP," + productId + "," + productVersion;
                             if (productId && registration != msg) {
                                 registration = msg;
                                 promiseSend(msg, socket)
@@ -714,12 +714,12 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
 function openSocket(port) {
     return new Promise(function(callback, abort) {
         logger.debug("Opening TCP Socket", port);
-        var socket = net.connect(port, () => callback(socket)).on('error', abort);
+        const socket = net.connect(port, () => callback(socket)).on('error', abort);
     });
 }
 
 function closeSocket(socket) {
-    var destroy;
+    let destroy;
     return new Promise(cb => {
         socket.on('close', cb).end();
         // wait 1s for remote to ACK FIN
@@ -745,16 +745,16 @@ function promiseSend(cmd, socket) {
 }
 
 function onreceive(socket, listener) {
-    var buffer = '';
+    let buffer = '';
     socket.setEncoding('utf-8');
     socket.on('data', data => {
         buffer = buffer ? buffer + data : data;
         while (buffer.indexOf('\n') >= 0) {
-            var idx = buffer.indexOf('\n') + 1;
-            var line = buffer.substring(0, idx).replace(/\s*$/,'');
+            const idx = buffer.indexOf('\n') + 1;
+            const line = buffer.substring(0, idx).replace(/\s*$/,'');
             buffer = buffer.substring(idx);
             try {
-                var ret = listener(line);
+                const ret = listener(line);
                 if (ret !== false) {
                     logger.log(line);
                 }

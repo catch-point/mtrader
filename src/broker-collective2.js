@@ -41,7 +41,7 @@ const expect = require('chai').expect;
 module.exports = function(settings) {
     if (settings.help) return helpSettings();
     expect(settings).to.have.property('systemid').that.is.a('string');
-    var client = Collective2(settings.systemid);
+    const client = Collective2(settings.systemid);
     return _.extend(function(options) {
         if (options.help) return helpOptions();
         else return collective2(client, options);

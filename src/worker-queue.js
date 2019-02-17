@@ -34,21 +34,21 @@ const _ = require('underscore');
 const logger = require('./logger.js');
 
 module.exports = function(createWorkers, execTask) {
-    var queue = [];
-    var workers = [];
-    var stoppedWorkers = [];
-    var run = function() {
+    const queue = [];
+    const workers = [];
+    const stoppedWorkers = [];
+    const run = function() {
         if (closed) throw Error("Workers have closed");
-        var loads = workers.map(load);
-        var min = _.min(loads);
-        var avail = _.reject(loads.map((load, idx) => load == min ? idx : null), _.isNull);
-        var idx = avail.length == 1 ? 0 : Math.floor(Math.random() * avail.length);
-        var worker = workers[avail[idx]];
+        const loads = workers.map(load);
+        const min = _.min(loads);
+        const avail = _.reject(loads.map((load, idx) => load == min ? idx : null), _.isNull);
+        const idx = avail.length == 1 ? 0 : Math.floor(Math.random() * avail.length);
+        const worker = workers[avail[idx]];
         return execTask.apply(this, [worker].concat(_.toArray(arguments)));
     };
-    var closed = false;
-    var checking = false;
-    var check_queue = function() {
+    let closed = false;
+    let checking = false;
+    const check_queue = function() {
         if (checking) return;
         else checking = true;
         try {
@@ -61,7 +61,7 @@ module.exports = function(createWorkers, execTask) {
                     worker.disconnect();
                 }
             });
-            var spare = workers.reduce((capacity, worker) => {
+            const spare = workers.reduce((capacity, worker) => {
                 return capacity + Math.max(Math.ceil((worker.count || 1) * (1 - load(worker))), 0);
             }, 0);
             queue.splice(0, spare).forEach(item => {
@@ -75,9 +75,9 @@ module.exports = function(createWorkers, execTask) {
             checking = false;
         }
     };
-    var self = _.extend(function() {
-        var self = this;
-        var args = _.toArray(arguments);
+    const self = _.extend(function() {
+        const self = this;
+        const args = _.toArray(arguments);
         return new Promise((resolve, reject) => {
             queue.push({self, args, resolve, reject});
             check_queue();
@@ -102,7 +102,7 @@ module.exports = function(createWorkers, execTask) {
             return stoppedWorkers.slice(0);
         },
         stopWorker(worker) {
-            var idx = workers.indexOf(worker);
+            const idx = workers.indexOf(worker);
             if (idx >= 0) workers.splice(idx, 1);
             if (idle(worker)) {
                 worker.disconnect();
@@ -111,8 +111,8 @@ module.exports = function(createWorkers, execTask) {
             }
         },
         all: function() {
-            var self = this;
-            var args = _.toArray(arguments);
+            const self = this;
+            const args = _.toArray(arguments);
             return Promise.all(this.getWorkers().map(worker => {
                 return run.apply(self, args);
             }));
@@ -139,23 +139,23 @@ module.exports = function(createWorkers, execTask) {
 }
 
 function idle(worker) {
-    var stats = worker.stats;
+    const stats = worker.stats;
     if (!stats || !stats.requests_sent) return true;
     return stats.requests_sent == stats.replies_rec;
 }
 
 function load(worker) {
-    var stats = worker.stats;
+    const stats = worker.stats;
     if (!stats || !stats.requests_sent) return 0;
-    var outstanding = stats.requests_sent - (stats.replies_rec || 0);
-    var subcollecting = (stats.requests_rec || 0) - (stats.replies_sent || 0);
+    const outstanding = stats.requests_sent - (stats.replies_rec || 0);
+    const subcollecting = (stats.requests_rec || 0) - (stats.replies_sent || 0);
     return Math.max((outstanding - subcollecting) / (worker.count || 1), 0) || 0;
 }
 
 function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
     workers.push.apply(workers, newWorkers);
     newWorkers.forEach(worker => worker.on('message', check).handle('stop', function() {
-        var idx = workers.indexOf(this);
+        const idx = workers.indexOf(this);
         if (idx >= 0) workers.splice(idx, 1);
         if (idle(this)) {
             this.disconnect();
@@ -163,9 +163,9 @@ function registerWorkers(newWorkers, workers, stoppedWorkers, check) {
             stoppedWorkers.push(this);
         }
     }).once('disconnect', function() {
-        var idx = workers.indexOf(this);
+        const idx = workers.indexOf(this);
         if (idx >= 0) workers.splice(idx, 1);
-        var sidx = stoppedWorkers.indexOf(this);
+        const sidx = stoppedWorkers.indexOf(this);
         if (sidx >= 0) stoppedWorkers.splice(sidx, 1);
     }));
 }

@@ -42,7 +42,7 @@ const debounce = require('./debounce.js');
 const cache = require('./memoize-cache.js');
 
 module.exports = _.extend(function(dirname) {
-    var cachedDatabases = cache(openDatabase.bind(this, dirname));
+    const cachedDatabases = cache(openDatabase.bind(this, dirname));
     return {
         open(name, cb) {
             return cachedDatabases(safe(name), cb);
@@ -61,20 +61,20 @@ module.exports = _.extend(function(dirname) {
 });
 
 function openDatabase(dir, name) {
-    var dirname = path.resolve(dir, safe(name));
-    var memoized = _.memoize(openCollection.bind(this, dirname));
+    const dirname = path.resolve(dir, safe(name));
+    const memoized = _.memoize(openCollection.bind(this, dirname));
     logger.trace("Opening", dirname, "from", process.pid);
     return {
         collection: memoized,
         flushCache() {
-            var values = _.values(memoized.cache);
+            const values = _.values(memoized.cache);
             memoized.cache = {};
             return Promise.all(values)
                 .then(collections => Promise.all(collections.map(coll => coll.close())));
         },
         close(closedBy) {
             logger.trace("Closing", dirname, "from", process.pid);
-            var values = _.values(memoized.cache);
+            const values = _.values(memoized.cache);
             memoized.cache = {};
             return Promise.all(values)
                 .then(collections => Promise.all(collections.map(coll => coll.close(closedBy))));
@@ -90,12 +90,12 @@ function safe(segment) {
 }
 
 function openCollection(dirname, name) {
-    var locks = {};
-    var cachedTables = cache(readTable);
-    var collpath = path.resolve(dirname, safe(name));
-    var debouncedWriteMetadata = debounce(writeMetadata, 10000, 100);
-    var closed = false;
-    var failIfClosed = () => {
+    let locks = {};
+    const cachedTables = cache(readTable);
+    const collpath = path.resolve(dirname, safe(name));
+    const debouncedWriteMetadata = debounce(writeMetadata, 10000, 100);
+    let closed = false;
+    const failIfClosed = () => {
         if (closed) throw Error(`Collection ${collpath} already closed in ${process.pid} ${closed}`);
     };
     return readMetadata(collpath).then(metadata => ({
@@ -112,11 +112,11 @@ function openCollection(dirname, name) {
         },
         lockWith(names, cb) {
             failIfClosed();
-            var expired;
-            var promise = new Promise(aquired => _.defer(() => {
-                var priorLocks = names.reduce((priorLocks, name) => {
+            let expired;
+            const promise = new Promise(aquired => _.defer(() => {
+                const priorLocks = names.reduce((priorLocks, name) => {
                     if (locks[name]) {
-                        var prior = _.union(priorLocks, locks[name]);
+                        const prior = _.union(priorLocks, locks[name]);
                         locks[name].push(promise);
                         return prior;
                     } else {
@@ -135,9 +135,9 @@ function openCollection(dirname, name) {
         },
         propertyOf(block, name, value) {
             failIfClosed();
-            var id = safe(block);
-            var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
-            var entry = metadata.tables[idx];
+            const id = safe(block);
+            const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            const entry = metadata.tables[idx];
             if (!entry || entry.id != id) throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
             if (arguments.length == 2)
                 return entry.properties[name];
@@ -146,19 +146,19 @@ function openCollection(dirname, name) {
         },
         exists(name) {
             failIfClosed();
-            var id = safe(name);
-            var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
-            var entry = metadata.tables[idx];
+            const id = safe(name);
+            const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            const entry = metadata.tables[idx];
             return entry && entry.id == id;
         },
         remove(name) {
             failIfClosed();
-            var id = safe(name);
-            var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
-            var entry = metadata.tables[idx];
+            const id = safe(name);
+            const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            const entry = metadata.tables[idx];
             if (!entry || entry.id != id) return Promise.resolve(false);
             metadata.tables.splice(idx, 1);
-            var filename = path.resolve(collpath, id + '.csv');
+            const filename = path.resolve(collpath, id + '.csv');
             return Promise.all([new Promise((cb, error) => {
                 fs.unlink(filename, err => {
                     if (err) error(err);
@@ -168,21 +168,21 @@ function openCollection(dirname, name) {
         },
         filenameOf(name) {
             failIfClosed();
-            var id = safe(name);
+            const id = safe(name);
             return path.resolve(collpath, id + '.csv');
         },
         sizeOf(name) {
             failIfClosed();
-            var id = safe(name);
-            var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            const id = safe(name);
+            const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return metadata.tables[idx].size;
             else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
         },
         columnsOf(name) {
             failIfClosed();
-            var id = safe(name);
-            var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            const id = safe(name);
+            const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return [].concat(metadata.tables[idx].head, metadata.tables[idx].tail)
                   .reduce((columns, obj) => {
@@ -192,37 +192,37 @@ function openCollection(dirname, name) {
         },
         headOf(name) {
             failIfClosed();
-            var id = safe(name);
-            var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            const id = safe(name);
+            const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return metadata.tables[idx].head;
             else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
         },
         tailOf(name) {
             failIfClosed();
-            var id = safe(name);
-            var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            const id = safe(name);
+            const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return metadata.tables[idx].tail;
             else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
         },
         readFrom(name) {
             failIfClosed();
-            var id = safe(name);
-            var idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            const id = safe(name);
+            const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (!metadata.tables[idx] || metadata.tables[idx].id != id)
                 throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
-            var filename = path.resolve(collpath, id + '.csv');
+            const filename = path.resolve(collpath, id + '.csv');
             return cachedTables(filename, metadata.tables[idx].size);
         },
         replaceWith(records, name) {
             failIfClosed();
-            var id = safe(name);
-            var filename = path.resolve(collpath, id + '.csv');
+            const id = safe(name);
+            const filename = path.resolve(collpath, id + '.csv');
             return writeTable(filename, records)
               .then(() => cachedTables.replaceEntry(filename, Promise.resolve(records)))
               .then(() => {
-                var entry = {
+                const entry = {
                     id: id,
                     name: name,
                     size: records.length,
@@ -230,7 +230,7 @@ function openCollection(dirname, name) {
                     tail: records.slice(-2),
                     updatedAt: new Date().toISOString()
                 };
-                var idx = _.sortedIndex(metadata.tables, entry, 'id');
+                const idx = _.sortedIndex(metadata.tables, entry, 'id');
                 if (metadata.tables[idx] && metadata.tables[idx].id == id) {
                     entry.properties = {};
                     entry.createdAt = entry.updatedAt;
@@ -245,12 +245,12 @@ function openCollection(dirname, name) {
         },
         writeTo(records, name) {
             failIfClosed();
-            var id = safe(name);
-            var filename = path.resolve(collpath, id + '.csv');
+            const id = safe(name);
+            const filename = path.resolve(collpath, id + '.csv');
             return writeTable(filename, records)
               .then(() => cachedTables.replaceEntry(filename, Promise.resolve(records)))
               .then(() => {
-                var entry = {
+                const entry = {
                     id: id,
                     name: name,
                     size: records.length,
@@ -258,7 +258,7 @@ function openCollection(dirname, name) {
                     tail: records.slice(-2),
                     updatedAt: new Date().toISOString()
                 };
-                var idx = _.sortedIndex(metadata.tables, entry, 'id');
+                const idx = _.sortedIndex(metadata.tables, entry, 'id');
                 if (metadata.tables[idx] && metadata.tables[idx].id == id) {
                     metadata.tables[idx] = _.extend(metadata.tables[idx], entry);
                 } else {
@@ -276,7 +276,7 @@ function openCollection(dirname, name) {
 }
 
 function readMetadata(dirname) {
-    var filename = path.resolve(dirname, 'index.json');
+    const filename = path.resolve(dirname, 'index.json');
     return new Promise((present, absent) => {
         fs.access(filename, fs.R_OK, err => err ? absent(err) : present(dirname));
     }).then(present => new Promise((ready, error) => {
@@ -299,8 +299,8 @@ function readMetadata(dirname) {
 }
 
 function writeMetadata(dirname, metadata) {
-    var filename = path.resolve(dirname, 'index.json');
-    var part = awriter.partFor(filename);
+    const filename = path.resolve(dirname, 'index.json');
+    const part = awriter.partFor(filename);
     return awriter.mkdirp(dirname).then(() => {
         return new Promise((ready, error) => {
             fs.writeFile(part, JSON.stringify(metadata, null, ' '), err => {
@@ -326,11 +326,11 @@ function renameMetadata(part, filename, metadata) {
 }
 
 function mergeMetadata(part, filename, metadata) {
-    var collpath = path.dirname(filename);
+    const collpath = path.dirname(filename);
     return readMetadata(collpath).then(target => {
-        var tables = metadata.tables;
+        const tables = metadata.tables;
         target.tables.forEach(entry => {
-            var idx = _.sortedIndex(tables, entry, 'id');
+            const idx = _.sortedIndex(tables, entry, 'id');
             if (tables[idx] && tables[idx].id == entry.id) {
                 if (tables[idx].updatedAt < entry.updatedAt) {
                     tables[idx] = _.extend(tables[idx], entry);
@@ -339,16 +339,16 @@ function mergeMetadata(part, filename, metadata) {
                 tables.splice(idx, 0, entry);
             }
         });
-        var absent = tables.filter(entry => {
-            var idx = _.sortedIndex(target.tables, entry, 'id');
+        const absent = tables.filter(entry => {
+            const idx = _.sortedIndex(target.tables, entry, 'id');
             return !target.tables[idx] || target.tables[idx].id != entry.id;
         });
         return Promise.all(absent.map(entry => new Promise(cb => {
-            var filename = path.resolve(collpath, entry.id + '.csv');
+            const filename = path.resolve(collpath, entry.id + '.csv');
             fs.access(filename, fs.R_OK, err => err ? cb(false) : cb(true));
         }))).then(ok => {
             absent.filter((entry, i) => !ok[i]).forEach(entry => {
-                var idx = _.sortedIndex(tables, entry, 'id');
+                const idx = _.sortedIndex(tables, entry, 'id');
                 if (tables[idx] && tables[idx].id == entry.id) {
                     tables.splice(idx, 1);
                 }
@@ -366,9 +366,9 @@ function mergeMetadata(part, filename, metadata) {
 }
 
 function readTable(filename, size) {
-    var check = interrupt();
+    const check = interrupt();
     return new Promise((ready, error) => {
-        var objects = _.isFinite(size) ? new Array(size) : new Array();
+        const objects = _.isFinite(size) ? new Array(size) : new Array();
         objects.length = 0;
         csv.fromStream(fs.createReadStream(filename), {headers : true, ignoreEmpty: true})
             .on('error', error)
@@ -387,10 +387,10 @@ function readTable(filename, size) {
 function writeTable(filename, table) {
     expect(table).to.be.an('array');
     return awriter(filename => new Promise(finished => {
-        var headers = _.union(_.keys(_.first(table)), _.keys(_.last(table)));
-        var output = fs.createWriteStream(filename);
+        const headers = _.union(_.keys(_.first(table)), _.keys(_.last(table)));
+        const output = fs.createWriteStream(filename);
         output.on('finish', finished);
-        var writer = csv.createWriteStream({
+        const writer = csv.createWriteStream({
             headers: headers,
             rowDelimiter: '\r\n',
             includeEndRowDelimiter: true

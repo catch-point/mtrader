@@ -48,7 +48,7 @@ const version = require('../package.json').version;
  */
 module.exports = function(systemid) {
     expect(systemid).to.be.a('string');
-    var agent = new https.Agent({
+    const agent = new https.Agent({
         keepAlive: config('broker.collective2.keepAlive') || false,
         keepAliveMsecs: config('broker.collective2.keepAliveMsecs') || 1000,
         maxSockets: config('broker.collective2.maxSockets'),
@@ -64,7 +64,7 @@ module.exports = function(systemid) {
         NPNProtocols: config('tls.NPNProtocols'),
         ALPNProtocols: config('tls.ALPNProtocols')
     });
-    var settings = _.extend({offline: config('offline')}, config('broker.collective2'));
+    const settings = _.extend({offline: config('offline')}, config('broker.collective2'));
     expect(settings).to.have.property('apikey').that.is.a('string');
     return ({
         submitSignal(signal) {
@@ -97,13 +97,13 @@ module.exports = function(systemid) {
 function retrieve(agent, name, systemid, settings) {
     expect(settings).to.have.property('apikey').that.is.a('string');
     return new Promise((ready, error) => {
-        var uri = settings[name];
-        var parsed = _.isString(uri) && url.parse(uri);
+        const uri = settings[name];
+        const parsed = _.isString(uri) && url.parse(uri);
         if (_.isObject(uri)) {
             ready(JSON.stringify(uri));
         } else if (parsed.protocol == 'https:' || parsed.protocol == 'http:') {
-            var client = parsed.protocol == 'https:' ? https : http;
-            var request = client.request(_.defaults({
+            const client = parsed.protocol == 'https:' ? https : http;
+            const request = client.request(_.defaults({
                 method: 'POST',
                 headers: {'User-Agent': 'mtrader/' + version},
                 agent: parsed.protocol == 'https:' && agent
@@ -113,7 +113,7 @@ function retrieve(agent, name, systemid, settings) {
                         throw Error("Unexpected response code " + res.statusCode);
                     if (!~res.headers['content-type'].indexOf('/json'))
                         throw Error("Unexpected response type " + res.headers['content-type']);
-                    var data = [];
+                    const data = [];
                     res.setEncoding('utf8');
                     res.on('data', chunk => {
                         data.push(chunk);
@@ -151,11 +151,11 @@ function retrieve(agent, name, systemid, settings) {
  */
 function submit(agent, name, systemid, signal, settings) {
     expect(settings).to.have.property('apikey').that.is.a('string');
-    var signalid = typeof signal == 'string' ? signal : undefined;
-    var signalobj = typeof signal == 'object' ? signal : undefined;
+    const signalid = typeof signal == 'string' ? signal : undefined;
+    const signalobj = typeof signal == 'object' ? signal : undefined;
     return new Promise((ready, error) => {
-        var uri = settings[name];
-        var parsed = _.isString(uri) && url.parse(uri);
+        const uri = settings[name];
+        const parsed = _.isString(uri) && url.parse(uri);
         if (settings.offline || !parsed) {
             ready(JSON.stringify({
                 ok: 1,
@@ -164,8 +164,8 @@ function submit(agent, name, systemid, signal, settings) {
                 }, signalobj)
             }));
         } else if (parsed.protocol == 'https:' || parsed.protocol == 'http:') {
-            var client = parsed.protocol == 'https:' ? https : http;
-            var request = client.request(_.defaults({
+            const client = parsed.protocol == 'https:' ? https : http;
+            const request = client.request(_.defaults({
                 method: 'POST',
                 headers: {'User-Agent': 'mtrader/' + version},
                 agent: parsed.protocol == 'https:' && agent
@@ -175,7 +175,7 @@ function submit(agent, name, systemid, signal, settings) {
                         throw Error("Unexpected response code " + res.statusCode);
                     if (!~res.headers['content-type'].indexOf('/json'))
                         throw Error("Unexpected response type " + res.headers['content-type']);
-                    var data = [];
+                    const data = [];
                     res.setEncoding('utf8');
                     res.on('data', chunk => {
                         data.push(chunk);
@@ -194,7 +194,7 @@ function submit(agent, name, systemid, signal, settings) {
                 signal: signalobj
             }));
         } else if (parsed.protocol == 'file:') {
-            var data = JSON.stringify({signalid, signal: signalobj}, null, ' ');
+            const data = JSON.stringify({signalid, signal: signalobj}, null, ' ');
             fs.writeFile(parsed.pathname, data, err => err ? error(err) : ready(JSON.stringify({
                 ok: 1,
                 signal: _.extend({

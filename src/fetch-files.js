@@ -41,7 +41,7 @@ const iqfeed = require('./fetch-iqfeed.js');
 const storage = require('./storage.js');
 
 module.exports = function() {
-    var fallbacks = _.mapObject(_.object(
+    const fallbacks = _.mapObject(_.object(
             config('fetch.files.fallback') || _.compact([
                 (config('fetch.yahoo.enabled') || !config('fetch.iqfeed.enabled')) && 'yahoo',
                 config('fetch.iqfeed.enabled') && 'iqfeed'
@@ -50,10 +50,10 @@ module.exports = function() {
             'iqfeed' == fallback ? iqfeed() :
             null;
     });
-    var dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    var dirname = config('fetch.files.dirname') || dir;
-    var store = Promise.resolve(storage(dirname));
-    var open = (name, cb) => store.then(store => store.open(name, cb));
+    const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const dirname = config('fetch.files.dirname') || dir;
+    const store = Promise.resolve(storage(dirname));
+    const open = (name, cb) => store.then(store => store.open(name, cb));
     return {
         close() {
             return Promise.all(_.map(fallbacks, fb => fb.close()))
@@ -100,9 +100,9 @@ function help(datasources) {
     return Promise.all(_.map(datasources, datasource => {
         return datasource.help();
     })).then(helps => {
-        var groups = _.values(_.groupBy(_.flatten(helps), 'name'));
+        const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
         return groups.map(helps => helps.reduce((help, h) => {
-            var options = _.extend({}, h.options, help.options);
+            const options = _.extend({}, h.options, help.options);
             return {
                 name: help.name || h.name,
                 usage: help.usage || h.usage,
@@ -123,12 +123,12 @@ function help(datasources) {
 }
 
 function readOrWriteResult(fallbacks, open, cmd, options) {
-    var args = _.compact(_.pick(options, 'interval', 'minutes', 'begin', 'end'));
-    var name = options.market ? options.symbol + '.' + options.market : options.symbol;
+    const args = _.compact(_.pick(options, 'interval', 'minutes', 'begin', 'end'));
+    const name = options.market ? options.symbol + '.' + options.market : options.symbol;
     return open(name, (err, db) => {
         if (err) throw err;
         return db.collection(cmd).then(coll => coll.lockWith([name], names => {
-            var name = _.map(args, arg => safe(arg)).join('.') || 'result';
+            const name = _.map(args, arg => safe(arg)).join('.') || 'result';
             if (coll.exists(name)) return coll.readFrom(name);
             else if (_.isEmpty(fallbacks))
                 throw Error("Data file not found " + coll.filenameOf(name));
@@ -138,7 +138,7 @@ function readOrWriteResult(fallbacks, open, cmd, options) {
                         !_.contains(config(['fetch', source, 'interday']), options.interval) &&
                         !_.contains(config(['fetch', source, 'intraday']), options.interval))
                     throw (err || Error("No fallback available for " + options.interval));
-                var opt = _.defaults({}, options);
+                const opt = _.defaults({}, options);
                 return fb[cmd](opt).then(result => {
                     return coll.writeTo(result, name).then(() => result);
                 });

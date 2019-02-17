@@ -39,19 +39,19 @@ const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
 
-var collections = {};
+const collections = {};
 process.on('SIGHUP', () => _.keys(collections).forEach(key=>delete collections[key]));
 
 module.exports = function(read, call, save) {
-    var file = read && _.isString(read) && config.resolve(read);
-    var original = file ? config.read(file) : read ? read : {};
+    const file = read && _.isString(read) && config.resolve(read);
+    const original = file ? config.read(file) : read ? read : {};
     if (!original) throw Error("Could not read " + read + " settings");
-    var amend = arguments.length>2 && config('amend');
-    var target = save && amend ? config.read(save) : original;
-    var dir = file ? path.dirname(file) : '.';
-    var inlineOriginal = inlineCollections(collections, dir, original, [read]);
-    var options = mergeSignals(inlineOriginal, _.isString(read) ? read : '');
-    var inlineOptions = inlineCollections(collections, '.', options, [read]);
+    const amend = arguments.length>2 && config('amend');
+    const target = save && amend ? config.read(save) : original;
+    const dir = file ? path.dirname(file) : '.';
+    const inlineOriginal = inlineCollections(collections, dir, original, [read]);
+    const options = mergeSignals(inlineOriginal, _.isString(read) ? read : '');
+    const inlineOptions = inlineCollections(collections, '.', options, [read]);
     return Promise.resolve(!call ? inlineOptions : call(inlineOptions))
       .then(result => amend ? mergeSignalSets(target, result) : result)
       .then(result => arguments.length>2 ? outputFile(result, save || amend && file) : result);
@@ -72,14 +72,14 @@ function inlineCollections(collections, base, options, avoid) {
 }
 
 function loadCollection(collections, base, options, avoid) {
-    var opts = options.load ? _.compact(_.flatten([options.load])).reduceRight((options, load) => {
+    const opts = options.load ? _.compact(_.flatten([options.load])).reduceRight((options, load) => {
         return merge(options, inlineCollections(collections, base, load, avoid), options);
     }, options) : options;
     return inlineSignalset(collections, base, opts, avoid);
 }
 
 function inlineSignalset(collections, base, options, avoid) {
-    var opts = options.signalset ? _.defaults({
+    const opts = options.signalset ? _.defaults({
             signalset: inlineCollections(collections, base, options.signalset, avoid)
         }, options) : options;
     return inlinePortfolio(collections, base, opts, avoid);
@@ -99,10 +99,10 @@ function readCollection(collections, base, filename, avoid) {
     }
     if (collections[filename]) return collections[filename];
     else if (_.has(collections, filename) || ~filename.indexOf('.json') || ~filename.indexOf('/')) {
-        var file = config.resolve(base, filename);
-        var dir = path.dirname(file);
+        const file = config.resolve(base, filename);
+        const dir = path.dirname(file);
         try {
-            var cfg = config.read(file);
+            const cfg = config.read(file);
             if (cfg) collections[filename] = inlineCollections(collections, dir, _.extend({
                 label: filename,
             }, cfg), _.flatten(_.compact([avoid, filename]), true));
@@ -128,7 +128,7 @@ function mergeSignals(original, label) {
 }
 
 function mergeSignalSets(original, result) {
-    var merged = merge(original, result);
+    const merged = merge(original, result);
     if (_.isArray(merged.signalset))
         merged.signalset = merged.signalset.map(signalset => signalset.name || signalset);
     if (original.eval_validity && result.eval_validity)
@@ -145,8 +145,8 @@ function outputFile(result, file) {
 
 function output(result, file) {
     return new Promise(done => {
-        var output = JSON.stringify(result, null, ' ') + '\n';
-        var writer = createWriteStream(file);
+        const output = JSON.stringify(result, null, ' ') + '\n';
+        const writer = createWriteStream(file);
         writer.on('finish', done);
         if (output) writer.write(output, 'utf-8');
         writer.end();
@@ -155,8 +155,8 @@ function output(result, file) {
 
 function createWriteStream(outputFile) {
     if (outputFile) return fs.createWriteStream(outputFile);
-    var delegate = process.stdout;
-    var output = Object.create(Writable.prototype);
+    const delegate = process.stdout;
+    const output = Object.create(Writable.prototype);
     output.cork = delegate.cork.bind(delegate);
     output.end = function(chunk) {
         if (chunk) delegate.write.apply(delegate, arguments);

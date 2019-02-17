@@ -37,13 +37,13 @@ const config = require('./config.js');
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-var relative = path.relative(process.cwd(), path.dirname(__filename));
-var quiet = process.argv.some(arg => /^--quiet$|^-\w*q/.test(arg));
-var verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg));
-var debugging = !relative || relative == 'src' || process.argv.some(arg => /^--debug$|^-\w*x/.test(arg));
-var noDebugging = process.argv.some(arg => /^-\w*X/.test(arg));
+const relative = path.relative(process.cwd(), path.dirname(__filename));
+const quiet = process.argv.some(arg => /^--quiet$|^-\w*q/.test(arg));
+const verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg));
+const debugging = !relative || relative == 'src' || process.argv.some(arg => /^--debug$|^-\w*x/.test(arg));
+const noDebugging = process.argv.some(arg => /^-\w*X/.test(arg));
 
-var tty_colours = {
+const tty_colours = {
     black: '\x1b[30m',
     red: '\x1b[31m',
     green: '\x1b[32m',
@@ -61,9 +61,9 @@ var tty_colours = {
     hidden: '\x1b[8m'
 };
 
-var colours = process.stderr.isTTY ? tty_colours : _.mapObject(tty_colours, _.constant(''));
+const colours = process.stderr.isTTY ? tty_colours : _.mapObject(tty_colours, _.constant(''));
 
-var logger = module.exports = cfg('quiet', quiet) ? {
+const logger = module.exports = cfg('quiet', quiet) ? {
     trace: nil,
     debug: nil,
     log: nil,
@@ -106,9 +106,9 @@ process.on('SIGINT', () => {
 });
 
 function cfg(name, def) {
-    var bool = config(name);
+    const bool = config(name);
     if (bool) return bool;
-    var idx = process.argv.find((arg, i, args) => arg.indexOf(name) === 0 && args[i-1] == '--set');
+    const idx = process.argv.find((arg, i, args) => arg.indexOf(name) === 0 && args[i-1] == '--set');
     if (idx > 0) return process.argv[idx] == name + '=true';
     return def;
 }

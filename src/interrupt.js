@@ -32,8 +32,8 @@
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-var signal;
-var interrupted = 0;
+let signal;
+let interrupted = 0;
 
 process.on('SIGINT', () => {
     signal = 'SIGINT';
@@ -44,7 +44,7 @@ process.on('SIGINT', () => {
 });
 
 module.exports = function(returnValue) {
-    var base = interrupted;
+    const base = interrupted;
     if (arguments.length) return () => {
         if (base != interrupted) return returnValue;
     }; else return () => {

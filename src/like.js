@@ -47,14 +47,14 @@ function like(expected) {
     } else if (_.isFunction(expected.test)) { // like RegEx
         return expected.test.bind(expected);
     } else if (_.isNumber(expected)) {
-        var str = expected.toFixed(20);
+        const str = expected.toFixed(20);
         if (!~str.indexOf('.')) return _.isEqual.bind(_, expected);
-        var precision = 1;
+        let precision = 1;
         while (expected != expected.toFixed(precision) && precision < 20) precision++;
-        var delta = Math.pow(10, -precision);
+        const delta = Math.pow(10, -precision);
         return actual => Math.abs(actual - expected) <= delta;
     }
-    var m = _.isArray(expected) ? _.map(expected, like) :
+    const m = _.isArray(expected) ? _.map(expected, like) :
         _.isObject(expected) ? _.mapObject(expected, like) : undefined;
     if (!m) return _.isEqual.bind(_, expected);
     else return (actual, unexpected_path) => {
@@ -62,7 +62,7 @@ function like(expected) {
         else return _.reduce(m, (truth, test, key) => {
             if (!truth) return truth;
             if (!_.has(actual, key)) return false;
-            var result = test(actual[key], unexpected_path);
+            const result = test(actual[key], unexpected_path);
             if (!result && _.has(actual, key) && _.isArray(unexpected_path))
                 unexpected_path.unshift(key);
             return result;
@@ -72,11 +72,11 @@ function like(expected) {
 
 function register(chai, utils) {
     chai.Assertion.addMethod('like', function(expected) {
-        var unexpected_path = [];
-        var truth = like(expected)(this._obj, unexpected_path);
-        var act = unexpected_path.reduce((obj, prop) => obj[prop], this._obj);
-        var exp = unexpected_path.reduce((obj, prop) => obj[prop], expected);
-        var msg = _.isEmpty(unexpected_path) ?
+        const unexpected_path = [];
+        const truth = like(expected)(this._obj, unexpected_path);
+        const act = unexpected_path.reduce((obj, prop) => obj[prop], this._obj);
+        const exp = unexpected_path.reduce((obj, prop) => obj[prop], expected);
+        const msg = _.isEmpty(unexpected_path) ?
             _.isFunction(exp) ? "expected #{act} to be like " + exp.toString() :
             "expected #{act} to be like #{exp}" :
             "expected " + ['#{this}'].concat(unexpected_path).join('.') +

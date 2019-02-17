@@ -51,16 +51,16 @@ const expect = require('chai').use(like).expect;
  * @returns a function that returns array of row objects based on given options
  */
 module.exports = function(fetch) {
-    var promiseHelp;
-    var lookup = Lookup(fetch);
-    var dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    var store = storage(dir);
+    let promiseHelp;
+    const lookup = Lookup(fetch);
+    const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const store = storage(dir);
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(fetch);
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
-            var fields = _.first(help).properties;
-            var opts = _.pick(options, _.keys(_.first(help).options));
+            const fields = _.first(help).properties;
+            const opts = _.pick(options, _.keys(_.first(help).options));
             return lookup(opts).then(opts =>  {
                 return quote(fetch, store, fields, opts);
             });
@@ -79,9 +79,9 @@ function help(fetch) {
     return fetch({help: true})
       .then(help => _.indexBy(help, 'name'))
       .then(help => _.pick(help, ['lookup', 'interday', 'intraday'])).then(help => {
-        var downstream = _.reduce(help, (downstream, help) => _.extend(downstream, help.options), {});
-        var variables = periods.values.reduce((variables, interval) => {
-            var fields = interval.charAt(0) != 'm' ? help.interday.properties :
+        const downstream = _.reduce(help, (downstream, help) => _.extend(downstream, help.options), {});
+        const variables = periods.values.reduce((variables, interval) => {
+            const fields = interval.charAt(0) != 'm' ? help.interday.properties :
                 help.intraday ? help.intraday.properties : [];
             return variables.concat(fields.map(field => interval + '.' + field));
         }, ['ending', 'tz', 'currency'].concat(help.lookup.properties));
@@ -154,22 +154,22 @@ function help(fetch) {
  * that each pass the given criteria and are within the begin/end range.
  */
 function quote(fetch, store, fields, options) {
-    var name = options.market ?
+    const name = options.market ?
         options.symbol + '.' + options.market : options.symbol;
     try {
         if (options.columns) expect(options.columns).not.to.have.property('length'); // not array like
         if (options.variables) expect(options.variables).not.to.have.property('length'); // not array like
         if (options.parameters) expect(options.parameters).not.to.have.property('length'); // not array like
-        var exprMap = parseWarmUpMap(fields, options);
-        var cached = _.mapObject(exprMap, _.keys);
-        var intervals = periods.sort(_.keys(exprMap));
+        const exprMap = parseWarmUpMap(fields, options);
+        const cached = _.mapObject(exprMap, _.keys);
+        const intervals = periods.sort(_.keys(exprMap));
         if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
-        var criteria = parseCriteriaMap(options.criteria, fields, cached, intervals, options);
-        var interval = intervals[0];
+        const criteria = parseCriteriaMap(options.criteria, fields, cached, intervals, options);
+        const interval = intervals[0];
         intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
         return store.open(name, (err, db) => {
             if (err) throw err;
-            var quoteBars = fetchBars.bind(this, fetch, db, fields);
+            const quoteBars = fetchBars.bind(this, fetch, db, fields);
             return inlinePadBegin(quoteBars, interval, options)
               .then(options => inlinePadEnd(quoteBars, interval, options))
               .then(options => mergeBars(quoteBars, exprMap, criteria, options));
@@ -184,13 +184,13 @@ function quote(fetch, store, fields, options) {
  * list of what expressions should be computed and stored for further reference.
  */
 function parseWarmUpMap(fields, options) {
-    var exprs = _.compact(_.flatten([
+    const exprs = _.compact(_.flatten([
         _.compact(_.values(options.columns)), options.criteria
     ]));
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
-    var p = createParser(fields, {}, options);
-    var parser = Parser({
+    const p = createParser(fields, {}, options);
+    const parser = Parser({
         substitutions: getVariables(fields, options),
         constant(value) {
             return {warmUpLength: 0};
@@ -200,10 +200,10 @@ function parseWarmUpMap(fields, options) {
             else return {[name.substring(0, name.indexOf('.'))]: {}, warmUpLength: 0};
         },
         expression(expr, name, args) {
-            var fn = p.parse(expr);
-            var args_inters = _.without(_.flatten(args.map(_.keys), true), 'warmUpLength');
-            var inters = periods.sort(_.uniq(args_inters.concat(fn.intervals || [])));
-            var map = _.object(inters, inters.map(interval => {
+            const fn = p.parse(expr);
+            const args_inters = _.without(_.flatten(args.map(_.keys), true), 'warmUpLength');
+            const inters = periods.sort(_.uniq(args_inters.concat(fn.intervals || [])));
+            const map = _.object(inters, inters.map(interval => {
                 return _.extend.apply(_, _.compact(_.pluck(args, interval)));
             }));
             map.warmUpLength = _.max([0].concat(_.pluck(args, 'warmUpLength')));
@@ -214,8 +214,8 @@ function parseWarmUpMap(fields, options) {
             return {[_.first(fn.intervals)]: {[expr]: fn}, warmUpLength: fn.warmUpLength};
         }
     });
-    var values = parser.parse(exprs).map(o => _.omit(o, 'warmUpLength'));
-    var intervals = periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
+    const values = parser.parse(exprs).map(o => _.omit(o, 'warmUpLength'));
+    const intervals = periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
     return _.object(intervals, intervals.map(interval => {
         return _.extend.apply(_, _.compact(_.pluck(values, interval)));
     }));
@@ -225,9 +225,9 @@ function parseWarmUpMap(fields, options) {
  * Create a function for each interval that should be evaluated to include in result.
  */
 function parseCriteriaMap(criteria, fields, cached, intervals, options) {
-    var list = createParser(fields, cached, options).parseCriteriaList(criteria);
-    var group = list.reduce((m, fn) => {
-        var interval = _.first(fn.intervals);
+    const list = createParser(fields, cached, options).parseCriteriaList(criteria);
+    const group = list.reduce((m, fn) => {
+        const interval = _.first(fn.intervals);
         if (m[interval]) {
             m[interval] = m[interval].concat([fn]);
             return m;
@@ -260,27 +260,27 @@ function createParser(fields, cached, options) {
                 return _.constant(options[name]);
             else if (!~name.indexOf('.'))
                 throw Error("Unknown field: " + name);
-            var interval = name.substring(0, name.indexOf('.'));
+            const interval = name.substring(0, name.indexOf('.'));
             expect(interval).to.be.oneOf(periods.values);
-            var lname = name.substring(name.indexOf('.')+1);
+            const lname = name.substring(name.indexOf('.')+1);
             return _.extend(ctx => {
                 if (!ctx.length) return undefined;
-                var last = ctx[ctx.length -1];
-                var obj = last[interval];
+                const last = ctx[ctx.length -1];
+                const obj = last[interval];
                 return obj ? obj[lname] : undefined;
             }, {
                 intervals: [interval]
             });
         },
         expression(expr, name, args) {
-            var fn = common(name, args, options) ||
+            const fn = common(name, args, options) ||
                 lookback(name, args, options) ||
                 indicator(name, args, options);
             if (!fn) throw Error("Unknown function: " + name);
-            var interval =_.first(fn.intervals);
+            const interval =_.first(fn.intervals);
             if (!_.contains(cached[interval], expr)) return fn;
             else return _.extend(ctx => {
-                var obj = _.last(ctx)[interval];
+                const obj = _.last(ctx)[interval];
                 return obj ? obj[expr] : undefined;
             }, {
                 intervals: fn.intervals
@@ -293,15 +293,15 @@ function createParser(fields, cached, options) {
  * Returns map of variables and columns, excluding columns with field names
  */
 function getVariables(fields, options) {
-    var params = _.mapObject(_.pick(options.parameters, val => {
+    const params = _.mapObject(_.pick(options.parameters, val => {
         return _.isString(val) || _.isNumber(val);
     }), val => JSON.stringify(val));
-    var opts = _.mapObject(_.pick(options, (val, name) => {
+    const opts = _.mapObject(_.pick(options, (val, name) => {
         if (~fields.indexOf(name))
             return _.isString(val) || _.isNumber(val);
     }), val => JSON.stringify(val));
-    var nulls = _.mapObject(_.pick(options.parameters, _.isNull), val => 'NULL()');
-    var cols = _.omit(options.columns, fields);
+    const nulls = _.mapObject(_.pick(options.parameters, _.isNull), val => 'NULL()');
+    const cols = _.omit(options.columns, fields);
     return _.mapObject(_.defaults({}, options.variables, params, nulls, cols, opts), valOrNull);
 }
 
@@ -313,7 +313,7 @@ function valOrNull(value) {
  * Changes pad_begin to zero and adjusts begin by reading the bars from a block
  */
 function inlinePadBegin(quoteBars, interval, opts) {
-    var options = formatBeginEnd(opts);
+    const options = formatBeginEnd(opts);
     if (!options.pad_begin) return Promise.resolve(options);
     else return quoteBars({}, _.defaults({
         interval: interval,
@@ -321,8 +321,8 @@ function inlinePadBegin(quoteBars, interval, opts) {
         pad_end: 0
     }, options)).then(bars => {
         if (!bars.length) return options;
-        var start = _.sortedIndex(bars, {ending: options.begin}, 'ending');
-        var i = Math.max(start - options.pad_begin, 0);
+        const start = _.sortedIndex(bars, {ending: options.begin}, 'ending');
+        const i = Math.max(start - options.pad_begin, 0);
         return _.defaults({
             pad_begin: 0,
             begin: bars[i].ending
@@ -334,13 +334,13 @@ function inlinePadBegin(quoteBars, interval, opts) {
  * Formats begin and end options.
  */
 function formatBeginEnd(options) {
-    var eod = moment.tz(options.now, options.tz).endOf('day');
-    var begin = options.begin ? moment.tz(options.begin, options.tz) : eod;
-    var oend = options.end && moment.tz(options.end, options.tz);
-    var end = !oend || eod.isBefore(oend) ? eod : oend; // limit end to end of today
-    var pad_begin = options.pad_begin ? options.pad_begin :
+    const eod = moment.tz(options.now, options.tz).endOf('day');
+    const begin = options.begin ? moment.tz(options.begin, options.tz) : eod;
+    const oend = options.end && moment.tz(options.end, options.tz);
+    const end = !oend || eod.isBefore(oend) ? eod : oend; // limit end to end of today
+    const pad_begin = options.pad_begin ? options.pad_begin :
             options.begin ? 0 : 100;
-    var pad_end = end && options.pad_end || 0;
+    const pad_end = end && options.pad_end || 0;
     if (!begin.isValid())
         throw Error("Begin date is not valid " + options.begin);
     if (end && !end.isValid())
@@ -376,12 +376,12 @@ function inlinePadEnd(quoteBars, interval, options) {
  * @returns the combined bars as a list of points
  */
 function mergeBars(quoteBars, exprMap, criteria, options) {
-    var intervals = _.keys(exprMap);
+    const intervals = _.keys(exprMap);
     return intervals.reduceRight((promise, interval) => {
         return promise.then(signals => Promise.all(signals.map(signal => {
-            var entry = signal.points ? _.first(signal.points) : {ending: options.begin};
-            var end = signal.exit ? signal.exit.ending : options.end;
-            var opts = _.defaults({
+            const entry = signal.points ? _.first(signal.points) : {ending: options.begin};
+            const end = signal.exit ? signal.exit.ending : options.end;
+            const opts = _.defaults({
                 interval: interval,
                 begin: options.begin < entry.ending ? entry.ending : options.begin,
                 end: options.end && options.end < end ? options.end : end && end
@@ -389,18 +389,18 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
             return quoteBars(exprMap[interval], opts)
               .then(bars => createPoints(bars, opts))
               .then(intraday => {
-                var points = signal.points ? signal.points.slice(0) : [];
+                const points = signal.points ? signal.points.slice(0) : [];
                 if (signal.exit) points.push(signal.exit);
                 points.reduceRight((stop, point, idx) => {
-                    var start = _.sortedIndex(intraday, point, 'ending');
-                    var lt = start < intraday.length;
-                    var last = idx == points.length-1;
+                    const start = _.sortedIndex(intraday, point, 'ending');
+                    const lt = start < intraday.length;
+                    const last = idx == points.length-1;
                     if (start > 0 && lt && intraday[start].ending != point.ending || !lt && !last) {
-                        var item = _.defaults({ending: point.ending}, intraday[start -1]);
+                        const item = _.defaults({ending: point.ending}, intraday[start -1]);
                         intraday.splice(start, 0, item);
                         stop++;
                     }
-                    for (var j=start; j<stop; j++) {
+                    for (let j=start; j<stop; j++) {
                         _.defaults(intraday[j], point);
                     }
                     return start;
@@ -433,8 +433,8 @@ function mergeBars(quoteBars, exprMap, criteria, options) {
  */
 function readSignals(points, entry, exit, criteria) {
     if (!points.length) return [];
-    var check = interrupt();
-    var start = _.sortedIndex(points, entry, 'ending');
+    const check = interrupt();
+    let start = _.sortedIndex(points, entry, 'ending');
     if (start > 0 && (start == points.length || entry.ending < points[start].ending))
         start--;
     if (!criteria && exit) return [{
@@ -444,13 +444,13 @@ function readSignals(points, entry, exit, criteria) {
     else if (!criteria) return [{
         points: points.slice(start)
     }];
-    var e = 0;
-    var signals = [];
+    let e = 0;
+    const signals = [];
     criteria = criteria || _.constant(true);
     points.slice(start).reduce((active, point, i) => {
         check();
-        var to = start + i;
-        var keep = criteria(points.slice(active ? e : to, to+1)) ||
+        const to = start + i;
+        const keep = criteria(points.slice(active ? e : to, to+1)) ||
             active && e != to && criteria(points.slice(to, to+1));
         if (keep) {
             if (active) { // extend
@@ -478,8 +478,8 @@ function readSignals(points, entry, exit, criteria) {
  * @returns the bars of the blocks
  */
 function fetchBars(fetch, db, fields, expressions, options) {
-    var warmUpLength = _.max(_.pluck(_.values(expressions), 'warmUpLength').concat([0]));
-    var name = getCollectionName(options);
+    const warmUpLength = _.max(_.pluck(_.values(expressions), 'warmUpLength').concat([0]));
+    const name = getCollectionName(options);
     return db.collection(name).then(collection => {
         return fetchNeededBlocks(fetch, fields, collection, warmUpLength, options)
           .then(blocks => readBlocks(collection, warmUpLength, blocks, expressions, options))
@@ -496,7 +496,7 @@ function fetchBars(fetch, db, fields, expressions, options) {
  * The storage location used for this interval.
  */
 function getCollectionName(options) {
-    var m = options.interval.match(/^m(\d+)$/);
+    const m = options.interval.match(/^m(\d+)$/);
     if (m && +m[1] < 30) return options.begin.substring(0,4) + options.interval;
     else if (m) return options.interval;
     else return 'daily';
@@ -506,16 +506,16 @@ function getCollectionName(options) {
  * Determines the blocks that will be needed for this begin/end range.
  */
 function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
-    var period = periods(options);
-    var begin = options.begin;
-    var pad_begin = options.pad_begin + warmUpLength;
-    var start = pad_begin ? period.dec(begin, pad_begin) : period.floor(begin);
-    var end = options.end || moment.tz(options.now, options.tz);
-    var stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
-    var blocks = getBlocks(options.interval, start, stop, options);
+    const period = periods(options);
+    const begin = options.begin;
+    const pad_begin = options.pad_begin + warmUpLength;
+    const start = pad_begin ? period.dec(begin, pad_begin) : period.floor(begin);
+    const end = options.end || moment.tz(options.now, options.tz);
+    const stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
+    const blocks = getBlocks(options.interval, start, stop, options);
     if (options.offline) return Promise.resolve(blocks);
     else return collection.lockWith(blocks, blocks => {
-        var version = getStorageVersion(collection);
+        const version = getStorageVersion(collection);
         return fetchBlocks(fetch, fields, options, collection, version, stop.format(), blocks);
     });
 }
@@ -526,17 +526,17 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
 function readBlocks(collection, warmUpLength, blocks, expressions, options) {
     if (_.isEmpty(expressions))
         return Promise.all(blocks.map(block => collection.readFrom(block)));
-    var dataPoints = _.object(blocks, []);
+    const dataPoints = _.object(blocks, []);
     return collection.lockWith(blocks, blocks => blocks.reduce((promise, block, i, blocks) => {
-        var last = _.last(collection.tailOf(block));
+        const last = _.last(collection.tailOf(block));
         if (!last || options.begin > last.ending)
             return promise; // warmUp blocks are not evaluated
-        var missing = _.difference(_.keys(expressions), collection.columnsOf(block));
+        const missing = _.difference(_.keys(expressions), collection.columnsOf(block));
         if (!missing.length) return promise;
         else if (options.read_only && !options.transient)
             throw Error("Missing " + _.first(missing) + " try again without the read_only flag");
         return promise.then(dataBlocks => {
-            var warmUpBlocks = blocks.slice(0, i);
+            const warmUpBlocks = blocks.slice(0, i);
             warmUpBlocks.forEach(block => {
                 if (!dataBlocks[block])
                     dataBlocks[block] = collection.readFrom(block);
@@ -547,10 +547,10 @@ function readBlocks(collection, warmUpLength, blocks, expressions, options) {
                 if (dataPoints[block]) return dataPoints[block];
                 else return dataPoints[block] = dataBlocks[block].then(bars => createPoints(bars, options));
             })).then(results => {
-                var dataSize = results.reduce((size,result) => size + result.length, 0);
-                var warmUpRecords = dataSize - _.last(results).length;
-                var bars = _.last(results).map((point, i, points) => {
-                    var bar = point[options.interval];
+                const dataSize = results.reduce((size,result) => size + result.length, 0);
+                const warmUpRecords = dataSize - _.last(results).length;
+                const bars = _.last(results).map((point, i, points) => {
+                    let bar = point[options.interval];
                     if (options.transient) {
                         if (points[i+1] && points[i+1].ending < options.begin)
                             return bar;
@@ -559,16 +559,16 @@ function readBlocks(collection, warmUpLength, blocks, expressions, options) {
                         bar = _.clone(bar);
                     }
                     return _.extend(bar, _.object(missing, missing.map(expr => {
-                        var end = warmUpRecords + i;
-                        var start = Math.max(end - expressions[expr].warmUpLength, 0);
+                        const end = warmUpRecords + i;
+                        const start = Math.max(end - expressions[expr].warmUpLength, 0);
                         return expressions[expr](flattenSlice(results, start, end+1));
                     })));
                 });
                 dataBlocks[block] = bars;
                 if (options.transient) return dataBlocks;
                 else return collection.writeTo(bars, block).then(() => {
-                    var value = collection.propertyOf(block, 'warmUpBlocks') || [];
-                    var blocks = _.union(value, warmUpBlocks).sort();
+                    const value = collection.propertyOf(block, 'warmUpBlocks') || [];
+                    const blocks = _.union(value, warmUpBlocks).sort();
                     return collection.propertyOf(block, 'warmUpBlocks', blocks);
                 }).then(() => dataBlocks);
             });
@@ -594,13 +594,13 @@ function createPoints(bars, options) {
  * Optimized version of _.flatten(array, true).slice(start, end)
  */
 function flattenSlice(array, start, end) {
-    var chunks = array.slice(0);
+    const chunks = array.slice(0);
     while (start >= _.first(chunks).length) {
-        var len = chunks.shift().length;
+        const len = chunks.shift().length;
         start -= len;
         end -= len;
     }
-    var totalSize = chunks.reduce((size, chunk) => size + chunk.length, 0);
+    let totalSize = chunks.reduce((size, chunk) => size + chunk.length, 0);
     while (end <= totalSize - _.last(chunks).length) {
         totalSize -= chunks.pop().length;
     }
@@ -614,24 +614,24 @@ function flattenSlice(array, start, end) {
  * trims the result to be within the begin/end range
  */
 function trimTables(tables, options) {
-    var dataset = tables.filter(table => table.length);
+    const dataset = tables.filter(table => table.length);
     if (!dataset.length) return [];
     while (dataset.length > 1 && _.first(dataset[1]).ending < options.begin) {
         dataset.shift();
     }
-    var bars = _.flatten(dataset, true);
+    let bars = _.flatten(dataset, true);
     if (!bars.length) return bars;
-    var format = options.begin;
-    var from = _.sortedIndex(bars, {ending: format}, 'ending');
-    if (from == bars.length || from > 0 && format < bars[from].ending)
+    const formatB = options.begin;
+    let from = _.sortedIndex(bars, {ending: formatB}, 'ending');
+    if (from == bars.length || from > 0 && formatB < bars[from].ending)
         from--; // include prior value for criteria
-    var start = Math.min(Math.max(from - options.pad_begin, 0), bars.length -1);
+    const start = Math.min(Math.max(from - options.pad_begin, 0), bars.length -1);
     bars = bars.slice(start);
     if (!bars.length || !options.end) return bars;
-    var format = options.end;
-    var to = _.sortedIndex(bars, {ending: format}, 'ending');
-    if (to < bars.length && format != bars[to].ending) to--;
-    var stop = Math.min(Math.max(to + options.pad_end, 0), bars.length -1);
+    const formatE = options.end;
+    let to = _.sortedIndex(bars, {ending: formatE}, 'ending');
+    if (to < bars.length && formatE != bars[to].ending) to--;
+    const stop = Math.min(Math.max(to + options.pad_end, 0), bars.length -1);
     return bars.slice(0, stop +1);
 }
 
@@ -640,18 +640,18 @@ function trimTables(tables, options) {
  */
 function formatColumns(fields, points, options) {
     if (!points.length) return [];
-    var props = _.mapObject(_.pick(_.first(points), _.isObject), _.keys);
-    var fieldCols = _.mapObject(props, (props, interval) => {
-        var keys = props.filter(field => field.match(/^\w+$/));
-        var values = keys.map(field => interval + '.' + field);
+    const props = _.mapObject(_.pick(_.first(points), _.isObject), _.keys);
+    const fieldCols = _.mapObject(props, (props, interval) => {
+        const keys = props.filter(field => field.match(/^\w+$/));
+        const values = keys.map(field => interval + '.' + field);
         return _.object(keys, values);
     }); // {interval: {field: "$interval.$field"}}
-    var columns = options.columns ? options.columns :
+    const columns = options.columns ? options.columns :
         _.size(props) == 1 ? _.first(_.values(fieldCols)) :
         _.reduce(fieldCols, (map, fieldCols) => {
             return _.defaults(map, _.object(_.values(fieldCols), _.values(fieldCols)));
         }, {});
-    var map = createParser(fields, props, options).parse(_.mapObject(columns, valOrNull));
+    const map = createParser(fields, props, options).parse(_.mapObject(columns, valOrNull));
     return points.map(point => _.mapObject(map, expr => expr([point])));
 }
 
@@ -659,12 +659,12 @@ function formatColumns(fields, points, options) {
  * Returns a compatibility version used to indicate if the block needs to be reset
  */
 function getStorageVersion(collection) {
-    var blocks = collection.listNames();
-    var versions = blocks
+    const blocks = collection.listNames();
+    const versions = blocks
         .map(block => collection.propertyOf(block, 'version'))
         .filter(version => version && version.indexOf(minor_version) === 0);
-    var len = _.max(_.map(versions, 'length'));
-    var version = _.last(versions.filter(version => version.length==len).sort());
+    const len = _.max(_.map(versions, 'length'));
+    const version = _.last(versions.filter(version => version.length==len).sort());
     if (version) return version;
     else return createStorageVersion();
 }
@@ -680,17 +680,17 @@ function createStorageVersion() {
  * Checks if any of the blocks need to be updated
  */
 function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) {
-    var cmsg = "Incomplete data try again without the read_only flag";
-    var pmsg = "or without the read_only flag";
-    var fetchComplete = options.read_only ? () => Promise.reject(Error(cmsg)) :
+    const cmsg = "Incomplete data try again without the read_only flag";
+    const pmsg = "or without the read_only flag";
+    const fetchComplete = options.read_only ? () => Promise.reject(Error(cmsg)) :
         fetchCompleteBlock.bind(this, fetch, options, collection, version);
-    var fetchPartial = options.read_only ? () => Promise.reject(Error(pmsg)) :
+    const fetchPartial = options.read_only ? () => Promise.reject(Error(pmsg)) :
         fetchPartialBlock.bind(this, fetch, fields, options, collection);
     return Promise.all(blocks.map((block, i, blocks) => {
-        var last = i == blocks.length -1;
+        const last = i == blocks.length -1;
         if (!collection.exists(block) || collection.propertyOf(block, 'version') != version)
             return fetchComplete(block, last);
-        var tail = collection.tailOf(block);
+        const tail = collection.tailOf(block);
         if (_.isEmpty(tail) || !_.last(tail).incomplete)
             return; // empty blocks are complete
         if (_.first(tail).incomplete)
@@ -703,7 +703,7 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
             });
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
-        var version = createStorageVersion();
+        const version = createStorageVersion();
         return fetchBlocks(fetch, fields, options, collection, version, stop, blocks);
     });
 }
@@ -730,18 +730,18 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin) {
         return collection.readFrom(block).then(partial => {
             partial.pop(); // incomplete
             if (!_.isMatch(_.last(partial), records.shift())) return 'incompatible';
-            var warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
+            const warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
-                var exprs = _.object(warmUps, warmUps.map(expr => createParser(fields, {}, options).parse(expr)));
-                var warmUpBlocks = collection.propertyOf(block, 'warmUpBlocks') || [];
+                const exprs = _.object(warmUps, warmUps.map(expr => createParser(fields, {}, options).parse(expr)));
+                const warmUpBlocks = collection.propertyOf(block, 'warmUpBlocks') || [];
                 return Promise.all(warmUpBlocks.map(block => collection.readFrom(block)))
                   .then(results => _.flatten(results, true))
                   .then(prior => {
-                    var data = createPoints(prior.concat(partial, records), options);
-                    var bars = records.map((bar, i, bars) => {
-                        var end = prior.length + partial.length + i;
+                    const data = createPoints(prior.concat(partial, records), options);
+                    const bars = records.map((bar, i, bars) => {
+                        const end = prior.length + partial.length + i;
                         return _.extend(bar, _.mapObject(exprs, expr => {
-                            var start = Math.max(end - expr.warmUpLength, 0);
+                            const start = Math.max(end - expr.warmUpLength, 0);
                             return expr(data.slice(start, end+1));
                         }));
                     });
@@ -759,7 +759,7 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin) {
  */
 function getBlocks(interval, begin, end, options) {
     expect(interval).to.be.ok.and.a('string');
-    var m = interval.match(/^m(\d+)$/);
+    const m = interval.match(/^m(\d+)$/);
     if (!m && interval != 'day') {
         return [interval]; // month and week are not separated
     } else if (!begin || !begin.isValid()) {
@@ -767,26 +767,26 @@ function getBlocks(interval, begin, end, options) {
     } else if (!end || !end.isValid()) {
         throw Error("End date is not valid " + end);
     } else if (!m) { // day is separated every half decade
-        var start = begin.year() - 5;
+        const start = begin.year() - 5;
         return _.range(
             Math.floor(start /5) *5,
             Math.floor(end.year() /5) *5 +5,
             5
         );
     } else if (+m[1] >= 30) { // m30 is separated monthly
-        var start = moment(begin).subtract(1, 'months');
+        const start = moment(begin).subtract(1, 'months');
         return _.range(start.year(), end.year()+1).reduce((blocks, year) => {
-            var starting = start.year() == year ? start.month() : 0;
-            var ending = end.year() == year ? end.month() : 11;
+            const starting = start.year() == year ? start.month() : 0;
+            const ending = end.year() == year ? end.month() : 11;
             return blocks.concat(_.range(starting +1, ending +2).map(month => {
                 return month < 10 ? year + '-0' + month : year + '-' + month;
             }));
         }, []);
     } else if (+m[1] >= 5) { // m5 is separated weekly
-        var start = moment(begin).subtract(1, 'weeks');
+        const start = moment(begin).subtract(1, 'weeks');
         return _.range(begin.weekYear(), end.weekYear()+1).reduce((blocks, year) => {
-            var starting = begin.weekYear() == year ? begin.week() : 1;
-            var ending = end.weekYear() == year ? end.week() :
+            const starting = begin.weekYear() == year ? begin.week() : 1;
+            const ending = end.weekYear() == year ? end.week() :
                 moment.tz(year + '-02-01', begin.tz()).weeksInYear();
             return blocks.concat(_.range(starting, ending +1).map(week => {
                 return week < 10 ? year + '-0' + week : year + '-' + week;
@@ -794,10 +794,10 @@ function getBlocks(interval, begin, end, options) {
         }, []);
     }
     // m1 is separated daily
-    var blocks = [];
-    var start = periods(_.defaults({interval:'day'}, options)).dec(begin, 1);
-    var d = moment.tz(start.format('Y-MM-DD'), start.tz());
-    var until = end.valueOf();
+    const blocks = [];
+    const start = periods(_.defaults({interval:'day'}, options)).dec(begin, 1);
+    const d = moment.tz(start.format('Y-MM-DD'), start.tz());
+    const until = end.valueOf();
     while (d.valueOf() <= until) {
         blocks.push(d.format('Y-MM-DD'));
         d.add(1, 'days');
@@ -809,40 +809,40 @@ function getBlocks(interval, begin, end, options) {
  * Determines the begin/end range to load a complete block
  */
 function blockOptions(block, options) {
-    var m = options.interval.match(/^m(\d+)$/);
+    const m = options.interval.match(/^m(\d+)$/);
     if (block == options.interval) {
-        var begin = moment.tz('1990-01-01', options.tz);
+        const begin = moment.tz('1990-01-01', options.tz);
         return _.defaults({
             begin: begin.format(),
             end: null
         }, options);
     } else if ('day' == options.interval) {
-        var begin = moment.tz(block + '-01-01', options.tz);
-        var end = moment.tz((5+block) + '-01-01', options.tz);
+        const begin = moment.tz(block + '-01-01', options.tz);
+        const end = moment.tz((5+block) + '-01-01', options.tz);
         return _.defaults({
             begin: begin.format(),
             end: end.format()
         }, options);
     } else if (+m[1] >= 30) {
-        var begin = moment.tz(block + '-01', options.tz);
-        var end = moment(begin).add(1, 'months');
+        const begin = moment.tz(block + '-01', options.tz);
+        const end = moment(begin).add(1, 'months');
         return _.defaults({
             begin: begin.format(),
             end: end.format()
         }, options);
     } else if (+m[1] >= 5) {
-        var split = block.split('-');
-        var year = split[0];
-        var week = +split[1];
-        var begin = moment.tz(year + '-01-01', options.tz).week(week).startOf('week');
-        var end = moment(begin).add(1, 'week');
+        const split = block.split('-');
+        const year = split[0];
+        const week = +split[1];
+        const begin = moment.tz(year + '-01-01', options.tz).week(week).startOf('week');
+        const end = moment(begin).add(1, 'week');
         return _.defaults({
             begin: begin.format(),
             end: end.format()
         }, options);
     } else {
-        var begin = moment.tz(block, options.tz);
-        var end = moment(begin).add(1, 'day');
+        const begin = moment.tz(block, options.tz);
+        const end = moment(begin).add(1, 'day');
         return _.defaults({
             begin: begin.format(),
             end: end.format()

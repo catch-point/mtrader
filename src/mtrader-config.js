@@ -40,7 +40,7 @@ const version = require('./version.js').version;
 const readCallSave = require('./read-call-save.js');
 
 if (require.main === module) {
-    var program = require('commander').version(version)
+    const program = require('commander').version(version)
         .description("View or change stored options")
         .usage('<name> [value] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -55,10 +55,10 @@ if (require.main === module) {
         .parse(process.argv);
     if (program.args.length) {
         try {
-            var name = _.first(program.args);
-            var str = _.rest(program.args).join(' ');
-            var chr = str.charAt(0);
-            var value = chr == '{' || chr == '"' || chr == '[' ||
+            const name = _.first(program.args);
+            const str = _.rest(program.args).join(' ');
+            const chr = str.charAt(0);
+            const value = chr == '{' || chr == '"' || chr == '[' ||
                 str == 'true' || str == 'false' || _.isFinite(str) ?
                 JSON.parse(str) : str;
             if (config('save') && program.args.length > 1) {
@@ -80,7 +80,7 @@ if (require.main === module) {
 }
 
 module.exports = function() {
-    var instance = _.extend(function(name, value) {
+    const instance = _.extend(function(name, value) {
         return config.apply(config, arguments);
     }, _.mapObject(_.pick(config,_.isFunction), fn => fn.bind(config)));
     if (!instance.close) instance.close = () => Promise.resolve();
@@ -91,7 +91,7 @@ module.exports = function() {
 function shell(app) {
     app.cmd('config :option', "Show the active option value for this session", (cmd, sh, cb) => {
         try {
-            var value = config(cmd.params.option);
+            const value = config(cmd.params.option);
             sh.white(JSON.stringify(value)).ln();
             sh.prompt();
         } catch(err) {
@@ -101,14 +101,13 @@ function shell(app) {
     app.cmd('set :option :value([\\S\\s]+)',
             "Changes the given option value for this session using a dot path notation", (cmd, sh, cb) => {
         try {
-            var str = cmd.params.value;
-            var chr = str.charAt(0);
-            var value = chr == '{' || chr == '"' || chr == '[' ||
+            const str = cmd.params.value;
+            const chr = str.charAt(0);
+            const value = chr == '{' || chr == '"' || chr == '[' ||
                 str == 'true' || str == 'false' || _.isFinite(str) ?
                 JSON.parse(str) : str;
             config(cmd.params.option, value);
-            var value = config(cmd.params.option);
-            sh.white(JSON.stringify(value)).ln();
+            sh.white(JSON.stringify(config(cmd.params.option))).ln();
             sh.prompt();
         } catch(err) {
             cb(err);
@@ -117,9 +116,9 @@ function shell(app) {
     app.cmd('add :option :label',
             "Adds the given label to the option set for this session", (cmd, sh, cb) => {
         try {
-            var key = cmd.params.option.split('.').concat(cmd.params.label);
+            const key = cmd.params.option.split('.').concat(cmd.params.label);
             config.add(key, cmd.params.label);
-            var value = config(key);
+            const value = config(key);
             sh.white(JSON.stringify(value)).ln();
             sh.prompt();
         } catch(err) {
@@ -129,15 +128,14 @@ function shell(app) {
     app.cmd('add :option :label :value([\\S\\s]+)',
             "Adds the given label value to the option set for this session", (cmd, sh, cb) => {
         try {
-            var str = cmd.params.value;
-            var chr = str.charAt(0);
-            var value = chr == '{' || chr == '"' || chr == '[' ||
+            const str = cmd.params.value;
+            const chr = str.charAt(0);
+            const value = chr == '{' || chr == '"' || chr == '[' ||
                 str == 'true' || str == 'false' || _.isFinite(str) ?
                 JSON.parse(str) : str;
-            var key = cmd.params.option.split('.').concat(cmd.params.label.replace(/s?$/,'s'));
+            const key = cmd.params.option.split('.').concat(cmd.params.label.replace(/s?$/,'s'));
             config.add(key, value);
-            var value = config(key);
-            sh.white(JSON.stringify(value)).ln();
+            sh.white(JSON.stringify(config(key))).ln();
             sh.prompt();
         } catch(err) {
             cb(err);
@@ -146,9 +144,9 @@ function shell(app) {
     app.cmd('remove :option :label',
             "Removes the given label from the option for this session", (cmd, sh, cb) => {
         try {
-            var key = cmd.params.option.split('.').concat(cmd.params.label.replace(/s?$/,'s'));
+            const key = cmd.params.option.split('.').concat(cmd.params.label.replace(/s?$/,'s'));
             config.remove(key);
-            var value = config(cmd.params.option);
+            const value = config(cmd.params.option);
             sh.white(JSON.stringify(value)).ln();
             sh.prompt();
         } catch(err) {
@@ -158,14 +156,14 @@ function shell(app) {
     app.cmd("list",
             "List previous saved sessions that can be used with load", (cmd, sh, cb) => {
         try {
-            var list = config.list();
+            const list = config.list();
             if (list.length) {
-                var width = Math.floor(80/Math.floor(80/Math.min(_.max(_.pluck(list, 'length')) +1,80)));
-                var columns = Math.floor(Math.min(80/width, Math.sqrt(list.length)));
-                var rows = Math.ceil(list.length / columns);
+                const width = Math.floor(80/Math.floor(80/Math.min(_.max(_.pluck(list, 'length')) +1,80)));
+                const columns = Math.floor(Math.min(80/width, Math.sqrt(list.length)));
+                const rows = Math.ceil(list.length / columns);
                 _.range(rows).forEach(r => {
                     _.range(columns).forEach(c => {
-                        var text = list[r*columns+c] || '';
+                        const text = list[r*columns+c] || '';
                         sh.white(text).white(_.range(width - text.length).fill(' ').join(''));
                     });
                     sh.ln();
@@ -179,7 +177,7 @@ function shell(app) {
     app.cmd("save :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)",
             "Saves this session values to a file for later use", (cmd, sh, cb) => {
         try {
-            var name = cmd.params.name;
+            const name = cmd.params.name;
             config.save(name);
             sh.prompt();
         } catch(err) {
@@ -189,7 +187,7 @@ function shell(app) {
     app.cmd("load :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)",
             "Loads the stored session, resetting any temporary session values", (cmd, sh, cb) => {
         try {
-            var name = cmd.params.name;
+            const name = cmd.params.name;
             if (!config.load(name)) throw Error("Could not load: " + name);
             sh.prompt();
         } catch(err) {
@@ -199,14 +197,13 @@ function shell(app) {
     app.cmd('config :option :value([\\S\\s]+)',
             "Changes the given option value persistently", (cmd, sh, cb) => {
         try {
-            var str = cmd.params.value;
-            var chr = str.charAt(0);
-            var value = chr == '{' || chr == '"' || chr == '[' ||
+            const str = cmd.params.value;
+            const chr = str.charAt(0);
+            const value = chr == '{' || chr == '"' || chr == '[' ||
                 str == 'true' || str == 'false' || _.isFinite(str) ?
                 JSON.parse(str) : str;
             config.store(cmd.params.option, value);
-            var value = config(cmd.params.option);
-            sh.white(JSON.stringify(value)).ln();
+            sh.white(JSON.stringify(config(cmd.params.option))).ln();
             sh.prompt();
         } catch(err) {
             cb(err);
@@ -216,7 +213,7 @@ function shell(app) {
             "Resets the given option value persistently", (cmd, sh, cb) => {
         try {
             config.unset(cmd.params.option);
-            var value = config(cmd.params.option);
+            const value = config(cmd.params.option);
             sh.white(JSON.stringify(value)).ln();
             sh.prompt();
         } catch(err) {

@@ -46,13 +46,13 @@ const expect = require('chai').expect;
  * and their parameter values after optimizing each of them
  */
 module.exports = function(optimize) {
-    var promiseHelp;
+    let promiseHelp;
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(optimize);
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
-            var fields = _.first(help).properties;
-            var opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
+            const fields = _.first(help).properties;
+            const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
                 tz: moment.tz.guess()
             });
             return bestsignals(optimize, opts);
@@ -97,23 +97,23 @@ function help(optimize) {
  */
 function bestsignals(optimize, options) {
     return Promise.all(getSignalSets(options).map((options, set) => {
-        var signals = _.isString(options.signals) ? options.signals.split(',') :
+        const signals = _.isString(options.signals) ? options.signals.split(',') :
             _.isEmpty(options.signals) ? ['signal'] :options.signals;
         expect(options).to.have.property('parameter_values');
         expect(options).to.have.property('signals');
         return Promise.all(signals.map(signal => {
             return bestsignal(optimize, signal, options);
         })).then(_.flatten).then(signals => {
-            var count = options.solution_count || 1;
+            const count = options.solution_count || 1;
             return _.sortBy(signals, 'score').slice(-count).reverse();
         }).then(signals => {
             if (!options.signalset) return signals;
-            var signalset = _.isArray(options.signalset) ?
+            const signalset = _.isArray(options.signalset) ?
                 [options.signalset[set]] : options.signalset;
             return signals.map(signal => merge(options, signal, {signalset}));
         });
     })).then(_.flatten).then(signals => {
-        var count = options.solution_count || 1;
+        const count = options.solution_count || 1;
         return _.sortBy(signals, 'score').slice(-count).reverse();
     }).then(solutions => {
         return solutions.map(solution => formatSignal(solution, options));
@@ -127,10 +127,10 @@ function bestsignals(optimize, options) {
  * List of signal sets that each should be search independently
  */
 function getSignalSets(options) {
-    var signalset = _.isEmpty(options.signalset) ? [options] :
+    const signalset = _.isEmpty(options.signalset) ? [options] :
         _.isArray(options.signalset) ? options.signalset :
         _.isObject(options.signalset) ? [options.signalset] : [options];
-    var label = options.label && signalset.label ?
+    const label = options.label && signalset.label ?
         options.label + ' ' + signalset.label : options.label || signalset.label;
     return signalset.map(signalset => _.defaults({
         label: label,
@@ -145,10 +145,10 @@ function getSignalSets(options) {
  * Optimizes signal parameter values to determine the ones with the best scores
  */
 function bestsignal(optimize, signal, options) {
-    var pnames = getParameterNames(signal, options);
-    var pvalues = pnames.map(name => options.parameter_values[name]);
-    var signal_variable = options.signal_variable || 'signal';
-    var signal_vars = signal_variable != signal ? {[signal_variable]: signal} : {};
+    const pnames = getParameterNames(signal, options);
+    const pvalues = pnames.map(name => options.parameter_values[name]);
+    const signal_variable = options.signal_variable || 'signal';
+    const signal_vars = signal_variable != signal ? {[signal_variable]: signal} : {};
     return optimize(_.defaults({
         label: signal + (options.label ? ' ' + options.label : ''),
         solution_count: options.solution_count || 1,
@@ -169,7 +169,7 @@ function bestsignal(optimize, signal, options) {
  */
 function getParameterNames(signal, options) {
     if (!options.variables[signal]) return _.keys(options.parameter_values);
-    var varnames = Parser({
+    const varnames = Parser({
         substitutions: options.variables,
         constant(value) {
             return [];
@@ -188,10 +188,10 @@ function getParameterNames(signal, options) {
  * Identifies and returns only relevant signal variables in result
  */
 function formatSignal(signalset, options) {
-    var signal = signalset.signal_variable;
-    var vars = _.extend({}, signalset.variables, signalset.parameters);
-    var references = getReferences(vars, options);
-    var local = [signal].concat(references[signal]);
+    const signal = signalset.signal_variable;
+    const vars = _.extend({}, signalset.variables, signalset.parameters);
+    const references = getReferences(vars, options);
+    const local = [signal].concat(references[signal]);
     return _.omit({
         score: signalset.score,
         signal_variable: signalset.signal_variable,
@@ -205,7 +205,7 @@ function formatSignal(signalset, options) {
  * Hash of variable names to array of variable names it depends on
  */
 function getReferences(variables, options) {
-    var references = Parser({
+    const references = Parser({
         constant(value) {
             return [];
         },
@@ -219,11 +219,11 @@ function getReferences(variables, options) {
             else return _.uniq(_.flatten(args, true));
         }
     }).parse(variables);
-    var follow = _.clone(references);
+    const follow = _.clone(references);
     while (_.reduce(follow, (more, reference, name) => {
         if (!reference.length) return more;
-        var followed = _.uniq(_.flatten(reference.map(ref => follow[ref]), true));
-        var cont = more || follow[name].length != followed.length ||
+        const followed = _.uniq(_.flatten(reference.map(ref => follow[ref]), true));
+        const cont = more || follow[name].length != followed.length ||
             followed.length != _.intersection(follow[name], followed).length;
         follow[name] = followed;
         references[name] = reference.reduce((union, ref) => {

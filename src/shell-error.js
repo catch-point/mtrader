@@ -35,18 +35,18 @@ const diff = require('diff');
 
 module.exports = function(settings) {
     if (!settings.shell) throw Error('No shell provided');
-    var shell = settings.shell;
+    const shell = settings.shell;
     // Define empty error handler to avoid shell to throwing error when no event handler are defined
     shell.on('error', function() {});
     return function(err, cmd, sh, cb) {
         try {
             if (err.message) sh.red(err.message).ln();
             if (err.actual && err.expected) {
-                var patch = diff.createPatch(err.name,
+                const patch = diff.createPatch(err.name,
                     JSON.stringify(err.actual, null, 2),
                     JSON.stringify(err.expected, null, 2)
                 );
-                var ind = "      ";
+                const ind = "      ";
                 if (patch.length < 1000) patch.split('\n').splice(4).forEach(line => {
                     if (line[0] == '-') {
                         sh.red(ind).red(line).ln();

@@ -35,20 +35,20 @@ const moment = require('moment-timezone');
 
 module.exports = function(name, args) {
     if (name.indexOf('.') <= 0) return;
-    var interval = name.substring(0, name.indexOf('.'));
-    var lname = name.substring(name.indexOf('.')+1);
+    const interval = name.substring(0, name.indexOf('.'));
+    const lname = name.substring(name.indexOf('.')+1);
     if (!functions[lname]) return;
-    var largs = args.map(fn => {
+    const largs = args.map(fn => {
         try {
             return fn();
         } catch(e) {
             throw Error("The function " + lname + " can only be used with numbers (not fields)");
         }
     });
-    var fn = functions[lname].apply(this, largs);
-    var n = fn.warmUpLength +1;
+    const fn = functions[lname].apply(this, largs);
+    const n = fn.warmUpLength +1;
     return _.extend(bars => {
-        var data = bars.length > n ? bars.slice(bars.length - n) : bars;
+        const data = bars.length > n ? bars.slice(bars.length - n) : bars;
         return fn(_.pluck(data, interval));
     }, {
         intervals: [interval],
@@ -56,13 +56,13 @@ module.exports = function(name, args) {
     });
 };
 
-var functions = module.exports.functions = {
+const functions = module.exports.functions = {
     /* Weighted On Blanance Volume */
     OBV(n) {
         return _.extend(bars => {
-            var numerator = adj(bars).reduce(function(p, bar, i, bars){
+            const numerator = adj(bars).reduce(function(p, bar, i, bars){
                 if (i === 0) return 0;
-                var prior = bars[i - 1];
+                const prior = bars[i - 1];
                 if (bar.close > prior.close)
                     return p + (i + 1) * (bar.volume || 1);
                 if (bar.close < prior.close)
@@ -77,8 +77,8 @@ var functions = module.exports.functions = {
     /* Average True Range */
     ATR(n) {
         return _.extend(bars => {
-            var ranges = adj(bars).map(function(bar,i,bars) {
-                var previous = bars[i-1];
+            const ranges = adj(bars).map(function(bar,i,bars) {
+                const previous = bars[i-1];
                 if (!previous) return bar.high - bar.low;
                 return Math.max(
                     bar.high - bar.low,
@@ -86,7 +86,7 @@ var functions = module.exports.functions = {
                     Math.abs(bar.low - previous.close)
                 );
             });
-            var first = ranges.slice(0,n);
+            const first = ranges.slice(0,n);
             return ranges.slice(n).reduce(function(atr, range){
                 return (atr * (n-1) + range) / n;
             }, sum(first) / first.length);
@@ -101,11 +101,11 @@ var functions = module.exports.functions = {
         if (!_.isNumber(limit) || limit <= 0)
             throw Error("Must be a positive number: " + limit);
         return _.extend(bars => {
-            var up = function(bar) {
-                var a = bar.high <= this.ep ? this.af :
+            const up = function(bar) {
+                const a = bar.high <= this.ep ? this.af :
                     Math.min(this.af + factor, limit);
-                var ep = Math.max(this.ep, bar.high);
-                var stop = this.stop + a * (ep - this.stop);
+                const ep = Math.max(this.ep, bar.high);
+                const stop = this.stop + a * (ep - this.stop);
                 return (bar.low >= stop) ? {
                     trend: up,
                     stop: stop,
@@ -118,11 +118,11 @@ var functions = module.exports.functions = {
                     af: factor
                 };
             };
-            var down = function(bar) {
-                var a = bar.low >= this.ep ? this.af :
+            const down = function(bar) {
+                const a = bar.low >= this.ep ? this.af :
                     Math.min(this.af + factor, limit);
-                var ep = Math.min(bar.low, this.ep);
-                var stop = this.stop - a * (this.stop - ep);
+                const ep = Math.min(bar.low, this.ep);
+                const stop = this.stop - a * (this.stop - ep);
                 return (bar.high <= stop) ? {
                     trend: down,
                     stop: stop,
@@ -154,11 +154,11 @@ var functions = module.exports.functions = {
         if (!_.isNumber(limit) || limit <= 0)
             throw Error("Must be a positive number: " + limit);
         return _.extend(bars => {
-            var down = function(bar) {
-                var a = bar.low >= this.ep ? this.af :
+            const down = function(bar) {
+                const a = bar.low >= this.ep ? this.af :
                     Math.min(this.af + factor, limit);
-                var ep = Math.min(bar.low, this.ep);
-                var stop = this.stop - a * (this.stop - ep);
+                const ep = Math.min(bar.low, this.ep);
+                const stop = this.stop - a * (this.stop - ep);
                 return (bar.high <= stop) ? {
                     trend: down,
                     stop: stop,
@@ -190,11 +190,11 @@ var functions = module.exports.functions = {
         if (!_.isNumber(limit) || limit <= 0)
             throw Error("Must be a positive number: " + limit);
         return _.extend(bars => {
-            var up = function(bar) {
-                var a = bar.high <= this.ep ? this.af :
+            const up = function(bar) {
+                const a = bar.high <= this.ep ? this.af :
                     Math.min(this.af + factor, limit);
-                var ep = Math.max(this.ep, bar.high);
-                var stop = this.stop + a * (ep - this.stop);
+                const ep = Math.max(this.ep, bar.high);
+                const stop = this.stop + a * (ep - this.stop);
                 return (bar.low >= stop) ? {
                     trend: up,
                     stop: stop,
@@ -222,22 +222,22 @@ var functions = module.exports.functions = {
     /* Price of Percent of Volume */
     POPV: _.extend((n, p) => {
         return _.extend(bars => {
-            var adj_bars = adj(bars);
-            var prices = getPrices(adj_bars);
+            const adj_bars = adj(bars);
+            const prices = getPrices(adj_bars);
             if (p <= 0) return _.first(prices);
             if (!(p < 100)) return _.last(prices);
-            var volume = getPriceVolume(adj_bars, prices);
+            const volume = getPriceVolume(adj_bars, prices);
             if (!volume.length) return null;
-            var total_volume = volume.reduce((total_volume, volume) => {
-                var pre = total_volume.length ? total_volume[total_volume.length-1] : 0;
+            const total_volume = volume.reduce((total_volume, volume) => {
+                const pre = total_volume.length ? total_volume[total_volume.length-1] : 0;
                 total_volume.push(pre + volume);
                 return total_volume;
             }, []);
-            var total = total_volume[total_volume.length-1];
-            var target = p * total /100;
-            var i = _.sortedIndex(total_volume, target);
+            const total = total_volume[total_volume.length-1];
+            const target = p * total /100;
+            const i = _.sortedIndex(total_volume, target);
             if (total_volume[i] <= target) return prices[i];
-            var ratio = (target - total_volume[i-1]) / (total_volume[i] - total_volume[i-1]);
+            const ratio = (target - total_volume[i-1]) / (total_volume[i] - total_volume[i-1]);
             return prices[i-1] + (prices[i] - prices[i-1]) * ratio;
         }, {
             warmUpLength: n -1
@@ -250,16 +250,16 @@ var functions = module.exports.functions = {
     POVO: _.extend((n, o) => {
         return _.extend(bars => {
             if (_.isEmpty(bars)) return null;
-            var adj_bars = adj(bars);
-            var target = _.last(adj_bars).close;
-            var prices = getPrices(adj_bars);
+            const adj_bars = adj(bars);
+            const target = _.last(adj_bars).close;
+            const prices = getPrices(adj_bars);
             if (target <= _.first(prices)) return 0;
             if (target >= _.last(prices)) return 100;
-            var inc_bars = o ? adj_bars.slice(0, adj_bars.length-o) : adj_bars;
-            var volume = getPriceVolume(inc_bars, prices);
+            const inc_bars = o ? adj_bars.slice(0, adj_bars.length-o) : adj_bars;
+            const volume = getPriceVolume(inc_bars, prices);
             if (!volume.length) return null;
-            var below = volume.slice(0, _.sortedIndex(prices, target)+1);
-            var total = volume.reduce((a, b) => a + b);
+            const below = volume.slice(0, _.sortedIndex(prices, target)+1);
+            const total = volume.reduce((a, b) => a + b);
             return below.reduce((a, b) => a + b) *100 / total;
         }, {
             warmUpLength: (o || 0) + n -1
@@ -271,7 +271,7 @@ var functions = module.exports.functions = {
     /* Rotation Factor */
     ROF(n) {
         return _.extend(bars => {
-            var adj_bars = adj(bars);
+            const adj_bars = adj(bars);
             return adj_bars.reduce(function(factor, bar, i, adj_bars) {
                 if (i < 1) return factor;
                 else if (adj_bars[i-1].low < bar.low)
@@ -293,11 +293,11 @@ var functions = module.exports.functions = {
  * Adjust open/high/low/close to the last bar
  */
 function adj(bars) {
-    var last = _.last(bars);
+    const last = _.last(bars);
     if (!_.has(last, 'adj_close')) return bars;
-    var norm = last.close / last.adj_close;
+    const norm = last.close / last.adj_close;
     return bars.map(bar => {
-        var scale = bar.adj_close/bar.close * norm;
+        const scale = bar.adj_close/bar.close * norm;
         if (Math.abs(scale -1) < 0.0000001) return bar;
         else return _.defaults({
             open: decimal(bar.open*scale),
@@ -309,34 +309,34 @@ function adj(bars) {
 }
 
 function getPrices(bars) {
-    var prices = bars.reduce(function(prices, bar){
+    const prices = bars.reduce(function(prices, bar){
         return [
             bar.high, bar.low, bar.open, bar.close
         ].reduce(function(prices, price){
             if (!(price > 0)) return prices;
-            var i = _.sortedIndex(prices, price);
+            const i = _.sortedIndex(prices, price);
             if (prices[i] != price) prices.splice(i, 0, price);
             return prices;
         }, prices);
     }, []);
-    var median = prices[Math.floor(prices.length/2)];
+    const median = prices[Math.floor(prices.length/2)];
     while (_.last(prices) > median * 100) prices.pop();
     return prices;
 }
 
 function reducePriceVolume(bars, prices, fn, memo) {
     return bars.reduce((memo, bar) => {
-        var oc = _.sortBy([bar.open || bar.close, bar.close]);
-        var low = bar.low || oc[0];
-        var high = bar.high || oc[1];
-        var l = _.sortedIndex(prices, low);
-        var h = _.sortedIndex(prices, high)
-        var range = l == h ? 1 : high - low + oc[1] - oc[0];
-        var unit = (bar.volume || 1) / range;
+        const oc = _.sortBy([bar.open || bar.close, bar.close]);
+        const low = bar.low || oc[0];
+        const high = bar.high || oc[1];
+        const l = _.sortedIndex(prices, low);
+        const h = _.sortedIndex(prices, high)
+        const range = l == h ? 1 : high - low + oc[1] - oc[0];
+        const unit = (bar.volume || 1) / range;
         return prices.slice(l, h+1).reduce((memo, price, i, prices) => {
             // prices between open/close are counted twice
-            var count = price > oc[0] && price <= oc[1] ? 2 : 1;
-            var weight = i == 0 && price < high ? 0 : i == 0 ? 1 :
+            const count = price > oc[0] && price <= oc[1] ? 2 : 1;
+            const weight = i == 0 && price < high ? 0 : i == 0 ? 1 :
                 (price - prices[i-1]) * count * unit;
             return fn(memo, price, weight);
         }, memo);
@@ -345,7 +345,7 @@ function reducePriceVolume(bars, prices, fn, memo) {
 
 function getPriceVolume(bars, prices) {
     return reducePriceVolume(bars, prices, (volume, price, weight) => {
-        var i = _.sortedIndex(prices, price);
+        const i = _.sortedIndex(prices, price);
         volume[i] = volume[i] + weight;
         return volume;
     }, prices.map(_.constant(0)));
@@ -363,7 +363,7 @@ function sum(values) {
 
 function asPositiveInteger(calc, msg) {
     try {
-        var n = calc();
+        const n = calc();
         if (n > 0 && _.isFinite(n) && Math.round(n) == n) return n;
     } catch (e) {}
     throw Error("Expected a literal positive interger in " + msg);

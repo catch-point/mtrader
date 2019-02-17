@@ -41,9 +41,9 @@ const expect = require('chai').expect;
 module.exports = function(name, args, options) {
     if (!functions[name]) return;
     expect(options).to.have.property('tz').that.is.a('string');
-    var intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
-    var fn = functions[name].apply(this, [options].concat(args));
-    var len = Math.max.apply(Math, [0].concat(_.compact(_.pluck(args, 'warmUpLength'))));
+    const intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
+    const fn = functions[name].apply(this, [options].concat(args));
+    const len = Math.max.apply(Math, [0].concat(_.compact(_.pluck(args, 'warmUpLength'))));
     return _.extend(bars => fn(bars), {
         intervals: intervals,
         warmUpLength: len,
@@ -55,9 +55,9 @@ module.exports.has = function(name) {
     return !!functions[name];
 };
 
-var functions = module.exports.functions = {
+const functions = module.exports.functions = {
     NOW: _.extend((opts, tz) => {
-        var now = moment.tz(opts.now, opts.tz).format();
+        const now = moment.tz(opts.now, opts.tz).format();
         return context => {
             if (!tz || tz == opts.tz) return now;
             else return moment.tz(opts.now, tz(context)).format();
@@ -68,7 +68,7 @@ var functions = module.exports.functions = {
         sideEffect: true
     }),
     BEGIN: _.extend((opts, tz) => {
-        var begin = moment.tz(opts.begin, opts.tz).format();
+        const begin = moment.tz(opts.begin, opts.tz).format();
         return context => {
             if (!tz || tz == opts.tz) return begin;
             else return moment.tz(opts.begin, tz(context)).format();
@@ -79,7 +79,7 @@ var functions = module.exports.functions = {
         sideEffect: true
     }),
     END: _.extend((opts, tz) => {
-        var end = moment.tz(opts.end || opts.now, opts.tz).format();
+        const end = moment.tz(opts.end || opts.now, opts.tz).format();
         return context => {
             if (!tz || tz == opts.tz) return end;
             else return moment.tz(opts.end || opts.now, tz(context)).format();
@@ -92,11 +92,11 @@ var functions = module.exports.functions = {
     /* Add d workdays to the date */
     WORKDAY: _.extend((opts, ending, days, tz) => {
         return context => {
-            var start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!start.isValid()) return null;
-            var d = Math.min(start.isoWeekday()-1,4) + days(context);
-            var wk = Math.floor(d /5);
-            var wd = d - wk *5 +1;
+            const d = Math.min(start.isoWeekday()-1,4) + days(context);
+            const wk = Math.floor(d /5);
+            const wd = d - wk *5 +1;
             return start.add(wk, 'weeks').isoWeekday(wd).format();
         };
     }, {
@@ -104,9 +104,9 @@ var functions = module.exports.functions = {
     }),
     EDATE: _.extend((opts, start_date, duration, tz) => {
         return context => {
-            var date = moment.tz(start_date(context), tz ? tz(context) : opts.tz);
-            var dur = duration(context);
-            var d = _.isFinite(dur) ? moment.duration(+dur, 'months') : moment.duration(dur);
+            const date = moment.tz(start_date(context), tz ? tz(context) : opts.tz);
+            const dur = duration(context);
+            const d = _.isFinite(dur) ? moment.duration(+dur, 'months') : moment.duration(dur);
             return date.add(d).format();
         };
     }, {
@@ -114,8 +114,8 @@ var functions = module.exports.functions = {
     }),
     TEXT: _.extend((opts, value, format, tz) => {
         return context => {
-            var val = value(context);
-            var pattern = format && format(context);
+            const val = value(context);
+            const pattern = format && format(context);
             if (!pattern && !val && val!=0) return '';
             else if (!pattern) return val.toString();
             else if (_.isFinite(val)) return d3.format(pattern)(+val);
@@ -126,9 +126,9 @@ var functions = module.exports.functions = {
     }),
     LEFT: _.extend((opts, text, number) => {
         return context => {
-            var str = text(context);
+            const str = text(context);
             if (str == null) return null;
-            var n = number(context) || 0;
+            const n = number(context) || 0;
             return str.toString().substring(0, n);
         };
     }, {
@@ -136,10 +136,10 @@ var functions = module.exports.functions = {
     }),
     RIGHT: _.extend((opts, text, number) => {
         return context => {
-            var str = text(context);
+            const str = text(context);
             if (str == null) return null;
-            var n = number(context) || 0;
-            var len = str.toString().length;
+            const n = number(context) || 0;
+            const len = str.toString().length;
             return str.toString().substring(Math.max(len - n, 0), len);
         };
     }, {
@@ -147,7 +147,7 @@ var functions = module.exports.functions = {
     }),
     LEN: _.extend((opts, text) => {
         return context => {
-            var str_text = text(context);
+            const str_text = text(context);
             if (str_text == null) return null;
             return str_text.toString().length;
         };
@@ -155,7 +155,7 @@ var functions = module.exports.functions = {
         description: "Calculates length of a text string"
     }),
     CONCAT: _.extend(function(opts, text1, text2) {
-        var texts = _.rest(arguments);
+        const texts = _.rest(arguments);
         return context => {
             return texts.map(f => f(context)).filter(v => v != null).join('');
         };
@@ -164,12 +164,12 @@ var functions = module.exports.functions = {
     }),
     REPLACE: _.extend((opts, text, position, length, new_text) => {
         return context => {
-            var str_text = text(context);
+            const str_text = text(context);
             if (str_text == null) return null;
-            var str = str_text.toString();
-            var p = position(context) || 1;
-            var len = length(context) || 0;
-            var rp = new_text && new_text(context) || '';
+            const str = str_text.toString();
+            const p = position(context) || 1;
+            const len = length(context) || 0;
+            const rp = new_text && new_text(context) || '';
             return str.substring(0, p-1) + rp + str.substring(Math.min(p-1 + len, str.length));
         };
     }, {
@@ -177,11 +177,11 @@ var functions = module.exports.functions = {
     }),
     SEARCH: _.extend((opts, find_text, text, position) => {
         return context => {
-            var str_text = text(context);
+            const str_text = text(context);
             if (str_text == null) return null;
-            var str = str_text.toString().toLowerCase();
-            var needle = (find_text(context) || '').toString().toLowerCase();
-            var p = position && position(context) || 1;
+            const str = str_text.toString().toLowerCase();
+            const needle = (find_text(context) || '').toString().toLowerCase();
+            const p = position && position(context) || 1;
             return str.indexOf(needle, p-1) +1 || null;
         };
     }, {
@@ -190,9 +190,9 @@ var functions = module.exports.functions = {
     /* The number of days since 1899-12-31 */
     DATEVALUE: _.extend((opts, ending, tz) => {
         return context => {
-            var start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!start.isValid()) return null;
-            var zero = moment.tz('1899-12-31', opts.tz);
+            const zero = moment.tz('1899-12-31', opts.tz);
             return start.diff(zero, 'days');
         };
     }, {
@@ -201,10 +201,10 @@ var functions = module.exports.functions = {
     /* The fraction of day */
     TIMEVALUE: _.extend((opts, ending, tz) => {
         return context => {
-            var start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!start.isValid()) return null;
-            var noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
-            var hours = (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
+            const noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
+            const hours = (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
             return hours/24;
         };
     }, {
@@ -213,7 +213,7 @@ var functions = module.exports.functions = {
     /* Converts dateTime to simplified extended ISO format (ISO 8601) format in UTC */
     DATETIME: _.extend((opts, ending) => {
         return context => {
-            var date = moment(ending(context));
+            const date = moment(ending(context));
             if (!date.isValid()) return null;
             return date.toISOString();
         };
@@ -224,7 +224,7 @@ var functions = module.exports.functions = {
     /* Y-MM-DD date format */
     DATE: _.extend((opts, ending, month, day, tz) => {
         return context => {
-            var date = month ?
+            const date = month ?
                 moment.tz(new Date(ending(context), month(context)-1, day(context)).toISOString().substring(0,10), tz ? tz(context) : opts.tz) :
                 moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
@@ -237,7 +237,7 @@ var functions = module.exports.functions = {
     /* HH:mm:ss time 24hr format */
     TIME: _.extend((opts, ending, tz) => {
         return context => {
-            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.format('HH:mm:ss');
         };
@@ -248,7 +248,7 @@ var functions = module.exports.functions = {
     /* Date of Month as a number (1-31) */
     DAY: _.extend((opts, ending, tz) => {
         return context => {
-            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.date();
         };
@@ -259,7 +259,7 @@ var functions = module.exports.functions = {
     /* Week of Year as a number (1-52) */
     WEEKNUM: _.extend((opts, ending, mode, tz) => {
         return context => {
-            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             if (!mode || mode(context) == 1) return date.week();
             else return date.isoWeek();
@@ -270,7 +270,7 @@ var functions = module.exports.functions = {
     }),
     WEEKDAY: _.extend((opts, ending, tz) => {
         return context => {
-            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.day()+1;
         };
@@ -281,7 +281,7 @@ var functions = module.exports.functions = {
     /* Month of Year as a number (1-12) */
     MONTH: _.extend((opts, ending, tz) => {
         return context => {
-            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.month() + 1;
         };
@@ -292,7 +292,7 @@ var functions = module.exports.functions = {
     /* Year */
     YEAR(opts, ending, tz) {
         return context => {
-            var date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!date.isValid()) return null;
             return date.year();
         };
@@ -301,9 +301,9 @@ var functions = module.exports.functions = {
     HOUR: _.extend((opts, ending, tz) => {
         return context => {
             // pivot around noon as leap seconds/hours occur at night
-            var start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
             if (!start.isValid()) return null;
-            var noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
+            const noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
             return (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
         };
     }, {
@@ -311,8 +311,8 @@ var functions = module.exports.functions = {
     }),
     DAYS: _.extend((opts, to, from, tz) => {
         return context => {
-            var a = moment.tz(to(context), tz ? tz(context) : opts.tz);
-            var b = moment.tz(from(context), tz ? tz(context) : opts.tz);
+            const a = moment.tz(to(context), tz ? tz(context) : opts.tz);
+            const b = moment.tz(from(context), tz ? tz(context) : opts.tz);
             if (!a.isValid() || !b.isValid()) return null;
             return a.diff(b, 'days');
         };
@@ -321,21 +321,21 @@ var functions = module.exports.functions = {
     }),
     NETWORKDAYS: _.extend((opts, from, to, tzone) => {
         return context => {
-            var tz = tzone ? tzone(context) : opts.tz;
-            var a = moment.tz(to(context), tz);
-            var b = moment.tz(from(context), tz);
+            const tz = tzone ? tzone(context) : opts.tz;
+            let a = moment.tz(to(context), tz);
+            let b = moment.tz(from(context), tz);
+            let swap = false;
             if (!a.isValid() || !b.isValid()) return null;
             if (a.isBefore(b)) {
-                var swap = b;
-                b = a;
-                a = swap;
+                swap = true;
+                [a, b] = [b, a];
             }
-            var years = _.range(b.isoWeekYear(), a.isoWeekYear());
-            var weeks = years.reduce((wk, year) => {
+            const years = _.range(b.isoWeekYear(), a.isoWeekYear());
+            const weeks = years.reduce((wk, year) => {
                 return wk + moment.tz(year + '-02-01', tz).isoWeeksInYear();
             }, 0);
-            var wk = weeks + a.isoWeek() - b.isoWeek();
-            var days = wk * 5 + Math.min(a.isoWeekday()+1,6) - Math.min(b.isoWeekday(), 6);
+            const wk = weeks + a.isoWeek() - b.isoWeek();
+            const days = wk * 5 + Math.min(a.isoWeekday()+1,6) - Math.min(b.isoWeekday(), 6);
             if (swap) return -days;
             else return days;
         };
@@ -356,12 +356,12 @@ var functions = module.exports.functions = {
     CEILING(opts, expression, significance) {
         return context => {
             if (!significance) return Math.ceil(expression(context));
-            var sig = significance(context);
+            const sig = significance(context);
             return precision(Math.ceil(expression(context)/sig)*sig);
         };
     },
     ROUND(opts, expression, count) {
-        var scale = Math.pow(10, count ? count() : 0);
+        const scale = Math.pow(10, count ? count() : 0);
         return context => {
             return precision(Math.round(expression(context)*scale)/scale);
         };
@@ -369,7 +369,7 @@ var functions = module.exports.functions = {
     FLOOR(opts, expression, significance) {
         return context => {
             if (!significance) return Math.floor(expression(context));
-            var sig = significance(context);
+            const sig = significance(context);
             return precision(Math.floor(expression(context)/sig)*sig);
         };
     },
@@ -384,20 +384,20 @@ var functions = module.exports.functions = {
         };
     },
     MAX(opts, a, b) {
-        var numbers = _.rest(arguments);
+        const numbers = _.rest(arguments);
         if (numbers.length == 2) return context => {
-            var a1 = a(context);
-            var b1 = b(context);
+            const a1 = a(context);
+            const b1 = b(context);
             return a1 > b1 || b1 == null ? a1 : b1;
         }; else return context => {
             return _.max(numbers.map(num => num(context)));
         };
     },
     MIN(opts, a, b) {
-        var numbers = _.rest(arguments);
+        const numbers = _.rest(arguments);
         if (numbers.length == 2) return context => {
-            var a1 = a(context);
-            var b1 = b(context);
+            const a1 = a(context);
+            const b1 = b(context);
             return a1 < b1 || b1 == null ? a1 : b1;
         }; else return context => {
             return _.min(numbers.map(num => num(context)));
@@ -406,7 +406,7 @@ var functions = module.exports.functions = {
     /* Returns the sign of a number. Returns 1 if the number is positive, -1 if negative and 0 if zero. */
     SIGN: _.extend((opts, expression) => {
         return context => {
-            var value = expression(context);
+            const value = expression(context);
             if (value > 0) return 1;
             if (value < 0) return -1;
             else return value;
@@ -458,21 +458,21 @@ var functions = module.exports.functions = {
     },
     /* AND */
     AND(opts) {
-        var conditions = _.rest(arguments);
+        const conditions = _.rest(arguments);
         return context => {
             return conditions.reduce((memo, fn) => memo && fn(context), 1);
         };
     },
     /* OR */
     OR(opts) {
-        var conditions = _.rest(arguments);
+        const conditions = _.rest(arguments);
         return context => {
             return conditions.reduce((memo, fn) => memo || fn(context), null);
         };
     },
     /* XOR */
     XOR(opts) {
-        var conditions = _.rest(arguments);
+        const conditions = _.rest(arguments);
         return context => {
             return conditions.filter(fn => fn(context)).length %2;
         };
@@ -488,12 +488,12 @@ var functions = module.exports.functions = {
     },
     /* If then else */
     IF(opts, ifCondition, thenValue, elseValue) {
-        var conditions = _.filter(_.rest(arguments), (val, i) => (i +1) %2);
-        var values = _.filter(_.rest(arguments), (val, i) => i %2);
-        var elseValue = conditions.length > values.length ? conditions.pop() : () => null;
+        const conditions = _.filter(_.rest(arguments), (val, i) => (i +1) %2);
+        const values = _.filter(_.rest(arguments), (val, i) => i %2);
+        const else_value = conditions.length > values.length ? conditions.pop() : () => null;
         return context => {
-            var i = conditions.findIndex((fn, i) => fn(context));
-            if (i < 0) return elseValue(context);
+            const i = conditions.findIndex((fn, i) => fn(context));
+            if (i < 0) return else_value(context);
             else return values[i](context);
         };
     },
@@ -506,8 +506,8 @@ var functions = module.exports.functions = {
     /* Addition */
     ADD(opts, a, b) {
         return context => {
-            var x = a(context);
-            var y = b(context);
+            const x = a(context);
+            const y = b(context);
             if (!_.isFinite(x) || !_.isFinite(y)) return x + y;
             else return precision(+x + +y);
         };
@@ -523,7 +523,7 @@ var functions = module.exports.functions = {
         if (arguments.length == 3) {
             return context => precision(a(context) * b(context));
         } else {
-            var numbers = _.rest(arguments);
+            const numbers = _.rest(arguments);
             return context => numbers.reduce((product, num) => {
                 return precision(product * num(context));
             }, 1);
@@ -545,9 +545,9 @@ var functions = module.exports.functions = {
     },
     POWER: _.extend((opts, base, exponent) => {
         return context => {
-            var b = base && base(context) || 0;
-            var e = exponent && exponent(context) || 0;
-            var value = Math.pow(b, e);
+            const b = base && base(context) || 0;
+            const e = exponent && exponent(context) || 0;
+            const value = Math.pow(b, e);
             return _.isFinite(value) ? value : null;
         };
     }, {
@@ -555,7 +555,7 @@ var functions = module.exports.functions = {
     }),
     SQRT: _.extend((opts, number) => {
         return context => {
-            var value = Math.sqrt(number(context));
+            const value = Math.sqrt(number(context));
             return _.isFinite(value) ? value : null;
         };
     }, {
@@ -563,7 +563,7 @@ var functions = module.exports.functions = {
     }),
     EXP: _.extend((opts, number) => {
         return context => {
-            var value = Math.exp(number(context));
+            const value = Math.exp(number(context));
             return _.isFinite(value) ? value : null;
         };
     }, {
@@ -571,7 +571,7 @@ var functions = module.exports.functions = {
     }),
     LN: _.extend((opts, number) => {
         return context => {
-            var value = Math.log(number(context));
+            const value = Math.log(number(context));
             return _.isFinite(value) ? value : null;
         };
     }, {
@@ -584,9 +584,9 @@ var functions = module.exports.functions = {
     }),
     NORMSDIST: _.extend((opts, number) => {
         return context => {
-            var n = number(context);
+            const n = number(context);
             if (!_.isFinite(n)) return null;
-            var value = statkit.normcdf(n);
+            const value = statkit.normcdf(n);
             return _.isFinite(value) ? value : null;
         };
     }, {
@@ -594,9 +594,9 @@ var functions = module.exports.functions = {
     }),
     NORMSINV: _.extend((opts, number) => {
         return context => {
-            var n = number(context);
+            const n = number(context);
             if (!_.isFinite(n)) return null;
-            var value = statkit.norminv(n);
+            const value = statkit.norminv(n);
             return _.isFinite(value) ? value : null;
         };
     }, {
@@ -604,13 +604,13 @@ var functions = module.exports.functions = {
     }),
     BSIV: _.extend((opts, op_cost, asset_price, strike, days, rate, C_or_P) => {
         return context => {
-            var c = op_cost && op_cost(context) || 0;
-            var s = asset_price && asset_price(context) || 0;
-            var k = strike && strike(context) || 0;
-            var t = days && days(context)/365 || 0;
-            var r = rate && rate(context)/100 || 0;
-            var cp = C_or_P && (C_or_P(context)||'').toString().charAt(0);
-            var callPut = cp == 'P' || cp == 'p' ? 'put' : 'call';
+            const c = op_cost && op_cost(context) || 0;
+            const s = asset_price && asset_price(context) || 0;
+            const k = strike && strike(context) || 0;
+            const t = days && days(context)/365 || 0;
+            const r = rate && rate(context)/100 || 0;
+            const cp = C_or_P && (C_or_P(context)||'').toString().charAt(0);
+            const callPut = cp == 'P' || cp == 'p' ? 'put' : 'call';
             return iv.getImpliedVolatility(c, s,  k, t, r, callPut) * 100;
         };
     }, {
@@ -619,9 +619,9 @@ var functions = module.exports.functions = {
     /* Percent change ratio */
     CHANGE(opts, target, reference, denominator) {
         if (!target || !reference) throw Error("CHANGE requires two or three arguments");
-        var den = denominator || reference;
+        const den = denominator || reference;
         return bars => {
-            var numerator = target(bars) - reference(bars);
+            const numerator = target(bars) - reference(bars);
             return precision(Math.round(numerator * 10000/ den(bars)) /100);
         };
     }
@@ -633,7 +633,7 @@ _.forEach(functions, fn => {
 
 function precision(number) {
     if (!_.isNumber(number)) return number;
-    var result = Math.round(number * 10000000000) / 10000000000;
+    const result = Math.round(number * 10000000000) / 10000000000;
     if (isFinite(result)) return result;
     else return null;
 }

@@ -83,14 +83,14 @@ function usage(command) {
 }
 
 if (require.main === module) {
-    var program = usage(commander).parse(process.argv);
+    const program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        var fetch = new Fetch();
-        var quote = new Quote(fetch);
+        const fetch = new Fetch();
+        const quote = new Quote(fetch);
         process.on('SIGINT', () => quote.close().then(() => fetch.close()));
         process.on('SIGTERM', () => quote.close().then(() => fetch.close()));
-        var symbol = program.args[0];
-        var market = program.args[1];
+        let symbol = program.args[0];
+        let market = program.args[1];
         if (!market && ~symbol.indexOf('.')) {
             market = symbol.substring(symbol.lastIndexOf('.')+1);
             symbol = symbol.substring(0, symbol.lastIndexOf('.'));
@@ -104,10 +104,10 @@ if (require.main === module) {
         .then(() => quote.close())
         .then(() => fetch.close());
     } else if (process.send) {
-        var parent = replyTo(process).handle('quote', payload => {
+        const parent = replyTo(process).handle('quote', payload => {
             return quote()(payload);
         });
-        var quote = _.once(() => new Quote(function(options) {
+        const quote = _.once(() => new Quote(function(options) {
             return parent.request('fetch', options);
         }));
         process.on('disconnect', () => quote().close());
@@ -117,8 +117,8 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    var program = usage(new commander.Command());
-    var shared = module.exports = share(() => createInstance(program));
+    const program = usage(new commander.Command());
+    const shared = module.exports = share(() => createInstance(program));
     process.on('SIGTERM', () => shared.instance && shared.instance.close(true));
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
     process.on('SIGINT', () => shared.instance && shared.instance.reset()
@@ -126,9 +126,9 @@ if (require.main === module) {
 }
 
 function createInstance(program) {
-    var fetch = new Fetch();
-    var promiseKeys, closed;
-    var instance = function(options) {
+    const fetch = new Fetch();
+    let promiseKeys, closed;
+    const instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = direct({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
@@ -154,17 +154,17 @@ function createInstance(program) {
             queue = createQueue(createWorkers.bind(this, program, fetch));
         }
     };
-    var direct = Quote(fetch);
-    var queue = createQueue(createWorkers.bind(this, program, fetch));
+    const direct = new Quote(fetch);
+    let queue = createQueue(createWorkers.bind(this, program, fetch));
     return instance;
 }
 
 function createQueue(createWorkers) {
-    var check = interrupt(true);
-    var queue = workerQueue(createWorkers, (worker, options) => {
-        var master = getMasterWorker(queue.getWorkers(), options);
-        var slave = chooseSlaveWorker(queue.getWorkers(), master, options);
-        var opts = slave == master ? options :
+    const check = interrupt(true);
+    const queue = workerQueue(createWorkers, (worker, options) => {
+        const master = getMasterWorker(queue.getWorkers(), options);
+        const slave = chooseSlaveWorker(queue.getWorkers(), master, options);
+        const opts = slave == master ? options :
             _.extend({read_only: true}, options);
         return slave.request('quote', opts).catch(err => {
             if (!err || !err.message) throw err;
@@ -180,24 +180,24 @@ function createQueue(createWorkers) {
 }
 
 function createWorkers(program, fetch) {
-    var prime = [0,1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
-    var size = _.isFinite(config('quote_workers')) ? +config('quote_workers') :
+    const prime = [0,1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
+    const size = _.isFinite(config('quote_workers')) ? +config('quote_workers') :
         _.isFinite(config('workers')) && config('workers') == 0 ? 0 :
         prime[_.sortedIndex(prime, WORKER_COUNT)] || WORKER_COUNT;
     if (size) logger.debug("Launching", size, "quote workers");
     return _.range(size).map(() => {
-        var worker = replyTo(config.fork(module.filename, program));
+        const worker = replyTo(config.fork(module.filename, program));
         return worker.handle('fetch', payload => fetch(payload));
     });
 };
 
 function getMasterWorker(workers, options) {
     if (!options.help) expect(options).to.have.property('symbol');
-    var name = options.help ? 'help' : options.market ?
+    const name = options.help ? 'help' : options.market ?
         options.symbol + '.' + options.market : options.symbol;
     expect(workers).to.be.an('array').and.not.empty;
-    var capacity = workers.length;
-    var number = (hashCode(name) % capacity + capacity) % capacity;
+    const capacity = workers.length;
+    const number = (hashCode(name) % capacity + capacity) % capacity;
     return workers[number];
 }
 
@@ -206,21 +206,21 @@ function chooseSlaveWorker(workers, master, options) {
         return master; // write requested
     if (!options.end || moment.tz(options.end, options.tz || moment.tz.guess()).valueOf() >= Date.now())
         return master; // latest data requested
-    var loads = workers.map(load);
-    var light = _.min(loads);
+    const loads = workers.map(load);
+    const light = _.min(loads);
     if (loads[workers.indexOf(master)] == light) return master; // master is available
     else return workers[loads.indexOf(light)]; // use available slave
 }
 
 function load(worker) {
-    var stats = worker.stats;
+    const stats = worker.stats;
     if (!stats || !stats.requests_sent) return 0;
     else if (!stats.replies_rec) return stats.requests_sent;
     else return stats.requests_sent - stats.replies_rec;
 }
 
 function hashCode(str){
-    var hash = 0, i, char;
+    let hash = 0, i, char;
     if (str.length === 0) return hash;
     for (i = 0, l = str.length; i < l; i++) {
         char = str.charCodeAt(i);
@@ -233,9 +233,9 @@ function shell(desc, quote, app) {
     app.on('quit', () => quote.close());
     app.on('exit', () => quote.close());
     app.cmd('quote :symbol', desc, (cmd, sh, cb) => {
-        var s = cmd.params.symbol;
-        var symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
-        var market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
+        const s = cmd.params.symbol;
+        const symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
+        const market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         quote(_.defaults({
             symbol: symbol,
             market: market
@@ -374,13 +374,13 @@ ${listFunctions(indicator.functions)}
 }
 
 function functionHelp(name, fn) {
-    var source = fn.toString();
-    var m = source.match(/^[^(]*\(([^)]*)\)/);
-    var args = _.isString(fn.args) ? fn.args : _.property(1)(m) || '';
-    var usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
-    var body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
-    var desc = fn.description ? '\n  ' + wrap(fn.description, '  ', 80) + '\n' : body;
-    var seeAlso = fn.seeAlso ? '\n  See also:\n' + fn.seeAlso.map(name => {
+    const source = fn.toString();
+    const m = source.match(/^[^(]*\(([^)]*)\)/);
+    const args = _.isString(fn.args) ? fn.args : _.property(1)(m) || '';
+    const usage = ['\n', '  Usage: ', name, '(', args, ')', '  \n'].join('');
+    const body = source.replace(/[^\{]*\{([\s\S]*)\}[^}]*/,'$1');
+    const desc = fn.description ? '\n  ' + wrap(fn.description, '  ', 80) + '\n' : body;
+    const seeAlso = fn.seeAlso ? '\n  See also:\n' + fn.seeAlso.map(name => {
         return '    help ' + name + '  ';
     }).join('\n') + '\n' : '';
     return usage + desc + seeAlso;
@@ -388,20 +388,20 @@ function functionHelp(name, fn) {
 
 function listFunctions(functions) {
     return listOptions(_.mapObject(functions, (fn, name) => {
-        var source = fn.toString();
-        var m = source.match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/) ||
+        const source = fn.toString();
+        const m = source.match(/^[^(]*\(\s*opt\w*\s*,\s*([^)]*)\)/) ||
             source.match(/^[^(]*\(([^)]*)\)/);
-        var args = fn.args || _.property(1)(m) || '';
-        var desc = fn.description || name + '(' + args + ')';
+        const args = fn.args || _.property(1)(m) || '';
+        const desc = fn.description || name + '(' + args + ')';
         return {description:  desc};
     }));
 }
 
 function listOptions(options) {
-    var buf = [];
-    var left = Math.max(_.max(_.keys(options).map(name => name.length)), 5) + 8;
-    var indent = new Array(left+1).join(' ');
-    var width = 80 - indent.length;
+    const buf = [];
+    const left = Math.max(_.max(_.keys(options).map(name => name.length)), 5) + 8;
+    const indent = new Array(left+1).join(' ');
+    const width = 80 - indent.length;
     _.each(options, (option, name) => {
         buf.push(indent.substring(0,6));
         buf.push(name);
@@ -413,14 +413,14 @@ function listOptions(options) {
 }
 
 function wrap(desc, indent, len) {
-    var buf = [];
+    const buf = [];
     if (desc && desc.length < len - indent.length) {
         buf.push(desc);
     } else if (desc) {
-        var width = len - indent.length;
-        var remain = desc.trim();
+        const width = len - indent.length;
+        let remain = desc.trim();
         while (remain) {
-            var idx = remain.lastIndexOf(' ', width);
+            let idx = remain.lastIndexOf(' ', width);
             if (idx <= 0) idx = remain.indexOf(' ', width);
             if (idx <= 0 || remain.length < width) idx = remain.length;
             buf.push(remain.substring(0, idx));
