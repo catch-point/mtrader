@@ -220,10 +220,10 @@ function load(worker) {
 }
 
 function hashCode(str){
-    let hash = 0, i, char;
+    let hash = 0;
     if (str.length === 0) return hash;
-    for (i = 0, l = str.length; i < l; i++) {
-        char = str.charCodeAt(i);
+    for (let i = 0, l = str.length; i < l; i++) {
+        let char = str.charCodeAt(i);
         hash = char + (hash << 6) + (hash << 16) - hash;
     }
     return hash;
