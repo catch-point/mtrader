@@ -153,7 +153,7 @@ function help(datasources) {
                 properties: _.union(help.properties, h.properties, lookupProperties),
                 options: _.mapObject(options, (option, name) => {
                     if (option.values && h.options[name] && h.options[name].values) return _.defaults({
-                        values: _.compact(_.flatten([option.values, h.options[name].values], true))
+                        values: _.uniq(_.compact(_.flatten([option.values, h.options[name].values], true)))
                     }, option);
                     else if (option.values || h.options[name] && h.options[name].values) return _.defaults({
                         values: option.values || h.options[name] && h.options[name].values

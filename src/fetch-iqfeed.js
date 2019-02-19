@@ -637,8 +637,9 @@ function isOptionExpired(symbol) {
 async function summarize(iqclient, symbol, options) {
     const now = moment();
     const asof = moment(now).tz(options.tz).format();
-    const summary = await iqclient.summary(symbol);
+    const summary = await iqclient.summary(symbol).catch(err => ({}));
     const use_mid = summary.decimal_precision && summary.ask && summary.bid;
+    if (!use_mid && !summary.most_recent_trade_date) return [];
     const date = use_mid ? now.tz('America/New_York') :
         moment.tz(summary.most_recent_trade_date, 'MM/DD/YYYY', 'America/New_York');
     const time = use_mid ? _.last(_.sortBy([summary.bid_timems, summary.ask_timems])) :
