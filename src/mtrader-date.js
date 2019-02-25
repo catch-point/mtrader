@@ -100,6 +100,7 @@ if (require.main === module) {
 
 module.exports = function() {
     return Object.assign((format, options) => formatDate(format, options), {
+        shell: shell,
         close: () => Promise.resolve()
     });
 };
@@ -127,7 +128,7 @@ function formatDate(format, options) {
     return advanced.format(format);
 }
 
-module.exports.shell = function(app) {
+function shell(app) {
     app.cmd('date :format', "Show the time now for this session", (cmd, sh, cb) => {
         try {
             const value = formatDate(cmd.params.format, config());
