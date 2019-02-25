@@ -566,8 +566,6 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
 async function mostRecentTrade(iqclient, adjustments, symbol, options) {
     if (options.market == 'OPRA' && isOptionExpired(symbol)) {
         return [];
-    } else if (options.market == 'OPRA') {
-        return summarize(iqclient, symbol, options);
     } else {
         const [m30, currently] = await Promise.all([
             rollday(iqclient, adjustments, 'day', symbol, _.defaults({
