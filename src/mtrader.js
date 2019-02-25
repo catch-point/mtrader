@@ -168,7 +168,10 @@ if (require.main === module) {
         }, 10000).unref();
     });
 } else {
-    module.exports = createInstance;
+    module.exports = Object.assign(createInstance, {
+        date: new Dater(),
+        config: new Config()
+    });
 }
 
 function parseKnownOptions(program, argv) {
