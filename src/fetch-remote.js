@@ -76,6 +76,7 @@ module.exports = function() {
                 throw err;
             // connection error wait and try again
             client.connectionError = true;
+            logger.log("Connection error:", err.message);
             await new Promise(cb => _.delay(cb, delay));
             if (await check()) throw err;
             else return fetch(options, check, delay).catch(e2 => {
