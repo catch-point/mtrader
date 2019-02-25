@@ -77,12 +77,19 @@ function help() {
             description: "Sets the latest dateTime to retrieve"
         }
     };
+    const lookup = {
+        name: "lookup",
+        usage: "lookup(options)",
+        description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
+        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type'],
+        options: commonOptions
+    };
     const interday = {
         name: "interday",
         usage: "interday(options)",
         description: "Historic interday data for options using an ivolatility.com account",
         properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
-        options: _.extend(commonOptions, durationOptions, tzOptions, {
+        options: _.extend({}, commonOptions, durationOptions, tzOptions, {
             interval: {
                 usage: "year|quarter|month|week|day",
                 description: "The bar timeframe for the results",
@@ -91,6 +98,7 @@ function help() {
         })
     };
     return _.compact([
+        lookup,
         interday
     ]);
 }
@@ -116,6 +124,31 @@ module.exports = function() {
         },
         help() {
             return Promise.resolve(help());
+        },
+        async lookup(options) {
+            if (options.market && options.market != 'OPRA') return [];
+            const symbol = options.symbol;
+            const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+            if (!m) return [];
+            const underlying = m[1];
+            const yy = +m[2];
+            const cc = yy<50 ? 2000 : 1900;
+            const year = cc + yy;
+            const day = m[3];
+            const mo = months[m[4]];
+            const cmonth = calls[m[4]];
+            const pmonth = puts[m[4]];
+            const pc = cmonth ? 'C' : 'P';
+            const month = cmonth || pmonth;
+            const strike = strike_format(+m[5]);
+            return [{
+                symbol: symbol,
+                market: 'OPRA',
+                listed_market: 'OPRA',
+                name: `${underlying} ${month} ${year} ${pc} ${strike}`,
+                strike_price: strike,
+                expiration_date: `${year}-${mo}-${day}`
+            }];
         },
         interday: options => {
             expect(options).to.have.property('symbol');
@@ -151,7 +184,8 @@ const months = {
     M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
     S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
 };
-const strike_format = d3.format("08d");
+const strike_format = d3.format(".2f");
+const iv_strike_format = d3.format("08d");
 async function loadIvolatility(ivolatility, options) {
     const symbol = options.symbol;
     const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
@@ -165,7 +199,7 @@ async function loadIvolatility(ivolatility, options) {
     const cmonth = calls[m[4]];
     const pmonth = puts[m[4]];
     const cp = cmonth ? 'C' : 'P';
-    const strike = strike_format(+m[5] * 1000);
+    const strike = iv_strike_format(+m[5] * 1000);
     const iv_symbol = `${underlying}${yy}${mo}${day}${cp}${strike}`;
     const data = await ivolatility(_.defaults({}, options, {iv_symbol}))
     return data.map(datum => {

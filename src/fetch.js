@@ -278,7 +278,8 @@ function interday(datasources, options) {
                 return Promise.reject(result); // not within a week of begin or >5yrs
             return result;
         }, err2 => {
-            if (_.isEmpty(err)) throw err2;
+            if (!err) throw err2;
+            else if (_.isArray(err)) return err;
             logger.debug("Fetch", opts.interval, "failed", err2);
             throw err;
         });
