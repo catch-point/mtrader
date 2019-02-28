@@ -34,7 +34,6 @@ const fs = require('graceful-fs');
 const path = require('path');
 const url = require('url');
 const querystring = require('querystring');
-const http = require('http');
 const https = require('https');
 const child_process = require('child_process');
 const _ = require('underscore');
@@ -425,9 +424,9 @@ function downloadUpdates(downloadDir, auth_file, downloadType) {
 function listAvailableDownloads(username, password, downloadType, mtime) {
     const point = moment(mtime);
     const fileUid = 'https://www.ivolatility.com/loadCSV?fileUid=';
-    const order_id = 'http://www.ivolatility.com/data_download.csv?order_id=';
+    const order_id = 'https://www.ivolatility.com/data_download.csv?order_id=';
     const order_uid = '&order_uid=';
-    const host = url.parse('http://www.ivolatility.com/dd-server/history');
+    const host = url.parse('https://www.ivolatility.com/dd-server/history');
     return retrieveCookies(username, password).then(cookies => {
         const userIdCookie = cookies.find(cookie => cookie.startsWith("IV%5FUID="));
         const userId = userIdCookie.substring(userIdCookie.indexOf('=')+1);
@@ -441,7 +440,7 @@ function listAvailableDownloads(username, password, downloadType, mtime) {
         });
         logger.debug("Checking for new ivolatility.com downloads using ID", userId, username);
         return new Promise((ready, error) => {
-            const req = http.request(_.extend({method: 'POST', headers: {
+            const req = https.request(_.extend({method: 'POST', headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Content-Length': Buffer.byteLength(payload),
                 Cookie: cookies.join('; ')
