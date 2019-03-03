@@ -577,7 +577,7 @@ async function mostRecentTrade(iqclient, adjustments, symbol, options) {
         const today = _.last(currently);
         if (!bar) return currently;
         else if (!today) return m30;
-        else if (bar.ending == options.begin && today.ending > options.begin) return today;
+        else if (bar.ending == options.begin && today.ending > options.begin) return currently;
         else if (bar.ending != today.ending) return m30;
         return _.initial(m30).concat(Object.assign({
             ending: today.ending,
