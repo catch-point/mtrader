@@ -409,63 +409,61 @@ function mtime(filename) {
     }).then(stats => stats.mtime);
 }
 
-function downloadUpdates(downloadDir, auth_file, downloadType) {
+async function downloadUpdates(downloadDir, auth_file, downloadType) {
     const token = auth_file ? fs.readFileSync(auth_file, 'utf8').trim() : '';
     const auth = new Buffer.from(token, 'base64').toString().split(/:/);
     const username = auth[0];
     const password = auth[1];
-    return readMetadata(downloadDir).then(metadata => {
-        return listAvailableDownloads(username, password, downloadType, metadata.mtime)
-          .then(fileUrls => absentFileUrls(downloadDir, fileUrls))
-          .then(fileUrls => downloadFiles(downloadDir, fileUrls));
-    });
+    const metadata = await readMetadata(downloadDir);
+    const cookies = await retrieveCookies(username, password);
+    const file_urls = await listAvailableDownloads(username, cookies, downloadType, metadata.mtime);
+    const absent_urls = await absentFileUrls(downloadDir, file_urls);
+    return downloadFiles(downloadDir, cookies, absent_urls);
 }
 
-function listAvailableDownloads(username, password, downloadType, mtime) {
+function listAvailableDownloads(username, cookies, downloadType, mtime) {
     const point = moment(mtime);
     const fileUid = 'https://www.ivolatility.com/loadCSV?fileUid=';
     const order_id = 'https://www.ivolatility.com/data_download.csv?order_id=';
     const order_uid = '&order_uid=';
     const host = url.parse('https://www.ivolatility.com/dd-server/history');
-    return retrieveCookies(username, password).then(cookies => {
-        const userIdCookie = cookies.find(cookie => cookie.startsWith("IV%5FUID="));
-        const userId = userIdCookie.substring(userIdCookie.indexOf('=')+1);
-        const payload = querystring.stringify({
-            pageSize: 10,
-            userId: userId,
-            limit: 10,
-            downloadType: downloadType || 'DAILY_ONLY',
-            page: 1,
-            start: 0
-        });
-        logger.debug("Checking for new ivolatility.com downloads using ID", userId, username);
-        return new Promise((ready, error) => {
-            const req = https.request(_.extend({method: 'POST', headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': Buffer.byteLength(payload),
-                Cookie: cookies.join('; ')
-            }}, host), res => {
-                const buffer = [];
-                res.setEncoding('utf8');
-                res.on('data', chunk => {if (chunk) buffer.push(chunk)});
-                res.on('error', error).on('end', () => {
-                    try {
-                        ready(JSON.parse(buffer.join('')).rs
-                            .filter(order => order.orderData || order.order_uid).map(order => {
-                                if (order.orderData) return fileUid + order.orderData.fileUid;
-                                else return order_id + order.order_id + order_uid + order.order_uid;
-                            })
-                        );
-                    } catch (err) {
-                        logger.log("ivolatility.com", payload, buffer.join(''));
-                        error(err);
-                    }
-                });
+    const userIdCookie = cookies.find(cookie => cookie.startsWith("IV%5FUID="));
+    const userId = userIdCookie.substring(userIdCookie.indexOf('=')+1);
+    const payload = querystring.stringify({
+        pageSize: 10,
+        userId: userId,
+        limit: 10,
+        downloadType: downloadType || 'DAILY_ONLY',
+        page: 1,
+        start: 0
+    });
+    logger.debug("Checking for new ivolatility.com downloads using ID", userId, username);
+    return new Promise((ready, error) => {
+        const req = https.request(_.extend({method: 'POST', headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(payload),
+            Cookie: cookies.join('; ')
+        }}, host), res => {
+            const buffer = [];
+            res.setEncoding('utf8');
+            res.on('data', chunk => {if (chunk) buffer.push(chunk)});
+            res.on('error', error).on('end', () => {
+                try {
+                    ready(JSON.parse(buffer.join('')).rs
+                        .filter(order => order.orderData || order.order_uid).map(order => {
+                            if (order.orderData) return fileUid + order.orderData.fileUid;
+                            else return order_id + order.order_id + order_uid + order.order_uid;
+                        })
+                    );
+                } catch (err) {
+                    logger.log("ivolatility.com", payload, buffer.join(''));
+                    error(err);
+                }
             });
-            req.on('error', error);
-            req.write(payload);
-            req.end();
         });
+        req.on('error', error);
+        req.write(payload);
+        req.end();
     });
 }
 
@@ -504,15 +502,16 @@ function absentFileUrls(downloadDir, fileUrls) {
     })).then(_.compact)
 }
 
-function downloadFiles(downloadDir, fileUrls) {
+function downloadFiles(downloadDir, cookies, fileUrls) {
     return Promise.all(fileUrls.map(fileUrl => {
         const fileUid = fileUrl.substring(fileUrl.lastIndexOf('=')+1);
         const filename = path.resolve(downloadDir, fileUid + '.zip');
         return awriter(filename => new Promise((ready, error) => {
             const file = fs.createWriteStream(filename);
             logger.info("Downloading", fileUrl);
-            const protocol = fileUrl.startsWith('https') ? https : http;
-            const req = protocol.get(fileUrl, res => {
+            const req = https.get(Object.assign({
+                headers: {Cookie: cookies.join('; ')}
+            }, url.parse(fileUrl)), res => {
                 if (res.statusCode == 200 || res.statusCode == 203) {
                     res.pipe(file);
                     res.on('error', error).on('end', () => {
