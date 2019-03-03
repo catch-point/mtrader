@@ -696,17 +696,46 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
             return; // empty blocks are complete
         if (_.first(tail).incomplete)
             return fetchComplete(block, last);
-        if (i < blocks.length -1 || _.last(tail).ending <= stop || _.last(tail).asof <= stop)
+        if (i < blocks.length -1 || _.last(tail).ending <= stop || _.last(tail).asof <= stop) {
+            if (isWeekend(_.last(tail), options)) return;
             return fetchPartial(block, _.first(tail).ending).catch(error => {
                 if (stop) logger.debug("Need to fetch", _.last(tail).ending);
                 logger.debug("Fetch failed", error);
                 throw Error("Fetch failed try using the offline flag " + error.message);
             });
+        }
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
         const version = createStorageVersion();
         return fetchBlocks(fetch, fields, options, collection, version, stop, blocks);
     });
+}
+
+function isWeekend(bar, options) {
+    if (bar.asof < bar.ending) return false; // more upto date bar available
+    if (!isEndOfWeek(bar.ending, options)) return false;
+    return isBeforeStartOfWeek(bar.asof, options);
+}
+
+function isEndOfWeek(ending, options) {
+    expect(options).to.have.property('tz');
+    expect(options).to.have.property('marketClosesAt');
+    if (ending.substring(11,19) != options.marketClosesAt) return false; // not on market close
+    const end = moment.tz(ending, options.tz);
+    return end.day() == 5; // Friday on market close
+}
+
+function isBeforeStartOfWeek(asof, options) {
+    expect(options).to.have.property('tz');
+    expect(options).to.have.property('marketOpensAt');
+    expect(options).to.have.property('marketClosesAt');
+    const masof = moment.tz(asof, options.tz);
+    if (masof.day() > 3) return true; // not Sunday or Monday
+    const now = moment.tz(options.now, options.tz);
+    const marketOpensAt = options.marketOpensAt;
+    const week_day_opens = marketOpensAt < options.marketClosesAt ? 1 : 0;
+    const opens = moment.tz(`${now.format('YYYY-MM-DD')} ${marketOpensAt}`, options.tz).day(week_day_opens);
+    return !opens.isBefore(masof); // asof is Before market opens on Sunday or Monday
 }
 
 /**
