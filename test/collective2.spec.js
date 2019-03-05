@@ -3518,5 +3518,107 @@ describe("position", function() {
                 quant_threshold: 5
             }).should.eventually.be.like([]);
         });
+        it("Quickly reversing signals", function() {
+            fs.writeFileSync(submitSignal, JSON.stringify({}));
+            fs.writeFileSync(requestTrades, JSON.stringify({ok: '1',response: [{
+                closeVWAP_timestamp: "1551362703",
+                strike: null,
+                fullSymbol: "@CDH19",
+                open_or_closed: "open",
+                expir: null,
+                openVWAP_timestamp: "1551362703",
+                currency: "USD",
+                underlying: null,
+                closing_price_VWAP: "0.75835",
+                putcall: null,
+                openedWhenUnixTimeStamp: "1551362580",
+                quant_closed: "0",
+                markToMarket_time: "2019-02-28 09:05:03",
+                opening_price_VWAP: "0.75815",
+                trade_id: "122730309",
+                symbol: "@CDH9",
+                quant_opened: "1",
+                closedWhen: "",
+                instrument: "future",
+                ptValue: "100000",
+                PL: "845",
+                closedWhenUnixTimeStamp: "",
+                currencyMultiplierUSD: 1,
+                openedWhen: "2019-02-28 09:03:00",
+                long_or_short: "short",
+                symbol_description: "CANADIAN DOLLAR MARCH 2019",
+                exchange: "CME"
+            }]}));
+            fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[{
+                isLimitOrder: "0.74915",
+                strike: null,
+                status: "working",
+                underlying: null,
+                isMarketOrder: "0",
+                tif: "DAY",
+                putcall: null,
+                expiration: null,
+                quant: "1",
+                parked_releasewhen: "",
+                symbol: "@CDH9",
+                name: "",
+                instrument: "future",
+                isStopOrder: "0",
+                posted_time_unix: "1551794457",
+                isOrderParked: "0",
+                action: "BTC",
+                signal_id: "122787034",
+                posted_time: "2019-03-05 09:00:57"
+            }, {
+                isLimitOrder: "0.74915",
+                strike: null,
+                status: "working",
+                underlying: null,
+                isMarketOrder: "0",
+                tif: "DAY",
+                putcall: null,
+                expiration: null,
+                quant: "1",
+                parked_releasewhen: "",
+                symbol: "@CDH9",
+                name: "",
+                instrument: "future",
+                isStopOrder: "0",
+                posted_time_unix: "1551794457",
+                isOrderParked: "0",
+                action: "BTO",
+                signal_id: "122787036",
+                posted_time: "2019-03-05 09:00:57"
+            }]}));
+            return Position(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    limit: 0.74915,
+                    action: "BTO",
+                    typeofsymbol: "future",
+                    duration: "DAY",
+                    posted_time_unix: "1551790800",
+                    underlying: "CAD",
+                    quant: 1,
+                    currency: "USD",
+                    symbol: "@CDH9",
+                    tif: "DAY",
+                    isLimitOrder: 0.74915
+                }, {
+                    typeofsymbol: "future",
+                    symbol: "@CDH9",
+                    action: "STC",
+                    quant: 1,
+                    duration: "GTC",
+                    stop: 0.7383,
+                    isStopOrder: 0.7383
+                }]);
+            })({
+                systemid: 'test',
+                tz: 'America/New_York',
+                now: "2019-03-05T09:30:00",
+                quant_threshold: 5
+            }).should.eventually.be.like([]);
+        });
     });
 });

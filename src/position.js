@@ -306,7 +306,9 @@ function updateWorking(desired, working, options) {
             const cond = !_.isEmpty(upon) || +ws.isStopOrder || ws.conditionalupon ? ds : _.extend({
                 conditionalupon: ws.signal_id
             }, ds);
-            return appendSignal(upon, cond, options);
+            // check if there are too many chained conditions
+            if (cond.conditionalupon && working.prior && working.prior.prior) return upon;
+            else return appendSignal(upon, cond, options);
         }
     } else if (d_opened && w_opened && desired.long_or_short != working.long_or_short) {
         // reverse position
@@ -357,6 +359,7 @@ function updateWorking(desired, working, options) {
  * Checks if the two signals appear to be the same
  */
 function sameSignal(a, b, threshold) {
+    if (!a || !b) return false;
     const attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss'];
     return _.matcher(_.pick(a, attrs))(b) && Math.abs(a.quant - b.quant) <= (threshold || 0);
 }
@@ -370,9 +373,12 @@ function cancelSignal(desired, working, options) {
     const adj = updateWorking(desired, working.prior, options);
     // check if cancelling order is the same of submitting order
     const same = _.find(adj, a => sameSignal(a, ws));
+    const same_cond = _.find(adj, a => sameSignal(a.conditionalUponSignal, ws));
     const similar = _.find(adj, a => !a.xreplace && similarSignals(a, ws));
     if (same)
         return _.without(adj, same);
+    else if (same_cond)
+        return _.map(adj, a => a == same_cond ? _.omit(a, 'conditionalUponSignal') : a);
     else if (similar)
         return adj.map(a => a == similar ? _.extend({xreplace: ws.signal_id}, a) : a);
     else if (+ws.isStopOrder && !_.every(adj, a => !(+a.parkUntilSecs * 1000 > options.now)))
@@ -403,6 +409,7 @@ function appendSignal(upon, ds, options) {
  * If two signals have the same order type, but may different on quant
  */
 function similarSignals(a, b) {
+    if (!a || !b) return false;
     return a.action == b.action &&
         !!+a.isStopOrder == !!+b.isStopOrder &&
         !!+a.isLimitOrder == !!+b.isLimitOrder;
