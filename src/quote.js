@@ -729,13 +729,12 @@ function isBeforeStartOfWeek(asof, options) {
     expect(options).to.have.property('tz');
     expect(options).to.have.property('marketOpensAt');
     expect(options).to.have.property('marketClosesAt');
-    const masof = moment.tz(asof, options.tz);
-    if (masof.day() > 3) return true; // not Sunday or Monday
-    const now = moment.tz(options.now, options.tz);
     const marketOpensAt = options.marketOpensAt;
     const week_day_opens = marketOpensAt < options.marketClosesAt ? 1 : 0;
-    const opens = moment.tz(`${now.format('YYYY-MM-DD')} ${marketOpensAt}`, options.tz).day(week_day_opens);
-    return !opens.isBefore(masof); // asof is Before market opens on Sunday or Monday
+    const masof = moment.tz(asof, options.tz);
+    const now = moment.tz(options.now, options.tz);
+    const opens = moment.tz(`${masof.format('YYYY-MM-DD')} ${marketOpensAt}`, options.tz).day(week_day_opens);
+    return !opens.isBefore(now); // now is Before market opens on Sunday or Monday
 }
 
 /**
