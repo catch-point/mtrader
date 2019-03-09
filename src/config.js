@@ -204,7 +204,7 @@ function createInstance(session) {
         } catch(e) {
             // couldn't find it
         }
-        return args.length == 1 && !~args[0].lastIndexOf('.json') ? loc : file;
+        return args.length == 1 && !~args[0].lastIndexOf('.json') ? loc : filename;
     };
 
     config.read = function(name) {
