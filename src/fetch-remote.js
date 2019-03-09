@@ -43,29 +43,17 @@ const expect = require('chai').use(like).expect;
 module.exports = function() {
     let promiseFetch, closing;
     if (!config('fetch.remote.location')) throw Error("No remote location configured");
-    return {
+    return Object.assign(options => {
+        if (options.help) return fetch({help: true});
+        else return fetch(options);
+    }, {
         close() {
             if (closing) return closing;
             return closing = (promiseFetch || Promise.reject()).then(fetch => {
                 if (fetch.process.connected || fetch.process.connecting) return fetch.disconnect();
             }, err => {});
-        },
-        help() {
-            return fetch({help: true});
-        },
-        lookup(options) {
-            return fetch(options);
-        },
-        fundamental(options) {
-            return fetch(options);
-        },
-        interday(options) {
-            return fetch(options);
-        },
-        intraday(options) {
-            return fetch(options);
         }
-    };
+    });
 
     async function fetch(options, interrupted, delayed) {
         const check = interrupted || interrupt(true);

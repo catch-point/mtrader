@@ -55,37 +55,29 @@ module.exports = function() {
         cfg.delegate == 'iqfeed' ? iqfeed() :
         cfg.delegate == 'files' ? files() : yahoo();
     const markets = _.uniq(cfg.assets.map(asset => asset.market));
-    return {
+    return Object.assign(options => {
+        if (options.help) return delegate({help:true}).then(_.flatten).then(info => info.map(interday => {
+            if (!interday.options || !interday.options.market) return info;
+            else return merge(interday, {options: {market: {
+                values: markets
+            }}});
+        }));
+        const dayFn = day.bind(this, blendCall.bind(this, delegate, cfg, 'interday'));
+        switch(options.interval) {
+            case 'lookup': return lookup(delegate, cfg, 'lookup', options);
+            case 'fundamental': return delegateCall(delegate, cfg, 'fundamental', options);
+            case 'year': return year(dayFn, options);
+            case 'quarter': return quarter(dayFn, options);
+            case 'month': return month(dayFn, options);
+            case 'week': return week(dayFn, options);
+            case 'day': return dayFn(options);
+            default: return delegateCall(delegate, cfg, 'intraday', options);
+        }
+    }, {
         close() {
             return Promise.resolve(delegate && delegate.close());
-        },
-        help() {
-            return delegate.help().then(_.flatten).then(info => info.map(interday => {
-                if (!interday.options || !interday.options.market) return info;
-                else return merge(interday, {options: {market: {
-                    values: markets
-                }}});
-            }));
-        },
-        lookup: lookup.bind(this, delegate, cfg, 'lookup'),
-        fundamental: delegateCall.bind(this, delegate, cfg, 'fundamental'),
-        intraday: delegateCall.bind(this, delegate, cfg, 'intraday'),
-        interday: options => {
-            expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
-            const dayFn = day.bind(this, blendCall.bind(this, delegate, cfg, 'interday'));
-            switch(options.interval) {
-                case 'year': return year(dayFn, options);
-                case 'quarter': return quarter(dayFn, options);
-                case 'month': return month(dayFn, options);
-                case 'week': return week(dayFn, options);
-                case 'day': return dayFn(options);
-                default:
-                    expect(options.interval).to.be.oneOf([
-                        'year', 'quarter', 'month', 'week', 'day'
-                    ]);
-            }
         }
-    };
+    });
 };
 
 function readConfig(name) {
@@ -110,7 +102,7 @@ function delegateCall(delegate, cfg, cmd, options) {
         _.omit(config('markets')[asset.underlying.market], 'datasources', 'label', 'description') : null;
     const opts = !asset || !asset.underlying ? options :
         _.defaults({}, asset && asset.underlying, market, options);
-    return delegate[cmd](opts);
+    return delegate(opts);
 }
 
 function blendCall(delegate, cfg, cmd, options) {

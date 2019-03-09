@@ -42,7 +42,8 @@ describe("fetch-yahoo", function() {
         return client.close();
     });
     it("should find AABA", function() {
-        return client.lookup({symbol:'AABA'}).should.eventually.be.like(results => _.some(results, like({
+        return client({interval:'lookup', symbol:'AABA'})
+          .should.eventually.be.like(results => _.some(results, like({
             symbol: 'AABA',
             market: 'NASDAQ',
             yahoo_symbol: 'AABA',
@@ -50,7 +51,8 @@ describe("fetch-yahoo", function() {
         })));
     });
     it("should find IBM", function() {
-        return client.lookup({
+        return client({
+            interval:'lookup',
             symbol:'IBM',
             marketLang:'en-US',
             exch:'NYQ'
@@ -60,7 +62,7 @@ describe("fetch-yahoo", function() {
         });
     });
     it("should return daily", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'AABA',
             yahoo_symbol: 'AABA',
@@ -92,7 +94,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should return weekly", function() {
-        return client.interday({
+        return client({
             interval: 'week',
             symbol: 'AABA',
             yahoo_symbol: 'AABA',
@@ -107,7 +109,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should return monthly", function() {
-        return client.interday({
+        return client({
             interval: 'month',
             symbol: 'AABA',
             yahoo_symbol: 'AABA',
@@ -122,7 +124,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should return quarter", function() {
-        return client.interday({
+        return client({
             interval: 'quarter',
             symbol: 'AABA',
             yahoo_symbol: 'AABA',
@@ -134,7 +136,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should return year", function() {
-        return client.interday({
+        return client({
             interval: 'year',
             symbol: 'AABA',
             yahoo_symbol: 'AABA',
@@ -146,7 +148,8 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should find BRK.A symbol", function() {
-        return client.lookup({
+        return client({
+            interval:'lookup',
             symbol: 'BRK.A',
             marketLang: 'en-US'
         }).should.eventually.be.like(results => _.some(results, like(
@@ -154,7 +157,7 @@ describe("fetch-yahoo", function() {
         )));
     });
     it("should adjust first dividend", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'SPY',
             yahoo_symbol: 'SPY',
@@ -173,7 +176,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should adjust second dividend", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'SPY',
             yahoo_symbol: 'SPY',
@@ -208,7 +211,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should handle ignore peudo split entry", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'XLF',
             yahoo_symbol: 'XLF',
@@ -228,7 +231,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should adjust monthly dividend", function() {
-        return client.interday({
+        return client({
             interval: 'month',
             symbol: 'SPY',
             yahoo_symbol: 'SPY',
@@ -254,7 +257,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should adjust splits and dividends", function() {
-        return client.interday({
+        return client({
             interval: 'month',
             symbol: 'AAPL',
             yahoo_symbol: 'AAPL',
@@ -277,7 +280,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should adjust yearly dividends", function() {
-        return client.interday({
+        return client({
             interval: 'year',
             symbol: 'SPY',
             yahoo_symbol: 'SPY',
@@ -298,7 +301,7 @@ describe("fetch-yahoo", function() {
         ]);
     });
     it("should adjust for REM splits", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'REM',
             market: 'BATS',

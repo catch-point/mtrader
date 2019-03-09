@@ -54,17 +54,24 @@ module.exports = function() {
     const dirname = config('fetch.files.dirname') || dir;
     const store = storage(dirname);
     const open = (name, cb) => store.open(name, cb);
-    return {
+    return Object.assign(options => {
+        if (options.help) return readOrWriteHelp(fallbacks, open, 'help', options);
+        switch(options.interval) {
+            case 'lookup': return readOrWriteResult(fallbacks, open, 'lookup', options);
+            case 'fundamental': return readOrWriteResult(fallbacks, open, 'fundamental', options);
+            case 'year':
+            case 'quarter':
+            case 'month':
+            case 'week':
+            case 'day': return readOrWriteResult(fallbacks, open, 'interday', options);
+            default: return readOrWriteResult(fallbacks, open, 'intraday', options);
+        }
+    }, {
         async close() {
             await Promise.all(_.map(fallbacks, fb => fb.close()))
             return store.close();
-        },
-        help: readOrWriteHelp.bind(this, fallbacks, open, 'help'),
-        lookup: readOrWriteResult.bind(this, fallbacks, open, 'lookup'),
-        fundamental: readOrWriteResult.bind(this, fallbacks, open, 'fundamental'),
-        interday: readOrWriteResult.bind(this, fallbacks, open, 'interday'),
-        intraday: readOrWriteResult.bind(this, fallbacks, open, 'intraday')
-    };
+        }
+    });
 };
 
 function readOrWriteHelp(fallbacks, open, name) {
@@ -96,7 +103,7 @@ function readOrWriteHelp(fallbacks, open, name) {
 }
 
 async function help(datasources) {
-    const helps = await Promise.all(_.map(datasources, ds => ds.help()));
+    const helps = await Promise.all(_.map(datasources, ds => ds({help:true})));
     const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
     return groups.map(helps => helps.reduce((help, h) => {
         const options = _.extend({}, h.options, help.options);
@@ -119,7 +126,7 @@ async function help(datasources) {
 }
 
 function readOrWriteResult(fallbacks, open, cmd, options) {
-    const args = _.compact(_.pick(options, 'interval', 'minutes', 'begin', 'end'));
+    const args = _.compact(_.pick(options, 'interval', 'begin', 'end'));
     const name = options.market ? options.symbol + '.' + options.market : options.symbol;
     return open(name, async(err, db) => {
         if (err) throw err;
@@ -130,13 +137,11 @@ function readOrWriteResult(fallbacks, open, cmd, options) {
             else if (_.isEmpty(fallbacks))
                 throw Error("Data file not found " + coll.filenameOf(name));
             else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(async(err) => {
-                if (!(options.interval == 'lookup' && config(['fetch', source, 'lookup'])) &&
-                        !(options.interval == 'fundamental' && config(['fetch', source, 'fundamental'])) &&
-                        !_.contains(config(['fetch', source, 'interday']), options.interval) &&
-                        !_.contains(config(['fetch', source, 'intraday']), options.interval))
+                const intervals = config(['fetch', source, 'intervals']);
+                if (!_.contains(intervals, options.interval))
                     throw (err || Error("No fallback available for " + options.interval));
                 const opt = _.defaults({}, options);
-                const result = await fb[cmd](opt);
+                const result = await fb(opt);
                 await coll.writeTo(result, name)
                 return result;
             }), Promise.reject());

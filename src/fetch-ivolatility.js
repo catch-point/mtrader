@@ -82,7 +82,11 @@ function help() {
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
         properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type'],
-        options: commonOptions
+        options: _.extend({}, commonOptions, {
+            interval: {
+                values: ["lookup"]
+            },
+        })
     };
     const interday = {
         name: "interday",
@@ -93,7 +97,7 @@ function help() {
             interval: {
                 usage: "year|quarter|month|week|day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["year", "quarter", "month", "week", "day"], config('fetch.ivolatility.interday'))
+                values: _.intersection(["year", "quarter", "month", "week", "day"], config('fetch.ivolatility.intervals'))
             },
         })
     };
@@ -115,60 +119,70 @@ module.exports = function() {
         cfg.delegate == 'iqfeed' ? iqfeed() :
         cfg.delegate == 'files' ? files() : null;
     const ivolatility = Ivolatility(cacheDir, downloadDir, auth_file, downloadType);
-    return {
+    return Object.assign(options => {
+        if (options.help) return Promise.resolve(help());
+        switch(options.interval) {
+            case 'lookup': return lookup(options);
+            case 'year':
+            case 'quarter':
+            case 'month':
+            case 'week':
+            case 'day': return interday(ivolatility, delegate, options);
+            default: expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
+        }
+    }, {
         close() {
             return Promise.all([
                 delegate && delegate.close(),
                 ivolatility.close()
             ]);
-        },
-        help() {
-            return Promise.resolve(help());
-        },
-        async lookup(options) {
-            if (options.market && options.market != 'OPRA') return [];
-            const symbol = options.symbol;
-            const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
-            if (!m) return [];
-            const underlying = m[1];
-            const yy = +m[2];
-            const cc = yy<50 ? 2000 : 1900;
-            const year = cc + yy;
-            const day = m[3];
-            const mo = months[m[4]];
-            const cmonth = calls[m[4]];
-            const pmonth = puts[m[4]];
-            const pc = cmonth ? 'C' : 'P';
-            const month = cmonth || pmonth;
-            const strike = strike_format(+m[5]);
-            return [{
-                symbol: symbol,
-                market: 'OPRA',
-                listed_market: 'OPRA',
-                name: `${underlying} ${month} ${year} ${pc} ${strike}`,
-                strike_price: strike,
-                expiration_date: `${year}-${mo}-${day}`
-            }];
-        },
-        interday: options => {
-            expect(options).to.have.property('symbol');
-            expect(options).to.have.property('marketClosesAt');
-            expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
-            const dayFn = day.bind(this, loadIvolatility.bind(this, ivolatility.interday), delegate);
-            switch(options.interval) {
-                case 'year': return year(dayFn, options);
-                case 'quarter': return quarter(dayFn, options);
-                case 'month': return month(dayFn, options);
-                case 'week': return week(dayFn, options);
-                case 'day': return dayFn(options);
-                default:
-                    expect(options.interval).to.be.oneOf([
-                        'year', 'quarter', 'month', 'week', 'day'
-                    ]);
-            }
         }
-    };
+    });
 };
+
+async function lookup(options) {
+    if (options.market && options.market != 'OPRA') return [];
+    const symbol = options.symbol;
+    const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return [];
+    const underlying = m[1];
+    const yy = +m[2];
+    const cc = yy<50 ? 2000 : 1900;
+    const year = cc + yy;
+    const day = m[3];
+    const mo = months[m[4]];
+    const cmonth = calls[m[4]];
+    const pmonth = puts[m[4]];
+    const pc = cmonth ? 'C' : 'P';
+    const month = cmonth || pmonth;
+    const strike = strike_format(+m[5]);
+    return [{
+        symbol: symbol,
+        market: 'OPRA',
+        listed_market: 'OPRA',
+        name: `${underlying} ${month} ${year} ${pc} ${strike}`,
+        strike_price: strike,
+        expiration_date: `${year}-${mo}-${day}`
+    }];
+}
+
+function interday(ivolatility, delegate, options) {
+    expect(options).to.have.property('symbol');
+    expect(options).to.have.property('marketClosesAt');
+    expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
+    const dayFn = day.bind(this, loadIvolatility.bind(this, ivolatility.interday), delegate);
+    switch(options.interval) {
+        case 'year': return year(dayFn, options);
+        case 'quarter': return quarter(dayFn, options);
+        case 'month': return month(dayFn, options);
+        case 'week': return week(dayFn, options);
+        case 'day': return dayFn(options);
+        default:
+            expect(options.interval).to.be.oneOf([
+                'year', 'quarter', 'month', 'week', 'day'
+            ]);
+    }
+}
 
 const calls = {
     A: 'JAN', B: 'FEB', C: 'MAR', D: 'APR', E: 'MAY', F: 'JUN',
@@ -265,7 +279,7 @@ function day(readTable, delegate, options) {
             if (end.isBefore(opensAt)) return adata;
             if (!isOptionActive(options.symbol, opensAt, now)) return adata;
         }
-        const bdata = await delegate.interday(_.defaults({
+        const bdata = await delegate(_.defaults({
             interval: 'day',
             begin: adata.length ? _.last(adata).ending : options.begin
         }, options));

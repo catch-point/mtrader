@@ -57,7 +57,11 @@ function help() {
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix on the Yahoo! network",
         properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'type', 'typeDisp'],
-        options: commonOptions
+        options: _.extend({}, commonOptions, {
+            interval: {
+                values: ["lookup"]
+            },
+        })
     };
     const interday = {
         name: "interday",
@@ -68,7 +72,7 @@ function help() {
             interval: {
                 usage: "year|quarter|month|week|day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["year", "quarter", "month", "week", "day"], config('fetch.yahoo.interday'))
+                values: _.intersection(["year", "quarter", "month", "week", "day"], config('fetch.yahoo.intervals'))
             },
             begin: {
                 example: "YYYY-MM-DD",
@@ -89,7 +93,7 @@ function help() {
             }
         })
     };
-    return config('fetch.yahoo.lookup') ? [lookup, interday] : [interday];
+    return ~config('fetch.yahoo.intervals').indexOf('lookup') ? [lookup, interday] : [interday];
 }
 
 module.exports = function() {
@@ -103,7 +107,19 @@ module.exports = function() {
         });
     });
     const adjustments = new Adjustments(yahoo);
-    return {
+    return Object.assign(options => {
+        if (options.help) return Promise.resolve(helpInfo);
+        switch(options.interval) {
+            case 'lookup': return lookup(markets, yahoo, options);
+            case 'fundamental': throw Error("Yahoo! fundamental service has been discontinued");
+            case 'year':
+            case 'quarter':
+            case 'month':
+            case 'week':
+            case 'day': return interday(yahoo, adjustments, symbol, options);
+            default: throw Error("Intraday is not supported by this Yahoo! datasource");
+        }
+    }, {
         close() {
             return Promise.all(_.map(yahoo, (fn, name) => {
                 if (_.isFunction(fn.close)) {
@@ -112,69 +128,62 @@ module.exports = function() {
                     return fn();
                 }
             }).concat(adjustments.close()));
-        },
-        help() {
-            return Promise.resolve(helpInfo);
-        },
-        lookup(options) {
-            const langs = _.uniq(_.compact(_.map(markets, market =>
-                    market.datasources.yahoo && market.datasources.yahoo.marketLang
-                )));
-            return Promise.all(langs.map(marketLang =>
-                yahoo.lookup(symbol(options), marketLang)
-            )).then(rows => _.flatten(rows, true)).then(rows => rows.filter(row => {
-                const suffix = options.yahooSuffix || '';
-                return !suffix || row.symbol.indexOf(suffix) == row.symbol.length - suffix.length;
-            })).then(rows => rows.map(row => {
-                const sym = row.symbol;
-                const sources = options.market ? {[options.market]: options} :
-                    _.pick(_.mapObject(markets, market =>
-                        market.datasources.yahoo
-                    ), source =>
-                        source && _.contains(source.exchs, row.exch)
-                    );
-                const ds = _.find(sources);
-                const suffix = ds && ds.yahooSuffix || '';
-                const endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
-                const symbol = endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
-                return {
-                    symbol: symbol,
-                    yahoo_symbol: row.symbol,
-                    market: _.first(_.keys(sources)),
-                    name: row.name,
-                    type: row.type,
-                    typeDisp: row.typeDisp
-                };
-            })).then(rows => rows.filter(row => row.market));
-        },
-        fundamental(options) {
-            throw Error("Yahoo! fundamental service has been discontinued");
-        },
-        interday(options) {
-            expect(options).to.be.like({
-                interval: _.isString,
-                symbol: /^\S+$/,
-                begin: Boolean,
-                marketClosesAt: _.isString,
-                tz: _.isString
-            });
-            switch(options.interval) {
-                case 'year': return year(yahoo, adjustments, symbol(options), options);
-                case 'quarter': return quarter(yahoo, adjustments, symbol(options), options);
-                case 'month': return month(yahoo, adjustments, symbol(options), options);
-                case 'week': return week(yahoo, adjustments, symbol(options), options);
-                case 'day': return day(yahoo, adjustments, symbol(options), options);
-                default:
-                    expect(options.interval).to.be.oneOf([
-                        'year', 'quarter', 'month', 'week', 'day'
-                    ]);
-            }
-        },
-        intraday(options) {
-            throw Error("Intraday is not supported by this Yahoo! datasource");
         }
-    };
+    });
 };
+
+function lookup(markets, yahoo, options) {
+    const langs = _.uniq(_.compact(_.map(markets, market =>
+            market.datasources.yahoo && market.datasources.yahoo.marketLang
+        )));
+    return Promise.all(langs.map(marketLang =>
+        yahoo.lookup(yahoo_symbol(markets, options), marketLang)
+    )).then(rows => _.flatten(rows, true)).then(rows => rows.filter(row => {
+        const suffix = options.yahooSuffix || '';
+        return !suffix || row.symbol.indexOf(suffix) == row.symbol.length - suffix.length;
+    })).then(rows => rows.map(row => {
+        const sym = row.symbol;
+        const sources = options.market ? {[options.market]: options} :
+            _.pick(_.mapObject(markets, market =>
+                market.datasources.yahoo
+            ), source =>
+                source && _.contains(source.exchs, row.exch)
+            );
+        const ds = _.find(sources);
+        const suffix = ds && ds.yahooSuffix || '';
+        const endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
+        const symbol = endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
+        return {
+            symbol: symbol,
+            yahoo_symbol: row.symbol,
+            market: _.first(_.keys(sources)),
+            name: row.name,
+            type: row.type,
+            typeDisp: row.typeDisp
+        };
+    })).then(rows => rows.filter(row => row.market));
+}
+
+function interday(yahoo, adjustments, symbol, options) {
+    expect(options).to.be.like({
+        interval: _.isString,
+        symbol: /^\S+$/,
+        begin: Boolean,
+        marketClosesAt: _.isString,
+        tz: _.isString
+    });
+    switch(options.interval) {
+        case 'year': return year(yahoo, adjustments, symbol(options), options);
+        case 'quarter': return quarter(yahoo, adjustments, symbol(options), options);
+        case 'month': return month(yahoo, adjustments, symbol(options), options);
+        case 'week': return week(yahoo, adjustments, symbol(options), options);
+        case 'day': return day(yahoo, adjustments, symbol(options), options);
+        default:
+            expect(options.interval).to.be.oneOf([
+                'year', 'quarter', 'month', 'week', 'day'
+            ]);
+    }
+}
 
 function yahoo_symbol(markets, options) {
     if (options.yahoo_symbol) {

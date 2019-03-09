@@ -48,7 +48,8 @@ describe("fetch-iqfeed", function() {
         if (client) return client.close();
     });
     it("should find AABA", function() {
-        return client.lookup({symbol:'AABA'}).should.eventually.be.like(results => _.some(results, like({
+        return client({interval:'lookup',symbol:'AABA'})
+          .should.eventually.be.like(results => _.some(results, like({
             symbol: 'AABA',
             market: 'NASDAQ',
             iqfeed_symbol: 'AABA',
@@ -56,7 +57,8 @@ describe("fetch-iqfeed", function() {
         })));
     });
     it("should find AABA details", function() {
-        return client.fundamental({
+        return client({
+            interval:'fundamental',
             symbol:'AABA',
             market: 'NASDAQ',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
@@ -66,13 +68,14 @@ describe("fetch-iqfeed", function() {
         }]);
     });
     it("should find IBM", function() {
-        return client.lookup({symbol:'IBM', listed_market:"NYSE"}).should.eventually.be.like(results => _.some(results, like({
+        return client({interval:'lookup',symbol:'IBM', listed_market:"NYSE"})
+          .should.eventually.be.like(results => _.some(results, like({
             symbol: 'IBM',
             name: "INTERNATIONAL BUSINESS MACHINE"
         })));
     });
     it("should return daily", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'AABA',
             market: 'NASDAQ',
@@ -104,7 +107,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should return weekly", function() {
-        return client.interday({
+        return client({
             interval: 'week',
             symbol: 'AABA',
             market: 'NASDAQ',
@@ -119,7 +122,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should return monthly", function() {
-        return client.interday({
+        return client({
             interval: 'month',
             symbol: 'AABA',
             market: 'NASDAQ',
@@ -134,7 +137,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should return quarter", function() {
-        return client.interday({
+        return client({
             interval: 'quarter',
             symbol: 'AABA',
             market: 'NASDAQ',
@@ -146,7 +149,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should return year", function() {
-        return client.interday({
+        return client({
             interval: 'year',
             symbol: 'AABA',
             market: 'NASDAQ',
@@ -158,7 +161,8 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should find BRK.A symbol", function() {
-        return client.lookup({
+        return client({
+            interval:'lookup',
             symbol: 'BRK.A',
             marketLang: 'en-US'
         }).should.eventually.be.like(results => _.some(results, like(
@@ -166,7 +170,7 @@ describe("fetch-iqfeed", function() {
         )));
     });
     it("should adjust first dividend", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'SPY',
             market: 'ARCA',
@@ -185,7 +189,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should adjust second dividend", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'SPY',
             market: 'ARCA',
@@ -220,7 +224,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should handle ignore peudo split entry", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'XLF',
             market: 'ARCA',
@@ -240,7 +244,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should adjust monthly dividend", function() {
-        return client.interday({
+        return client({
             interval: 'month',
             symbol: 'SPY',
             market: 'ARCA',
@@ -266,7 +270,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should adjust splits and dividends", function() {
-        return client.interday({
+        return client({
             interval: 'month',
             symbol: 'AAPL',
             market: 'NASDAQ',
@@ -289,7 +293,8 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should adjust splits and dividends on intraday", function() {
-        return client.intraday({
+        return client({
+            interval: 'm30',
             minutes: 30,
             symbol: 'AAPL',
             market: 'NASDAQ',
@@ -349,7 +354,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should adjust yearly dividends", function() {
-        return client.interday({
+        return client({
             interval: 'year',
             symbol: 'SPY',
             market: 'ARCA',
@@ -370,7 +375,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should adjust for REM splits", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'REM',
             market: 'BATS',
@@ -405,7 +410,8 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should find USD/CAD details", function() {
-        return client.fundamental({
+        return client({
+            interval:'fundamental',
             symbol:'USDCAD.FXCM', 
             marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like([{
@@ -415,7 +421,7 @@ describe("fetch-iqfeed", function() {
         }]);
     });
     it("should return daily FX", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'USDCAD.FXCM',
             begin: '2014-01-01', end: '2014-02-01',
@@ -446,7 +452,7 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should return weekly FX", function() {
-        return client.interday({
+        return client({
             interval: 'week',
             symbol: 'USDCAD.FXCM',
             begin: moment.tz('2014-01-05', tz),
@@ -459,7 +465,7 @@ describe("fetch-iqfeed", function() {
         ]));
     });
     it("should return monthly FX", function() {
-        return client.interday({
+        return client({
             interval: 'month',
             symbol: 'USDCAD.FXCM',
             begin: moment.tz('2014-01-01', tz),
@@ -480,7 +486,7 @@ describe("fetch-iqfeed", function() {
         ]));
     });
     it("should return quarter FX", function() {
-        return client.interday({
+        return client({
             interval: 'quarter',
             symbol: 'USDCAD.FXCM',
             begin: moment.tz('2014-01-01', tz),
@@ -493,7 +499,7 @@ describe("fetch-iqfeed", function() {
         ]));
     });
     it("should return year FX", function() {
-        return client.interday({
+        return client({
             interval: 'year',
             symbol: 'USDCAD.FXCM',
             begin: moment.tz('2014-01-01', tz),
@@ -503,12 +509,14 @@ describe("fetch-iqfeed", function() {
         ]));
     });
     it("should find BRK.A symbol", function() {
-        return client.lookup({symbol:'BRK.A', listed_market:"NYSE"}).should.eventually.be.like(results => _.some(results, like(
+        return client({interval:'lookup', symbol:'BRK.A', listed_market:"NYSE"})
+          .should.eventually.be.like(results => _.some(results, like(
             {symbol: /^BRK.A/, name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
         )));
     });
     it("should return minutes", function() {
-        return client.intraday({
+        return client({
+            interval: 'm1',
             minutes: 1,
             symbol: 'USDCAD.FXCM',
             begin: moment('2014-03-03T10:01:00-0500'),
@@ -548,7 +556,8 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should return 10 minute intervals", function() {
-        return client.intraday({
+        return client({
+            interval: 'm10',
             minutes: 10,
             symbol: 'USDCAD.FXCM',
             begin: moment('2014-03-03T10:10:00-0500'),
@@ -564,7 +573,8 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should estimate daily", function() {
-        return client.rollday({
+        return client({
+            rollday: true,
             minutes: 30,
             interval: 'day',
             symbol: 'USDCAD.FXCM',
@@ -596,7 +606,8 @@ describe("fetch-iqfeed", function() {
         ]);
     });
     it("should estimate weekly", function() {
-        return client.rollday({
+        return client({
+            rollday: true,
             minutes: 30,
             interval: 'week',
             symbol: 'USDCAD.FXCM',
@@ -610,7 +621,8 @@ describe("fetch-iqfeed", function() {
         ]));
     });
     it("should estimate monthly", function() {
-        return client.rollday({
+        return client({
+            rollday: true,
             minutes: 30,
             interval: 'month',
             symbol: 'USDCAD.FXCM',
@@ -632,7 +644,8 @@ describe("fetch-iqfeed", function() {
         ]));
     });
     it("should estimate quarter", function() {
-        return client.rollday({
+        return client({
+            rollday: true,
             minutes: 30,
             interval: 'quarter',
             symbol: 'USDCAD.FXCM',
@@ -646,7 +659,8 @@ describe("fetch-iqfeed", function() {
         ]));
     });
     it("should estimate year", function() {
-        return client.rollday({
+        return client({
+            rollday: true,
             minutes: 30,
             interval: 'year',
             symbol: 'USDCAD.FXCM',
@@ -658,7 +672,8 @@ describe("fetch-iqfeed", function() {
     });
     it.skip("should lookup many iqfeed futures symbols", function() {
         return Promise.all(_.flatten(_.range(10,19).map(year => ['H','M','U','Z'].map(mo => {
-            return client.lookup({
+            return client({
+                interval:'lookup',
                 symbol: `6E${mo}${year}`,
                 market: "CME"
             }).catch(err => err);
@@ -687,7 +702,7 @@ describe("fetch-iqfeed", function() {
           .should.eventually.be.empty;
     });
     it.skip("should use summary info for OPRA intraday", function() {
-        return client.interday({
+        return client({
             interval: 'day',
             symbol: 'SPX1918D2675',
             market: 'OPRA',

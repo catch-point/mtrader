@@ -100,7 +100,7 @@ function promiseDatasources() {
     if (_.isEmpty(sources)) {
         sources.push(yahoo());
     }
-    return Promise.all(sources.map(source => source.help()))
+    return Promise.all(sources.map(source => source({help:true})))
       .then(result => result.reduce((datasources, help, i) => {
         return _.flatten(help).reduce((datasources, info) => {
             if (info.name == 'interday' && info.options.interval.values) {
@@ -138,7 +138,7 @@ function close(datasources) {
 function help(datasources) {
     const marketOptions = _.uniq(_.flatten(_.map(config('markets'), _.keys), true));
     return Promise.all(_.map(datasources, datasource => {
-        return datasource.help();
+        return datasource({help:true});
     })).then(helps => {
         const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
         return groups.map(helps => helps.reduce((help, h) => {
@@ -184,7 +184,8 @@ function lookup(datasources, options) {
     const almost = new RegExp('\\b' + symbol.replace(/\W/g, '.*') + '\\b');
     const sources = market ? datasources[market] : _.uniq(_.flatten(_.values(datasources)));
     const results = _.map(sources, datasource => {
-        return datasource.lookup(_.defaults({
+        return datasource(_.defaults({
+            interval: 'lookup',
             symbol: symbol,
             market: market || undefined
         }, options)).then(list => list.map(item => {
@@ -232,7 +233,7 @@ function fundamental(datasources, options) {
     const now = moment();
     let error;
     return datasources[options.market].map(datasource => {
-        return datasource.fundamental(options);
+        return datasource(options);
     }).reduce((promise, data) => promise.then(result => {
         return data.then(a => a.reduce((result,o) => _.defaults(result, o), result), err => {
             if (!error) error = err;
@@ -270,7 +271,7 @@ function interday(datasources, options) {
         begin: begin.format()
     }, options);
     return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
-        return datasource.interday(opts).then(result => {
+        return datasource(opts).then(result => {
             if (err && !_.isArray(err)) logger.debug("Fetch", opts.interval, "failed", err.stack);
             if (_.isArray(err) && err.length >= result.length)
                 return err;
@@ -308,12 +309,9 @@ function intraday(datasources, options) {
     const opts = options.begin ? options : _.defaults({
         begin: moment(now).startOf('day').format()
     }, options);
-    const minutes = opts.minutes || +opts.interval.substring(1);
     return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
-        return datasource.intraday(_.defaults({
-            minutes: +minutes
-        }, opts)).then(result => {
-            if (err) logger.debug("Fetch", minutes, "minutes failed", err);
+        return datasource(opts).then(result => {
+            if (err) logger.debug("Fetch", options.interval, "intraday failed", err);
             return result;
         }, err2 => {
             if (!err) throw err2;

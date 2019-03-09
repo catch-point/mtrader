@@ -79,25 +79,33 @@ function help() {
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
         properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type'],
-        options: commonOptions
+        options: _.extend({}, commonOptions, {
+            interval: {
+                values: ["lookup"]
+            },
+        })
     };
     const fundamental = {
         name: "fundamental",
         usage: "fundamental(options)",
         description: "Details of a security on the local IQFeed client",
         properties: ['type', 'symbol', 'market_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'market_root'],
-        options: _.extend(commonOptions, tzOptions)
+        options: _.extend({}, commonOptions, tzOptions, {
+            interval: {
+                values: ["fundamental"]
+            },
+        })
     };
     const interday = {
         name: "interday",
         usage: "interday(options)",
         description: "Historic interday data for a security on the local IQFeed client",
         properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
-        options: _.extend(commonOptions, durationOptions, tzOptions, {
+        options: _.extend({}, commonOptions, durationOptions, tzOptions, {
             interval: {
                 usage: "year|quarter|month|week|day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["year", "quarter", "month", "week", "day"],config('fetch.iqfeed.interday'))
+                values: _.intersection(["year", "quarter", "month", "week", "day"],config('fetch.iqfeed.intervals'))
             },
         })
     };
@@ -106,40 +114,32 @@ function help() {
         usage: "intraday(options)",
         description: "Historic intraday data for a security on the local IQFeed client",
         properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'total_volume', 'adj_close'],
-        options: _.extend(commonOptions, durationOptions, tzOptions, {
-            minutes: {
-                description: "Number of minutes in a single bar length",
-                values: config('fetch.iqfeed.intraday')
+        options: _.extend({}, commonOptions, durationOptions, tzOptions, {
+            interval: {
+                usage: "m<minutes>",
+                description: "Number of minutes in a single bar length, prefixed by the letter 'm'",
+                values: config('fetch.iqfeed.intervals')
                     .filter(interval => /^m\d+$/.test(interval))
-                    .map(interval => parseInt(interval.substring(1)))
             }
         })
     };
     return _.compact([
-        config('fetch.iqfeed.lookup') && lookup,
-        config('fetch.iqfeed.fundamental') && fundamental,
-        config('fetch.iqfeed.interday') && interday,
-        config('fetch.iqfeed.intraday') && intraday
+        ~config('fetch.iqfeed.intervals').indexOf('lookup') && lookup,
+        ~config('fetch.iqfeed.intervals').indexOf('fundamental') && fundamental,
+        interday.options.interval.values.length && interday,
+        intraday.options.interval.values.length && intraday
     ]);
 }
 
 module.exports = function() {
     const helpInfo = help();
-    const self = new.target ? this : {};
-    return register(Object.assign(self, {
-        close() {
-            return unregister(self);
-        },
-        help() {
-            return Promise.resolve(helpInfo);
-        },
-        open: sharedInstance.bind(self, 'open'),
-        lookup: sharedInstance.bind(self, 'lookup'),
-        fundamental: sharedInstance.bind(self, 'fundamental'),
-        interday: sharedInstance.bind(self, 'interday'),
-        intraday: sharedInstance.bind(self, 'intraday'),
-        rollday: sharedInstance.bind(self, 'rollday'),
-    }));
+    const self = options => {
+        if (self.closed) throw Error("IQFeed has closed");
+        else return sharedInstance(options);
+    };
+    self.open = () => sharedInstance({open:true});
+    self.close = () => unregister(self);
+    return register(self);
 };
 
 let shared_instance, instance_timer;
@@ -148,15 +148,15 @@ const references = [];
 let instance_lock = Promise.resolve();
 
 /** Track the references to this model */
-function register(ref) {
-    references.push(ref);
-    return ref;
+function register(self) {
+    references.push(self);
+    return self;
 }
 
 /** If this is the last reference, release shared instance */
-function unregister(ref) {
-    ref.closed = true;
-    const idx = references.indexOf(ref);
+function unregister(self) {
+    self.closed = true;
+    const idx = references.indexOf(self);
     if (idx < 0) return Promise.resolve();
     references.splice(idx, 1)
     return instance_lock = instance_lock.catch(_.noop).then(() => {
@@ -166,19 +166,18 @@ function unregister(ref) {
 }
 
 /** Use the shared instance, creating a new one if needed */
-function sharedInstance(cmd, options) {
-    if (this.closed) throw Error("IQFeed has closed");
+function sharedInstance(options) {
     last_used = elapsed_time;
-    if (shared_instance) return shared_instance[cmd](options);
+    if (shared_instance) return shared_instance(options);
     else return instance_lock = instance_lock.catch(_.noop).then(() => {
+        if (shared_instance) return shared_instance(options);
         shared_instance = createInstance();
         instance_timer = setInterval(() => {
             if (last_used < elapsed_time++) {
                 releaseInstance().catch(logger.error);
             }
-        }, config('fetch.iqfeed.timeout') || 600000);
-        instance_timer.unref();
-        return shared_instance[cmd](options);
+        }, config('fetch.iqfeed.timeout') || 600000).unref();
+        return shared_instance(options);
     });
 }
 
@@ -207,21 +206,23 @@ function createInstance() {
     const lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_markets) => {
         return symbol + ' ' + _.compact(_.flatten([listed_markets])).join(' ');
     }, 10);
-    return {
-        open() {
+    return Object.assign(options => {
+        if (options.open) {
             return iqclient.open();
-        },
-        close() {
-            return Promise.all([
-                lookupCached.close(),
-                iqclient.close(),
-                adjustments.close()
-            ]);
-        },
-        help() {
+        } else if (options.help) {
             return Promise.resolve(helpInfo);
-        },
-        lookup(options) {
+        } else if (options.rollday) {
+            expect(options).to.be.like({
+                interval: _.isString,
+                minutes: _.isFinite,
+                symbol: /^\S+$/,
+                begin: Boolean,
+                tz: _.isString
+            });
+            expect(options.tz).to.match(/^\S+\/\S+$/);
+            const adj = isNotEquity(markets, options) ? null : adjustments;
+            return rollday(iqclient, adj, options.interval, symbol(options), options);
+        } else if (options.interval == 'lookup') {
             const exchs = _.pick(_.mapObject(
                 options.market ? _.pick(markets, [options.market]) : markets,
                 exch => exch.datasources.iqfeed
@@ -230,8 +231,7 @@ function createInstance() {
                 _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
             if (_.isEmpty(exchs)) return Promise.resolve([]);
             else return lookupCached(exchs, symbol(options), listed_markets);
-        },
-        fundamental(options) {
+        } else if (options.interval == 'fundamental') {
             expect(options).to.be.like({
                 symbol: /^\S+$/,
                 marketClosesAt: _.isString,
@@ -240,8 +240,7 @@ function createInstance() {
             return iqclient.fundamental(symbol(options),
                 options.marketClosesAt, options.tz
             ).then(fundamental => [_.extend({name: fundamental.company_name}, fundamental)]);
-        },
-        interday(options) {
+        } else if (~['year', 'quarter', 'month', 'week', 'day'].indexOf(options.interval)) {
             expect(options).to.be.like({
                 interval: _.isString,
                 symbol: /^\S+$/,
@@ -253,10 +252,9 @@ function createInstance() {
             expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
             const adj = isNotEquity(markets, options) ? null : adjustments;
             return interday(iqclient, adj, symbol(options), options);
-        },
-        intraday(options) {
+        } else {
             expect(options).to.be.like({
-                minutes: _.isFinite,
+                interval: str => _.isString(str) && _.isFinite(str.substring(1)),
                 symbol: /^\S+$/,
                 begin: Boolean,
                 tz: _.isString
@@ -264,20 +262,16 @@ function createInstance() {
             expect(options.tz).to.match(/^\S+\/\S+$/);
             const adj = isNotEquity(markets, options) ? null : adjustments;
             return intraday(iqclient, adj, symbol(options), options);
-        },
-        rollday(options) {
-            expect(options).to.be.like({
-                interval: _.isString,
-                minutes: _.isFinite,
-                symbol: /^\S+$/,
-                begin: Boolean,
-                tz: _.isString
-            });
-            expect(options.tz).to.match(/^\S+\/\S+$/);
-            const adj = isNotEquity(markets, options) ? null : adjustments;
-            return rollday(iqclient, adj, options.interval, symbol(options), options);
         }
-    };
+    }, {
+        close() {
+            return Promise.all([
+                lookupCached.close(),
+                iqclient.close(),
+                adjustments.close()
+            ]);
+        }
+    });
 }
 
 function iqfeed_symbol(markets, options) {
@@ -507,8 +501,10 @@ async function day(iqclient, adjustments, symbol, options) {
 }
 
 async function intraday(iqclient, adjustments, symbol, options) {
+    const minutes = +options.interval.substring(1);
+    expect(minutes).to.be.finite;
     const [prices, adjusts] = await Promise.all([
-        iqclient.minute(options.minutes, symbol, options.begin, options.end, options.tz),
+        iqclient.minute(minutes, symbol, options.begin, options.end, options.tz),
         adjustments && adjustments(options)
     ]);
     const result = adjRight(prices, adjusts, options, (today, datum, splits, adj) => ({
@@ -593,8 +589,11 @@ async function mostRecentTrade(iqclient, adjustments, symbol, options) {
 }
 
 async function rollday(iqclient, adjustments, interval, symbol, options) {
+    expect(options).to.have.property('minutes').that.is.finite;
     const asof = moment().tz(options.tz).format();
-    const bars = await intraday(iqclient, adjustments, symbol, options);
+    const bars = await intraday(iqclient, adjustments, symbol, _.defaults({
+        interval: 'm' + options.minutes
+    }, options));
     return bars.reduce((days, bar) => {
         const merging = days.length && _.last(days).ending >= bar.ending;
         if (!merging && isBeforeOpen(bar.ending, options)) return days;

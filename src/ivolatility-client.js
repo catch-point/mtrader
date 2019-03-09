@@ -65,12 +65,13 @@ module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
     };
     processing = processEveryDay();
     return {
-        listAvailableDownloads(dType) {
+        async listAvailableDownloads(dType) {
             const token = auth_file ? fs.readFileSync(auth_file, 'utf8').trim() : '';
             const auth = new Buffer.from(token, 'base64').toString().split(/:/);
             const username = auth[0];
             const password = auth[1];
-            return listAvailableDownloads(username, password, dType || downloadType);
+            const cookies = await retrieveCookies(username, password);
+            return listAvailableDownloads(username, cookies, dType || downloadType);
         },
         downloadUpdates(dType) {
             return downloadUpdates(downloadDir, auth_file, dType || downloadType);
