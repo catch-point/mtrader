@@ -8,7 +8,7 @@
     {
      "symbol": "XIC",
      "yahoo_symbol": "XIC.TO",
-     "market": "TSX",
+     "market": "TSE",
      "name": "iShares Core S&P/TSX Capped Composite Index ETF",
      "exch": "TOR",
      "type": "E",
@@ -20,7 +20,7 @@
     {
      "symbol": "XIC",
      "yahoo_symbol": "XIC.TO",
-     "market": "TSX",
+     "market": "TSE",
      "name": "iShares Core S&P/TSX Capped Composite Index ETF",
      "exch": "TOR",
      "type": "E",

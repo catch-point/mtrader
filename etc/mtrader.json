@@ -7,12 +7,12 @@
   "fetch": {
     "yahoo": {
       "intervals": ["lookup", "year", "quarter", "month", "week", "day"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV"]
+      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSE", "VENTURE"]
     },
     "iqfeed": {
       "enabled": false,
       "intervals": ["lookup", "fundamental", "year", "quarter", "month", "week", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSX", "TSXV", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOE", "COMEX", "X"]
+      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSE", "VENTURE", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOE", "COMEX", "X"]
     },
     "ivolatility": {
       "enabled": false,
@@ -160,7 +160,7 @@
         }
       }
     },
-    "TSX": {
+    "TSE": {
       "label": "Toronto Stock Exchange",
       "description": "The Toronto Stock Exchange is the largest stock exchange in Canada, the third largest in North America and the seventh largest in the world by market capitalization. Based in Toronto, it is owned by and operated as a subsidiary of the TMX Group for the trading of senior equities.",
       "afterHoursClosesAt": "16:00:00",
@@ -182,7 +182,7 @@
         }
       }
     },
-    "TSXV": {
+    "VENTURE": {
       "description": "The TSX Venture Exchange is a stock exchange in Canada. It is headquartered in Calgary, Alberta and has offices in Toronto, Vancouver, and Montreal.",
       "label": "TSX Venture Exchange",
       "afterHoursClosesAt": "16:00:00",

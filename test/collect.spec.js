@@ -474,7 +474,7 @@ describe("collect", function() {
     });
     it("external instrument", function() {
         return collect({
-          portfolio: 'USD.CAD,SPY.ARCA,XIC.TSX',
+          portfolio: 'USD.CAD,SPY.ARCA,XIC.TSE',
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
@@ -490,7 +490,7 @@ describe("collect", function() {
           pad_leading: 1,
           // USD.CAD day.ending is an hour after SPY.ARCA day.ending, so
           // the previous USD.CAD day.close is used
-          filter: 'market=IF(usd_cad_cvar<0.01,"ARCA","TSX")'
+          filter: 'market=IF(usd_cad_cvar<0.01,"ARCA","TSE")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
             {symbol:"SPY",date:"2016-01-05",Price:201.36},
@@ -523,7 +523,7 @@ describe("collect", function() {
                 cvar: 'TOD(CVAR(5,60,m240.close))'
             },
             criteria: 'TIME(m240.ending)="16:00:00"'
-          }, 'SPY.ARCA','XIC.TSX'],
+          }, 'SPY.ARCA','XIC.TSE'],
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
@@ -534,7 +534,7 @@ describe("collect", function() {
           variables: {
               usd_cad_cvar: 'MAXPREC("cvar", 0, "symbol=\'USD\' AND market=\'CAD\'")'
           },
-          filter: 'market=IF(usd_cad_cvar<0.01,"ARCA","TSX")'
+          filter: 'market=IF(usd_cad_cvar<0.01,"ARCA","TSE")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
             {symbol:"SPY",date:"2016-01-05",Price:201.36},
