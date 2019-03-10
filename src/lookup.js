@@ -122,8 +122,7 @@ async function saveInfo(dir, symbol, market, info) {
 }
 
 function getInfoFileName(dir, symbol, market) {
-    const name = market ? symbol + '.' + market : symbol;
-    return path.resolve(dir, safe(name), 'info.json');
+    return path.resolve(dir, market || '', safe(symbol), 'info.json');
 }
 
 function safe(segment) {

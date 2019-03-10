@@ -54,11 +54,13 @@ module.exports = function(fetch) {
     let promiseHelp;
     const lookup = Lookup(fetch);
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    const store = storage(dir);
+    const stores = {};
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(fetch);
         if (options.help) return promiseHelp;
-        else return promiseHelp.then(help => {
+        const market = options.market || '';
+        const store = stores[market] = stores[market] || storage(path.resolve(dir, market || ''));
+        return promiseHelp.then(help => {
             const fields = _.first(help).properties;
             const opts = _.pick(options, _.keys(_.first(help).options));
             return lookup(opts).then(opts =>  {
@@ -67,7 +69,7 @@ module.exports = function(fetch) {
         });
     }, {
         close() {
-            return store.close();
+            return Promise.all(_.keys(stores).map(market => stores[market].close()));
         }
     });
 };
@@ -154,8 +156,6 @@ function help(fetch) {
  * that each pass the given criteria and are within the begin/end range.
  */
 function quote(fetch, store, fields, options) {
-    const name = options.market ?
-        options.symbol + '.' + options.market : options.symbol;
     try {
         if (options.columns) expect(options.columns).not.to.have.property('length'); // not array like
         if (options.variables) expect(options.variables).not.to.have.property('length'); // not array like
@@ -167,7 +167,7 @@ function quote(fetch, store, fields, options) {
         const criteria = parseCriteriaMap(options.criteria, fields, cached, intervals, options);
         const interval = intervals[0];
         intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
-        return store.open(name, (err, db) => {
+        return store.open(options.symbol, (err, db) => {
             if (err) throw err;
             const quoteBars = fetchBars.bind(this, fetch, db, fields);
             return inlinePadBegin(quoteBars, interval, options)
@@ -175,7 +175,7 @@ function quote(fetch, store, fields, options) {
               .then(options => mergeBars(quoteBars, exprMap, criteria, options));
         }).then(signals => formatColumns(fields, signals, options));
     } catch (e) {
-        throw Error((e.message || e) + " for " + name);
+        throw Error((e.message || e) + " for " + options.symbol);
     }
 }
 
@@ -712,7 +712,7 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
 }
 
 function isWeekend(bar, options) {
-    if (bar.asof < bar.ending) return false; // more upto date bar available
+    if (!(bar.asof >= bar.ending)) return false; // more upto date bar available
     if (!isEndOfWeek(bar.ending, options)) return false;
     return isBeforeStartOfWeek(bar.asof, options);
 }

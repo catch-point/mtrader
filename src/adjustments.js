@@ -78,23 +78,23 @@ function help() {
 module.exports = function(yahooClient) {
     const helpInfo = help();
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    const store = storage(dir);
+    const stores = {};
     const markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
     const symbol = yahoo_symbol.bind(this, markets);
     const yahoo = yahooClient || Yahoo();
     return _.extend(options => {
         if (options.help) return Promise.resolve(helpInfo);
         else if (options.market && !markets[options.market]) return Promise.resolve([]);
-        const name = options.market ? options.symbol + '.' + options.market :
-            options.yahoo_symbol ? options.yahoo_symbol : options.symbol;
-        return store.open(name, async(err, db) => {
+        const market = options.market || '';
+        const store = stores[market] = stores[market] || storage(path.resolve(dir, market || ''));
+        return store.open(options.symbol, async(err, db) => {
             if (err) throw err;
             const data = await adjustments(yahoo, db, symbol(options), options);
             return filterAdj(data, options);
         });
     }, {
         close() {
-            return Promise.all([store.close(), !yahooClient && yahoo.close()]);
+            return Promise.all([!yahooClient && yahoo.close()].concat(_.keys(stores).map(market => stores[market].close())));
         }
     });
 };
