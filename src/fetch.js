@@ -72,8 +72,6 @@ module.exports = function() {
                 default:
                     if (interval && interval.charAt(0) == 'm' && _.isFinite(interval.substring(1)))
                         return intraday(datasources[interval], opt);
-                    else if (options.minutes && _.isFinite(options.minutes))
-                        return intraday(datasources[interval], opt);
                     else
                         return Promise.reject(Error("Unknown interval " + interval));
             }
@@ -107,9 +105,8 @@ function promiseDatasources() {
                 return info.options.interval.values.reduce((datasources, interval) => {
                     return addSource(datasources, interval, info.options.market.values, sources[i]);
                 }, datasources);
-            } else if (info.name == 'intraday' && info.options.minutes.values) {
-                return info.options.minutes.values.reduce((datasources, minutes) => {
-                    const interval = 'm' + minutes;
+            } else if (info.name == 'intraday' && info.options.interval.values) {
+                return info.options.interval.values.reduce((datasources, interval) => {
                     return addSource(datasources, interval, info.options.market.values, sources[i]);
                 }, datasources);
             } else {
