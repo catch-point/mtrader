@@ -93,60 +93,6 @@ describe("fetch-yahoo", function() {
             {ending:'2014-01-31T16:00:00-05:00',open:34.69,high:36.33,low:34.55,close:36.01}
         ]);
     });
-    it("should return weekly", function() {
-        return client({
-            interval: 'week',
-            symbol: 'AABA',
-            yahoo_symbol: 'AABA',
-            begin: moment.tz('2014-01-06', tz),
-            end: moment.tz('2014-02-01', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([
-            {ending:'2014-01-10T16:00:00-05:00',open:40.05,high:41.72,low:39.75,close:41.23},
-            {ending:'2014-01-17T16:00:00-05:00',open:41.16,high:41.31,low:39.47,close:40.01},
-            {ending:'2014-01-24T16:00:00-05:00',open:39.98,high:40.40,low:37.62,close:37.91},
-            {ending:'2014-01-31T16:00:00-05:00',open:37.60,high:38.32,low:34.45,close:36.01}
-        ]);
-    });
-    it("should return monthly", function() {
-        return client({
-            interval: 'month',
-            symbol: 'AABA',
-            yahoo_symbol: 'AABA',
-            begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2014-01-31', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([
-            {ending:'2013-10-31T16:00:00-04:00',open:33.36,high:35.06,low:31.70,close:32.94},
-            {ending:'2013-11-29T16:00:00-05:00',open:33.15,high:37.35,low:32.06,close:36.98},
-            {ending:'2013-12-31T16:00:00-05:00',open:37.04,high:41.05,low:36.25,close:40.44},
-            {ending:'2014-01-31T16:00:00-05:00',open:40.37,high:41.72,low:34.45,close:36.01}
-        ]);
-    });
-    it("should return quarter", function() {
-        return client({
-            interval: 'quarter',
-            symbol: 'AABA',
-            yahoo_symbol: 'AABA',
-            begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2013-12-01', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([
-            {ending:'2013-12-31T16:00:00-05:00',open:33.36,high:41.05,low:31.7,close:40.44}
-        ]);
-    });
-    it("should return year", function() {
-        return client({
-            interval: 'year',
-            symbol: 'AABA',
-            yahoo_symbol: 'AABA',
-            begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2013-12-01', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([
-            {ending:'2013-12-31T16:00:00-05:00',open:20.2,high:41.05,low:18.89,close:40.44}
-        ]);
-    });
     it("should find BRK.A symbol", function() {
         return client({
             interval:'lookup',
@@ -228,76 +174,6 @@ describe("fetch-yahoo", function() {
             {ending:'2016-09-19T16:00:00-04:00',open:19.18,close:19.31,adj_close:19.31},
             {ending:'2016-09-20T16:00:00-04:00',open:19.45,close:19.32,adj_close:19.32},
             {ending:'2016-09-21T16:00:00-04:00',open:19.41,close:19.44,adj_close:19.44}
-        ]);
-    });
-    it("should adjust monthly dividend", function() {
-        return client({
-            interval: 'month',
-            symbol: 'SPY',
-            yahoo_symbol: 'SPY',
-            begin: moment.tz('2016-01-01', tz),
-            end: moment.tz('2016-12-31', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).then(data => {
-            var scale = _.last(data).close / _.last(data).adj_close;
-            return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
-        }).should.eventually.be.like([
-            {ending:'2016-01-29T16:00:00-05:00',open:200.49,close:193.72,adj_close:189.65},
-            {ending:'2016-02-29T16:00:00-05:00',open:192.53,close:193.56,adj_close:189.49},
-            {ending:'2016-03-31T16:00:00-04:00',open:195.01-1.00,close:205.52,adj_close:202.23},
-            {ending:'2016-04-29T16:00:00-04:00',open:204.35,close:206.33,adj_close:203.03},
-            {ending:'2016-05-31T16:00:00-04:00',open:206.92,close:209.84,adj_close:206.49},
-            {ending:'2016-06-30T16:00:00-04:00',open:209.12-1.08,close:209.47,adj_close:207.2},
-            {ending:'2016-07-29T16:00:00-04:00',open:209.48,close:217.12,adj_close:214.76},
-            {ending:'2016-08-31T16:00:00-04:00',open:217.19,close:217.38,adj_close:215.02},
-            {ending:'2016-09-30T16:00:00-04:00',open:217.37-1.10,close:216.30,adj_close:215.03},
-            {ending:'2016-10-31T16:00:00-04:00',open:215.82,close:212.55,adj_close:211.31},
-            {ending:'2016-11-30T16:00:00-05:00',open:212.93,close:220.38,adj_close:219.09},
-            {ending:'2016-12-30T16:00:00-05:00',open:220.73-1.29,close:223.53,adj_close:223.53}
-        ]);
-    });
-    it("should adjust splits and dividends", function() {
-        return client({
-            interval: 'month',
-            symbol: 'AAPL',
-            yahoo_symbol: 'AAPL',
-            begin: moment.tz('2014-01-01', tz),
-            end: moment.tz('2014-09-30', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).then(data => {
-            var scale = _.last(data).close / _.last(data).adj_close;
-            return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
-        }).should.eventually.be.like([
-            {ending:'2014-01-31T16:00:00-05:00',open:555.7,close:500.60,adj_close:70.34},
-            {ending:'2014-02-28T16:00:00-05:00',open:502.61-3,close:526.2,adj_close:74.39},
-            {ending:'2014-03-31T16:00:00-04:00',open:523.4,close:536.75,adj_close:75.87},
-            {ending:'2014-04-30T16:00:00-04:00',open:537.75,close:590.09,adj_close:83.41},
-            {ending:'2014-05-30T16:00:00-04:00',open:592.00-3.29,close:633.00,adj_close:89.98},
-            {ending:'2014-06-30T16:00:00-04:00',open:Math.round(633.96/7*100)/100,close:92.93,adj_close:92.47},
-            {ending:'2014-07-31T16:00:00-04:00',open:93.52,close:95.60,adj_close:95.13},
-            {ending:'2014-08-29T16:00:00-04:00',open:94.90-0.47,close:102.50,adj_close:102.5},
-            {ending:'2014-09-30T16:00:00-04:00',open:103.06,close:100.75,adj_close:100.75}
-        ]);
-    });
-    it("should adjust yearly dividends", function() {
-        return client({
-            interval: 'year',
-            symbol: 'SPY',
-            yahoo_symbol: 'SPY',
-            begin: moment.tz('2010-01-01', tz),
-            end: moment.tz('2016-12-31', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).then(data => {
-            var scale = _.last(data).close / _.last(data).adj_close;
-            return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
-        }).should.eventually.be.like([
-            {ending:'2010-12-31T16:00:00-05:00',open:112.37-2.17,close:125.75,adj_close:111.12},
-            {ending:'2011-12-30T16:00:00-05:00',open:126.71-2.60,close:125.5,adj_close:113.23},
-            {ending:'2012-12-31T16:00:00-05:00',open:127.76-2.78,close:142.41,adj_close:131.32},
-            {ending:'2013-12-31T16:00:00-05:00',open:145.11-2.87,close:184.69,adj_close:173.75},
-            {ending:'2014-12-31T16:00:00-05:00',open:183.98-3.53,close:205.54,adj_close:197.15},
-            {ending:'2015-12-31T16:00:00-05:00',open:206.38-4.18,close:203.87,adj_close:199.58},
-            {ending:'2016-12-30T16:00:00-05:00',open:200.49-4.22,close:223.53,adj_close:223.53}
         ]);
     });
     it("should adjust for REM splits", function() {

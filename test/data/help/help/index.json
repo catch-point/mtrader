@@ -17,7 +17,7 @@
      "usage": "interday(options)",
      "description": "Historic data for a security on the Yahoo! network",
      "properties": "[\"ending\",\"open\",\"high\",\"low\",\"close\",\"volume\",\"adj_close\"]",
-     "options": "{\"symbol\":{\"description\":\"Ticker symbol used by the market\"},\"market\":{\"values\":[\"ARCA\",\"BATS\",\"NASDAQ\",\"NYSE\",\"AMEX\",\"LSE\",\"TSE\",\"VENTURE\",\"GBP\",\"AUD\",\"NZD\",\"USD\",\"CAD\",\"CHF\",\"JPY\",\"CME\",\"OPRA\",\"CBOE\",\"COMEX\",\"X\"],\"description\":\"Exchange market acronym\"},\"iqfeed_symbol\":{\"description\":\"Symbol used in the DTN network\"},\"begin\":{\"example\":\"YYYY-MM-DD\",\"description\":\"Sets the earliest date (or dateTime) to retrieve\"},\"end\":{\"example\":\"YYYY-MM-DD HH:MM:SS\",\"description\":\"Sets the latest dateTime to retrieve\"},\"marketOpensAt\":{\"description\":\"Time of day that the market options\"},\"marketClosesAt\":{\"description\":\"Time of day that the market closes\"},\"tz\":{\"description\":\"Timezone of the market formatted using the identifier in the tz database\"},\"interval\":{\"values\":[\"year\",\"quarter\",\"month\",\"week\",\"day\"],\"usage\":\"year|quarter|month|week|day\",\"description\":\"The bar timeframe for the results\"},\"yahoo_symbol\":{\"description\":\"Symbol for security as used by The Yahoo! Network\"}}"
+     "options": "{\"symbol\":{\"description\":\"Ticker symbol used by the market\"},\"market\":{\"values\":[\"ARCA\",\"BATS\",\"NASDAQ\",\"NYSE\",\"AMEX\",\"LSE\",\"TSE\",\"VENTURE\",\"GBP\",\"AUD\",\"NZD\",\"USD\",\"CAD\",\"CHF\",\"JPY\",\"CME\",\"OPRA\",\"CBOE\",\"COMEX\",\"X\"],\"description\":\"Exchange market acronym\"},\"iqfeed_symbol\":{\"description\":\"Symbol used in the DTN network\"},\"begin\":{\"example\":\"YYYY-MM-DD\",\"description\":\"Sets the earliest date (or dateTime) to retrieve\"},\"end\":{\"example\":\"YYYY-MM-DD HH:MM:SS\",\"description\":\"Sets the latest dateTime to retrieve\"},\"marketOpensAt\":{\"description\":\"Time of day that the market options\"},\"marketClosesAt\":{\"description\":\"Time of day that the market closes\"},\"tz\":{\"description\":\"Timezone of the market formatted using the identifier in the tz database\"},\"interval\":{\"values\":[\"day\"],\"usage\":\"day\",\"description\":\"The bar timeframe for the results\"},\"yahoo_symbol\":{\"description\":\"Symbol for security as used by The Yahoo! Network\"}}"
     }
    ],
    "tail": [
@@ -36,9 +36,9 @@
      "options": "{\"symbol\":{\"description\":\"Ticker symbol used by the market\"},\"market\":{\"values\":[\"ARCA\",\"BATS\",\"NASDAQ\",\"NYSE\",\"AMEX\",\"LSE\",\"TSE\",\"VENTURE\",\"GBP\",\"AUD\",\"NZD\",\"USD\",\"CAD\",\"CHF\",\"JPY\",\"CME\",\"OPRA\",\"CBOE\",\"COMEX\",\"X\"],\"description\":\"Exchange market acronym\"},\"iqfeed_symbol\":{\"description\":\"Symbol used in the DTN network\"},\"begin\":{\"example\":\"YYYY-MM-DD\",\"description\":\"Sets the earliest date (or dateTime) to retrieve\"},\"end\":{\"example\":\"YYYY-MM-DD HH:MM:SS\",\"description\":\"Sets the latest dateTime to retrieve\"},\"marketOpensAt\":{\"description\":\"Time of day that the market options\"},\"marketClosesAt\":{\"description\":\"Time of day that the market closes\"},\"tz\":{\"description\":\"Timezone of the market formatted using the identifier in the tz database\"},\"interval\":{\"values\":[\"m240\",\"m120\",\"m60\",\"m30\",\"m15\",\"m10\",\"m5\",\"m2\",\"m1\"],\"usage\":\"m<minutes>\",\"description\":\"Number of minutes in a single bar length, prefixed by the letter 'm'\"}}"
     }
    ],
-   "updatedAt": "2019-03-10T14:19:16.971Z",
+   "updatedAt": "2019-03-13T00:29:26.192Z",
    "properties": {},
-   "createdAt": "2019-03-10T14:19:16.971Z"
+   "createdAt": "2019-03-13T00:29:26.192Z"
   }
  ]
 }

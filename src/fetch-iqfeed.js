@@ -103,9 +103,9 @@ function help() {
         properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
         options: _.extend({}, commonOptions, durationOptions, tzOptions, {
             interval: {
-                usage: "year|quarter|month|week|day",
+                usage: "day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["year", "quarter", "month", "week", "day"],config('fetch.iqfeed.intervals'))
+                values: _.intersection(["day"],config('fetch.iqfeed.intervals'))
             },
         })
     };
@@ -240,7 +240,7 @@ function createInstance() {
             return iqclient.fundamental(symbol(options),
                 options.marketClosesAt, options.tz
             ).then(fundamental => [_.extend({name: fundamental.company_name}, fundamental)]);
-        } else if (~['year', 'quarter', 'month', 'week', 'day'].indexOf(options.interval)) {
+        } else if ('day' == options.interval) {
             expect(options).to.be.like({
                 interval: _.isString,
                 symbol: /^\S+$/,
@@ -249,7 +249,7 @@ function createInstance() {
                 marketClosesAt: /^\d\d:\d\d(:00)?$/,
                 tz: /^\S+\/\S+$/
             });
-            expect(options.interval).to.be.oneOf(['year', 'quarter', 'month', 'week', 'day']);
+            expect(options.interval).to.be.oneOf(['day']);
             const adj = isNotEquity(markets, options) ? null : adjustments;
             return interday(iqclient, adj, symbol(options), options);
         } else {
@@ -364,114 +364,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
     })).then(rows => rows.filter(row => row.market));
 }
 
-function interday(iqclient, adjustments, symbol, options) {
-    switch(options.interval) {
-        case 'year': return year(iqclient, adjustments, symbol, options);
-        case 'quarter': return quarter(iqclient, adjustments, symbol, options);
-        case 'month': return month(iqclient, adjustments, symbol, options);
-        case 'week': return week(iqclient, adjustments, symbol, options);
-        case 'day': return day(iqclient, adjustments, symbol, options);
-        default:
-            expect(options.interval).to.be.oneOf([
-                'year', 'quarter', 'month', 'week', 'day'
-            ]);
-    }
-}
-
-async function year(iqclient, adjustments, symbol, options) {
-    const end = options.end && moment.tz(options.end, options.tz);
-    const bars = await month(iqclient, adjustments, symbol, _.defaults({
-        begin: moment.tz(options.begin, options.tz).startOf('year'),
-        end: end && (end.isAfter(moment(end).startOf('year')) ? end.endOf('year') : end)
-    }, options));
-    const years = _.groupBy(bars, bar => moment(bar.ending).year());
-    return _.map(years, bars => bars.reduce((year, month) => {
-        const adj = adjustment(_.last(bars), month);
-        return _.defaults({
-            ending: endOf('year', month.ending, options),
-            open: year.open || adj(month.open),
-            high: Math.max(year.high, adj(month.high)) || year.high || adj(month.high),
-            low: Math.min(year.low, adj(month.low)) || year.low || adj(month.low),
-            close: month.close,
-            volume: year.volume + month.volume || year.volume || month.volume,
-            adj_close: month.adj_close,
-            split: (year.split || 1) * (month.split || 1),
-            dividend: (year.dividend || 0) + (month.dividend || 0)
-        }, month, year);
-      }, {}));
-}
-
-async function quarter(iqclient, adjustments, symbol, options) {
-    const end = options.end && moment.tz(options.end, options.tz);
-    const bars = await month(iqclient, adjustments, symbol, _.defaults({
-        begin: moment.tz(options.begin, options.tz).startOf('quarter'),
-        end: end && (end.isAfter(moment(end).startOf('quarter')) ? end.endOf('quarter') : end)
-    }, options));
-    const quarters = _.groupBy(bars, bar => moment(bar.ending).format('Y-Q'));
-    return _.map(quarters, bars => bars.reduce((quarter, month) => {
-        const adj = adjustment(_.last(bars), month);
-        return _.defaults({
-            ending: endOf('quarter', month.ending, options),
-            open: quarter.open || adj(month.open),
-            high: Math.max(quarter.high, adj(month.high)) || quarter.high || adj(month.high),
-            low: Math.min(quarter.low, adj(month.low)) || quarter.low || adj(month.low),
-            close: month.close,
-            volume: quarter.volume + month.volume || quarter.volume || month.volume,
-            adj_close: month.adj_close,
-            split: (quarter.split || 1) * (month.split || 1),
-            dividend: (quarter.dividend || 0) + (month.dividend || 0)
-        }, month, quarter);
-      }, {}));
-}
-
-async function month(iqclient, adjustments, symbol, options) {
-    const end = options.end && moment.tz(options.end, options.tz);
-    const bars = await day(iqclient, adjustments, symbol, _.defaults({
-        begin: moment.tz(options.begin, options.tz).startOf('month'),
-        end: end && (end.isAfter(moment(end).startOf('month')) ? end.endOf('month') : end)
-    }, options));
-    const months = _.groupBy(bars, bar => moment(bar.ending).format('Y-MM'));
-    return _.map(months, bars => bars.reduce((month, day) => {
-        const adj = adjustment(_.last(bars), day);
-        return _.defaults({
-            ending: endOf('month', day.ending, options),
-            open: month.open || adj(day.open),
-            high: Math.max(month.high, adj(day.high)) || month.high || adj(day.high),
-            low: Math.min(month.low, adj(day.low)) || month.low || adj(day.low),
-            close: day.close,
-            volume: month.volume + day.volume || month.volume || day.volume,
-            adj_close: day.adj_close,
-            split: (month.split || 1) * (day.split || 1),
-            dividend: (month.dividend || 0) + (day.dividend || 0)
-        }, day, month);
-      }, {}));
-}
-
-async function week(iqclient, adjustments, symbol, options) {
-    const begin = moment.tz(options.begin, options.tz);
-    const bars = await day(iqclient, adjustments, symbol, _.defaults({
-        begin: begin.day() === 0 || begin.day() == 6 ? begin.startOf('day') :
-            begin.startOf('isoWeek').subtract(1, 'days'),
-        end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days')
-    }, options));
-    const weeks = _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW'));
-    return _.map(weeks, bars => bars.reduce((week, day) => {
-        const adj = adjustment(_.last(bars), day);
-        return _.defaults({
-            ending: endOf('isoWeek', day.ending, options),
-            open: week.open || adj(day.open),
-            high: Math.max(week.high, adj(day.high)) || week.high || adj(day.high),
-            low: Math.min(week.low, adj(day.low)) || week.low || adj(day.low),
-            close: day.close,
-            volume: week.volume + day.volume || week.volume || day.volume,
-            adj_close: day.adj_close,
-            split: (week.split || 1) * (day.split || 1),
-            dividend: (week.dividend || 0) + (day.dividend || 0)
-        }, day, week);
-      }, {}));
-}
-
-async function day(iqclient, adjustments, symbol, options) {
+async function interday(iqclient, adjustments, symbol, options) {
     const [prices, adjusts] = await Promise.all([
         iqclient.day(symbol, options.begin, null, options.tz),
         adjustments && adjustments(options)
@@ -659,6 +552,7 @@ async function summarize(iqclient, symbol, options) {
 }
 
 function adjustment(base, bar) {
+    if (!bar.adj_close || bar.adj_close == bar.close) return _.identity;
     const scale = bar.adj_close/bar.close * base.close / base.adj_close;
     if (Math.abs(scale -1) < 0.000001) return _.identity;
     else return price => Math.round(price * scale * 10000) / 10000;

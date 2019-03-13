@@ -4,12 +4,6 @@
     "files": {
       "enabled": true,
       "fallback": ["yahoo", "iqfeed"]
-    },
-    "yahoo": {
-      "enabled": false,
-      "lookup": true,
-      "interday": ["year", "quarter", "month", "week", "day"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSE", "VENTURE"]
     }
   }
 }

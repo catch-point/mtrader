@@ -106,60 +106,6 @@ describe("fetch-iqfeed", function() {
             {ending:'2014-01-31T16:00:00-05:00',open:34.69,high:36.33,low:34.55,close:36.01}
         ]);
     });
-    it("should return weekly", function() {
-        return client({
-            interval: 'week',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: moment.tz('2014-01-06', tz),
-            end: moment.tz('2014-02-01', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([
-            {ending:'2014-01-10T16:00:00-05:00',open:40.05,high:41.72,low:39.75,close:41.23},
-            {ending:'2014-01-17T16:00:00-05:00',open:41.16,high:41.31,low:39.47,close:40.01},
-            {ending:'2014-01-24T16:00:00-05:00',open:39.98,high:40.40,low:37.62,close:37.91},
-            {ending:'2014-01-31T16:00:00-05:00',open:37.60,high:38.32,low:34.45,close:36.01}
-        ]);
-    });
-    it("should return monthly", function() {
-        return client({
-            interval: 'month',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2014-02-01', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([
-            {ending:'2013-10-31T16:00:00-04:00',open:33.36,high:35.06,low:31.70,close:32.94},
-            {ending:'2013-11-29T16:00:00-05:00',open:33.15,high:37.35,low:32.06,close:36.98},
-            {ending:'2013-12-31T16:00:00-05:00',open:37.04,high:41.05,low:36.25,close:40.44},
-            {ending:'2014-01-31T16:00:00-05:00',open:40.37,high:41.72,low:34.45,close:36.01}
-        ]);
-    });
-    it("should return quarter", function() {
-        return client({
-            interval: 'quarter',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2013-12-01', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([
-            {ending:'2013-12-31T16:00:00-05:00',open:33.36,high:41.05,low:31.7,close:40.44}
-        ]);
-    });
-    it("should return year", function() {
-        return client({
-            interval: 'year',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2013-12-01', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([
-            {ending:'2013-12-31T16:00:00-05:00',open:20.2,high:41.05,low:18.89,close:40.44}
-        ]);
-    });
     it("should find BRK.A symbol", function() {
         return client({
             interval:'lookup',
@@ -243,55 +189,6 @@ describe("fetch-iqfeed", function() {
             {ending:'2016-09-21T16:00:00-04:00',open:19.41,close:19.44,adj_close:19.44}
         ]);
     });
-    it("should adjust monthly dividend", function() {
-        return client({
-            interval: 'month',
-            symbol: 'SPY',
-            market: 'ARCA',
-            begin: moment.tz('2016-01-01', tz),
-            end: moment.tz('2016-12-31', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).then(data => {
-            var scale = _.last(data).close / _.last(data).adj_close;
-            return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
-        }).should.eventually.be.like([
-            {ending:'2016-01-29T16:00:00-05:00',open:200.49,close:193.72,adj_close:189.65},
-            {ending:'2016-02-29T16:00:00-05:00',open:192.53,close:193.56,adj_close:189.49},
-            {ending:'2016-03-31T16:00:00-04:00',open:195.01-1.00,close:205.52,adj_close:202.23},
-            {ending:'2016-04-29T16:00:00-04:00',open:204.35,close:206.33,adj_close:203.03},
-            {ending:'2016-05-31T16:00:00-04:00',open:206.92,close:209.84,adj_close:206.49},
-            {ending:'2016-06-30T16:00:00-04:00',open:209.12-1.08,close:209.47,adj_close:207.2},
-            {ending:'2016-07-29T16:00:00-04:00',open:209.36,close:217.12,adj_close:214.76},
-            {ending:'2016-08-31T16:00:00-04:00',open:217.19,close:217.38,adj_close:215.02},
-            {ending:'2016-09-30T16:00:00-04:00',open:217.37-1.10,close:216.30,adj_close:215.03},
-            {ending:'2016-10-31T16:00:00-04:00',open:215.82,close:212.55,adj_close:211.31},
-            {ending:'2016-11-30T16:00:00-05:00',open:212.93,close:220.38,adj_close:219.09},
-            {ending:'2016-12-30T16:00:00-05:00',open:220.73-1.29,close:223.53,adj_close:223.53}
-        ]);
-    });
-    it("should adjust splits and dividends", function() {
-        return client({
-            interval: 'month',
-            symbol: 'AAPL',
-            market: 'NASDAQ',
-            begin: moment.tz('2014-01-01', tz),
-            end: moment.tz('2014-09-30', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).then(data => {
-            var scale = _.last(data).close / _.last(data).adj_close;
-            return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
-        }).should.eventually.be.like([
-            {ending:'2014-01-31T16:00:00-05:00',open:555.7,close:500.60,adj_close:70.34},
-            {ending:'2014-02-28T16:00:00-05:00',open:502.61-3,close:526.2,adj_close:74.39},
-            {ending:'2014-03-31T16:00:00-04:00',open:523.4,close:536.74,adj_close:75.87},
-            {ending:'2014-04-30T16:00:00-04:00',open:537.76,close:590.09,adj_close:83.41},
-            {ending:'2014-05-30T16:00:00-04:00',open:592.00-3.29,close:633.00,adj_close:89.98},
-            {ending:'2014-06-30T16:00:00-04:00',open:Math.round(633.96/7*100)/100,close:92.93,adj_close:92.47},
-            {ending:'2014-07-31T16:00:00-04:00',open:93.52,close:95.60,adj_close:95.13},
-            {ending:'2014-08-29T16:00:00-04:00',open:94.90-0.47,close:102.50,adj_close:102.5},
-            {ending:'2014-09-30T16:00:00-04:00',open:103.06,close:100.75,adj_close:100.75}
-        ]);
-    });
     it("should adjust splits and dividends on intraday", function() {
         return client({
             interval: 'm30',
@@ -353,27 +250,6 @@ describe("fetch-iqfeed", function() {
             { ending: '2014-06-09T16:00:00-04:00', close: 93.7, adj_close: 93.7 }
         ]);
     });
-    it("should adjust yearly dividends", function() {
-        return client({
-            interval: 'year',
-            symbol: 'SPY',
-            market: 'ARCA',
-            begin: moment.tz('2010-01-01', tz),
-            end: moment.tz('2016-12-31', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).then(data => {
-            var scale = _.last(data).close / _.last(data).adj_close;
-            return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
-        }).should.eventually.be.like([
-            {ending:'2010-12-31T16:00:00-05:00',open:112.37-2.17,close:125.75,adj_close:111.12},
-            {ending:'2011-12-30T16:00:00-05:00',open:126.71-2.60,close:125.5,adj_close:113.23},
-            {ending:'2012-12-31T16:00:00-05:00',open:127.76-2.78,close:142.41,adj_close:131.32},
-            {ending:'2013-12-31T16:00:00-05:00',open:145.11-2.87,close:184.69,adj_close:173.75},
-            {ending:'2014-12-31T16:00:00-05:00',open:183.98-3.53,close:205.54,adj_close:197.15},
-            {ending:'2015-12-31T16:00:00-05:00',open:206.38-4.18,close:203.87,adj_close:199.58},
-            {ending:'2016-12-30T16:00:00-05:00',open:200.49-4.22,close:223.53,adj_close:223.53}
-        ]);
-    });
     it("should adjust for REM splits", function() {
         return client({
             interval: 'day',
@@ -427,86 +303,29 @@ describe("fetch-iqfeed", function() {
             begin: '2014-01-01', end: '2014-02-01',
             marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like([
-            {ending:'2014-01-02T17:00:00-05:00',high:1.06770,low:1.05874,open:1.06321,close:1.06680},
-            {ending:'2014-01-03T17:00:00-05:00',high:1.06709,low:1.06013,open:1.06676,close:1.06312},
-            {ending:'2014-01-06T17:00:00-05:00',high:1.06798,low:1.06076,open:1.06313,close:1.06543},
-            {ending:'2014-01-07T17:00:00-05:00',high:1.07805,low:1.06467,open:1.06541,close:1.07658},
-            {ending:'2014-01-08T17:00:00-05:00',high:1.08292,low:1.07600,open:1.07658,close:1.08169},
-            {ending:'2014-01-09T17:00:00-05:00',high:1.08736,low:1.08159,open:1.08169,close:1.08429},
-            {ending:'2014-01-10T17:00:00-05:00',high:1.09451,low:1.08361,open:1.08429,close:1.08947},
-            {ending:'2014-01-13T17:00:00-05:00',high:1.09283,low:1.08416,open:1.08996,close:1.08611},
-            {ending:'2014-01-14T17:00:00-05:00',high:1.09578,low:1.08577,open:1.08615,close:1.09466},
-            {ending:'2014-01-15T17:00:00-05:00',high:1.09904,low:1.09193,open:1.09466,close:1.09351},
-            {ending:'2014-01-16T17:00:00-05:00',high:1.09618,low:1.09041,open:1.09351,close:1.09301},
-            {ending:'2014-01-17T17:00:00-05:00',high:1.09829,low:1.09251,open:1.09301,close:1.09617},
-            {ending:'2014-01-20T17:00:00-05:00',high:1.09712,low:1.09285,open:1.09597,close:1.09434},
-            {ending:'2014-01-21T17:00:00-05:00',high:1.10179,low:1.09382,open:1.09436,close:1.09651},
-            {ending:'2014-01-22T17:00:00-05:00',high:1.10909,low:1.09525,open:1.09651,close:1.10866},
-            {ending:'2014-01-23T17:00:00-05:00',high:1.11729,low:1.10811,open:1.10866,close:1.10996},
-            {ending:'2014-01-24T17:00:00-05:00',high:1.11364,low:1.10498,open:1.10999,close:1.10788},
-            {ending:'2014-01-27T17:00:00-05:00',high:1.11165,low:1.10308,open:1.10600,close:1.11136},
-            {ending:'2014-01-28T17:00:00-05:00',high:1.11761,low:1.10773,open:1.11140,close:1.11507},
-            {ending:'2014-01-29T17:00:00-05:00',high:1.11860,low:1.11014,open:1.11507,close:1.11668},
-            {ending:'2014-01-30T17:00:00-05:00',high:1.11994,low:1.11498,open:1.11666,close:1.11578},
-            {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.10867,open:1.11578,close:1.11251}
+        {ending:'2014-01-02T17:00:00-05:00',high:1.06770,low:1.05874,open:1.06321,close:1.06680,adj_close:1.06680},
+        {ending:'2014-01-03T17:00:00-05:00',high:1.06709,low:1.06013,open:1.06676,close:1.06312,adj_close:1.06312},
+        {ending:'2014-01-06T17:00:00-05:00',high:1.06798,low:1.06076,open:1.06313,close:1.06543,adj_close:1.06543},
+        {ending:'2014-01-07T17:00:00-05:00',high:1.07805,low:1.06467,open:1.06541,close:1.07658,adj_close:1.07658},
+        {ending:'2014-01-08T17:00:00-05:00',high:1.08292,low:1.07600,open:1.07658,close:1.08169,adj_close:1.08169},
+        {ending:'2014-01-09T17:00:00-05:00',high:1.08736,low:1.08159,open:1.08169,close:1.08429,adj_close:1.08429},
+        {ending:'2014-01-10T17:00:00-05:00',high:1.09451,low:1.08361,open:1.08429,close:1.08947,adj_close:1.08947},
+        {ending:'2014-01-13T17:00:00-05:00',high:1.09283,low:1.08416,open:1.08996,close:1.08611,adj_close:1.08611},
+        {ending:'2014-01-14T17:00:00-05:00',high:1.09578,low:1.08577,open:1.08615,close:1.09466,adj_close:1.09466},
+        {ending:'2014-01-15T17:00:00-05:00',high:1.09904,low:1.09193,open:1.09466,close:1.09351,adj_close:1.09351},
+        {ending:'2014-01-16T17:00:00-05:00',high:1.09618,low:1.09041,open:1.09351,close:1.09301,adj_close:1.09301},
+        {ending:'2014-01-17T17:00:00-05:00',high:1.09829,low:1.09251,open:1.09301,close:1.09617,adj_close:1.09617},
+        {ending:'2014-01-20T17:00:00-05:00',high:1.09712,low:1.09285,open:1.09597,close:1.09434,adj_close:1.09434},
+        {ending:'2014-01-21T17:00:00-05:00',high:1.10179,low:1.09382,open:1.09436,close:1.09651,adj_close:1.09651},
+        {ending:'2014-01-22T17:00:00-05:00',high:1.10909,low:1.09525,open:1.09651,close:1.10866,adj_close:1.10866},
+        {ending:'2014-01-23T17:00:00-05:00',high:1.11729,low:1.10811,open:1.10866,close:1.10996,adj_close:1.10996},
+        {ending:'2014-01-24T17:00:00-05:00',high:1.11364,low:1.10498,open:1.10999,close:1.10788,adj_close:1.10788},
+        {ending:'2014-01-27T17:00:00-05:00',high:1.11165,low:1.10308,open:1.10600,close:1.11136,adj_close:1.11136},
+        {ending:'2014-01-28T17:00:00-05:00',high:1.11761,low:1.10773,open:1.11140,close:1.11507,adj_close:1.11507},
+        {ending:'2014-01-29T17:00:00-05:00',high:1.11860,low:1.11014,open:1.11507,close:1.11668,adj_close:1.11668},
+        {ending:'2014-01-30T17:00:00-05:00',high:1.11994,low:1.11498,open:1.11666,close:1.11578,adj_close:1.11578},
+        {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.10867,open:1.11578,close:1.11251,adj_close:1.11251}
         ]);
-    });
-    it("should return weekly FX", function() {
-        return client({
-            interval: 'week',
-            symbol: 'USDCAD.FXCM',
-            begin: moment.tz('2014-01-05', tz),
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
-        }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
-            {ending:'2014-01-10T17:00:00-05:00',high:1.09451,low:1.06076,open:1.06313,close:1.08947},
-            {ending:'2014-01-17T17:00:00-05:00',high:1.09904,low:1.08416,open:1.08996,close:1.09617},
-            {ending:'2014-01-24T17:00:00-05:00',high:1.11729,low:1.09285,open:1.09597,close:1.10788},
-            {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.10308,open:1.10600,close:1.11251}
-        ]));
-    });
-    it("should return monthly FX", function() {
-        return client({
-            interval: 'month',
-            symbol: 'USDCAD.FXCM',
-            begin: moment.tz('2014-01-01', tz),
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
-        }).should.eventually.be.like(results => results.slice(0, 12).should.be.like([
-            {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.05874,open:1.06321,close:1.11251},
-            {ending:'2014-02-28T17:00:00-05:00',high:1.11935,low:1.09092,open:1.11070,close:1.10640},
-            {ending:'2014-03-31T17:00:00-04:00',high:1.12775,low:1.09543,open:1.10708,close:1.10482},
-            {ending:'2014-04-30T17:00:00-04:00',high:1.10693,low:1.08570,open:1.10480,close:1.09598},
-            {ending:'2014-05-30T17:00:00-04:00',high:1.10055,low:1.08133,open:1.09597,close:1.08397},
-            {ending:'2014-06-30T17:00:00-04:00',high:1.09595,low:1.06455,open:1.08358,close:1.06679},
-            {ending:'2014-07-31T17:00:00-04:00',high:1.09286,low:1.06195,open:1.06679,close:1.09039},
-            {ending:'2014-08-29T17:00:00-04:00',high:1.09967,low:1.08097,open:1.09039,close:1.08731},
-            {ending:'2014-09-30T17:00:00-04:00',high:1.12185,low:1.08197,open:1.08710,close:1.11942},
-            {ending:'2014-10-31T17:00:00-04:00',high:1.13843,low:1.10704,open:1.11943,close:1.12661},
-            {ending:'2014-11-28T17:00:00-05:00',high:1.14655,low:1.11896,open:1.12827,close:1.14119},
-            {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.13120,open:1.14272,close:1.16123}
-        ]));
-    });
-    it("should return quarter FX", function() {
-        return client({
-            interval: 'quarter',
-            symbol: 'USDCAD.FXCM',
-            begin: moment.tz('2014-01-01', tz),
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
-        }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
-            {ending:'2014-03-31T17:00:00-04:00',high:1.12775,low:1.05874,open:1.06321,close:1.10482},
-            {ending:'2014-06-30T17:00:00-04:00',high:1.10693,low:1.06455,open:1.10480,close:1.06679},
-            {ending:'2014-09-30T17:00:00-04:00',high:1.12185,low:1.06195,open:1.06679,close:1.11942},
-            {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.10704,open:1.11943,close:1.16123}
-        ]));
-    });
-    it("should return year FX", function() {
-        return client({
-            interval: 'year',
-            symbol: 'USDCAD.FXCM',
-            begin: moment.tz('2014-01-01', tz),
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
-        }).should.eventually.be.like(results => results.slice(0, 1).should.be.like([
-            {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.05874,open:1.06321,close:1.16123}
-        ]));
     });
     it("should find BRK.A symbol", function() {
         return client({interval:'lookup', symbol:'BRK.A', listed_market:"NYSE"})
@@ -604,71 +423,6 @@ describe("fetch-iqfeed", function() {
             {ending:'2014-01-30T17:00:00-05:00',high:1.11994,low:1.11498,open:1.11666,close:1.11578},
             {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.10867,open:1.11578,close:1.11251}
         ]);
-    });
-    it("should estimate weekly", function() {
-        return client({
-            rollday: true,
-            minutes: 30,
-            interval: 'week',
-            symbol: 'USDCAD.FXCM',
-            begin: '2014-01-05', end: '2014-02-01',
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
-        }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
-            {ending:'2014-01-10T17:00:00-05:00',high:1.09451,low:1.06076,open:1.06313,close:1.08947},
-            {ending:'2014-01-17T17:00:00-05:00',high:1.09904,low:1.08416,open:1.08996,close:1.09617},
-            {ending:'2014-01-24T17:00:00-05:00',high:1.11729,low:1.09285,open:1.09597,close:1.10788},
-            {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.10308,open:1.10600,close:1.11251}
-        ]));
-    });
-    it("should estimate monthly", function() {
-        return client({
-            rollday: true,
-            minutes: 30,
-            interval: 'month',
-            symbol: 'USDCAD.FXCM',
-            begin: '2014-01-01', end: '2015-01-01',
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
-        }).should.eventually.be.like(results => results.slice(0, 12).should.be.like([
-            {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.05874,open:1.06321,close:1.11251},
-            {ending:'2014-02-28T17:00:00-05:00',high:1.11935,low:1.09092,open:1.11070,close:1.10640},
-            {ending:'2014-03-31T17:00:00-04:00',high:1.12775,low:1.09543,open:1.10708,close:1.10482},
-            {ending:'2014-04-30T17:00:00-04:00',high:1.10693,low:1.08570,open:1.10480,close:1.09598},
-            {ending:'2014-05-30T17:00:00-04:00',high:1.10055,low:1.08133,open:1.09597,close:1.08397},
-            {ending:'2014-06-30T17:00:00-04:00',high:1.09595,low:1.06455,open:1.08358,close:1.06679},
-            {ending:'2014-07-31T17:00:00-04:00',high:1.09286,low:1.06195,open:1.06679,close:1.09039},
-            {ending:'2014-08-29T17:00:00-04:00',high:1.09967,low:1.08097,open:1.09039,close:1.08731},
-            {ending:'2014-09-30T17:00:00-04:00',high:1.12185,low:1.08197,open:1.08710,close:1.11942},
-            {ending:'2014-10-31T17:00:00-04:00',high:1.13843,low:1.10704,open:1.11943,close:1.12661},
-            {ending:'2014-11-28T17:00:00-05:00',high:1.14655,low:1.11896,open:1.12827,close:1.14119},
-            {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.13120,open:1.14272,close:1.16123}
-        ]));
-    });
-    it("should estimate quarter", function() {
-        return client({
-            rollday: true,
-            minutes: 30,
-            interval: 'quarter',
-            symbol: 'USDCAD.FXCM',
-            begin: '2014-01-01', end: '2015-01-01',
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
-        }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
-            {ending:'2014-03-31T17:00:00-04:00',high:1.12775,low:1.05874,open:1.06321,close:1.10482},
-            {ending:'2014-06-30T17:00:00-04:00',high:1.10693,low:1.06455,open:1.10480,close:1.06679},
-            {ending:'2014-09-30T17:00:00-04:00',high:1.12185,low:1.06195,open:1.06679,close:1.11942},
-            {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.10704,open:1.11943,close:1.16123}
-        ]));
-    });
-    it("should estimate year", function() {
-        return client({
-            rollday: true,
-            minutes: 30,
-            interval: 'year',
-            symbol: 'USDCAD.FXCM',
-            begin: '2014-01-01', end: '2015-01-01',
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
-        }).should.eventually.be.like(results => results.slice(0, 1).should.be.like([
-            {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.05874,open:1.06321,close:1.16123}
-        ]));
     });
     it.skip("should lookup many iqfeed futures symbols", function() {
         return Promise.all(_.flatten(_.range(10,19).map(year => ['H','M','U','Z'].map(mo => {

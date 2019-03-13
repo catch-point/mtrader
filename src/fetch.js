@@ -64,11 +64,11 @@ module.exports = function() {
             switch(interval) {
                 case 'lookup': return lookup(datasources.lookup, opt);
                 case 'fundamental': return fundamental(datasources.fundamental, opt);
-                case 'year': return interday(datasources.year, opt);
-                case 'quarter': return interday(datasources.quarter, opt);
-                case 'month': return interday(datasources.month, opt);
-                case 'week': return interday(datasources.week, opt);
-                case 'day': return interday(datasources.day, opt);
+                case 'year':
+                case 'quarter':
+                case 'month':
+                case 'week':
+                case 'day': return interday(datasources[interval], opt);
                 default:
                     if (interval && interval.charAt(0) == 'm' && _.isFinite(interval.substring(1)))
                         return intraday(datasources[interval], opt);
@@ -101,20 +101,20 @@ function promiseDatasources() {
     return Promise.all(sources.map(source => source({help:true})))
       .then(result => result.reduce((datasources, help, i) => {
         return _.flatten(help).reduce((datasources, info) => {
-            if (info.name == 'interday' && info.options.interval.values) {
-                return info.options.interval.values.reduce((datasources, interval) => {
-                    return addSource(datasources, interval, info.options.market.values, sources[i]);
-                }, datasources);
-            } else if (info.name == 'intraday' && info.options.interval.values) {
-                return info.options.interval.values.reduce((datasources, interval) => {
-                    return addSource(datasources, interval, info.options.market.values, sources[i]);
-                }, datasources);
-            } else {
-                expect(info).to.have.property('options');
-                expect(info.options).to.have.property('market');
-                if (!info.options.market.values) throw Error("Missing market values");
-                return addSource(datasources, info.name, info.options.market.values, sources[i]);
+            const intervals = ['options', 'interval', 'values'].reduce(_.result, info) || [];
+            const markets = ['options', 'market', 'values'].reduce(_.result, info) || [];
+            if (!markets.length) throw Error("Missing market values");
+            if (~intervals.indexOf('day')) {
+                // add synthetic intervals
+                _.forEach({year, quarter, month, week}, (fn, interval) => {
+                    if (!~intervals.indexOf(interval)) {
+                        addSource(datasources, interval, markets, fn.bind(this, sources[i]));
+                    }
+                });
             }
+            return info.options.interval.values.reduce((datasources, interval) => {
+                return addSource(datasources, interval, markets, sources[i]);
+            }, datasources);
         }, datasources);
     }, {}));
 }
@@ -129,7 +129,7 @@ function addSource(datasources, interval, markets, source) {
 }
 
 function close(datasources) {
-    return Promise.all(_.map(datasources, datasource => datasource.close()));
+    return Promise.all(_.map(datasources, datasource => datasource.close && datasource.close()));
 }
 
 function help(datasources) {
@@ -149,11 +149,13 @@ function help(datasources) {
                 description: help.description || h.description,
                 properties: _.union(help.properties, h.properties, lookupProperties),
                 options: _.mapObject(options, (option, name) => {
-                    if (option.values && h.options[name] && h.options[name].values) return _.defaults({
-                        values: _.uniq(_.compact(_.flatten([option.values, h.options[name].values], true)))
-                    }, option);
-                    else if (option.values || h.options[name] && h.options[name].values) return _.defaults({
-                        values: option.values || h.options[name] && h.options[name].values
+                    if (option.values || (h.options[name]||{}).values) return _.defaults({
+                        values: _.uniq(_.compact(_.flatten([
+                            option.values || [],
+                            (h.options[name]||{}).values || [],
+                            ~((h.options[name]||{}).values||[]).indexOf('day') ?
+                                ['year', 'quarter', 'month', 'week'] : []
+                        ], true)))
                     }, option);
                     else return option;
                 })
@@ -251,6 +253,95 @@ function fundamental(datasources, options) {
     });
 }
 
+async function year(day, options) {
+    const end = options.end && moment.tz(options.end, options.tz);
+    const bars = await month(day, _.defaults({
+        interval: 'month',
+        begin: moment.tz(options.begin, options.tz).startOf('year'),
+        end: end && (end.isAfter(moment(end).startOf('year')) ? end.endOf('year') : end)
+    }, options));
+    const years = _.groupBy(bars, bar => moment(bar.ending).year());
+    return _.map(years, bars => bars.reduce((year, month) => {
+        const adj = adjustment(_.last(bars), month);
+        return _.defaults({
+            ending: endOf('year', month.ending, options),
+            open: year.open || adj(month.open),
+            high: Math.max(year.high, adj(month.high)) || year.high || adj(month.high),
+            low: Math.min(year.low, adj(month.low)) || year.low || adj(month.low),
+            close: month.close,
+            volume: year.volume + month.volume || year.volume || month.volume,
+            adj_close: month.adj_close
+        }, month, year);
+      }, {}));
+}
+
+async function quarter(day, options) {
+    const end = options.end && moment.tz(options.end, options.tz);
+    const bars = await month(day, _.defaults({
+        interval: 'month',
+        begin: moment.tz(options.begin, options.tz).startOf('quarter'),
+        end: end && (end.isAfter(moment(end).startOf('quarter')) ? end.endOf('quarter') : end)
+    }, options));
+    const quarters = _.groupBy(bars, bar => moment(bar.ending).format('Y-Q'));
+    return _.map(quarters, bars => bars.reduce((quarter, month) => {
+        const adj = adjustment(_.last(bars), month);
+        return _.defaults({
+            ending: endOf('quarter', month.ending, options),
+            open: quarter.open || adj(month.open),
+            high: Math.max(quarter.high, adj(month.high)) || quarter.high || adj(month.high),
+            low: Math.min(quarter.low, adj(month.low)) || quarter.low || adj(month.low),
+            close: month.close,
+            volume: quarter.volume + month.volume || quarter.volume || month.volume,
+            adj_close: month.adj_close
+        }, month, quarter);
+      }, {}));
+}
+
+async function month(day, options) {
+    const end = options.end && moment.tz(options.end, options.tz);
+    const bars = await day(_.defaults({
+        interval: 'day',
+        begin: moment.tz(options.begin, options.tz).startOf('month'),
+        end: end && (end.isAfter(moment(end).startOf('month')) ? end.endOf('month') : end)
+    }, options));
+    const months = _.groupBy(bars, bar => moment(bar.ending).format('Y-MM'));
+    return _.map(months, bars => bars.reduce((month, day) => {
+        const adj = adjustment(_.last(bars), day);
+        return _.defaults({
+            ending: endOf('month', day.ending, options),
+            open: month.open || adj(day.open),
+            high: Math.max(month.high, adj(day.high)) || month.high || adj(day.high),
+            low: Math.min(month.low, adj(day.low)) || month.low || adj(day.low),
+            close: day.close,
+            volume: month.volume + day.volume || month.volume || day.volume,
+            adj_close: day.adj_close
+        }, day, month);
+      }, {}));
+}
+
+async function week(day, options) {
+    const begin = moment.tz(options.begin, options.tz);
+    const bars = await day(_.defaults({
+        interval: 'day',
+        begin: begin.day() === 0 || begin.day() == 6 ? begin.startOf('day') :
+            begin.startOf('isoWeek').subtract(1, 'days'),
+        end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days')
+    }, options));
+    const weeks = _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW'));
+    return _.map(weeks, bars => bars.reduce((week, day) => {
+        const adj = adjustment(_.last(bars), day);
+        return _.defaults({
+            ending: endOf('isoWeek', day.ending, options),
+            open: week.open || adj(day.open),
+            high: Math.max(week.high, adj(day.high)) || week.high || adj(day.high),
+            low: Math.min(week.low, adj(day.low)) || week.low || adj(day.low),
+            close: day.close,
+            volume: week.volume + day.volume || week.volume || day.volume,
+            adj_close: day.adj_close
+        }, day, week);
+      }, {}));
+}
+
 function interday(datasources, options) {
     expect(options).to.be.like({
         interval: /^\S+$/,
@@ -325,5 +416,26 @@ function intraday(datasources, options) {
         }
         return results;
     });
+}
+
+function adjustment(base, bar) {
+    if (!bar.adj_close || bar.adj_close == bar.close) return _.identity;
+    const scale = bar.adj_close/bar.close * base.close / base.adj_close;
+    if (Math.abs(scale -1) < 0.000001) return _.identity;
+    else return price => Math.round(price * scale * 10000) / 10000;
+}
+
+function endOf(unit, date, options) {
+    const start = moment.tz(date, options.tz);
+    if (!start.isValid()) throw Error("Invalid date " + date);
+    let ending = moment(start).endOf(unit);
+    let days = 0, closes;
+    do {
+        if (ending.days() === 0) ending.subtract(2, 'days');
+        else if (ending.days() == 6) ending.subtract(1, 'days');
+        closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + start.format('HH:mm:ss'), options.tz);
+        if (closes.isBefore(start)) ending = moment(start).add(++days, 'days').endOf(unit);
+    } while (closes.isBefore(start));
+    return closes.format();
 }
 

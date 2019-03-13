@@ -70,9 +70,9 @@ function help() {
         properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
         options: _.extend(commonOptions, {
             interval: {
-                usage: "year|quarter|month|week|day",
+                usage: "day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["year", "quarter", "month", "week", "day"], config('fetch.yahoo.intervals'))
+                values: ["day"]
             },
             begin: {
                 example: "YYYY-MM-DD",
@@ -112,12 +112,8 @@ module.exports = function() {
         switch(options.interval) {
             case 'lookup': return lookup(markets, yahoo, options);
             case 'fundamental': throw Error("Yahoo! fundamental service has been discontinued");
-            case 'year':
-            case 'quarter':
-            case 'month':
-            case 'week':
-            case 'day': return interday(yahoo, adjustments, symbol, options);
-            default: throw Error("Intraday is not supported by this Yahoo! datasource");
+            case 'day': return interday(yahoo, adjustments, symbol(options), options);
+            default: throw Error("Only daily is supported by this Yahoo! datasource");
         }
     }, {
         close() {
@@ -164,27 +160,6 @@ function lookup(markets, yahoo, options) {
     })).then(rows => rows.filter(row => row.market));
 }
 
-function interday(yahoo, adjustments, symbol, options) {
-    expect(options).to.be.like({
-        interval: _.isString,
-        symbol: /^\S+$/,
-        begin: Boolean,
-        marketClosesAt: _.isString,
-        tz: _.isString
-    });
-    switch(options.interval) {
-        case 'year': return year(yahoo, adjustments, symbol(options), options);
-        case 'quarter': return quarter(yahoo, adjustments, symbol(options), options);
-        case 'month': return month(yahoo, adjustments, symbol(options), options);
-        case 'week': return week(yahoo, adjustments, symbol(options), options);
-        case 'day': return day(yahoo, adjustments, symbol(options), options);
-        default:
-            expect(options.interval).to.be.oneOf([
-                'year', 'quarter', 'month', 'week', 'day'
-            ]);
-    }
-}
-
 function yahoo_symbol(markets, options) {
     if (options.yahoo_symbol) {
         expect(options).to.be.like({
@@ -214,95 +189,14 @@ function yahoo_symbol(markets, options) {
     }
 }
 
-async function year(yahoo, adjustments, symbol, options) {
-    const bars = await month(yahoo, adjustments, symbol, _.defaults({
-        begin: moment.tz(options.begin, options.tz).startOf('year'),
-        end: options.end && moment.tz(options.end, options.tz).endOf('year')
-    }, options));
-    const years = _.groupBy(bars, bar => moment(bar.ending).year());
-    return _.map(years, bars => bars.reduce((year, month) => {
-        const adj = adjustment(_.last(bars), month);
-        return _.defaults({
-            ending: endOf('year', month.ending, options),
-            open: year.open || adj(month.open),
-            high: Math.max(year.high, adj(month.high)) || year.high || adj(month.high),
-            low: Math.min(year.low, adj(month.low)) || year.low || adj(month.low),
-            close: month.close,
-            volume: year.volume + month.volume || year.volume || month.volume,
-            adj_close: month.adj_close,
-            split: (year.split || 1) * (month.split || 1),
-            dividend: (year.dividend || 0) + (month.dividend || 0)
-        }, month, year);
-      }, {}));
-}
-
-async function quarter(yahoo, adjustments, symbol, options) {
-    const bars = await month(yahoo, adjustments, symbol, _.defaults({
-        begin: moment.tz(options.begin, options.tz).startOf('quarter'),
-        end: options.end && moment.tz(options.end, options.tz).endOf('quarter')
-    }, options));
-    const quarters = _.groupBy(bars, bar => moment(bar.ending).format('Y-Q'));
-    return _.map(quarters, bars => bars.reduce((quarter, month) => {
-        const adj = adjustment(_.last(bars), month);
-        return _.defaults({
-            ending: endOf('quarter', month.ending, options),
-            open: quarter.open || adj(month.open),
-            high: Math.max(quarter.high, adj(month.high)) || quarter.high || adj(month.high),
-            low: Math.min(quarter.low, adj(month.low)) || quarter.low || adj(month.low),
-            close: month.close,
-            volume: quarter.volume + month.volume || quarter.volume || month.volume,
-            adj_close: month.adj_close,
-            split: (quarter.split || 1) * (month.split || 1),
-            dividend: (quarter.dividend || 0) + (month.dividend || 0)
-        }, month, quarter);
-      }, {}));
-}
-
-async function month(yahoo, adjustments, symbol, options) {
-    const bars = await day(yahoo, adjustments, symbol, _.defaults({
-        begin: moment.tz(options.begin, options.tz).startOf('month'),
-        end: options.end && moment.tz(options.end, options.tz).endOf('month')
-    }, options));
-    const months = _.groupBy(bars, bar => moment(bar.ending).format('Y-MM'));
-    return _.map(months, bars => bars.reduce((month, day) => {
-        const adj = adjustment(_.last(bars), day);
-        return _.defaults({
-            ending: endOf('month', day.ending, options),
-            open: month.open || adj(day.open),
-            high: Math.max(month.high, adj(day.high)) || month.high || adj(day.high),
-            low: Math.min(month.low, adj(day.low)) || month.low || adj(day.low),
-            close: day.close,
-            volume: month.volume + day.volume || month.volume || day.volume,
-            adj_close: day.adj_close,
-            split: (month.split || 1) * (day.split || 1),
-            dividend: (month.dividend || 0) + (day.dividend || 0)
-        }, day, month);
-      }, {}));
-}
-
-async function week(yahoo, adjustments, symbol, options) {
-    const bars = await day(yahoo, adjustments, symbol, _.defaults({
-        begin: moment.tz(options.begin, options.tz).startOf('isoWeek').subtract(1, 'days'),
-        end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days')
-    }, options));
-    const weeks = _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW'));
-    return _.map(weeks, bars => bars.reduce((week, day) => {
-        const adj = adjustment(_.last(bars), day);
-        return _.defaults({
-            ending: endOf('isoWeek', day.ending, options),
-            open: week.open || adj(day.open),
-            high: Math.max(week.high, adj(day.high)) || week.high || adj(day.high),
-            low: Math.min(week.low, adj(day.low)) || week.low || adj(day.low),
-            close: day.close,
-            volume: week.volume + day.volume || week.volume || day.volume,
-            adj_close: day.adj_close,
-            split: (week.split || 1) * (day.split || 1),
-            dividend: (week.dividend || 0) + (day.dividend || 0)
-        }, day, week);
-      }, {}));
-}
-
-async function day(yahoo, adjustments, symbol, options) {
+async function interday(yahoo, adjustments, symbol, options) {
+    expect(options).to.be.like({
+        interval: _.isString,
+        symbol: /^\S+$/,
+        begin: Boolean,
+        marketClosesAt: _.isString,
+        tz: _.isString
+    });
     const [prices, adjusts] = await Promise.all([
         yahoo.day(symbol, options.begin, options.tz),
         adjustments(options)
@@ -329,6 +223,7 @@ async function day(yahoo, adjustments, symbol, options) {
 }
 
 function adjustment(base, bar) {
+    if (!bar.adj_close || bar.adj_close == bar.close) return _.identity;
     const scale = bar.adj_close/bar.close * base.close / base.adj_close;
     return Math.abs(scale -1) > 0.000001 ? price => {
         return Math.round(price * scale * 1000000) / 1000000;

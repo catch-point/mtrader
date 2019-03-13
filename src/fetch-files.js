@@ -138,8 +138,11 @@ function readOrWriteResult(fallbacks, open, cmd, options) {
                 throw Error("Data file not found " + coll.filenameOf(name));
             else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(async(err) => {
                 const intervals = config(['fetch', source, 'intervals']);
+                const markets = config(['fetch', source, 'markets']);
                 if (!_.contains(intervals, options.interval))
                     throw (err || Error("No fallback available for " + options.interval));
+                if (!_.contains(markets, options.market))
+                    throw (err || Error("No fallback available for " + options.market));
                 const opt = _.defaults({}, options);
                 const result = await fb(opt);
                 await coll.writeTo(result, name)
