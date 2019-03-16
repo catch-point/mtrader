@@ -34,6 +34,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const logger = require('./logger.js');
 const config = require('./config.js');
+const periods = require('./periods.js');
 const iqfeed = require('./iqfeed-client.js');
 const Adjustments = require('./adjustments.js');
 const cache = require('./memoize-cache.js');
@@ -366,24 +367,22 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
 
 async function interday(iqclient, adjustments, symbol, options) {
     const [prices, adjusts] = await Promise.all([
-        iqclient.day(symbol, options.begin, null, options.tz),
+        iqclient.day(symbol, options.begin, options.end, options.tz),
         adjustments && adjustments(options)
     ]);
-    const result = adjRight(prices, adjusts, options, (today, datum, splits, adj) => ({
+    const result = adjRight(prices, adjusts, options, (datum, adj, adj_split_only) => ({
         ending: endOf('day', datum.Date_Stamp, options),
-        open: parseCurrency(datum.Open, splits),
-        high: parseCurrency(datum.High, splits),
-        low: parseCurrency(datum.Low, splits),
-        close: parseCurrency(datum.Close, splits) || today.close,
+        open: parseCurrency(datum.Open, adj_split_only),
+        high: parseCurrency(datum.High, adj_split_only),
+        low: parseCurrency(datum.Low, adj_split_only),
+        close: parseCurrency(datum.Close, adj_split_only),
         volume: parseFloat(datum.Period_Volume) || 0,
-        adj_close: Math.round(
-            parseCurrency(datum.Close, splits) * adj
-            * 1000000) / 1000000 || today.adj_close
+        adj_close: Math.round(parseCurrency(datum.Close, adj_split_only) * adj * 1000000) / 1000000
     }));
     return Promise.resolve(result).then(result => {
         if (_.last(result) && !_.last(result).close) result.pop();
         if (!options.end) return result;
-        const end = moment.tz(options.end || now, options.tz);
+        const end = moment.tz(options.end || options.now, options.tz);
         if (end.isAfter()) return result;
         const final = end.format();
         let last = _.sortedIndex(result, {ending: final}, 'ending');
@@ -400,17 +399,15 @@ async function intraday(iqclient, adjustments, symbol, options) {
         iqclient.minute(minutes, symbol, options.begin, options.end, options.tz),
         adjustments && adjustments(options)
     ]);
-    const result = adjRight(prices, adjusts, options, (today, datum, splits, adj) => ({
+    const result = adjRight(prices, adjusts, options, (datum, adj, adj_split_only) => ({
         ending: moment.tz(datum.Time_Stamp, 'America/New_York').tz(options.tz).format(),
         open: parseFloat(datum.Open),
         high: parseFloat(datum.High),
         low: parseFloat(datum.Low),
-        close: parseFloat(datum.Close) || today.close,
+        close: parseFloat(datum.Close),
         volume: parseFloat(datum.Period_Volume) || 0,
         total_volume: parseFloat(datum.Total_Volume),
-        adj_close: Math.round(
-            parseFloat(datum.Close) * adj
-            * 1000000) / 1000000 || today.adj_close
+        adj_close: Math.round(parseFloat(datum.Close) * adj * 1000000) / 1000000
     })).filter(bar => bar.volume);
     if (_.last(result) && !_.last(result).close) result.pop();
     if (!options.end) return result;
@@ -551,47 +548,23 @@ async function summarize(iqclient, symbol, options) {
     }];
 }
 
-function adjustment(base, bar) {
-    if (!bar.adj_close || bar.adj_close == bar.close) return _.identity;
-    const scale = bar.adj_close/bar.close * base.close / base.adj_close;
-    if (Math.abs(scale -1) < 0.000001) return _.identity;
-    else return price => Math.round(price * scale * 10000) / 10000;
-}
-
-function parseCurrency(string, split) {
-    if (Math.abs(split -1) < 0.000001) return parseFloat(string);
-    else return Math.round(parseFloat(string) * split * 10000) / 10000;
+function parseCurrency(string, adj_split_only) {
+    if (adj_split_only == 1 || Math.abs(adj_split_only -1) < 0.000001) return parseFloat(string);
+    else return Math.round(parseFloat(string) / adj_split_only * 10000) / 10000;
 }
 
 function adjRight(bars, adjustments, options, cb) {
+    const parseDate = bar => bar.Date_Stamp || bar.Time_Stamp.substring(0, 10);
     const result = [];
-    let today = null;
-    let adj, msplit = 1;
+    let adj;
     let a = adjustments && adjustments.length;
     for (let i=bars.length -1; i>=0; i--) {
-        let div = 0, split = 1;
         if (adjustments && adjustments.length) {
-            while (a > 0 && adjustments[a-1].exdate > (bars[i].Date_Stamp || bars[i].Time_Stamp)) {
+            while (a > 0 && adjustments[a-1].exdate > parseDate(bars[i])) {
                 adj = adjustments[--a];
-                div += adj.dividend;
-                split = split * adj.split;
-                msplit = adj.cum_close / bars[i].Close || 1;
-            }
-            if (today) {
-                today.split = split;
-                today.dividend = div;
-            } else {
-                result[bars.length] = {
-                    split: split,
-                    dividend: div
-                };
             }
         }
-        result[i] = today = cb(today, bars[i], msplit, adj ? adj.adj : 1);
-        if (adjustments && adjustments.length) {
-            today.split = 1;
-            today.dividend = 0;
-        }
+        result[i] = cb(bars[i], adj && adj.adj || 1, adj && adj.adj_split_only || 1);
     }
     return result;
 }

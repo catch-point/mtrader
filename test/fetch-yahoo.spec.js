@@ -188,27 +188,27 @@ describe("fetch-yahoo", function() {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
         }).should.eventually.be.like([
-            {ending:'2016-11-01T16:00:00-04:00',close:10.32,adj_close:41.28,split:1,dividend:0},
-            {ending:'2016-11-02T16:00:00-04:00',close:10.30,adj_close:41.20,split:1,dividend:0},
-            {ending:'2016-11-03T16:00:00-04:00',close:10.35,adj_close:41.40,split:1,dividend:0},
-            {ending:'2016-11-04T16:00:00-04:00',close:10.43,adj_close:41.72,split:1,dividend:0},
-            {ending:'2016-11-07T16:00:00-05:00',close:42.02,adj_close:42.02,split:0.25,dividend:0},
-            {ending:'2016-11-08T16:00:00-05:00',close:42.22,adj_close:42.22,split:1,dividend:0},
-            {ending:'2016-11-09T16:00:00-05:00',close:41.95,adj_close:41.95,split:1,dividend:0},
-            {ending:'2016-11-10T16:00:00-05:00',close:41.39,adj_close:41.39,split:1,dividend:0},
-            {ending:'2016-11-11T16:00:00-05:00',close:41.71,adj_close:41.71,split:1,dividend:0},
-            {ending:'2016-11-14T16:00:00-05:00',close:41.43,adj_close:41.43,split:1,dividend:0},
-            {ending:'2016-11-15T16:00:00-05:00',close:41.74,adj_close:41.74,split:1,dividend:0},
-            {ending:'2016-11-16T16:00:00-05:00',close:41.75,adj_close:41.75,split:1,dividend:0},
-            {ending:'2016-11-17T16:00:00-05:00',close:41.85,adj_close:41.85,split:1,dividend:0},
-            {ending:'2016-11-18T16:00:00-05:00',close:42.02,adj_close:42.02,split:1,dividend:0},
-            {ending:'2016-11-21T16:00:00-05:00',close:42.42,adj_close:42.42,split:1,dividend:0},
-            {ending:'2016-11-22T16:00:00-05:00',close:42.79,adj_close:42.79,split:1,dividend:0},
-            {ending:'2016-11-23T16:00:00-05:00',close:42.3,adj_close:42.30,split:1,dividend:0},
-            {ending:'2016-11-25T16:00:00-05:00',close:42.6,adj_close:42.60,split:1,dividend:0},
-            {ending:'2016-11-28T16:00:00-05:00',close:42.82,adj_close:42.82,split:1,dividend:0},
-            {ending:'2016-11-29T16:00:00-05:00',close:43.22,adj_close:43.22,split:1,dividend:0},
-            {ending:'2016-11-30T16:00:00-05:00',close:42.63,adj_close:42.63,split:1,dividend:0}
+            {ending:'2016-11-01T16:00:00-04:00',close:10.32,adj_close:41.28},
+            {ending:'2016-11-02T16:00:00-04:00',close:10.30,adj_close:41.20},
+            {ending:'2016-11-03T16:00:00-04:00',close:10.35,adj_close:41.40},
+            {ending:'2016-11-04T16:00:00-04:00',close:10.43,adj_close:41.72},
+            {ending:'2016-11-07T16:00:00-05:00',close:42.02,adj_close:42.02},
+            {ending:'2016-11-08T16:00:00-05:00',close:42.22,adj_close:42.22},
+            {ending:'2016-11-09T16:00:00-05:00',close:41.95,adj_close:41.95},
+            {ending:'2016-11-10T16:00:00-05:00',close:41.39,adj_close:41.39},
+            {ending:'2016-11-11T16:00:00-05:00',close:41.71,adj_close:41.71},
+            {ending:'2016-11-14T16:00:00-05:00',close:41.43,adj_close:41.43},
+            {ending:'2016-11-15T16:00:00-05:00',close:41.74,adj_close:41.74},
+            {ending:'2016-11-16T16:00:00-05:00',close:41.75,adj_close:41.75},
+            {ending:'2016-11-17T16:00:00-05:00',close:41.85,adj_close:41.85},
+            {ending:'2016-11-18T16:00:00-05:00',close:42.02,adj_close:42.02},
+            {ending:'2016-11-21T16:00:00-05:00',close:42.42,adj_close:42.42},
+            {ending:'2016-11-22T16:00:00-05:00',close:42.79,adj_close:42.79},
+            {ending:'2016-11-23T16:00:00-05:00',close:42.3,adj_close:42.30},
+            {ending:'2016-11-25T16:00:00-05:00',close:42.6,adj_close:42.60},
+            {ending:'2016-11-28T16:00:00-05:00',close:42.82,adj_close:42.82},
+            {ending:'2016-11-29T16:00:00-05:00',close:43.22,adj_close:43.22},
+            {ending:'2016-11-30T16:00:00-05:00',close:42.63,adj_close:42.63}
         ]);
     });
 });

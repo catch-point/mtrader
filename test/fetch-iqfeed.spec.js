@@ -79,8 +79,8 @@ describe("fetch-iqfeed", function() {
             interval: 'day',
             symbol: 'AABA',
             market: 'NASDAQ',
-            begin: moment.tz('2014-01-01', tz),
-            end: moment.tz('2014-02-01', tz),
+            begin: '2014-01-01',
+            end: '2014-02-01',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).should.eventually.be.like([
             {ending:'2014-01-02T16:00:00-05:00',open:40.37,high:40.49,low:39.31,close:39.59},
@@ -120,8 +120,8 @@ describe("fetch-iqfeed", function() {
             interval: 'day',
             symbol: 'SPY',
             market: 'ARCA',
-            begin: moment.tz('2017-03-15', tz),
-            end: moment.tz('2017-03-22', tz),
+            begin: '2017-03-15',
+            end: '2017-03-22',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
@@ -139,8 +139,8 @@ describe("fetch-iqfeed", function() {
             interval: 'day',
             symbol: 'SPY',
             market: 'ARCA',
-            begin: moment.tz('2016-12-01', tz),
-            end: moment.tz('2016-12-31', tz),
+            begin: '2016-12-01',
+            end: '2016-12-31',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
@@ -174,8 +174,8 @@ describe("fetch-iqfeed", function() {
             interval: 'day',
             symbol: 'XLF',
             market: 'ARCA',
-            begin: moment.tz('2016-09-14', tz),
-            end: moment.tz('2016-09-22', tz),
+            begin: '2016-09-14',
+            end: '2016-09-22',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
@@ -262,27 +262,27 @@ describe("fetch-iqfeed", function() {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
         }).should.eventually.be.like([
-            {ending:'2016-11-01T16:00:00-04:00',close:10.32,adj_close:41.28,split:1,dividend:0},
-            {ending:'2016-11-02T16:00:00-04:00',close:10.3,adj_close:41.20,split:1,dividend:0},
-            {ending:'2016-11-03T16:00:00-04:00',close:10.35,adj_close:41.40,split:1,dividend:0},
-            {ending:'2016-11-04T16:00:00-04:00',close:10.43,adj_close:41.72,split:1,dividend:0},
-            {ending:'2016-11-07T16:00:00-05:00',close:42.02,adj_close:42.02,split:0.25,dividend:0},
-            {ending:'2016-11-08T16:00:00-05:00',close:42.22,adj_close:42.22,split:1,dividend:0},
-            {ending:'2016-11-09T16:00:00-05:00',close:41.95,adj_close:41.95,split:1,dividend:0},
-            {ending:'2016-11-10T16:00:00-05:00',close:41.39,adj_close:41.39,split:1,dividend:0},
-            {ending:'2016-11-11T16:00:00-05:00',close:41.71,adj_close:41.71,split:1,dividend:0},
-            {ending:'2016-11-14T16:00:00-05:00',close:41.43,adj_close:41.43,split:1,dividend:0},
-            {ending:'2016-11-15T16:00:00-05:00',close:41.74,adj_close:41.74,split:1,dividend:0},
-            {ending:'2016-11-16T16:00:00-05:00',close:41.75,adj_close:41.75,split:1,dividend:0},
-            {ending:'2016-11-17T16:00:00-05:00',close:41.85,adj_close:41.85,split:1,dividend:0},
-            {ending:'2016-11-18T16:00:00-05:00',close:42.02,adj_close:42.02,split:1,dividend:0},
-            {ending:'2016-11-21T16:00:00-05:00',close:42.42,adj_close:42.42,split:1,dividend:0},
-            {ending:'2016-11-22T16:00:00-05:00',close:42.79,adj_close:42.79,split:1,dividend:0},
-            {ending:'2016-11-23T16:00:00-05:00',close:42.3,adj_close:42.30,split:1,dividend:0},
-            {ending:'2016-11-25T16:00:00-05:00',close:42.6,adj_close:42.60,split:1,dividend:0},
-            {ending:'2016-11-28T16:00:00-05:00',close:42.82,adj_close:42.82,split:1,dividend:0},
-            {ending:'2016-11-29T16:00:00-05:00',close:43.22,adj_close:43.22,split:1,dividend:0},
-            {ending:'2016-11-30T16:00:00-05:00',close:42.63,adj_close:42.63,split:1,dividend:0}
+            {ending:'2016-11-01T16:00:00-04:00',close:10.32,adj_close:41.28},
+            {ending:'2016-11-02T16:00:00-04:00',close:10.3,adj_close:41.20},
+            {ending:'2016-11-03T16:00:00-04:00',close:10.35,adj_close:41.40},
+            {ending:'2016-11-04T16:00:00-04:00',close:10.43,adj_close:41.72},
+            {ending:'2016-11-07T16:00:00-05:00',close:42.02,adj_close:42.02},
+            {ending:'2016-11-08T16:00:00-05:00',close:42.22,adj_close:42.22},
+            {ending:'2016-11-09T16:00:00-05:00',close:41.95,adj_close:41.95},
+            {ending:'2016-11-10T16:00:00-05:00',close:41.39,adj_close:41.39},
+            {ending:'2016-11-11T16:00:00-05:00',close:41.71,adj_close:41.71},
+            {ending:'2016-11-14T16:00:00-05:00',close:41.43,adj_close:41.43},
+            {ending:'2016-11-15T16:00:00-05:00',close:41.74,adj_close:41.74},
+            {ending:'2016-11-16T16:00:00-05:00',close:41.75,adj_close:41.75},
+            {ending:'2016-11-17T16:00:00-05:00',close:41.85,adj_close:41.85},
+            {ending:'2016-11-18T16:00:00-05:00',close:42.02,adj_close:42.02},
+            {ending:'2016-11-21T16:00:00-05:00',close:42.42,adj_close:42.42},
+            {ending:'2016-11-22T16:00:00-05:00',close:42.79,adj_close:42.79},
+            {ending:'2016-11-23T16:00:00-05:00',close:42.3,adj_close:42.30},
+            {ending:'2016-11-25T16:00:00-05:00',close:42.6,adj_close:42.60},
+            {ending:'2016-11-28T16:00:00-05:00',close:42.82,adj_close:42.82},
+            {ending:'2016-11-29T16:00:00-05:00',close:43.22,adj_close:43.22},
+            {ending:'2016-11-30T16:00:00-05:00',close:42.63,adj_close:42.63}
         ]);
     });
     it("should find USD/CAD details", function() {
@@ -338,8 +338,8 @@ describe("fetch-iqfeed", function() {
             interval: 'm1',
             minutes: 1,
             symbol: 'USDCAD.FXCM',
-            begin: moment('2014-03-03T10:01:00-0500'),
-            end: moment('2014-03-03T10:30:00-0500'),
+            begin: '2014-03-03T10:01:00-0500',
+            end: '2014-03-03T10:30:00-0500',
             tz: tz
         }).should.eventually.be.like([
             {ending:'2014-03-03T10:01:00-05:00',high:1.10981,low:1.10923,open:1.10923,close:1.10981},
@@ -379,8 +379,8 @@ describe("fetch-iqfeed", function() {
             interval: 'm10',
             minutes: 10,
             symbol: 'USDCAD.FXCM',
-            begin: moment('2014-03-03T10:10:00-0500'),
-            end: moment('2014-03-03T11:00:00-0500'),
+            begin: '2014-03-03T10:10:00-0500',
+            end: '2014-03-03T11:00:00-0500',
             tz: tz
         }).should.eventually.be.like([
             {ending:'2014-03-03T10:10:00-05:00',high:1.10993,low:1.10876,open:1.10923,close:1.10905},
@@ -397,7 +397,7 @@ describe("fetch-iqfeed", function() {
             minutes: 30,
             interval: 'day',
             symbol: 'USDCAD.FXCM',
-            begin: moment.tz('2014-01-01', tz), end: moment.tz('2014-02-01', tz),
+            begin: '2014-01-01', end: '2014-02-01',
             marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
         }).should.eventually.be.like([
             {ending:'2014-01-02T17:00:00-05:00',high:1.06770,low:1.05874,open:1.06321,close:1.06680},
@@ -460,7 +460,7 @@ describe("fetch-iqfeed", function() {
             interval: 'day',
             symbol: 'SPX1918D2675',
             market: 'OPRA',
-            begin: moment.tz('2019-01-18', tz),
+            begin: '2019-01-18',
             marketOpensAt: '02:00:00', marketClosesAt: '16:15:00', tz: tz
         }).then(d=>d.forEach(d=>console.log(d))||d);
     });

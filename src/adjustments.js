@@ -190,7 +190,7 @@ function compatible(collection, since) {
 async function adjustments(yahoo, db, symbol, options) {
     const data = await yahoo_adjustments(yahoo, db, symbol, options);
     let adj = 1, adj_dividend_only = 1, adj_split_only = 1;
-    let adj_yahoo_divs = 1, adj_yahoo_price = 1;
+    let adj_yahoo_divs = 1;
     return data.reduceRight((adjustments, datum) => {
         const exdate = datum.Date;
         let dividend = +datum.Dividends * adj_yahoo_divs;
@@ -201,9 +201,6 @@ async function adjustments(yahoo, db, symbol, options) {
             split *= last.split;
             // check if split is a manual adjustment for a big dividend
             if (dividend && split > 1 && split <= 2) { // XLF.ARCA 2016-09-19
-                adj_yahoo_divs *= split;
-                adj_yahoo_price *= split;
-                split = 1;
                 if (adjustments.length) {
                     adj_dividend_only = _.last(adjustments).adj_dividend_only;
                     adj_split_only = _.last(adjustments).adj_split_only;
@@ -213,6 +210,9 @@ async function adjustments(yahoo, db, symbol, options) {
                     adj_split_only = 1;
                     adj = 1;
                 }
+                adj_yahoo_divs *= split;
+                adj_split_only /= split;
+                split = 1;
             }
         }
         // check if reverse split is enough for yahoo to change it dividends
@@ -229,9 +229,9 @@ async function adjustments(yahoo, db, symbol, options) {
         if (split != 1 && adjustments.length &&
                 Math.abs(+datum.cum_close - _.last(adjustments).cum_close) >
                 Math.abs(+datum.cum_close * adj_split_only - _.last(adjustments).cum_close)) {
-            adj_yahoo_price /= split;
+            adj_split_only *= split;
         }
-        const cum_close = +datum.cum_close / adj_split_only * adj_yahoo_price;
+        const cum_close = +datum.cum_close / adj_split_only;
         if (dividend && +datum.cum_close) {
             adj_dividend_only *= (cum_close - dividend)/cum_close;
             adj *= (cum_close - dividend)/cum_close;

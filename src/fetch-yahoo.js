@@ -201,16 +201,14 @@ async function interday(yahoo, adjustments, symbol, options) {
         yahoo.day(symbol, options.begin, options.tz),
         adjustments(options)
     ]);
-    const result = adjRight(prices, adjusts, options, (today, datum, splits, adj) => ({
+    const result = adjRight(prices, adjusts, options, (datum, adj, adj_split_only) => ({
         ending: endOf('day', datum.Date, options),
-        open: parseCurrency(datum.Open, splits),
-        high: parseCurrency(datum.High, splits),
-        low: parseCurrency(datum.Low, splits),
-        close: parseCurrency(datum.Close, splits) || today.close,
+        open: parseCurrency(datum.Open, adj_split_only),
+        high: parseCurrency(datum.High, adj_split_only),
+        low: parseCurrency(datum.Low, adj_split_only),
+        close: parseCurrency(datum.Close, adj_split_only),
         volume: parseFloat(datum.Volume) || 0,
-        adj_close: Math.round(
-            parseCurrency(datum.Close, splits) * adj
-            * 1000000) / 1000000 || today.adj_close
+        adj_close: Math.round(parseCurrency(datum.Close, adj_split_only) * adj * 1000000) / 1000000
     })).filter(bar => bar.volume);
     if (_.last(result) && !_.last(result).close) result.pop();
     if (!options.end) return result;
@@ -232,31 +230,23 @@ function adjustment(base, bar) {
     };
 }
 
+function parseCurrency(string, adj_split_only) {
+    if (adj_split_only == 1 || Math.abs(adj_split_only -1) < 0.000001) return parseFloat(string);
+    else return Math.round(parseFloat(string) / adj_split_only * 10000) / 10000;
+}
+
 function adjRight(bars, adjustments, options, cb) {
+    const parseDate = bar => bar.Date;
     const result = [];
-    let today = null;
-    let adj, msplit = 1;
-    let a = adjustments.length;
+    let adj;
+    let a = adjustments && adjustments.length;
     for (let i=bars.length -1; i>=0; i--) {
-        let div = 0, split = 1;
-        while (a > 0 && adjustments[a-1].exdate > bars[i].Date) {
-            adj = adjustments[--a];
-            div += adj.dividend;
-            split = split * adj.split;
-            msplit = adj.cum_close / bars[i].Close || 1;
+        if (adjustments && adjustments.length) {
+            while (a > 0 && adjustments[a-1].exdate > parseDate(bars[i])) {
+                adj = adjustments[--a];
+            }
         }
-        if (today) {
-            today.split = split;
-            today.dividend = div;
-        } else {
-            result[bars.length] = {
-                split: split,
-                dividend: div
-            };
-        }
-        result[i] = today = cb(today, bars[i], msplit, adj ? adj.adj : 1);
-        today.split = 1;
-        today.dividend = 0;
+        result[i] = cb(bars[i], adj && adj.adj || 1, adj && adj.adj_split_only || 1);
     }
     return result;
 }
@@ -269,9 +259,5 @@ function endOf(unit, begin, options) {
     const closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
     if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
     return closes.format();
-}
-
-function parseCurrency(string, split) {
-    return Math.round(parseFloat(string) * split * 100) / 100;
 }
 
