@@ -223,4 +223,26 @@ describe("adjustments", function() {
             dividend: 1.033
         }]);
     });
+    it("should ignore TRI 1/0 split (it was actually 9079/10000)", function() {
+        return adjustments({
+            symbol: 'TRI',
+            market: 'TSE',
+            begin: '2018-11-01',
+            tz: tz
+        }).then(adjustments => {
+            var end = '2018-12-31';
+            var idx = _.sortedIndex(adjustments, {exdate: end}, 'exdate');
+            var after = adjustments[idx] && adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
+            return adjustments
+              .filter(datum => datum.exdate <= end)
+              .map(datum => _.extend(datum, {
+                adj: datum.adj / after.adj,
+                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
+                adj_split_only: datum.adj_split_only / after.adj_split_only
+              }));
+        }).should.eventually.be.like([
+            {exdate:"2018-11-14",split:1,dividend:0.35},
+            {exdate:"2018-11-27",split:1,dividend:5.898}
+        ]);
+    });
 });

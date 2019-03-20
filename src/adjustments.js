@@ -249,7 +249,9 @@ async function adjustments(yahoo, db, symbol, options) {
 function parseSplit(stock_splits) {
     if (!stock_splits) return 1;
     const splits = stock_splits.split('/');
-    return +splits[1] / +splits[0];
+    const split = +splits[1] / +splits[0];
+    if (!split || !_.isFinite(split)) return 1; // TRI.TO 2018-11-27 Stock Splits of 1/0
+    else return split;
 }
 
 function filterAdj(adjustments, options) {
