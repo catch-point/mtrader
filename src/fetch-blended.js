@@ -124,7 +124,8 @@ function blendCall(delegate, cfg, cmd, options) {
                 const ending = !_.isEmpty(part) && _.last(part).ending;
                 const earlier = _.last(_.sortBy(_.compact([begining, ending])));
                 const later = _.last(_.sortBy(_.compact([end, ending])));
-                return delegateCall(delegate, cfg, cmd, _.defaults({
+                if (end && later > end) return part;
+                else return delegateCall(delegate, cfg, cmd, _.defaults({
                     interval: 'day',
                     begin: earlier,
                     end: later != earlier ? later : undefined
