@@ -228,8 +228,7 @@ async function interday(markets, adjustments, client, ib_tz, options) {
     const start = moment.tz(options.begin, options.tz).format();
     const finish = moment.tz(options.end || options.now, options.tz).format();
     let first = _.sortedIndex(result, {ending: start}, 'ending');
-    let last = _.sortedIndex(result, {ending: finish}, 'ending');
-    if ((result[last]||{}).ending == finish) last++;
+    let last = end_past ? _.sortedIndex(result, {ending: finish}, 'ending') + 1 : result.length;
     if (first <= 0 && last >= result.length) return result;
     else return result.slice(first, last);
 }
@@ -257,8 +256,7 @@ async function intraday(markets, adjustments, client, ib_tz, options) {
     const start = moment.tz(options.begin, options.tz).format();
     const finish = moment.tz(options.end || options.now, options.tz).format();
     let first = _.sortedIndex(result, {ending: start}, 'ending');
-    let last = _.sortedIndex(result, {ending: finish}, 'ending');
-    if ((result[last]||{}).ending == finish) last++;
+    let last = end_past ? _.sortedIndex(result, {ending: finish}, 'ending') + 1 : result.length;
     if (first <= 0 && last >= result.length) return result;
     else return result.slice(first, last);
 }

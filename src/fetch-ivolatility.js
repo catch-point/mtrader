@@ -200,10 +200,9 @@ function interday(ivolatility, delegate, options) {
             if (opensAt.isValid() && end.isBefore(opensAt)) return adata;
             if (opensAt.isValid() && !isOptionActive(options.symbol, opensAt, now)) return adata;
         }
-        const bdata = await delegate(_.defaults({
-            interval: 'day',
-            begin: adata.length ? periods(options).inc(_.last(adata).ending,1).format() : options.begin
-        }, options)).catch(err => {
+        const begin = !adata.length ? options.begin :
+            periods(options).inc(periods(options).floor(_.last(adata).ending),1).format();
+        const bdata = await delegate(_.defaults({interval: 'day', begin}, options)).catch(err => {
             logger.warn(`Could not fetch latest options data ${err.message}`);
             return [];
         });
