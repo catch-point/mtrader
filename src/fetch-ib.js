@@ -201,10 +201,12 @@ async function interday(markets, adjustments, client, ib_tz, options) {
     const contract = toContract(market, options);
     const whatToShow = market.whatToShow || 'MIDPOINT';
     const end = periods(options).ceil(options.end || options.now);
-    const end_str = end && end.isBefore() ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
+    const now = moment().tz(options.tz);
+    const end_past = end && end.isBefore(now);
+    const end_str = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
     const endDateTime = whatToShow != 'ADJUSTED_LAST' ? end_str : '';
     const supported = !market.intervals || ~market.intervals.indexOf(options.interval);
-    const duration = toDurationString(end, options);
+    const duration = toDurationString(end_past ? end : now, options, !supported && 5);
     const barSize = toBarSizeSetting(supported ? options.interval : 'm60');
     const prices = await client.reqHistoricalData(contract, endDateTime, duration, barSize, whatToShow, 1, 1);
     const adjust = whatToShow == 'TRADES' ? fromTrades :
@@ -240,9 +242,11 @@ async function intraday(markets, adjustments, client, ib_tz, options) {
     const contract = toContract(market, options);
     const whatToShow = market.whatToShow || 'MIDPOINT';
     const end = periods(options).ceil(options.end || options.now);
-    const end_str = end && end.isBefore() ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
+    const now = moment().tz(options.tz);
+    const end_past = end && end.isBefore(now);
+    const end_str = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
     const endDateTime = whatToShow != 'ADJUSTED_LAST' ? end_str : '';
-    const duration = toDurationString(end, options);
+    const duration = toDurationString(end_past ? end : now, options);
     const barSize = toBarSizeSetting(options.interval);
     const prices = await client.reqHistoricalData(contract, endDateTime, duration, barSize, whatToShow, 0, 1);
     const adjust = whatToShow == 'TRADES' ? fromTrades :
@@ -308,12 +312,14 @@ function withoutAdjClose(prices, adjusts, ib_tz, options) {
     }));
 }
 
-function toDurationString(end, options) {
+function toDurationString(end, options, max_days) {
     expect(options).to.have.property('begin').that.is.ok;
     const begin = periods(options).ceil(options.begin).subtract(periods(options).millis, 'milliseconds');
     const years = end.diff(begin,'years', true);
-    if (years > 1) return Math.ceil(years) + ' Y';
+    if (years > 1 && (!max_days || max_days > years*365)) return Math.ceil(years) + ' Y';
     const days = end.diff(begin,'days', true);
+    if (max_days && days > max_days)
+        throw Error(`Too many days between ${begin.format()} and ${end.format()} for ${options.symbol}`);
     if (days > 1 || options.interval == 'day') return Math.ceil(days) + ' D';
     const seconds = end.diff(begin,'seconds', true);
     return Math.ceil(seconds) + ' S';

@@ -66,7 +66,7 @@ module.exports = function() {
             if (interval == 'lookup') return lookup(datasources.lookup, opt);
             if (interval == 'fundamental') return fundamental(datasources.fundamental, opt);
             expect(options).to.have.property('tz').that.is.a('string');
-            expect(options).to.have.property('begin');
+            if (options.end) expect(options).to.have.property('begin');
             if (options.end) expect(options.begin).to.be.below(options.end);
             switch(interval) {
                 case 'year':

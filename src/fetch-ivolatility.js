@@ -202,8 +202,11 @@ function interday(ivolatility, delegate, options) {
         }
         const bdata = await delegate(_.defaults({
             interval: 'day',
-            begin: adata.length ? periods(options).inc(_.last(adata).ending,1) : options.begin
-        }, options)).catch(err => []);
+            begin: adata.length ? periods(options).inc(_.last(adata).ending,1).format() : options.begin
+        }, options)).catch(err => {
+            logger.warn(`Could not fetch latest options data ${err.message}`);
+            return [];
+        });
         if (!bdata.length) return adata;
         const cdata = new Array(Math.max(adata.length, bdata.length));
         let a = 0, b = 0, c = 0;
