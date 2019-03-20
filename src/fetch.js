@@ -37,6 +37,7 @@ const logger = require('./logger.js');
 const blended = require('./fetch-blended.js');
 const yahoo = require('./fetch-yahoo.js');
 const iqfeed = require('./fetch-iqfeed.js');
+const IB = require('./fetch-ib.js');
 const files = require('./fetch-files.js');
 const ivolatility = require('./fetch-ivolatility.js');
 const remote = require('./fetch-remote.js');
@@ -105,6 +106,7 @@ function promiseDatasources() {
         config('fetch.blended.enabled') && blended(),
         config('fetch.ivolatility.enabled') && ivolatility(),
         config('fetch.iqfeed.enabled') && iqfeed(),
+        config('fetch.ib.enabled') && new IB(),
         config('fetch.yahoo.enabled') && yahoo(),
         config('fetch.remote.enabled') && remote()
     ]);

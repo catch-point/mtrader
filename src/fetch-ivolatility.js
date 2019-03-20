@@ -40,7 +40,9 @@ const merge = require('./merge.js');
 const interrupt = require('./interrupt.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
+const periods = require('./periods.js');
 const iqfeed = require('./fetch-iqfeed.js');
+const IB = require('./fetch-ib.js');
 const remote = require('./fetch-remote.js');
 const files = require('./fetch-files.js');
 const Ivolatility = require('./ivolatility-client.js');
@@ -117,6 +119,7 @@ module.exports = function() {
     const cfg = config('fetch.ivolatility') || {};
     const delegate = cfg.delegate == 'remote' ? remote() :
         cfg.delegate == 'iqfeed' ? iqfeed() :
+        cfg.delegate == 'ib' ? new IB() :
         cfg.delegate == 'files' ? files() : null;
     const ivolatility = Ivolatility(cacheDir, downloadDir, auth_file, downloadType);
     return Object.assign(options => {
@@ -199,7 +202,7 @@ function interday(ivolatility, delegate, options) {
         }
         const bdata = await delegate(_.defaults({
             interval: 'day',
-            begin: adata.length ? _.last(adata).ending : options.begin
+            begin: adata.length ? periods(options).inc(_.last(adata).ending,1) : options.begin
         }, options)).catch(err => []);
         if (!bdata.length) return adata;
         const cdata = new Array(Math.max(adata.length, bdata.length));
