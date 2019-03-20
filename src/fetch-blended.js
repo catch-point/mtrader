@@ -96,9 +96,20 @@ function delegateCall(delegate, cfg, cmd, options) {
     const asset = findAsset(cfg, cmd, options);
     const market = asset && asset.underlying && asset.underlying.market ?
         _.omit(config('markets')[asset.underlying.market], 'datasources', 'label', 'description') : null;
+    const hours = market && options.tz ? convertTime(market, options.tz) : null;
     const opts = !asset || !asset.underlying ? options :
-        _.defaults({}, asset && asset.underlying, market, options);
+        _.defaults({}, asset && asset.underlying, market, hours, options);
     return delegate(opts);
+}
+
+function convertTime(market, tz) {
+    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.market_tz).tz(tz).format('HH:mm:ss');
+    return {
+        afterHoursClosesAt: mtz2tz(market.trading_hours.substring(market.trading_hours.length - 8)),
+        marketClosesAt: mtz2tz(market.liquid_hours.substring(market.liquid_hours.length - 8)),
+        marketOpensAt: mtz2tz(market.liquid_hours.substring(0, 8)),
+        premarketOpensAt: mtz2tz(market.trading_hours.substring(0, 8))
+    };
 }
 
 function blendCall(delegate, cfg, cmd, options) {

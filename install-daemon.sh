@@ -186,6 +186,16 @@ if [ -z "$HOST" -a ! -f "$PREFIX/etc/mtrader.json" ]; then
   fi
 fi
 
+if [ -z "$TIMEZONE" -a ! -f "$PREFIX/etc/mtrader.json" ]; then
+  DEFAULT_TIMEZONE=$(node -pe 'Intl.DateTimeFormat().resolvedOptions().timeZone')
+  if [ -z "$TIMEZONE" -a "`tty`" != "not a tty" ]; then
+    read -p "Default time zone (for date and time functions) [$DEFAULT_TIMEZONE]:" TIMEZONE
+  fi
+  if [ -z "$TIMEZONE" ]; then
+    TIMEZONE=$DEFAULT_TIMEZONE
+  fi
+fi
+
 if [ -f "$PREFIX/etc/mtrader.json" -a -z "$PORT" ]; then
   PORT=$(node -pe "JSON.parse(require('fs').readFileSync('$PREFIX/etc/mtrader.json',{encoding:'utf-8'})).listen.replace(/.*:(\d+)([/]|$)/,'\$1').replace(/^wss:.*$|^https:.*$/,'443').replace(/^ws:.*$|^http:.*$/,'80')")
 elif [ -z "$PORT" ]; then
@@ -270,6 +280,7 @@ EOF
     cat > "$PREFIX/etc/mtrader.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
+  "tz": "$TIMEZONE",
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "lib_dir": "$LIB_DIR",
@@ -317,6 +328,7 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ] && [[ "$PORT" != *8* ]]; then
     cat > "$PREFIX/etc/mtrader.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
+  "tz": "$TIMEZONE",
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "lib_dir": "$LIB_DIR",
@@ -348,6 +360,7 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ]; then
   cat > "$PREFIX/etc/mtrader.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
+  "tz": "$TIMEZONE",
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "lib_dir": "$LIB_DIR",

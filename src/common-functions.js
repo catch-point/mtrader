@@ -40,7 +40,6 @@ const expect = require('chai').expect;
 
 module.exports = function(name, args, options) {
     if (!functions[name]) return;
-    expect(options).to.have.property('tz').that.is.a('string');
     const intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
     const fn = functions[name].apply(this, [options].concat(args));
     const len = Math.max.apply(Math, [0].concat(_.compact(_.pluck(args, 'warmUpLength'))));
@@ -57,10 +56,10 @@ module.exports.has = function(name) {
 
 const functions = module.exports.functions = {
     NOW: _.extend((opts, tz) => {
-        const now = moment.tz(opts.now, opts.tz).format();
+        const now = moment(opts.now).format();
         return context => {
-            if (!tz || tz == opts.tz) return now;
-            else return moment.tz(opts.now, tz(context)).format();
+            if (!tz || tz == now.tz()) return now;
+            else return moment.tz(now, tz(context)).format();
         };
     }, {
         description: "The local date and time at the point the function was executed",
@@ -68,10 +67,10 @@ const functions = module.exports.functions = {
         sideEffect: true
     }),
     BEGIN: _.extend((opts, tz) => {
-        const begin = moment.tz(opts.begin, opts.tz).format();
+        const begin = moment(opts.begin).format();
         return context => {
-            if (!tz || tz == opts.tz) return begin;
-            else return moment.tz(opts.begin, tz(context)).format();
+            if (!tz || tz == begin.tz()) return begin;
+            else return moment.tz(begin, tz(context)).format();
         };
     }, {
         description: "The local date and time collecting began",
@@ -79,10 +78,10 @@ const functions = module.exports.functions = {
         sideEffect: true
     }),
     END: _.extend((opts, tz) => {
-        const end = moment.tz(opts.end || opts.now, opts.tz).format();
+        const end = moment(opts.end || opts.now).format();
         return context => {
-            if (!tz || tz == opts.tz) return end;
-            else return moment.tz(opts.end || opts.now, tz(context)).format();
+            if (!tz || tz == end.tz()) return end;
+            else return moment.tz(end, tz(context)).format();
         };
     }, {
         description: "The local date and time collecting will end",
@@ -92,7 +91,7 @@ const functions = module.exports.functions = {
     /* Add d workdays to the date */
     WORKDAY: _.extend((opts, ending, days, tz) => {
         return context => {
-            const start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const start = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!start.isValid()) return null;
             const d = Math.min(start.isoWeekday()-1,4) + days(context);
             const wk = Math.floor(d /5);
@@ -104,7 +103,7 @@ const functions = module.exports.functions = {
     }),
     EDATE: _.extend((opts, start_date, duration, tz) => {
         return context => {
-            const date = moment.tz(start_date(context), tz ? tz(context) : opts.tz);
+            const date = tz ? moment.tz(start_date(context), tz(context)) : moment(start_date(context));
             const dur = duration(context);
             const d = _.isFinite(dur) ? moment.duration(+dur, 'months') : moment.duration(dur);
             return date.add(d).format();
@@ -119,7 +118,7 @@ const functions = module.exports.functions = {
             if (!pattern && !val && val!=0) return '';
             else if (!pattern) return val.toString();
             else if (_.isFinite(val)) return d3.format(pattern)(+val);
-            else return moment.tz(val, tz ? tz(context) : opts.tz).format(pattern);
+            else return (tz ? moment.tz(val, tz(context)) : moment(val)).format(pattern);
         };
     }, {
         description: "Converts numbers and dates to text in the given format"
@@ -190,9 +189,9 @@ const functions = module.exports.functions = {
     /* The number of days since 1899-12-31 */
     DATEVALUE: _.extend((opts, ending, tz) => {
         return context => {
-            const start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const start = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!start.isValid()) return null;
-            const zero = moment.tz('1899-12-31', opts.tz);
+            const zero = moment('1899-12-31');
             return start.diff(zero, 'days');
         };
     }, {
@@ -201,7 +200,7 @@ const functions = module.exports.functions = {
     /* The fraction of day */
     TIMEVALUE: _.extend((opts, ending, tz) => {
         return context => {
-            const start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const start = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!start.isValid()) return null;
             const noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
             const hours = (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
@@ -224,9 +223,10 @@ const functions = module.exports.functions = {
     /* Y-MM-DD date format */
     DATE: _.extend((opts, ending, month, day, tz) => {
         return context => {
+            const date_str = month ? `${month(context)}/${day(context)}/${ending(context)}` : ending(context);
             const date = month ?
-                moment.tz(new Date(ending(context), month(context)-1, day(context)).toISOString().substring(0,10), tz ? tz(context) : opts.tz) :
-                moment.tz(ending(context), tz ? tz(context) : opts.tz);
+                tz ? moment.tz(date_str, 'M/D/Y', tz(context)) : moment(date_str, 'M/D/Y') :
+                tz ? moment.tz(date_str, tz(context)) : moment(date_str);
             if (!date.isValid()) return null;
             return date.format('Y-MM-DD');
         };
@@ -237,7 +237,7 @@ const functions = module.exports.functions = {
     /* HH:mm:ss time 24hr format */
     TIME: _.extend((opts, ending, tz) => {
         return context => {
-            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!date.isValid()) return null;
             return date.format('HH:mm:ss');
         };
@@ -248,7 +248,7 @@ const functions = module.exports.functions = {
     /* Date of Month as a number (1-31) */
     DAY: _.extend((opts, ending, tz) => {
         return context => {
-            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!date.isValid()) return null;
             return date.date();
         };
@@ -259,7 +259,7 @@ const functions = module.exports.functions = {
     /* Week of Year as a number (1-52) */
     WEEKNUM: _.extend((opts, ending, mode, tz) => {
         return context => {
-            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!date.isValid()) return null;
             if (!mode || mode(context) == 1) return date.week();
             else return date.isoWeek();
@@ -270,7 +270,7 @@ const functions = module.exports.functions = {
     }),
     WEEKDAY: _.extend((opts, ending, tz) => {
         return context => {
-            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!date.isValid()) return null;
             return date.day()+1;
         };
@@ -281,7 +281,7 @@ const functions = module.exports.functions = {
     /* Month of Year as a number (1-12) */
     MONTH: _.extend((opts, ending, tz) => {
         return context => {
-            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!date.isValid()) return null;
             return date.month() + 1;
         };
@@ -292,7 +292,7 @@ const functions = module.exports.functions = {
     /* Year */
     YEAR(opts, ending, tz) {
         return context => {
-            const date = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const date = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!date.isValid()) return null;
             return date.year();
         };
@@ -301,7 +301,7 @@ const functions = module.exports.functions = {
     HOUR: _.extend((opts, ending, tz) => {
         return context => {
             // pivot around noon as leap seconds/hours occur at night
-            const start = moment.tz(ending(context), tz ? tz(context) : opts.tz);
+            const start = tz ? moment.tz(ending(context), tz(context)) : moment(ending(context));
             if (!start.isValid()) return null;
             const noon = moment(start).millisecond(0).second(0).minute(0).hour(12);
             return (start.valueOf() - noon.valueOf()) /1000 /60 /60 +12;
@@ -311,19 +311,18 @@ const functions = module.exports.functions = {
     }),
     DAYS: _.extend((opts, to, from, tz) => {
         return context => {
-            const a = moment.tz(to(context), tz ? tz(context) : opts.tz);
-            const b = moment.tz(from(context), tz ? tz(context) : opts.tz);
+            const a = tz ? moment.tz(to(context), tz(context)) : moment(to(context));
+            const b = tz ? moment.tz(from(context), tz(context)) : moment(from(context));
             if (!a.isValid() || !b.isValid()) return null;
             return a.diff(b, 'days');
         };
     }, {
         description: "Calculates the number of days between two dates"
     }),
-    NETWORKDAYS: _.extend((opts, from, to, tzone) => {
+    NETWORKDAYS: _.extend((opts, from, to, tz) => {
         return context => {
-            const tz = tzone ? tzone(context) : opts.tz;
-            let a = moment.tz(to(context), tz);
-            let b = moment.tz(from(context), tz);
+            let a = tz ? moment.tz(to(context), tz(context)) : moment(to(context));
+            let b = tz ? moment.tz(from(context), tz(context)) : moment(from(context));
             let swap = false;
             if (!a.isValid() || !b.isValid()) return null;
             if (a.isBefore(b)) {
@@ -332,7 +331,8 @@ const functions = module.exports.functions = {
             }
             const years = _.range(b.isoWeekYear(), a.isoWeekYear());
             const weeks = years.reduce((wk, year) => {
-                return wk + moment.tz(year + '-02-01', tz).isoWeeksInYear();
+                const date = tz ? moment.tz(year + '-02-01', tz(context)) : moment(year + '-02-01');
+                return wk + date.isoWeeksInYear();
             }, 0);
             const wk = weeks + a.isoWeek() - b.isoWeek();
             const days = wk * 5 + Math.min(a.isoWeekday()+1,6) - Math.min(b.isoWeekday(), 6);

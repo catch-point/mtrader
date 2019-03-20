@@ -33,7 +33,6 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Parser = require('./parser.js');
-const periods = require('./periods.js');
 const interrupt = require('./interrupt.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
@@ -58,8 +57,7 @@ module.exports = function(quote, collectFn) {
             indexCol: '$index',
             symbolCol: '$symbol',
             marketCol: '$market',
-            temporalCol: '$temporal',
-            tz: moment.tz.guess()
+            temporalCol: '$temporal'
         });
         return collect(quote, collectFn || self, fields, opts);
     }, {
@@ -112,9 +110,6 @@ async function help(quote) {
                 usage: '<number of rows>',
                 description: "Include the given last few rows in the result"
             },
-            tz: {
-                description: "Timezone formatted using the identifier in the tz database"
-            },
             id: {
                 description: "Unique alphanumeric identifier among its peers (optional)"
             }
@@ -127,8 +122,8 @@ async function help(quote) {
  */
 async function collect(quote, callCollect, fields, options) {
     const duration = options.reset_every && moment.duration(options.reset_every);
-    const begin = moment.tz(options.begin, options.tz);
-    const end = moment.tz(options.end || options.now, options.tz);
+    const begin = moment(options.begin);
+    const end = moment(options.end || options.now);
     if (!begin.isValid()) throw Error("Invalid begin date: " + options.begin);
     if (!end.isValid()) throw Error("Invalid end date: " + options.end);
     const segments = [];
@@ -153,7 +148,7 @@ async function collect(quote, callCollect, fields, options) {
     } else {
         throw Error("Invalid duration: " + options.reset_every);
     }
-    const compacted = compactPortfolio(fields, options.begin, options.end, options.tz, options);
+    const compacted = compactPortfolio(fields, options.begin, options.end, options);
     if (segments.length < 2) {// only one period
         return collectDuration(quote, callCollect, fields, compacted);
     }
@@ -167,7 +162,7 @@ async function collect(quote, callCollect, fields, options) {
         else return _.defaults({
             begin: segment, end: options.end
         }, compacted);
-    }).map(opts => compactPortfolio(fields, opts.begin, opts.end, opts.tz || options.tz, opts));
+    }).map(opts => compactPortfolio(fields, opts.begin, opts.end, opts));
     const dataset = await Promise.all(optionset.map(opts => callCollect(opts)))
     return _.flatten(dataset, true);
 }
@@ -238,7 +233,7 @@ function collectDuration(quote, callCollect, fields, options) {
         const parser = createParser(quote, dataset, columns, _.keys(simpleColumns), options);
         return collectDataset(dataset, parser, columns, options);
     }).then(collection => {
-        const begin = moment.tz(options.begin, options.tz).toISOString();
+        const begin = moment(options.begin).toISOString();
         const start = _.sortedIndex(collection, {[options.temporalCol]: begin}, options.temporalCol);
         if (start <= 0) return collection;
         else return collection.slice(start);
@@ -330,25 +325,24 @@ function valOrNull(value) {
 /**
  * Potentially reduces the number of portfolios by filtering on begin/end
  */
-function compactPortfolio(fields, begin, end, tz, options) {
+function compactPortfolio(fields, begin, end, options) {
     const portfolio = options.portfolio;
     const array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :
         _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
         expect(portfolio).to.be.a('string');
     const leading = !options.pad_leading ? begin :
-        common('WORKDAY', [_.constant(begin), _.constant(-options.pad_leading)], {tz})();
-    const mbegin = moment.tz(leading, tz);
-    const mend = moment.tz(end || options.now, tz);
+        common('WORKDAY', [_.constant(begin), _.constant(-options.pad_leading)])();
+    const mbegin = moment(leading);
+    const mend = moment(end || options.now);
     const compacted = _.compact(array.map((subcollect, idx) => {
         if (!_.isObject(subcollect)) return subcollect;
-        const stz = subcollect.tz || tz;
-        const sbegin = subcollect.begin && moment.tz(subcollect.begin, stz);
-        const send = subcollect.end && moment.tz(subcollect.end, stz);
+        const sbegin = subcollect.begin && moment(subcollect.begin);
+        const send = subcollect.end && moment(subcollect.end);
         if (send && !send.isAfter(mbegin) || sbegin && !sbegin.isBefore(mend)) return null;
         const begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
         const end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
-        const compact = compactPortfolio(fields, begin, end, stz, subcollect);
+        const compact = compactPortfolio(fields, begin, end, subcollect);
         if (compact.id != null) return compact;
         else return _.extend({id: 'c' + idx}, compact);
     }));
@@ -378,8 +372,8 @@ function getPortfolio(portfolio, options) {
     else if (_.isEmpty(_.compact(array))) throw Error(`No portfolio matches this time frame ${options.label}`);
     const begin = !options.pad_leading ? options.begin :
         common('WORKDAY', [_.constant(options.begin), _.constant(-options.pad_leading)], options)();
-    const mbegin = moment.tz(begin, options.tz);
-    const mend = moment.tz(options.end || options.now, options.tz);
+    const mbegin = moment(begin);
+    const mend = moment(options.end || options.now);
     return _.compact(array.map(symbolExchange => {
         if (_.isObject(symbolExchange)) return symbolExchange;
         else if (!symbolExchange) return null;
@@ -391,8 +385,8 @@ function getPortfolio(portfolio, options) {
             market: m[2]
         };
     }).map((subcollect, idx) => {
-        const sbegin = subcollect.begin && moment.tz(subcollect.begin, subcollect.tz || options.tz);
-        const send = subcollect.end && moment.tz(subcollect.end, subcollect.tz || options.tz);
+        const sbegin = subcollect.begin && moment(subcollect.begin);
+        const send = subcollect.end && moment(subcollect.end);
         if (send && !send.isAfter(mbegin) || sbegin && sbegin.isAfter(mend))
             throw Error(`Expected ${subcollect.label} to be removed in compactPortfolio`);
         const id = subcollect.id == null ? 'q' + idx : subcollect.id;

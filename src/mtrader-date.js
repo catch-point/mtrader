@@ -81,7 +81,6 @@ if (require.main === module) {
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
         .option('--load <filename>', "Read the given session settings")
         .option('--now <date>', "Use this date value as the base timestamp")
-        .option('--tz <timeZone>', "Use this time zone when manipulating dates")
         .option('-d, --duration <durationOrValue>', "Advance the date by these comma separated durations or to values")
         .parse(process.argv);
     if (program.args.length) {
@@ -106,8 +105,7 @@ module.exports = function() {
 };
 
 function formatDate(format, options) {
-    const tz = options.tz || moment.tz.guess();
-    const date = moment.tz(options.now, tz);
+    const date = moment(options.now);
     const durations = _.isArray(options.duration) ? options.duration :
         _.isString(options.duration) ? options.duration.split(',') : [];
     const startOf = ['year', 'month', 'quarter', 'week', 'isoWeek',

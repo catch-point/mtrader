@@ -49,6 +49,7 @@ const config = require('./config.js');
 const version = require('./version.js').version;
 const Fetch = require('./mtrader-fetch.js');
 const Quote = require('./mtrader-quote.js');
+const SlaveQuote = require('./quote.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
@@ -241,7 +242,7 @@ function spawn() {
     const parent = replyTo(process).handle('collect', payload => {
         return collect()(payload);
     });
-    const quote = require('./quote.js')(callFetch.bind(this, parent));
+    const quote = new SlaveQuote(callFetch.bind(this, parent));
     const quoteFn = createSlaveQuote(quote, parent);
     const collect = _.once(() => new Collect(quoteFn, callCollect.bind(this, parent)));
     process.on('disconnect', () => collect().close().then(quote.close));
@@ -254,7 +255,7 @@ function createSlaveQuote(quote, parent) {
     return function(options) {
         if (_.has(options, 'read_only') && !options.read_only)
             return parent.request('quote', options); // write requested
-        if (!options.end || moment.tz(options.end, options.tz || moment.tz.guess()).valueOf() >= Date.now())
+        if (!options.end || moment(options.end).valueOf() >= Date.now())
             return parent.request('quote', options); // latest data requested
         const opts = _.extend({read_only: true}, options);
         return quote(opts).catch(async(err) => {

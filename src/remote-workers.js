@@ -31,6 +31,7 @@
 'use strict';
 
 const _ = require('underscore');
+const moment = require('moment-timezone');
 const share = require('./share.js');
 const interrupt = require('./interrupt.js');
 const replyTo = require('./promise-reply.js');
@@ -38,6 +39,8 @@ const remote = require('./remote-process.js');
 const workerQueue = require('./worker-queue.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
+
+const tz = (moment.defaultZone||{}).name || moment.tz.guess();
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
@@ -101,6 +104,9 @@ function createInstance() {
         strategize(options) {
             return queue('strategize', options);
         },
+        tz() {
+            return queue('tz');
+        },
         async version() {
             const versions = await queue.all('version');
             const workers = queue.getWorkers();
@@ -135,7 +141,10 @@ function createRemoteWorkers(check_queue) {
         if (errors.length && !queue.isClosed()) throw errors[0];
     }).catch(err => logger.debug(err, err.stack)).then(() => {
         if (_.some(remoteWorkers, worker => worker.count > 1)) check_queue();
-    });
+    }).then(() => Promise.all(remoteWorkers.map(async(worker) => {
+        const remote_tz = await worker.request('tz');
+        if (tz != remote_tz) logger.warn(`Worker ${worker.process.pid} has a different time zone of ${remote_tz}`);
+    }))).catch(err => logger.debug(err, err.stack));
     return remoteWorkers;
 }
 

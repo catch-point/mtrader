@@ -49,12 +49,10 @@ describe("fetch-blended", function() {
         config('fetch.yahoo.enabled', false);
         config('fetch.files.enabled', false);
         config('fetch.blended', {enabled: true, delegate: 'files', assets:[{
-            symbol: 'YHOO',
-            market: 'NASDAQ',
+            symbol: 'YHOO', market: 'NASDAQ',
             underlying: {symbol: 'AABA', market: 'NASDAQ'}
         }, {
-            symbol: 'XLC',
-            market: 'ARCA',
+            symbol: 'XLC', market: 'ARCA',
             underlying: {symbol: 'XLC', market: 'ARCA'},
             blend: [{
                 data: [
@@ -63,8 +61,7 @@ describe("fetch-blended", function() {
                 ]
             }]
         }, {
-            symbol: 'XLC',
-            market: 'ARCA2018',
+            symbol: 'XLC', market: 'ARCA2018',
             afterHoursClosesAt: "20:00:00",
             marketClosesAt: "16:00:00",
             marketOpensAt: "09:30:00",
@@ -96,21 +93,17 @@ describe("fetch-blended", function() {
     it("should find YHOO", function() {
         return fetch({
             interval: 'lookup',
-            symbol:'YHOO',
-            market: 'NASDAQ'
+            symbol:'YHOO', market: 'NASDAQ'
         }).then(_.first).should.eventually.be.like({
-            symbol: 'YHOO',
-            market: 'NASDAQ',
+            symbol: 'YHOO', market: 'NASDAQ',
             name: "Altaba Inc."
         });
     });
     it("should blend XLC on June 18 (before inception)", function() {
         return fetch({
             interval: 'day',
-            symbol: 'XLC',
-            market: 'ARCA',
-            begin: moment.tz('2018-06-18', tz),
-            end: moment.tz('2018-06-23', tz)
+            symbol: 'XLC', market: 'ARCA',
+            begin: '2018-06-18', end: '2018-06-23', tz
         }).should.eventually.be.like([
             {ending:'2018-06-18T16:00:00-04:00',adj_close:50.03},
             {ending:'2018-06-19T16:00:00-04:00',adj_close:49.96},
@@ -122,11 +115,8 @@ describe("fetch-blended", function() {
     it("should blend XLC using a different market name", function() {
         return fetch({
             interval: 'day',
-            symbol: 'XLC',
-            market: 'ARCA2018',
-            tz,
-            begin: moment.tz('2018-06-18', tz),
-            end: moment.tz('2018-06-23', tz)
+            symbol: 'XLC', market: 'ARCA2018',
+            begin: '2018-06-18', end: '2018-06-23', tz
         }).should.eventually.be.like([
             {ending:'2018-06-18T16:00:00-04:00',adj_close:50.03},
             {ending:'2018-06-19T16:00:00-04:00',adj_close:49.96},
@@ -137,11 +127,9 @@ describe("fetch-blended", function() {
     });
     it("should blend XLC using a different market name from quote", function() {
         return quote({
-            symbol: 'XLC',
-            market: 'ARCA2018',
+            symbol: 'XLC', market: 'ARCA2018',
             columns: {ending:'ending', adj_close:'day.adj_close'},
-            begin: '2018-06-18',
-            end: '2018-06-23'
+            begin: '2018-06-18', end: '2018-06-23', tz
         }).should.eventually.be.like([
             {ending:'2018-06-18T16:00:00-04:00',adj_close:50.03},
             {ending:'2018-06-19T16:00:00-04:00',adj_close:49.96},
@@ -153,10 +141,8 @@ describe("fetch-blended", function() {
     it("should return daily", function() {
         return fetch({
             interval: 'day',
-            symbol: 'YHOO',
-            market: 'NASDAQ',
-            begin: moment.tz('2014-01-01', tz),
-            end: moment.tz('2014-02-01', tz)
+            symbol: 'YHOO', market: 'NASDAQ',
+            begin: '2014-01-01', end: '2014-02-01', tz
         }).should.eventually.be.like([
             {ending:'2014-01-02T16:00:00-05:00'},
             {ending:'2014-01-03T16:00:00-05:00'},

@@ -573,6 +573,7 @@ describe("collect", function() {
                 tk_time: "IF(bool, TIME(ending,tk), TIME(ending,ch))"
             },
             parameters: {
+                tz: "America/New_York",
                 ln: "Europe/London",
                 tk: "Asia/Tokyo"
             },

@@ -464,7 +464,7 @@ function getDayLength(opts) {
         tz: /^\S+\/\S+$/
     });
     if (opts.premarketOpensAt == opts.afterHoursClosesAt)
-        return 24 * 60 * 60 * 1000 / preiods(opts).millis;
+        return 24 * 60 * 60 * 1000 / periods(opts).millis;
     const opens = moment.tz('2010-03-01T' + opts.premarketOpensAt, opts.tz);
     const closes = moment.tz('2010-03-01T' + opts.afterHoursClosesAt, opts.tz);
     if (!opens.isValid())

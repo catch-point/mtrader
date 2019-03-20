@@ -33,6 +33,7 @@
 'use strict';
 
 const _ = require('underscore');
+const moment = require('moment-timezone');
 const commander = require('commander');
 const share = require('./share.js');
 const logger = require('./logger.js');
@@ -41,6 +42,8 @@ const Fetch = require('./fetch.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
 const version = require('./version.js').version;
+
+const tz = (moment.defaultZone||{}).name || moment.tz.guess();
 
 function usage(command) {
     return command.version(version)
@@ -78,9 +81,7 @@ if (require.main === module) {
         process.on('SIGINT', () => fetch.close());
         process.on('SIGTERM', () => fetch.close());
         Promise.resolve().then(() => fetch(_.defaults({
-            interval: interval,
-            symbol: symbol,
-            market: market
+            interval, symbol, market, tz
         }, config.options())))
         .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack))
@@ -141,7 +142,8 @@ if (require.main === module) {
                 child = replyTo(config.fork(module.filename, program));
                 instance.process = child.process;
             }
-            return child.request('fetch', options);
+            const opts = options.tz ? options : Object.assign({tz}, options);
+            return child.request('fetch', opts);
         };
         instance.close = function() {
             if (closed) return closed;
@@ -167,9 +169,7 @@ function shell(desc, fetch, app) {
         const symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         const market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         fetch(_.defaults({
-            interval: 'lookup',
-            symbol: symbol,
-            market: market
+            interval: 'lookup', symbol, market, tz
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     // fundamental
@@ -178,9 +178,7 @@ function shell(desc, fetch, app) {
         const symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         const market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         fetch(_.defaults({
-            interval: 'fundamental',
-            symbol: symbol,
-            market: market
+            interval: 'fundamental', symbol, market, tz
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     // fetch
@@ -189,9 +187,7 @@ function shell(desc, fetch, app) {
         const symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         const market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         fetch(_.defaults({
-            interval: cmd.params.interval,
-            symbol: symbol,
-            market: market
+            interval: cmd.params.interval, symbol, market, tz
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
 // help

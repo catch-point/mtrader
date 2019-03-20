@@ -58,9 +58,12 @@ module.exports = function() {
             }
             const opt = market ? _.extend(
                 _.omit(markets[market], 'datasources', 'label', 'description'),
+                markets[market] && options.tz && convertTime(markets[market], options.tz),
                 options
             ) : options;
             const interval = options.interval;
+            if (interval != 'lookup' && interval != 'fundamental')
+                expect(options).to.have.property('tz').that.is.a('string');
             switch(interval) {
                 case 'lookup': return lookup(datasources.lookup, opt);
                 case 'fundamental': return fundamental(datasources.fundamental, opt);
@@ -82,6 +85,16 @@ module.exports = function() {
     });
     return self;
 };
+
+function convertTime(market, tz) {
+    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.market_tz).tz(tz).format('HH:mm:ss');
+    return {
+        afterHoursClosesAt: mtz2tz(market.trading_hours.substring(market.trading_hours.length - 8)),
+        marketClosesAt: mtz2tz(market.liquid_hours.substring(market.liquid_hours.length - 8)),
+        marketOpensAt: mtz2tz(market.liquid_hours.substring(0, 8)),
+        premarketOpensAt: mtz2tz(market.trading_hours.substring(0, 8))
+    };
+}
 
 /**
  * hash of intervals -> market -> source

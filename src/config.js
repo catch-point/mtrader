@@ -35,6 +35,7 @@ const fs = require('graceful-fs');
 const path = require('path');
 const process = require('process');
 const child_process = require('child_process');
+const moment = require('moment-timezone');
 const merge = require('./merge.js');
 const awriter = require('./atomic-write.js');
 const commander = require('commander');
@@ -67,6 +68,7 @@ process.argv.forEach((arg, i, args) => {
 
 module.exports = createInstance(session);
 module.exports.load();
+if (!moment.defaultZone) moment.tz.setDefault(moment.tz.guess());
 
 if (process.send) {
     process.on('message', msg => {
@@ -75,7 +77,7 @@ if (process.send) {
                 module.exports.load(msg.payload.loadFile);
         } else if (msg.cmd == 'config' && msg.payload.unset) {
             module.exports.unset(msg.payload.name);
-        } else if (msg.cmd == 'config') {
+        } else if (msg.cmd == 'config' && _.isObject(msg.payload)) {
             module.exports(msg.payload.name, msg.payload.value);
         }
     });
@@ -104,6 +106,7 @@ function createInstance(session) {
             prefix: opt('prefix', process.argv[1] ? path.resolve(process.argv[1], '../..') : '')
         }, loadConfigFile(path.resolve(__dirname, '../etc/mtrader.json')));
         stored = loadConfigFile(path.resolve(defaults.prefix, 'etc/mtrader.json'));
+        if (stored.tz) moment.tz.setDefault(stored.tz);
         loadedFrom = filename || loadedFrom || opt('load');
         loaded = loadedFrom ? loadConfigFile(config.resolve(loadedFrom)) : {};
         if (loadedFrom && _.isEmpty(loaded))

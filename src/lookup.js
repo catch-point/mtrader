@@ -34,11 +34,14 @@ const fs = require('graceful-fs');
 const path = require('path');
 const util = require('util');
 const _ = require('underscore');
+const moment = require('moment-timezone');
 const awriter = require('./atomic-write.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
+
+const tz = (moment.defaultZone||{}).name || moment.tz.guess();
 
 /**
  * @returns a function that returns an object about the security in the given options
@@ -88,6 +91,7 @@ function fetchOptionsFactory(fetch, offline, read_only) {
         return memoizeFirstLookup(symbol, market).then(security => {
             return _.defaults(
                 _.omit(markets[security.market] || {}, 'datasources', 'label', 'description'),
+                markets[security.market] && convertTime(markets[security.market]),
                 security,
                 options
             );
@@ -97,10 +101,22 @@ function fetchOptionsFactory(fetch, offline, read_only) {
             logger.debug("Fetch lookup failed on ", symbol + '.' + market, err);
             return _.defaults(
                 _.omit(markets[market] || {}, 'datasources', 'label', 'description'),
+                markets[market] && convertTime(markets[market]),
                 options,
                 {symbol: symbol}
             );
         });
+    };
+}
+
+function convertTime(market) {
+    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.market_tz).tz(tz).format('HH:mm:ss');
+    return {
+        afterHoursClosesAt: mtz2tz(market.trading_hours.substring(market.trading_hours.length - 8)),
+        marketClosesAt: mtz2tz(market.liquid_hours.substring(market.liquid_hours.length - 8)),
+        marketOpensAt: mtz2tz(market.liquid_hours.substring(0, 8)),
+        premarketOpensAt: mtz2tz(market.trading_hours.substring(0, 8)),
+        tz
     };
 }
 

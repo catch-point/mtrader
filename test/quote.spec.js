@@ -770,20 +770,18 @@ describe("quote", function() {
             {Date:'2014-03-03',Time:'14:00:00',Price:1.10949,Change:0.28}
         ]);
     });
-    it("should support include currency and tz for instrument", function() {
+    it("should support include currency for instrument", function() {
         return quote({
             symbol: "USD",
             market: "CAD",
             columns: {
                 date: "DATE(day.ending)",
-                hour: "HOUR(ending, tz)",
-                timezone: "tz",
                 curr: "currency"
             },
             begin: '2014-02-10',
             end: '2014-02-11'
         }).should.eventually.be.like([
-            {date:"2014-02-10",hour:17,timezone:"America/New_York",curr:"CAD"}
+            {date:"2014-02-10",curr:"CAD"}
         ]);
     });
     it("should filter out most results", function() {

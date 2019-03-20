@@ -86,7 +86,7 @@ function help(fetch) {
             const fields = interval.charAt(0) != 'm' ? help.interday.properties :
                 help.intraday ? help.intraday.properties : [];
             return variables.concat(fields.map(field => interval + '.' + field));
-        }, ['ending', 'tz', 'currency'].concat(help.lookup.properties));
+        }, ['ending', 'currency'].concat(help.lookup.properties));
         return [{
             name: 'quote',
             usage: 'quote(options)',
@@ -689,7 +689,11 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
         fetchPartialBlock.bind(this, fetch, fields, options, collection);
     return Promise.all(blocks.map((block, i, blocks) => {
         const last = i == blocks.length -1;
-        if (!collection.exists(block) || collection.propertyOf(block, 'version') != version)
+        if (!collection.exists(block))
+            return fetchComplete(block, last);
+        if (collection.propertyOf(block, 'version') != version)
+            return fetchComplete(block, last);
+        if (collection.propertyOf(block, 'tz') != options.tz)
             return fetchComplete(block, last);
         const tail = collection.tailOf(block);
         if (_.isEmpty(tail) || !_.last(tail).incomplete)
@@ -740,12 +744,12 @@ function isBeforeStartOfWeek(asof, options) {
 /**
  * Attempts to load a complete block
  */
-function fetchCompleteBlock(fetch, options, collection, version, block, last) {
-    return fetch(blockOptions(block, options)).then(records => {
-        if (last && _.isEmpty(records)) return records; // don't write incomplete empty blocks
-        return collection.replaceWith(records, block)
-          .then(() => collection.propertyOf(block, 'version', version));
-    });
+async function fetchCompleteBlock(fetch, options, collection, version, block, last) {
+    const records = await fetch(blockOptions(block, options));
+    if (last && _.isEmpty(records)) return records; // don't write incomplete empty blocks
+    await collection.replaceWith(records, block);
+    await collection.propertyOf(block, 'version', version);
+    await collection.propertyOf(block, 'tz', options.tz);
 }
 
 /**

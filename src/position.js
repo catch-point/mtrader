@@ -55,10 +55,8 @@ module.exports = function(collect) {
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
             const opts = _.defaults({
-                now: moment.tz(options.now || Date.now(), options.tz).valueOf()
-            }, _.pick(options, _.keys(_.first(help).options)), {
-                tz: moment.tz.guess()
-            });
+                now: moment(options.now).valueOf()
+            }, _.pick(options, _.keys(_.first(help).options)));
             return Broker(opts).then(broker => {
                 return collective2(collect, broker, opts).then(ret => {
                     return broker.close().then(() => ret);
@@ -170,7 +168,7 @@ function getDesiredPositions(collect, broker, options) {
     return broker({action: 'requestMarginEquity'})
       .then(requestMarginEquity => broker({action:'retrieveSystemEquity'})
       .then(retrieveSystemEquity => {
-        const unix_timestamp = moment.tz(options.begin, options.tz).format('X');
+        const unix_timestamp = moment(options.begin).format('X');
         const idx = _.sortedIndex(retrieveSystemEquity.equity_data, {unix_timestamp}, 'unix_timestamp');
         return retrieveSystemEquity.equity_data[idx];
     }).then(systemEquity => collect(merge(options, {
@@ -537,7 +535,7 @@ function changePositionSize(pos, signal, options) {
     expect(signal).has.property('quant').that.is.above(0);
     const parkUntilSecs = signal.parkUntilSecs || signal.posted_time_unix;
     const m_when = parkUntilSecs ? moment.tz(parkUntilSecs, 'X', 'America/New_York') :
-        moment.tz(options.now || Date.now(), options.tz).tz('America/New_York');
+        moment(options.now).tz('America/New_York');
     if (!m_when.isValid()) throw Error("Invalid posted date: " + JSON.stringify(signal));
     const when = m_when.format('YYYY-MM-DD HH:mm:ss');
     if (signal.action == 'BTO') {

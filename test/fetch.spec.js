@@ -57,9 +57,8 @@ describe("fetch", function() {
         return fetch.close();
     });
     it("should find AABA", function() {
-        return fetch({interval: 'lookup', symbol:'AABA'}).then(_.first).should.eventually.be.like({
-            symbol: 'AABA',
-            market: 'NASDAQ',
+        return fetch({interval: 'lookup', symbol:'AABA', tz}).then(_.first).should.eventually.be.like({
+            symbol: 'AABA', market: 'NASDAQ',
             yahoo_symbol: 'AABA',
             name: "Altaba Inc"
         });
@@ -67,8 +66,7 @@ describe("fetch", function() {
     it("should find IBM", function() {
         return fetch({
             interval: 'lookup',
-            symbol: 'IBM',
-            market: 'NYSE'
+            symbol: 'IBM', market: 'NYSE', tz
         }).then(_.first).should.eventually.be.like({
             symbol: 'IBM',
             yahoo_symbol: 'IBM',
@@ -78,8 +76,7 @@ describe("fetch", function() {
     it("should find USD/CAD details", function() {
         return fetch({
             interval: 'fundamental',
-            symbol: 'USD',
-            market: 'CAD'
+            symbol: 'USD', market: 'CAD', tz
         }).should.eventually.be.like([{
             symbol: 'USD'
         }]);
@@ -87,10 +84,8 @@ describe("fetch", function() {
     it("should return daily", function() {
         return fetch({
             interval: 'day',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: moment.tz('2014-01-01', tz),
-            end: moment.tz('2014-02-01', tz)
+            symbol: 'AABA', market: 'NASDAQ',
+            begin: '2014-01-01', end: '2014-02-01', tz
         }).should.eventually.be.like([
             {ending:'2014-01-02T16:00:00-05:00'},
             {ending:'2014-01-03T16:00:00-05:00'},
@@ -118,10 +113,8 @@ describe("fetch", function() {
     it("should return weekly", function() {
         return fetch({
             interval: 'week',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: '2014-01-06',
-            end: '2014-02-01'
+            symbol: 'AABA', market: 'NASDAQ',
+            begin: '2014-01-06', end: '2014-02-01', tz
         }).should.eventually.be.like([
             {ending:'2014-01-10T16:00:00-05:00'},
             {ending:'2014-01-17T16:00:00-05:00'},
@@ -132,10 +125,8 @@ describe("fetch", function() {
     it("should return monthly", function() {
         return fetch({
             interval: 'month',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: '2013-10-01',
-            end: '2014-02-01'
+            symbol: 'AABA', market: 'NASDAQ',
+            begin: '2013-10-01', end: '2014-02-01', tz
         }).should.eventually.be.like([
             {ending:'2013-10-31T16:00:00-04:00'},
             {ending:'2013-11-29T16:00:00-05:00'},
@@ -146,10 +137,8 @@ describe("fetch", function() {
     it("should return quarter", function() {
         return fetch({
             interval: 'quarter',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: '2013-10-01',
-            end: '2013-12-01'
+            symbol: 'AABA', market: 'NASDAQ',
+            begin: '2013-10-01', end: '2013-12-01', tz
         }).should.eventually.be.like([
             {ending:'2013-12-31T16:00:00-05:00',open:33.36,high:41.05,low:31.7,close:40.44}
         ]);
@@ -157,10 +146,8 @@ describe("fetch", function() {
     it("should return year", function() {
         return fetch({
             interval: 'year',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: '2013-10-01',
-            end: '2013-12-01',
+            symbol: 'AABA', market: 'NASDAQ',
+            begin: '2013-10-01', end: '2013-12-01', tz
         }).should.eventually.be.like([
             {ending:'2013-12-31T16:00:00-05:00',open:20.2,high:41.05,low:18.89,close:40.44}
         ]);
@@ -168,8 +155,7 @@ describe("fetch", function() {
     it("should find BRK.A symbol", function() {
         return fetch({
             interval: 'lookup',
-            symbol: 'BRK.A',
-            market: 'NYSE'
+            symbol: 'BRK.A', market: 'NYSE'
         }).should.eventually.be.like(results => _.some(results, like({
             symbol: /^BRK.A/,
             yahoo_symbol: /^BRK.A/,
@@ -179,10 +165,8 @@ describe("fetch", function() {
     it("should return 30 minute intervals", function() {
         return fetch({
             interval: 'm30',
-            symbol: 'USD',
-            market: 'CAD',
-            begin: moment('2014-03-03T08:30:00-0500'),
-            end: moment('2014-03-03T17:00:00-0500')
+            symbol: 'USD', market: 'CAD',
+            begin: '2014-03-03T08:30:00-0500', end: '2014-03-03T17:00:00-0500', tz
         }).should.eventually.be.like([
             {ending:'2014-03-03T08:30:00-05:00',open:1.10966,high:1.11014,low:1.10926,close:1.11004},
             {ending:'2014-03-03T09:00:00-05:00',open:1.11006,high:1.11009,low:1.10869,close:1.10879},
@@ -207,10 +191,8 @@ describe("fetch", function() {
     it("should return 10 minute intervals", function() {
         return fetch({
             interval: 'm10',
-            symbol: 'USD',
-            market: 'CAD',
-            begin: moment('2014-03-03T10:10:00-0500'),
-            end: moment('2014-03-03T11:00:00-0500')
+            symbol: 'USD', market: 'CAD',
+            begin: '2014-03-03T10:10:00-0500', end: '2014-03-03T11:00:00-0500', tz
         }).should.eventually.be.like([
             {ending:'2014-03-03T10:10:00-05:00',high:1.10993,low:1.10876,open:1.10923,close:1.10905},
             {ending:'2014-03-03T10:20:00-05:00',high:1.10944,low:1.10879,open:1.10905,close:1.10880},
@@ -223,10 +205,8 @@ describe("fetch", function() {
     it("should return minutes", function() {
         return fetch({
             interval: 'm1',
-            symbol: 'USD',
-            market: 'CAD',
-            begin: moment('2014-03-03T10:01:00-0500'),
-            end: moment('2014-03-03T10:30:00-0500')
+            symbol: 'USD', market: 'CAD',
+            begin: '2014-03-03T10:01:00-0500', end: '2014-03-03T10:30:00-0500', tz
         }).should.eventually.be.like([
             {ending:'2014-03-03T10:01:00-05:00',high:1.10981,low:1.10923,open:1.10923,close:1.10981},
             {ending:'2014-03-03T10:02:00-05:00',high:1.10993,low:1.10941,open:1.10981,close:1.10955},
@@ -263,10 +243,8 @@ describe("fetch", function() {
     it("should return weekly", function() {
         return fetch({
             interval: 'week',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: moment.tz('2014-01-06', tz),
-            end: moment.tz('2014-02-01', tz)
+            symbol: 'AABA', market: 'NASDAQ',
+            begin: '2014-01-06', end: '2014-02-01', tz
         }).should.eventually.be.like([
             {ending:'2014-01-10T16:00:00-05:00',open:40.05,high:41.72,low:39.75,close:41.23},
             {ending:'2014-01-17T16:00:00-05:00',open:41.16,high:41.31,low:39.47,close:40.01},
@@ -277,10 +255,8 @@ describe("fetch", function() {
     it("should return monthly", function() {
         return fetch({
             interval: 'month',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2014-01-31', tz)
+            symbol: 'AABA', market: 'NASDAQ',
+            begin: '2013-10-01', end: '2014-01-31', tz
         }).should.eventually.be.like([
             {ending:'2013-10-31T16:00:00-04:00',open:33.36,high:35.06,low:31.70,close:32.94},
             {ending:'2013-11-29T16:00:00-05:00',open:33.15,high:37.35,low:32.06,close:36.98},
@@ -291,10 +267,8 @@ describe("fetch", function() {
     it("should return quarter", function() {
         return fetch({
             interval: 'quarter',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2013-12-01', tz)
+            symbol: 'AABA', market: 'NASDAQ',
+            begin: '2013-10-01', end: '2013-12-01', tz
         }).should.eventually.be.like([
             {ending:'2013-12-31T16:00:00-05:00',open:33.36,high:41.05,low:31.7,close:40.44}
         ]);
@@ -302,10 +276,8 @@ describe("fetch", function() {
     it("should return year", function() {
         return fetch({
             interval: 'year',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: moment.tz('2013-10-01', tz),
-            end: moment.tz('2013-12-01', tz)
+            symbol: 'AABA', market: 'NASDAQ',
+            begin: '2013-10-01', end: '2013-12-01', tz
         }).should.eventually.be.like([
             {ending:'2013-12-31T16:00:00-05:00',open:20.2,high:41.05,low:18.89,close:40.44}
         ]);
@@ -313,10 +285,8 @@ describe("fetch", function() {
     it("should adjust monthly dividend", function() {
         return fetch({
             interval: 'month',
-            symbol: 'SPY',
-            market: 'ARCA',
-            begin: moment.tz('2016-01-01', tz),
-            end: moment.tz('2016-12-31', tz)
+            symbol: 'SPY', market: 'ARCA',
+            begin: '2016-01-01', end: '2016-12-31', tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -338,10 +308,8 @@ describe("fetch", function() {
     it("should adjust splits and dividends", function() {
         return fetch({
             interval: 'month',
-            symbol: 'AAPL',
-            market: 'ARCA',
-            begin: moment.tz('2014-01-01', tz),
-            end: moment.tz('2014-09-30', tz)
+            symbol: 'AAPL', market: 'ARCA',
+            begin: '2014-01-01', end: '2014-09-30', tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -360,10 +328,8 @@ describe("fetch", function() {
     it("should adjust yearly dividends", function() {
         return fetch({
             interval: 'year',
-            symbol: 'SPY',
-            market: 'ARCA',
-            begin: moment.tz('2010-01-01', tz),
-            end: moment.tz('2016-12-31', tz)
+            symbol: 'SPY', market: 'ARCA',
+            begin: '2010-01-01', end: '2016-12-31', tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -381,7 +347,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'day',
             symbol: 'USD', market: 'CAD',
-            begin: '2014-01-01', end: '2014-02-01'
+            begin: '2014-01-01', end: '2014-02-01', tz
         }).should.eventually.be.like([
         {ending:'2014-01-02T17:00:00-05:00',high:1.06770,low:1.05874,open:1.06321,close:1.06680,adj_close:1.06680},
         {ending:'2014-01-03T17:00:00-05:00',high:1.06709,low:1.06013,open:1.06676,close:1.06312,adj_close:1.06312},
@@ -411,7 +377,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'week',
             symbol: 'USD', market: 'CAD',
-            begin: moment.tz('2014-01-05', tz)
+            begin: '2014-01-05', tz
         }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
         {ending:'2014-01-10T17:00:00-05:00',high:1.09451,low:1.06076,open:1.06313,close:1.08947,adj_close:1.08947},
         {ending:'2014-01-17T17:00:00-05:00',high:1.09904,low:1.08416,open:1.08996,close:1.09617,adj_close:1.09617},
@@ -423,7 +389,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'month',
             symbol: 'USD', market: 'CAD',
-            begin: moment.tz('2014-01-01', tz)
+            begin: '2014-01-01', tz
         }).should.eventually.be.like(results => results.slice(0, 12).should.be.like([
         {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.05874,open:1.06321,close:1.11251,adj_close:1.11251},
         {ending:'2014-02-28T17:00:00-05:00',high:1.11935,low:1.09092,open:1.11070,close:1.10640,adj_close:1.10640},
@@ -443,7 +409,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'quarter',
             symbol: 'USD', market: 'CAD',
-            begin: moment.tz('2014-01-01', tz)
+            begin: '2014-01-01', tz
         }).should.eventually.be.like(results => results.slice(0, 4).should.be.like([
         {ending:'2014-03-31T17:00:00-04:00',high:1.12775,low:1.05874,open:1.06321,close:1.10482,adj_close:1.10482},
         {ending:'2014-06-30T17:00:00-04:00',high:1.10693,low:1.06455,open:1.10480,close:1.06679,adj_close:1.06679},
@@ -455,7 +421,7 @@ describe("fetch", function() {
         return fetch({
             interval: 'year',
             symbol: 'USD', market: 'CAD',
-            begin: moment.tz('2014-01-01', tz)
+            begin: '2014-01-01', tz
         }).should.eventually.be.like(results => results.slice(0, 1).should.be.like([
         {ending:'2014-12-31T17:00:00-05:00',high:1.16724,low:1.05874,open:1.06321,close:1.16123,adj_close:1.16123}
         ]));

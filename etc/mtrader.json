@@ -3,7 +3,6 @@
   "default_cache_dir": "var/cache",
   "default_lib_dir": "var/lib",
   "default_config_dir": "etc",
-  "tz": "America/New_York",
   "fetch": {
     "ivolatility": {
       "enabled": false,
@@ -42,12 +41,10 @@
     "ARCA": {
       "label": "Archipelago Electronic Communications Network",
       "description": "The Archipelago Electronic Communications Network (ARCX) allows the trading of listed NYSE, AMEX, NYSE Arca, and Nasdaq stocks in quantities from 1 to 1,000,000.",
-      "afterHoursClosesAt": "20:00:00",
-      "marketClosesAt": "16:00:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "04:00:00",
+      "trading_hours": "04:00:00 - 20:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "market_tz": "America/New_York",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "yahoo": {
           "exchs": ["NYQ", "PCX"],
@@ -62,12 +59,10 @@
     "BATS": {
       "label": "BATS Global Markets",
       "description": "In the United States Bats operates two stock exchanges, the BZX Exchange and the BYX Exchange (The Bats Exchanges), which as of 2012 accounted for about 10-12% of all U.S. equity trading on a daily basis.",
-      "afterHoursClosesAt": "20:00:00",
-      "marketClosesAt": "16:00:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "04:00:00",
+      "trading_hours": "04:00:00 - 20:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "market_tz": "America/New_York",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "yahoo": {
           "exchs": ["NYQ", "PCX", "BTS"],
@@ -82,12 +77,10 @@
     "NASDAQ": {
       "description": "NASDAQ is an American/Canadian stock exchange. It is the second-largest exchange in the world by market capitalization, behind only the New York Stock Exchange.",
       "label": "NASDAQ - All Markets",
-      "afterHoursClosesAt": "20:00:00",
-      "marketClosesAt": "16:00:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "04:00:00",
+      "trading_hours": "04:00:00 - 20:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "market_tz": "America/New_York",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "yahoo": {
           "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
@@ -102,12 +95,10 @@
     "NYSE": {
       "description": "The New York Stock Exchange, sometimes known as the \"Big Board\", is a stock exchange located in New York. It is by far the world's largest stock exchange by market capitalization",
       "label": "New York Stock Exchange",
-      "afterHoursClosesAt": "20:00:00",
-      "marketClosesAt": "16:00:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "04:00:00",
+      "trading_hours": "04:00:00 - 20:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "market_tz": "America/New_York",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "yahoo": {
           "exchs": ["NYQ"],
@@ -122,12 +113,10 @@
     "AMEX": {
       "description": "NYSE MKT LLC, formerly known as the American Stock Exchange (AMEX), is an American stock exchange situated in New York City, New York. AMEX was previously a mutual organization, owned by its members. Until 1953, it was known as the New York Curb Exchange.",
       "label": "NYSE MKT LLC",
-      "afterHoursClosesAt": "20:00:00",
-      "marketClosesAt": "16:00:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "04:00:00",
+      "trading_hours": "04:00:00 - 20:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "market_tz": "America/New_York",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "yahoo": {
           "exchs": ["ASE"],
@@ -142,12 +131,10 @@
     "LSE": {
       "description": "The London Stock Exchange (LSE) is a stock exchange located in the City of London in the United Kingdom and the third-largest stock exchange in the world.",
       "label": "London Stock Exchange",
-      "afterHoursClosesAt": "16:30:00",
-      "marketClosesAt": "16:30:00",
-      "marketOpensAt": "08:00:00",
-      "premarketOpensAt": "08:00:00",
+      "trading_hours": "08:00:00 - 16:30:00",
+      "liquid_hours": "08:00:00 - 16:30:00",
+      "market_tz": "Europe/London",
       "currency": "GBP",
-      "tz": "Europe/London",
       "datasources": {
         "yahoo": {
           "exchs": ["LSE"],
@@ -163,12 +150,10 @@
     "TSE": {
       "label": "Toronto Stock Exchange",
       "description": "The Toronto Stock Exchange is the largest stock exchange in Canada, the third largest in North America and the seventh largest in the world by market capitalization. Based in Toronto, it is owned by and operated as a subsidiary of the TMX Group for the trading of senior equities.",
-      "afterHoursClosesAt": "16:00:00",
-      "marketClosesAt": "16:00:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "09:30:00",
+      "trading_hours": "09:30:00 - 16:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "market_tz": "America/Toronto",
       "currency": "CAD",
-      "tz": "America/Toronto",
       "datasources": {
         "yahoo": {
           "exchs": ["TOR", "YHD"],
@@ -185,12 +170,10 @@
     "VENTURE": {
       "description": "The TSX Venture Exchange is a stock exchange in Canada. It is headquartered in Calgary, Alberta and has offices in Toronto, Vancouver, and Montreal.",
       "label": "TSX Venture Exchange",
-      "afterHoursClosesAt": "16:00:00",
-      "marketClosesAt": "16:00:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "09:30:00",
+      "trading_hours": "09:30:00 - 16:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "market_tz": "America/Toronto",
       "currency": "CAD",
-      "tz": "America/Toronto",
       "datasources": {
         "yahoo": {
           "exchs": ["TOR"],
@@ -206,12 +189,10 @@
     },
     "GBP": {
       "description": "Forex Capital Markets trading using GBP as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "GBP",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "GBP.FXCM",
@@ -222,12 +203,10 @@
     },
     "AUD": {
       "description": "Forex Capital Markets trading using AUD as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "AUD",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "AUD.FXCM",
@@ -238,12 +217,10 @@
     },
     "NZD": {
       "description": "Forex Capital Markets trading using NZD as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
-      "currency": "AUD",
-      "tz": "America/New_York",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
+      "currency": "NZD",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "NZD.FXCM",
@@ -254,12 +231,10 @@
     },
     "USD": {
       "description": "Forex Capital Markets trading using USD as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "USD.FXCM",
@@ -270,12 +245,10 @@
     },
     "CAD": {
       "description": "Forex Capital Markets trading using CAD as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "CAD",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CAD.FXCM",
@@ -286,12 +259,10 @@
     },
     "CHF": {
       "description": "Forex Capital Markets trading using CHF as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "CHF",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CHF.FXCM",
@@ -302,12 +273,10 @@
     },
     "NOK": {
       "description": "Forex Capital Markets trading using NOK as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "NOK",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "NOK.FXCM",
@@ -318,12 +287,10 @@
     },
     "SEK": {
       "description": "Forex Capital Markets trading using SEK as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "SEK",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "SEK.FXCM",
@@ -334,12 +301,10 @@
     },
     "CNH": {
       "description": "Forex Capital Markets trading using CNH as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "CNH",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CNH.FXCM",
@@ -350,12 +315,10 @@
     },
     "JPY": {
       "description": "Forex Capital Markets trading using JPY as the quote currency.",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "17:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "JPY",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "JPY.FXCM",
@@ -366,12 +329,10 @@
     },
     "CME": {
       "description": "Chicago Mercantile Exchange (GLOBEX)",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "18:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "17:00:00 - 16:00:00",
+      "market_tz": "America/Chicago",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnPrefix": "@",
@@ -432,12 +393,10 @@
     },
     "COMEX": {
       "description": "Commodity Exchange, a division of the New York Mercantile Exchange",
-      "afterHoursClosesAt": "24:00:00",
-      "marketClosesAt": "17:00:00",
-      "marketOpensAt": "18:00:00",
-      "premarketOpensAt": "00:00:00",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "18:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
@@ -450,12 +409,10 @@
     },
     "OPRA": {
       "description": "The Options Price Reporting Authority (OPRA) is a committee of representatives from participating securities exchanges responsible for providing last-sale options quotations and information from the participating exchanges.",
-      "afterHoursClosesAt": "16:15:00",
-      "marketClosesAt": "16:15:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "03:00:00",
+      "trading_hours": "02:00:00 - 15:15:00",
+      "liquid_hours": "08:30:00 - 15:15:00",
+      "market_tz": "America/Chicago",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "security_types": ["IEOPTION", "FOPTION"],
@@ -465,12 +422,10 @@
     },
     "CBOE": {
       "description": "Indexes listed on the Chicago Board Options Exchange",
-      "afterHoursClosesAt": "16:00:00",
-      "marketClosesAt": "16:00:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "09:30:00",
+      "trading_hours": "08:30:00 - 15:00:00",
+      "liquid_hours": "08:30:00 - 15:00:00",
+      "market_tz": "America/Chicago",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": ".XO",
@@ -481,12 +436,10 @@
     },
     "X": {
       "description": "Most US indexes",
-      "afterHoursClosesAt": "16:00:00",
-      "marketClosesAt": "16:00:00",
-      "marketOpensAt": "09:30:00",
-      "premarketOpensAt": "09:30:00",
+      "trading_hours": "09:30:00 - 16:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "market_tz": "America/New_York",
       "currency": "USD",
-      "tz": "America/New_York",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": ".X",

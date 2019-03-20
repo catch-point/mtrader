@@ -58,7 +58,6 @@ module.exports = function(collect) {
         else return promiseHelp.then(help => {
             const fields = _.first(help).properties;
             const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
-                tz: moment.tz.guess(),
                 parameter_values: {},
                 optimize_termination: options.termination
             });

@@ -255,13 +255,9 @@ describe("mtrader", function() {
             }
         }, {
             variables: {
-                signal: 'STO_signal'
+                signal: _.isString
             },
-            parameters:  {
-                lookback: 10,
-                Ksmoothing: 5,
-                Dmoving: 5
-            }
+            parameters:  {}
         }]);
     });
 });

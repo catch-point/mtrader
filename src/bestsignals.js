@@ -51,9 +51,7 @@ module.exports = function(optimize) {
         if (!promiseHelp) promiseHelp = help(optimize);
         if (options.help) return promiseHelp;
         const keys = _.keys(_.first(await promiseHelp).options);
-        const opts = _.defaults(_.pick(options, keys), {
-            tz: moment.tz.guess()
-        });
+        const opts = _.pick(options, keys);
         return bestsignals(optimize, opts);
     }, {
         close() {

@@ -38,6 +38,7 @@ const url = require('url');
 const http = require('http');
 const https = require('https');
 const _ = require('underscore');
+const moment = require('moment-timezone');
 const ws = require('ws');
 const shell = require('shell');
 const expect = require('chai').expect;
@@ -343,6 +344,7 @@ function listen(mtrader, address) {
             .handle('optimize', mtrader.optimize)
             .handle('bestsignals', mtrader.bestsignals)
             .handle('strategize', mtrader.strategize)
+            .handle('tz', p => (moment.defaultZone||{}).name || moment.tz.guess())
             .handle('version', () => version.toString())
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
             .handle('stop', () => {
