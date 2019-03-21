@@ -540,8 +540,7 @@
         "ib": {
           "whatToShow": "MIDPOINT",
           "secType": "OPT",
-          "exchange": "SMART",
-          "intraday_only": true
+          "exchange": "SMART"
         }
       }
     },

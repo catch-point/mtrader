@@ -157,7 +157,7 @@ module.exports = function(host = 'localhost', port = 7496, client_id) {
                 const args = _.rest(_.toArray(arguments));
                 logger.log(cb, args.map(arg => {
                     return arg && (arg.conId || arg.localSymbol || arg.symbol) || arg;
-                }).join(', '));
+                }).join(','));
                 ib[cb].call(ib, reqId, ...args);
             }
         });

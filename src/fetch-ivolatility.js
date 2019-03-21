@@ -200,12 +200,26 @@ function interday(ivolatility, delegate, options) {
             if (opensAt.isValid() && end.isBefore(opensAt)) return adata;
             if (opensAt.isValid() && !isOptionActive(options.symbol, opensAt, now)) return adata;
         }
-        const begin = !adata.length ? options.begin :
-            periods(options).inc(periods(options).floor(_.last(adata).ending),1).format();
-        const bdata = await delegate(_.defaults({interval: 'day', begin}, options)).catch(err => {
+        const begin = !adata.length ? options.begin : nextDayOpen(_.last(adata).ending, options);
+        const intraday = await delegate(_.defaults({interval: 'm60', begin}, options)).catch(err => {
             logger.warn(`Could not fetch latest options data ${err.message}`);
             return [];
         });
+        const bdata = intraday.reduce((result, bar) => {
+            const merging = result.length && _.last(result).ending.substring(0, 10) == bar.ending.substring(0, 10);
+            if (!merging && isMarketClosed(bar.ending, options)) return result;
+            const today = merging ? result.pop() : {};
+            result.push(Object.assign({}, bar, {
+                ending: endOfDay(bar.ending, options),
+                open: today.open || bar.open,
+                high: Math.max(today.high || 0, bar.high),
+                low: today.low && today.low < bar.low ? today.low : bar.low,
+                close: bar.close,
+                volume: today.volume + bar.volume,
+                adj_close: bar.adj_close
+            }));
+            return result;
+        }, []);
         if (!bdata.length) return adata;
         const cdata = new Array(Math.max(adata.length, bdata.length));
         let a = 0, b = 0, c = 0;
@@ -221,6 +235,28 @@ function interday(ivolatility, delegate, options) {
         }
         return cdata;
     });
+}
+
+function nextDayOpen(ending, options) {
+    const period = periods(options);
+    const next_day = period.inc(period.floor(ending),1).format('YYYY-MM-DD');
+    return moment.tz(`${next_day} ${options.marketOpensAt}`, options.tz).format();
+}
+
+function isMarketClosed(ending, options) {
+    const time = ending.substring(11, 19);
+    if (options.marketOpensAt < options.marketClosesAt) {
+        return time > options.marketClosesAt || time <= options.marketOpensAt;
+    } else if (options.marketClosesAt < options.marketOpensAt) {
+        return time > options.marketClosesAt && time <= options.marketOpensAt;
+    } else {
+        return false; // 24 hour market
+    }
+}
+
+function endOfDay(ending, options) {
+    const today = moment.tz(ending, options.tz).format('YYYY-MM-DD');
+    return moment.tz(`${today} ${options.marketClosesAt}`, options.tz).format();
 }
 
 const calls = {

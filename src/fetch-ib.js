@@ -215,26 +215,14 @@ async function interday(markets, adjustments, client, ib_tz, options) {
     const end_past = end && end.isBefore(now);
     const end_str = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
     const endDateTime = whatToShow != 'ADJUSTED_LAST' ? end_str : '';
-    const supported = !market.intraday_only;
-    const duration = toDurationString(end_past ? end : now, options, !supported && 5);
-    const barSize = toBarSizeSetting(supported ? options.interval : 'm60');
+    const duration = toDurationString(end_past ? end : now, options);
+    const barSize = toBarSizeSetting(options.interval);
     const prices = await client.reqHistoricalData(contract, endDateTime, duration, barSize, whatToShow, 1, 1);
     const adjust = whatToShow == 'TRADES' ? fromTrades :
         whatToShow == 'ADJUSTED_LAST' ? fromAdjusted :
         ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(whatToShow) ? fromMidpoint :
         withoutAdjClase;
-    const mapped = adjust(prices, adjusts, ib_tz, options);
-    const result = supported ? mapped : mapped.reduce((result, bar) => {
-        const merging = result.length && _.last(result).ending == bar.ending;
-        if (!merging && isBeforeOpen(bar.ending, options)) return result;
-        const today = merging ? result.pop() : {};
-        result.push(Object.assign({}, bar, {
-            open: today.open || bar.open,
-            high: Math.max(today.high || 0, bar.high),
-            low: today.low && today.low < bar.low ? today.low : bar.low
-        }));
-        return result;
-    }, []);
+    const result = adjust(prices, adjusts, ib_tz, options);
     const start = moment.tz(options.begin, options.tz).format();
     const finish = moment.tz(options.end || options.now, options.tz).format();
     let first = _.sortedIndex(result, {ending: start}, 'ending');
@@ -320,17 +308,15 @@ function withoutAdjClose(prices, adjusts, ib_tz, options) {
     }));
 }
 
-function toDurationString(end, options, max_days) {
+function toDurationString(end, options) {
     expect(options).to.have.property('begin').that.is.ok;
     const begin = periods(options).ceil(options.begin).subtract(periods(options).millis, 'milliseconds');
     const years = end.diff(begin,'years', true);
-    if (years > 1 && (!max_days || max_days > years*365)) return Math.ceil(years) + ' Y';
+    if (years > 1) return Math.ceil(years) + ' Y';
     const days = end.diff(begin,'days', true);
-    if (max_days && days > max_days)
-        throw Error(`Too many days between ${begin.format()} and ${end.format()} for ${options.symbol}`);
     if (days > 1 || options.interval == 'day') return Math.ceil(days) + ' D';
-    const seconds = end.diff(begin,'seconds', true);
-    return Math.ceil(seconds) + ' S';
+    const minutes = end.diff(begin,'minutes', true);
+    return (Math.ceil(minutes + 1) * 60) + ' S';
 }
 
 function toBarSizeSetting(interval) {
@@ -491,16 +477,5 @@ function endOfDay(date, options) {
         if (closes.isBefore(start)) ending = moment(start).add(++days, 'days').endOf('day');
     } while (closes.isBefore(start));
     return closes.format();
-}
-
-function isBeforeOpen(ending, options) {
-    const time = ending.substring(11, 19);
-    if (options.marketOpensAt < options.marketClosesAt) {
-        return time > options.marketClosesAt || time < options.marketOpensAt;
-    } else if (options.marketClosesAt < options.marketOpensAt) {
-        return time > options.marketClosesAt && time < options.marketOpensAt;
-    } else {
-        return false; // 24 hour market
-    }
 }
 
