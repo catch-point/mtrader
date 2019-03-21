@@ -41,24 +41,108 @@ describe("fetch-yahoo", function() {
     after(function() {
         return client.close();
     });
-    it("should find AABA", function() {
-        return client({interval:'lookup', symbol:'AABA'})
-          .should.eventually.be.like(results => _.some(results, like({
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            yahoo_symbol: 'AABA',
-            name: "Altaba Inc."
-        })));
-    });
-    it("should find IBM", function() {
-        return client({
-            interval:'lookup',
-            symbol:'IBM',
-            marketLang:'en-US',
-            exch:'NYQ'
-        }).then(_.first).should.eventually.be.like({
-            symbol: 'IBM',
-            name: "International Business Machines Corporation"
+    describe("lookup", function() {
+        it("should find AABA", function() {
+            return client({interval:'lookup', symbol:'AABA'})
+              .should.eventually.be.like(results => _.some(results, like({
+                symbol: 'AABA',
+                market: 'NASDAQ',
+                yahoo_symbol: 'AABA',
+                name: "Altaba Inc."
+            })));
+        });
+        it("should find IBM", function() {
+            return client({
+                interval:'lookup',
+                symbol:'IBM',
+                marketLang:'en-US',
+                exch:'NYQ'
+            }).then(_.first).should.eventually.be.like({
+                symbol: 'IBM',
+                name: "International Business Machines Corporation"
+            });
+        });
+        it("should find ITA", function() {
+            return client({interval:'lookup',symbol:'ITA', market:"BATS"})
+              .then(array => array.slice(0,1))
+              .should.eventually.be.like([{
+                symbol: 'ITA',
+                name: /SHARES .* AEROSPACE & DEF/i
+            }]);
+        });
+        it("should find NVDA", function() {
+            return client({interval:'lookup',symbol:'NVDA', market:"NASDAQ"})
+              .should.eventually.be.like(results => _.some(results, like({
+                symbol: 'NVDA',
+                name: /NVIDIA/i
+            })));
+        });
+        it("should find GLOW", function() {
+            return client({interval:'lookup',symbol:'GLOW', market:"AMEX"})
+              .then(array => array.slice(0,1))
+              .should.eventually.be.like([{
+                symbol: 'GLOW',
+                name: /GLOWPOINT/i
+            }]);
+        });
+        it("should find 88E", function() {
+            return client({interval:'lookup',symbol:'88E', market:"LSE"})
+              .then(array => array.slice(0,1))
+              .should.eventually.be.like([{
+                symbol: '88E',
+                name: /88 ENERGY/i,
+                currency: "GBP"
+            }]);
+        });
+        it.skip("should find BBD.B", function() {
+            return client({interval:'lookup',symbol:'BBD.B', market:"TSE"})
+              .then(array => array.filter(item => item.symbol == 'BBD.B'))
+              .should.eventually.be.like([{
+                symbol: 'BBD.B',
+                name: /BOMBARDIER/i,
+                currency: "CAD"
+            }]);
+        });
+        it.skip("should find any BRK.A symbol", function() {
+            return client({
+                interval:'lookup',
+                symbol: 'BRK.A'
+            }).should.eventually.be.like(results => _.some(results, like(
+                {symbol: 'BRK.A', name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
+            )));
+        });
+        it.skip("should find BRK.A symbol", function() {
+            return client({interval:'lookup', symbol:'BRK.A', market:"NYSE"})
+              .should.eventually.be.like(results => _.some(results, like(
+                {symbol: 'BRK.A', name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
+            )));
+        });
+        it.skip("should find BF.B symbol", function() {
+            return client({interval:'lookup', symbol:'BF.B', market:"NYSE"})
+              .then(array => array.slice(0,1))
+              .should.eventually.be.like([
+                {symbol: 'BF.B', name: /BROWN-FORMAN/}
+            ]);
+        });
+        describe.skip("should find TSE listing", function() {
+            [
+                "ATD.B", "BBD.B", "BAM.A",
+                "CCL.B", "GIB.A", "CTC.A",
+                "RCI.B", "SJR.B", "TECK.B"
+            ].forEach(symbol => {
+                it(symbol, function() {
+                    return client({interval:'lookup', symbol, market:"TSE"})
+                      .then(array => array.filter(item => item.symbol == symbol))
+                      .should.eventually.be.like([{symbol, currency: 'CAD'}]);
+                });
+            });
+        });
+        it.skip("should find N symbol", function() {
+            return client({interval:'lookup', symbol:'N', market:"VENTURE"})
+              .then(array => array.slice(0,1))
+              .should.eventually.be.like([
+                {symbol: 'N', name: /NAMASTE TECHNOLOGIES/}
+            ]);
         });
     });
     it("should return daily", function() {

@@ -16,14 +16,14 @@
     "iqfeed": {
       "enabled": false,
       "intervals": ["lookup", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSE", "VENTURE", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOE", "COMEX", "X"]
+      "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CHF", "CME", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NYMEX", "NYSE", "NZD", "OPRA", "TSE", "USD", "VENTURE", "X" ]
     },
     "ib": {
       "enabled": false,
       "host": "localhost",
       "port": 7496,
       "intervals": ["lookup", "day"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSE", "VENTURE", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY", "CME", "OPRA", "CBOE", "COMEX", "X"]
+      "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CHF", "CME", "CNH", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NOK", "NYMEX", "NYSE", "NZD", "OPRA", "SEK", "TSE", "USD", "VENTURE", "X" ]
     },
     "yahoo": {
       "intervals": ["lookup", "day"],
@@ -179,6 +179,7 @@
           "yahooSuffix": ".L"
         },
         "iqfeed": {
+          "dtnPrefix": "L.",
           "security_types": ["EQUITY"],
           "listed_markets": ["LSE"]
         },
@@ -255,7 +256,6 @@
           "listed_markets": ["FXCM"]
         },
         "ib": {
-          "localSymbolSuffix": ".GBP",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -275,7 +275,6 @@
           "listed_markets": ["FXCM"]
         },
         "ib": {
-          "localSymbolSuffix": ".AUD",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -295,7 +294,6 @@
           "listed_markets": ["FXCM"]
         },
         "ib": {
-          "localSymbolSuffix": ".NZD",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -315,7 +313,6 @@
           "listed_markets": ["FXCM"]
         },
         "ib": {
-          "localSymbolSuffix": ".USD",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -335,7 +332,6 @@
           "listed_markets": ["FXCM"]
         },
         "ib": {
-          "localSymbolSuffix": ".CAD",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -355,7 +351,6 @@
           "listed_markets": ["FXCM"]
         },
         "ib": {
-          "localSymbolSuffix": ".CHF",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -369,13 +364,7 @@
       "market_tz": "America/New_York",
       "currency": "NOK",
       "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "NOK.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
-        },
         "ib": {
-          "localSymbolSuffix": ".NOK",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -389,13 +378,7 @@
       "market_tz": "America/New_York",
       "currency": "SEK",
       "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "SEK.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
-        },
         "ib": {
-          "localSymbolSuffix": ".SEK",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -409,13 +392,7 @@
       "market_tz": "America/New_York",
       "currency": "CNH",
       "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "CNH.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
-        },
         "ib": {
-          "localSymbolSuffix": ".CNH",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -435,7 +412,6 @@
           "listed_markets": ["FXCM"]
         },
         "ib": {
-          "localSymbolSuffix": ".JPY",
           "whatToShow": "MIDPOINT",
           "secType": "CASH",
           "exchange": "IDEALPRO"
@@ -503,6 +479,10 @@
           },
           "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
           "listed_markets": ["CMEMINI", "CME_GBX"]
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "FUT"
         }
       }
     },
@@ -519,6 +499,30 @@
           "dtnPrefixMap": {
             "GC": "QGC"
           }
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "FUT",
+          "exchange":"NYMEX"
+        }
+      }
+    },
+    "NYMEX": {
+      "description": "New York Mercantile Exchange",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "18:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
+      "currency": "USD",
+      "datasources": {
+        "iqfeed": {
+          "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPOT", "SPREAD", "STRATSPREAD", "STRIP"],
+          "listed_markets": ["CLEARPORT", "NYMEX", "NYMEX_GBX", "NYMEXMINI"],
+          "dtnPrefix": "@"
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "FUT",
+          "exchange":"NYMEX"
         }
       }
     },
@@ -537,7 +541,7 @@
           "whatToShow": "MIDPOINT",
           "secType": "OPT",
           "exchange": "SMART",
-          "intervals": ["lookup", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
+          "intraday_only": true
         }
       }
     },
@@ -556,8 +560,7 @@
         "ib": {
           "whatToShow": "TRADES",
           "secType": "IND",
-          "exchange": "CBOE",
-          "intervals": ["lookup", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
+          "exchange": "CBOE"
         }
       }
     },
@@ -575,8 +578,7 @@
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "IND",
-          "intervals": ["lookup", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"]
+          "secType": "IND"
         }
       }
     }

@@ -78,7 +78,10 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
-        properties: ['symbol', 'conId', 'market', 'name', 'secType', 'exchange', 'currency', 'tradingClass'],
+        properties: [
+            'symbol', 'conId', 'market', 'name', 'secType', 'exchange', 'currency',
+            'tradingClass', 'industry', 'category', 'subcategory'
+        ],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -170,7 +173,11 @@ async function lookup(markets, client, options) {
         const exchanges = _.every(market_set, 'exchange') && market_set.map(market => market.exchange);
         const currencies = _.every(market_set, 'currency') && market_set.map(market => market.currency);
         const contract = joinCommon(market_set.map(market => toContract(market, options)));
-        const details = await client.reqContractDetails(contract).catch(err => []);
+        const as_is = await client.reqContractDetails(contract).catch(err => []);
+        const details = as_is.length || !~contract.localSymbol.indexOf('.') ? as_is :
+            await client.reqContractDetails(Object.assign({}, contract, {
+                localSymbol: contract.localSymbol.replace('.', ' ')
+            })).catch(err => []);
         return details.filter(detail => {
             if (secTypes && !~secTypes.indexOf(detail.summary.secType)) return false;
             if (primaryExchs && !~primaryExchs.indexOf(detail.summary.primaryExch)) return false;
@@ -181,7 +188,7 @@ async function lookup(markets, client, options) {
     })));
     const conIds = _.values(_.groupBy(combined, detail => detail.summary.conId));
     return conIds.map(details => flattenContractDetails(details)).map(detail => _.omit({
-        symbol: ~detail.symbol.indexOf(' ') ? detail.symbol.replace(' ', '.') : detail.symbol,
+        symbol: toSymbol(detail),
         market: options.market || markets[detail.primaryExch] && detail.primaryExch,
         secType: detail.secType,
         name: detail.longName,
@@ -189,6 +196,9 @@ async function lookup(markets, client, options) {
         minTick: detail.minTick,
         currency: detail.currency,
         tradingClass: detail.tradingClass,
+        industry: detail.industry,
+        category: detail.category,
+        subcategory: detail.subcategory,
         conId: detail.conId
     }, v => !v));
 }
@@ -205,7 +215,7 @@ async function interday(markets, adjustments, client, ib_tz, options) {
     const end_past = end && end.isBefore(now);
     const end_str = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
     const endDateTime = whatToShow != 'ADJUSTED_LAST' ? end_str : '';
-    const supported = !market.intervals || ~market.intervals.indexOf(options.interval);
+    const supported = !market.intraday_only;
     const duration = toDurationString(end_past ? end : now, options, !supported && 5);
     const barSize = toBarSizeSetting(supported ? options.interval : 'm60');
     const prices = await client.reqHistoricalData(contract, endDateTime, duration, barSize, whatToShow, 1, 1);
@@ -384,7 +394,8 @@ function toContract(market, options) {
         secType: market.secType,
         primaryExch: market.primaryExch,
         exchange: market.exchange,
-        currency: market.currency
+        currency: market.currency,
+        includeExpired: market.secType == 'FUT'
     }, v => !v);
 }
 
@@ -392,11 +403,27 @@ function toLocalSymbol(market, symbol) {
     if (market.secType == 'FUT') return toFutSymbol(market, symbol);
     else if (market.secType == 'CASH') return toCashSymbol(market, symbol);
     else if (market.secType == 'OPT') return toOptSymbol(market, symbol);
-    else return ~symbol.indexOf('.') ? symbol.replace('.', ' ') : symbol;
+    else return symbol;
+}
+
+function toSymbol(detail) {
+    if (detail.secType == 'FUT') return fromFutSymbol(detail.localSymbol);
+    else if (detail.secType == 'CASH') return detail.symbol;
+    //else if (detail.secType == 'OPT') return fromOptSymbol(detail.localSymbol);
+    else return ~detail.localSymbol.indexOf(' ') ? detail.localSymbol.replace(' ', '.') : detail.localSymbol;
 }
 
 function toFutSymbol(market, symbol) {
     return symbol.replace(/^(.*)([A-Z])(\d)(\d)$/,'$1$2$4');
+}
+
+function fromFutSymbol(symbol) {
+    const [, root, month, y] = symbol.match(/^(.*)([A-Z])(\d)$/);
+    const now = moment();
+    const decade = y >= (now.year() - 2) % 10 ?
+        (now.year() - 2).toString().substring(2, 3) :
+        (now.year() + 8).toString().substring(2, 3);
+    return `${root}${month}${decade}${y}`;
 }
 
 function toCashSymbol(market, symbol) {

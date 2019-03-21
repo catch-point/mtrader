@@ -58,7 +58,8 @@ function like(expected) {
         _.isObject(expected) ? _.mapObject(expected, like) : undefined;
     if (!m) return _.isEqual.bind(_, expected);
     else return (actual, unexpected_path) => {
-        if (_.isArray(m) && m.length != actual.length) return false;
+        if (_.isArray(m) && !_.isArray(actual)) return false;
+        else if (_.isArray(m) && m.length != actual.length) return false;
         else return _.reduce(m, (truth, test, key) => {
             if (!truth) return truth;
             if (!_.has(actual, key)) return false;

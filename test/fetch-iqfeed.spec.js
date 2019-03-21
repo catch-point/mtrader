@@ -47,32 +47,192 @@ describe("fetch-iqfeed", function() {
     after(function() {
         if (client) return client.close();
     });
-    it("should find AABA", function() {
-        return client({interval:'lookup',symbol:'AABA'})
-          .should.eventually.be.like(results => _.some(results, like({
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            iqfeed_symbol: 'AABA',
-            name: "ALTABA INC"
-        })));
-    });
-    it("should find AABA details", function() {
-        return client({
-            interval:'fundamental',
-            symbol:'AABA',
-            market: 'NASDAQ',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([{
-            symbol: 'AABA',
-            company_name: "ALTABA INC"
-        }]);
-    });
-    it("should find IBM", function() {
-        return client({interval:'lookup',symbol:'IBM', listed_market:"NYSE"})
-          .should.eventually.be.like(results => _.some(results, like({
-            symbol: 'IBM',
-            name: "INTERNATIONAL BUSINESS MACHINE"
-        })));
+    describe("lookup", function() {
+        it("should find AABA", function() {
+            return client({interval:'lookup',symbol:'AABA'})
+              .should.eventually.be.like(results => _.some(results, like({
+                symbol: 'AABA',
+                market: 'NASDAQ',
+                iqfeed_symbol: 'AABA',
+                name: "ALTABA INC"
+            })));
+        });
+        it("should find AABA details", function() {
+            return client({
+                interval:'fundamental',
+                symbol:'AABA',
+                market: 'NASDAQ',
+                marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            }).should.eventually.be.like([{
+                symbol: 'AABA',
+                company_name: "ALTABA INC"
+            }]);
+        });
+        it("should find IBM", function() {
+            return client({interval:'lookup',symbol:'IBM', listed_market:"NYSE"})
+              .should.eventually.be.like(results => _.some(results, like({
+                symbol: 'IBM',
+                name: "INTERNATIONAL BUSINESS MACHINE"
+            })));
+        });
+        it("should find BRK.A symbol", function() {
+            return client({
+                interval:'lookup',
+                symbol: 'BRK.A',
+                marketLang: 'en-US'
+            }).should.eventually.be.like(results => _.some(results, like(
+                {symbol: /^BRK.A/, name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
+            )));
+        });
+        it("should find BRK.A symbol", function() {
+            return client({interval:'lookup', symbol:'BRK.A', listed_market:"NYSE"})
+              .should.eventually.be.like(results => _.some(results, like(
+                {symbol: /^BRK.A/, name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
+            )));
+        });
+        it("should find ITA", function() {
+            return client({interval:'lookup',symbol:'ITA', market:"BATS"})
+              .should.eventually.be.like([{
+                symbol: 'ITA',
+                name: /SHARES .* AEROSPACE & DEF/
+            }]);
+        });
+        it("should find NVDA", function() {
+            return client({interval:'lookup',symbol:'NVDA', market:"NASDAQ"})
+              .should.eventually.be.like(results => _.some(results, like({
+                symbol: 'NVDA',
+                name: /NVIDIA/
+            })));
+        });
+        it("should find GLOW", function() {
+            return client({interval:'lookup',symbol:'GLOW', market:"AMEX"})
+              .should.eventually.be.like([{
+                symbol: 'GLOW',
+                name: /GLOWPOINT/
+            }]);
+        });
+        it("should find 88E", function() {
+            return client({interval:'lookup',symbol:'88E', market:"LSE"})
+              .then(array => array.slice(0,1))
+              .should.eventually.be.like([{
+                symbol: '88E',
+                name: /88 ENERGY/,
+                currency: "GBP"
+            }]);
+        });
+        it("should find BBD.B", function() {
+            return client({interval:'lookup',symbol:'BBD.B', market:"TSE"})
+              .then(array => array.filter(item => item.symbol == 'BBD.B'))
+              .should.eventually.be.like([{
+                symbol: 'BBD.B',
+                name: /BOMBARDIER/,
+                currency: "CAD"
+            }]);
+        });
+        it("should find any BRK.A symbol", function() {
+            return client({
+                interval:'lookup',
+                symbol: 'BRK.A'
+            }).should.eventually.be.like(results => _.some(results, like(
+                {symbol: 'BRK.A', name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
+            )));
+        });
+        it("should find BRK.A symbol", function() {
+            return client({interval:'lookup', symbol:'BRK.A', market:"NYSE"})
+              .should.eventually.be.like(results => _.some(results, like(
+                {symbol: 'BRK.A', name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
+            )));
+        });
+        it("should find BF.B symbol", function() {
+            return client({interval:'lookup', symbol:'BF.B', market:"NYSE"})
+              .then(array => array.slice(0,1))
+              .should.eventually.be.like([
+                {symbol: 'BF.B', name: /BROWN-FORMAN/}
+            ]);
+        });
+        describe("should find TSE listing", function() {
+            [
+                "ATD.B", "BBD.B", "BAM.A",
+                "CCL.B", "GIB.A", "CTC.A",
+                "RCI.B", "SJR.B", "TECK.B"
+            ].forEach(symbol => {
+                it(symbol, function() {
+                    return client({interval:'lookup', symbol, market:"TSE"})
+                      .then(array => array.filter(item => item.symbol == symbol))
+                      .should.eventually.be.like([{symbol, currency: 'CAD'}]);
+                });
+            });
+        });
+        it("should find N symbol", function() {
+            return client({interval:'lookup', symbol:'N', market:"VENTURE"})
+              .then(array => array.slice(0,1))
+              .should.eventually.be.like([
+                {symbol: 'N', name: /NAMASTE TECHNOLOGIES/}
+            ]);
+        });
+        describe("should find cross currencies", function() {
+            const currencies = ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'];
+            currencies.forEach((base, c) => {
+                currencies.slice(c+1).forEach(quote => {
+                    it(base + '.' + quote, function() {
+                        return client({interval:'lookup', symbol: base, market:quote})
+                          .should.eventually.be.like([{symbol: base, currency: quote}]);
+                    });
+                });
+            });
+        });
+        describe("should lookup CME futures symbols", function() {
+            _.range((moment().year())%100,(moment().year()+5)%100).map(year => ['H','M','U','Z'].map(mo => {
+                it(`6E${mo}${year}`, function() {
+                    return client({
+                        interval:'lookup',
+                        symbol: `6E${mo}${year}`,
+                        market: "CME"
+                    })
+                      .then(array => array.filter(item => item.symbol == `6E${mo}${year}`))
+                      .should.eventually.be.like([{symbol: `6E${mo}${year}`}]);
+                });
+            }));
+        });
+        describe("should lookup COMEX futures symbols", function() {
+            _.range((moment().year())%100,(moment().year()+5)%100).map(year => ['M','Z'].map(mo => {
+                it(`GC${mo}${year}`, function() {
+                    return client({
+                        interval:'lookup',
+                        symbol: `GC${mo}${year}`,
+                        market: "COMEX"
+                    })
+                      .then(array => array.filter(item => item.symbol == `GC${mo}${year}`))
+                      .should.eventually.be.like([{symbol: `GC${mo}${year}`}]);
+                });
+            }));
+        });
+        describe("should lookup NYMEX futures symbols", function() {
+            _.range((moment().year())%100,(moment().year()+5)%100).map(year => ['M','Z'].map(mo => {
+                it(`QM${mo}${year}`, function() {
+                    return client({
+                        interval:'lookup',
+                        symbol: `QM${mo}${year}`,
+                        market: "NYMEX"
+                    })
+                      .then(array => array.filter(item => item.symbol == `QM${mo}${year}`))
+                      .should.eventually.be.like([{symbol: `QM${mo}${year}`}]);
+                });
+            }));
+        });
+        it("should find SPX symbol", function() {
+            return client({interval:'lookup', symbol:'SPX', market:"CBOE"})
+              .should.eventually.be.like([
+                {symbol: 'SPX', name: /S&P 500/}
+            ]);
+        });
+        it("should find RUT symbol", function() {
+            return client({interval:'lookup', symbol:'RUT', market:"X"})
+              .then(array => array.slice(0,1))
+              .should.eventually.be.like([
+                {symbol: 'RUT', name: /Russell 2000/i}
+            ]);
+        });
     });
     it("should return daily", function() {
         return client({
@@ -105,15 +265,6 @@ describe("fetch-iqfeed", function() {
             {ending:'2014-01-30T16:00:00-05:00',open:34.89,high:35.81,low:34.45,close:35.31},
             {ending:'2014-01-31T16:00:00-05:00',open:34.69,high:36.33,low:34.55,close:36.01}
         ]);
-    });
-    it("should find BRK.A symbol", function() {
-        return client({
-            interval:'lookup',
-            symbol: 'BRK.A',
-            marketLang: 'en-US'
-        }).should.eventually.be.like(results => _.some(results, like(
-            {symbol: /^BRK.A/, name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
-        )));
     });
     it("should adjust first dividend", function() {
         return client({
@@ -327,12 +478,6 @@ describe("fetch-iqfeed", function() {
         {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.10867,open:1.11578,close:1.11251,adj_close:1.11251}
         ]);
     });
-    it("should find BRK.A symbol", function() {
-        return client({interval:'lookup', symbol:'BRK.A', listed_market:"NYSE"})
-          .should.eventually.be.like(results => _.some(results, like(
-            {symbol: /^BRK.A/, name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
-        )));
-    });
     it("should return minutes", function() {
         return client({
             interval: 'm1',
@@ -463,5 +608,27 @@ describe("fetch-iqfeed", function() {
             begin: '2019-01-18',
             marketOpensAt: '02:00:00', marketClosesAt: '16:15:00', tz: tz
         }).then(d=>d.forEach(d=>console.log(d))||d);
+    });
+    it.skip("should return daily ATD.B", function() {
+        return client({
+            interval: 'day',
+            symbol: 'ATD.B', market: 'TSE',
+            begin: '2012-07-01', end: '2012-10-01',
+            marketOpensAt: '09:30:00', marketClosesAt: '16:00:00', tz: tz
+        })
+         .then(d=>d.forEach(d=>console.log(JSON.stringify(d).replace(/"(\w+)":/g,'$1:')))||d)
+         .should.eventually.be.like([
+        ]);
+    });
+    it.skip("should return daily TRI", function() {
+        return client({
+            interval: 'day',
+            symbol: 'TRI', market: 'TSE',
+            begin: '2018-11-01', end: '2018-12-01',
+            marketOpensAt: '09:30:00', marketClosesAt: '16:00:00', tz: tz
+        })
+         .then(d=>d.forEach(d=>console.log(JSON.stringify(d).replace(/"(\w+)":/g,'$1:')))||d)
+         .should.eventually.be.like([
+        ]);
     });
 });

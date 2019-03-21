@@ -249,4 +249,22 @@ describe("iqfeed-client", function() {
     it("should return summary info", function() {
         return client.summary('SPY').should.eventually.be.like({symbol:'SPY'});
     });
+    it.skip("should return daily ATD.B", function() {
+        return client.day(
+            'C.ATD.B',
+            '2012-07-01', '2012-10-01', tz
+        )
+         .then(d=>d.forEach(d=>console.log(JSON.stringify(d).replace(/"(\w+)":/g,'$1:')))||d)
+         .should.eventually.be.like([
+        ]);
+    });
+    it.skip("should return daily TRI", function() {
+        return client.day(
+            'C.TRI',
+            '2018-11-01', '2018-12-01', tz
+        )
+         .then(d=>d.forEach(d=>console.log(JSON.stringify(d).replace(/"(\w+)":/g,'$1:')))||d)
+         .should.eventually.be.like([
+        ]);
+    });
 });

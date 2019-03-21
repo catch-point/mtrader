@@ -79,7 +79,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
-        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type'],
+        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -226,7 +226,7 @@ function createInstance() {
         } else if (options.interval == 'lookup') {
             const exchs = _.pick(_.mapObject(
                 options.market ? _.pick(markets, [options.market]) : markets,
-                exch => exch.datasources.iqfeed
+                exch => Object.assign({currency: exch.currency}, exch.datasources.iqfeed)
             ), val => val);
             const listed_markets = options.listed_market ? [options.listed_market] :
                 _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
@@ -326,6 +326,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
     const two = symbol.substring(0, 2);
     const mapped_symbol = map[three] ? map[three] + symbol.substring(3) :
         map[two] ? map[two] + symbol.substring(2) : symbol;
+    logger.debug("lookup", mapped_symbol, listed_markets);
     return iqclient.lookup(mapped_symbol, listed_markets).then(rows => rows.map(row => {
         const sym = row.symbol;
         const sources = _.pick(exchs, ds => {
@@ -360,7 +361,8 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
             market: _.first(_.keys(sources)),
             name: row.name,
             listed_market: row.listed_market,
-            security_type: row.security_type
+            security_type: row.security_type,
+            currency: (ds||{}).currency
         };
     })).then(rows => rows.filter(row => row.market));
 }

@@ -56,7 +56,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix on the Yahoo! network",
-        properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'type', 'typeDisp'],
+        properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'type', 'typeDisp', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -129,7 +129,8 @@ module.exports = function() {
 };
 
 function lookup(markets, yahoo, options) {
-    const langs = _.uniq(_.compact(_.map(markets, market =>
+    const langs = _.uniq(_.compact(_.map(markets, (market, name) =>
+            (!options.market || options.market == name) &&
             market.datasources.yahoo && market.datasources.yahoo.marketLang
         )));
     return Promise.all(langs.map(marketLang =>
@@ -139,11 +140,11 @@ function lookup(markets, yahoo, options) {
         return !suffix || row.symbol.indexOf(suffix) == row.symbol.length - suffix.length;
     })).then(rows => rows.map(row => {
         const sym = row.symbol;
-        const sources = options.market ? {[options.market]: options} :
-            _.pick(_.mapObject(markets, market =>
-                market.datasources.yahoo
-            ), source =>
-                source && _.contains(source.exchs, row.exch)
+        const sources = _.pick(_.mapObject(markets, market =>
+                Object.assign({currency: market.currency}, market.datasources.yahoo)
+            ), (source, market) =>
+                source && _.contains(source.exchs, row.exch) &&
+                (!options.market || market == options.market)
             );
         const ds = _.find(sources);
         const suffix = ds && ds.yahooSuffix || '';
@@ -155,7 +156,8 @@ function lookup(markets, yahoo, options) {
             market: _.first(_.keys(sources)),
             name: row.name,
             type: row.type,
-            typeDisp: row.typeDisp
+            typeDisp: row.typeDisp,
+            currency: (ds||{}).currency
         };
     })).then(rows => rows.filter(row => row.market));
 }
