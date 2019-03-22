@@ -40,7 +40,7 @@ function nextval() {
     return ++sequence_counter;
 }
 
-module.exports = function(host = 'localhost', port = 7496, client_id) {
+module.exports = Object.assign(function(host = 'localhost', port = 7496, client_id) {
     const clientId = _.isFinite(client_id) ? client_id : nextval();
     const ib = new IB({host, port, clientId});
     const once_connected = new Promise((ready, fail) => {
@@ -129,6 +129,32 @@ module.exports = function(host = 'localhost', port = 7496, client_id) {
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].historicalData);
     }).on('fundamentalData', (reqId, data) => {
         if (req_queue[reqId]) req_queue[reqId].resolve(data);
+    }).on('tickEFP', function (tickerId, tickType, basisPoints, formattedBasisPoints,
+            impliedFuturesPrice, holdDays, futureLastTradeDate, dividendImpact, dividendsToLastTradeDate) {
+        const tick = _.omit({
+            tickType, basisPoints, formattedBasisPoints,
+            impliedFuturesPrice, holdDays, futureLastTradeDate, dividendImpact, dividendsToLastTradeDate
+        }, v => v == null);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+    }).on('tickGeneric', function (tickerId, tickType, value) {
+        const tick = _.omit({tickType, value}, v => v == null);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+    }).on('tickOptionComputation', function (tickerId, tickType, impliedVolatility, delta, optPrice,
+            pvDividend, gamma, vega, theta, undPrice) {
+        const tick = _.omit({tickType, impliedVolatility, delta, optPrice,
+            pvDividend, gamma, vega, theta, undPrice}, v => v == null);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+    }).on('tickPrice', function (tickerId, tickType, price, canAutoExecute) {
+        const tick = _.omit({tickType, price, canAutoExecute}, v => v == null);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+    }).on('tickSize', function (tickerId, tickType, size) {
+        const tick = _.omit({tickType, size}, v => v == null);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+    }).on('tickString', function (tickerId, tickType, value) {
+        const tick = _.omit({tickType, value}, v => v == null);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+    }).on('tickSnapshotEnd', function(tickerId) {
+        if (req_queue[tickerId]) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
     });
     const request = promiseThrottle(function(cb) {
         return new Promise((ready, fail) => {
@@ -138,6 +164,7 @@ module.exports = function(host = 'localhost', port = 7496, client_id) {
                 reqId,
                 contractDetails: [],
                 historicalData: [],
+                tickData: [],
                 resolve(resolution) {
                     ready(resolution);
                     setImmediate(() => {
@@ -167,6 +194,7 @@ module.exports = function(host = 'localhost', port = 7496, client_id) {
         connected: false,
         disconnected: false,
         close() {
+            if (!self.connecting && !self.connected) return Promise.resolve();
             if (!self.disconnected) ib.disconnect();
             return once_disconnected;
         },
@@ -206,8 +234,13 @@ module.exports = function(host = 'localhost', port = 7496, client_id) {
         reqHistoricalData(contract, endDateTime, durationString, barSizeSetting, whatToShow, useRTH, formatDate) {
             return request('reqHistoricalData', contract, endDateTime, durationString,
                 barSizeSetting, whatToShow, useRTH, formatDate, false);
+        },
+        reqMktData(contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions) {
+            return request('reqMktData', contract, genericTickList || '', true, regulatorySnapshot || false, mktDataOptions || []);
         }
     });
     return self;
-}
+}, {
+    TICK_TYPE: IB.TICK_TYPE
+});
 

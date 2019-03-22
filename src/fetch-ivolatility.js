@@ -42,9 +42,7 @@ const config = require('./config.js');
 const logger = require('./logger.js');
 const periods = require('./periods.js');
 const iqfeed = require('./fetch-iqfeed.js');
-const IB = require('./fetch-ib.js');
-const remote = require('./fetch-remote.js');
-const files = require('./fetch-files.js');
+const IB = require('./ib-client.js');
 const Ivolatility = require('./ivolatility-client.js');
 const expect = require('chai').expect;
 
@@ -116,23 +114,20 @@ module.exports = function() {
     const auth_file = config('fetch.ivolatility.auth_file');
     const downloadType = config('fetch.ivolatility.downloadType');
     if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
-    const cfg = config('fetch.ivolatility') || {};
-    const delegate = cfg.delegate == 'remote' ? remote() :
-        cfg.delegate == 'iqfeed' ? iqfeed() :
-        cfg.delegate == 'ib' ? new IB() :
-        cfg.delegate == 'files' ? files() : null;
+    const ib_cfg = config('fetch.ivolatility.ib');
+    const ib = ib_cfg && new IB(ib_cfg.host, ib_cfg.port, ib_cfg.clientId);
     const ivolatility = Ivolatility(cacheDir, downloadDir, auth_file, downloadType);
     return Object.assign(options => {
         if (options.help) return Promise.resolve(help());
         switch(options.interval) {
             case 'lookup': return lookup(options);
-            case 'day': return interday(ivolatility, delegate, options);
+            case 'day': return interday(ivolatility, ib, options);
             default: expect(options.interval).to.be.oneOf(['lookup', 'day']);
         }
     }, {
         close() {
             return Promise.all([
-                delegate && delegate.close(),
+                ib && ib.close(),
                 ivolatility.close()
             ]);
         }
@@ -165,7 +160,7 @@ async function lookup(options) {
     }];
 }
 
-function interday(ivolatility, delegate, options) {
+function interday(ivolatility, ib, options) {
     expect(options).to.have.property('symbol');
     expect(options).to.have.property('marketClosesAt');
     expect(options.interval).to.be.oneOf(['day']);
@@ -188,7 +183,7 @@ function interday(ivolatility, delegate, options) {
         if (last == result.length) return result;
         else return result.slice(0, last);
     }).then(async(adata) => {
-        if (!delegate) return adata;
+        if (!ib) return adata;
         if (adata.length) {
             if (now.days() === 0 || now.days() === 6) return adata;
             const tz = options.tz;
@@ -200,26 +195,12 @@ function interday(ivolatility, delegate, options) {
             if (opensAt.isValid() && end.isBefore(opensAt)) return adata;
             if (opensAt.isValid() && !isOptionActive(options.symbol, opensAt, now)) return adata;
         }
-        const begin = !adata.length ? options.begin : nextDayOpen(_.last(adata).ending, options);
-        const intraday = await delegate(_.defaults({interval: 'm60', begin}, options)).catch(err => {
-            logger.warn(`Could not fetch latest options data ${err.message}`);
+        const next_day = !adata.length ? options.begin : nextDayOpen(_.last(adata).ending, options);
+        if (now.isBefore(next_day)) return adata;
+        const bdata = await openBar(ib, options).catch(err => {
+            logger.warn(`Could not fetch ${options.symbol} snapshot options data ${err.message}`);
             return [];
         });
-        const bdata = intraday.reduce((result, bar) => {
-            const merging = result.length && _.last(result).ending.substring(0, 10) == bar.ending.substring(0, 10);
-            if (!merging && isMarketClosed(bar.ending, options)) return result;
-            const today = merging ? result.pop() : {};
-            result.push(Object.assign({}, bar, {
-                ending: endOfDay(bar.ending, options),
-                open: today.open || bar.open,
-                high: Math.max(today.high || 0, bar.high),
-                low: today.low && today.low < bar.low ? today.low : bar.low,
-                close: bar.close,
-                volume: today.volume + bar.volume,
-                adj_close: bar.adj_close
-            }));
-            return result;
-        }, []);
         if (!bdata.length) return adata;
         const cdata = new Array(Math.max(adata.length, bdata.length));
         let a = 0, b = 0, c = 0;
@@ -237,14 +218,46 @@ function interday(ivolatility, delegate, options) {
     });
 }
 
+async function openBar(ib, options) {
+    const snapshot = await (await ib.open()).reqMktData({
+        conId: options.conId,
+        localSymbol: toOptSymbol(options.market, options.symbol),
+        secType: 'OPT',
+        exchange: 'SMART',
+        currency: options.currency
+    });
+    const bar = snapshot.reduce((bar, datum) => {
+        switch(datum.tickType) {
+            case IB.TICK_TYPE.OPEN: bar.open = datum.price; return bar;
+            case IB.TICK_TYPE.HIGH: bar.high = datum.price; return bar;
+            case IB.TICK_TYPE.LOW: bar.low = datum.price; return bar;
+            case IB.TICK_TYPE.CLOSE: bar.close = datum.price; return bar;
+            case IB.TICK_TYPE.BID: bar.bid = datum.price; return bar;
+            case IB.TICK_TYPE.ASK: bar.ask = datum.price; return bar;
+            case IB.TICK_TYPE.VOLUME: bar.volume = datum.size; return bar;
+            default: return bar;
+        }
+    }, {});
+    if (_.isEmpty(bar)) return [];
+    bar.ending = endOfDay(undefined, options);
+    if (bar.bid>0 && bar.ask>0) bar.close = (bar.bid + bar.ask) /2;
+    delete bar.bid;
+    delete bar.ask;
+    bar.open = bar.open || bar.close;
+    bar.high = bar.high || bar.close;
+    bar.low = bar.low || bar.close;
+    bar.adj_close = bar.adj_close || bar.close;
+    return [bar];
+}
+
 function nextDayOpen(ending, options) {
     const period = periods(options);
     const next_day = period.inc(period.floor(ending),1).format('YYYY-MM-DD');
-    return moment.tz(`${next_day} ${options.marketOpensAt}`, options.tz).format();
+    return moment.tz(`${next_day} ${options.premarketOpensAt}`, options.tz);
 }
 
-function isMarketClosed(ending, options) {
-    const time = ending.substring(11, 19);
+function isMarketClosed(now, options) {
+    const time = moment.tz(now, options.tz).format('HH:mm:ss');
     if (options.marketOpensAt < options.marketClosesAt) {
         return time > options.marketClosesAt || time <= options.marketOpensAt;
     } else if (options.marketClosesAt < options.marketOpensAt) {
@@ -305,6 +318,19 @@ async function loadIvolatility(ivolatility, options) {
             adj_close: mid
         };
     });
+}
+
+function toOptSymbol(market, symbol) {
+    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return symbol;
+    const yy = m[2];
+    const day = m[3];
+    const mo = months[m[4]];
+    const right = m[4] < 'M' ? 'C' : 'P';
+    const strike = iv_strike_format(+m[5] * 1000);
+    const space = '      ';
+    const root = m[1].substring(0, space.length) + space.substring(m[1].length);
+    return `${root}${yy}${mo}${day}${right}${strike}`;
 }
 
 function isOptionActive(symbol, begin, end) {
