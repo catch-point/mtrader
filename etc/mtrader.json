@@ -22,7 +22,7 @@
       "enabled": false,
       "host": "localhost",
       "port": 7496,
-      "intervals": ["lookup", "day"],
+      "intervals": ["lookup", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
       "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CHF", "CME", "CNH", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NOK", "NYMEX", "NYSE", "NZD", "OPRA", "SEK", "TSE", "USD", "VENTURE", "X" ]
     },
     "yahoo": {
