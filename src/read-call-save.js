@@ -66,16 +66,9 @@ function inlineCollections(collections, base, options, avoid) {
         return readCollection(collections, base, options, avoid);
     else
         return _.omit(
-            loadCollection(collections, base, options, avoid),
+            inlineSignalset(collections, base, options, avoid),
             val => val == null || _.isObject(val) && _.isEmpty(val)
         );
-}
-
-function loadCollection(collections, base, options, avoid) {
-    const opts = options.load ? _.compact(_.flatten([options.load])).reduceRight((options, load) => {
-        return merge(options, inlineCollections(collections, base, load, avoid), options);
-    }, options) : options;
-    return inlineSignalset(collections, base, opts, avoid);
 }
 
 function inlineSignalset(collections, base, options, avoid) {
@@ -86,9 +79,19 @@ function inlineSignalset(collections, base, options, avoid) {
 }
 
 function inlinePortfolio(collections, base, options, avoid) {
-    return options.portfolio ? _.defaults({
+    const opts = options.portfolio ? _.defaults({
             portfolio: inlineCollections(collections, base, options.portfolio, avoid)
         }, options) : options;
+    return loadCollection(collections, base, opts, avoid);
+}
+
+function loadCollection(collections, base, options, avoid) {
+    return options.load ? _.compact(_.flatten([options.load])).reduceRight((options, load) => {
+        const loaded = inlineCollections(collections, base, load, avoid);
+        return merge(options, loaded, options, {load:[]}, options.portfolio && loaded.portfolio ? {
+            portfolio: [].concat(options.portfolio, loaded.portfolio)
+        } : {});
+    }, options) : options;
 }
 
 function readCollection(collections, base, filename, avoid) {

@@ -268,7 +268,7 @@ function checkCircularVariableReference(fields, options) {
     _.each(references, (reference, name) => {
         if (_.contains(reference, name)) {
             const path = _.sortBy(_.keys(references).filter(n => _.contains(references[n], n) && _.contains(references[n], name)));
-            throw Error("Circular variable reference " + path.join(',') + ": " + variables[name]);
+            throw Error(`Circular variable reference ${path.join(',')}: ${variables[name]} in ${options.label}`);
         }
     });
 }

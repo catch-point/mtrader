@@ -45,7 +45,7 @@ module.exports = function merge() {
         const l = keys.length;
         for (let i = 0; i < l; i++) {
             const key = keys[i];
-            if (_.isObject(obj[key]) && !_.isArray(obj[key]))
+            if (_.isObject(obj[key]) && !_.isArray(obj[key]) && _.isObject(source[key]) && !_.isArray(source[key]))
                 obj[key] = merge(obj[key], source[key]);
             else
                 obj[key] = source[key];
