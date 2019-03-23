@@ -196,7 +196,7 @@ function interday(ivolatility, ib, options) {
             if (opensAt.isValid() && !isOptionActive(options.symbol, opensAt, now)) return adata;
         }
         const next_day = !adata.length ? options.begin : nextDayOpen(_.last(adata).ending, options);
-        if (now.isBefore(next_day)) return adata;
+        if (now.isBefore(next_day) || now.isAfter(moment(next_day).endOf('day'))) return adata;
         const bdata = await openBar(ib, options).catch(err => {
             logger.warn(`Could not fetch ${options.symbol} snapshot options data ${err.message}`);
             return [];
