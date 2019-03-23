@@ -163,23 +163,28 @@ function isNotEquity(markets, options) {
 }
 
 async function lookup(markets, client, options) {
-    const market_set = options.market ? [markets[options.market]] :
-        _.values(markets).filter(market => market.secType);
+    const market_set = (options.market ? [markets[options.market]] :
+        _.values(markets)).reduce((market_set, market) => {
+        if (market.secType) return market_set.concat(market);
+        else if (!market.secTypes) return market_set;
+        else return market_set.concat(market.secTypes.map(secType => Object.assign({}, market, {secType})));
+    }, []);
     const combined = _.flatten(await Promise.all(_.map(_.groupBy(market_set, market => {
         return `${market.secType}.${market.currency}`;
     }), async(market_set) => {
-        const secTypes = _.every(market_set, 'secType') && market_set.map(market => market.secType);
         const primaryExchs = _.every(market_set, 'primaryExch') && market_set.map(market => market.primaryExch);
         const exchanges = _.every(market_set, 'exchange') && market_set.map(market => market.exchange);
         const currencies = _.every(market_set, 'currency') && market_set.map(market => market.currency);
         const contract = joinCommon(market_set.map(market => toContract(market, options)));
-        const as_is = await client.reqContractDetails(contract).catch(err => []);
+        const as_is = await client.reqContractDetails(contract).catch(err => {
+            logger.debug(`TWS IB Could not find ${options.symbol} as ${_.first(market_set).currency} ${_.first(market_set).secType}: ${err.message}`);
+            return [];
+        });
         const details = as_is.length || !~contract.localSymbol.indexOf('.') ? as_is :
             await client.reqContractDetails(Object.assign({}, contract, {
                 localSymbol: contract.localSymbol.replace('.', ' ')
             })).catch(err => []);
         return details.filter(detail => {
-            if (secTypes && !~secTypes.indexOf(detail.summary.secType)) return false;
             if (primaryExchs && !~primaryExchs.indexOf(detail.summary.primaryExch)) return false;
             if (exchanges && !~exchanges.indexOf(detail.summary.exchange)) return false;
             if (currencies && !~currencies.indexOf(detail.summary.currency)) return false;
@@ -389,6 +394,8 @@ function toLocalSymbol(market, symbol) {
     if (market.secType == 'FUT') return toFutSymbol(market, symbol);
     else if (market.secType == 'CASH') return toCashSymbol(market, symbol);
     else if (market.secType == 'OPT') return toOptSymbol(market, symbol);
+    else if (market.secType) return symbol;
+    else if (symbol.match(/^(.*)([A-Z])(\d)(\d)$/)) return toFutSymbol(market, symbol);
     else return symbol;
 }
 

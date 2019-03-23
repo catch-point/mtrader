@@ -326,14 +326,13 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
     const two = symbol.substring(0, 2);
     const mapped_symbol = map[three] ? map[three] + symbol.substring(3) :
         map[two] ? map[two] + symbol.substring(2) : symbol;
-    logger.debug("lookup", mapped_symbol, listed_markets);
     return iqclient.lookup(mapped_symbol, listed_markets).then(rows => rows.map(row => {
         const sym = row.symbol;
         const sources = _.pick(exchs, ds => {
             if (!~ds.listed_markets.indexOf(row.listed_market)) return false;
             const prefix = ds && ds.dtnPrefix || '';
             const suffix = ds && ds.dtnSuffix || '';
-            const map = ds && ds.dtnPrefixMap || {};
+            const map = _.invert(ds && ds.dtnPrefixMap || {});
             const three = sym.substring(0, 3);
             const two = sym.substring(0, 2);
             if (map[three] || map[two]) return true;

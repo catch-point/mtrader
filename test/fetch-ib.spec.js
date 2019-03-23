@@ -190,6 +190,20 @@ describe("fetch-ib", function() {
                 });
             }));
         });
+        describe("should lookup CFE futures symbols", function() {
+            const year = (moment().year())%100;
+            ['H', 'J', 'K', 'M', 'N'].map(mo => {
+                it(`VX${mo}${year}`, function() {
+                    return client({
+                        interval:'lookup',
+                        symbol: `VX${mo}${year}`,
+                        market: "CFE"
+                    })
+                      //.then(array => array.filter(item => item.symbol == `VX${mo}${year}`))
+                      .should.eventually.be.like([{symbol: `VX${mo}${year}`}]);
+                });
+            });
+        });
         it("should find SPX symbol", function() {
             return client({interval:'lookup', symbol:'SPX', market:"CBOE"})
               .should.eventually.be.like([
