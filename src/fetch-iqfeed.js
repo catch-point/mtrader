@@ -79,7 +79,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
-        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type', 'currency'],
+        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'secType', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -316,6 +316,20 @@ function isNotEquity(markets, options) {
     }
 }
 
+const secTypes = {
+    EQUITY: "STK",
+    IEOPTION: "OPT",
+    MUTUAL: "FUND",
+    BONDS: "BOND",
+    INDEX: "IND",
+    FUTURE: "FUT",
+    FOPTION: "FOP",
+    SPREAD: "BAG",
+    SPOT: "CASH",
+    FOREX: "CASH",
+    PRECMTL: "CMDTY"
+};
+
 function lookup(iqclient, exchs, symbol, listed_markets) {
     const map = _.reduce(exchs, (map, ds) => {
         if (!_.isEmpty(listed_markets) && !_.intersection(ds.listed_markets, listed_markets).length)
@@ -360,7 +374,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
             market: _.first(_.keys(sources)),
             name: row.name,
             listed_market: row.listed_market,
-            security_type: row.security_type,
+            secType: secTypes[row.security_type],
             currency: (ds||{}).currency
         };
     })).then(rows => rows.filter(row => row.market));

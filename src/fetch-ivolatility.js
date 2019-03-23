@@ -80,8 +80,8 @@ function help() {
     const lookup = {
         name: "lookup",
         usage: "lookup(options)",
-        description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
-        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type'],
+        description: "Looks up existing symbol/market using the given symbol",
+        properties: ['symbol', 'market', 'name', 'secType'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -153,7 +153,7 @@ async function lookup(options) {
     return [{
         symbol: symbol,
         market: 'OPRA',
-        listed_market: 'OPRA',
+        secType: 'OPT',
         name: `${underlying} ${month} ${year} ${pc} ${strike}`,
         strike_price: strike,
         expiration_date: `${year}-${mo}-${day}`
