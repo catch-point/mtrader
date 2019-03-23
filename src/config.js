@@ -131,7 +131,13 @@ function createInstance(session) {
             .map(opt => (opt.charAt(0) == '-' ? '' : '--') + opt);
         const arg_other = _.flatten(cfg_other.map(name => ['--set', name + '=' + JSON.stringify(cfg[name])]));
         const args = arg_pairs.concat(arg_bools, arg_other);
-        const child = child_process.fork(modulePath, args);
+        const child = child_process.fork(modulePath, args, {
+            // Pass all current node process arguments to the child process,
+            // except the debug-related arguments
+            execArgv: process.execArgv.slice(0).filter(function(param) {
+                return !param.match(/(--debug|--inspect)(-brk=[0-9]+)?/);
+            })
+        });
         const fn = (name, value, loadFile) => child.connected && child.send({
             cmd: 'config',
             payload: {name, value, unset: value === undefined, loadFile}
