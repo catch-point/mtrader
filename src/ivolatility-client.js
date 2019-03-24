@@ -484,7 +484,11 @@ function retrieveCookies(username, password) {
         }}, host), res => {
             res.on('data', _.noop);
             res.on('error', error).on('end', () => {
-                ready(res.headers['set-cookie'].map(cookie => cookie.substring(0, cookie.indexOf(';'))));
+                const cookies = res.headers['set-cookie'];
+                if (cookies)
+                    ready(cookies.map(cookie => cookie.substring(0, cookie.indexOf(';'))));
+                else
+                    error(`Could not authenticate to ivolatility ${res.statusMessage}`);
             });
         });
         req.on('error', error);
