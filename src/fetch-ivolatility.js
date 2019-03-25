@@ -137,27 +137,49 @@ module.exports = function() {
 async function lookup(options) {
     if (options.market && options.market != 'OPRA') return [];
     const symbol = options.symbol;
-    const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
-    if (!m) return [];
-    const underlying = m[1];
-    const yy = +m[2];
-    const cc = yy<50 ? 2000 : 1900;
-    const year = cc + yy;
-    const day = m[3];
-    const mo = months[m[4]];
-    const cmonth = calls[m[4]];
-    const pmonth = puts[m[4]];
-    const pc = cmonth ? 'C' : 'P';
-    const month = cmonth || pmonth;
-    const strike = strike_format(+m[5]);
+    if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);
+    const underlying = symbol.substring(0, 6);
+    const year = symbol.substring(6, 8);
+    const month = symbol.substring(8, 10);
+    const day = symbol.substring(10, 12);
+    const right = symbol.charAt(12);
+    const dollar = symbol.substring(13, 18);
+    const decimal = symbol.substring(18, 21);
+    const mo = right_month_alpha[right][month];
+    const strike = +dollar + +decimal / 1000;
+    const exdate = `20${year}-${month}-${day}`;
+    const expiry = moment.tz(exdate, options.tz);
     return [{
         symbol: symbol,
         market: 'OPRA',
         secType: 'OPT',
-        name: `${underlying} ${month} ${year} ${pc} ${strike}`,
+        name: `${underlying.trim()} ${expiry.format('MMM Y')} ${right} ${strike}`,
         strike_price: strike,
-        expiration_date: `${year}-${mo}-${day}`
+        expiration_date: exdate
     }];
+}
+
+const months = {
+    A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
+    G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
+    M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
+    S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
+};
+function isOptionActive(symbol, begin, end) {
+    if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);
+    const underlying = symbol.substring(0, 6);
+    const year = symbol.substring(6, 8);
+    const month = symbol.substring(8, 10);
+    const day = symbol.substring(10, 12);
+    const right = symbol.charAt(12);
+    const dollar = symbol.substring(13, 18);
+    const decimal = symbol.substring(18, 21);
+    const exdate = `20${year}-${month}-${day}`;
+    const expiry = moment(exdate).endOf('day');
+    const issued = month == '01' ?
+        moment(expiry).subtract(3, 'years') :
+        moment(expiry).subtract(9, 'months');
+    return expiry.isAfter(begin) && issued.isBefore(end);
 }
 
 function interday(ivolatility, ib, options) {
@@ -221,7 +243,7 @@ function interday(ivolatility, ib, options) {
 async function openBar(ib, options) {
     const snapshot = await (await ib.open()).reqMktData({
         conId: options.conId,
-        localSymbol: toOptSymbol(options.market, options.symbol),
+        localSymbol: options.symbol,
         secType: 'OPT',
         exchange: 'SMART',
         currency: options.currency
@@ -272,38 +294,8 @@ function endOfDay(ending, options) {
     return moment.tz(`${today} ${options.marketClosesAt}`, options.tz).format();
 }
 
-const calls = {
-    A: 'JAN', B: 'FEB', C: 'MAR', D: 'APR', E: 'MAY', F: 'JUN',
-    G: 'JUL', H: 'AUG', I: 'SEP', J: 'OCT', K: 'NOV', L: 'DEC'
-};
-const puts = {
-    M: 'JAN', N: 'FEB', O: 'MAR', P: 'APR', Q: 'MAY', R: 'JUN',
-    S: 'JUL', T: 'AUG', U: 'SEP', V: 'OCT', W: 'NOV', X: 'DEC'
-};
-const months = {
-    A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
-    G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
-    M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
-    S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
-};
-const strike_format = d3.format(".2f");
-const iv_strike_format = d3.format("08d");
 async function loadIvolatility(ivolatility, options) {
-    const symbol = options.symbol;
-    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
-    if (!m) throw Error(`Unknown option symbol format ${symbol}`);
-    const underlying = m[1];
-    const yy = m[2];
-    const cc = +yy<50 ? 2000 : 1900;
-    const year = cc + +yy;
-    const mo = months[m[4]];
-    const day = m[3];
-    const cmonth = calls[m[4]];
-    const pmonth = puts[m[4]];
-    const cp = cmonth ? 'C' : 'P';
-    const strike = iv_strike_format(+m[5] * 1000);
-    const iv_symbol = `${underlying}${yy}${mo}${day}${cp}${strike}`;
-    const data = await ivolatility(_.defaults({}, options, {iv_symbol}))
+    const data = await ivolatility(options)
     return data.map(datum => {
         const mid = Math.round((datum.ask + datum.bid)*100/2)/100;
         const mdy = datum.date.match(/^(\d\d)\/(\d\d)\/(\d\d\d\d)$/);
@@ -318,33 +310,4 @@ async function loadIvolatility(ivolatility, options) {
             adj_close: mid
         };
     });
-}
-
-function toOptSymbol(market, symbol) {
-    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
-    if (!m) return symbol;
-    const yy = m[2];
-    const day = m[3];
-    const mo = months[m[4]];
-    const right = m[4] < 'M' ? 'C' : 'P';
-    const strike = iv_strike_format(+m[5] * 1000);
-    const space = '      ';
-    const root = m[1].substring(0, space.length) + space.substring(m[1].length);
-    return `${root}${yy}${mo}${day}${right}${strike}`;
-}
-
-function isOptionActive(symbol, begin, end) {
-    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
-    if (!m) return null;
-    const yy = m[2];
-    const cc = +yy<50 ? 2000 : 1900;
-    const year = cc + +yy;
-    const day = m[3];
-    const mo = months[m[4]];
-    const expiration_date = `${year}-${mo}-${day}`;
-    const exdate = moment(expiration_date).endOf('day');
-    const issued = mo == '01' ?
-        moment(exdate).subtract(3, 'years') :
-        moment(exdate).subtract(9, 'months');
-    return exdate.isAfter(begin) && issued.isBefore(end);
 }

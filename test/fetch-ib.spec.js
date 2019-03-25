@@ -544,10 +544,10 @@ describe("fetch-ib", function() {
     it.skip("should use summary info for OPRA intraday", function() {
         return client({
             conId: 347347237,
-            interval: 'day',
-            symbol: 'SPX1918D2900',
+            interval: 'm60',
+            symbol: 'SPX   190418C02900000',
             market: 'OPRA',
-            begin: '2019-03-12T16:15:00-04:00',
+            begin: '2019-03-22T09:30:00-04:00',
             marketOpensAt: '02:00:00', marketClosesAt: '16:15:00', tz: tz
         }).then(d=>d.forEach(d=>console.log(JSON.stringify(d).replace(/"(\w+)":/g,'$1:')))||d);
     });

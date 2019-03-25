@@ -377,7 +377,7 @@ function getPortfolio(portfolio, options) {
     return _.compact(array.map(symbolExchange => {
         if (_.isObject(symbolExchange)) return symbolExchange;
         else if (!symbolExchange) return null;
-        const m = symbolExchange.match(/^(\S+)\W(\w+)$/);
+        const m = symbolExchange.match(/^(\S(?:\S| )*)\W(\w+)$/);
         if (!m) throw Error("Unexpected symbol.market: " + symbolExchange);
         return {
             label: symbolExchange,

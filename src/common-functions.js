@@ -112,12 +112,13 @@ const functions = module.exports.functions = {
         description: "Returns a date that is the indicated duration or number of months before or after a specified date (the start_date)"
     }),
     TEXT: _.extend((opts, value, format, tz) => {
+        const pattern = format && format();
+        const d3_format = pattern && d3.format(pattern);
         return context => {
             const val = value(context);
-            const pattern = format && format(context);
             if (!pattern && !val && val!=0) return '';
             else if (!pattern) return val.toString();
-            else if (_.isFinite(val)) return d3.format(pattern)(+val);
+            else if (_.isFinite(val)) return d3_format(+val);
             else return (tz ? moment.tz(val, tz(context)) : moment(val)).format(pattern);
         };
     }, {

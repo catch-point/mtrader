@@ -225,9 +225,7 @@ function lookupOptions(symbol) {
     const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return null;
     const underlying = m[1];
-    const yy = +m[2];
-    const cc = yy<50 ? 2000 : 1900;
-    const year = cc + yy;
+    const year = +m[2];
     const day = m[3];
     const mo = months[m[4]];
     const cmonth = calls[m[4]];
@@ -239,21 +237,19 @@ function lookupOptions(symbol) {
         symbol: symbol,
         listed_market: 'OPRA',
         security_type: 'IEOPTION',
-        name: `${underlying} ${month} ${year} ${pc} ${strike}`,
+        name: `${underlying} ${month} 20${year} ${pc} ${strike}`,
         strike_price: strike,
-        expiration_date: `${year}-${mo}-${day}`
+        expiration_date: `20${year}-${mo}-${day}`
     };
 }
 
 function isOptionExpired(symbol, begin, end, tz) {
     const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return false;
-    const yy = +m[2];
-    const cc = yy<50 ? 2000 : 1900;
-    const year = cc + yy;
+    const year = +m[2];
     const mo = months[m[4]];
     const day = m[3];
-    const exdate = moment.tz(`${year}-${mo}-${day}`,tz);
+    const exdate = moment.tz(`20${year}-${mo}-${day}`,tz);
     const issued = mo == '01' ?
         moment(exdate).subtract(3, 'years') :
         moment(exdate).subtract(9, 'months');

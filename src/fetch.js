@@ -190,7 +190,7 @@ function help(datasources) {
 
 function lookup(datasources, options) {
     expect(options).to.be.like({
-        symbol: /^\S+$/
+        symbol: /^\S(\S| )*$/
     });
     const market = options.market;
     if (market) expect(market).to.be.oneOf(_.keys(datasources));
@@ -242,7 +242,7 @@ function lookup(datasources, options) {
 
 function fundamental(datasources, options) {
     expect(options).to.be.like({
-        symbol: /^\S+$/,
+        symbol: /^\S(\S| )*$/,
         market: ex => expect(ex).to.be.oneOf(_.keys(datasources))
     });
     const now = moment();
@@ -361,7 +361,7 @@ async function week(day, options) {
 function interday(datasources, options) {
     expect(options).to.be.like({
         interval: /^\S+$/,
-        symbol: /^\S+$/,
+        symbol: /^\S(\S| )*$/,
         market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });
@@ -405,7 +405,7 @@ function interday(datasources, options) {
 
 function intraday(datasources, options) {
     expect(options).to.be.like({
-        symbol: /^\S+$/,
+        symbol: /^\S(\S| )*$/,
         market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });

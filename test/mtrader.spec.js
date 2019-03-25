@@ -247,15 +247,12 @@ describe("mtrader", function() {
         });
         return readCallSave('BEST', mtrader.bestsignals).should.eventually.be.like([{
             variables: {
-                signal: 'bollinger_signal'
+                signal: /bollinger_signal|STO_signal/
             },
-            parameters:  {
-                len: 10,
-                multiplier: 2
-            }
+            parameters:  {}
         }, {
             variables: {
-                signal: _.isString
+                signal: /bollinger_signal|STO_signal/
             },
             parameters:  {}
         }]);

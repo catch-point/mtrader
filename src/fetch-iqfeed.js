@@ -32,6 +32,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const d3 = require('d3-format');
 const logger = require('./logger.js');
 const config = require('./config.js');
 const periods = require('./periods.js');
@@ -216,7 +217,7 @@ function createInstance() {
             expect(options).to.be.like({
                 interval: _.isString,
                 minutes: _.isFinite,
-                symbol: /^\S+$/,
+                symbol: /^(\S| )+$/,
                 begin: Boolean,
                 tz: _.isString
             });
@@ -234,7 +235,7 @@ function createInstance() {
             else return lookupCached(exchs, symbol(options), listed_markets);
         } else if (options.interval == 'fundamental') {
             expect(options).to.be.like({
-                symbol: /^\S+$/,
+                symbol: /^(\S| )+$/,
                 marketClosesAt: _.isString,
                 tz: _.isString
             });
@@ -244,7 +245,7 @@ function createInstance() {
         } else if ('day' == options.interval) {
             expect(options).to.be.like({
                 interval: _.isString,
-                symbol: /^\S+$/,
+                symbol: /^(\S| )+$/,
                 begin: Boolean,
                 marketOpensAt: /^\d\d:\d\d(:00)?$/,
                 marketClosesAt: /^\d\d:\d\d(:00)?$/,
@@ -256,7 +257,7 @@ function createInstance() {
         } else {
             expect(options).to.be.like({
                 interval: str => _.isString(str) && _.isFinite(str.substring(1)),
-                symbol: /^\S+$/,
+                symbol: /^(\S| )+$/,
                 begin: Boolean,
                 tz: _.isString
             });
@@ -276,16 +277,19 @@ function createInstance() {
 }
 
 function iqfeed_symbol(markets, options) {
+    const source = ((markets[options.market]||{}).datasources||{}).iqfeed;
+    const security_types = (source||{}).security_types;
     if (options.iqfeed_symbol) {
         expect(options).to.be.like({
             iqfeed_symbol: /^\S+$/
         });
         return options.iqfeed_symbol;
-    } else if (markets[options.market] && markets[options.market].datasources.iqfeed) {
+    } else if (isIEOption(security_types, options)) {
+        return iqfeed_ieoption(markets, options);
+    } else if (source) {
         expect(options).to.be.like({
             symbol: /^\S+$/
         });
-        const source = markets[options.market].datasources.iqfeed;
         const prefix = source.dtnPrefix || '';
         const suffix = source.dtnSuffix || '';
         const map = source.dtnPrefixMap || {};
@@ -307,6 +311,51 @@ function iqfeed_symbol(markets, options) {
     }
 }
 
+function isIEOption(security_types, options) {
+    return options.symbol.length == 21 && security_types && ~security_types.indexOf('IEOPTION');
+}
+
+const right_month_alpha = {
+    'C': {
+        '01': 'A', '02': 'B', '03': 'C', '04': 'D', '05': 'E', '06': 'F',
+        '07': 'G', '08': 'H', '09': 'I', '10': 'J', '11': 'K', '12': 'L'
+    },
+    'P': {
+        '01': 'M', '02': 'N', '03': 'O', '04': 'P', '05': 'Q', '06': 'R',
+        '07': 'S', '08': 'T', '09': 'U', '10': 'V', '11': 'W', '12': 'X'
+    }
+};
+function iqfeed_ieoption(markets, options) {
+    const symbol = options.symbol;
+    if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);
+    const underlying = symbol.substring(0, 6);
+    const year = symbol.substring(6, 8);
+    const month = symbol.substring(8, 10);
+    const day = symbol.substring(10, 12);
+    const right = symbol.charAt(12);
+    const dollar = symbol.substring(13, 18);
+    const decimal = symbol.substring(18, 21);
+    const mo = right_month_alpha[right][month];
+    const strike = +dollar + +decimal / 1000;
+    return `${underlying.substring(0,5).trim()}${year}${day}${mo}${strike}`;
+}
+const months = {
+    A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
+    G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
+    M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
+    S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
+};
+const strike_format = d3.format("08d");
+function occ_symbol(symbol) {
+    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return symbol;
+    const [, underlying, year, day, mo, strike] = m;
+    const space = '      '.substring(0, 6 - underlying.length);
+    const right = mo < 'M' ? 'C' : 'P';
+    const dollar_decimal = strike_format(strike * 1000);
+    return `${underlying}${space}${year}${months[mo]}${day}${right}${dollar_decimal}`;
+}
+
 function isNotEquity(markets, options) {
     if (markets[options.market] && markets[options.market].datasources.iqfeed) {
         const source = markets[options.market].datasources.iqfeed;
@@ -314,6 +363,17 @@ function isNotEquity(markets, options) {
             return source.security_types.indexOf('EQUITY') < 0;
         }
     }
+}
+
+function isOptionExpired(symbol) {
+    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return null;
+    const year = m[2];
+    const day = m[3];
+    const mo = months[m[4]];
+    const expiration_date = `20${year}-${mo}-${day}`;
+    const exdate = moment(expiration_date).endOf('day');
+    return exdate.isValid() && exdate.isBefore();
 }
 
 const secTypes = {
@@ -362,7 +422,8 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
         const three = sym.substring(0, 3);
         const startsWith = prefix && sym.indexOf(prefix) === 0;
         const endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
-        const symbol = map[four] ? map[four] + sym.substring(4) :
+        const symbol = row.security_type == 'EIOPTION' ? occ_symbol(row.symbol) :
+            map[four] ? map[four] + sym.substring(4) :
             map[three] ? map[three] + sym.substring(3) :
             startsWith && endsWith ?
                 sym.substring(prefix.length, sym.length - prefix.length - suffix.length) :
@@ -515,25 +576,6 @@ async function rollday(iqclient, adjustments, interval, symbol, options) {
         });
         return days;
     }, []);
-}
-
-const months = {
-    A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
-    G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
-    M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
-    S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
-};
-function isOptionExpired(symbol) {
-    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
-    if (!m) return null;
-    const yy = m[2];
-    const cc = +yy<50 ? 2000 : 1900;
-    const year = cc + +yy;
-    const day = m[3];
-    const mo = months[m[4]];
-    const expiration_date = `${year}-${mo}-${day}`;
-    const exdate = moment(expiration_date).endOf('day');
-    return exdate.isValid() && exdate.isBefore();
 }
 
 async function summarize(iqclient, symbol, options) {

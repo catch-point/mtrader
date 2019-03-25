@@ -393,7 +393,7 @@ function toContract(market, options) {
 function toLocalSymbol(market, symbol) {
     if (market.secType == 'FUT') return toFutSymbol(market, symbol);
     else if (market.secType == 'CASH') return toCashSymbol(market, symbol);
-    else if (market.secType == 'OPT') return toOptSymbol(market, symbol);
+    else if (market.secType == 'OPT') return symbol;
     else if (market.secType) return symbol;
     else if (symbol.match(/^(.*)([A-Z])(\d)(\d)$/)) return toFutSymbol(market, symbol);
     else return symbol;
@@ -402,7 +402,7 @@ function toLocalSymbol(market, symbol) {
 function toSymbol(detail) {
     if (detail.secType == 'FUT') return fromFutSymbol(detail.localSymbol);
     else if (detail.secType == 'CASH') return detail.symbol;
-    //else if (detail.secType == 'OPT') return fromOptSymbol(detail.localSymbol);
+    else if (detail.secType == 'OPT') return detail.localSymbol;
     else return ~detail.localSymbol.indexOf(' ') ? detail.localSymbol.replace(' ', '.') : detail.localSymbol;
 }
 
@@ -421,26 +421,6 @@ function fromFutSymbol(symbol) {
 
 function toCashSymbol(market, symbol) {
     return `${symbol}.${market.currency}`;
-}
-
-const months = {
-    A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
-    G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
-    M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
-    S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
-};
-const strike_format = d3.format("08d");
-function toOptSymbol(market, symbol) {
-    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
-    if (!m) return symbol;
-    const yy = m[2];
-    const day = m[3];
-    const mo = months[m[4]];
-    const right = m[4] < 'M' ? 'C' : 'P';
-    const strike = strike_format(+m[5] * 1000);
-    const space = '      ';
-    const root = m[1].substring(0, space.length) + space.substring(m[1].length);
-    return `${root}${yy}${mo}${day}${right}${strike}`;
 }
 
 function parseCurrency(string, adj_split_only) {

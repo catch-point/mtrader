@@ -85,20 +85,22 @@ module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
             }).then(() => store.close());
         },
         interday(options) {
-            expect(options).to.have.property('iv_symbol');
-            const symbol = options.iv_symbol;
-            expect(symbol).to.be.like(/^(\w+)(\d\d)(\d\d)(\d\d)([CP])(\d{8})$/);
-            const m = symbol.match(/^(\w+)(\d\d)(\d\d)(\d\d)([CP])(\d{8})$/);
-            const [, underlying, yy, month, day] = m;
-            const cc = +yy<50 ? 2000 : 1900;
-            const year = cc + +yy;
-            const expiry_date = `${year}-${month}-${day}`;
+            expect(options).to.have.property('symbol');
+            const symbol = options.symbol;
+            if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);
+            expect(symbol).to.be.like(/^(\w(?:\w| )*)(\d\d)(\d\d)(\d\d)([CP])(\d{8})$/);
+            const underlying = symbol.substring(0, 6).trim();
+            const year = symbol.substring(6, 8);
+            const month = symbol.substring(8, 10);
+            const day = symbol.substring(10, 12);
+            const expiry_date = `20${year}-${month}-${day}`;
+            const filename = underlying + symbol.substring(6);
             return processing.then(() => store.open(underlying, (err, db) => {
                 if (err) throw err;
                 return db.collection(expiry_date).then(collection => {
-                    if (!collection.exists(symbol))
-                        throw Error(`Unknown options symbol ${collection.filenameOf(symbol)}`);
-                    else return collection.readFrom(symbol);
+                    if (!collection.exists(filename))
+                        throw Error(`Unknown options symbol ${filename}`);
+                    else return collection.readFrom(filename);
                 });
             }));
         }

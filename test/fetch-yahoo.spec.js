@@ -77,7 +77,7 @@ describe("fetch-yahoo", function() {
                 name: /NVIDIA/i
             })));
         });
-        it("should find GLOW", function() {
+        it.skip("should find GLOW", function() {
             return client({interval:'lookup',symbol:'GLOW', market:"AMEX"})
               .then(array => array.slice(0,1))
               .should.eventually.be.like([{
