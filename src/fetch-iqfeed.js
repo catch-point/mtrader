@@ -120,14 +120,14 @@ function help() {
             interval: {
                 usage: "m<minutes>",
                 description: "Number of minutes in a single bar length, prefixed by the letter 'm'",
-                values: config('fetch.iqfeed.intervals')
+                values: (config('fetch.iqfeed.intervals')||[])
                     .filter(interval => /^m\d+$/.test(interval))
             }
         })
     };
     return _.compact([
-        ~config('fetch.iqfeed.intervals').indexOf('lookup') && lookup,
-        ~config('fetch.iqfeed.intervals').indexOf('fundamental') && fundamental,
+        ~(config('fetch.iqfeed.intervals')||[]).indexOf('lookup') && lookup,
+        ~(config('fetch.iqfeed.intervals')||[]).indexOf('fundamental') && fundamental,
         interday.options.interval.values.length && interday,
         intraday.options.interval.values.length && intraday
     ]);
@@ -284,8 +284,12 @@ function iqfeed_symbol(markets, options) {
             iqfeed_symbol: /^\S+$/
         });
         return options.iqfeed_symbol;
+    } else if (source && source.dtnSymbolMap && source.dtnSymbolMap[options.symbol]) {
+        return source.dtnSymbolMap[options.symbol];
     } else if (isIEOption(security_types, options)) {
         return iqfeed_ieoption(markets, options);
+    } else if (source && source.week_of_month && isWeekOfYearExpiration(options.symbol)) {
+        return weekOfYearToWeekOfMonth(options.symbol);
     } else if (source) {
         expect(options).to.be.like({
             symbol: /^\S+$/
@@ -356,6 +360,39 @@ function occ_symbol(symbol) {
     return `${underlying}${space}${year}${months[mo]}${day}${right}${dollar_decimal}`;
 }
 
+function isWeekOfYearExpiration(symbol) {
+    return symbol.match(/^(\w+)([0-5]\d)([A-Z])(\d\d)$/);
+}
+
+function isWeekOfMonthExpiration(symbol) {
+    return symbol.match(/^@(\w+)([0-5])([A-Z])(\d\d)$/);
+}
+
+const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
+function weekOfYearToWeekOfMonth(symbol) {
+    const [, root, week, month, yy] = symbol.match(/^(\w+)([0-5]\d)([A-Z])(\d\d)$/);
+    const mm = (101 + month_code.indexOf(month)).toString().substring(1);
+    const year = moment(`20${yy}-01-01`);
+    const one = year.add((10 - year.isoWeekday()) % 7, 'days');
+    const first = moment(`20${yy}-${mm}-01`);
+    const wednesday = first.add((10 - first.isoWeekday()) % 7, 'days');
+    const expiry = one.add(+week - 1, 'weeks');
+    const w = expiry.isoWeek() - wednesday.isoWeek() + 1;
+    return `@${root}${w}${month}${yy}`;
+}
+
+function weekOfMonthToWeekOfYear(symbol) {
+    const [, root, w, month, yy] = symbol.match(/^@(\w+)([0-5])([A-Z])(\d\d)$/);
+    const mm = (101 + month_code.indexOf(month)).toString().substring(1);
+    const year = moment(`20${yy}-01-01`);
+    const one = year.add((10 - year.isoWeekday()) % 7, 'days');
+    const first = moment(`20${yy}-${mm}-01`);
+    const wednesday = first.add((10 - first.isoWeekday()) % 7, 'days');
+    const expiry = wednesday.add(+w - 1, 'weeks');
+    const ww = expiry.isoWeek() - one.isoWeek() + 1;
+    return `${root}${ww}${month}${yy}`;
+}
+
 function isNotEquity(markets, options) {
     if (markets[options.market] && markets[options.market].datasources.iqfeed) {
         const source = markets[options.market].datasources.iqfeed;
@@ -394,11 +431,12 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
     const map = _.reduce(exchs, (map, ds) => {
         if (!_.isEmpty(listed_markets) && !_.intersection(ds.listed_markets, listed_markets).length)
             return map;
-        return _.extend(ds && ds.dtnPrefixMap || {}, map);
+        return _.extend(ds && ds.dtnPrefixMap || ds && ds.dtnSymbolMap || {}, map);
     }, {});
     const three = symbol.substring(0, 3);
     const two = symbol.substring(0, 2);
-    const mapped_symbol = map[three] ? map[three] + symbol.substring(3) :
+    const mapped_symbol = isWeekOfYearExpiration(symbol) ? weekOfYearToWeekOfMonth(symbol) :
+        map[three] ? map[three] + symbol.substring(3) :
         map[two] ? map[two] + symbol.substring(2) : symbol;
     return iqclient.lookup(mapped_symbol, listed_markets).then(rows => rows.map(row => {
         const sym = row.symbol;
@@ -422,7 +460,10 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
         const three = sym.substring(0, 3);
         const startsWith = prefix && sym.indexOf(prefix) === 0;
         const endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
-        const symbol = row.security_type == 'EIOPTION' ? occ_symbol(row.symbol) :
+        const symbol = map[sym] ? map[sym] :
+            row.security_type == 'EIOPTION' ? occ_symbol(row.symbol) :
+            ds && ds.week_of_month && row.security_type == 'FUTURE' && isWeekOfMonthExpiration(row.symbol) ?
+                weekOfMonthToWeekOfYear(row.symbol) :
             map[four] ? map[four] + sym.substring(4) :
             map[three] ? map[three] + sym.substring(3) :
             startsWith && endsWith ?

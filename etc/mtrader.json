@@ -420,8 +420,8 @@
     },
     "CME": {
       "description": "Chicago Mercantile Exchange (GLOBEX)",
-      "trading_hours": "00:00:00 - 24:00:00",
-      "liquid_hours": "17:00:00 - 16:00:00",
+      "trading_hours": "17:00:00 - 16:00:00",
+      "liquid_hours": "08:30:00 - 16:00:00",
       "market_tz": "America/Chicago",
       "currency": "USD",
       "datasources": {
@@ -488,8 +488,8 @@
     },
     "COMEX": {
       "description": "Commodity Exchange, a division of the New York Mercantile Exchange",
-      "trading_hours": "00:00:00 - 24:00:00",
-      "liquid_hours": "18:00:00 - 17:00:00",
+      "trading_hours": "18:00:00 - 17:00:00",
+      "liquid_hours": "09:30:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
       "datasources": {
@@ -565,15 +565,19 @@
     },
     "CFE": {
       "description": "Indexes listed on the Chicago Board Futures Exchange",
-      "trading_hours": "08:30:00 - 15:00:00",
-      "liquid_hours": "08:30:00 - 15:00:00",
+      "trading_hours": "17:00:00 - 16:00:00",
+      "liquid_hours": "08:30:00 - 15:15:00",
       "market_tz": "America/Chicago",
       "currency": "USD",
       "datasources": {
         "iqfeed": {
           "dtnPrefix": "@",
+          "week_of_month": true,
           "security_types": ["FUTURE", "COMBINED_FUTURE", "SPREAD"],
-          "listed_markets": ["CFE"]
+          "listed_markets": ["CFE"],
+          "dtnSymbolMap": {
+            "VX11H17": "@VX2H17"
+          }
         },
         "ib": {
           "whatToShow": "TRADES",

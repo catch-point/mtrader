@@ -343,27 +343,26 @@ describe("common-functions", function(){
                 return common(name, args, {tz: 'America/New_York'});
             }
         });
-        var TEXT = parser.parse('TEXT(val, pat)');
         it("$,.2f", function() {
-            expect(TEXT({val: 1234.56, pat: "$,.2f"})).to.equal("$1,234.56");
+            expect(parser.parse('TEXT(val, "$,.2f")')({val: 1234.56})).to.equal("$1,234.56");
         });
         it(".1%", function() {
-            expect(TEXT({val: 0.285, pat: ".1%"})).to.equal("28.5%");
+            expect(parser.parse('TEXT(val, ".1%")')({val: 0.285})).to.equal("28.5%");
         });
         it.skip(".2E", function() {
-            expect(TEXT({val: 12200000, pat: ".2E"})).to.equal("1.22E+07");
+            expect(parser.parse('TEXT(val, ".2E")')({val: 12200000})).to.equal("1.22E+07");
         });
         it("07", function() {
-            expect(TEXT({val: 1234, pat: "07"})).to.equal("0001234");
+            expect(parser.parse('TEXT(val, "07")')({val: 1234})).to.equal("0001234");
         });
         it("MM/DD/YY", function() {
-            expect(TEXT({val: "2012-03-14T13:29:00-04:00", pat: "MM/DD/YY"})).to.equal("03/14/12");
+            expect(parser.parse('TEXT(val, "MM/DD/YY")')({val: "2012-03-14T13:29:00-04:00"})).to.equal("03/14/12");
         });
         it("dddd", function() {
-            expect(TEXT({val: "2012-03-14T13:29:00-04:00", pat: "dddd"})).to.equal("Wednesday");
+            expect(parser.parse('TEXT(val, "dddd")')({val: "2012-03-14T13:29:00-04:00"})).to.equal("Wednesday");
         });
         it("h:mm A", function() {
-            expect(TEXT({val: "2012-03-14T13:29:00-04:00", pat: "h:mm A"})).to.equal("1:29 PM");
+            expect(parser.parse('TEXT(val, "h:mm A")')({val: "2012-03-14T13:29:00-04:00"})).to.equal("1:29 PM");
         });
     });
     describe("LEFT/RIGHT", function() {

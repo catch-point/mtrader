@@ -39,10 +39,7 @@ describe("fetch-iqfeed", function() {
     var tz = 'America/New_York';
     var client = iqfeed();
     before(function() {
-        return client.open().catch(err => {
-            client = null;
-            this.skip();
-        });
+        return client.open();
     });
     after(function() {
         if (client) return client.close();
@@ -220,7 +217,7 @@ describe("fetch-iqfeed", function() {
                 });
             }));
         });
-        describe("should lookup CFE futures symbols", function() {
+        describe("should lookup CFE monthly futures symbols", function() {
             const year = (moment().year())%100;
             ['H', 'J', 'K', 'M', 'N'].map(mo => {
                 it(`VX${mo}${year}`, function() {
@@ -231,6 +228,29 @@ describe("fetch-iqfeed", function() {
                     })
                       .then(array => array.filter(item => item.symbol == `VX${mo}${year}`))
                       .should.eventually.be.like([{symbol: `VX${mo}${year}`}]);
+                });
+            });
+        });
+        describe("should lookup CFE weekly futures symbols", function() {
+            _.range(moment().isoWeek() + 1, moment().isoWeek() + 6).map(week => {
+                const year = moment(`${moment().year()}-01-01`);
+                const one = year.add((10 - year.isoWeekday()) % 7, 'days');
+                const expiry = moment(one).add(week - 1, 'weeks');
+                const next_month = moment(expiry).date(1).add(1, 'months');
+                const friday = moment(next_month).add((12 - year.isoWeekday()) % 7, 'days').add(2, 'weeks');
+                const monthly_expiry = moment(friday).subtract(30, 'days');
+                const ww = expiry.isSame(monthly_expiry) ? '' : (week+100).toString().substring(1);
+                const yy = expiry.year().toString().substring(2);
+                const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
+                const symbol = `VX${ww}${month_code[expiry.month()]}${yy}`;
+                it(symbol, function() {
+                    return client({
+                        interval:'lookup',
+                        symbol: symbol,
+                        market: "CFE"
+                    })
+                      .then(array => array.filter(item => item.symbol == symbol))
+                      .should.eventually.be.like([{symbol: symbol}]);
                 });
             });
         });
