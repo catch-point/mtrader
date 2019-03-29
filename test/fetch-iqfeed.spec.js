@@ -217,6 +217,19 @@ describe("fetch-iqfeed", function() {
                 });
             }));
         });
+        describe("should lookup CBOT quarterly futures symbols", function() {
+            _.range((moment().year())%100,(moment().year()+1)%100).map(year => ['H','M','U','Z'].map(mo => {
+                it(`ZN${mo}${year}`, function() {
+                    return client({
+                        interval:'lookup',
+                        symbol: `ZN${mo}${year}`,
+                        market: "CBOT"
+                    })
+                      .then(array => array.filter(item => item.symbol == `ZN${mo}${year}`))
+                      .should.eventually.be.like([{symbol: `ZN${mo}${year}`}]);
+                });
+            }));
+        });
         describe("should lookup CFE monthly futures symbols", function() {
             const year = (moment().year())%100;
             ['H', 'J', 'K', 'M', 'N'].map(mo => {

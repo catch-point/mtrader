@@ -16,14 +16,14 @@
     "iqfeed": {
       "enabled": false,
       "intervals": ["lookup", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CFE", "CHF", "CME", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NYMEX", "NYSE", "NZD", "OPRA", "TSE", "USD", "VENTURE", "X" ]
+      "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CBOT", "CFE", "CHF", "CME", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NYMEX", "NYSE", "NZD", "OPRA", "TSE", "USD", "VENTURE", "X" ]
     },
     "ib": {
       "enabled": false,
       "host": "localhost",
       "port": 7496,
       "intervals": ["lookup", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CFE", "CHF", "CME", "CNH", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NOK", "NYMEX", "NYSE", "NZD", "OPRA", "SEK", "TSE", "USD", "VENTURE", "X" ]
+      "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CBOT", "CFE", "CHF", "CME", "CNH", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NOK", "NYMEX", "NYSE", "NZD", "OPRA", "SEK", "TSE", "USD", "VENTURE", "X" ]
     },
     "yahoo": {
       "intervals": ["lookup", "day"],
@@ -560,6 +560,33 @@
           "whatToShow": "TRADES",
           "secType": "IND",
           "exchange": "CBOE"
+        }
+      }
+    },
+    "CBOT": {
+      "description": "Futures and options contracts on the Chicago Board of Trade",
+      "trading_hours": "08:30:00 - 15:00:00",
+      "liquid_hours": "08:30:00 - 15:00:00",
+      "market_tz": "America/Chicago",
+      "currency": "USD",
+      "datasources": {
+        "iqfeed": {
+          "security_types": ["FUTURE", "FOPTION", "COMBINED_FUTURE", "COMBINED_FOPTION", "ICSPREAD", "SPREAD", "STRATSPREAD"],
+          "listed_markets": ["CBOT", "CBOTMINI", "CBOT_GBX"],
+          "dtnPrefix": "@",
+          "dtnPrefixMap": {
+            "ZT": "@TU",
+            "ZF": "@FV",
+            "ZN": "@TY",
+            "ZB": "@US",
+            "UB": "@UB"
+          }
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "FUT",
+          "exchange": "ECBOT",
+          "month_abbreviation": true
         }
       }
     },
