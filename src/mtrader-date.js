@@ -81,7 +81,7 @@ if (require.main === module) {
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
         .option('--load <filename>', "Read the given session settings")
         .option('--now <date>', "Use this date value as the base timestamp")
-        .option('-d, --duration <durationOrValue>', "Advance the date by these comma separated durations or to values")
+        .option('-d, --duration <durationOrValue>', "Advance or reverse the date by these comma separated durations or to values")
         .parse(process.argv);
     if (program.args.length) {
         try {
@@ -108,22 +108,134 @@ function formatDate(format, options) {
     const date = moment(options.now);
     const durations = _.isArray(options.duration) ? options.duration :
         _.isString(options.duration) ? options.duration.split(',') : [];
-    const startOf = ['year', 'month', 'quarter', 'week', 'isoWeek',
-            'day', 'date', 'hour', 'minute', 'second'];
     const advanced = durations.reduce((date, d) => {
         if (d.match(/^[PYMWDTHMS0-9\-\+,.:]+$/)) return date.add(moment.duration(d));
-        const advanced = ~startOf.indexOf(d) ? moment(date).startOf(d) :
-            _.has(months(), d) ? moment(date).month(months()[d]) :
-            _.has(dates(), d) ? moment(date).date(dates()[d]) :
-            _.has(days(), d) ? moment(date).day(days()[d]) : null;
-        if (!advanced) throw Error(`Unknown duration format ${d}`);
-        else if (!advanced.isBefore(date)) return advanced;
-        else return ~startOf.indexOf(d) ? moment(date).add(1, d).startOf(d) :
-                _.has(months(), d) ? moment(date).add(1, 'year').month(months()[d]) :
-                _.has(dates(), d) ? moment(date).add(1, 'month').date(dates()[d]) :
-                _.has(days(), d) ? moment(date).add(1, 'week').day(days()[d]) : null;
+        else if (d == 'open') return nextOpen(date);
+        else if (d == '-open') return lastOpen(date);
+        else if (d && d.charAt(0) == '-') return reverse(date, d.substring(1));
+        else return advance(date, d);
     }, date);
     return advanced.format(format);
+}
+
+function advance(date, w) {
+    const startOf = ['year', 'month', 'quarter', 'week', 'isoWeek',
+            'day', 'date', 'hour', 'minute', 'second'];
+    const advanced = ~startOf.indexOf(w) ? moment(date).startOf(w) :
+        _.has(months(), w) ? moment(date).month(months()[w]) :
+        _.has(dates(), w) ? moment(date).date(dates()[w]) :
+        _.has(days(), w) ? moment(date).day(days()[w]) : null;
+    if (!advanced) throw Error(`Unknown duration format ${w}`);
+    else if (!advanced.isBefore(date)) return advanced;
+    else return ~startOf.indexOf(w) ? moment(date).add(1, w).startOf(w) :
+            _.has(months(), w) ? moment(date).add(1, 'year').month(months()[w]) :
+            _.has(dates(), w) ? moment(date).add(1, 'month').date(dates()[w]) :
+            _.has(days(), w) ? moment(date).add(1, 'week').day(days()[w]) : null;
+}
+
+function reverse(date, w) {
+    const startOf = ['year', 'month', 'quarter', 'week', 'isoWeek',
+            'day', 'date', 'hour', 'minute', 'second'];
+    const reversed = ~startOf.indexOf(w) ? moment(date).startOf(w) :
+        _.has(months(), w) ? moment(date).month(months()[w]) :
+        _.has(dates(), w) ? moment(date).date(dates()[w]) :
+        _.has(days(), w) ? moment(date).day(days()[w]) : null;
+    if (!reversed) throw Error(`Unknown duration format ${w}`);
+    else if (!reversed.isAfter(date)) return reversed;
+    else return ~startOf.indexOf(w) ? moment(date).subtract(1, w).startOf(w) :
+            _.has(months(), d) ? moment(date).subtract(1, 'year').month(months()[w]) :
+            _.has(dates(), d) ? moment(date).subtract(1, 'month').date(dates()[w]) :
+            _.has(days(), d) ? moment(date).subtract(1, 'week').day(days()[w]) : null;
+}
+
+function nextOpen(date) {
+    while (date.isoWeekday() > 5 || isOptionsMarketHoliday(date)) {
+        date = date.add(1, 'days');
+    }
+    return date;
+}
+
+function lastOpen(date) {
+    while (date.isoWeekday() > 5 || isOptionsMarketHoliday(date)) {
+        date = date.subtract(1, 'days');
+    }
+    return date;
+}
+
+/**
+ * If the holiday falls on a Saturday, the holiday will be observed on the
+ * previous day (Friday), except for New Year's Day. If the holiday falls on a
+ * Sunday, the holiday will be observed on the next day (Monday).
+ * @see http://cfe.cboe.com/about-cfe/holiday-calendar
+ */
+function isOptionsMarketHoliday(date) {
+    if (isNewYearsDay(date)) return true;
+    if (isMartinLutherKingDay(date)) return true;
+    if (isWashingtonsBirthday(date)) return true;
+    if (isGoodFriday(date)) return true;
+    if (isMemorialDay(date)) return true;
+    if (isIndependenceDay(date)) return true;
+    if (isLaborDay(date)) return true;
+    if (isThanksgiving(date)) return true;
+    if (isChristmasDay(date)) return true;
+    else return false;
+}
+
+function isNewYearsDay(date) {
+    const d = date.date();
+    const w = date.isoWeekday();
+    return date.month() == 0 && (d == 1 || d == 2 && w == 1);
+}
+
+function isMartinLutherKingDay(date) {
+    return date.month() == 0 && date.isoWeekday() == 1 && 15 <= date.date() && date.date() <= 21;
+}
+
+function isWashingtonsBirthday(date) {
+    return date.month() == 1 && date.isoWeekday() == 1 && 15 <= date.date() && date.date() <= 21;
+}
+
+function isGoodFriday(date) {
+    const m = date.month();
+    return 2 <= m && m <= 3 && date.isoWeekday() == 5 && isEaster(moment(date).add(2, 'days'));
+}
+
+function isEaster(date) {
+    const easter = [
+        '2000-04-23', '2001-04-15', '2002-03-31', '2003-04-20', '2004-04-11',
+        '2005-03-27', '2006-04-16', '2007-04-08', '2008-03-23', '2009-04-12',
+        '2010-04-04', '2011-04-24', '2012-04-08', '2013-03-31', '2014-04-20',
+        '2015-04-05', '2016-03-27', '2017-04-16', '2018-04-01', '2019-04-21',
+        '2020-04-12', '2021-04-04', '2022-04-17', '2023-04-09', '2024-03-31',
+        '2025-04-20', '2026-04-05', '2027-03-28', '2028-04-16', '2029-04-01',
+        '2030-04-21', '2031-04-13', '2032-03-28', '2033-04-17', '2034-04-09',
+        '2035-03-25', '2036-04-13', '2037-04-05', '2038-04-25', '2039-04-10'
+    ];
+    return ~easter.indexOf(date.format('Y-MM-DD'));
+}
+
+function isMemorialDay(date) {
+    return date.month() == 4 && date.isoWeekday() == 1 && 25 <= date.date();
+}
+
+function isIndependenceDay(date) {
+    const d = date.date();
+    const w = date.isoWeekday();
+    return date.month() == 6 && (d == 3 && w == 5 || d == 4 || d == 5 && w == 1);
+}
+
+function isLaborDay(date) {
+    return date.month() == 8 && date.isoWeekday() == 1 && date.date() <= 7;
+}
+
+function isThanksgiving(date) {
+    return date.month() == 10 && date.isoWeekday() == 4 && 22 <= date.date() && date.date() <= 28;
+}
+
+function isChristmasDay(date) {
+    const d = date.date();
+    const w = date.isoWeekday();
+    return date.month() == 11 && (d == 24 && w == 5 || d == 25 || d == 26 && w == 1);
 }
 
 function shell(app) {
@@ -146,7 +258,10 @@ help(app, 'date', `
   Show the time now for this session in the given format. If a duration value
   is provided the time now is advanced by the comma separated values of the
   ISO 8601 duration or to start of period or weekday or day of month or month.
+  A dash '-' before the term indicates the date should be reversed to the period.
+  The term open is used to indicate a day that the CBOE market is open.
   Other than durations, the following values are also permitted:
+    open
     ${wrap(['year', 'month', 'quarter', 'week', 'isoWeek',
             'day', 'date', 'hour', 'minute', 'second'].join(' '), '    ', 80)}
     ${wrap(_.keys(months()).join(' '), '    ', 80)}
