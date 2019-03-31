@@ -565,8 +565,8 @@
     },
     "CBOT": {
       "description": "Futures and options contracts on the Chicago Board of Trade",
-      "trading_hours": "08:30:00 - 15:00:00",
-      "liquid_hours": "08:30:00 - 15:00:00",
+      "trading_hours": "17:00:00 - 16:00:00",
+      "liquid_hours": "08:30:00 - 16:00:00",
       "market_tz": "America/Chicago",
       "currency": "USD",
       "datasources": {
