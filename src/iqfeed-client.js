@@ -225,7 +225,7 @@ function lookupOptions(symbol) {
     const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return null;
     const underlying = m[1];
-    const year = +m[2];
+    const year = m[2];
     const day = m[3];
     const mo = months[m[4]];
     const cmonth = calls[m[4]];
@@ -246,7 +246,7 @@ function lookupOptions(symbol) {
 function isOptionExpired(symbol, begin, end, tz) {
     const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return false;
-    const year = +m[2];
+    const year = m[2];
     const mo = months[m[4]];
     const day = m[3];
     const exdate = moment.tz(`20${year}-${mo}-${day}`,tz);
