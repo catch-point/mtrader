@@ -468,6 +468,7 @@ describe("common-functions", function(){
             }
         });
         // note that these options assume no dividend yeild
+        var BS = parser.parse('BS(s, k, t, v, r, cp)');
         var BSIV = parser.parse('BSIV(c, s, k, t, r, cp)');
         var ln = parser.parse('LN(s/k)');
         var power = parser.parse('POWER(BSIV(c, s, k, t, r, cp)/100,2)');
@@ -488,6 +489,7 @@ describe("common-functions", function(){
         var pd1 = parser.parse(d1);
         var dd = parser.parse(v1);
         it("35 call option", function() {
+            expect(BS    ({c:2.42,s:36.07,k:35,t:26,v:48,r:1,cp:'C'})).to.closeTo(2.42, 1);
             expect(BSIV  ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(48, 1);
             expect(ln    ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.0301, 0.0005);
             expect(power ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.23, 0.005);
@@ -503,6 +505,7 @@ describe("common-functions", function(){
             expect(rho   ({c:2.42,s:36.07,k:35,t:26,r:1,cp:'C'})).to.closeTo(0.0142, 0.005);
         });
         it("35 put option", function() {
+            expect(BS    ({s:36.07,k:35,t:26,v:48,r:1,cp:'P'})).to.closeTo(1.33, 1);
             expect(BSIV  ({c:1.33,s:36.07,k:35,t:26,r:1,cp:'P'})).to.closeTo(48, 1);
             expect(delta ({c:1.33,s:36.07,k:35,t:26,r:1,cp:'P'})).to.closeTo(1-0.3806, 0.0005);
             expect(gamma ({c:1.33,s:36.07,k:35,t:26,r:1,cp:'P'})).to.closeTo(0.0820, 0.0005);

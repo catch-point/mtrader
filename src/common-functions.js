@@ -33,6 +33,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const statkit = require("statkit");
+const bs = require('black-scholes');
 const iv = require('implied-volatility');
 const d3 = require('d3-format');
 const periods = require('./periods.js');
@@ -603,6 +604,23 @@ const functions = module.exports.functions = {
     }, {
         description: "Values of the inverse standard normal distribution"
     }),
+    BS: _.extend((opts, asset_price, strike, days, iv, rate, C_or_P) => {
+        return context => {
+            const s = asset_price && asset_price(context) || 0;
+            const k = strike && strike(context) || 0;
+            const t = days && days(context)/365 || 0;
+            const v = iv && iv(context)/100 || 0;
+            const r = rate && rate(context)/100 || 0;
+            const cp = C_or_P && (C_or_P(context)||'').toString().charAt(0);
+            const callPut = cp == 'P' ? 'put' : cp == 'C' ? 'call' :
+                cp.charAt(0).toUpperCase() == 'P' ? 'put' :
+                cp.charAt(0).toUpperCase() == 'C' ? 'call': null;
+            if (!cp) throw Error("Must include a right 'C'/'P' value");
+            return bs.blackScholes(s, k, t, v, r, callPut);
+        };
+    }, {
+        description: "Option pricing using the Black-Scholes formula"
+    }),
     BSIV: _.extend((opts, op_cost, asset_price, strike, days, rate, C_or_P) => {
         return context => {
             const c = op_cost && op_cost(context) || 0;
@@ -611,8 +629,11 @@ const functions = module.exports.functions = {
             const t = days && days(context)/365 || 0;
             const r = rate && rate(context)/100 || 0;
             const cp = C_or_P && (C_or_P(context)||'').toString().charAt(0);
-            const callPut = cp == 'P' || cp == 'p' ? 'put' : 'call';
-            return iv.getImpliedVolatility(c, s,  k, t, r, callPut) * 100;
+            const callPut = cp == 'P' ? 'put' : cp == 'C' ? 'call' :
+                cp.charAt(0).toUpperCase() == 'P' ? 'put' :
+                cp.charAt(0).toUpperCase() == 'C' ? 'call': null;
+            if (!cp) throw Error("Must include a right 'C'/'P' value");
+            return iv.getImpliedVolatility(c, s, k, t, r, callPut) * 100;
         };
     }, {
         description: "Determine implied volatility of options based on their prices"

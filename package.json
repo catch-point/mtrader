@@ -1,10 +1,11 @@
 {
   "name": "mtrader",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
   "dependencies": {
     "alea": "0.0.9",
+    "black-scholes": "^1.1.0",
     "chai": "^3.5.0",
     "commander": "^2.14.1",
     "d3-format": "^1.2.1",
