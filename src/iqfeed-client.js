@@ -386,7 +386,7 @@ function historical(nextval, ready) {
                 _.map(marked, (item, id) => {
                     if (pending[id]) {
                         const adj = item.socketId == socketId ? "same" : "new";
-                        logger.warn(`Resending ${symbol} ${item.cmd} on ${adj} socket ${socketId}`);
+                        logger.warn(`Resending ${item.symbol} ${item.cmd} on ${adj} socket ${socketId}`);
                         delete pending[id];
                         submit(nextval, pending, socketId, item);
                     }

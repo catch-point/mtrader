@@ -39,7 +39,13 @@ describe("fetch-ib", function() {
     var tz = 'America/New_York';
     var client = new IB();
     before(function() {
-        return client.open();
+        return client.open().catch(err => {
+            client = null;
+            this.skip();
+        });
+    });
+    beforeEach(function() {
+        if (client == null) this.skip();
     });
     after(function() {
         if (client) return client.close();
