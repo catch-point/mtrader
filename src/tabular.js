@@ -82,7 +82,13 @@ function writeData(transpose, reverse, filename, data) {
             });
             writer.pipe(output);
             if (_.isArray(data)) {
-                const keys = data.reduce((keys, datum) => _.union(keys, _.keys(datum)), []);
+                const keys = data.reduce((all_keys, datum) => {
+                    const keys = _.keys(datum);
+                    if (keys.length > all_keys.length && !_.difference(keys, all_keys).length)
+                        return keys;
+                    else
+                        return _.union(all_keys, keys);
+                }, []);
                 const rows = keys.map(key => {
                     const values = _.pluck(data, key);
                     if (reverse) values.reverse();
