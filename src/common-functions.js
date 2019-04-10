@@ -209,7 +209,7 @@ const functions = module.exports.functions = {
             return hours/24;
         };
     }, {
-        description: "The number of workdays (Mon-Fri) since 1970-01-01"
+        description: "Fractional day part between 0 and 1"
     }),
     /* Converts dateTime to simplified extended ISO format (ISO 8601) format in UTC */
     DATETIME: _.extend((opts, ending) => {

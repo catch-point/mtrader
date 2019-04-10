@@ -43,6 +43,8 @@ const ws = require('ws');
 const shell = require('shell');
 const expect = require('chai').expect;
 const logger = require('./logger.js');
+const common = require('./common-functions.js');
+const Parser = require('../src/parser.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
 const Remote = require('./remote-workers.js');
@@ -237,8 +239,8 @@ function createInstance() {
                 ]);
             });
         },
-        shell(app) {
-            Promise.all([
+        async shell(app) {
+            await Promise.all([
                 config.shell(app),
                 date.shell(app),
                 fetch.shell(app),
@@ -248,6 +250,27 @@ function createInstance() {
                 bestsignals.shell(app),
                 strategize.shell(app)
             ]).catch(err => console.error("Could not complete shell setup", err));
+            app.cmd('exec :expression([\\s\\S]+)', "Evaluate common expressions using the values in this session", (cmd, sh, cb) => {
+                try {
+                    logger.debug("exec", cmd.params);
+                    var parser = Parser({
+                        constant(value) {
+                            return () => value;
+                        },
+                        variable(name) {
+                            return () => config(name);
+                        },
+                        expression(expr, name, args) {
+                            return common(name, args);
+                        }
+                    });
+                    const expr = cmd.params.expression;
+                    sh.white(parser.parse(expr)()).ln();
+                    sh.prompt();
+                } catch(err) {
+                    cb(err);
+                }
+            });
         },
         listen(address) {
             const server = listen(this, address);
