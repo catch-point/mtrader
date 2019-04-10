@@ -114,8 +114,18 @@ module.exports = function() {
     const auth_file = config('fetch.ivolatility.auth_file');
     const downloadType = config('fetch.ivolatility.downloadType');
     if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
-    const ib_cfg = config('fetch.ivolatility.ib');
-    const ib = ib_cfg && new IB(ib_cfg.host, ib_cfg.port, ib_cfg.clientId);
+    let promise_ib;
+    const ib = () => {
+        return promise_ib = (promise_ib || Promise.reject())
+          .catch(err => ({disconnected: true})).then(client => {
+            if (!client.disconnected) return client;
+            else return new IB(
+                config('fetch.ivolatility.ib.host'),
+                config('fetch.ivolatility.ib.port'),
+                config('fetch.ivolatility.ib.clientId')
+            ).open();
+        });
+    };
     const ivolatility = Ivolatility(cacheDir, downloadDir, auth_file, downloadType);
     return Object.assign(options => {
         if (options.help) return Promise.resolve(help());
@@ -127,7 +137,7 @@ module.exports = function() {
     }, {
         close() {
             return Promise.all([
-                ib && ib.close(),
+                promise_ib && promise_ib.then(client => client.close()),
                 ivolatility.close()
             ]);
         }
@@ -182,7 +192,7 @@ function isOptionActive(symbol, begin, end) {
     return expiry.isAfter(begin) && issued.isBefore(end);
 }
 
-function interday(ivolatility, ib, options) {
+function interday(ivolatility, IB, options) {
     expect(options).to.have.property('symbol');
     expect(options).to.have.property('marketClosesAt');
     expect(options.interval).to.be.oneOf(['day']);
@@ -205,7 +215,7 @@ function interday(ivolatility, ib, options) {
         if (last == result.length) return result;
         else return result.slice(0, last);
     }).then(async(adata) => {
-        if (!ib) return adata;
+        if (!IB) return adata;
         if (adata.length) {
             if (now.days() === 0 || now.days() === 6) return adata;
             const tz = options.tz;
@@ -219,7 +229,7 @@ function interday(ivolatility, ib, options) {
         }
         const next_day = !adata.length ? options.begin : nextDayOpen(_.last(adata).ending, options);
         if (now.isBefore(next_day) || now.isAfter(moment(next_day).endOf('day'))) return adata;
-        const bdata = await openBar(ib, options).catch(err => {
+        const bdata = await openBar(await IB(), options).catch(err => {
             logger.warn(`Could not fetch ${options.symbol} snapshot options data ${err.message}`);
             return [];
         });
@@ -241,7 +251,7 @@ function interday(ivolatility, ib, options) {
 }
 
 async function openBar(ib, options) {
-    const snapshot = await (await ib.open()).reqMktData({
+    const snapshot = await ib.reqMktData({
         conId: options.conId,
         localSymbol: options.symbol,
         secType: 'OPT',
