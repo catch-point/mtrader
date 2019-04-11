@@ -265,7 +265,7 @@ function createInstance() {
                         }
                     });
                     const expr = cmd.params.expression;
-                    sh.white(parser.parse(expr)()).ln();
+                    sh.white(parser.parse(expr)({})).ln();
                     sh.prompt();
                 } catch(err) {
                     cb(err);

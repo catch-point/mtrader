@@ -132,29 +132,41 @@ module.exports = Object.assign(function(host = 'localhost', port = 7496, client_
     }).on('tickEFP', function (tickerId, tickType, basisPoints, formattedBasisPoints,
             impliedFuturesPrice, holdDays, futureLastTradeDate, dividendImpact, dividendsToLastTradeDate) {
         const tick = _.omit({
-            tickType, basisPoints, formattedBasisPoints,
-            impliedFuturesPrice, holdDays, futureLastTradeDate, dividendImpact, dividendsToLastTradeDate
+            basisPoints, formattedBasisPoints,
+            impliedFuturesPrice, holdDays, futureLastTradeDate,
+            dividendImpact, dividendsToLastTradeDate
         }, v => v == null);
-        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = tick;
     }).on('tickGeneric', function (tickerId, tickType, value) {
-        const tick = _.omit({tickType, value}, v => v == null);
-        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = value;
     }).on('tickOptionComputation', function (tickerId, tickType, impliedVolatility, delta, optPrice,
             pvDividend, gamma, vega, theta, undPrice) {
-        const tick = _.omit({tickType, impliedVolatility, delta, optPrice,
+        const tick = _.omit({impliedVolatility, delta, optPrice,
             pvDividend, gamma, vega, theta, undPrice}, v => v == null);
-        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
-    }).on('tickPrice', function (tickerId, tickType, price, canAutoExecute) {
-        const tick = _.omit({tickType, price, canAutoExecute}, v => v == null);
-        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = tick;
+    }).on('tickPrice', function (tickerId, tickType, price) {
+        if (req_queue[tickerId] && price >= 0) req_queue[tickerId].tickData[getTickTypeName(tickType)] = price;
+        else if (req_queue[tickerId]) delete req_queue[tickerId].tickData[getTickTypeName(tickType)];
     }).on('tickSize', function (tickerId, tickType, size) {
-        const tick = _.omit({tickType, size}, v => v == null);
-        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = size;
     }).on('tickString', function (tickerId, tickType, value) {
-        const tick = _.omit({tickType, value}, v => v == null);
-        if (req_queue[tickerId]) req_queue[tickerId].tickData.push(tick);
+        if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = value;
     }).on('tickSnapshotEnd', function(tickerId) {
         if (req_queue[tickerId]) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
+    }).on('realtimeBar', function(tickerId, time, open, high, low, close, volume, wap, count) {
+        ib.cancelRealTimeBars(tickerId);
+        if (req_queue[tickerId]) req_queue[tickerId].resolve(_.omit({
+            time, open, high, low, close, volume, wap, count
+        }, value => value == -1));
+    }).on('accountSummary', function(tickerId, account, tag, value, currency) {
+        if (!req_queue[tickerId]) return;
+        const sum = req_queue[tickerId].accountSummary = req_queue[tickerId].accountSummary || {};
+        const acct = sum[account] = sum[account] || {};
+        acct[tag] = currency ? acct[tag] || (currency == value ? [] : {}) : value;
+        if (_.isArray(acct[tag])) acct[tag].push(value);
+        else if (currency) acct[tag][currency] = value;
+    }).on('accountSummaryEnd', function(tickerId, account, tag, value, currency) {
+        if (req_queue[tickerId]) req_queue[tickerId].resolve(req_queue[tickerId].accountSummary);
     });
     const request = promiseThrottle(function(cb) {
         return new Promise((ready, fail) => {
@@ -164,7 +176,7 @@ module.exports = Object.assign(function(host = 'localhost', port = 7496, client_
                 reqId,
                 contractDetails: [],
                 historicalData: [],
-                tickData: [],
+                tickData: {},
                 resolve(resolution) {
                     ready(resolution);
                     setImmediate(() => {
@@ -188,7 +200,7 @@ module.exports = Object.assign(function(host = 'localhost', port = 7496, client_
                 ib[cb].call(ib, reqId, ...args);
             }
         });
-    }, 20);
+    }, 50);
     const self = Object.assign(new.target ? this : {}, {
         connecting: false,
         connected: false,
@@ -237,10 +249,56 @@ module.exports = Object.assign(function(host = 'localhost', port = 7496, client_
         },
         reqMktData(contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions) {
             return request('reqMktData', contract, genericTickList || '', true, regulatorySnapshot || false, mktDataOptions || []);
+        },
+        reqRealTimeBars(contract, whatToShow) {
+            return request('reqRealTimeBars', contract, 0, whatToShow, false);
+        },
+        reqAccountSummary(group, tags) {
+            return request('reqAccountSummary', group || 'All', tags || getAllTags().join(','));
         }
     });
     return self;
 }, {
     TICK_TYPE: IB.TICK_TYPE
 });
+
+const tick_type_names = _.object(_.values(IB.TICK_TYPE), _.keys(IB.TICK_TYPE).map(name => name.toLowerCase()));
+function getTickTypeName(tickType) {
+    return tick_type_names[tickType] || tickType;
+}
+
+function getAllTags() {
+    return [
+        'AccountType',
+        'NetLiquidation',
+        'TotalCashValue',
+        'SettledCash',
+        'AccruedCash',
+        'BuyingPower',
+        'EquityWithLoanValue',
+        'PreviousEquityWithLoanValue',
+        'GrossPositionValue',
+        'ReqTEquity',
+        'ReqTMargin',
+        'SMA',
+        'InitMarginReq',
+        'MaintMarginReq',
+        'AvailableFunds',
+        'ExcessLiquidity',
+        'Cushion',
+        'FullInitMarginReq',
+        'FullMaintMarginReq',
+        'FullAvailableFunds',
+        'FullExcessLiquidity',
+        'LookAheadNextChange',
+        'LookAheadInitMarginReq',
+        'LookAheadMaintMarginReq',
+        'LookAheadAvailableFunds',
+        'LookAheadExcessLiquidity',
+        'HighestSeverity',
+        'DayTradesRemaining',
+        'Leverage',
+        '$LEDGER:ALL'
+    ];
+}
 

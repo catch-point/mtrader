@@ -42,7 +42,7 @@ const expect = require('chai').expect;
 module.exports = function(name, args, options) {
     if (!functions[name]) return;
     const intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
-    const fn = functions[name].apply(this, [options].concat(args));
+    const fn = functions[name].apply(this, [options || {}].concat(args));
     const len = Math.max.apply(Math, [0].concat(_.compact(_.pluck(args, 'warmUpLength'))));
     return _.extend(bars => fn(bars), {
         intervals: intervals,

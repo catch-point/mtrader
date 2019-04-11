@@ -245,4 +245,43 @@ describe("ib-client", function() {
             {time:"20140303  16:30:00",open:1.1076925,high:1.108015,low:1.1074225,close:1.1076275}
         ]);
     });
+    it("should support reqMktData on USD.CAD", function() {
+        return client.reqMktData({
+            localSymbol: 'USD.CAD',
+            secType: 'CASH',
+            exchange: 'IDEALPRO'
+        }).then(d=>console.log(d)||d);
+    });
+    it("should support reqRealTimeBars on USD.CAD", function() {
+        return client.reqRealTimeBars({
+                localSymbol: 'USD.CAD',
+                secType: 'CASH',
+                exchange: 'IDEALPRO'
+            },
+            'MIDPOINT'
+        ).then(d=>console.log(d)||d);
+    });
+    it("should support accountSummary", function() {
+        return client.reqAccountSummary('All').should.eventually.be.like({All:{Currency:_.isArray}});
+    });
+    it.skip("should support reqMktData on option", function() {
+        this.timeout(100000);
+        return client.reqMktData({
+            localSymbol: 'SPX   190621C02900000',
+            secType: 'OPT',
+            exchange: 'SMART',
+            currency: 'USD'
+        }).then(d=>console.log(d)||d);
+    });
+    it.skip("should support reqRealTimeBars on option", function() {
+        this.timeout(100000);
+        return client.reqRealTimeBars({
+                localSymbol: 'SPX   190621C02900000',
+                secType: 'OPT',
+                exchange: 'SMART',
+                currency: 'USD'
+            },
+            'MIDPOINT'
+        ).then(d=>console.log(d)||d);
+    });
 });

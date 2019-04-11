@@ -115,7 +115,7 @@ module.exports = function() {
     const downloadType = config('fetch.ivolatility.downloadType');
     if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
     let promise_ib;
-    const ib = () => {
+    const ib_open = () => {
         return promise_ib = (promise_ib || Promise.reject())
           .catch(err => ({disconnected: true})).then(client => {
             if (!client.disconnected) return client;
@@ -131,7 +131,7 @@ module.exports = function() {
         if (options.help) return Promise.resolve(help());
         switch(options.interval) {
             case 'lookup': return lookup(options);
-            case 'day': return interday(ivolatility, ib, options);
+            case 'day': return interday(ivolatility, ib_open, options);
             default: expect(options.interval).to.be.oneOf(['lookup', 'day']);
         }
     }, {
@@ -192,7 +192,7 @@ function isOptionActive(symbol, begin, end) {
     return expiry.isAfter(begin) && issued.isBefore(end);
 }
 
-function interday(ivolatility, IB, options) {
+function interday(ivolatility, ib_open, options) {
     expect(options).to.have.property('symbol');
     expect(options).to.have.property('marketClosesAt');
     expect(options.interval).to.be.oneOf(['day']);
@@ -215,7 +215,7 @@ function interday(ivolatility, IB, options) {
         if (last == result.length) return result;
         else return result.slice(0, last);
     }).then(async(adata) => {
-        if (!IB) return adata;
+        if (!ib_open) return adata;
         if (adata.length) {
             if (now.days() === 0 || now.days() === 6) return adata;
             const tz = options.tz;
@@ -229,7 +229,7 @@ function interday(ivolatility, IB, options) {
         }
         const next_day = !adata.length ? options.begin : nextDayOpen(_.last(adata).ending, options);
         if (now.isBefore(next_day) || now.isAfter(moment(next_day).endOf('day'))) return adata;
-        const bdata = await openBar(await IB(), options).catch(err => {
+        const bdata = await openBar(await ib_open(), options).catch(err => {
             logger.warn(`Could not fetch ${options.symbol} snapshot options data ${err.message}`);
             return [];
         });
@@ -251,35 +251,24 @@ function interday(ivolatility, IB, options) {
 }
 
 async function openBar(ib, options) {
-    const snapshot = await ib.reqMktData({
+    const bar = await ib.reqMktData({
         conId: options.conId,
         localSymbol: options.symbol,
         secType: 'OPT',
         exchange: 'SMART',
         currency: options.currency
     });
-    const bar = snapshot.reduce((bar, datum) => {
-        switch(datum.tickType) {
-            case IB.TICK_TYPE.OPEN: bar.open = datum.price; return bar;
-            case IB.TICK_TYPE.HIGH: bar.high = datum.price; return bar;
-            case IB.TICK_TYPE.LOW: bar.low = datum.price; return bar;
-            case IB.TICK_TYPE.CLOSE: bar.close = datum.price; return bar;
-            case IB.TICK_TYPE.BID: bar.bid = datum.price; return bar;
-            case IB.TICK_TYPE.ASK: bar.ask = datum.price; return bar;
-            case IB.TICK_TYPE.VOLUME: bar.volume = datum.size; return bar;
-            default: return bar;
-        }
-    }, {});
     if (_.isEmpty(bar)) return [];
-    bar.ending = endOfDay(undefined, options);
-    if (bar.bid>0 && bar.ask>0) bar.close = (bar.bid + bar.ask) /2;
-    delete bar.bid;
-    delete bar.ask;
-    bar.open = bar.open || bar.close;
-    bar.high = bar.high || bar.close;
-    bar.low = bar.low || bar.close;
-    bar.adj_close = bar.adj_close || bar.close;
-    return [bar];
+    const close = bar.bid>0 && bar.ask>0 ? (bar.bid + bar.ask) /2 : bar.close;
+    return [{
+        ending: endOfDay(undefined, options),
+        open: bar.open || close,
+        high: bar.high || close,
+        low: bar.low || close,
+        close: close,
+        volume: bar.volume,
+        adj_close: close
+    }];
 }
 
 function nextDayOpen(ending, options) {
