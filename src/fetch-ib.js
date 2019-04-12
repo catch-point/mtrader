@@ -463,7 +463,8 @@ function formatTime(time, ib_tz, options) {
     const time_str = time.replace(/^(\d\d\d\d)(\d\d)(\d\d)(\s)?\s*/, '$1-$2-$3$4');
     const starting = moment.tz(time_str, ib_tz).tz(options.tz);
     if (options.interval == 'day') return endOfDay(starting, options);
-    else return starting.add(periods(options).millis, 'milliseconds').format();
+    const period = periods(options);
+    return period.floor(starting.add(period.millis, 'milliseconds')).format();
 }
 
 function endOfDay(date, options) {

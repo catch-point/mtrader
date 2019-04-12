@@ -558,6 +558,34 @@ describe("fetch-ib", function() {
                 { ending: '2014-06-09T16:00:00-04:00', close: 93.7, adj_close: 93.7 }
             ]);
         });
+        it("should adjust splits and dividends on m60", function() {
+            return client({
+                interval: 'm60',
+                symbol: 'SPX',
+                market: 'CBOE',
+                begin: '2014-06-06T09:30:00-04:00',
+                end: '2014-06-09T16:00:00-04:00',
+                marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            }).then(data => {
+                var scale = _.last(data).close / _.last(data).adj_close;
+                return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
+            }).should.eventually.be.like([
+                { ending: '2014-06-06T10:00:00-04:00', close: 1946.91, adj_close: 1946.91 },
+                { ending: '2014-06-06T11:00:00-04:00', close: 1947.94, adj_close: 1947.94 },
+                { ending: '2014-06-06T12:00:00-04:00', close: 1947.78, adj_close: 1947.78 },
+                { ending: '2014-06-06T13:00:00-04:00', close: 1948.66, adj_close: 1948.66 },
+                { ending: '2014-06-06T14:00:00-04:00', close: 1948.54, adj_close: 1948.54 },
+                { ending: '2014-06-06T15:00:00-04:00', close: 1947.78, adj_close: 1947.78 },
+                { ending: '2014-06-06T16:00:00-04:00', close: 1949.05, adj_close: 1949.05 },
+                { ending: '2014-06-09T10:00:00-04:00', close: 1951.13, adj_close: 1951.13 },
+                { ending: '2014-06-09T11:00:00-04:00', close: 1952.31, adj_close: 1952.31 },
+                { ending: '2014-06-09T12:00:00-04:00', close: 1954.73, adj_close: 1954.73 },
+                { ending: '2014-06-09T13:00:00-04:00', close: 1952.74, adj_close: 1952.74 },
+                { ending: '2014-06-09T14:00:00-04:00', close: 1951.28, adj_close: 1951.28 },
+                { ending: '2014-06-09T15:00:00-04:00', close: 1949.74, adj_close: 1949.74 },
+                { ending: '2014-06-09T16:00:00-04:00', close: 1951.07, adj_close: 1951.07 }
+            ]);
+        });
         it("should return minutes", function() {
             return client({
                 interval: 'm1',
