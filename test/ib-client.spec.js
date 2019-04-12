@@ -250,7 +250,7 @@ describe("ib-client", function() {
             localSymbol: 'USD.CAD',
             secType: 'CASH',
             exchange: 'IDEALPRO'
-        }).then(d=>console.log(d)||d);
+        });
     });
     it("should support reqRealTimeBars on USD.CAD", function() {
         return client.reqRealTimeBars({
@@ -259,7 +259,22 @@ describe("ib-client", function() {
                 exchange: 'IDEALPRO'
             },
             'MIDPOINT'
-        ).then(d=>console.log(d)||d);
+        );
+    });
+    it("should support reqManagedAccts", function() {
+        return client.reqManagedAccts().should.eventually.be.like(_.isArray);
+    });
+    it("should support reqAccountUpdate", function() {
+        return client.reqAccountUpdate('All').should.eventually.be.like({Currency:_.isArray});
+    });
+    it.skip("should support reqAccountUpdatesMulti", function() {
+        return client.reqAccountUpdatesMulti('All', '', true);
+    });
+    it("should support reqPositions", function() {
+        return client.reqPositions();
+    });
+    it.skip("should support reqPositionsMulti", function() {
+        return client.reqPositionsMulti('All').then(d=>console.log(d)||d);
     });
     it("should support accountSummary", function() {
         return client.reqAccountSummary('All').should.eventually.be.like({All:{Currency:_.isArray}});
@@ -283,5 +298,27 @@ describe("ib-client", function() {
             },
             'MIDPOINT'
         ).then(d=>console.log(d)||d);
+    });
+    it.skip("should calculateImpliedVolatility", function() {
+        return client.calculateImpliedVolatility({
+            localSymbol: 'SPX   190621C02900000',
+            secType: 'OPT',
+            exchange: 'SMART',
+            currency: 'USD'
+        }, 53.80, 2888.30).then(d=>console.log(d)||d);
+    });
+    it.skip("should calculateOptionPrice", function() {
+        return client.calculateOptionPrice({
+            localSymbol: 'SPX   190621C02900000',
+            secType: 'OPT',
+            exchange: 'SMART',
+            currency: 'USD'
+        }, 0.1152, 2888.30).then(d=>console.log(d)||d);
+    });
+    it("should reqExecutions", function() {
+        return client.reqExecutions();
+    });
+    it("should reqCurrentTime", function() {
+        return client.reqCurrentTime().should.eventually.be.closeTo(Math.round(new Date().getTime()/1000),5);
     });
 });
