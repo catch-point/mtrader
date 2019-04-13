@@ -133,6 +133,18 @@ describe("ib-client", function() {
             minTick: 0.00005
         })));
     });
+    it("should find USD.CAD contract", async function() {
+        const conId = 15016062;
+        return client.reqContract(conId).should.eventually.be.like({
+            conId: conId,
+            symbol: 'USD',
+            secType: 'CASH',
+            exchange: 'IDEALPRO',
+            currency: 'CAD',
+            localSymbol: 'USD.CAD',
+            tradingClass: 'USD.CAD'
+        });
+    });
     it("should return daily", function() {
         return client.reqHistoricalData({
                 localSymbol: 'USD.CAD',
@@ -252,14 +264,22 @@ describe("ib-client", function() {
             exchange: 'IDEALPRO'
         });
     });
-    it("should support reqRealTimeBars on USD.CAD", function() {
+    it.skip("should support reqRealTimeBars on USD.CAD", function() {
         return client.reqRealTimeBars({
                 localSymbol: 'USD.CAD',
                 secType: 'CASH',
                 exchange: 'IDEALPRO'
             },
             'MIDPOINT'
-        );
+        ).then(d=>console.log(d)||d);
+    });
+    it("should support reqMktData for dividends", function() {
+        return client.reqMktData({
+            localSymbol: 'PNC',
+            secType: 'STK',
+            exchange: 'NYSE',
+            currency: 'USD'
+        }, ['ib_dividends']).should.eventually.have.property('ib_dividends');
     });
     it("should support reqManagedAccts", function() {
         return client.reqManagedAccts().should.eventually.be.like(_.isArray);
@@ -320,5 +340,14 @@ describe("ib-client", function() {
     });
     it("should reqCurrentTime", function() {
         return client.reqCurrentTime().should.eventually.be.closeTo(Math.round(new Date().getTime()/1000),5);
+    });
+    it("should reqFundamentalData", function() {
+        return client.reqFundamentalData({
+            localSymbol: 'TRN',
+            secType: 'STK',
+            exchange: 'NYSE',
+            currency: 'USD'
+        }, 'ReportsFinSummary').should.eventually.have.property('FinancialSummary');
+        //.then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
     });
 });

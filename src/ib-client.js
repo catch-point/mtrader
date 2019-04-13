@@ -31,9 +31,11 @@
 'use strict';
 
 const _ = require('underscore');
+const xml = require('fast-xml-parser');
 const IB = require('ib');
 const logger = require('./logger.js');
 const promiseThrottle = require('./throttle.js');
+const cache = require('./memoize-cache.js');
 
 let sequence_counter = Date.now() % 32768;
 function nextval() {
@@ -100,6 +102,7 @@ module.exports = function(host = 'localhost', port = 7496, client_id) {
         reqPositions(ib),
         openOrders(ib),
         currentTime(ib),
+        reqContract(ib),
         requestWithId(ib)
     ), fn => async function(){
         if (self.disconnected) throw Error("TWS is disconnected");
@@ -294,6 +297,63 @@ function currentTime(ib) {
     };
 };
 
+function reqContract(ib) {
+    const req_queue = {};
+    const reqContract = promiseThrottle(function(conId) {
+        return new Promise((ready, fail) => {
+            const reqId = nextval();
+            req_queue[reqId] = {
+                reqId,
+                resolve(resolution) {
+                    ready(resolution);
+                    setImmediate(() => {
+                        delete req_queue[reqId];
+                    });
+                },
+                reject(err) {
+                    fail(err);
+                    setImmediate(() => {
+                        delete req_queue[reqId];
+                    });
+                }
+            };
+            logger.log('reqContractDetails', conId);
+            ib.reqContractDetails(reqId, {conId});
+        });
+    }, 1);
+    ib.on('error', function (err, info) {
+        if (info && info.id && req_queue[info.id]) {
+            req_queue[info.id].reject(err);
+        }
+    }).on('disconnected', () => {
+        const err = Error("TWS has disconnected");
+        _.keys(req_queue).forEach(reqId => {
+            req_queue[reqId].reject(err);
+        });
+        reqCachedContract.close();
+    }).on('updatePortfolio', function(contract) {
+        reqCachedContract.replaceEntry(contract.conId, contract);
+    }).on('position', function(account, contract, position, averageCost) {
+        reqCachedContract.replaceEntry(contract.conId, contract);
+    }).on('openOrder', function(orderId, contract, order, orderStatus) {
+        reqCachedContract.replaceEntry(contract.conId, contract);
+    }).on('contractDetails', (reqId, detail) => {
+        if (req_queue[reqId]) req_queue[reqId].contract = detail.summary;
+        reqCachedContract.replaceEntry(detail.summary.conId, detail.summary);
+    }).on('bondContractDetails', (reqId, detail) => {
+        if (req_queue[reqId]) req_queue[reqId].contract = detail.summary;
+        reqCachedContract.replaceEntry(detail.summary.conId, detail.summary);
+    }).on('contractDetailsEnd', reqId => {
+        if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].contract);
+    }).on('positionMulti', function(reqId, account, modelCode, contract, position, averageCost) {
+        reqCachedContract.replaceEntry(contract.conId, contract);
+    }).on('execDetails', function(reqId, contract, execution) {
+        reqCachedContract.replaceEntry(contract.conId, contract);
+    });
+    const reqCachedContract = cache(reqContract, _.identity, 1000);
+    return {reqContract: reqCachedContract};
+}
+
 function isNormal(info) {
     const code = (info||{}).code;
     return code == 1101 || ~[2104, 2106, 2107, 2108].indexOf(code) ||  code >= 2000 && code < 3000;
@@ -304,9 +364,11 @@ function requestWithId(ib) {
     const request = promiseThrottle(function(cmd) {
         return new Promise((ready, fail) => {
             const reqId = nextval();
+            const args = _.rest(_.toArray(arguments));
             req_queue[reqId] = {
                 reqId,
                 cmd: cmd,
+                args: args,
                 contractDetails: [],
                 historicalData: [],
                 tickData: {},
@@ -323,10 +385,9 @@ function requestWithId(ib) {
                     });
                 }
             };
-            const args = _.rest(_.toArray(arguments));
             logger.log(cmd, args.map(arg => {
                 return arg && (arg.conId || arg.localSymbol || arg.symbol) || arg;
-            }).join(','));
+            }).join(', '));
             ib[cmd].call(ib, reqId, ...args);
         });
     }, 50);
@@ -348,11 +409,11 @@ function requestWithId(ib) {
             req_queue[reqId].reject(err);
         });
     }).on('contractDetails', (reqId, contract) => {
-        req_queue[reqId].contractDetails.push(contract);
+        if (req_queue[reqId]) req_queue[reqId].contractDetails.push(contract);
     }).on('bondContractDetails', (reqId, contract) => {
-        req_queue[reqId].contractDetails.push(contract);
+        if (req_queue[reqId]) req_queue[reqId].contractDetails.push(contract);
     }).on('contractDetailsEnd', reqId => {
-        req_queue[reqId].resolve(req_queue[reqId].contractDetails);
+        if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].contractDetails);
     }).on('historicalData', (reqId, time, open, high, low, close, volume, count, wap, hasGaps) => {
         const completedIndicator = 'finished';
         if (req_queue[reqId] && time.substring(0, completedIndicator.length) == completedIndicator)
@@ -362,7 +423,7 @@ function requestWithId(ib) {
     }).on('historicalDataEnd', (reqId, start, end) => {
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].historicalData);
     }).on('fundamentalData', (reqId, data) => {
-        if (req_queue[reqId]) req_queue[reqId].resolve(data);
+        if (req_queue[reqId]) req_queue[reqId].resolve(xml.parse(data, {ignoreAttributes: false, attributeNamePrefix: '', textNodeName: 'value'}));
     }).on('tickEFP', function (tickerId, tickType, basisPoints, formattedBasisPoints,
             impliedFuturesPrice, holdDays, futureLastTradeDate, dividendImpact, dividendsToLastTradeDate) {
         const tick = _.omit({
@@ -371,8 +432,10 @@ function requestWithId(ib) {
             dividendImpact, dividendsToLastTradeDate
         }, v => v == null);
         if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = tick;
+        if (isTickComplete(ib, req_queue[tickerId])) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
     }).on('tickGeneric', function (tickerId, tickType, value) {
         if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = value;
+        if (isTickComplete(ib, req_queue[tickerId])) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
     }).on('tickOptionComputation', function (tickerId, tickType, impliedVolatility, delta, optPrice,
             pvDividend, gamma, vega, theta, undPrice) {
         const tick = _.omit({impliedVolatility, delta, optPrice,
@@ -382,13 +445,17 @@ function requestWithId(ib) {
             req_queue[tickerId].resolve(tick);
         else if (req_queue[tickerId])
             req_queue[tickerId].tickData[getTickTypeName(tickType)] = tick;
+        if (isTickComplete(ib, req_queue[tickerId])) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
     }).on('tickPrice', function (tickerId, tickType, price) {
         if (req_queue[tickerId] && price >= 0) req_queue[tickerId].tickData[getTickTypeName(tickType)] = price;
         else if (req_queue[tickerId]) delete req_queue[tickerId].tickData[getTickTypeName(tickType)];
+        if (isTickComplete(ib, req_queue[tickerId])) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
     }).on('tickSize', function (tickerId, tickType, size) {
         if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = size;
+        if (isTickComplete(ib, req_queue[tickerId])) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
     }).on('tickString', function (tickerId, tickType, value) {
         if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = value;
+        if (isTickComplete(ib, req_queue[tickerId])) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
     }).on('tickSnapshotEnd', function(tickerId) {
         if (req_queue[tickerId]) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
     }).on('realtimeBar', function(tickerId, time, open, high, low, close, volume, wap, count) {
@@ -458,8 +525,9 @@ function requestWithId(ib) {
             return request('reqHistoricalData', contract, endDateTime, durationString,
                 barSizeSetting, whatToShow, useRTH, formatDate, false);
         },
-        reqMktData(contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions) {
-            return request('reqMktData', contract, genericTickList || '', true, regulatorySnapshot || false, mktDataOptions || []);
+        reqMktData(contract, genericTickNameArray, snapshot, regulatorySnapshot, mktDataOptions) {
+            const genericTickList = (genericTickNameArray||[]).map(getTickTypeId).join(',');
+            return request('reqMktData', contract, genericTickList, _.isEmpty(genericTickNameArray), regulatorySnapshot || false, mktDataOptions || []);
         },
         reqRealTimeBars(contract, whatToShow) {
             return request('reqRealTimeBars', contract, 0, whatToShow, false);
@@ -483,11 +551,25 @@ function requestWithId(ib) {
             return request('reqExecutions', filter || {});
         }
     };
-};
+}
+
+function isTickComplete(ib, req) {
+    if (!req) return false;
+    const genericTickList = req.args[1];
+    if (!genericTickList) return false;
+    const genericTickNameArray = genericTickList.split(',').map(getTickTypeName);
+    if (_.difference(genericTickNameArray, _.keys(req.tickData)).length) return false;
+    ib.cancelMktData(req.reqId);
+    return true;
+}
 
 const tick_type_names = _.object(_.values(IB.TICK_TYPE), _.keys(IB.TICK_TYPE).map(name => name.toLowerCase()));
 function getTickTypeName(tickType) {
     return tick_type_names[tickType] || tickType;
+}
+
+function getTickTypeId(tickTypeName) {
+    return IB.TICK_TYPE[tickTypeName.toUpperCase()] || tickTypeName;
 }
 
 function getAllTags() {

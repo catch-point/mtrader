@@ -259,7 +259,7 @@ async function openBar(ib, options) {
         currency: options.currency
     });
     if (_.isEmpty(bar)) return [];
-    const close = bar.bid>0 && bar.ask>0 ? (bar.bid + bar.ask) /2 : bar.close;
+    const close = bar.bid>0 && bar.ask>0 ? (bar.bid + bar.ask) /2 : bar.last || bar.close;
     return [{
         ending: endOfDay(undefined, options),
         open: bar.open || close,
