@@ -123,17 +123,7 @@ function help() {
 }
 
 module.exports = function() {
-    let promiseClient;
-    const Client = () => {
-        return promiseClient = (promiseClient || Promise.reject())
-          .catch(err => ({disconnected: true})).then(client => {
-            if (client.disconnected) return new IB(
-                config('fetch.ib.host'), config('fetch.ib.port'), config('fetch.ib.clientId')
-            ).open();
-            else if (client.connected) return client;
-            else return client.open();
-        });
-    };
+    const client = new IB(config('fetch.ib'));
     const ib_tz = config('fetch.ib.tz') || (moment.defaultZone||{}).name || moment.tz.guess();
     const adjustments = Adjustments();
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
@@ -141,17 +131,15 @@ module.exports = function() {
     )), v => !v);
     const self = async(options) => {
         if (options.help) return help();
-        const client = await Client();
         const adj = isNotEquity(markets, options) ? null : adjustments;
         if (options.interval == 'lookup') return lookup(markets, client, options);
         else if (options.interval == 'day') return interday(markets, adj, client, ib_tz, options);
         else if (options.interval.charAt(0) == 'm') return intraday(markets, adj, client, ib_tz, options);
         else throw Error(`Unknown interval: ${options.interval}`);
     };
-    self.open = () => Client();
+    self.open = () => client.open();
     self.close = () => Promise.all([
-        (promiseClient || Promise.resolve({close:_.noop}))
-          .then(client => client.close(), () => undefined),
+        client.close(),
         adjustments.close()
     ]);
     return self;

@@ -185,7 +185,7 @@ describe("fetch-iqfeed", function() {
             });
         });
         describe("should lookup CME futures symbols", function() {
-            _.range((moment().year())%100,(moment().year()+5)%100).map(year => ['H','M','U','Z'].map(mo => {
+            _.range((moment().year()+1)%100,(moment().year()+5)%100).map(year => ['H','M','U','Z'].map(mo => {
                 it(`6E${mo}${year}`, function() {
                     return client({
                         interval:'lookup',
@@ -198,7 +198,7 @@ describe("fetch-iqfeed", function() {
             }));
         });
         describe("should lookup COMEX futures symbols", function() {
-            _.range((moment().year())%100,(moment().year()+5)%100).map(year => ['M','Z'].map(mo => {
+            _.range((moment().year()+1)%100,(moment().year()+5)%100).map(year => ['M','Z'].map(mo => {
                 it(`GC${mo}${year}`, function() {
                     return client({
                         interval:'lookup',
@@ -211,7 +211,7 @@ describe("fetch-iqfeed", function() {
             }));
         });
         describe("should lookup NYMEX futures symbols", function() {
-            _.range((moment().year())%100,(moment().year()+5)%100).map(year => ['M','Z'].map(mo => {
+            _.range((moment().year()+1)%100,(moment().year()+5)%100).map(year => ['M','Z'].map(mo => {
                 it(`QM${mo}${year}`, function() {
                     return client({
                         interval:'lookup',
@@ -224,7 +224,7 @@ describe("fetch-iqfeed", function() {
             }));
         });
         describe("should lookup CBOT quarterly futures symbols", function() {
-            _.range((moment().year())%100,(moment().year()+1)%100).map(year => ['H','M','U','Z'].map(mo => {
+            _.range((moment().year()+1)%100,(moment().year()+1)%100).map(year => ['H','M','U','Z'].map(mo => {
                 it(`ZN${mo}${year}`, function() {
                     return client({
                         interval:'lookup',
@@ -237,8 +237,9 @@ describe("fetch-iqfeed", function() {
             }));
         });
         describe("should lookup CFE monthly futures symbols", function() {
-            const year = (moment().year())%100;
-            ['H', 'J', 'K', 'M', 'N'].map(mo => {
+            _.range((moment().year())%100,(moment().year()+2)%100).map(year => ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'].map((mo,m) => {
+                if (moment().year()%100==year && (moment().month()>m||moment().month()+9<=m)) return;
+                if (moment().year()%100<year && (moment().month()+9)%12<=m) return;
                 it(`VX${mo}${year}`, function() {
                     return client({
                         interval:'lookup',
@@ -248,7 +249,7 @@ describe("fetch-iqfeed", function() {
                       .then(array => array.filter(item => item.symbol == `VX${mo}${year}`))
                       .should.eventually.be.like([{symbol: `VX${mo}${year}`}]);
                 });
-            });
+            }));
         });
         describe("should lookup CFE weekly futures symbols", function() {
             _.range(moment().isoWeek() + 1, moment().isoWeek() + 6).map(week => {

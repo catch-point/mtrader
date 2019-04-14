@@ -42,8 +42,39 @@ function nextval() {
     return ++sequence_counter;
 }
 
-module.exports = function(host = 'localhost', port = 7496, client_id) {
-    const clientId = _.isFinite(client_id) ? client_id : nextval();
+module.exports = function(settings) {
+    const host = settings && settings.host || 'localhost';
+    const port = settings && settings.port || 7496;
+    const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : nextval();
+    const self = new.target ? this : {};
+    let opened_client = createClient(host, port, clientId);
+    let promise_ib, closed = false;
+    const open = () => {
+        if (opened_client && !opened_client.disconnected) return opened_client.open();
+        else return promise_ib = (promise_ib || Promise.reject())
+          .catch(err => ({disconnected: true})).then(client => {
+            if (!client.disconnected) return client;
+            opened_client = createClient(host, port, clientId);
+            return opened_client.open();
+        });
+    };
+    return Object.assign(self, _.mapObject(_.pick(opened_client, _.isFunction), (fn, cmd) => async function() {
+        if (cmd == 'close') {
+            closed = true;
+            return opened_client.close();
+        } else if (closed) {
+            throw Error("IB API has been closed");
+        } else if (cmd == 'open') {
+            return open();
+        } else {
+            const client = await open();
+            return client[cmd].apply(client, arguments);
+        }
+    }));
+};
+
+
+function createClient(host, port, clientId) {
     const ib = new IB({host, port, clientId});
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
@@ -95,20 +126,16 @@ module.exports = function(host = 'localhost', port = 7496, client_id) {
             }
             return once_connected.then(() => self);
         }
-    }, _.mapObject(Object.assign({},
-        nextValidId(ib),
-        managedAccounts(ib),
-        accountUpdates(ib),
-        reqPositions(ib),
-        openOrders(ib),
-        currentTime(ib),
-        reqContract(ib),
-        requestWithId(ib)
-    ), fn => async function(){
-        if (self.disconnected) throw Error("TWS is disconnected");
-        else return fn.apply(self, arguments);
-    }));
-};
+    },
+    nextValidId(ib),
+    managedAccounts(ib),
+    accountUpdates(ib),
+    reqPositions(ib),
+    openOrders(ib),
+    currentTime(ib),
+    reqContract(ib),
+    requestWithId(ib));
+}
 
 function nextValidId(ib) {
     const valid_id_queue = [];
