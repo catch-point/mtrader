@@ -32,6 +32,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const Big = require('big.js');
 const statkit = require("statkit");
 const bs = require('black-scholes');
 const iv = require('implied-volatility');
@@ -359,20 +360,20 @@ const functions = module.exports.functions = {
         return context => {
             if (!significance) return Math.ceil(expression(context));
             const sig = significance(context);
-            return precision(Math.ceil(expression(context)/sig)*sig);
+            return +Big(Math.ceil(Big(expression(context)).div(sig))).times(sig);
         };
     },
     ROUND(opts, expression, count) {
         const scale = Math.pow(10, count ? count() : 0);
         return context => {
-            return precision(Math.round(expression(context)*scale)/scale);
+            return +Big(expression(context)).times(scale).round().div(scale);
         };
     },
     FLOOR(opts, expression, significance) {
         return context => {
             if (!significance) return Math.floor(expression(context));
             const sig = significance(context);
-            return precision(Math.floor(expression(context)/sig)*sig);
+            return +Big(Math.floor(Big(expression(context)).div(sig))).times(sig);
         };
     },
     TRUNC(opts, expression) {
@@ -511,23 +512,23 @@ const functions = module.exports.functions = {
             const x = a(context);
             const y = b(context);
             if (!_.isFinite(x) || !_.isFinite(y)) return x + y;
-            else return precision(+x + +y);
+            else return +Big(x).add(y);
         };
     },
     /* Subtraction */
     SUBTRACT(opts, a, b) {
         return context => {
-            return precision(a(context) - b(context));
+            return +Big(a(context)).minus(b(context));
         };
     },
     /* Multiplication */
     PRODUCT: _.extend(function(opts, a, b) {
         if (arguments.length == 3) {
-            return context => precision(a(context) * b(context));
+            return context => +Big(a(context)).times(b(context));
         } else {
             const numbers = _.rest(arguments);
             return context => numbers.reduce((product, num) => {
-                return precision(product * num(context));
+                return +Big(product).times(num(context));
             }, 1);
         }
     }, {
@@ -536,13 +537,13 @@ const functions = module.exports.functions = {
     /* Divide */
     DIVIDE(opts, n, d) {
         return context => {
-            return precision(n(context) / d(context));
+            return +Big(n(context)).div(d(context));
         };
     },
     /* Modulus */
     MOD(opts, number, divisor) {
         return context => {
-            return precision(number(context) % divisor(context));
+            return +Big(number(context)).mod(divisor(context));
         };
     },
     POWER: _.extend((opts, base, exponent) => {
@@ -644,7 +645,7 @@ const functions = module.exports.functions = {
         const den = denominator || reference;
         return bars => {
             const numerator = target(bars) - reference(bars);
-            return precision(Math.round(numerator * 10000/ den(bars)) /100);
+            return +Big(numerator).times(100).div(den(bars)).round(2);
         };
     }
 };
@@ -652,10 +653,3 @@ const functions = module.exports.functions = {
 _.forEach(functions, fn => {
     fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,?\s*([^)]*)\)/)[1];
 });
-
-function precision(number) {
-    if (!_.isNumber(number)) return number;
-    const result = Math.round(number * 10000000000) / 10000000000;
-    if (isFinite(result)) return result;
-    else return null;
-}
