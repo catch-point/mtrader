@@ -1,6 +1,6 @@
 {
   "name": "mtrader",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
   "dependencies": {
@@ -13,7 +13,7 @@
     "fast-csv": "^2.3.0",
     "fast-xml-parser": "^3.12.16",
     "graceful-fs": "^4.1.11",
-    "ib": "^0.2.7",
+    "ib": "jamesrdf/node-ib#develop",
     "implied-volatility": "^1.0.0",
     "moment-timezone": "^0.5.14",
     "shell": "adaltas/node-shell",

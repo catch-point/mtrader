@@ -127,7 +127,7 @@ module.exports = function() {
     }, {
         close() {
             return Promise.all([
-                promise_ib && promise_ib.then(client => client.close()),
+                ib.close(),
                 ivolatility.close()
             ]);
         }
@@ -248,7 +248,7 @@ async function openBar(ib, options) {
         exchange: 'SMART',
         currency: options.currency
     });
-    if (_.isEmpty(bar)) return [];
+    if (_.isEmpty(bar) || !bar.bid || !bar.ask) return [];
     const close = bar.bid>0 && bar.ask>0 ? (bar.bid + bar.ask) /2 : bar.last || bar.close;
     return [{
         ending: endOfDay(undefined, options),
