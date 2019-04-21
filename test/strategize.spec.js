@@ -79,6 +79,7 @@ describe("strategize", function() {
             strategy_variable: 'strategy',
             max_operands: 1,
             eval_score: 'profit',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -111,7 +112,7 @@ describe("strategize", function() {
             score: 14.186871
         });
     });
-    it("should avoid comflicting variables", function() {
+    it("should avoid conflicting variables", function() {
         return strategize({
             portfolio: {
                 portfolio: 'SPY.ARCA',
@@ -126,6 +127,7 @@ describe("strategize", function() {
             strategy_variable: 'strategy',
             max_operands: 1,
             eval_score: 'profit',
+            fast_arithmetic: true,
             description: "The variable signal should not be used by strategize and always be zero",
             columns: {
                 date: 'date',
@@ -169,6 +171,7 @@ describe("strategize", function() {
             population_size: 4,
             disjunction_cost: 1,
             eval_score: 'profit',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -212,6 +215,7 @@ describe("strategize", function() {
             population_size: 4,
             conjunctions_only: true,
             eval_score: 'profit',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -254,6 +258,7 @@ describe("strategize", function() {
             max_operands: 3,
             population_size: 4,
             eval_score: 'profit',
+            fast_arithmetic: true,
             transient: false,
             columns: {
                 date: 'DATE(ending)',
@@ -293,6 +298,7 @@ describe("strategize", function() {
             disjunctions_only: true,
             population_size: 4,
             eval_score: 'profit',
+            fast_arithmetic: true,
             transient: false,
             columns: {
                 date: 'DATE(ending)',
@@ -330,6 +336,7 @@ describe("strategize", function() {
             strategy_variable: 'strategy',
             max_operands: 1,
             eval_score: 'profit',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',

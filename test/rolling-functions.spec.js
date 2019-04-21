@@ -100,7 +100,7 @@ describe("rolling functions", function() {
               date: 'DATE(ending)',
               Price: 'day.close',
               Vol: 'day.volume',
-              Max: 'MAXPREC("Price",5,"Vol>"+Vol)'
+              Max: 'MAXPREC("Price",5,`Vol>{Vol}`)'
           }
         }).should.eventually.be.like([
             { date: '2016-01-04', Price: 201.02, Vol: 222353500, Max: null },
@@ -133,7 +133,7 @@ describe("rolling functions", function() {
               date: 'DATE(ending)',
               Price: 'day.close',
               Vol: 'ROUND(day.volume/100000000)',
-              Count: 'COUNTPREV("Vol",10,">="+Vol)'
+              Count: 'COUNTPREV("Vol",10,`>={Vol}`)'
           }
         }).should.eventually.be.like([
             { date: '2016-01-04', Price: 201.02, Vol: 2, Count: 0 },

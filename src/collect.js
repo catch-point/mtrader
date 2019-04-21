@@ -31,6 +31,7 @@
 'use strict';
 
 const _ = require('underscore');
+const Big = require('big.js');
 const moment = require('moment-timezone');
 const Parser = require('./parser.js');
 const interrupt = require('./interrupt.js');
@@ -526,10 +527,10 @@ function getSubstitutions(variables, options) {
  * Calls JSON.stringify on strings and numbres, and returns 'NULL()' if null value
  */
 function stringify(value) {
-    if (_.isObject(value) || _.isArray(value))
-        throw Error("Must be a number, string, or null: " + value);
-    else if (value == null) return 'NULL()';
-    else return JSON.stringify(value);
+    if (value == null) return 'NULL()';
+    else if (typeof value != 'object') return JSON.stringify(value);
+    else if (value instanceof Big) return value.toString();
+    else throw Error("Must be a number, string, or null: " + value);
 }
 
 /**
@@ -789,16 +790,15 @@ function sortBy(array, order) {
             if (r != 0) return r;
             const a = o.by(array[left]);
             const b = o.by(array[right]);
-            if (a === b) {
-                return 0;
-            } else if (!o.desc) {
-                if (a > b || a === void 0) return 1;
-                if (a < b || b === void 0) return -1;
-            } else {
-                if (a < b || a === void 0) return 1;
-                if (a > b || b === void 0) return -1;
-            }
+            if (o.desc) return -cmp(a, b);
+            else return cmp(a, b);
         }, 0);
         return ret || left - right;
     }).map(i => array[i]);
+}
+
+function cmp(a, b) {
+    if (a == b) return 0;
+    else if ((!a || _.isFinite(a)) && (!b || _.isFinite(b))) return Big(a||0).cmp(b||0);
+    else return a < b ? -1 : a > b ? 1 : 0;
 }

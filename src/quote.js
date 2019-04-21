@@ -145,6 +145,10 @@ function help(fetch) {
                 transient: {
                     usage: 'true',
                     description: "If no computed columns should be persisted to disk. Useful when evaluating expressions, over a short time period, that might not be evaluated again."
+                },
+                fast_arithmetic: {
+                    usage: 'true',
+                    description: "If native double-precision numeric operators should be used with fractional errors"
                 }
             })
         }];

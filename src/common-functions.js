@@ -357,23 +357,40 @@ const functions = module.exports.functions = {
         };
     },
     CEILING(opts, expression, significance) {
-        return context => {
+        if (opts.fast_arithmetic) return context => {
             if (!significance) return Math.ceil(expression(context));
             const sig = significance(context);
-            return +Big(Math.ceil(Big(expression(context)).div(sig))).times(sig);
+            if (!sig) return Math.ceil(expression(context));
+            return Math.ceil(expression(context)/sig)*sig;
+        };
+        else return context => {
+            if (!significance) return Math.ceil(expression(context)||0);
+            const sig = significance(context);
+            if (!sig) return Math.ceil(expression(context)||0);
+            return z(Big(Math.ceil(Big(expression(context)||0).div(sig))).times(sig), opts);
         };
     },
     ROUND(opts, expression, count) {
-        const scale = Math.pow(10, count ? count() : 0);
-        return context => {
-            return +Big(expression(context)).times(scale).round().div(scale);
+        const scale = Math.pow(10, count && count() || 0);
+        if (opts.fast_arithmetic) return context => {
+            return Math.round(expression(context)*scale)/scale;
+        };
+        else return context => {
+            return z(Big(expression(context)||0).times(scale).round().div(scale), opts);
         };
     },
     FLOOR(opts, expression, significance) {
-        return context => {
+        if (opts.fast_arithmetic) return context => {
             if (!significance) return Math.floor(expression(context));
             const sig = significance(context);
-            return +Big(Math.floor(Big(expression(context)).div(sig))).times(sig);
+            if (!sig) return Math.floor(expression(context));
+            return Math.floor(expression(context)/sig)*sig;
+        };
+        else return context => {
+            if (!significance) return Math.floor(expression(context)||0);
+            const sig = significance(context);
+            if (!sig) return Math.floor(expression(context)||0);
+            return z(Big(Math.floor(Big(expression(context)||0).div(sig))).times(sig), opts);
         };
     },
     TRUNC(opts, expression) {
@@ -388,7 +405,16 @@ const functions = module.exports.functions = {
     },
     MAX(opts, a, b) {
         const numbers = _.rest(arguments);
-        if (numbers.length == 2) return context => {
+        if (opts.high_precision) return context => {
+            return numbers.map(num => num(context)).reduce((a1, b1) => {
+                if (b1 == null) return a1;
+                else if (a1 == null) return b1;
+                else if ((!a1 || _.isFinite(a1)) && (!b1 || _.isFinite(b1)))
+                    return Big(a1||0).cmp(b1||0) > 0 ? a1 : b1;
+                else return a1 > b1 ? a1 : b1;
+            });
+        };
+        else if (numbers.length == 2) return context => {
             const a1 = a(context);
             const b1 = b(context);
             return a1 > b1 || b1 == null ? a1 : b1;
@@ -398,7 +424,16 @@ const functions = module.exports.functions = {
     },
     MIN(opts, a, b) {
         const numbers = _.rest(arguments);
-        if (numbers.length == 2) return context => {
+        if (opts.high_precision) return context => {
+            return numbers.map(num => num(context)).reduce((a1, b1) => {
+                if (b1 == null) return a1;
+                else if (a1 == null) return b1;
+                else if ((!a1 || _.isFinite(a1)) && (!b1 || _.isFinite(b1)))
+                    return Big(a1||0).cmp(b1||0) <= 0 ? a1 : b1;
+                else return a1 < b1 ? a1 : b1;
+            });
+        };
+        else if (numbers.length == 2) return context => {
             const a1 = a(context);
             const b1 = b(context);
             return a1 < b1 || b1 == null ? a1 : b1;
@@ -431,25 +466,53 @@ const functions = module.exports.functions = {
     },
     /* Less than or Equal to */
     NOT_GREATER_THAN(opts, lhs, rhs) {
-        return context => {
+        if (opts.high_precision) return context => {
+            const l = lhs(context);
+            const r = rhs(context);
+            if ((!l || _.isFinite(l)) && (!r || _.isFinite(r)))
+                return Big(l||0).cmp(r||0) <= 0 ? 1 : 0;
+            else return l <= r ? 1 : 0;
+        };
+        else return context => {
             return lhs(context) <= rhs(context) ? 1 : 0;
         };
     },
     /* Greater than or Equal to */
     NOT_LESS_THAN(opts, lhs, rhs) {
-        return context => {
+        if (opts.high_precision) return context => {
+            const l = lhs(context);
+            const r = rhs(context);
+            if ((!l || _.isFinite(l)) && (!r || _.isFinite(r)))
+                return Big(l||0).cmp(r||0) >= 0 ? 1 : 0;
+            else return l >= r ? 1 : 0;
+        };
+        else return context => {
             return lhs(context) >= rhs(context) ? 1 : 0;
         };
     },
     /* Less than */
     LESS_THAN(opts, lhs, rhs) {
-        return context => {
+        if (opts.high_precision) return context => {
+            const l = lhs(context);
+            const r = rhs(context);
+            if ((!l || _.isFinite(l)) && (!r || _.isFinite(r)))
+                return Big(l||0).cmp(r||0) < 0 ? 1 : 0;
+            else return l < r ? 1 : 0;
+        };
+        else return context => {
             return lhs(context) < rhs(context) ? 1 : 0;
         };
     },
     /* Greater than */
     GREATER_THAN(opts, lhs, rhs) {
-        return context => {
+        if (opts.high_precision) return context => {
+            const l = lhs(context);
+            const r = rhs(context);
+            if ((!l || _.isFinite(l)) && (!r || _.isFinite(r)))
+                return Big(l||0).cmp(r||0) > 0 ? 1 : 0;
+            else return l > r ? 1 : 0;
+        };
+        else return context => {
             return lhs(context) > rhs(context) ? 1 : 0;
         };
     },
@@ -508,42 +571,58 @@ const functions = module.exports.functions = {
     },
     /* Addition */
     ADD(opts, a, b) {
-        return context => {
-            const x = a(context);
-            const y = b(context);
-            if (!_.isFinite(x) || !_.isFinite(y)) return x + y;
-            else return +Big(x).add(y);
+        if (opts.fast_arithmetic) return context => {
+            return +a(context) + +b(context);
+        };
+        else return context => {
+            return z(Big(a(context)||0).add(b(context)||0), opts);
         };
     },
     /* Subtraction */
     SUBTRACT(opts, a, b) {
-        return context => {
-            return +Big(a(context)).minus(b(context));
+        if (opts.fast_arithmetic) return context => {
+            return a(context) - b(context);
+        };
+        else return context => {
+            return z(Big(a(context)||0).minus(b(context)||0), opts);
         };
     },
     /* Multiplication */
     PRODUCT: _.extend(function(opts, a, b) {
-        if (arguments.length == 3) {
-            return context => +Big(a(context)).times(b(context));
-        } else {
-            const numbers = _.rest(arguments);
+        const numbers = _.rest(arguments);
+        if (opts.fast_arithmetic && numbers.length == 2) {
+            return context => a(context) * b(context);
+        } else if (opts.fast_arithmetic) {
             return context => numbers.reduce((product, num) => {
-                return +Big(product).times(num(context));
+                return product * num(context);
             }, 1);
         }
+        else return context => z(numbers.reduce((product, num) => {
+            return product.times(num(context)||0);
+        }, Big(1)), opts);
     }, {
         args: "numbers..."
     }),
     /* Divide */
     DIVIDE(opts, n, d) {
-        return context => {
-            return +Big(n(context)).div(d(context));
+        if (opts.fast_arithmetic) return context => {
+            return n(context) / d(context);
+        };
+        else return context => {
+            const divisor = d(context);
+            if (!divisor) return null;
+            else return z(Big(n(context)||0).div(divisor), opts);
         };
     },
     /* Modulus */
     MOD(opts, number, divisor) {
+        if (opts.fast_arithmetic) return context => {
+            return number(context) % divisor(context);
+        };
         return context => {
-            return +Big(number(context)).mod(divisor(context));
+            const d = divisor(context);
+            if (!d) return null;
+            else return z(Big(number(context)||0).mod(d), opts);
         };
     },
     POWER: _.extend((opts, base, exponent) => {
@@ -643,9 +722,12 @@ const functions = module.exports.functions = {
     CHANGE(opts, target, reference, denominator) {
         if (!target || !reference) throw Error("CHANGE requires two or three arguments");
         const den = denominator || reference;
-        return bars => {
+        if (opts.fast_arithmetic) return bars => {
             const numerator = target(bars) - reference(bars);
-            return +Big(numerator).times(100).div(den(bars)).round(2);
+            return Math.round(numerator * 10000/ den(bars)) /100;
+        };
+        else return bars => {
+            return z(Big(target(bars)||0).minus(reference(bars)||0).times(100).div(den(bars)).round(2), opts);
         };
     }
 };
@@ -653,3 +735,12 @@ const functions = module.exports.functions = {
 _.forEach(functions, fn => {
     fn.args = fn.args || fn.toString().match(/^[^(]*\(\s*opt\w*\s*,?\s*([^)]*)\)/)[1];
 });
+
+function z(big, opts) {
+    if (!big) return big;
+    else if (typeof big == 'number') return big;
+    else if (!(big instanceof Big)) return big;
+    else if (big.c[0] == 0) return +big; // zero
+    else if (opts && opts.high_precision) return big; // high precision number
+    else return +big; // non-zero number
+}

@@ -78,7 +78,6 @@ describe("parser", function() {
         expect(parser.parse('`Hello {{World!}}`')()).to.equal("Hello {World!}");
         expect(parser.parse('`Hello {"World!"}`')()).to.equal("Hello World!");
         expect(parser.parse('`{"Hello"} {"World"}!`')()).to.equal("Hello World!");
-        expect(parser.parse('`Hello {"World"+"!"}`')()).to.equal("Hello World!");
         expect(parser.parse('`Hello {99+1}`')()).to.equal("Hello 100");
         expect(parser.parse('`Hello {`World!`}`')()).to.equal("Hello World!");
         expect(parser.parse('`Hello {`{"World"}!`}`')()).to.equal("Hello World!");

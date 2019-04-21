@@ -455,6 +455,22 @@ describe("common-functions", function(){
             expect(SEARCH({f:"B",t:"ab-c"})).to.equal(2);
         });
     });
+    describe("Arthimatic", function() {
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, {tz: 'America/New_York'});
+            }
+        });
+        it("MIN", function() {
+            expect(+parser.parse('MIN(50/1,100-0)')()).to.equal(50);
+        });
+    });
     describe("Options", function() {
         var parser = Parser({
             constant(value) {

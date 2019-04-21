@@ -31,6 +31,7 @@
 'use strict';
 
 const _ = require('underscore');
+const Big = require('big.js');
 const statkit = require("statkit");
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
@@ -141,7 +142,7 @@ const functions = module.exports.functions = {
             }), true);
             const condition = parseCriteria(name, criteria, positions, options);
             const values = _.pluck(_.initial(bars).filter(condition), name);
-            return values.filter(_.isFinite).reduce((a, b) => a + b, 0);
+            return +values.filter(_.isFinite).reduce((a, b) => a.add(b), Big(0));
         };
     }, {
         args: "columnName, [numberOfIntervals, [criteria]]",
@@ -233,7 +234,7 @@ const functions = module.exports.functions = {
             const previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
             const condition = parseCriteria(name, criteria, positions, options);
             const values = _.pluck(previous.filter(condition), name);
-            return values.reduce((a, b) => (a || 0) + (b || 0), 0);
+            return +values.filter(_.isFinite).reduce((a, b) => a.add(b), Big(0));
         };
     }, {
         args: "columnName, [numberOfValues, [criteria]]",
@@ -262,7 +263,7 @@ const functions = module.exports.functions = {
             const key = _.last(_.keys(_.last(positions)));
             const len = positions.length -1;
             const condition = parseCriteria(name, criteria, positions, options);
-            const previous = _.pluck(positions.slice(Math.max(len - num, 0), len), key);
+            const previous = _.pluck(positions.slice(Math.max(+Big(len||0).minus(num||0), 0), len), key);
             const values = _.pluck(previous.filter(condition), name).filter(_.isFinite);
             if (values.length) return values.reduce((a, b) => Math.min(a, b));
             else return null;
@@ -292,7 +293,7 @@ const functions = module.exports.functions = {
             }), true);
             const values = _.pluck(_.initial(bars), name);
             values.push(columnExpr(positions));
-            return values.filter(_.isFinite).reduce((a, b) => a + b, 0);
+            return +values.filter(_.isFinite).reduce((a, b) => a.add(b), Big(0));
         };
     }, {
         args: "column",
@@ -347,12 +348,12 @@ const functions = module.exports.functions = {
             }), true);
             const values = _.pluck(_.initial(bars), name);
             values.push(columnExpr(positions));
-            const avg = values.reduce((a,b)=>a+b,0) / values.length;
-            const sd = Math.sqrt(values.map(function(num){
-                const diff = num - avg;
-                return diff * diff;
-            }).reduce((a,b)=>a+b,0) / Math.max(values.length,1));
-            return sd || 1;
+            const avg = values.reduce((a,b)=>a.add(b),Big(0)).div(values.length);
+            const sd = values.map(function(num){
+                const diff = Big(num).minus(avg);
+                return diff.times(diff);
+            }).reduce((a,b)=>a.add(b),Big(0)).div(Math.max(values.length,1)).sqrt();
+            return +sd || 1;
         };
     }, {
         args: "column",
@@ -365,6 +366,8 @@ function parseCriteria(columnName, criteria, positions, options) {
         return parseCriteria(columnName, `${columnName} OR ${columnName}=0`, positions, options);
     if (_.isFunction(criteria))
         return parseCriteria(columnName, criteria(positions), positions, options);
+    if (!_.isString(criteria) && criteria instanceof Big) // number
+        return context => +context[columnName] == +criteria;
     if (!_.isString(criteria)) // not a string, must be a value
         return context => context[columnName] == criteria;
     if (_.contains(['<', '>', '='], criteria.charAt(0)) || criteria.indexOf('!=') === 0)

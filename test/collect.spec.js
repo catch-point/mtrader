@@ -1545,7 +1545,7 @@ describe("collect", function() {
                 symbol: 'symbol',
                 date: 'date',
                 close: 'close',
-                big: 'LOOKUP("date","volume>"+day.volume)'
+                big: 'LOOKUP("date",`volume>{day.volume}`)'
             },
             begin: '2016-05-09',
             end: '2016-05-15',
