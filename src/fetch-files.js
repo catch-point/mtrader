@@ -33,7 +33,6 @@
 const fs = require('graceful-fs');
 const path = require('path');
 const _ = require('underscore');
-const csv = require('fast-csv');
 const moment = require('moment-timezone');
 const config = require('./config.js');
 const yahoo = require('./fetch-yahoo.js');

@@ -30,71 +30,79 @@
  */
 
 const fs = require('fs');
+const util = require('util');
 const path = require('path');
+const zlib = require('zlib');
 const _ = require('underscore');
 const storage = require('../src/storage.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
+const readFile = util.promisify(fs.readFile);
+const writeFile = util.promisify(fs.writeFile);
+const gzip = util.promisify(zlib.gzip);
+const gunzip = util.promisify(zlib.gunzip);
+
 describe("storage", function() {
     this.timeout(60000);
-    var dir = createTempDir('storage');
-    it("mergeMetadata", function() {
-        var data1 = {tables:[{id:'a',updatedAt:'earlier'},{id:'c'}]};
-        var data2 = {tables:[{id:'a',updatedAt:'today'},{id:'b'},{id:'d'}]};
-        var data = JSON.parse(JSON.stringify(data2));
-        var expected = {tables:[{id:'a',updatedAt:'today'},{id:'c'},{id:'d'}]};
-        var index = path.resolve(dir, 'index.json');
-        var part = path.resolve(dir, 'part.json');
-        var a = path.resolve(dir, 'a.csv');
-        var b = path.resolve(dir, 'b.csv');
-        var c = path.resolve(dir, 'c.csv');
-        var d = path.resolve(dir, 'd.csv');
-        fs.writeFileSync(a, '');
+    const dir = createTempDir('storage');
+    it("mergeMetadata", async() => {
+        const data1 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'earlier'},{id:'c'}]};
+        const data2 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'today'},{id:'b'},{id:'d'}]};
+        const data = JSON.parse(JSON.stringify(data2));
+        const expected = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'today'},{id:'c'},{id:'d'}]};
+        const index = path.resolve(dir, 'index.json.gz');
+        const part = path.resolve(dir, 'part.json.gz');
+        const a = path.resolve(dir, 'a.csv.gz');
+        const b = path.resolve(dir, 'b.csv.gz');
+        const c = path.resolve(dir, 'c.csv.gz');
+        const d = path.resolve(dir, 'd.csv.gz');
+        await writeFile(a, '');
         // b is absent
-        fs.writeFileSync(c, '');
-        fs.writeFileSync(d, '');
-        fs.writeFileSync(index, JSON.stringify(data1));
-        fs.writeFileSync(part, JSON.stringify(data2));
-        return storage._mergeMetadata(part, index, data).then(() => {
-            var actual = JSON.parse(fs.readFileSync(part));
-            data.tables.should.have.length(3);
-            data.should.be.like(expected);
-            actual.tables.should.have.length(3);
-            actual.should.be.like(expected);
-        });
+        await writeFile(c, '');
+        await writeFile(d, '');
+        await writeFile(index, await gzip(JSON.stringify(data1)));
+        await writeFile(part, await gzip(JSON.stringify(data2)));
+        await storage._mergeMetadata(part, index, data);
+        const compressed = await readFile(part);
+        const decompressed = await gunzip(compressed);
+        const actual = JSON.parse(decompressed.toString());
+        data.tables.should.have.length(3);
+        data.should.be.like(expected);
+        actual.tables.should.have.length(3);
+        actual.should.be.like(expected);
     });
-    it("renameMetadata", function() {
-        var data0 = {tables:[{id:'a',updatedAt:'earlier'},{id:'b'}]};
-        var data1 = {tables:[{id:'a',updatedAt:'earlier'},{id:'c'}]};
-        var data2 = {tables:[{id:'a',updatedAt:'today'},{id:'b'},{id:'d'}]};
-        var data = JSON.parse(JSON.stringify(data2));
-        var expected = {tables:[{id:'a',updatedAt:'today'},{id:'c'},{id:'d'}]};
-        var index = path.resolve(dir, 'index.json');
-        var part = path.resolve(dir, 'part.json');
-        var a = path.resolve(dir, 'a.csv');
-        var b = path.resolve(dir, 'b.csv');
-        var c = path.resolve(dir, 'c.csv');
-        var d = path.resolve(dir, 'd.csv');
-        fs.writeFileSync(a, '');
+    it("renameMetadata", async() => {
+        const data0 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'earlier'},{id:'b'}]};
+        const data1 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'earlier'},{id:'c'}]};
+        const data2 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'today'},{id:'b'},{id:'d'}]};
+        const data = JSON.parse(JSON.stringify(data2));
+        const expected = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'today'},{id:'c'},{id:'d'}]};
+        const index = path.resolve(dir, 'index.json.gz');
+        const part = path.resolve(dir, 'part.json.gz');
+        const a = path.resolve(dir, 'a.csv.gz');
+        const b = path.resolve(dir, 'b.csv.gz');
+        const c = path.resolve(dir, 'c.csv.gz');
+        const d = path.resolve(dir, 'd.csv.gz');
+        await writeFile(a, '');
         // b is absent
-        fs.writeFileSync(c, '');
-        fs.writeFileSync(d, '');
-        fs.writeFileSync(index, JSON.stringify(data0));
-        return storage._readMetadata(dir).then(metadata => {
-            _.extend(data, metadata, JSON.parse(JSON.stringify(data2)));
-            _.extend(data2, metadata, JSON.parse(JSON.stringify(data2)));
-        }).then(() => new Promise(cb => setTimeout(cb, 100)).then(() => {
-            fs.writeFileSync(index, JSON.stringify(data1));
-            fs.writeFileSync(part, JSON.stringify(data2));
-            return storage._renameMetadata(part, index, data);
-        })).then(() => {
-            var actual = JSON.parse(fs.readFileSync(index));
-            data.tables.should.have.length(3);
-            data.should.be.like(expected);
-            actual.tables.should.have.length(3);
-            actual.should.be.like(expected);
-        });
+        await writeFile(c, '');
+        await writeFile(d, '');
+        await writeFile(index, await gzip(JSON.stringify(data0)));
+        const metadata = await storage._readMetadata(dir);
+        _.extend(data, metadata, JSON.parse(JSON.stringify(data2)));
+        _.extend(data2, metadata, JSON.parse(JSON.stringify(data2)));
+        await new Promise(cb => setTimeout(cb, 100));
+        await writeFile(index, await gzip(JSON.stringify(data1)));
+        await writeFile(part, await gzip(JSON.stringify(data2)));
+        await storage._renameMetadata(part, index, data);
+        const compressed = await readFile(index);
+        const decompressed = await gunzip(compressed);
+        const actual = JSON.parse(decompressed.toString());
+        data.tables.should.have.length(3);
+        data.should.be.like(expected);
+        actual.tables.should.have.length(3);
+        actual.should.be.like(expected);
     });
 });
 

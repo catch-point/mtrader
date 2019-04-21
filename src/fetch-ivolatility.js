@@ -33,7 +33,6 @@
 const fs = require('graceful-fs');
 const path = require('path');
 const _ = require('underscore');
-const csv = require('fast-csv');
 const moment = require('moment-timezone');
 const d3 = require('d3-format');
 const merge = require('./merge.js');

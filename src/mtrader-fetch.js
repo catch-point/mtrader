@@ -63,7 +63,8 @@ function usage(command) {
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
         .option('--reverse', "Reverse the order of the rows")
-        .option('--append', "Append the new rows to the end of the file")
+        .option('-a, --append', "Append the new rows to the end of the file")
+        .option('-z, --gzip', "Compress the output file")
         .option('--transpose', "Swap the columns and rows");
 }
 

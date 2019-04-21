@@ -1,6 +1,6 @@
 // tabular.js
 /*
- *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -34,6 +34,7 @@ const fs = require('graceful-fs');
 const os = require('os');
 const path = require('path');
 const process = require('process');
+const zlib = require('zlib');
 const _ = require('underscore');
 const spawn = require('child_process').spawn;
 const Writable = require('stream').Writable;
@@ -47,30 +48,27 @@ module.exports = function(data, options) {
     const transpose = options.transpose && options.transpose.toString() != 'false';
     const reverse = options.reverse && options.reverse.toString() != 'false';
     const append = filename && options.append && options.append.toString() != 'false';
+    const gzip = filename && options.gzip && options.gzip.toString() != 'false';
     if (transpose && append) throw Error("Cannot append to a transposed file");
     return Promise.resolve(append ? new Promise(cb => {
         fs.access(filename, fs.R_OK, err => err ? cb(false) : cb(true));
     }).then(present => new Promise((ready, error) => {
         const objects = [];
         if (!present) return ready(objects);
-        csv.fromStream(fs.createReadStream(filename).on('error', error), {headers : true, ignoreEmpty: true})
+        const stream = fs.createReadStream(filename).on('error', error);
+        const pipe = gzip ? stream.pipe(zlib.createGunzip().on('error', error)) : stream;
+        csv.fromStream(pipe, {headers : true, ignoreEmpty: true})
             .on('error', error)
-            .on('data', function(data) {
-                try {
-                    objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value));
-                } catch (e) {
-                    this.emit('error', e);
-                }
-            })
+            .on('data', data => objects.push(_.mapObject(data, parseValue)))
             .on('end', () => ready(objects));
     })).then(existing => reverse ? existing.reverse().concat(data) : existing.concat(data)) : data)
       .then(data => {
-        if (filename) return awriter(filename => writeData(transpose, reverse, filename, data), filename);
-        else return writeData(transpose, reverse, null, data);
+        if (filename) return awriter(filename => writeData(transpose, reverse, gzip, filename, data), filename);
+        else return writeData(transpose, reverse, false, null, data);
     }).then(() => launchOutput(filename, options));
 };
 
-function writeData(transpose, reverse, filename, data) {
+function writeData(transpose, reverse, gzip, filename, data) {
     return new Promise((finished, error) => {
         const output = createWriteStream(filename).on('error', error);
         output.on('finish', finished);
@@ -79,8 +77,12 @@ function writeData(transpose, reverse, filename, data) {
                 headers: false,
                 rowDelimiter: '\r\n',
                 includeEndRowDelimiter: true
-            });
-            writer.pipe(output);
+            }).on('error', error);
+            if (gzip) {
+                writer.pipe(zlib.createGzip().on('error', error)).pipe(output);
+            } else {
+                writer.pipe(output);
+            }
             if (_.isArray(data)) {
                 const keys = data.reduce((all_keys, datum) => {
                     const keys = _.keys(datum);
@@ -100,12 +102,20 @@ function writeData(transpose, reverse, filename, data) {
             }
             writer.end();
         } else {
+            const first_hdrs = _.keys(_.first(data));
+            const last_hdrs = _.keys(_.last(data));
+            const headers = last_hdrs.length >= first_hdrs.length && !_.difference(last_hdrs, first_hdrs).length ?
+                last_hdrs : _.union(first_hdrs, last_hdrs);
             const writer = csv.createWriteStream({
-                headers: _.union(_.keys(_.first(data)), _.keys(_.last(data))),
+                headers,
                 rowDelimiter: '\r\n',
                 includeEndRowDelimiter: true
-            });
-            writer.pipe(output);
+            }).transform(obj => _.mapObject(obj, formatValue)).on('error', error);
+            if (gzip) {
+                writer.pipe(zlib.createGzip().on('error', error)).pipe(output);
+            } else {
+                writer.pipe(output);
+            }
             if (_.isArray(data) && reverse) data.reduceRight((m,datum) => writer.write(datum), 0);
             else if (_.isArray(data)) data.forEach(datum => writer.write(datum));
             else writer.write(data);
@@ -154,4 +164,19 @@ function launchOutput(outputFile, options) {
         }).unref();
         _.delay(ready, 500); // give child process a chance to error
     }).then(_.constant(outputFile));
+}
+
+function parseValue(value) {
+    if (!_.isString(value)) return value;
+    const chr = value.charAt(0);
+    if (chr == '"' || chr == '[' || chr == '{') return JSON.parse(value);
+    else return _.isFinite(value) ? +value : value;
+}
+
+function formatValue(value) {
+    if (_.isObject(value)) return JSON.stringify(value);
+    if (!_.isString(value)) return value;
+    const chr = value.charAt(0);
+    if (chr == '"' || chr == '[' || chr == '{') return JSON.stringify(value);
+    else return value;
 }

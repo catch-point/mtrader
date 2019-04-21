@@ -1,6 +1,6 @@
 // storage.js
 /*
- *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -30,8 +30,10 @@
  */
 'use strict';
 
+const util = require('util');
 const fs = require('graceful-fs');
 const path = require('path');
+const zlib = require('zlib');
 const _ = require('underscore');
 const csv = require('fast-csv');
 const expect = require('chai').expect;
@@ -137,7 +139,7 @@ function openCollection(dirname, name) {
             const id = safe(block);
             const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             const entry = metadata.tables[idx];
-            if (!entry || entry.id != id) throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
+            if (!entry || entry.id != id) throw Error("Unknown table " + path.resolve(collpath, id + '.csv.gz'));
             if (arguments.length == 2)
                 return entry.properties[name];
             entry.properties[name] = value;
@@ -157,7 +159,7 @@ function openCollection(dirname, name) {
             const entry = metadata.tables[idx];
             if (!entry || entry.id != id) return Promise.resolve(false);
             metadata.tables.splice(idx, 1);
-            const filename = path.resolve(collpath, id + '.csv');
+            const filename = path.resolve(collpath, entry.file || id + '.csv.gz');
             return Promise.all([new Promise((cb, error) => {
                 fs.unlink(filename, err => {
                     if (err) error(err);
@@ -168,7 +170,10 @@ function openCollection(dirname, name) {
         filenameOf(name) {
             failIfClosed();
             const id = safe(name);
-            return path.resolve(collpath, id + '.csv');
+            const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
+            const entry = metadata.tables[idx];
+            if (!entry || entry.id != id) return path.resolve(collpath, id + '.csv.gz');
+            else return path.resolve(collpath, entry.file || id + '.csv.gz');
         },
         sizeOf(name) {
             failIfClosed();
@@ -176,7 +181,7 @@ function openCollection(dirname, name) {
             const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return metadata.tables[idx].size;
-            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
+            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv.gz'));
         },
         columnsOf(name) {
             failIfClosed();
@@ -187,7 +192,7 @@ function openCollection(dirname, name) {
                   .reduce((columns, obj) => {
                     return _.union(columns, _.keys(obj));
                 }, []);
-            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
+            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv.gz'));
         },
         headOf(name) {
             failIfClosed();
@@ -195,7 +200,7 @@ function openCollection(dirname, name) {
             const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return metadata.tables[idx].head;
-            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
+            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv.gz'));
         },
         tailOf(name) {
             failIfClosed();
@@ -203,21 +208,23 @@ function openCollection(dirname, name) {
             const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
             if (metadata.tables[idx] && metadata.tables[idx].id == id)
                 return metadata.tables[idx].tail;
-            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
+            else throw Error("Unknown table " + path.resolve(collpath, id + '.csv.gz'));
         },
         readFrom(name) {
             failIfClosed();
             const id = safe(name);
             const idx = _.sortedIndex(metadata.tables, {id: id}, 'id');
-            if (!metadata.tables[idx] || metadata.tables[idx].id != id)
-                throw Error("Unknown table " + path.resolve(collpath, id + '.csv'));
-            const filename = path.resolve(collpath, id + '.csv');
+            const entry = metadata.tables[idx];
+            if (!entry || entry.id != id)
+                throw Error("Unknown table " + path.resolve(collpath, id + '.csv.gz'));
+            const filename = path.resolve(collpath, entry.file || id + '.csv.gz');
             return cachedTables(filename, metadata.tables[idx].size);
         },
         replaceWith(records, name) {
             failIfClosed();
             const id = safe(name);
-            const filename = path.resolve(collpath, id + '.csv');
+            const file = id + '.csv.gz';
+            const filename = path.resolve(collpath, file);
             return writeTable(filename, records)
               .then(() => cachedTables.replaceEntry(filename, Promise.resolve(records)))
               .then(() => {
@@ -231,10 +238,12 @@ function openCollection(dirname, name) {
                 };
                 const idx = _.sortedIndex(metadata.tables, entry, 'id');
                 if (metadata.tables[idx] && metadata.tables[idx].id == id) {
+                    entry.file = file;
                     entry.properties = {};
                     entry.createdAt = entry.updatedAt;
                     metadata.tables[idx] = entry;
                 } else {
+                    entry.file = file;
                     entry.properties = {};
                     entry.createdAt = entry.updatedAt;
                     metadata.tables.splice(idx, 0, entry);
@@ -245,7 +254,8 @@ function openCollection(dirname, name) {
         writeTo(records, name) {
             failIfClosed();
             const id = safe(name);
-            const filename = path.resolve(collpath, id + '.csv');
+            const file = id + '.csv.gz';
+            const filename = path.resolve(collpath, file);
             return writeTable(filename, records)
               .then(() => cachedTables.replaceEntry(filename, Promise.resolve(records)))
               .then(() => {
@@ -261,6 +271,7 @@ function openCollection(dirname, name) {
                 if (metadata.tables[idx] && metadata.tables[idx].id == id) {
                     metadata.tables[idx] = _.extend(metadata.tables[idx], entry);
                 } else {
+                    entry.file = file;
                     entry.properties = {};
                     entry.createdAt = entry.updatedAt;
                     metadata.tables.splice(idx, 0, entry);
@@ -275,18 +286,15 @@ function openCollection(dirname, name) {
 }
 
 function readMetadata(dirname) {
-    const filename = path.resolve(dirname, 'index.json');
+    const filename = path.resolve(dirname, 'index.json.gz');
     return new Promise((present, absent) => {
         fs.access(filename, fs.R_OK, err => err ? absent(err) : present(dirname));
     }).then(present => new Promise((ready, error) => {
         fs.stat(filename, (err, stats) => err ? error(err) : ready(stats));
     })).then(stats => {
-        return new Promise((ready, error) => {
-            fs.readFile(filename, 'utf-8', (err, data) => {
-                if (err) error(err);
-                else ready(data);
-            });
-        }).then(JSON.parse).then(metadata => _.extend(metadata, {mtime: stats.mtime}));
+        return util.promisify(fs.readFile)(filename)
+          .then(util.promisify(zlib.gunzip)).then(JSON.parse)
+          .then(metadata => _.extend(metadata, {mtime: stats.mtime}));
     }, absent => {
         if (absent.code != 'ENOENT') logger.error("Could not read", filename, absent);
         else return {};
@@ -297,17 +305,14 @@ function readMetadata(dirname) {
     }).catch(error => logger.error("Could not read", dirname, error.message) || {tables:[]});
 }
 
-function writeMetadata(dirname, metadata) {
-    const filename = path.resolve(dirname, 'index.json');
+async function writeMetadata(dirname, metadata) {
+    const filename = path.resolve(dirname, 'index.json.gz');
     const part = awriter.partFor(filename);
-    return awriter.mkdirp(dirname).then(() => {
-        return new Promise((ready, error) => {
-            fs.writeFile(part, JSON.stringify(metadata, null, ' '), err => {
-                if (err) error(err);
-                else ready();
-            });
-        });
-    }).then(() => renameMetadata(part, filename, metadata));
+    await awriter.mkdirp(dirname)
+    const json = JSON.stringify(metadata, null, ' ');
+    const buffer = await util.promisify(zlib.gzip)(json);
+    await util.promisify(fs.writeFile)(part, buffer);
+    return renameMetadata(part, filename, metadata);
 }
 
 function renameMetadata(part, filename, metadata) {
@@ -324,51 +329,49 @@ function renameMetadata(part, filename, metadata) {
     }));
 }
 
-function mergeMetadata(part, filename, metadata) {
+async function mergeMetadata(part, filename, metadata) {
     const collpath = path.dirname(filename);
-    return readMetadata(collpath).then(target => {
-        const tables = metadata.tables;
-        target.tables.forEach(entry => {
-            const idx = _.sortedIndex(tables, entry, 'id');
-            if (tables[idx] && tables[idx].id == entry.id) {
-                if (tables[idx].updatedAt < entry.updatedAt) {
-                    tables[idx] = _.extend(tables[idx], entry);
-                }
-            } else {
-                tables.splice(idx, 0, entry);
+    const target = await readMetadata(collpath);
+    const tables = metadata.tables;
+    target.tables.forEach(entry => {
+        const idx = _.sortedIndex(tables, entry, 'id');
+        if (tables[idx] && tables[idx].id == entry.id) {
+            if (tables[idx].updatedAt < entry.updatedAt) {
+                tables[idx] = _.extend(tables[idx], entry);
             }
-        });
-        const absent = tables.filter(entry => {
-            const idx = _.sortedIndex(target.tables, entry, 'id');
-            return !target.tables[idx] || target.tables[idx].id != entry.id;
-        });
-        return Promise.all(absent.map(entry => new Promise(cb => {
-            const filename = path.resolve(collpath, entry.id + '.csv');
-            fs.access(filename, fs.R_OK, err => err ? cb(false) : cb(true));
-        }))).then(ok => {
-            absent.filter((entry, i) => !ok[i]).forEach(entry => {
-                const idx = _.sortedIndex(tables, entry, 'id');
-                if (tables[idx] && tables[idx].id == entry.id) {
-                    tables.splice(idx, 1);
-                }
-            });
-            return _.extend(metadata, target, {
-                tables: tables
-            });
-        });
-    }).then(merged => new Promise((ready, error) => {
-        fs.writeFile(part, JSON.stringify(merged, null, ' '), err => {
-            if (err) error(err);
-            else ready();
-        });
-    }));
+        } else {
+            tables.splice(idx, 0, entry);
+        }
+    });
+    const absent = tables.filter(entry => {
+        const idx = _.sortedIndex(target.tables, entry, 'id');
+        return !target.tables[idx] || target.tables[idx].id != entry.id;
+    });
+    const ok = await Promise.all(absent.map(entry => new Promise(cb => {
+        const filename = path.resolve(collpath, entry.file || entry.id + '.csv.gz');
+        fs.access(filename, fs.R_OK, err => err ? cb(false) : cb(true));
+    })));
+    absent.filter((entry, i) => !ok[i]).forEach(entry => {
+        const idx = _.sortedIndex(tables, entry, 'id');
+        if (tables[idx] && tables[idx].id == entry.id) {
+            tables.splice(idx, 1);
+        }
+    });
+    const merged = _.extend(metadata, target, {
+        tables: tables
+    });
+    const decompressed = JSON.stringify(merged, null, ' ');
+    const compressed = await util.promisify(zlib.gzip)(decompressed);
+    await util.promisify(fs.writeFile)(part, compressed);
 }
 
 function readTable(filename, size) {
     return new Promise((ready, error) => {
         const objects = _.isFinite(size) ? new Array(size) : new Array();
         objects.length = 0;
-        csv.fromStream(fs.createReadStream(filename), {headers : true, ignoreEmpty: true})
+        const stream = fs.createReadStream(filename).on('error', error);
+        const pipe = stream.pipe(zlib.createGunzip().on('error', error));
+        csv.fromStream(pipe, {headers : true, ignoreEmpty: true})
             .on('error', error)
             .on('data', function(data) {
                 try {
@@ -383,16 +386,16 @@ function readTable(filename, size) {
 
 function writeTable(filename, table) {
     expect(table).to.be.an('array');
-    return awriter(filename => new Promise(finished => {
+    return awriter(filename => new Promise((finished, error) => {
         const headers = _.union(_.keys(_.first(table)), _.keys(_.last(table)));
-        const output = fs.createWriteStream(filename);
+        const output = fs.createWriteStream(filename).on('error', error);
         output.on('finish', finished);
         const writer = csv.createWriteStream({
             headers: headers,
             rowDelimiter: '\r\n',
             includeEndRowDelimiter: true
-        });
-        writer.pipe(output);
+        }).on('error', error);
+        writer.pipe(zlib.createGzip().on('error', error)).pipe(output);
         table.forEach(record => writer.write(record));
         writer.end();
     }), filename);
