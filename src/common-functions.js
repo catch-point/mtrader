@@ -346,14 +346,21 @@ const functions = module.exports.functions = {
         description: "Calculates the number of weekdays between two dates"
     }),
     NUMBERVALUE(opts, text) {
-        return context => {
-            return parseFloat(text(context));
+        if (opts.high_precision) return context => {
+            const string = text(context);
+            if (_.isFinite(string)) return Big(string);
+            else return null;
+        };
+        else return context => {
+            const num = parseFloat(text(context));
+            if (_.isFinite(num)) return num;
+            else return null;
         };
     },
     /* Absolute value */
     ABS(opts, expression) {
         return context => {
-            return Math.abs(expression(context));
+            return z(Big(expression(context)||0).abs(), opts);
         };
     },
     CEILING(opts, expression, significance) {
@@ -727,7 +734,9 @@ const functions = module.exports.functions = {
             return Math.round(numerator * 10000/ den(bars)) /100;
         };
         else return bars => {
-            return z(Big(target(bars)||0).minus(reference(bars)||0).times(100).div(den(bars)).round(2), opts);
+            const d = den(bars);
+            if (!d) return null;
+            return z(Big(target(bars)||0).minus(reference(bars)||0).times(100).div(d).round(2), opts);
         };
     }
 };
