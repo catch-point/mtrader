@@ -241,24 +241,62 @@ function interday(ivolatility, ib, options) {
 }
 
 async function openBar(ib, options) {
-    const bar = await ib.reqMktData({
-        conId: options.conId,
-        localSymbol: options.symbol,
-        secType: 'OPT',
-        exchange: 'SMART',
-        currency: options.currency
-    });
-    if (_.isEmpty(bar) || !bar.bid || !bar.ask) return [];
-    const close = bar.bid>0 && bar.ask>0 ? (bar.bid + bar.ask) /2 : bar.last || bar.close;
-    return [{
-        ending: endOfDay(undefined, options),
-        open: bar.open || close,
-        high: bar.high || close,
-        low: bar.low || close,
-        close: close,
+    if (!isMarketClosed(undefined, options)) {
+        const bar = await ib.reqMktData({
+            conId: options.conId,
+            localSymbol: options.symbol,
+            secType: 'OPT',
+            exchange: 'SMART',
+            currency: options.currency
+        });
+        if (bar && bar.bid && bar.ask) return [{
+            ending: endOfDay(undefined, options),
+            open: bar.open,
+            high: bar.high,
+            low: bar.low,
+            close: (bar.bid + bar.ask) /2,
+            volume: bar.volume,
+            adj_close: (bar.bid + bar.ask) /2
+        }];
+    }
+    const bars = await ib.reqHistoricalData({
+            conId: options.conId,
+            localSymbol: options.symbol,
+            secType: 'OPT',
+            exchange: 'SMART',
+            currency: options.currency
+        },
+        '', // endDateTime
+        `${12*60*60} S`, // durationString
+        '30 mins', // barSizeSetting
+        'MIDPOINT', // whatToShow
+        0, // useRTH
+        2, // formatDate {1: yyyyMMdd HH:mm:ss, 2: epoc seconds}
+    );
+    if (!bars.length) return [];
+    const mapped = bars.map(bar => ({
+        ending: endOfDay(moment(bar.time, 'X'), options),
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
         volume: bar.volume,
-        adj_close: close
-    }];
+        adj_close: bar.close
+    }));
+    return mapped.reduce((reduced, bar) => {
+        const merge = reduced.length && _.last(reduced).ending == bar.ending;
+        const merge_with = merge ? reduced.pop() : {};
+        reduced.push({
+            ending: bar.ending,
+            open: merge_with.open || bar.open,
+            high: Math.max(merge_with.high||bar.high, bar.high),
+            low: Math.min(merge_with.low||bar.low, bar.low),
+            close: bar.close,
+            volume: merge_with.volume + bar.volume,
+            adj_close: bar.adj_close
+        });
+        return reduced;
+    }, []);
 }
 
 function nextDayOpen(ending, options) {
