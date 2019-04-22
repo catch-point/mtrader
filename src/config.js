@@ -304,8 +304,10 @@ function loadConfigFile(filename) {
     try {
         fs.accessSync(filename, fs.R_OK);
         return JSON.parse(fs.readFileSync(filename, 'utf-8'));
-    } catch(e) {
-        console.log("Could not parse " + filename + ": " + e.message);
+    } catch(err) {
+        if (err.code != 'ENOENT') {
+            console.log("Could not parse " + filename + ": " + err.message);
+        }
         return {};
     }
 }
