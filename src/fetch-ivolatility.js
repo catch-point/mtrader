@@ -107,7 +107,8 @@ function help() {
 }
 
 module.exports = function() {
-    const cacheDir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const cacheDir = config('fetch.ivolatility.cache') || path.resolve(cache_dir, 'ivolatility');
     const libDir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     const downloadDir = config('fetch.ivolatility.downloads') || path.resolve(libDir, 'ivolatility');
     const auth_file = config('fetch.ivolatility.auth_file');

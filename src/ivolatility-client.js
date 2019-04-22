@@ -30,8 +30,10 @@
  */
 'use strict';
 
+const util = require('util');
 const fs = require('graceful-fs');
 const path = require('path');
+const zlib = require('zlib');
 const url = require('url');
 const querystring = require('querystring');
 const https = require('https');
@@ -74,7 +76,7 @@ module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
             return listAvailableDownloads(username, cookies, dType || downloadType);
         },
         downloadUpdates(dType) {
-            return downloadUpdates(downloadDir, auth_file, dType || downloadType);
+            return downloadUpdates(cacheDir, downloadDir, auth_file, dType || downloadType);
         },
         processNewFiles() {
             return processing.then(() => processNewFiles(cacheDir, downloadDir));
@@ -108,44 +110,44 @@ module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
 };
 
 function checkForUpdates(cacheDir, downloadDir, auth_file, downloadType) {
-    return Promise.resolve(auth_file ? downloadUpdates(downloadDir, auth_file, downloadType) : null)
+    return Promise.resolve(auth_file ? downloadUpdates(cacheDir, downloadDir, auth_file, downloadType) : null)
       .then(() => Promise.resolve(downloadDir ? processNewFiles(cacheDir, downloadDir) : null))
       .catch(err => logger.error("Could not process updates from ivolatility.com", err));
 }
 
-function processNewFiles(cacheDir, downloadDir) {
-    return readMetadata(downloadDir).then(metadata => {
-        return listNewFiles(downloadDir, metadata).then(files => files.reduce((wait, file) => wait.then(() => {
-            const filename = path.resolve(downloadDir, file);
-            return explodeZip(filename, (stats, entryStream, entryName) => {
-                const sink = createDataSinkStore(cacheDir);
-                return parseZipEntry(entryStream, (stats, datum) => {
-                    sink(datum);
-                    if (!~stats.symbols.indexOf(datum.symbol)) {
-                        stats.symbols.push(datum.symbol);
-                    }
-                    if (!~stats.exchanges.indexOf(datum.exchange)) {
-                        stats.exchanges.push(datum.exchange);
-                    }
-                    if (!~stats.expirations.indexOf(datum.expiration)) {
-                        stats.expirations.push(datum.expiration);
-                    }
-                    return stats;
-                }, stats).then(result => {
-                    return sink.close(entryName).then(() => result);
-                }, err => {
-                    return sink.close(entryName).then(() => Promise.reject(err));
-                });
-            }, {file, symbols:[], exchanges:[], expirations:[]}).then(stats => {
-                const idx = metadata.entries.findIndex(entry => entry.file == file);
-                if (idx<0) metadata.entries.push(stats);
-                else metadata.entries[idx] = stats;
+async function processNewFiles(cacheDir, downloadDir) {
+    const metadata = await readMetadata(cacheDir);
+    const files = await listNewFiles(downloadDir, metadata);
+    return files.reduce((wait, file) => wait.then(() => {
+        const fileUid = path.basename(file, '.zip');
+        const filename = path.resolve(downloadDir, file);
+        return explodeZip(filename, (stats, entryStream, entryName) => {
+            const sink = createDataSinkStore(cacheDir);
+            return parseZipEntry(entryStream, (stats, datum) => {
+                sink(datum);
+                if (!~stats.symbols.indexOf(datum.symbol)) {
+                    stats.symbols.push(datum.symbol);
+                }
+                if (!~stats.exchanges.indexOf(datum.exchange)) {
+                    stats.exchanges.push(datum.exchange);
+                }
+                if (!~stats.expirations.indexOf(datum.expiration)) {
+                    stats.expirations.push(datum.expiration);
+                }
                 return stats;
+            }, stats).then(result => {
+                return sink.close(entryName).then(() => result);
+            }, err => {
+                return sink.close(entryName).then(() => Promise.reject(err));
             });
-        }), Promise.resolve())).then(result => {
-            return writeMetadata(downloadDir, metadata).then(() => result);
+        }, {fileUid, symbols:[], exchanges:[], expirations:[]}).then(stats => {
+            const idx = metadata.entries.findIndex(entry => entry.fileUid == fileUid);
+            if (idx<0) metadata.entries.push(stats);
+            else metadata.entries[idx] = stats;
+            return stats;
         });
-    }).then(result => {
+    }), Promise.resolve()).then(async(result) => {
+        await writeMetadata(cacheDir, metadata);
         if (result) logger.info("Finished processing new ivolatility.com files");
     });
 }
@@ -354,7 +356,8 @@ function listNewFiles(downloadDir, metadata) {
     return listZipFiles(downloadDir)
       .then(files => Promise.all(files.map(file => mtime(path.resolve(downloadDir, file))
       .then(mtime => {
-        const entry = metadata.entries.find(entry => entry.file == file);
+        const fileUid = path.basename(file, '.zip');
+        const entry = metadata.entries.find(entry => entry.fileUid == fileUid);
         if (!entry) return file;
         else return null;
     }))).then(updated => _.compact(updated)));
@@ -371,38 +374,24 @@ function listZipFiles(downloadDir) {
     }).then(files => files.filter(file => file.endsWith('.zip') || file.endsWith('.ZIP')));
 }
 
-function readMetadata(dirname) {
-    const filename = path.resolve(dirname, 'index.json');
-    return new Promise((present, absent) => {
-        fs.access(filename, fs.R_OK, err => err ? absent(err) : present(dirname));
-    }).then(present => new Promise((ready, error) => {
-        fs.stat(filename, (err, stats) => err ? error(err) : ready(stats));
-    })).then(stats => {
-        return new Promise((ready, error) => {
-            fs.readFile(filename, 'utf-8', (err, data) => {
-                if (err) error(err);
-                else ready(data);
-            });
-        }).then(JSON.parse).then(metadata => _.extend(metadata, {mtime: stats.mtime}));
-    }, absent => {
-        if (absent.code != 'ENOENT') logger.error("Could not read", filename, absent);
-        else return {};
-    }).then(metadata => {
+async function readMetadata(dirname) {
+    const filename = path.resolve(dirname, 'source.json.gz');
+    return util.promisify(fs.stat)(filename).then(async(stats) => {
+        const compressed = await util.promisify(fs.readFile)(filename);
+        const decompressed = await util.promisify(zlib.gunzip)(compressed);
+        const metadata = Object.assign(JSON.parse(decompressed), {mtime: stats.mtime});
         if (!_.isArray(metadata.entries))
             metadata.entries = [];
         return metadata;
-    }).catch(error => logger.error("Could not read", dirname, error.message) || {tables:[]});
+    }).catch(error => error.code != 'ENOENT' && logger.error("Could not read", filename, error.message) || {entries:[]});
 }
 
 function writeMetadata(dirname, metadata) {
-    const filename = path.resolve(dirname, 'index.json');
-    return awriter(filename => {
-        return new Promise((ready, error) => {
-            fs.writeFile(filename, JSON.stringify(metadata, null, ' '), err => {
-                if (err) error(err);
-                else ready();
-            });
-        });
+    const filename = path.resolve(dirname, 'source.json.gz');
+    return awriter(async(filename) => {
+        const decompressed = JSON.stringify(metadata, null, ' ');
+        const compressed = await util.promisify(zlib.gzip)(decompressed);
+        await util.promisify(fs.writeFile)(filename, compressed);
     }, filename);
 }
 
@@ -412,12 +401,12 @@ function mtime(filename) {
     }).then(stats => stats.mtime);
 }
 
-async function downloadUpdates(downloadDir, auth_file, downloadType) {
+async function downloadUpdates(cacheDir, downloadDir, auth_file, downloadType) {
     const token = auth_file ? fs.readFileSync(auth_file, 'utf8').trim() : '';
     const auth = new Buffer.from(token, 'base64').toString().split(/:/);
     const username = auth[0];
     const password = auth[1];
-    const metadata = await readMetadata(downloadDir);
+    const metadata = await readMetadata(cacheDir);
     const cookies = await retrieveCookies(username, password);
     const file_urls = await listAvailableDownloads(username, cookies, downloadType, metadata.mtime);
     const absent_urls = await absentFileUrls(downloadDir, file_urls);
