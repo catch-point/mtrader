@@ -33,6 +33,7 @@
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const Big = require('big.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
 const storage = require('./storage.js');
@@ -189,54 +190,54 @@ function compatible(collection, since) {
 
 async function adjustments(yahoo, db, symbol, options) {
     const data = await yahoo_adjustments(yahoo, db, symbol, options);
-    let adj = 1, adj_dividend_only = 1, adj_split_only = 1;
-    let adj_yahoo_divs = 1;
+    let adj = Big(1), adj_dividend_only = Big(1), adj_split_only = Big(1);
+    let adj_yahoo_divs = Big(1);
     return data.reduceRight((adjustments, datum) => {
         const exdate = datum.Date;
-        let dividend = +datum.Dividends * adj_yahoo_divs;
+        let dividend = Big(datum.Dividends||0).times(adj_yahoo_divs||0);
         let split = parseSplit(datum['Stock Splits']);
         if (adjustments.length && _.last(adjustments).exdate == exdate) {
             const last = adjustments.pop();
-            dividend += last.dividend;
-            split *= last.split;
+            dividend = dividend.add(last.dividend);
+            split = split.times(last.split);
             // check if split is a manual adjustment for a big dividend
-            if (dividend && split > 1 && split <= 2) { // XLF.ARCA 2016-09-19
+            if (!dividend.eq(0) && split.gt(1) && split.lte(2)) { // XLF.ARCA 2016-09-19
                 if (adjustments.length) {
-                    adj_dividend_only = _.last(adjustments).adj_dividend_only;
-                    adj_split_only = _.last(adjustments).adj_split_only;
-                    adj = _.last(adjustments).adj;
+                    adj_dividend_only = Big(_.last(adjustments).adj_dividend_only);
+                    adj_split_only = Big(_.last(adjustments).adj_split_only);
+                    adj = Big(_.last(adjustments).adj);
                 } else {
-                    adj_dividend_only = 1;
-                    adj_split_only = 1;
-                    adj = 1;
+                    adj_dividend_only = Big(1);
+                    adj_split_only = Big(1);
+                    adj = Big(1);
                 }
-                adj_yahoo_divs *= split;
-                adj_split_only /= split;
-                split = 1;
+                adj_yahoo_divs = adj_yahoo_divs.times(split);
+                adj_split_only = adj_split_only.div(split);
+                split = Big(1);
             }
         }
         // check if reverse split is enough for yahoo to change it dividends
-        if (split < 1/3) {
+        if (split.lt(Big(1).div(3))) {
             // AAPL.NASDAQ 2014-06-09 not anymore as of 2019-01-11
             // REM.ARCA 2016-11-07
-            adj_yahoo_divs *= split;
+            adj_yahoo_divs = adj_yahoo_divs.times(split);
         }
-        if (split != 1) {
-            adj_split_only /= split;
-            adj /= split;
+        if (!split.eq(1)) {
+            adj_split_only = adj_split_only.div(split);
+            adj = adj.div(split);
         }
         // heuristic to test if the split has been applied REM.NYSE 2016-11-07
-        if (split != 1 && adjustments.length &&
-                Math.abs(+datum.cum_close - _.last(adjustments).cum_close) >
-                Math.abs(+datum.cum_close * adj_split_only - _.last(adjustments).cum_close)) {
-            adj_split_only *= split;
+        if (!split.eq(1) && adjustments.length &&
+                Big(datum.cum_close).minus(_.last(adjustments).cum_close).abs().gt(
+                Big(datum.cum_close).times(adj_split_only).minus(_.last(adjustments).cum_close).abs())) {
+            adj_split_only = adj_split_only.times(split);
         }
-        const cum_close = +datum.cum_close / adj_split_only;
-        if (dividend && +datum.cum_close) {
-            adj_dividend_only *= (cum_close - dividend)/cum_close;
-            adj *= (cum_close - dividend)/cum_close;
+        const cum_close = Big(datum.cum_close).div(adj_split_only);
+        if (!dividend.eq(0) && !Big(datum.cum_close).eq(0)) {
+            adj_dividend_only = adj_dividend_only.times(Big(cum_close).minus(dividend)).div(cum_close);
+            adj = adj.times(Big(cum_close).minus(dividend)).div(cum_close);
         }
-        adjustments.push({exdate, adj, adj_dividend_only, adj_split_only, cum_close, split, dividend});
+        adjustments.push({ exdate, adj, adj_dividend_only, adj_split_only, cum_close, split, dividend });
         return adjustments;
     }, []).reverse();
 }
@@ -247,11 +248,11 @@ async function adjustments(yahoo, db, symbol, options) {
  * A reverse split is indicated by a number between 0 and 1.
  */
 function parseSplit(stock_splits) {
-    if (!stock_splits) return 1;
+    if (!stock_splits) return Big(1);
     const splits = stock_splits.split('/');
-    const split = +splits[1] / +splits[0];
-    if (!split || !_.isFinite(split)) return 1; // TRI.TO 2018-11-27 Stock Splits of 1/0
-    else return split;
+    // TRI.TO 2018-11-27 Stock Splits of 1/0
+    if (!splits[0] || !splits[1] || splits[0] == '0' || splits[1] == '0') return Big(1);
+    else return Big(splits[1]).div(splits[0]);
 }
 
 function filterAdj(adjustments, options) {

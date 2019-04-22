@@ -74,6 +74,7 @@ describe("bestsignals", function() {
             end: '2016-12-31',
             signal_variable: 'signal',
             eval_score: 'gain',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -108,6 +109,7 @@ describe("bestsignals", function() {
             begin: '2016-10-01',
             end: '2016-12-31',
             eval_score: 'gain',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -135,6 +137,7 @@ describe("bestsignals", function() {
             signal_variable: 'signal',
             eval_validity: 'fast_len<slow_len',
             eval_score: 'gain',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -196,6 +199,7 @@ describe("bestsignals", function() {
             signal_variable: 'signal',
             eval_validity: 'fast_len<slow_len',
             eval_score: 'gain',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -245,6 +249,7 @@ describe("bestsignals", function() {
             end: '2016-12-31',
             signal_variable: 'signal',
             eval_score: '-gain',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -286,6 +291,7 @@ describe("bestsignals", function() {
             solution_count: 2,
             signal_variable: 'signal',
             eval_score: 'gain/pain',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -353,6 +359,7 @@ describe("bestsignals", function() {
             population_size: 8,
             signal_variable: 'signal',
             eval_score: 'gain/pain',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',
@@ -435,6 +442,7 @@ describe("bestsignals", function() {
             end: '2016-12-31',
             signal_variable: 'signal',
             eval_score: 'gain/pain',
+            fast_arithmetic: true,
             columns: {
                 date: 'DATE(ending)',
                 change: 'close - PREV("close")',

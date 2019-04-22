@@ -32,6 +32,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const Big = require('big.js');
 const d3 = require('d3-format');
 const logger = require('./logger.js');
 const config = require('./config.js');
@@ -489,12 +490,12 @@ async function interday(iqclient, adjustments, symbol, options) {
     ]);
     const result = adjRight(prices, adjusts, options, (datum, adj, adj_split_only) => ({
         ending: endOf('day', datum.Date_Stamp, options),
-        open: parseCurrency(datum.Open, adj_split_only),
-        high: parseCurrency(datum.High, adj_split_only),
-        low: parseCurrency(datum.Low, adj_split_only),
-        close: parseCurrency(datum.Close, adj_split_only),
+        open: +parseCurrency(datum.Open, adj_split_only),
+        high: +parseCurrency(datum.High, adj_split_only),
+        low: +parseCurrency(datum.Low, adj_split_only),
+        close: +parseCurrency(datum.Close, adj_split_only),
         volume: parseFloat(datum.Period_Volume) || 0,
-        adj_close: Math.round(parseCurrency(datum.Close, adj_split_only) * adj * 1000000) / 1000000
+        adj_close: +parseCurrency(datum.Close, adj_split_only).times(adj)
     }));
     return Promise.resolve(result).then(result => {
         if (_.last(result) && !_.last(result).close) result.pop();
@@ -524,7 +525,7 @@ async function intraday(iqclient, adjustments, symbol, options) {
         close: parseFloat(datum.Close),
         volume: parseFloat(datum.Period_Volume) || 0,
         total_volume: parseFloat(datum.Total_Volume),
-        adj_close: Math.round(parseFloat(datum.Close) * adj * 1000000) / 1000000
+        adj_close: +Big(datum.Close).times(adj)
     })).filter(bar => bar.volume);
     if (_.last(result) && !_.last(result).close) result.pop();
     if (!options.end) return result;
@@ -647,8 +648,7 @@ async function summarize(iqclient, symbol, options) {
 }
 
 function parseCurrency(string, adj_split_only) {
-    if (adj_split_only == 1 || Math.abs(adj_split_only -1) < 0.000001) return parseFloat(string);
-    else return Math.round(parseFloat(string) / adj_split_only * 10000) / 10000;
+    return Big(string).div(adj_split_only);
 }
 
 function adjRight(bars, adjustments, options, cb) {
@@ -662,7 +662,7 @@ function adjRight(bars, adjustments, options, cb) {
                 adj = adjustments[--a];
             }
         }
-        result[i] = cb(bars[i], adj && adj.adj || 1, adj && adj.adj_split_only || 1);
+        result[i] = cb(bars[i], Big(adj && adj.adj || 1), Big(adj && adj.adj_split_only || 1));
     }
     return result;
 }
