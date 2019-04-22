@@ -147,8 +147,10 @@ async function processNewFiles(cacheDir, downloadDir) {
             return stats;
         });
     }), Promise.resolve()).then(async(result) => {
-        await writeMetadata(cacheDir, metadata);
-        if (result) logger.info("Finished processing new ivolatility.com files");
+        if (result) {
+            await writeMetadata(cacheDir, metadata);
+            logger.info("Finished processing new ivolatility.com files");
+        }
     });
 }
 
