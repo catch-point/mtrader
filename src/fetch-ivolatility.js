@@ -127,7 +127,7 @@ module.exports = function() {
     }, {
         close() {
             return Promise.all([
-                ib.close(),
+                ib && ib.close(),
                 ivolatility.close()
             ]);
         }

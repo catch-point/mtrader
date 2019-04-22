@@ -177,7 +177,7 @@ async function writeAdjPrice(yahoo, symbol, col, since, data, options) {
         return _.extend(datum, {
             Dividends: datum.Dividends || null,
             'Stock Splits': datum['Stock Splits'] || null,
-            cum_close: prior ? +prior.Close : undefined
+            cum_close: prior && +prior.Close || undefined
         });
     });
     return col.writeTo(mapped, since);
@@ -228,12 +228,12 @@ async function adjustments(yahoo, db, symbol, options) {
         }
         // heuristic to test if the split has been applied REM.NYSE 2016-11-07
         if (!split.eq(1) && adjustments.length &&
-                Big(datum.cum_close).minus(_.last(adjustments).cum_close).abs().gt(
-                Big(datum.cum_close).times(adj_split_only).minus(_.last(adjustments).cum_close).abs())) {
+                Big(datum.cum_close||0).minus(_.last(adjustments).cum_close||0).abs().gt(
+                Big(datum.cum_close||0).times(adj_split_only).minus(_.last(adjustments).cum_close||0).abs())) {
             adj_split_only = adj_split_only.times(split);
         }
-        const cum_close = Big(datum.cum_close).div(adj_split_only);
-        if (!dividend.eq(0) && !Big(datum.cum_close).eq(0)) {
+        const cum_close = Big(datum.cum_close||0).div(adj_split_only);
+        if (!dividend.eq(0) && !Big(datum.cum_close||0).eq(0)) {
             adj_dividend_only = adj_dividend_only.times(Big(cum_close).minus(dividend)).div(cum_close);
             adj = adj.times(Big(cum_close).minus(dividend)).div(cum_close);
         }
