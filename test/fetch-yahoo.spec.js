@@ -295,4 +295,18 @@ describe("fetch-yahoo", function() {
             {ending:'2016-11-30T16:00:00-05:00',close:42.63,adj_close:42.63}
         ]);
     });
+    it.skip("should return daily CLX", function() {
+        return client({
+            interval: 'day',
+            symbol: 'CLX', market: 'NYSE',
+            begin: '2019-04-18', end: '2019-04-24',
+            marketOpensAt: '09:30:00', marketClosesAt: '16:00:00', tz: tz
+        })
+         .then(d=>d.forEach(d=>console.log(require('util').inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
+         .should.eventually.be.like([
+            { ending: '2019-04-18T16:00:00-04:00', close: 153.48, adj_close: 152.53 },
+            { ending: '2019-04-22T16:00:00-04:00', close: 154.51, adj_close: 153.55 },
+            { ending: '2019-04-23T16:00:00-04:00', close: 153.7, adj_close: 153.7 }
+        ]);
+    });
 });

@@ -128,10 +128,10 @@ function periods(interval, begin, tz) {
     if (!mb.isValid()) throw Error("Invalid begin date " + begin);
     const start = interval == '1mo' ? mb.startOf('month') :
         interval == '1wk' ? mb.startOf('isoWeek') : mb.startOf('day');
-    const end = moment().tz(tz).startOf('day');
+    const end = moment().tz(tz).endOf('day');
     return {
-        period1: start.valueOf()/1000,
-        period2: end.valueOf()/1000,
+        period1: Math.floor(start.valueOf()/1000),
+        period2: Math.ceil(end.valueOf()/1000),
         interval: interval
     };
 }

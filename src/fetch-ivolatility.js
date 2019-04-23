@@ -241,7 +241,7 @@ function interday(ivolatility, ib, options) {
 }
 
 async function openBar(ib, options) {
-    if (!isMarketClosed(undefined, options)) {
+    if (isMarketOpen(undefined, options)) {
         const bar = await ib.reqMktData({
             conId: options.conId,
             localSymbol: options.symbol,
@@ -305,14 +305,14 @@ function nextDayOpen(ending, options) {
     return moment.tz(`${next_day} ${options.premarketOpensAt}`, options.tz);
 }
 
-function isMarketClosed(now, options) {
+function isMarketOpen(now, options) {
     const time = moment.tz(now, options.tz).format('HH:mm:ss');
     if (options.marketOpensAt < options.marketClosesAt) {
-        return time > options.marketClosesAt || time <= options.marketOpensAt;
+        return options.marketOpensAt < time && time <= options.marketClosesAt;
     } else if (options.marketClosesAt < options.marketOpensAt) {
-        return time > options.marketClosesAt && time <= options.marketOpensAt;
+        return time <= options.marketClosesAt || options.marketOpensAt < time;
     } else {
-        return false; // 24 hour market
+        return true; // 24 hour market
     }
 }
 

@@ -558,10 +558,8 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     }, options));
     return intraday.reduce((bars, bar) => {
         if (_.last(bars).incomplete) bars.pop(); // remove incomplete (holi)days
-        if (adjustments && bar.ending == _.last(bars).ending) {
-            adj = _.last(bars).adj_close / bar.close;
-        } else if (bar.ending > _.last(bars).ending) {
-            bars.push(_.extend({}, bar, {adj_close: bar.close * adj}));
+        if (bar.ending > _.last(bars).ending) {
+            bars.push(_.extend({}, bar, {adj_close: bar.close}));
         }
         return bars;
     }, bars);
