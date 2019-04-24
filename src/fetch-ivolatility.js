@@ -34,6 +34,7 @@ const fs = require('graceful-fs');
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const Big = require('big.js');
 const d3 = require('d3-format');
 const merge = require('./merge.js');
 const interrupt = require('./interrupt.js');
@@ -146,7 +147,7 @@ async function lookup(options) {
     const dollar = symbol.substring(13, 18);
     const decimal = symbol.substring(18, 21);
     const mo = right_month_alpha[right][month];
-    const strike = +dollar + +decimal / 1000;
+    const strike = +Big(dollar).add(Big(decimal).div(1000));
     const exdate = `20${year}-${month}-${day}`;
     const expiry = moment.tz(exdate, options.tz);
     return [{
@@ -254,9 +255,9 @@ async function openBar(ib, options) {
             open: bar.open,
             high: bar.high,
             low: bar.low,
-            close: (bar.bid + bar.ask) /2,
+            close: +Big(bar.bid).add(bar.ask).div(2),
             volume: bar.volume,
-            adj_close: (bar.bid + bar.ask) /2
+            adj_close: Big(bar.bid).add(bar.ask).div(2)
         }];
     }
     const bars = await ib.reqHistoricalData({
@@ -324,7 +325,7 @@ function endOfDay(ending, options) {
 async function loadIvolatility(ivolatility, options) {
     const data = await ivolatility(options)
     return data.map(datum => {
-        const mid = Math.round((datum.ask + datum.bid)*100/2)/100;
+        const mid = +Big(datum.ask).add(datum.bid).div(2);
         const mdy = datum.date.match(/^(\d\d)\/(\d\d)\/(\d\d\d\d)$/);
         const closes = moment.tz(`${mdy[3]}-${mdy[1]}-${mdy[2]} ${options.marketClosesAt}`, options.tz);
         return {
