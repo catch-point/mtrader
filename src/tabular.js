@@ -170,7 +170,9 @@ function parseValue(value) {
     if (!_.isString(value)) return value;
     const chr = value.charAt(0);
     if (chr == '"' || chr == '[' || chr == '{') return JSON.parse(value);
-    else return _.isFinite(value) ? +value : value;
+    const number = Number(value);
+    if (!Number.isNaN(number) || value == 'NaN') return number;
+    else return value;
 }
 
 function formatValue(value) {

@@ -375,7 +375,7 @@ function readTable(filename, size) {
             .on('error', error)
             .on('data', function(data) {
                 try {
-                    objects.push(_.mapObject(data, value => _.isFinite(value) ? +value : value));
+                    objects.push(_.mapObject(data, parseValue));
                 } catch (e) {
                     this.emit('error', e);
                 }
@@ -399,4 +399,10 @@ function writeTable(filename, table) {
         table.forEach(record => writer.write(record));
         writer.end();
     }), filename);
+}
+
+function parseValue(value) {
+    const number = Number(value);
+    if (!Number.isNaN(number) || value == 'NaN') return number;
+    else return value;
 }
