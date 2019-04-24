@@ -110,7 +110,9 @@ const functions = module.exports.functions = {
                 return statkit.corr(m, last);
             });
             if (!correlations.length) return 0;
-            else return _.max(correlations);
+            const ret = _.max(correlations);
+            if (isFinite(ret)) return ret;
+            else return null;
         };
     }, {
         args: "duration, expression, [criteria]",

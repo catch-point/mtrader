@@ -32,6 +32,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const Big = require('big.js');
 
 module.exports = function(name, args) {
     if (name.indexOf('.') <= 0) return;
@@ -61,15 +62,15 @@ const functions = module.exports.functions = {
     OBV(n) {
         return _.extend(bars => {
             const numerator = adj(bars).reduce(function(p, bar, i, bars){
-                if (i === 0) return 0;
+                if (i === 0) return Big(0);
                 const prior = bars[i - 1];
                 if (bar.close > prior.close)
-                    return p + (i + 1) * (bar.volume || 1);
+                    return p.add(Big(i + 1).times(bar.volume || 1));
                 if (bar.close < prior.close)
-                    return p - (i + 1) * (bar.volume || 1);
+                    return p.minus(Big(i + 1).times(bar.volume || 1));
                 return p;
-            }, 0);
-            return numerator / (bars.length * (bars.length - 1)) * 2;
+            }, Big(0));
+            return z(numerator.div(bars.length).div(bars.length - 1).times(2));
         }, {
             warmUpLength: n * 10
         });
@@ -79,17 +80,17 @@ const functions = module.exports.functions = {
         return _.extend(bars => {
             const ranges = adj(bars).map(function(bar,i,bars) {
                 const previous = bars[i-1];
-                if (!previous) return bar.high - bar.low;
+                if (!previous) return Big(bar.high).minus(bar.low);
                 return Math.max(
-                    bar.high - bar.low,
-                    Math.abs(bar.high - previous.close),
-                    Math.abs(bar.low - previous.close)
+                    Big(bar.high).minus(bar.low),
+                    Big(bar.high).minus(previous.close).abs(),
+                    Big(bar.low).minus(previous.close).abs()
                 );
             });
             const first = ranges.slice(0,n);
-            return ranges.slice(n).reduce(function(atr, range){
-                return (atr * (n-1) + range) / n;
-            }, sum(first) / first.length);
+            return z(ranges.slice(n).reduce(function(atr, range){
+                return (atr.times(n-1).add(range)).div(n);
+            }, sum(first).div(first.length)));
         }, {
             warmUpLength: n + 250
         });
@@ -102,47 +103,47 @@ const functions = module.exports.functions = {
             throw Error("Must be a positive number: " + limit);
         return _.extend(bars => {
             const up = function(bar) {
-                const a = bar.high <= this.ep ? this.af :
-                    Math.min(this.af + factor, limit);
+                const a = +bar.high <= +this.ep ? this.af :
+                    Math.min(Big(this.af).add(factor), limit);
                 const ep = Math.max(this.ep, bar.high);
-                const stop = this.stop + a * (ep - this.stop);
-                return (bar.low >= stop) ? {
+                const stop = Big(this.stop).add(Big(a).times(Big(ep).minus(this.stop)));
+                return +bar.low >= +stop ? {
                     trend: up,
                     stop: stop,
                     ep: ep,
                     af: a
                 } : {
                     trend: down,
-                    stop: ep - factor * (ep - bar.low),
+                    stop: Big(ep).minus(Big(factor).times(Big(ep).minus(bar.low))),
                     ep: bar.low,
                     af: factor
                 };
             };
             const down = function(bar) {
-                const a = bar.low >= this.ep ? this.af :
-                    Math.min(this.af + factor, limit);
+                const a = +bar.low >= +this.ep ? this.af :
+                    Math.min(Big(this.af).add(factor), limit);
                 const ep = Math.min(bar.low, this.ep);
-                const stop = this.stop - a * (this.stop - ep);
-                return (bar.high <= stop) ? {
+                const stop = Big(this.stop).minus(Big(a).times(Big(this.stop).minus(ep)));
+                return +bar.high <= +stop ? {
                     trend: down,
                     stop: stop,
                     ep: ep,
                     af: a
                 } : {
                     trend: up,
-                    stop: ep + factor * (bar.high -ep),
+                    stop: Big(ep).add(Big(factor).times(Big(bar.high).minus(ep))),
                     ep: bar.high,
                     af: factor
                 };
             };
-            return adj(bars).reduce(function(sar, bar) {
+            return z(adj(bars).reduce(function(sar, bar) {
                 return sar.trend(bar);
             }, {
                 trend: down,
                 stop: bars[0].high,
                 ep: bars[0].low,
                 af: factor
-            }).stop;
+            }).stop);
         }, {
             warmUpLength: n -1
         });
@@ -155,30 +156,30 @@ const functions = module.exports.functions = {
             throw Error("Must be a positive number: " + limit);
         return _.extend(bars => {
             const down = function(bar) {
-                const a = bar.low >= this.ep ? this.af :
-                    Math.min(this.af + factor, limit);
+                const a = +bar.low >= +this.ep ? this.af :
+                    Math.min(Big(this.af).add(factor), limit);
                 const ep = Math.min(bar.low, this.ep);
-                const stop = this.stop - a * (this.stop - ep);
-                return (bar.high <= stop) ? {
+                const stop = Big(this.stop).minus(Big(a).times(Big(this.stop).minus(ep)));
+                return +bar.high <= +stop ? {
                     trend: down,
                     stop: stop,
                     ep: ep,
                     af: a
                 } : {
                     trend: down,
-                    stop: bar.high - factor * (bar.high - bar.low),
+                    stop: Big(bar.high).minus(Big(factor).times(Big(bar.high).minus(bar.low))),
                     ep: bar.low,
                     af: factor
                 };
             };
-            return adj(bars).reduce(function(sar, bar) {
+            return z(adj(bars).reduce(function(sar, bar) {
                 return sar.trend(bar);
             }, {
                 trend: down,
                 stop: bars[0].high,
                 ep: bars[0].low,
                 af: factor
-            }).stop;
+            }).stop);
         }, {
             warmUpLength: n -1
         });
@@ -191,30 +192,30 @@ const functions = module.exports.functions = {
             throw Error("Must be a positive number: " + limit);
         return _.extend(bars => {
             const up = function(bar) {
-                const a = bar.high <= this.ep ? this.af :
-                    Math.min(this.af + factor, limit);
+                const a = +bar.high <= +this.ep ? this.af :
+                    Math.min(Big(this.af).add(factor), limit);
                 const ep = Math.max(this.ep, bar.high);
-                const stop = this.stop + a * (ep - this.stop);
-                return (bar.low >= stop) ? {
+                const stop = Big(this.stop).add(Big(a).times(Big(ep).minus(this.stop)));
+                return +bar.low >= +stop ? {
                     trend: up,
                     stop: stop,
                     ep: ep,
                     af: a
                 } : {
                     trend: up,
-                    stop: bar.low + factor * (bar.high - bar.low),
+                    stop: Big(bar.low).add(Big(factor).times(Big(bar.high).minus(bar.low))),
                     ep: bar.high,
                     af: factor
                 };
             };
-            return adj(bars).reduce(function(sar, bar) {
+            return z(adj(bars).reduce(function(sar, bar) {
                 return sar.trend(bar);
             }, {
                 trend: up,
                 stop: bars[0].low,
                 ep: bars[0].high,
                 af: factor
-            }).stop;
+            }).stop);
         }, {
             warmUpLength: n -1
         });
@@ -234,11 +235,12 @@ const functions = module.exports.functions = {
                 return total_volume;
             }, []);
             const total = total_volume[total_volume.length-1];
-            const target = p * total /100;
+            const target = +Big(p).times(total).div(100);
             const i = _.sortedIndex(total_volume, target);
             if (total_volume[i] <= target) return prices[i];
-            const ratio = (target - total_volume[i-1]) / (total_volume[i] - total_volume[i-1]);
-            return prices[i-1] + (prices[i] - prices[i-1]) * ratio;
+            const delta_volume = Big(total_volume[i]).minus(total_volume[i-1]);
+            const ratio = (Big(target).minus(total_volume[i-1])).div(delta_volume);
+            return z(Big(prices[i-1]).add(Big(prices[i]).minus(prices[i-1]).times(ratio)));
         }, {
             warmUpLength: n -1
         });
@@ -260,7 +262,7 @@ const functions = module.exports.functions = {
             if (!volume.length) return null;
             const below = volume.slice(0, _.sortedIndex(prices, target)+1);
             const total = volume.reduce((a, b) => a + b);
-            return below.reduce((a, b) => a + b) *100 / total;
+            return z(Big(below.reduce((a, b) => a + b)).times(100).div(total));
         }, {
             warmUpLength: (o || 0) + n -1
         });
@@ -272,17 +274,17 @@ const functions = module.exports.functions = {
     ROF(n) {
         return _.extend(bars => {
             const adj_bars = adj(bars);
-            return adj_bars.reduce(function(factor, bar, i, adj_bars) {
+            return z(adj_bars.reduce(function(factor, bar, i, adj_bars) {
                 if (i < 1) return factor;
-                else if (adj_bars[i-1].low < bar.low)
-                    return factor + 1;
-                else return factor - 1;
+                else if (+adj_bars[i-1].low < +bar.low)
+                    return factor.add(1);
+                else return factor.minus(1);
             }, adj_bars.reduce(function(factor, bar, i, adj_bars) {
                 if (i < 1) return factor;
-                else if (adj_bars[i-1].high < bar.high)
-                    return factor + 1;
-                else return factor - 1;
-            }, 0));
+                else if (+adj_bars[i-1].high < +bar.high)
+                    return factor.add(1);
+                else return factor.minus(1);
+            }, Big(0))));
         }, {
             warmUpLength: n -1
         });
@@ -295,15 +297,15 @@ const functions = module.exports.functions = {
 function adj(bars) {
     const last = _.last(bars);
     if (!_.has(last, 'adj_close')) return bars;
-    const norm = last.close / last.adj_close;
+    const norm = Big(last.close).div(last.adj_close);
     return bars.map(bar => {
-        const scale = bar.adj_close/bar.close * norm;
+        const scale = Big(bar.adj_close).div(bar.close).times(norm);
         if (Math.abs(scale -1) < 0.0000001) return bar;
         else return _.defaults({
-            open: decimal(bar.open*scale),
-            high: decimal(bar.high*scale),
-            low: decimal(bar.low*scale),
-            close: decimal(bar.close*scale)
+            open: +Big(bar.open||0).times(scale),
+            high: +Big(bar.high||0).times(scale),
+            low: +Big(bar.low||0).times(scale),
+            close: +Big(bar.close||0).times(scale)
         }, bar);
     });
 }
@@ -311,7 +313,7 @@ function adj(bars) {
 function getPrices(bars) {
     const prices = bars.reduce(function(prices, bar){
         return [
-            bar.high, bar.low, bar.open, bar.close
+            +bar.high, +bar.low, +bar.open, +bar.close
         ].reduce(function(prices, price){
             if (!(price > 0)) return prices;
             const i = _.sortedIndex(prices, price);
@@ -319,20 +321,20 @@ function getPrices(bars) {
             return prices;
         }, prices);
     }, []);
-    const median = prices[Math.floor(prices.length/2)];
-    while (_.last(prices) > median * 100) prices.pop();
+    const crazy = prices[Math.floor(prices.length/2)] * 100;
+    while (_.last(prices) > crazy) prices.pop(); // crazy high price
     return prices;
 }
 
 function reducePriceVolume(bars, prices, fn, memo) {
     return bars.reduce((memo, bar) => {
-        const oc = _.sortBy([bar.open || bar.close, bar.close]);
-        const low = bar.low || oc[0];
-        const high = bar.high || oc[1];
+        const oc = _.sortBy([+bar.open || +bar.close, +bar.close]);
+        const low = +bar.low || oc[0];
+        const high = +bar.high || oc[1];
         const l = _.sortedIndex(prices, low);
         const h = _.sortedIndex(prices, high)
         const range = l == h ? 1 : high - low + oc[1] - oc[0];
-        const unit = (bar.volume || 1) / range;
+        const unit = (+bar.volume || 1) / range;
         return prices.slice(l, h+1).reduce((memo, price, i, prices) => {
             // prices between open/close are counted twice
             const count = price > oc[0] && price <= oc[1] ? 2 : 1;
@@ -351,14 +353,10 @@ function getPriceVolume(bars, prices) {
     }, prices.map(_.constant(0)));
 }
 
-function decimal(float) {
-    return Math.round(float * 100000) / 100000;
-}
-
 function sum(values) {
     return values.reduce(function(memo, value){
-        return memo + (value || 0);
-    }, 0);
+        return memo.add(value || 0);
+    }, Big(0));
 }
 
 function asPositiveInteger(calc, msg) {
@@ -367,4 +365,11 @@ function asPositiveInteger(calc, msg) {
         if (n > 0 && _.isFinite(n) && Math.round(n) == n) return n;
     } catch (e) {}
     throw Error("Expected a literal positive interger in " + msg);
+}
+
+function z(big) {
+    if (!big) return big;
+    else if (typeof big == 'number') return big;
+    else if (!(big instanceof Big)) return big;
+    else return +big; // non-zero number
 }

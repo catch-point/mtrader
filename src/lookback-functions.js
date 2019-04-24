@@ -174,7 +174,8 @@ const functions = module.exports.functions = {
                     loss += change;
                 }
             });
-            return profit / -loss;
+            if (!loss) return null;
+            else return profit / -loss;
         }, {
             warmUpLength: n + calc.warmUpLength
         });
