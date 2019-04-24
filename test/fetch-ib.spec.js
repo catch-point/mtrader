@@ -30,6 +30,7 @@
  */
 
 const _ = require('underscore');
+const Big = require('big.js');
 const moment = require('moment-timezone');
 const like = require('./should-be-like.js');
 const IB = require('../src/fetch-ib.js');
@@ -224,7 +225,7 @@ describe("fetch-ib", function() {
             });
         });
         describe("should lookup CFE weekly futures symbols", function() {
-            _.range(moment().isoWeek() + 1, moment().isoWeek() + 6).map(week => {
+            _.range(moment().isoWeek() + 1, moment().isoWeek() + 4).map(week => {
                 const year = moment(`${moment().year()}-01-01`);
                 const one = year.add((10 - year.isoWeekday()) % 7, 'days');
                 const expiry = moment(one).add(week - 1, 'weeks');
@@ -333,8 +334,8 @@ describe("fetch-ib", function() {
                 end: '2017-03-22',
                 marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
             }).then(data => {
-                var scale = _.last(data).close / _.last(data).adj_close;
-                return data.map(datum => _.defaults({adj_close: datum.adj_close * scale}, datum));
+                var scale = Big(_.last(data).close).div(_.last(data).adj_close);
+                return data.map(datum => _.defaults({adj_close: +Big(datum.adj_close).times(scale)}, datum));
             }).should.eventually.be.like([
                 {ending:'2017-03-15T16:00:00-04:00',open:237.56,close:238.95,adj_close:237.91},
                 {ending:'2017-03-16T16:00:00-04:00',open:239.11,close:238.48,adj_close:237.45},
@@ -652,5 +653,19 @@ describe("fetch-ib", function() {
             begin: '2019-03-22T09:30:00-04:00',
             marketOpensAt: '02:00:00', marketClosesAt: '16:15:00', tz: tz
         }).then(d=>d.forEach(d=>console.log(JSON.stringify(d).replace(/"(\w+)":/g,'$1:')))||d);
+    });
+    it.skip("should return daily CLX", function() {
+        return client({
+            interval: 'day',
+            symbol: 'CLX', market: 'NYSE',
+            begin: '2019-04-18', end: '2019-04-24',
+            marketOpensAt: '09:30:00', marketClosesAt: '16:00:00', tz: tz
+        })
+         .then(d=>d.forEach(d=>console.log(require('util').inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
+         .should.eventually.be.like([
+            { ending: '2019-04-18T16:00:00-04:00', close: 153.48, adj_close: 152.53 },
+            { ending: '2019-04-22T16:00:00-04:00', close: 154.51, adj_close: 153.55 },
+            { ending: '2019-04-23T16:00:00-04:00', close: 153.7, adj_close: 153.7 }
+        ]);
     });
 });

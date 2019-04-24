@@ -31,6 +31,7 @@
 'use strict';
 
 const _ = require('underscore');
+const Big = require('big.js');
 const moment = require('moment-timezone');
 const d3 = require('d3-format');
 const logger = require('./logger.js');
@@ -124,7 +125,6 @@ function help() {
 
 module.exports = function() {
     const client = new IB(config('fetch.ib'));
-    const ib_tz = config('fetch.ib.tz') || (moment.defaultZone||{}).name || moment.tz.guess();
     const adjustments = Adjustments();
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
@@ -133,8 +133,8 @@ module.exports = function() {
         if (options.help) return help();
         const adj = isNotEquity(markets, options) ? null : adjustments;
         if (options.interval == 'lookup') return lookup(markets, client, options);
-        else if (options.interval == 'day') return interday(markets, adj, client, ib_tz, options);
-        else if (options.interval.charAt(0) == 'm') return intraday(markets, adj, client, ib_tz, options);
+        else if (options.interval == 'day') return interday(markets, adj, client, options);
+        else if (options.interval.charAt(0) == 'm') return intraday(markets, adj, client, options);
         else throw Error(`Unknown interval: ${options.interval}`);
     };
     self.open = () => client.open();
@@ -196,104 +196,97 @@ async function lookup(markets, client, options) {
     }, v => !v));
 }
 
-async function interday(markets, adjustments, client, ib_tz, options) {
+async function interday(markets, adjustments, client, options) {
     expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
     expect(options).to.have.property('tz').that.is.ok;
     const adjusts = adjustments && await adjustments(options);
     const market = markets[options.market];
-    const contract = toContract(market, options);
-    const whatToShow = market.whatToShow || 'MIDPOINT';
-    const end = periods(options).ceil(options.end || options.now);
-    const now = moment().tz(options.tz);
-    const end_past = end && end.isBefore(now);
-    const end_str = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
-    const endDateTime = whatToShow != 'ADJUSTED_LAST' ? end_str : '';
-    const duration = toDurationString(end_past ? end : now, options);
-    const barSize = toBarSizeSetting(options.interval);
-    const prices = await client.reqHistoricalData(contract, endDateTime, duration, barSize, whatToShow, 1, 1);
-    const adjust = whatToShow == 'TRADES' ? fromTrades :
-        whatToShow == 'ADJUSTED_LAST' ? fromAdjusted :
-        ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(whatToShow) ? fromMidpoint :
+    const prices = await reqHistoricalData(client, market, 1, 1, options);
+    const adjust =
+        market.whatToShow == 'ADJUSTED_LAST' || market.whatToShow == 'TRADES' ? fromTrades :
+        ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
         withoutAdjClase;
-    const result = adjust(prices, adjusts, ib_tz, options);
+    const result = adjust(prices, adjusts, options);
     const start = moment.tz(options.begin, options.tz).format();
     const finish = moment.tz(options.end || options.now, options.tz).format();
     let first = _.sortedIndex(result, {ending: start}, 'ending');
-    let last = end_past ? _.sortedIndex(result, {ending: finish}, 'ending') + 1 : result.length;
+    let last = _.sortedIndex(result, {ending: finish}, 'ending');
+    if (result[last] && result[last].ending == finish) last++;
     if (first <= 0 && last >= result.length) return result;
     else return result.slice(first, last);
 }
 
-async function intraday(markets, adjustments, client, ib_tz, options) {
+async function intraday(markets, adjustments, client, options) {
     expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
     expect(options).to.have.property('tz').that.is.ok;
     const adjusts = adjustments && await adjustments(options);
     const market = markets[options.market];
-    const contract = toContract(market, options);
-    const whatToShow = market.whatToShow || 'MIDPOINT';
-    const end = periods(options).ceil(options.end || options.now);
-    const now = moment().tz(options.tz);
-    const end_past = end && end.isBefore(now);
-    const end_str = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
-    const endDateTime = whatToShow != 'ADJUSTED_LAST' ? end_str : '';
-    const duration = toDurationString(end_past ? end : now, options);
-    const barSize = toBarSizeSetting(options.interval);
-    const prices = await client.reqHistoricalData(contract, endDateTime, duration, barSize, whatToShow, 0, 1);
-    const adjust = whatToShow == 'TRADES' ? fromTrades :
-        whatToShow == 'ADJUSTED_LAST' ? fromAdjusted :
-        ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(whatToShow) ? fromMidpoint :
+    const prices = await reqHistoricalData(client, market, 0, 2, options);
+    const adjust =
+        market.whatToShow == 'ADJUSTED_LAST' || market.whatToShow == 'TRADES' ? fromTrades :
+        ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
         withoutAdjClase;
-    const result = adjust(prices, adjusts, ib_tz, options);
+    const result = adjust(prices, adjusts, options);
     const start = moment.tz(options.begin, options.tz).format();
     const finish = moment.tz(options.end || options.now, options.tz).format();
     let first = _.sortedIndex(result, {ending: start}, 'ending');
-    let last = end_past ? _.sortedIndex(result, {ending: finish}, 'ending') + 1 : result.length;
+    let last = _.sortedIndex(result, {ending: finish}, 'ending');
+    if (result[last] && result[last].ending == finish) last++;
     if (first <= 0 && last >= result.length) return result;
     else return result.slice(first, last);
 }
 
-function fromTrades(prices, adjusts, ib_tz, options) {
+async function reqHistoricalData(client, market, useRTH, format, options) {
+    const contract = toContract(market, options);
+    const end = periods(options).ceil(options.end || options.now);
+    const now = moment().tz(options.tz);
+    const end_past = end && now.diff(end, 'days') > 0;
+    const whatToShow = market.whatToShow || 'MIDPOINT';
+    const endDateTime = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
+    const duration = toDurationString(endDateTime ? end : now, options);
+    const barSize = toBarSizeSetting(options.interval);
+    const reqHistoricalData = client.reqHistoricalData.bind(client, contract);
+    if (whatToShow != 'ADJUSTED_LAST')
+        return reqHistoricalData(endDateTime, duration, barSize, whatToShow, useRTH, format);
+    const prices = await reqHistoricalData(endDateTime, duration, barSize, 'TRADES', useRTH, format);
+    if (end_past) return prices;
+    const adj_prices = await reqHistoricalData('', toDurationString(now, options), barSize, 'ADJUSTED_LAST', useRTH, format);
+    let a = 0;
+    return prices.map(bar => {
+        while (a < adj_prices.length && adj_prices[a].time < bar.time) a++;
+        if (a >= adj_prices.length || adj_prices[a].time != bar.time) return bar;
+        else return {...bar, adj_close: adj_prices[a++].close};
+    });
+}
+
+function fromTrades(prices, adjusts, options) {
     return adjRight(prices, adjusts, options, (datum, adj, adj_split_only) => ({
-        ending: formatTime(datum.time, ib_tz, options),
-        open: parseCurrency(datum.open, adj_split_only),
-        high: parseCurrency(datum.high, adj_split_only),
-        low: parseCurrency(datum.low, adj_split_only),
-        close: parseCurrency(datum.close, adj_split_only),
+        ending: formatTime(datum.time, options),
+        open: +Big(datum.open).div(adj_split_only),
+        high: +Big(datum.high).div(adj_split_only),
+        low: +Big(datum.low).div(adj_split_only),
+        close: +Big(datum.close).div(adj_split_only),
         volume: datum.volume,
         wap: datum.wap,
         count: datum.count,
-        adj_close: Math.round(parseCurrency(datum.close, adj_split_only) * adj * 1000000) / 1000000
+        adj_close: datum.adj_close || +Big(datum.close).div(adj_split_only).times(adj)
     }));
 }
 
-function fromAdjusted(prices, adjusts, ib_tz, options) {
+function fromMidpoint(prices, adjusts, options) {
     return adjRight(prices, adjusts, options, (datum, adj, adj_split_only) => ({
-        ending: formatTime(datum.time, ib_tz, options),
-        open: parseCurrency(datum.open, adj),
-        high: parseCurrency(datum.high, adj),
-        low: parseCurrency(datum.low, adj),
-        close: parseCurrency(datum.close, adj),
-        volume: datum.volume,
-        wap: datum.wap,
-        count: datum.count,
-        adj_close: datum.close
+        ending: formatTime(datum.time, options),
+        open: +Big(datum.open).div(adj_split_only),
+        high: +Big(datum.high).div(adj_split_only),
+        low: +Big(datum.low).div(adj_split_only),
+        close: +Big(datum.close).div(adj_split_only),
+        adj_close: +Big(datum.close).div(adj_split_only).times(adj)
     }));
 }
 
-function fromMidpoint(prices, adjusts, ib_tz, options) {
-    return adjRight(prices, adjusts, options, (datum, adj, adj_split_only) => ({
-        ending: formatTime(datum.time, ib_tz, options),
-        open: parseCurrency(datum.open, adj_split_only),
-        high: parseCurrency(datum.high, adj_split_only),
-        low: parseCurrency(datum.low, adj_split_only),
-        close: parseCurrency(datum.close, adj_split_only),
-        adj_close: Math.round(parseCurrency(datum.close, adj_split_only) * adj * 1000000) / 1000000
-    }));
-}
-
-function withoutAdjClose(prices, adjusts, ib_tz, options) {
-    return adjRight(prices, adjusts, options, (datum, splits, adj) => ({
-        ending: formatTime(datum.time, ib_tz, options),
+function withoutAdjClose(prices, adjusts, options) {
+    return adjRight(prices, adjusts, options, (datum) => ({
+        ending: formatTime(datum.time, options),
         open: datum.open,
         high: datum.high,
         low: datum.low,
@@ -426,13 +419,9 @@ function toCashSymbol(market, symbol) {
     return `${symbol}.${market.currency}`;
 }
 
-function parseCurrency(string, adj_split_only) {
-    if (adj_split_only == 1 || Math.abs(adj_split_only -1) < 0.000001) return parseFloat(string);
-    else return Math.round(parseFloat(string) / adj_split_only * 10000) / 10000;
-}
-
 function adjRight(bars, adjustments, options, cb) {
-    const parseDate = bar => bar.time.replace(/^(\d\d\d\d)(\d\d)(\d\d)(\s)?\s*/, '$1-$2-$3$4');
+    const parseDate = bar => bar.time.length == 8 ?
+        moment.tz(bar.time, options.tz).format() : moment.tz(bar.time, 'X', options.tz).format()
     const result = [];
     let adj;
     let a = adjustments && adjustments.length;
@@ -442,16 +431,15 @@ function adjRight(bars, adjustments, options, cb) {
                 adj = adjustments[--a];
             }
         }
-        result[i] = cb(bars[i], adj && adj.adj || 1, adj && adj.adj_split_only || 1);
+        result[i] = cb(bars[i], Big(adj && adj.adj || 1), Big(adj && adj.adj_split_only || 1));
     }
     return result;
 }
 
-function formatTime(time, ib_tz, options) {
-    const time_str = time.replace(/^(\d\d\d\d)(\d\d)(\d\d)(\s)?\s*/, '$1-$2-$3$4');
-    const starting = moment.tz(time_str, ib_tz).tz(options.tz);
-    if (options.interval == 'day') return endOfDay(starting, options);
+function formatTime(time, options) {
+    if (options.interval == 'day') return endOfDay(time, options);
     const period = periods(options);
+    const starting = moment.tz(time, 'X', options.tz);
     return period.floor(starting.add(period.millis, 'milliseconds')).format();
 }
 

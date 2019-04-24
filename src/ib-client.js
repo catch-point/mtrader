@@ -35,7 +35,9 @@ const xml = require('fast-xml-parser');
 const IB = require('ib');
 const logger = require('./logger.js');
 const promiseThrottle = require('./throttle.js');
+const debounce = require('./debounce.js');
 const cache = require('./memoize-cache.js');
+const storage = require('./storage.js');
 
 let sequence_counter = Date.now() % 32768;
 function nextval() {
@@ -46,15 +48,16 @@ module.exports = function(settings) {
     const host = settings && settings.host || 'localhost';
     const port = settings && settings.port || 7496;
     const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : nextval();
+    const lib_dir = settings && settings.lib_dir;
     const self = new.target ? this : {};
-    let opened_client = createClient(host, port, clientId);
+    let opened_client = createClient(host, port, clientId, lib_dir);
     let promise_ib, closed = false;
     const open = () => {
         if (opened_client && !opened_client.disconnected) return opened_client.open();
         else return promise_ib = (promise_ib || Promise.reject())
           .catch(err => ({disconnected: true})).then(client => {
             if (!client.disconnected) return client;
-            opened_client = createClient(host, port, clientId);
+            opened_client = createClient(host, port, clientId, lib_dir);
             return opened_client.open();
         });
     };
@@ -74,7 +77,7 @@ module.exports = function(settings) {
 };
 
 
-function createClient(host, port, clientId) {
+function createClient(host, port, clientId, lib_dir) {
     const ib = new IB({host, port, clientId});
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
@@ -114,10 +117,14 @@ function createClient(host, port, clientId) {
         connecting: false,
         connected: false,
         disconnected: false,
-        close() {
-            if (!self.connecting && !self.connected) return Promise.resolve();
-            if (!self.disconnected) ib.disconnect();
-            return once_disconnected;
+        async close() {
+            let error;
+            await self.flush().catch(err => error = err);  // execDetails
+            if (self.connecting || self.connected) {
+                if (!self.disconnected) ib.disconnect();
+                await once_disconnected;
+            }
+            if (error) throw error;
         },
         open() {
             if (!self.connecting && !self.connected && !self.disconnected) {
@@ -128,11 +135,12 @@ function createClient(host, port, clientId) {
         }
     },
     nextValidId(ib),
-    managedAccounts(ib),
     accountUpdates(ib),
     reqPositions(ib),
     openOrders(ib),
     currentTime(ib),
+    requestFA(ib),
+    execDetails(ib, lib_dir),
     reqContract(ib),
     requestWithId(ib));
 }
@@ -156,26 +164,6 @@ function nextValidId(ib) {
                 const reqId = nextval();
                 next_valid_id_queue.push(ready);
                 ib.reqIds(1);
-            });
-        }
-    };
-};
-
-function managedAccounts(ib) {
-    const managed_accounts = [];
-    ib.on('managedAccounts', accountsList => {
-        _.compact(accountsList.split(',')).forEach(account => {
-            if (!~managed_accounts.indexOf(account))
-                managed_accounts.push(account);
-        });
-    });
-    return {
-        async reqManagedAccts() {
-            if (managed_accounts.length) return managed_accounts;
-            else return new Promise(ready => {
-                ib.once('managedAccounts', accountsList => {
-                    ready(_.compact(accountsList.split(',')));
-                });
             });
         }
     };
@@ -300,29 +288,222 @@ function openOrders(ib) {
             return ib.reqAutoOpenOrders(autoBind);
         }
     };
-};
+}
 
 function currentTime(ib) {
-    let time_end, time_fail;
+    let received, fail, promise = Promise.resolve();
     ib.on('error', function (err, info) {
         if (!info || !info.id && !isNormal(info)) {
-            if (time_fail) time_fail(err);
+            if (fail) fail(err);
         }
     }).on('disconnected', () => {
-        if (time_fail) time_fail(Error("TWS has disconnected"));
+        if (fail) fail(Error("TWS has disconnected"));
     }).on('currentTime', function(time) {
-        time_end(time);
+        received(time);
     });
     return {
         reqCurrentTime() {
-            return new Promise((ready, fail) => {
-                time_end = ready;
-                time_fail = fail;
+            return promise = promise.catch(err => {})
+              .then(() => new Promise((resolve, reject) => {
+                received = resolve;
+                fail = reject;
                 ib.reqCurrentTime();
-            });
+            }));
         }
     };
-};
+}
+
+function requestFA(ib) {
+    let received, fail, promise = Promise.resolve();
+    ib.on('error', function (err, info) {
+        if (!info || !info.id && !isNormal(info)) {
+            if (fail) fail(err);
+        }
+    }).on('disconnected', () => {
+        if (fail) fail(Error("TWS has disconnected"));
+    }).on('receiveFA', function(faDataType, faXmlData) {
+        received(_.flatten(_.values(parseXml(faXmlData)).map(_.values)).map(entry => {
+            if (entry.ListOfAccts && entry.ListOfAccts.String)
+                return Object.assign({}, entry, {ListOfAccts: [].concat(entry.ListOfAccts.String)});
+            else if (entry.ListOfAllocations && entry.ListOfAllocations.Allocation)
+                return Object.assign({}, entry, {ListOfAllocations: [].concat(entry.ListOfAllocations.Allocation)});
+            else return entry;
+        }));
+    });
+    return {
+        requestGroups() {
+            return promise = promise.catch(err => {})
+              .then(() => new Promise((resolve, reject) => {
+                received = resolve;
+                fail = reject;
+                return ib.requestFA(IB.FA_DATA_TYPE.GROUPS);
+            }));
+        },
+        requestProfiles() {
+            return promise = promise.catch(err => {})
+              .then(() => new Promise((resolve, reject) => {
+                received = resolve;
+                fail = reject;
+                return ib.requestFA(IB.FA_DATA_TYPE.PROFILES);
+            }));
+        },
+        requestAliases() {
+            return promise = promise.catch(err => {})
+              .then(() => new Promise((resolve, reject) => {
+                received = resolve;
+                fail = reject;
+                return ib.requestFA(IB.FA_DATA_TYPE.ALIASES);
+            }));
+        }
+    };
+}
+
+function execDetails(ib, lib_dir) {
+    const details = {};
+    const commissions = {};
+    const req_queue = {};
+    const managed_accounts = [];
+    const store = lib_dir && storage(lib_dir);
+    let flushed = false;
+    const reduce_details = async(filter, cb, initial) => {
+        const min_month = ((filter||{}).time||'').substring(0, 6);
+        const acctNumbers = (filter||{}).acctCode ? [filter.acctCode] :
+            _.union(managed_accounts, Object.keys(details));
+        return acctNumbers.reduce(async(promise, acctCode) => {
+            const memo = await promise;
+            if (!store) return Object.keys(details[acctCode]||{}).reduce(async(promise, month) => {
+                const memo = await promise;
+                return details[acctCode][month].reduce((memo, exe) => {
+                    const item = exe.execId in commissions ?
+                        Object.assign(exe, commissions[exe.execId]) : exe;
+                    return cb(memo, item);
+                }, memo);
+            }, initial);
+            else return store.open(acctCode, async(err, db) => {
+                if (err) throw err;
+                const executions = await db.collection('executions');
+                const months = _.union(executions.listNames(), Object.keys(details[acctCode]||{}))
+                    .filter(month => min_month <= month);
+                return executions.lockWith(months, async() => {
+                    return months.reduce(async(promise, month) => {
+                        const memo = await promise;
+                        const existing = executions.exists(month) ?
+                            await executions.readFrom(month) : [];
+                        let corrected = false;
+                        const acct = details[acctCode] = details[acctCode] || {};
+                        const values = month in acct ? _.values(existing.reduce((hash, exe) => {
+                            const key = exe.execId.substring(0, exe.execId.lastIndexOf('.'));
+                            corrected |= hash[key] && hash[key].execId > exe.execId;
+                            if (!hash[key] || hash[key].execId < exe.execId) hash[key] = exe;
+                            return hash;
+                        }, acct[month])) : existing;
+                        const result = values.reduce((memo, exe) => {
+                            const item = exe.execId in commissions ?
+                                Object.assign(exe, commissions[exe.execId]) : exe;
+                            return cb(memo, item);
+                        }, memo);
+                        if (corrected || existing.length < values.length) {
+                            await executions.replaceWith(values, month);
+                        }
+                        return result;
+                    }, memo);
+                });
+            });
+        }, Promise.resolve(initial));
+    };
+    const flusher = debounce(async() => {
+        return Promise.all(Object.keys(details).map(async(acctCode) => {
+            const min_month = _.min(Object.keys(details[acctCode]||{}));
+            return store && reduce_details({time: min_month}, (nil, exe) => {}, null);
+        })).catch(err => logger.error("Could not flush IB executions", err));
+    }, 10000); // 10s
+    ib.on('error', function (err, info) {
+        if (info && info.id && req_queue[info.id]) {
+            req_queue[info.id].reject(err);
+        }
+    }).on('disconnected', () => {
+        const err = Error("TWS has disconnected");
+        _.keys(req_queue).forEach(reqId => {
+            req_queue[reqId].reject(err);
+        });
+    }).on('managedAccounts', accountsList => {
+        _.compact(accountsList.split(',')).forEach(account => {
+            if (!~managed_accounts.indexOf(account))
+                managed_accounts.push(account);
+        });
+    }).on('execDetails', function(reqId, contract, exe) {
+        logger.log("execDetails", reqId, exe.time, exe.acctNumber, exe.side, exe.shares, exe.price);
+        const month = exe.time.substring(0, 6);
+        const key = exe.execId.substring(0, exe.execId.lastIndexOf('.'));
+        const acct = details[exe.acctNumber] = details[exe.acctNumber] || {};
+        const recent = acct[month] = acct[month] || {};
+        recent[key] = Object.assign({},
+            {conId: contract.conId, symbol: contract.symbol, secType: contract.secType},
+            exe
+        );
+        if (flushed) flusher.flush();
+        else flusher();
+    }).on('commissionReport', function(commissionReport) {
+        logger.log("commissionReport", commissionReport.commission, commissionReport.currency, commissionReport.realizedPNL);
+        commissions[commissionReport.execId] = commissionReport;
+        if (flushed) flusher.flush();
+        else flusher();
+    }).on('execDetailsEnd', function(reqId) {
+        if (!req_queue[reqId]) return logger.warn('execDetailsEnd', reqId);
+        (async() => {
+            const filter = req_queue[reqId].filter || {};
+            const executions = await reduce_details(filter, (executions, exe) => {
+                if (filter.clientId && filter.clientId != exe.clientId) return executions;
+                else if (filter.acctCode && filter.acctCode != exe.acctNumber) return executions;
+                else if (filter.time && filter.time > exe.time) return executions;
+                else if (filter.symbol && filter.symbol != exe.symbol) return executions;
+                else if (filter.secType && filter.secType != exe.secType) return executions;
+                else if (filter.exchange && filter.exchange != exe.exchange) return executions;
+                else if (filter.side && filter.side != exe.side) return executions;
+                executions.push(exe);
+                return executions;
+            }, []);
+            return req_queue[reqId].resolve(executions);
+        })().catch(err => req_queue[reqId].reject(err));
+    });
+    return {
+        async reqManagedAccts() {
+            if (managed_accounts.length) return managed_accounts;
+            else return new Promise(ready => {
+                ib.once('managedAccounts', accountsList => {
+                    ready(_.compact(accountsList.split(',')));
+                });
+            });
+        },
+        reqExecutions(filter) {
+            return new Promise((ready, fail) => {
+                const reqId = nextval();
+                req_queue[reqId] = {
+                    reqId,
+                    filter: filter,
+                    resolve(resolution) {
+                        ready(resolution);
+                        setImmediate(() => {
+                            delete req_queue[reqId];
+                        });
+                    },
+                    reject(err) {
+                        fail(err);
+                        setImmediate(() => {
+                            delete req_queue[reqId];
+                        });
+                    }
+                };
+                logger.log('reqExecutions', filter || '');
+                ib.reqExecutions(reqId, filter || {});
+            });
+        },
+        flush() {
+            flushed = true;
+            return flusher.flush();
+        }
+    };
+}
 
 function reqContract(ib) {
     const req_queue = {};
@@ -412,9 +593,9 @@ function requestWithId(ib) {
                     });
                 }
             };
-            logger.log(cmd, args.map(arg => {
+            logger.log(cmd, ...args.map(arg => {
                 return arg && (arg.conId || arg.localSymbol || arg.symbol) || arg;
-            }).join(', '));
+            }));
             ib[cmd].call(ib, reqId, ...args);
         });
     }, 50);
@@ -450,7 +631,7 @@ function requestWithId(ib) {
     }).on('historicalDataEnd', (reqId, start, end) => {
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].historicalData);
     }).on('fundamentalData', (reqId, data) => {
-        if (req_queue[reqId]) req_queue[reqId].resolve(xml.parse(data, {ignoreAttributes: false, attributeNamePrefix: '', textNodeName: 'value'}));
+        if (req_queue[reqId]) req_queue[reqId].resolve(parseXml(data));
     }).on('tickEFP', function (tickerId, tickType, basisPoints, formattedBasisPoints,
             impliedFuturesPrice, holdDays, futureLastTradeDate, dividendImpact, dividendsToLastTradeDate) {
         const tick = _.omit({
@@ -519,27 +700,6 @@ function requestWithId(ib) {
     }).on('positionMultiEnd', function(reqId) {
         ib.cancelPositionsMulti(+reqId);
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].positionMulti);
-    }).on('execDetails', function(reqId, contract, execution) {
-        if (!req_queue[reqId]) return logger.warn('execDetails', reqId, contract, execution);
-        const execDetails = req_queue[reqId].execDetails = req_queue[reqId].execDetails || {};
-        execDetails[execution.execId] = Object.assign(
-            execDetails[execution.execId] || {},
-            {conId: contract.conId},
-            execution
-        );
-    }).on('commissionReport', function(commissionReport) {
-        _.values(req_queue).filter(req => req.cmd == 'reqExecutions').forEach(req => {
-            const execDetails = req.execDetails = req.execDetails || {};
-            execDetails[commissionReport.execId] = Object.assign(
-                execDetails[commissionReport.execId] || {},
-                commissionReport
-            );
-        });
-    }).on('execDetailsEnd', function(reqId) {
-        _.defer(() => {
-            if (!req_queue[reqId]) return logger.warn('execDetailsEnd', reqId);
-            req_queue[reqId].resolve(req_queue[reqId].execDetails);
-        });
     });
     return {
         reqContractDetails(contract) {
@@ -573,9 +733,6 @@ function requestWithId(ib) {
         },
         calculateOptionPrice(contract, volatility, underPrice) {
             return request('calculateOptionPrice', contract, volatility, underPrice);
-        },
-        reqExecutions(filter) {
-            return request('reqExecutions', filter || {});
         }
     };
 }
@@ -588,6 +745,14 @@ function isTickComplete(ib, req) {
     if (_.difference(genericTickNameArray, _.keys(req.tickData)).length) return false;
     ib.cancelMktData(req.reqId);
     return true;
+}
+
+function parseXml(data) {
+    return xml.parse(data, {
+        ignoreAttributes: false,
+        attributeNamePrefix: '',
+        textNodeName: 'value'
+    });
 }
 
 const tick_type_names = _.object(_.values(IB.TICK_TYPE), _.keys(IB.TICK_TYPE).map(name => name.toLowerCase()));

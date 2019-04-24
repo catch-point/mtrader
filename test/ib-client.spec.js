@@ -287,14 +287,16 @@ describe("ib-client", function() {
     it("should support reqAccountUpdate", function() {
         return client.reqAccountUpdate('All').should.eventually.be.like({Currency:_.isArray});
     });
-    it.skip("should support reqAccountUpdatesMulti", function() {
+    it("should support reqAccountUpdatesMulti", function() {
         return client.reqAccountUpdatesMulti('All', '', true);
     });
     it("should support reqPositions", function() {
-        return client.reqPositions();
+        return client.reqPositions().should.eventually.be.an('object');
     });
-    it.skip("should support reqPositionsMulti", function() {
-        return client.reqPositionsMulti('All').then(d=>console.log(d)||d);
+    it("should support reqPositionsMulti", async() => {
+        const accts = await client.reqManagedAccts();
+        const acct = accts[accts.length-1];
+        return client.reqPositionsMulti(acct).should.eventually.have.property(acct);
     });
     it("should support accountSummary", function() {
         return client.reqAccountSummary('All').should.eventually.be.like({All:{Currency:_.isArray}});
@@ -302,7 +304,7 @@ describe("ib-client", function() {
     it.skip("should support reqMktData on option", function() {
         this.timeout(100000);
         return client.reqMktData({
-            localSymbol: 'SPX   190621C02900000',
+            localSymbol: 'SPX   190719C02925000',
             secType: 'OPT',
             exchange: 'SMART',
             currency: 'USD'
@@ -311,12 +313,27 @@ describe("ib-client", function() {
     it.skip("should support reqRealTimeBars on option", function() {
         this.timeout(100000);
         return client.reqRealTimeBars({
-                localSymbol: 'SPX   190621C02900000',
+                localSymbol: 'SPX   190719C02925000',
                 secType: 'OPT',
                 exchange: 'SMART',
                 currency: 'USD'
             },
             'MIDPOINT'
+        ).then(d=>console.log(d)||d);
+    });
+    it.skip("should return 30 minute intervals on option", function() {
+        return client.reqHistoricalData({
+                localSymbol: 'SPX   190719C02925000',
+                secType: 'OPT',
+                exchange: 'SMART',
+                currency: 'USD'
+            },
+            '', // endDateTime
+            `${1*60*60} S`, // durationString
+            '30 mins', // barSizeSetting
+            'MIDPOINT', // whatToShow
+            0, // useRTH
+            1, // formatDate {1: yyyyMMdd HH:mm:ss, 2: epoc seconds}
         ).then(d=>console.log(d)||d);
     });
     it.skip("should calculateImpliedVolatility", function() {
@@ -349,5 +366,14 @@ describe("ib-client", function() {
             currency: 'USD'
         }, 'ReportsFinSummary').should.eventually.have.property('FinancialSummary');
         //.then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
+    });
+    it("should requestFA Groups", function() {
+        return client.requestGroups().should.eventually.be.an('array');
+    });
+    it("should requestFA Profiles", function() {
+        return client.requestProfiles().should.eventually.be.an('array');
+    });
+    it("should requestFA Aliases", function() {
+        return client.requestAliases().should.eventually.be.an('array');
     });
 });
