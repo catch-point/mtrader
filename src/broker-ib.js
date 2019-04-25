@@ -53,10 +53,6 @@ function helpSettings() {
             account: {
                 usage: '<string>',
                 description: "IB account and/or model"
-            },
-            clientId: {
-                usage: '<number>',
-                description: "IB clientId number"
             }
         }
     }]);
@@ -330,7 +326,6 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
     if (options.begin) return positions.filter(position => asof_format <= position.asof);
     else if (!positions.length || !_.last(positions).position) return [];
     else return [_.last(positions)];
-      
 }
 
 function changePosition(multiplier, prev_bar, details, bar, position) {

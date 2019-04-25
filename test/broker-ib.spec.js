@@ -38,7 +38,7 @@ const IB = require('../src/broker-ib.js');
 
 describe("broker-ib", function() {
     this.timeout(100000);
-    var client = new IB({account: 'All', clientId:0});
+    var client = new IB({account: 'All'});
     before(function() {
         return client.open().catch(err => {
             client = null;
