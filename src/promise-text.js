@@ -1,6 +1,6 @@
 // promise-text.js
 /*
- *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2019 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -32,6 +32,7 @@
 
 const http = require('http');
 const https = require('https');
+const parse_url = require('url').parse;
 const _ = require('underscore');
 const logger = require('./logger.js');
 
@@ -44,7 +45,7 @@ module.exports = function(url) {
         outstanding.push(pending);
         logger.log(url.path || url);
         const protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
-        protocol.get(url, res => {
+        protocol.get({...parse_url(url), timeout: 10*1000}, res => {
             const buffer = [];
             saveCookies(url.headers, res.headers);
             res.setEncoding('utf8');
