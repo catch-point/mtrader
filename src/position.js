@@ -57,12 +57,11 @@ module.exports = function(collect) {
             const opts = _.defaults({
                 now: moment(options.now).valueOf()
             }, _.pick(options, _.keys(_.first(help).options)));
-            return Broker(opts).then(broker => {
-                return collective2(collect, broker, opts).then(ret => {
-                    return broker.close().then(() => ret);
-                }, err => {
-                    return broker.close().then(() => Promise.reject(err));
-                });
+            const broker = Broker(opts);
+            return collective2(collect, broker, opts).then(ret => {
+                return broker.close().then(() => ret);
+            }, err => {
+                return broker.close().then(() => Promise.reject(err));
             });
         });
     }, {

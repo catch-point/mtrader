@@ -175,7 +175,7 @@ function accountUpdates(ib) {
     let account_updates_end, account_updates_fail;
     let promise_account_updates = Promise.resolve();
     ib.on('error', function (err, info) {
-        if (!info || !info.id && !isNormal(info)) {
+        if (!isNormal(info)) {
             if (account_updates_fail) account_updates_fail(err);
         }
     }).on('disconnected', () => {
@@ -209,6 +209,7 @@ function accountUpdates(ib) {
                 current_account = acctCode;
                 account_updates_end = ready;
                 account_updates_fail = fail;
+                logger.log('reqAccountUpdates', acctCode);
                 ib.reqAccountUpdates(true, acctCode);
             }));
         }
@@ -220,7 +221,7 @@ function reqPositions(ib) {
     let positions_end, positions_fail;
     let promise_positions = Promise.resolve();
     ib.on('error', function (err, info) {
-        if (!info || !info.id && !isNormal(info)) {
+        if (!isNormal(info)) {
             if (positions_fail) positions_fail(err);
         }
     }).on('disconnected', () => {
@@ -252,19 +253,33 @@ function openOrders(ib) {
     let orders_end, orders_fail;
     let promise_orders = Promise.resolve();
     ib.on('error', function (err, info) {
-        if (!info || !info.id && !isNormal(info)) {
+        if (!isNormal(info)) {
             if (orders_fail) orders_fail(err);
         }
     }).on('disconnected', () => {
         if (orders_fail) orders_fail(Error("TWS has disconnected"));
     }).on('openOrder', function(orderId, contract, order, orderStatus) {
-        open_orders[orderId] = Object.assign({}, order, orderStatus);
-    }).on('orderStatus', function(orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice) {
-        open_orders[orderId] = Object.assign({}, open_orders[orderId], orderStatus);
+        const status = orderStatus.status;
+        if (status == 'Filled' || status == 'Cancelled' || status == 'Inactive') delete open_orders[orderId];
+        else open_orders[orderId] = Object.assign(
+            {conId: contract.conId, symbol: contract.symbol, secType: contract.secType},
+            open_orders[orderId],
+            order, orderStatus
+        );
+    }).on('orderStatus', function(orderId, status, filled, remaining, avgFillPrice,
+            permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice) {
+        const order = open_orders[orderId] || {};
+        logger.info(`${order.orderRef || orderId}`, order.action, order.symbol,
+            status, order.orderType, order.tif, filled, '/', remaining, avgFillPrice);
+        if (status == 'Filled' || status == 'Cancelled' || status == 'Inactive') delete open_orders[orderId];
+        else open_orders[orderId] = Object.assign({}, order, {
+            status, filled, remaining, avgFillPrice, permId, parentId,
+            lastFillPrice, clientId, whyHeld, mktCapPrice
+        });
     }).on('openOrderEnd', function() {
         const ready = orders_end;
         _.defer(() => {
-            if (ready) ready(open_orders);
+            if (ready) ready(_.values(open_orders));
         });
     });
     return {
@@ -273,6 +288,7 @@ function openOrders(ib) {
               .then(() => new Promise((ready, fail) => {
                 orders_end = ready;
                 orders_fail = fail;
+                logger.log('reqOpenOrders');
                 ib.reqOpenOrders();
             }));
         },
@@ -281,10 +297,12 @@ function openOrders(ib) {
               .then(() => new Promise((ready, fail) => {
                 orders_end = ready;
                 orders_fail = fail;
-                ib.reqOpenOrders();
+                logger.log('reqAllOpenOrders');
+                ib.reqAllOpenOrders();
             }));
         },
         async reqAutoOpenOrders(autoBind) {
+            logger.log('reqAutoOpenOrders', autoBind);
             return ib.reqAutoOpenOrders(autoBind);
         }
     };
@@ -293,7 +311,7 @@ function openOrders(ib) {
 function currentTime(ib) {
     let received, fail, promise = Promise.resolve();
     ib.on('error', function (err, info) {
-        if (!info || !info.id && !isNormal(info)) {
+        if (!isNormal(info)) {
             if (fail) fail(err);
         }
     }).on('disconnected', () => {
@@ -316,7 +334,7 @@ function currentTime(ib) {
 function requestFA(ib) {
     let received, fail, promise = Promise.resolve();
     ib.on('error', function (err, info) {
-        if (!info || !info.id && !isNormal(info)) {
+        if (!isNormal(info)) {
             if (fail) fail(err);
         }
     }).on('disconnected', () => {
@@ -373,7 +391,7 @@ function execDetails(ib, lib_dir) {
             const memo = await promise;
             if (!store) return Object.keys(details[acctCode]||{}).reduce(async(promise, month) => {
                 const memo = await promise;
-                return details[acctCode][month].reduce((memo, exe) => {
+                return _.values(details[acctCode][month]).reduce((memo, exe) => {
                     const item = exe.execId in commissions ?
                         Object.assign(exe, commissions[exe.execId]) : exe;
                     return cb(memo, item);
@@ -432,7 +450,7 @@ function execDetails(ib, lib_dir) {
                 managed_accounts.push(account);
         });
     }).on('execDetails', function(reqId, contract, exe) {
-        logger.log("execDetails", reqId, exe.time, exe.acctNumber, exe.side, exe.shares, exe.price);
+        logger.info("execDetails", reqId, exe.time, exe.acctNumber, exe.side, exe.shares, exe.price);
         const month = exe.time.substring(0, 6);
         const key = exe.execId.substring(0, exe.execId.lastIndexOf('.'));
         const acct = details[exe.acctNumber] = details[exe.acctNumber] || {};
@@ -444,7 +462,7 @@ function execDetails(ib, lib_dir) {
         if (flushed) flusher.flush();
         else flusher();
     }).on('commissionReport', function(commissionReport) {
-        logger.log("commissionReport", commissionReport.commission, commissionReport.currency, commissionReport.realizedPNL);
+        logger.info("commissionReport", commissionReport.commission, commissionReport.currency, commissionReport.realizedPNL == Number.MAX_VALUE ? '' : commissionReport.realizedPNL);
         commissions[commissionReport.execId] = commissionReport;
         if (flushed) flusher.flush();
         else flusher();
@@ -563,6 +581,8 @@ function reqContract(ib) {
 }
 
 function isNormal(info) {
+    if (!info) return false;
+    else if (info.id && info.id > 0) return false;
     const code = (info||{}).code;
     return code == 1101 || ~[2104, 2106, 2107, 2108].indexOf(code) ||  code >= 2000 && code < 3000;
 }

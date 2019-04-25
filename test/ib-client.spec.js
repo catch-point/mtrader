@@ -376,4 +376,7 @@ describe("ib-client", function() {
     it("should requestFA Aliases", function() {
         return client.requestAliases().should.eventually.be.an('array');
     });
+    it.skip("should reqOpenOrders", function() {
+        return client.reqOpenOrders().then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d).should.eventually.be.an('array');
+    })
 });

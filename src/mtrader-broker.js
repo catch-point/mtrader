@@ -42,11 +42,10 @@ const config = require('./config.js');
 const Broker = require('./broker.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
-const readCallSave = require('./read-call-save.js');
 
 function usage(command) {
     return command.version(require('../package.json').version)
-        .description("Changes workers orders to align with signal orders in result")
+        .description("Retrieve or execute orders in broker account")
         .usage('<action> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
         .option('-q, --quiet', "Include less information about what the system is doing")
@@ -57,10 +56,16 @@ function usage(command) {
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
         .option('--log <filename>', "Also appends log messages to given file")
         .option('--load <filename>', "Read the given session settings")
+        .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('-o, --offline', "Disable data updates")
         .option('--amend', "If the result should include option properties from the input")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
-        .option('--save <file>', "JSON file to write the result into");
+        .option('--output <file>', "CSV file to write the result into")
+        .option('--launch <program>', "Program used to open the output file")
+        .option('--reverse', "Reverse the order of the rows")
+        .option('-a, --append', "Append the new rows to the end of the file")
+        .option('-z, --gzip', "Compress the output file")
+        .option('--transpose', "Swap the columns and rows");
 }
 
 if (require.main === module) {
@@ -71,7 +76,8 @@ if (require.main === module) {
         process.on('SIGTERM', () => broker.close());
         const action = program.args.join(' ');
         const save = config('save');
-        return readCallSave(action, broker, save)
+        return broker({...config.options(), action})
+          .then(result => tabular(result, config()))
           .catch(err => logger.error(err, err.stack))
           .then(() => broker.close());
     } else {
@@ -84,7 +90,7 @@ if (require.main === module) {
 }
 
 function createInstance(program) {
-    const broker = new Broker(config());
+    const broker = new Broker(config.options());
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
@@ -104,13 +110,9 @@ function createInstance(program) {
 function shell(desc, broker, app) {
     app.on('quit', () => broker.close());
     app.on('exit', () => broker.close());
-    app.cmd('broker', desc, (cmd, sh, cb) => {
-        readCallSave(null, broker, config('save'))
-          .then(() => sh.prompt(), cb);
-    });
-    app.cmd("broker :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
-        readCallSave(cmd.params.name, broker, config('save'))
-          .then(() => sh.prompt(), cb);
+    app.cmd("broker :name([a-zA-Z0-9]+)", desc, (cmd, sh, cb) => {
+        broker({...config.options(), action: cmd.params.name})
+          .then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
 // help
 return broker({help: true}).then(_.first).then(info => {

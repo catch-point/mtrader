@@ -41,7 +41,6 @@ const expect = require('chai').expect;
 const quote = "https://finance.yahoo.com/lookup?s={symbol}";
 const download = "https://query1.finance.yahoo.com/v7/finance/download/{symbol}?period1={period1}&period2={period2}&interval={interval}&events={events}&crumb={crumb}"
 const autoc = "http://d.yimg.com/aq/autoc";
-const quotes = "http://download.finance.yahoo.com/d/quotes.csv";
 
 module.exports = function() {
     const agent = promiseHistoryAgent();

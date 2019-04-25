@@ -60,6 +60,7 @@ const Collect = require('./mtrader-collect.js');
 const Optimize = require('./mtrader-optimize.js');
 const Bestsignals = require('./mtrader-bestsignals.js');
 const Strategize = require('./mtrader-strategize.js');
+const Broker = require('./mtrader-broker.js');
 
 const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
@@ -74,7 +75,7 @@ const program = require('commander')
     .command('optimize [identifier]', "Optimizes the parameter values in the given portfolio")
     .command('bestsignals [identifier]', "Determines the best signals for the given portfolio")
     .command('strategize [identifier]', "Modifies a strategy looking for improvements")
-    .command('collective2 [identifier]', "Changes workers orders to align with collected signal orders")
+    .command('broker [action]', "Retrieve or execute orders in broker account")
     .option('-V, --version', "Output the version number(s)")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-q, --quiet', "Include less information about what the system is doing")
@@ -146,7 +147,7 @@ if (require.main === module) {
             app.use(shellError(settings));
         });
         settings.sensitive = null; // disable case insensitivity in commands
-        const mtrader = createInstance();
+        const mtrader = createInstance(config.options());
         mtrader.shell(app);
         process.on('SIGINT', () => app.quit());
         process.on('SIGTERM', () => app.quit());
@@ -158,7 +159,7 @@ if (require.main === module) {
     } else if (!program_args_version && config('listen') &&
             !~['stop','config','fetch','version'].indexOf(program.args[0]) &&
             !~['stop','config','fetch','version'].indexOf(program.args[0].name && program.args[0].name())) {
-        const mtrader = createInstance();
+        const mtrader = createInstance(config.options());
         const server = mtrader.listen(config('listen'));
         process.on('SIGINT', () => mtrader.close());
         process.on('SIGTERM', () => mtrader.close());
@@ -188,15 +189,16 @@ function parseKnownOptions(program, argv) {
     });
 }
 
-function createInstance() {
-    const config = new Config();
-    const date = new Dater();
-    const fetch = new Fetch();
-    const quote = new Quote();
-    const collect = new Collect();
-    const optimize = new Optimize();
-    const bestsignals = new Bestsignals();
-    const strategize = new Strategize();
+function createInstance(settings) {
+    const config = new Config(settings);
+    const date = new Dater(settings);
+    const fetch = new Fetch(settings);
+    const quote = new Quote(settings);
+    const collect = new Collect(settings);
+    const optimize = new Optimize(settings);
+    const bestsignals = new Bestsignals(settings);
+    const strategize = new Strategize(settings);
+    const broker = new Broker(settings);
     const servers = [];
     let closed;
     return Object.assign(new.target ? this : {}, {
@@ -218,6 +220,7 @@ function createInstance() {
         optimize: optimize,
         bestsignals: bestsignals,
         strategize: strategize,
+        broker: broker,
         seed(number) {
             optimize.seed(number);
             strategize.seed(number);
@@ -235,8 +238,9 @@ function createInstance() {
                     collect.close(),
                     optimize.close(),
                     bestsignals.close(),
-                    strategize.close()
-                ]);
+                    strategize.close(),
+                    broker.close()
+                ]).then(() => {});
             });
         },
         async shell(app) {
@@ -248,7 +252,8 @@ function createInstance() {
                 collect.shell(app),
                 optimize.shell(app),
                 bestsignals.shell(app),
-                strategize.shell(app)
+                strategize.shell(app),
+                broker.shell(app)
             ]).catch(err => console.error("Could not complete shell setup", err));
             app.cmd('exec :expression([\\s\\S]+)', "Evaluate common expressions using the values in this session", (cmd, sh, cb) => {
                 try {
@@ -367,6 +372,7 @@ function listen(mtrader, address) {
             .handle('optimize', mtrader.optimize)
             .handle('bestsignals', mtrader.bestsignals)
             .handle('strategize', mtrader.strategize)
+            .handle('broker', mtrader.broker)
             .handle('tz', p => (moment.defaultZone||{}).name || moment.tz.guess())
             .handle('version', () => version.toString())
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
