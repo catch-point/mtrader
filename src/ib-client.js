@@ -51,16 +51,15 @@ module.exports = function(settings) {
     const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : nextval();
     const lib_dir = settings && settings.lib_dir;
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
-    const eod = (settings||{}).eod || moment.tz('2000-03-01 17:05:00', 'America/New_York').tz(ib_tz).format('HH:mm:ss');
     const self = new.target ? this : {};
-    let opened_client = createClient(host, port, clientId, lib_dir, eod, ib_tz);
+    let opened_client = createClient(host, port, clientId, lib_dir, ib_tz);
     let promise_ib, closed = false;
     const open = () => {
         if (opened_client && !opened_client.disconnected) return opened_client.open();
         else return promise_ib = (promise_ib || Promise.reject())
           .catch(err => ({disconnected: true})).then(client => {
             if (!client.disconnected) return client;
-            opened_client = createClient(host, port, clientId, lib_dir, eod, ib_tz);
+            opened_client = createClient(host, port, clientId, lib_dir, ib_tz);
             return opened_client.open();
         });
     };
@@ -80,7 +79,7 @@ module.exports = function(settings) {
 };
 
 
-function createClient(host, port, clientId, lib_dir, eod, ib_tz) {
+function createClient(host, port, clientId, lib_dir, ib_tz) {
     const ib = new IB({host, port, clientId});
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
@@ -121,7 +120,7 @@ function createClient(host, port, clientId, lib_dir, eod, ib_tz) {
         reqPositions(ib),
         currentTime(ib),
         requestFA(ib),
-        accountUpdates(ib, store, ib_tz, eod),
+        accountUpdates(ib, store, ib_tz),
         openOrders(ib, store, ib_tz, clientId),
         execDetails(ib, store),
         reqContract(ib),
@@ -278,12 +277,11 @@ function requestFA(ib) {
     };
 }
 
-function accountUpdates(ib, store, ib_tz, eod) {
-    const account_updates = {};
-    let current_account;
+function accountUpdates(ib, store, ib_tz) {
     const managed_accounts = [];
-    let account_updates_end, account_updates_fail;
-    let promise_account_updates = Promise.resolve();
+    const subscriptions = {};
+    const req_queue = {};
+    let closed = false;
     const save = async(acctCode, month, summary) => {
         if (!store) return summary;
         return store.open(acctCode, async(err, db) => {
@@ -292,7 +290,11 @@ function accountUpdates(ib, store, ib_tz, eod) {
             return balances.lockWith([month], async() => {
                 const values = balances.exists(month) ?
                     await balances.readFrom(month) : [];
-                if (!values.length || _.last(values).time != summary.time) {
+                const last_time = (_.last(values)||{}).time || '';
+                const last_net = (_.last(values)||{}).NetLiquidationByCurrency;
+                const current_time = summary.time || '';
+                const current_net = _.omit(summary.NetLiquidationByCurrency,'BASE');
+                if (!values.length || last_time < current_time && !_.isMatch(last_net, current_net)) {
                     const replacement = values.concat(summary);
                     await balances.replaceWith(replacement, month);
                 }
@@ -300,70 +302,70 @@ function accountUpdates(ib, store, ib_tz, eod) {
             });
         });
     };
-    const nextEod = () => {
-        const now = moment().tz(ib_tz);
-        const end = moment.tz(`${now.format('YYYY-MM-DD')} ${eod}`, ib_tz);
-        if (end.isBefore(now)) end.add(1, 'day');
-        return end.diff(now);
-    };
-    const setTimer = delay => {
-        return setTimeout(async() => {
-            await Promise.all(managed_accounts.map(acctCode => {
-                return reqAccountUpdate(acctCode);
-            })).catch(err => logger.error("Could not flush IB orders", err));
-            timer = setTimer(nextEod());
-        }, delay).unref();
-    };
-    const timer = setTimer(nextEod());
+    const flush = debounce(async() => {
+        if (!store) return;
+        return Promise.all(_.values(subscriptions).map(reqId => {
+            const summary = req_queue[reqId].summary;
+            const month = moment().tz(ib_tz).format('YYYYMM');
+            return save(summary.AccountCode, month, summary);
+        })).catch(err => logger.error("Could not flush IB balances", err));
+    }, 60*1000); // 1m
     ib.on('error', function (err, info) {
-        if (!isNormal(info)) {
-            if (account_updates_fail) account_updates_fail(err);
+        if (info && info.id && req_queue[info.id]) {
+            req_queue[info.id].fail(err);
         }
     }).on('disconnected', () => {
-        if (account_updates_fail) account_updates_fail(Error("TWS has disconnected"));
+        const err = Error("TWS has disconnected");
+        Object.keys(req_queue).forEach(reqId => {
+            req_queue[reqId].fail(err);
+        });
     }).on('managedAccounts', accountsList => {
         _.compact(accountsList.split(',')).forEach(account => {
             if (!~managed_accounts.indexOf(account))
                 managed_accounts.push(account);
         });
-    }).on('updateAccountValue', function(key, value, currency, accountName) {
-        current_account = accountName;
-        const acct = account_updates[accountName] = account_updates[accountName] || {};
-        acct[key] = currency ? acct[key] || (currency == value ? [] : {}) : value;
-        if (_.isArray(acct[key])) acct[key].push(value);
-        else if (currency) acct[key][currency] = value;
     }).on('updateAccountTime', function(timestamp) {
-        const acct = account_updates[current_account] = account_updates[current_account] || {};
-        acct.updateAccountTime = timestamp;
-    }).on('updatePortfolio', function(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, accountName) {
-        current_account = accountName;
-        const acct = account_updates[accountName] = account_updates[accountName] || {};
-        acct.portfolio = acct.portfolio || {};
-        acct.portfolio[contract.conId] = {position, marketPrice, marketValue, averageCost, unrealizedPNL};
-    }).on('accountDownloadEnd', function(accountName) {
-        current_account = accountName;
-        const ready = account_updates_end;
-        _.defer(() => {
-            ib.reqAccountUpdates(false, accountName);
-            if (ready) ready(account_updates[accountName]);
-        });
-    });
-    const reqAccountUpdate = async(acctCode) => {
-        const now = moment().tz(ib_tz).millisecond(0).seconds(0).subtract(1,'minutes');
-        return promise_account_updates = promise_account_updates.catch(logger.error)
-          .then(() => new Promise((ready, fail) => {
-            current_account = acctCode;
-            account_updates_end = ready;
-            account_updates_fail = fail;
-            logger.log('reqAccountUpdates', acctCode);
-            ib.reqAccountUpdates(true, acctCode);
-        })).then(summary => {
+        _.values(req_queue).forEach(item => {
+            item.summary.updateAccountTime = timestamp;
+            const summary = item.summary;
             const F = 'YYYYMMDD HH:mm:ss';
+            const now = moment().tz(ib_tz);
             const minutes = summary.updateAccountTime ? `${summary.updateAccountTime}:00` : '';
             const asof = minutes ? moment.tz(`${now.format('YYYY-MM-DD')} ${minutes}`, ib_tz) : now;
-            summary.time = asof.format(F);
-            const month = asof.format('YYYYMM');
-            return save(acctCode, month, summary);
+            summary.time = asof.isValid() ? asof.format(F) : now.format(F);
+        });
+    }).on('accountUpdateMulti', function(reqId, account, modelCode, key, value, currency) {
+        if (req_queue[reqId]) {
+            const acct = req_queue[reqId].summary;
+            acct[key] = currency ? acct[key] || (currency == value ? [] : {}) : value;
+            if (_.isArray(acct[key])) acct[key].push(value);
+            else if (currency) acct[key][currency] = value;
+        }
+        if (!closed) flush();
+    }).on('accountUpdateMultiEnd', function(reqId) {
+        const item = req_queue[reqId];
+        if (item) {
+            new Promise(ready => {
+                if (closed) throw Error("TWS has disconnected");
+                const summary = item.summary;
+                if (!~_.values(subscriptions).indexOf(+reqId)) {
+                    ib.cancelAccountUpdatesMulti(+reqId);
+                    delete req_queue[reqId];
+                }
+                return ready(summary);
+            }).then(item.ready, item.fail);
+        }
+    });
+    const reqAccountUpdate = async(acctCode, modelCode) => {
+        const now = moment().tz(ib_tz).millisecond(0).seconds(0).subtract(1,'minutes');
+        return new Promise((ready, fail) => {
+            if (closed) throw Error("TWS has disconnected");
+            const reqId = nextval();
+            req_queue[reqId] = {reqId, acctCode, modelCode, summary:{}, ready, fail};
+            if (~managed_accounts.indexOf(acctCode) && !modelCode)
+                subscriptions[acctCode] = +reqId;
+            logger.log('reqAccountUpdates', acctCode, modelCode || '', false);
+            ib.reqAccountUpdatesMulti(+reqId, acctCode, modelCode || '', false);
         });
     };
     return {
@@ -388,7 +390,10 @@ function accountUpdates(ib, store, ib_tz, eod) {
             });
         },
         async close() {
-            return clearTimeout(timer);
+            closed = true;
+            _.values(subscriptions).forEach(reqId => ib.cancelAccountUpdatesMulti(+reqId));
+            _.values(req_queue).forEach(item => item.fail(Error("IB client is closing")));
+            return flush.flush();
         }
     };
 }
@@ -865,17 +870,6 @@ function requestWithId(ib) {
         if (req_queue[tickerId]) req_queue[tickerId].resolve(_.omit({
             time, open, high, low, close, volume, wap, count
         }, value => value == -1));
-    }).on('accountUpdateMulti', function(reqId, account, modelCode, key, value, currency) {
-        if (!req_queue[reqId]) return;
-        const sum = req_queue[reqId].accountUpdateMulti = req_queue[reqId].accountUpdateMulti || {};
-        const model = modelCode ? sum[modelCode] = sum[modelCode] || {} : sum;
-        const acct = account ? model[account] = model[account] || {} : model;
-        acct[key] = currency ? acct[key] || (currency == value ? [] : {}) : value;
-        if (_.isArray(acct[key])) acct[key].push(value);
-        else if (currency) acct[key][currency] = value;
-    }).on('accountUpdateMultiEnd', function(reqId) {
-        ib.cancelAccountUpdatesMulti(+reqId);
-        if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].accountUpdateMulti);
     }).on('accountSummary', function(tickerId, account, tag, value, currency) {
         if (!req_queue[tickerId]) return;
         const sum = req_queue[tickerId].accountSummary = req_queue[tickerId].accountSummary || {};
@@ -912,9 +906,6 @@ function requestWithId(ib) {
         },
         reqRealTimeBars(contract, whatToShow) {
             return request('reqRealTimeBars', contract, 0, whatToShow, false);
-        },
-        reqAccountUpdatesMulti(account, modelCode, ledgerAndNLV) {
-            return request('reqAccountUpdatesMulti', account, modelCode || '', ledgerAndNLV || false);
         },
         reqAccountSummary: promiseThrottle((group, tags) => {
             return request('reqAccountSummary', group || 'All', tags || getAllTags().join(','));

@@ -86,7 +86,8 @@ function helpOptions() {
         name: 'positions',
         usage: 'broker(options)',
         description: "List a summary of recent trades and their effect on the account position",
-        properties: ['asof', 'acctNumber', 'price', 'change', 'dividend', 'action', 'quant', 'position',
+        properties: [
+            'asof', 'acctNumber', 'price', 'change', 'dividend', 'action', 'quant', 'position',
             'traded_price', 'net_change', 'commission', 'symbol', 'market', 'currency', 'secType'
         ],
         options: {
@@ -106,7 +107,7 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'action', 'quant', 'type', 'limit', 'offset', 'tif',
+            'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif',
             'order_ref', 'parent_ref', 'group_ref', 'bag_ref',
             'acctNumber', 'symbol', 'market', 'secType', 'currency'
         ],
@@ -168,6 +169,7 @@ async function listBalances(markets, ib, fetch, settings, options) {
             previously.concat(currently) : previously;
         return [].concat(...history.map(summary => {
             const asof = summary.time ? parseTime(summary.time, ib_tz) : now;
+            expect(summary).to.have.property('Currency').that.is.an('array');
             return summary.Currency.filter(currency => currency != 'BASE').map(currency => {
                 return {
                     asof: asof.isValid() ? asof.format() : now.format(),
@@ -220,10 +222,11 @@ async function listOrders(markets, ib, settings, options) {
         const contract = await ib.reqContract(order.conId);
         const parent = order.parentId && orders.find(p => order.parentId == p.orderId);
         const bag = contract.secType == 'BAG';
+        const working = ~open_orders.indexOf(order);
         result.push({
-            dateTime: parseTime(order.time, ib_tz).format(),
+            asof: parseTime(order.time, ib_tz).format(),
             action: order.action,
-            quant: order.remaining,
+            quant: working ? order.remaining : order.totalQuantity,
             type: order.orderType,
             limit: order.lmtPrice == Number.MAX_VALUE ? null : order.lmtPrice,
             offset: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
@@ -290,7 +293,7 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
     const changes = await Promise.all(conIds.sort().map(async(conId) => {
         const con_pos = positions[conId];
         const con_exe = executions.filter(exe => exe.conId == conId).map(exe => ({
-            dateTime: parseTime(exe.time, ib_tz).format(),
+            asof: parseTime(exe.time, ib_tz).format(),
             ...exe
         }));
         return listChanges(conId, con_pos, con_exe, historical, ib_tz, options);
@@ -316,30 +319,34 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
     const multiplier = contract.multiplier || 1;
     const ending_position = pos ? pos.position : 0;
     const newer_details = executions.filter(exe => {
-        return exe.dateTime > _.last(bars).ending;
+        return exe.asof > _.last(bars).ending;
     });
     if (!bars.length) return [];
     const latest_trade = changePosition(multiplier, _.last(bars), newer_details, _.last(bars), ending_position);
     const changes = [];
     const starting_position = bars.reduceRight((position, bar, i, bars) => {
         const details = executions.filter(exe => {
-            return exe.dateTime <= bar.ending &&
-                (i == 0 || bars[i-1].ending < exe.dateTime);
+            return exe.asof <= bar.ending &&
+                (i == 0 || bars[i-1].ending < exe.asof);
         });
         changes[i] = changePosition(multiplier, bars[i-1] || bar, details, bar, position);
-        if (changes[i].action.charAt(0) == 'B')
+        if (changes[i].action == 'LONG' && !changes[i].quant)
+            return position;
+        else if (changes[i].action == 'SHORT' && !changes[i].quant)
+            return position;
+        else if (!changes[i].action && !changes[i].quant)
+            return position;
+        else if (changes[i].action.charAt(0) == 'B')
             return position - changes[i].quant;
         else if (changes[i].action.charAt(0) == 'S')
             return position + changes[i].quant;
-        else if (changes[i].action.charAt(0) == 'H' && !changes[i].quant)
-            return position;
-        else
-            throw Error(`Invalid trade action ${changes[i]}`);
+        else 
+            throw Error(`Invalid trade action ${changes[i].action}`);
     }, ending_position - latest_trade.quant);
     if (latest_trade.quant) {
         changes.push(latest_trade);
     }
-    const positions = changes.filter(trade => trade.position || trade.action != 'HLD')
+    const positions = changes.filter(trade => trade.action)
       .map(trade => Object.assign({
         asof: trade.asof,
         symbol, market,
@@ -368,16 +375,17 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
     const commission = details.reduce((net, exe) => net.add(exe.commission || 0), Big(0));
     const net_change = Big(ending_value).minus(starting_value)
         .add(sold).minus(purchase).add(net_dividend).minus(commission);
-    const action = starting_position == position && shares == 0 ? 'HLD' :
+    const action = position == 0 && quant == 0 ? '' :
+        position > 0 && quant == 0 ? 'LONG' :
+        position < 0 && quant == 0 ? 'SHORT' :
         starting_position >= 0 && position >= 0 && shares >= 0 ? 'BTO' :
         starting_position >= 0 && position >= 0 && shares <= 0 ? 'STC' :
         starting_position <= 0 && position <= 0 && shares <= 0 ? 'STO' :
         starting_position <= 0 && position <= 0 && shares >= 0 ? 'BTC' :
         shares > 0 ? 'BOT' : shares < 0 ? 'SLD' : '';
-    if (!action) throw Error(`Could not determine action for ${util.inspect(bar)}`);
     return {
         asof: bar.ending,
-        traded_at: details.reduce((at, exe) => at < exe.dateTime ? exe.dateTime : at, '') || null,
+        traded_at: details.reduce((at, exe) => at < exe.asof ? exe.asof : at, '') || null,
         price: bar.close,
         traded_price: shares ? +Big(purchase).add(sold).div(Big(quant).abs()).div(multiplier) : null,
         change: +Big(bar.close).minus(Big(prev_bar.adj_close).times(bar.close).div(bar.adj_close)),

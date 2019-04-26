@@ -287,9 +287,6 @@ describe("ib-client", function() {
     it("should support reqAccountUpdate", function() {
         return client.reqAccountUpdate('All').should.eventually.be.like({Currency:_.isArray});
     });
-    it("should support reqAccountUpdatesMulti", function() {
-        return client.reqAccountUpdatesMulti('All', '', true);
-    });
     it("should support reqPositions", function() {
         return client.reqPositions().should.eventually.be.an('object');
     });
