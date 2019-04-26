@@ -167,6 +167,7 @@ function launchOutput(outputFile, options) {
 }
 
 function parseValue(value) {
+    if (value == '') return null;
     if (!_.isString(value)) return value;
     const chr = value.charAt(0);
     if (chr == '"' || chr == '[' || chr == '{') return JSON.parse(value);
@@ -176,6 +177,7 @@ function parseValue(value) {
 }
 
 function formatValue(value) {
+    if (value == null) return '';
     if (_.isObject(value)) return JSON.stringify(value);
     if (!_.isString(value)) return value;
     const chr = value.charAt(0);

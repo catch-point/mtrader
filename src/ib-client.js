@@ -31,6 +31,7 @@
 'use strict';
 
 const _ = require('underscore');
+const moment = require('moment-timezone');
 const xml = require('fast-xml-parser');
 const IB = require('ib');
 const logger = require('./logger.js');
@@ -49,15 +50,17 @@ module.exports = function(settings) {
     const port = settings && settings.port || 7496;
     const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : nextval();
     const lib_dir = settings && settings.lib_dir;
+    const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
+    const eod = (settings||{}).eod || moment.tz('2000-03-01 17:05:00', 'America/New_York').tz(ib_tz).format('HH:mm:ss');
     const self = new.target ? this : {};
-    let opened_client = createClient(host, port, clientId, lib_dir);
+    let opened_client = createClient(host, port, clientId, lib_dir, eod, ib_tz);
     let promise_ib, closed = false;
     const open = () => {
         if (opened_client && !opened_client.disconnected) return opened_client.open();
         else return promise_ib = (promise_ib || Promise.reject())
           .catch(err => ({disconnected: true})).then(client => {
             if (!client.disconnected) return client;
-            opened_client = createClient(host, port, clientId, lib_dir);
+            opened_client = createClient(host, port, clientId, lib_dir, eod, ib_tz);
             return opened_client.open();
         });
     };
@@ -77,7 +80,7 @@ module.exports = function(settings) {
 };
 
 
-function createClient(host, port, clientId, lib_dir) {
+function createClient(host, port, clientId, lib_dir, eod, ib_tz) {
     const ib = new IB({host, port, clientId});
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
@@ -112,18 +115,33 @@ function createClient(host, port, clientId, lib_dir) {
             ready();
         });
     });
+    const store = lib_dir && storage(lib_dir);
+    const modules = [
+        nextValidId(ib),
+        reqPositions(ib),
+        currentTime(ib),
+        requestFA(ib),
+        accountUpdates(ib, store, ib_tz, eod),
+        openOrders(ib, store, ib_tz, clientId),
+        execDetails(ib, store),
+        reqContract(ib),
+        requestWithId(ib)
+    ];
     const self = new.target ? this : {};
-    return Object.assign(self, {
+    return Object.assign(self, ...modules, {
         connecting: false,
         connected: false,
         disconnected: false,
         async close() {
             let error;
-            await self.flush().catch(err => error = err);  // execDetails
+            await Promise.all(modules.map(module => {
+                if (module.close) return module.close().catch(err => error = error || err);
+            }));
             if (self.connecting || self.connected) {
                 if (!self.disconnected) ib.disconnect();
                 await once_disconnected;
             }
+            if (store) await store.close();
             if (error) throw error;
         },
         open() {
@@ -133,16 +151,7 @@ function createClient(host, port, clientId, lib_dir) {
             }
             return once_connected.then(() => self);
         }
-    },
-    nextValidId(ib),
-    accountUpdates(ib),
-    reqPositions(ib),
-    openOrders(ib),
-    currentTime(ib),
-    requestFA(ib),
-    execDetails(ib, lib_dir),
-    reqContract(ib),
-    requestWithId(ib));
+    });
 }
 
 function nextValidId(ib) {
@@ -167,54 +176,7 @@ function nextValidId(ib) {
             });
         }
     };
-};
-
-function accountUpdates(ib) {
-    const account_updates = {};
-    let current_account;
-    let account_updates_end, account_updates_fail;
-    let promise_account_updates = Promise.resolve();
-    ib.on('error', function (err, info) {
-        if (!isNormal(info)) {
-            if (account_updates_fail) account_updates_fail(err);
-        }
-    }).on('disconnected', () => {
-        if (account_updates_fail) account_updates_fail(Error("TWS has disconnected"));
-    }).on('updateAccountValue', function(key, value, currency, accountName) {
-        current_account = accountName;
-        const acct = account_updates[accountName] = account_updates[accountName] || {};
-        acct[key] = currency ? acct[key] || (currency == value ? [] : {}) : value;
-        if (_.isArray(acct[key])) acct[key].push(value);
-        else if (currency) acct[key][currency] = value;
-    }).on('updateAccountTime', function(timestamp) {
-        const acct = account_updates[current_account] = account_updates[current_account] || {};
-        acct.updateAccountTime = timestamp;
-    }).on('updatePortfolio', function(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, accountName) {
-        current_account = accountName;
-        const acct = account_updates[accountName] = account_updates[accountName] || {};
-        acct.portfolio = acct.portfolio || {};
-        acct.portfolio[contract.conId] = {position, marketPrice, marketValue, averageCost, unrealizedPNL};
-    }).on('accountDownloadEnd', function(accountName) {
-        current_account = accountName;
-        const ready = account_updates_end;
-        _.defer(() => {
-            ib.reqAccountUpdates(false, accountName);
-            if (ready) ready(account_updates[accountName]);
-        });
-    });
-    return {
-        reqAccountUpdate(acctCode) {
-            return promise_account_updates = promise_account_updates.catch(logger.error)
-              .then(() => new Promise((ready, fail) => {
-                current_account = acctCode;
-                account_updates_end = ready;
-                account_updates_fail = fail;
-                logger.log('reqAccountUpdates', acctCode);
-                ib.reqAccountUpdates(true, acctCode);
-            }));
-        }
-    };
-};
+}
 
 function reqPositions(ib) {
     const positions = {};
@@ -244,66 +206,6 @@ function reqPositions(ib) {
                 positions_fail = fail;
                 ib.reqPositions();
             }));
-        }
-    };
-};
-
-function openOrders(ib) {
-    const open_orders = {};
-    let orders_end, orders_fail;
-    let promise_orders = Promise.resolve();
-    ib.on('error', function (err, info) {
-        if (!isNormal(info)) {
-            if (orders_fail) orders_fail(err);
-        }
-    }).on('disconnected', () => {
-        if (orders_fail) orders_fail(Error("TWS has disconnected"));
-    }).on('openOrder', function(orderId, contract, order, orderStatus) {
-        const status = orderStatus.status;
-        if (status == 'Filled' || status == 'Cancelled' || status == 'Inactive') delete open_orders[orderId];
-        else open_orders[orderId] = Object.assign(
-            {conId: contract.conId, symbol: contract.symbol, secType: contract.secType},
-            open_orders[orderId],
-            order, orderStatus
-        );
-    }).on('orderStatus', function(orderId, status, filled, remaining, avgFillPrice,
-            permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice) {
-        const order = open_orders[orderId] || {};
-        logger.info(`${order.orderRef || orderId}`, order.action, order.symbol,
-            status, order.orderType, order.tif, filled, '/', remaining, avgFillPrice);
-        if (status == 'Filled' || status == 'Cancelled' || status == 'Inactive') delete open_orders[orderId];
-        else open_orders[orderId] = Object.assign({}, order, {
-            status, filled, remaining, avgFillPrice, permId, parentId,
-            lastFillPrice, clientId, whyHeld, mktCapPrice
-        });
-    }).on('openOrderEnd', function() {
-        const ready = orders_end;
-        _.defer(() => {
-            if (ready) ready(_.values(open_orders));
-        });
-    });
-    return {
-        reqOpenOrders() {
-            return promise_orders = promise_orders.catch(logger.error)
-              .then(() => new Promise((ready, fail) => {
-                orders_end = ready;
-                orders_fail = fail;
-                logger.log('reqOpenOrders');
-                ib.reqOpenOrders();
-            }));
-        },
-        reqAllOpenOrders() {
-            return promise_orders = promise_orders.catch(logger.error)
-              .then(() => new Promise((ready, fail) => {
-                orders_end = ready;
-                orders_fail = fail;
-                logger.log('reqAllOpenOrders');
-                ib.reqAllOpenOrders();
-            }));
-        },
-        async reqAutoOpenOrders(autoBind) {
-            logger.log('reqAutoOpenOrders', autoBind);
-            return ib.reqAutoOpenOrders(autoBind);
         }
     };
 }
@@ -376,12 +278,284 @@ function requestFA(ib) {
     };
 }
 
-function execDetails(ib, lib_dir) {
+function accountUpdates(ib, store, ib_tz, eod) {
+    const account_updates = {};
+    let current_account;
+    const managed_accounts = [];
+    let account_updates_end, account_updates_fail;
+    let promise_account_updates = Promise.resolve();
+    const save = async(acctCode, month, summary) => {
+        if (!store) return summary;
+        return store.open(acctCode, async(err, db) => {
+            if (err) throw err;
+            const balances = await db.collection('balances');
+            return balances.lockWith([month], async() => {
+                const values = balances.exists(month) ?
+                    await balances.readFrom(month) : [];
+                if (!values.length || _.last(values).time != summary.time) {
+                    const replacement = values.concat(summary);
+                    await balances.replaceWith(replacement, month);
+                }
+                return summary;
+            });
+        });
+    };
+    const nextEod = () => {
+        const now = moment().tz(ib_tz);
+        const end = moment.tz(`${now.format('YYYY-MM-DD')} ${eod}`, ib_tz);
+        if (end.isBefore(now)) end.add(1, 'day');
+        return end.diff(now);
+    };
+    const setTimer = delay => {
+        return setTimeout(async() => {
+            await Promise.all(managed_accounts.map(acctCode => {
+                return reqAccountUpdate(acctCode);
+            })).catch(err => logger.error("Could not flush IB orders", err));
+            timer = setTimer(nextEod());
+        }, delay).unref();
+    };
+    const timer = setTimer(nextEod());
+    ib.on('error', function (err, info) {
+        if (!isNormal(info)) {
+            if (account_updates_fail) account_updates_fail(err);
+        }
+    }).on('disconnected', () => {
+        if (account_updates_fail) account_updates_fail(Error("TWS has disconnected"));
+    }).on('managedAccounts', accountsList => {
+        _.compact(accountsList.split(',')).forEach(account => {
+            if (!~managed_accounts.indexOf(account))
+                managed_accounts.push(account);
+        });
+    }).on('updateAccountValue', function(key, value, currency, accountName) {
+        current_account = accountName;
+        const acct = account_updates[accountName] = account_updates[accountName] || {};
+        acct[key] = currency ? acct[key] || (currency == value ? [] : {}) : value;
+        if (_.isArray(acct[key])) acct[key].push(value);
+        else if (currency) acct[key][currency] = value;
+    }).on('updateAccountTime', function(timestamp) {
+        const acct = account_updates[current_account] = account_updates[current_account] || {};
+        acct.updateAccountTime = timestamp;
+    }).on('updatePortfolio', function(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, accountName) {
+        current_account = accountName;
+        const acct = account_updates[accountName] = account_updates[accountName] || {};
+        acct.portfolio = acct.portfolio || {};
+        acct.portfolio[contract.conId] = {position, marketPrice, marketValue, averageCost, unrealizedPNL};
+    }).on('accountDownloadEnd', function(accountName) {
+        current_account = accountName;
+        const ready = account_updates_end;
+        _.defer(() => {
+            ib.reqAccountUpdates(false, accountName);
+            if (ready) ready(account_updates[accountName]);
+        });
+    });
+    const reqAccountUpdate = async(acctCode) => {
+        const now = moment().tz(ib_tz).millisecond(0).seconds(0).subtract(1,'minutes');
+        return promise_account_updates = promise_account_updates.catch(logger.error)
+          .then(() => new Promise((ready, fail) => {
+            current_account = acctCode;
+            account_updates_end = ready;
+            account_updates_fail = fail;
+            logger.log('reqAccountUpdates', acctCode);
+            ib.reqAccountUpdates(true, acctCode);
+        })).then(summary => {
+            const F = 'YYYYMMDD HH:mm:ss';
+            const minutes = summary.updateAccountTime ? `${summary.updateAccountTime}:00` : '';
+            const asof = minutes ? moment.tz(`${now.format('YYYY-MM-DD')} ${minutes}`, ib_tz) : now;
+            summary.time = asof.format(F);
+            const month = asof.format('YYYYMM');
+            return save(acctCode, month, summary);
+        });
+    };
+    return {
+        reqAccountUpdate,
+        reqAccountHistory(acctCode, time) {
+            const min_month = time ? moment.tz(time.substring(0, 8), ib_tz).format('YYYYMM') : '';
+            if (!store) return [];
+            return store.open(acctCode, async(err, db) => {
+                if (err) throw err;
+                const balances = await db.collection('balances');
+                const months = balances.listNames().filter(month => min_month <= month);
+                return balances.lockWith(months, async() => {
+                    return months.reduce(async(promise, month) => {
+                        const result = await promise;
+                        const values = balances.exists(month) ?
+                            await balances.readFrom(month) : [];
+                        const filtered = values.filter(balance => time <= balance.time);
+                        if (filtered.length) return result.concat(filtered);
+                        else return result;
+                    }, Promise.resolve([]));
+                });
+            });
+        },
+        async close() {
+            return clearTimeout(timer);
+        }
+    };
+}
+
+function openOrders(ib, store, ib_tz, clientId) {
+    const F = 'YYYYMMDD HH:mm:ss';
+    const orders = {};
+    const order_log = {};
+    const managed_accounts = [];
+    let flushed = false;
+    let orders_end, orders_fail;
+    let promise_orders = Promise.resolve();
+    const log = order => {
+        const ord = _.mapObject(order, v => Number.isNaN(v) || v == Number.MAX_VALUE ? null : v);
+        const acct_log = order_log[order.account] = order_log[order.account] || [];
+        if (!_.isMatch(_.last(acct_log), _.omit(ord, 'time'))) acct_log.push(ord);
+        return ord;
+    };
+    const flusher = debounce(async() => {
+        if (!store) return;
+        return Object.keys(order_log).reduce(async(promise, acctCode) => {
+            return store.open(acctCode, async(err, db) => {
+                if (err) throw err;
+                const acct_log = order_log[acctCode].splice(0, order_log[acctCode].length);
+                if (!acct_log.length) return;
+                const first = moment.tz(_.first(acct_log).time, F, ib_tz).startOf('month');
+                const last = moment.tz(_.last(acct_log).time, F, ib_tz).startOf('month');
+                const months = [first.format('YYYYMM')];
+                while (first.isBefore(last)) months.push(first.add(1,'month').format('YYYYMM'));
+                const orders = await db.collection('orders');
+                return orders.lockWith(months, async() => {
+                    return months.reduce(async(promise, month) => {
+                        const start = await promise;
+                        const end = moment.tz(month, 'YYYYMM', ib_tz).add(1,'month').format(F);
+                        const finish = _.sortedIndex(acct_log, {time: end}, 'time');
+                        if (start == end) return end;
+                        const values = orders.exists(month) ?
+                            await orders.readFrom(month) : [];
+                        const replacement = values.concat(acct_log.slice(start, finish));
+                        await orders.replaceWith(replacement, month);
+                        return end;
+                    }, Promise.resolve(0));
+                });
+            });
+        }, Promise.resolve()).catch(err => logger.error("Could not flush IB orders", err));
+    }, 10*60*1000); // 10m
+    ib.on('error', function (err, info) {
+        if (!isNormal(info)) {
+            if (orders_fail) orders_fail(err);
+        }
+    }).on('disconnected', () => {
+        if (orders_fail) orders_fail(Error("TWS has disconnected"));
+    }).on('managedAccounts', accountsList => {
+        _.compact(accountsList.split(',')).forEach(account => {
+            if (!~managed_accounts.indexOf(account))
+                managed_accounts.push(account);
+        });
+    }).on('openOrder', function(orderId, contract, order, orderStatus) {
+        const status = orderStatus.status;
+        orders[orderId] = Object.assign({
+                orderId,
+                conId: contract.conId,
+                symbol: contract.symbol,
+                secType: contract.secType,
+                exchange: contract.exchange,
+                time: moment().tz(ib_tz).milliseconds(0).format(F)
+            },
+            orders[orderId],
+            order, orderStatus
+        );
+        if (flushed) flusher.flush();
+        else flusher();
+    }).on('orderStatus', function(orderId, status, filled, remaining, avgFillPrice,
+            permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice) {
+        const order = orders[orderId] || {};
+        logger.info(`${order.orderRef || orderId}`, order.action, order.symbol,
+            status, order.orderType, order.tif, filled, '/', remaining, avgFillPrice);
+        orders[orderId] = log(Object.assign({}, order, {
+            time: moment().tz(ib_tz).milliseconds(0).format(F),
+            status, filled, remaining, avgFillPrice, permId, parentId,
+            lastFillPrice, clientId, whyHeld, mktCapPrice
+        }));
+        if (flushed) flusher.flush();
+        else flusher();
+    }).on('openOrderEnd', function() {
+        const ready = orders_end;
+        _.defer(() => {
+            if (ready) ready(_.values(orders).filter(order => {
+                const status = order.status;
+                return status != 'Filled' && status != 'Cancelled' && status != 'Inactive';
+            }));
+        });
+    });
+    return {
+        reqOpenOrders() {
+            return promise_orders = promise_orders.catch(logger.error)
+              .then(() => new Promise((ready, fail) => {
+                orders_end = ready;
+                orders_fail = fail;
+                logger.log('reqOpenOrders');
+                ib.reqOpenOrders();
+            })).then(orders => orders.filter(order => order.clientId == clientId));
+        },
+        reqAllOpenOrders() {
+            return promise_orders = promise_orders.catch(logger.error)
+              .then(() => new Promise((ready, fail) => {
+                orders_end = ready;
+                orders_fail = fail;
+                logger.log('reqAllOpenOrders');
+                ib.reqAllOpenOrders();
+            }));
+        },
+        async reqCompletedOrders(filter) {
+            const acctCode = (filter||{}).acctCode;
+            const accounts = acctCode ? [acctCode] : managed_accounts;
+            const time = (filter||{}).time;
+            const min_month = time ? moment.tz(time.substring(0, 8), ib_tz).format('YYYYMM') : '';
+            if (store) await flusher.flush();
+            const condition = order => {
+                const status = order.status;
+                if (status != 'Filled' && status != 'Cancelled' && status != 'Inactive') return false;
+                else if (filter.clientId && filter.clientId != order.clientId) return false;
+                else if (filter.acctCode && filter.acctCode != order.account) return false;
+                else if (filter.time && filter.time > order.time) return false;
+                else if (filter.symbol && filter.symbol != order.symbol) return false;
+                else if (filter.secType && filter.secType != order.secType) return false;
+                else if (filter.exchange && filter.exchange != order.exchange) return false;
+                else if (filter.side && filter.side.charAt(0) != order.side.charAt(0)) return false;
+                return true;
+            };
+            const orders = await accounts.reduce((result, acctCode) => {
+                if (!store) return order_log[acctCode] || [];
+                return store.open(acctCode, async(err, db) => {
+                    if (err) throw err;
+                    const orders = await db.collection('orders');
+                    const months = orders.listNames().filter(month => min_month <= month);
+                    return orders.lockWith(months, async() => {
+                        return months.reduce(async(promise, month) => {
+                            const result = await promise;
+                            const values = orders.exists(month) ?
+                                await orders.readFrom(month) : [];
+                            const filtered = values.filter(condition);
+                            if (filtered.length) return result.concat(filtered);
+                            else return result;
+                        }, Promise.resolve(result));
+                    });
+                });
+            }, Promise.resolve([]));
+            if (!filter) return orders;
+            return orders;
+        },
+        async reqAutoOpenOrders(autoBind) {
+            logger.log('reqAutoOpenOrders', autoBind);
+            return ib.reqAutoOpenOrders(autoBind);
+        },
+        close() {
+            flushed = true;
+            return flusher.flush();
+        }
+    };
+}
+
+function execDetails(ib, store) {
     const details = {};
     const commissions = {};
     const req_queue = {};
     const managed_accounts = [];
-    const store = lib_dir && storage(lib_dir);
     let flushed = false;
     const reduce_details = async(filter, cb, initial) => {
         const min_month = ((filter||{}).time||'').substring(0, 6);
@@ -477,7 +651,7 @@ function execDetails(ib, lib_dir) {
                 else if (filter.symbol && filter.symbol != exe.symbol) return executions;
                 else if (filter.secType && filter.secType != exe.secType) return executions;
                 else if (filter.exchange && filter.exchange != exe.exchange) return executions;
-                else if (filter.side && filter.side != exe.side) return executions;
+                else if (filter.side && filter.side.charAt(0) != exe.side.charAt(0)) return executions;
                 executions.push(exe);
                 return executions;
             }, []);
@@ -516,7 +690,7 @@ function execDetails(ib, lib_dir) {
                 ib.reqExecutions(reqId, filter || {});
             });
         },
-        flush() {
+        close() {
             flushed = true;
             return flusher.flush();
         }

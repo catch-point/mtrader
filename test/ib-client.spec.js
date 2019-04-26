@@ -358,11 +358,11 @@ describe("ib-client", function() {
     it("should reqCurrentTime", function() {
         return client.reqCurrentTime().should.eventually.be.closeTo(Math.round(new Date().getTime()/1000),5);
     });
-    it("should reqFundamentalData", function() {
+    it.skip("should reqFundamentalData", function() {
         return client.reqFundamentalData({
-            localSymbol: 'TRN',
+            localSymbol: 'SPY',
             secType: 'STK',
-            exchange: 'NYSE',
+            exchange: 'ARCA',
             currency: 'USD'
         }, 'ReportsFinSummary').should.eventually.have.property('FinancialSummary');
         //.then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
@@ -378,5 +378,5 @@ describe("ib-client", function() {
     });
     it.skip("should reqOpenOrders", function() {
         return client.reqOpenOrders().then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d).should.eventually.be.an('array');
-    })
+    });
 });

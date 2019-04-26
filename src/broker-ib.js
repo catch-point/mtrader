@@ -76,6 +76,10 @@ function helpOptions() {
                 values: [
                     'balances'
                 ]
+            },
+            begin: {
+                usage: '<dateTime>',
+                description: "Include summary of position changes since this dateTime"
             }
         }
     }, {
@@ -112,6 +116,10 @@ function helpOptions() {
                 values: [
                     'orders'
                 ]
+            },
+            begin: {
+                usage: '<dateTime>',
+                description: "Include summary of position changes since this dateTime"
             }
         }
     }]);
@@ -130,7 +138,7 @@ module.exports = function(settings) {
         switch(options.action) {
             case 'balances': return listBalances(markets, ib, fetch, settings, options);
             case 'positions': return listPositions(markets, ib, fetch, settings, options);
-            case 'orders': return listOpenOrders(markets, ib, settings, options);
+            case 'orders': return listOrders(markets, ib, settings, options);
             default: expect(options).to.have.property('action').to.be.oneOf([
                 'balances', 'positions', 'orders'
             ]);
@@ -152,25 +160,30 @@ async function listBalances(markets, ib, fetch, settings, options) {
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const accounts = await listAccounts(ib, (settings||{}).account);
     const now = moment().tz(ib_tz);
+    const begin = options.begin && moment(options.begin).tz(ib_tz).format('YYYYMMDD HH:mm:ss');
     const balances = await Promise.all(accounts.map(async(acctNumber) => {
-        const summary = await ib.reqAccountUpdate(acctNumber);
-        const time = summary.updateAccountTime;
-        const asof = time ? moment.tz(`${now.format('YYYY-MM-DD')} ${time}:00`, ib_tz) : now;
-        return summary.Currency.filter(currency => currency != 'BASE').map(currency => {
-            return {
-                asof: asof.isValid() ? asof.format() : now.format(),
-                acctNumber, currency,
-                rate: summary.ExchangeRate[currency],
-                net: summary.NetLiquidationByCurrency[currency],
-                settled: summary.CashBalance[currency],
-                accrued: Big(summary.AccruedCash[currency]||0)
-                    .add(summary.AccruedDividend[currency]||0)
-                    .add(summary.FuturesPNL[currency]||0).toString(),
-                realized: summary.RealizedPnL[currency],
-                unrealized: summary.UnrealizedPnL[currency],
-                margin: summary.MaintMarginReq[currency]
-            };
-        });
+        const previously = begin ? await ib.reqAccountHistory(acctNumber, begin) : [];
+        const currently = await ib.reqAccountUpdate(acctNumber);
+        const history = !previously.length || _.last(previously).time != currently.time ?
+            previously.concat(currently) : previously;
+        return [].concat(...history.map(summary => {
+            const asof = summary.time ? parseTime(summary.time, ib_tz) : now;
+            return summary.Currency.filter(currency => currency != 'BASE').map(currency => {
+                return {
+                    asof: asof.isValid() ? asof.format() : now.format(),
+                    acctNumber, currency,
+                    rate: summary.ExchangeRate[currency],
+                    net: summary.NetLiquidationByCurrency[currency],
+                    settled: summary.CashBalance[currency],
+                    accrued: Big(summary.AccruedCash[currency]||0)
+                        .add(summary.AccruedDividend[currency]||0)
+                        .add(summary.FuturesPNL[currency]||0).toString(),
+                    realized: summary.RealizedPnL[currency],
+                    unrealized: summary.UnrealizedPnL[currency],
+                    margin: summary.MaintMarginReq[currency]
+                };
+            });
+        }));
     }));
     return [].concat(...balances);
 }
@@ -187,10 +200,16 @@ async function listPositions(markets, ib, fetch, settings, options) {
     return _.sortBy([].concat(...changes), 'asof');
 }
 
-async function listOpenOrders(markets, ib, settings, options) {
+async function listOrders(markets, ib, settings, options) {
+    const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const account = (settings||{}).account;
     const accounts = await listAccounts(ib, account);
-    const orders = await ib.reqOpenOrders();
+    const open_orders = await ib.reqOpenOrders();
+    const completed_orders = options.begin ? await ib.reqCompletedOrders({
+        acctCode: accounts.length == 1 ? _.first(accounts) : null,
+        time: options.begin ? moment.tz(options.begin, ib_tz).format('YYYYMMDD HH:mm:ss') : null
+    }) : [];
+    const orders = open_orders.concat(completed_orders);
     return orders.filter(order => {
         if (!account || account == 'All') return true;
         else if (order.faGroup == account || order.faProfile == account) return true;
@@ -199,19 +218,20 @@ async function listOpenOrders(markets, ib, settings, options) {
     }).reduce(async(promise, order) => {
         const result = await promise;
         const contract = await ib.reqContract(order.conId);
-        const parent = orders.find(p => order.parentId == p.orderId) || {orderId: order.parentId};
+        const parent = order.parentId && orders.find(p => order.parentId == p.orderId);
         const bag = contract.secType == 'BAG';
         result.push({
+            dateTime: parseTime(order.time, ib_tz).format(),
             action: order.action,
             quant: order.remaining,
             type: order.orderType,
             limit: order.lmtPrice == Number.MAX_VALUE ? null : order.lmtPrice,
             offset: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
             tif: order.tif,
-            order_ref: order.orderRef || order.orderId,
-            parent_ref: order.parentId ? parent.orderRef || parent.orderId : null,
+            order_ref: order.orderRef || order.permId,
+            parent_ref: parent ? parent.orderRef || parent.permId : null,
             group_ref: order.ocaGroup,
-            bag_ref: bag ? order.orderRef || order.orderId : null,
+            bag_ref: bag ? order.orderRef || order.permId : null,
             account: order.faGroup || order.faProfile || order.account,
             symbol: bag ? null : asSymbol(contract),
             market: bag ? null : await asMarket(markets, ib, contract),
@@ -232,7 +252,7 @@ async function listOpenOrders(markets, ib, settings, options) {
                 order_ref: null,
                 parent_ref: null,
                 group_ref: null,
-                bag_ref: order.orderRef || order.orderId,
+                bag_ref: order.orderRef || order.permId,
                 account: order.faGroup || order.faProfile || order.account,
                 symbol: asSymbol(contract),
                 market: await asMarket(markets, ib, contract),
@@ -261,7 +281,10 @@ async function listAccounts(ib, account) {
 }
 
 async function listAccountPositions(markets, ib, fetch, account, positions, historical, ib_tz, options) {
-    const executions = await ib.reqExecutions({acctCode: account});
+    const executions = await ib.reqExecutions({
+        acctCode: account,
+        time: options.begin ? moment.tz(options.begin, ib_tz).format('YYYYMMDD HH:mm:ss') : null
+    });
     const conIds = _.union(Object.keys(positions).map(i => parseInt(i)), collectConIds(executions));
     const listChanges = listContractPositions.bind(this, markets, ib, fetch);
     const changes = await Promise.all(conIds.sort().map(async(conId) => {
@@ -316,7 +339,8 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
     if (latest_trade.quant) {
         changes.push(latest_trade);
     }
-    const positions = changes.map(trade => Object.assign({
+    const positions = changes.filter(trade => trade.position || trade.action != 'HLD')
+      .map(trade => Object.assign({
         asof: trade.asof,
         symbol, market,
         currency: contract.currency,
@@ -329,13 +353,14 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
 }
 
 function changePosition(multiplier, prev_bar, details, bar, position) {
-    const dividend = +Big(prev_bar.close).minus(Big(prev_bar.adj_close).times(bar.close).div(bar.adj_close));
+    const adj = Big(bar.close).div(bar.adj_close);
+    const dividend = +Big(prev_bar.close).minus(Big(prev_bar.adj_close).times(adj)).toFixed(8);
     const ending_value = position * bar.close * multiplier;
     const quant = details.reduce((shares, exe) => shares + +exe.shares, 0);
     const shares = details.reduce((shares, exe) => shares + +exe.shares * (exe.side == 'SLD' ? -1 : 1), 0);
     const starting_position = position - shares;
-    const starting_value = starting_position * prev_bar.close * multiplier;
-    const net_dividend = starting_position * dividend * multiplier;
+    const starting_value = Big(starting_position).times(prev_bar.close).times(multiplier);
+    const net_dividend = Big(starting_position).times(dividend).times(multiplier);
     const purchase = details.filter(exe => exe.side == 'BOT')
         .reduce((net, exe) => net.add(Big(exe.price).times(exe.shares).times(multiplier)), Big(0));
     const sold = details.filter(exe => exe.side == 'SLD')
@@ -360,7 +385,7 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
         action,
         quant: quant ? Math.abs(shares) : null,
         position,
-        net_change: +Big(net_change).times(100).round().div(100),
+        net_change: +Big(net_change).toFixed(2),
         commission: +commission
     };
 }

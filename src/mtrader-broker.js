@@ -95,7 +95,7 @@ function createInstance(program) {
     const instance = function(options) {
         if (!promiseKeys) {
             promiseKeys = broker({help: true})
-                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+                .then(info => info.reduce((keys, info) => _.uniq(keys.concat(_.keys(info.options))), ['help']));
         }
         return promiseKeys.then(keys => _.pick(options, keys)).then(broker);
     };

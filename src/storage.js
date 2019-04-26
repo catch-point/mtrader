@@ -396,13 +396,26 @@ function writeTable(filename, table) {
             includeEndRowDelimiter: true
         }).on('error', error);
         writer.pipe(zlib.createGzip().on('error', error)).pipe(output);
-        table.forEach(record => writer.write(record));
+        table.forEach(record => writer.write(_.mapObject(record, formatValue)));
         writer.end();
     }), filename);
 }
 
 function parseValue(value) {
+    if (value == '') return null;
+    if (!_.isString(value)) return value;
+    const chr = value.charAt(0);
+    if (chr == '"' || chr == '[' || chr == '{') return JSON.parse(value);
     const number = Number(value);
     if (!Number.isNaN(number) || value == 'NaN') return number;
+    else return value;
+}
+
+function formatValue(value) {
+    if (value == null) return '';
+    if (_.isObject(value)) return JSON.stringify(value);
+    if (!_.isString(value)) return value;
+    const chr = value.charAt(0);
+    if (chr == '"' || chr == '[' || chr == '{') return JSON.stringify(value);
     else return value;
 }
