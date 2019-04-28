@@ -31,7 +31,7 @@
 'use strict';
 
 /**
- * Creates a version of the factory function that such that repeated calls will
+ * Creates a version of the factory function such that repeated calls will
  * have no effect, returning the value from the original call, until the close
  * function of the returned instance is called. Care should be taken to not call
  * closed more then the number of times the given factory function is called.

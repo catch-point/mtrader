@@ -61,6 +61,7 @@ const functions = module.exports.functions = {
     /* Weighted On Blanance Volume */
     OBV(n) {
         return _.extend(bars => {
+            if (n <= 0) return null;
             const numerator = adj(bars).reduce(function(p, bar, i, bars){
                 if (i === 0) return Big(0);
                 const prior = bars[i - 1];
@@ -78,6 +79,7 @@ const functions = module.exports.functions = {
     /* Average True Range */
     ATR(n) {
         return _.extend(bars => {
+            if (n <= 0) return null;
             const ranges = adj(bars).map(function(bar,i,bars) {
                 const previous = bars[i-1];
                 if (!previous) return Big(bar.high).minus(bar.low);
@@ -237,7 +239,7 @@ const functions = module.exports.functions = {
             const total = total_volume[total_volume.length-1];
             const target = +Big(p).times(total).div(100);
             const i = _.sortedIndex(total_volume, target);
-            if (total_volume[i] <= target) return prices[i];
+            if (total_volume[i] <= target || i === 0) return prices[i];
             const delta_volume = Big(total_volume[i]).minus(total_volume[i-1]);
             const ratio = (Big(target).minus(total_volume[i-1])).div(delta_volume);
             return z(Big(prices[i-1]).add(Big(prices[i]).minus(prices[i-1]).times(ratio)));
@@ -262,6 +264,7 @@ const functions = module.exports.functions = {
             if (!volume.length) return null;
             const below = volume.slice(0, _.sortedIndex(prices, target)+1);
             const total = volume.reduce((a, b) => a + b);
+            if (!total) return null;
             return z(Big(below.reduce((a, b) => a + b)).times(100).div(total));
         }, {
             warmUpLength: (o || 0) + n -1
@@ -296,7 +299,7 @@ const functions = module.exports.functions = {
  */
 function adj(bars) {
     const last = _.last(bars);
-    if (!_.has(last, 'adj_close')) return bars;
+    if (!last.adj_close) return bars;
     const norm = Big(last.close).div(last.adj_close);
     return bars.map(bar => {
         const scale = Big(bar.adj_close).div(bar.close).times(norm);
