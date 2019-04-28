@@ -71,11 +71,11 @@ async function createBroker(promiseHelpWithSettings, Brokers, settings) {
         try {
             return new Brokers[idx](mini_settings);
         } catch (err) {
-            if (error) logger.warn("Could not created broker", error);
+            if (error) logger.debug("Could not created broker", error);
             error = err;
         }
     }, null);
-    if (broker && error) logger.warn("Could not create broker", error);
+    if (broker && error) logger.debug("Could not create broker", error);
     if (broker) return broker;
     else if (error) throw error;
     else throw Error("Missing broker settings or no broker setup");

@@ -47,7 +47,7 @@ const version = require('../package.json').version;
  * Aligns the working signals on collective2 with the signal rows from the collect result
  */
 module.exports = function(systemid) {
-    expect(systemid).to.be.a('string');
+    expect(systemid).to.be.ok;
     const agent = new https.Agent({
         keepAlive: config('broker.collective2.keepAlive') || false,
         keepAliveMsecs: config('broker.collective2.keepAliveMsecs') || 1000,
@@ -68,22 +68,28 @@ module.exports = function(systemid) {
     expect(settings).to.have.property('apikey').that.is.a('string');
     return ({
         submitSignal(signal) {
-            return submit(agent, 'submitSignal', systemid, signal, settings);
+            return submit(agent, 'submitSignal', systemid, signal, settings).then(_.property('signal'));
         },
         cancelSignal(signalid) {
-            return submit(agent, 'cancelSignal', systemid, signalid, settings);
+            return submit(agent, 'cancelSignal', systemid, signalid, settings).then(_.property('signal'));
         },
         requestMarginEquity() {
-            return retrieve(agent, 'requestMarginEquity', systemid, settings);
+            return retrieve(agent, 'requestMarginEquity', {}, systemid, settings);
         },
         retrieveSystemEquity() {
-            return retrieve(agent, 'retrieveSystemEquity', systemid, settings);
+            return retrieve(agent, 'retrieveSystemEquity', {}, systemid, settings).then(_.property('equity_data'));
         },
         retrieveSignalsWorking() {
-            return retrieve(agent, 'retrieveSignalsWorking', systemid, settings);
+            return retrieve(agent, 'retrieveSignalsWorking', {}, systemid, settings).then(_.property('response'));
         },
         requestTrades() {
-            return retrieve(agent, 'requestTrades', systemid, settings);
+            return retrieve(agent, 'requestTrades', {}, systemid, settings).then(_.property('response'));
+        },
+        requestTradesOpen() {
+            return retrieve(agent, 'requestTradesOpen', {}, systemid, settings).then(_.property('response'));
+        },
+        retrieveSignalsAll(filter) {
+            return retrieve(agent, 'retrieveSignalsAll', filter, systemid, settings).then(_.property('response'));
         },
         close() {
             return Promise.resolve();
@@ -94,10 +100,11 @@ module.exports = function(systemid) {
 /**
  * Retrieve the collective2 response
  */
-function retrieve(agent, name, systemid, settings) {
+function retrieve(agent, name, posted, systemid, settings) {
     expect(settings).to.have.property('apikey').that.is.a('string');
     return new Promise((ready, error) => {
         const uri = settings[name];
+        logger.log(uri, posted);
         const parsed = _.isString(uri) && url.parse(uri);
         if (_.isObject(uri)) {
             ready(JSON.stringify(uri));
@@ -125,10 +132,10 @@ function retrieve(agent, name, systemid, settings) {
                     error(err);
                 }
             }).on('error', error);
-            request.end(JSON.stringify({
+            request.end(JSON.stringify(Object.assign({
                 apikey: settings.apikey,
                 systemid: systemid
-            }));
+            }, posted)));
         } else if (parsed.protocol == 'file:') {
             fs.readFile(parsed.pathname, 'utf8', (err, data) => err ? error(err) : ready(data));
         } else {
@@ -155,6 +162,7 @@ function submit(agent, name, systemid, signal, settings) {
     const signalobj = typeof signal == 'object' ? signal : undefined;
     return new Promise((ready, error) => {
         const uri = settings[name];
+        logger.log(uri);
         const parsed = _.isString(uri) && url.parse(uri);
         if (settings.offline || !parsed) {
             ready(JSON.stringify({

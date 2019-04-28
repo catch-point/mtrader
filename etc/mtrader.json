@@ -39,7 +39,9 @@
       "requestMarginEquity": "https://collective2.com/world/apiv3/requestMarginEquity",
       "retrieveSystemEquity": "https://api.collective2.com/world/apiv3/retrieveSystemEquity",
       "retrieveSignalsWorking": "https://collective2.com/world/apiv3/retrieveSignalsWorking",
+      "retrieveSignalsAll": "https://collective2.com/world/apiv3/retrieveSignalsAll",
       "requestTrades": "https://collective2.com/world/apiv3/requestTrades",
+      "requestTradesOpen": "https://collective2.com/world/apiv3/requestTradesOpen",
       "submitSignal": "https://collective2.com/world/apiv3/submitSignal",
       "cancelSignal": "https://collective2.com/world/apiv3/cancelSignal"
     }
@@ -66,6 +68,9 @@
           "secType": "STK",
           "primaryExch": "ARCA",
           "exchange": "SMART"
+        },
+        "collective2": {
+            "instrument": "stock"
         }
       }
     },
@@ -90,6 +95,9 @@
           "secType": "STK",
           "primaryExch": "BATS",
           "exchange": "SMART"
+        },
+        "collective2": {
+            "instrument": "stock"
         }
       }
     },
@@ -114,6 +122,9 @@
           "secType": "STK",
           "primaryExch": "NASDAQ",
           "exchange": "SMART"
+        },
+        "collective2": {
+            "instrument": "stock"
         }
       }
     },
@@ -138,6 +149,9 @@
           "secType": "STK",
           "primaryExch": "NYSE",
           "exchange": "SMART"
+        },
+        "collective2": {
+            "instrument": "stock"
         }
       }
     },
@@ -162,6 +176,9 @@
           "secType": "STK",
           "primaryExch": "AMEX",
           "exchange": "SMART"
+        },
+        "collective2": {
+            "instrument": "stock"
         }
       }
     },
@@ -530,6 +547,60 @@
         "ib": {
           "whatToShow": "TRADES",
           "secType": "FUT"
+        },
+        "collective2": {
+          "c2_prefix": "@",
+          "c2_map": {
+            "6A": "@AD",
+            "6B": "@BP",
+            "6C": "@CD",
+            "6E": "@EU",
+            "6J": "@JY",
+            "6L": "@BR",
+            "6M": "@PX",
+            "6N": "@NE",
+            "6R": "@RU",
+            "6S": "@SF",
+            "6Z": "@RA",
+            "BOS": "@BT",
+            "CHI": "@CH",
+            "CUS": "@CU",
+            "CZK": "@CKO",
+            "DC": "@DA",
+            "DEN": "@DE",
+            "E7": "@ME",
+            "ECK": "@ECZ",
+            "EHF": "@EHU",
+            "EPZ": "@EPL",
+            "GD": "@GI",
+            "GDK": "@DK",
+            "GE": "@ED",
+            "GLB": "@EM",
+            "GNF": "@NF",
+            "HUF": "@HFO",
+            "ILS": "@IL",
+            "J7": "@JE",
+            "LAV": "@LV",
+            "LAX": "@LA",
+            "LBS": "@LB",
+            "MIA": "@MI",
+            "NQT": "@NQB",
+            "NYM": "@NY",
+            "PLN": "@PLZ",
+            "RGT": "@RST",
+            "RMB": "@RB",
+            "RME": "@RE",
+            "RS1": "@R1",
+            "RVT": "@RUT",
+            "SDG": "@SD",
+            "SFR": "@FR",
+            "SPX": "@SPO",
+            "WDC": "@DC",
+            "XBT": "@XMT",
+            "XRT": "@XTT",
+            "XVT": "@XCT"
+          },
+          "instrument": "future"
         }
       }
     },
@@ -551,6 +622,12 @@
           "whatToShow": "TRADES",
           "secType": "FUT",
           "exchange":"NYMEX"
+        },
+        "collective2": {
+          "c2_map": {
+            "GC": "QGC"
+          },
+          "instrument": "future"
         }
       }
     },
@@ -570,6 +647,10 @@
           "whatToShow": "TRADES",
           "secType": "FUT",
           "exchange":"NYMEX"
+        },
+        "collective2": {
+          "c2_prefix": "@",
+          "instrument": "future"
         }
       }
     },
@@ -634,6 +715,17 @@
           "secType": "FUT",
           "exchange": "ECBOT",
           "month_abbreviation": true
+        },
+        "collective2": {
+          "c2_prefix": "@",
+          "c2_map": {
+            "ZT": "@TU",
+            "ZF": "@FV",
+            "ZN": "@TY",
+            "ZB": "@US",
+            "UB": "@UB"
+          },
+          "instrument": "future"
         }
       }
     },
@@ -654,6 +746,10 @@
           "whatToShow": "TRADES",
           "secType": "FUT",
           "exchange": "CFE"
+        },
+        "collective2": {
+          "c2_prefix": "@",
+          "instrument": "future"
         }
       }
     },

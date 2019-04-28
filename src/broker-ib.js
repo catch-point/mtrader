@@ -223,6 +223,13 @@ async function listOrders(markets, ib, settings, options) {
         const parent = order.parentId && orders.find(p => order.parentId == p.orderId);
         const bag = contract.secType == 'BAG';
         const working = ~open_orders.indexOf(order);
+        const status = order.status == 'ApiPending' ? 'pending' :
+            order.status == 'PendingSubmit' ? 'pending' :
+            order.status == 'PendingCancel' ? 'pending' :
+            order.status == 'PreSubmitted' ? 'pending' :
+            order.status == 'Submitted' ? 'working' :
+            order.status == 'ApiCancelled' ? 'working' :
+            order.status == 'Filled' ? 'filled' : 'cancelled';
         result.push({
             asof: parseTime(order.time, ib_tz).format(),
             action: order.action,
@@ -231,6 +238,7 @@ async function listOrders(markets, ib, settings, options) {
             limit: order.lmtPrice == Number.MAX_VALUE ? null : order.lmtPrice,
             offset: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
             tif: order.tif,
+            status: status,
             order_ref: order.orderRef || order.permId,
             parent_ref: parent ? parent.orderRef || parent.permId : null,
             group_ref: order.ocaGroup,
@@ -316,12 +324,12 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
     const promise = historical[key] = historical[key] ||
         loadHistoricalData(fetch, symbol, market, earliest, {...options, ...markets[market]});
     const bars = await promise;
+    if (!bars.length) return [];
     const multiplier = contract.multiplier || 1;
     const ending_position = pos ? pos.position : 0;
     const newer_details = executions.filter(exe => {
         return exe.asof > _.last(bars).ending;
     });
-    if (!bars.length) return [];
     const latest_trade = changePosition(multiplier, _.last(bars), newer_details, _.last(bars), ending_position);
     const changes = [];
     const starting_position = bars.reduceRight((position, bar, i, bars) => {
@@ -340,7 +348,7 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
             return position - changes[i].quant;
         else if (changes[i].action.charAt(0) == 'S')
             return position + changes[i].quant;
-        else 
+        else
             throw Error(`Invalid trade action ${changes[i].action}`);
     }, ending_position - latest_trade.quant);
     if (latest_trade.quant) {

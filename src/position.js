@@ -138,24 +138,24 @@ function collective2(collect, broker, options) {
         if (signal && signal.action) return broker(signal);
         else if (_.isString(signal)) return broker({action: 'cancelSignal', signalid: signal});
         else throw Error("Unknown signal: " + JSON.stringify(signal));
-    }).then(res => {
+    }).then(signal => {
         const log = s => {
             const type = +s.isStopOrder ? '@STOP ' + s.isStopOrder :
                 +s.isLimitOrder || +s.islimit ? '@LIMIT ' + (+s.isLimitOrder || +s.islimit) : '@MARKET';
             const tif = s.duration || s.tif || (+s.gtc ? 'GTC' : +s.day ? 'DAY' : '')
             logger.info(s.action, s.quant, s.symbol || '', type, tif, s.signalid || '', s.description || '');
         }
-        if (res.signal.conditionalUponSignal) {
-            log(res.signal.conditionalUponSignal);
-            log(res.signal);
-            const conditionalupon = res.signal.conditionalUponSignal.signalid;
-            const flat = _.extend({conditionalupon}, _.omit(res.signal, 'conditionalUponSignal'));
-            return promise.then(ar => ar.concat(_.compact([res.signal.conditionalUponSignal, flat])));
-        } else if (res.signal.action) {
-            log(res.signal);
-            return promise.then(ar => ar.concat(res.signal));
+        if (signal.conditionalUponSignal) {
+            log(signal.conditionalUponSignal);
+            log(signal);
+            const conditionalupon = signal.conditionalUponSignal.signalid;
+            const flat = _.extend({conditionalupon}, _.omit(signal, 'conditionalUponSignal'));
+            return promise.then(ar => ar.concat(_.compact([signal.conditionalUponSignal, flat])));
+        } else if (signal.action) {
+            log(signal);
+            return promise.then(ar => ar.concat(signal));
         } else {
-            return promise.then(ar => ar.concat(res.signal));
+            return promise.then(ar => ar.concat(signal));
         }
     }), Promise.resolve([])));
 }
@@ -168,8 +168,8 @@ function getDesiredPositions(collect, broker, options) {
       .then(requestMarginEquity => broker({action:'retrieveSystemEquity'})
       .then(retrieveSystemEquity => {
         const unix_timestamp = moment(options.begin).format('X');
-        const idx = _.sortedIndex(retrieveSystemEquity.equity_data, {unix_timestamp}, 'unix_timestamp');
-        return retrieveSystemEquity.equity_data[idx];
+        const idx = _.sortedIndex(retrieveSystemEquity, {unix_timestamp}, 'unix_timestamp');
+        return retrieveSystemEquity[idx];
     }).then(systemEquity => collect(merge(options, {
         parameters: _.pick(requestMarginEquity, 'buyPower', 'marginUsed', 'modelAccountValue' , 'cash')
     }, {
@@ -193,9 +193,9 @@ function getWorkingPositions(broker, options) {
     return broker({action: 'retrieveSignalsWorking'})
       .then(retrieveSignalsWorking => broker({action: 'requestTrades'})
       .then(requestTrades => {
-        expect(retrieveSignalsWorking).to.have.property('response').that.is.an('array');
-        expect(requestTrades).to.have.property('response').that.is.an('array');
-        const positions = requestTrades.response.reduce((positions, pos) => {
+        expect(retrieveSignalsWorking).to.be.an('array');
+        expect(requestTrades).to.be.an('array');
+        const positions = requestTrades.reduce((positions, pos) => {
             const dup = positions[pos.symbol];
             if (dup && dup.quant_closed != dup.quant_opened && pos.quant_closed != pos.quant_opened)
                 throw Error("Two open positions for the same symbol found: " + JSON.stringify(dup) + JSON.stringify(pos));
@@ -206,7 +206,7 @@ function getWorkingPositions(broker, options) {
             else
                 return _.defaults({[pos.symbol]: pos}, positions);
         }, {});
-        const working = _.groupBy(retrieveSignalsWorking.response, 'symbol');
+        const working = _.groupBy(retrieveSignalsWorking, 'symbol');
         return _.reduce(working, (positions, signals, symbol) => signals.sort((a,b) => {
             return sortSignals(positions[symbol], a, b);
         }).reduce((positions, signal) => {

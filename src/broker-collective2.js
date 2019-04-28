@@ -31,7 +31,11 @@
 'use strict';
 
 const _ = require('underscore');
+const moment = require('moment-timezone');
+const Big = require('big.js');
 const logger = require('./logger.js');
+const config = require('./config.js');
+const Fetch = require('./fetch.js');
 const Collective2 = require('./collective2-client.js');
 const expect = require('chai').expect;
 
@@ -40,37 +44,27 @@ const expect = require('chai').expect;
  */
 module.exports = function(settings) {
     if (settings.help) return helpSettings();
-    expect(settings).to.have.property('systemid').that.is.a('string');
+    expect(settings).to.have.property('systemid').that.is.ok;
     const client = Collective2(settings.systemid);
+    const fetch = new Fetch(settings);
+    const markets = _.mapObject(_.pick(config('markets'), market => {
+        return (market.datasources||{}).collective2;
+    }), market => {
+        return Object.assign(_.omit(market, _.isObject), market.datasources.collective2);
+    });
+    const lookup_fn = _.memoize(lookup.bind(this, fetch, markets), signal => signal.symbol);
     return _.extend(function(options) {
         if (options.help) return helpOptions();
-        else return collective2(client, options);
+        else return collective2(client, fetch, lookup_fn, options);
     }, {
         close() {
-            return client.close();
+            return Promise.all([
+                fetch.close(),
+                client.close()
+            ]);
         }
     });
 };
-
-function collective2(collective2, options) {
-    expect(options).to.have.property('action').to.be.oneOf([
-        'requestMarginEquity', 'retrieveSystemEquity',
-        'retrieveSignalsWorking', 'requestTrades',
-        'cancelSignal', 'BTO', 'STO', 'BTC', 'STC'
-    ]);
-    switch(options.action) {
-        case 'requestMarginEquity': return collective2.requestMarginEquity();
-        case 'retrieveSystemEquity': return collective2.retrieveSystemEquity();
-        case 'retrieveSignalsWorking': return collective2.retrieveSignalsWorking();
-        case 'requestTrades': return collective2.requestTrades();
-        case 'cancelSignal': return collective2.cancelSignal(options.signalid);
-        case 'BTO':
-        case 'STO':
-        case 'BTC':
-        case 'STC': return collective2.submitSignal(options);
-        default: throw Error("Unknown action: " + options.action);
-    }
-}
 
 /**
  * Array of one Object with description of module, including supported options
@@ -94,6 +88,65 @@ function helpSettings() {
  */
 function helpOptions() {
     return Promise.resolve([{
+        name: 'balances',
+        usage: 'broker(options)',
+        description: "List a summary of current account balances",
+        properties: [
+            'asof', 'currency', 'rate', 'net'
+        ],
+        options: {
+            action: {
+                usage: '<string>',
+                values: [
+                    'balances'
+                ]
+            },
+            begin: {
+                usage: '<dateTime>',
+                description: "Include summary of position changes since this dateTime"
+            }
+        }
+    }, {
+        name: 'positions',
+        usage: 'broker(options)',
+        description: "List a summary of recent trades and their effect on the account position",
+        properties: [
+            'asof', 'price', 'change', 'dividend', 'action', 'quant', 'position',
+            'traded_price', 'net_change', 'commission', 'symbol', 'market', 'currency', 'secType'
+        ],
+        options: {
+            action: {
+                usage: '<string>',
+                values: [
+                    'positions'
+                ]
+            },
+            begin: {
+                usage: '<dateTime>',
+                description: "Include summary of position changes since this dateTime"
+            }
+        }
+    }, {
+        name: 'orders',
+        usage: 'broker(options)',
+        description: "List a summary of open orders",
+        properties: [
+            'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif',
+            'order_ref', 'symbol', 'market', 'secType', 'currency'
+        ],
+        options: {
+            action: {
+                usage: '<string>',
+                values: [
+                    'orders'
+                ]
+            },
+            begin: {
+                usage: '<dateTime>',
+                description: "Include summary of position changes since this dateTime"
+            }
+        }
+    }, {
         name: 'retrieve',
         usage: 'broker(options)',
         description: "Changes workers orders to align with signal orders in result",
@@ -204,5 +257,196 @@ function helpOptions() {
             pointvalue: {}
         }
     }]);
+}
+
+function collective2(collective2, fetch, lookup, options) {
+    expect(options).to.have.property('action').to.be.oneOf([
+        'balances', 'positions', 'orders',
+        'requestMarginEquity', 'retrieveSystemEquity',
+        'retrieveSignalsWorking', 'requestTrades',
+        'cancelSignal', 'BTO', 'STO', 'BTC', 'STC'
+    ]);
+    switch(options.action) {
+        case 'balances': return listBalances(collective2, options);
+        case 'positions': return listPositions(collective2, fetch, lookup, options);
+        case 'orders': return listOrders(collective2, lookup, options);
+        case 'requestMarginEquity': return collective2.requestMarginEquity();
+        case 'retrieveSystemEquity': return collective2.retrieveSystemEquity();
+        case 'retrieveSignalsWorking': return collective2.retrieveSignalsWorking();
+        case 'requestTrades': return collective2.requestTrades();
+        case 'cancelSignal': return collective2.cancelSignal(options.signalid);
+        case 'BTO':
+        case 'STO':
+        case 'BTC':
+        case 'STC': return collective2.submitSignal(options);
+        default: throw Error("Unknown action: " + options.action);
+    }
+}
+
+async function listBalances(collective2, options) {
+    const begin = options.begin && moment(options.begin).format('X');
+    const equity_data = await collective2.retrieveSystemEquity();
+    const data = begin ? equity_data.filter(datum => datum.unix_timestamp > begin) :
+        equity_data.slice(resp.equity_data.length-1);
+    return data.map(datum => {
+        return {
+            asof: moment(datum.unix_timestamp, 'X').format(),
+            currency: 'USD',
+            rate: '1.0',
+            net: datum.strategy_raw
+        };
+    });
+}
+
+async function listPositions(collective2, fetch, lookup, options) {
+    const asof = moment(options.begin || options.now);
+    const earliest = moment(asof).subtract(5, 'days').startOf('day');
+    const positions = _.indexBy(await collective2.requestTradesOpen(), 'symbol');
+    const filter = {
+        filter_type: 'time_traded',
+        filter_date_time_start: moment(earliest).tz('America/New_York').format('YYYY-MM-DD HH:mm:ss')
+    };
+    const signals = _.groupBy(await collective2.retrieveSignalsAll(filter), 'symbol');
+    const symbols = _.union(Object.keys(positions), Object.keys(signals));
+    const changes = await Promise.all(symbols.map(async(symbol) => {
+        const contract = await lookup(positions[symbol] || _.first(signals[symbol]));
+        const tz = (moment.defaultZone||{}).name;
+        const bars = await fetch({interval:'day', begin: earliest.format(), tz, ...contract});
+        const trades = (signals[symbol]||[]).filter(signal => signal.status == 'traded');
+        if (_.isEmpty(trades)) return [];
+        const changes = await listSymbolPositions(contract, bars, positions[symbol], trades, options);
+        const asof_format = options.begin && asof.format();
+        if (options.begin) return changes.filter(position => asof_format <= position.asof);
+        else if (!changes.length || !_.last(changes).position) return [];
+        else return [_.last(changes)];
+    }));
+    return _.sortBy([].concat(...changes), 'asof');
+}
+
+async function listOrders(collective2, lookup, options) {
+    const filter_date_time_start = (options||{}).begin &&
+        moment(options.begin).tz('America/New_York').format('YYYY-MM-DD HH:mm:ss');
+    const signals = filter_date_time_start ?
+        [].concat(...await Promise.all(['time_traded', 'time_expired', 'time_canceled'].map(async(filter_type) => {
+            return collective2.retrieveSignalsAll({filter_type, filter_date_time_start});
+        }))) : await collective2.retrieveSignalsWorking();
+    const changes = await Promise.all(signals.map(async(signal) => {
+        const contract = await lookup(signal);
+        const time_unix = _.max([signal.posted_time_unix, signal.canceled_time_unix, signal.traded_time_unix]);
+        const status = signal.status == 'working' ? 'working' :
+            signal.status == 'traded' ? 'filled' : 'cancelled';
+        return {
+            asof: moment(time_unix, 'X').format(),
+            action: signal.action,
+            quant: signal.quant,
+            type: +signal.market || +signal.isMarketOrder ? 'MKT' :
+                +signal.isLimitOrder ? 'LMT' : +signal.isStopOrder ? 'STP' : null,
+            limit: +signal.isLimitOrder || null,
+            offset: +signal.isStopOrder || null,
+            tif: signal.tif || signal.duration,
+            status: status,
+            order_ref: signal.localsignal_id || signal.signal_id,
+            symbol: contract.symbol,
+            market: contract.market,
+            secType: contract.secType,
+            currency: contract.currency
+        };
+    }));
+    return _.sortBy(changes, 'asof');
+}
+
+async function listSymbolPositions(contract, bars, position, trades, options) {
+    const changes = [];
+    const multiplier = contract.multiplier || 1;
+    const ending_position = position ? +position.quant_opened - +position.quant_closed : 0;
+    const last_markToMarket_time = moment(_.last(bars).ending).format('X');
+    const newer_details = trades.filter(trade => {
+        return trade.traded_time_unix > last_markToMarket_time;
+    });
+    const latest_trade = changePosition(multiplier, _.last(bars), newer_details, _.last(bars), ending_position);
+    const starting_position = bars.reduceRight((position, bar, b, bars) => {
+        const markToMarket_time = moment(bar.ending).format('X');
+        const prev_markToMarket_time = moment((bars[b-1]||{}).ending||0).format('X');
+        const details = trades.filter(trade => {
+            return trade.traded_time_unix <= markToMarket_time &&
+                prev_markToMarket_time < trade.traded_time_unix;
+        });
+        changes[b] = changePosition(multiplier, bars[b-1] || bar, details, bar, position);
+        if (changes[b].action == 'LONG' && !changes[b].quant)
+            return position;
+        else if (changes[b].action == 'SHORT' && !changes[b].quant)
+            return position;
+        else if (!changes[b].action && !changes[b].quant)
+            return position;
+        else if (changes[b].action.charAt(0) == 'B')
+            return position - changes[b].quant;
+        else if (changes[b].action.charAt(0) == 'S')
+            return position + changes[b].quant;
+        else
+            throw Error(`Invalid trade action ${changes[i].action}`);
+    }, ending_position - latest_trade.quant);
+    if (latest_trade.quant) {
+        changes.push(latest_trade);
+    }
+    return changes.filter(trade => trade.action)
+      .map(trade => Object.assign({
+        asof: trade.asof,
+        symbol: contract.symbol,
+        market: contract.market,
+        currency: contract.currency,
+        secType: contract.secType
+    }, trade));
+}
+
+function changePosition(multiplier, prev_bar, details, bar, position) {
+    const adj = Big(bar.close).div(bar.adj_close);
+    const dividend = +Big(prev_bar.close).minus(Big(prev_bar.adj_close).times(adj)).toFixed(8);
+    const ending_value = position * bar.close * multiplier;
+    const quant = details.reduce((shares, trade) => shares + +trade.quant, 0);
+    const shares = details.reduce((shares, trade) => shares + +trade.quant * (trade.action.charAt(0) == 'S' ? -1 : 1), 0);
+    const starting_position = position - shares;
+    const starting_value = Big(starting_position).times(prev_bar.close).times(multiplier);
+    const net_dividend = Big(starting_position).times(dividend).times(multiplier);
+    const purchase = details.filter(trade => trade.action.charAt(0) == 'B')
+        .reduce((net, trade) => net.add(Big(trade.traded_price).times(trade.quant).times(multiplier)), Big(0));
+    const sold = details.filter(trade => trade.action.charAt(0) == 'S')
+        .reduce((net, trade) => net.add(Big(trade.traded_price).times(trade.quant).times(multiplier)), Big(0));
+    const net_change = Big(ending_value).minus(starting_value)
+        .add(sold).minus(purchase).add(net_dividend);
+    const action = position == 0 && quant == 0 ? '' :
+        position > 0 && quant == 0 ? 'LONG' :
+        position < 0 && quant == 0 ? 'SHORT' :
+        starting_position >= 0 && position >= 0 && shares >= 0 ? 'BTO' :
+        starting_position >= 0 && position >= 0 && shares <= 0 ? 'STC' :
+        starting_position <= 0 && position <= 0 && shares <= 0 ? 'STO' :
+        starting_position <= 0 && position <= 0 && shares >= 0 ? 'BTC' :
+        shares > 0 ? 'BOT' : shares < 0 ? 'SLD' : '';
+    const traded_time_unix = _.max(details.map(trade => trade.traded_time_unix));
+    return {
+        asof: bar.ending,
+        traded_at: _.isFinite(traded_time_unix) ? moment(traded_time_unix, 'X').format() : null,
+        price: bar.close,
+        traded_price: shares ? +Big(purchase).add(sold).div(Big(quant).abs()).div(multiplier) : null,
+        change: +Big(bar.close).minus(Big(prev_bar.adj_close).times(bar.close).div(bar.adj_close)),
+        dividend,
+        action,
+        quant: quant ? Math.abs(shares) : null,
+        position,
+        net_change: +Big(net_change).toFixed(2)
+    };
+}
+
+async function lookup(fetch, markets, signal) {
+    const instrument = signal.typeofsymbol || signal.instrument;
+    const matches = await Promise.all(_.map(_.pick(markets, m => {
+        return m.instrument == instrument;
+    }), async(m, market) => {
+        const symbol = _.invert(m.c2_map||{})[signal.symbol] ||
+            signal.symbol.startsWith(m.c2_prefix) ? signal.symbol.substring(m.c2_prefix.length) :
+            signal.symbol;
+        const matches = await fetch({interval:'lookup', symbol, market});
+        return matches.filter(match => match.symbol == symbol && match.currency == 'USD');
+    }));
+    return _.first(_.flatten(matches));
 }
 
