@@ -143,9 +143,9 @@ function reverse(date, w) {
     if (!reversed) throw Error(`Unknown duration format ${w}`);
     else if (!reversed.isAfter(date)) return reversed;
     else return ~startOf.indexOf(w) ? moment(date).subtract(1, w).startOf(w) :
-            _.has(months(), d) ? moment(date).subtract(1, 'year').month(months()[w]) :
-            _.has(dates(), d) ? moment(date).subtract(1, 'month').date(dates()[w]) :
-            _.has(days(), d) ? moment(date).subtract(1, 'week').day(days()[w]) : null;
+            _.has(months(), w) ? moment(date).subtract(1, 'year').month(months()[w]) :
+            _.has(dates(), w) ? moment(date).subtract(1, 'month').date(dates()[w]) :
+            _.has(days(), w) ? moment(date).subtract(1, 'week').day(days()[w]) : null;
 }
 
 function nextOpen(date) {
