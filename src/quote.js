@@ -515,13 +515,16 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
     const begin = options.begin;
     const pad_begin = options.pad_begin + warmUpLength;
     const start = pad_begin ? period.dec(begin, pad_begin) : period.floor(begin);
-    const end = options.end || moment.tz(options.now, options.tz);
+    const now = moment().tz(options.tz);
+    const end = options.end || moment.tz(options.now || now, options.tz);
     const stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
-    const blocks = getBlocks(options.interval, start, stop, options);
+    const interval = options.interval;
+    const blocks = getBlocks(interval, start, stop, options);
+    const latest = !stop.isBefore(now) || _.contains(blocks, _.last(getBlocks(interval, now, now, options)));
     if (options.offline) return Promise.resolve(blocks);
     else return collection.lockWith(blocks, blocks => {
         const version = getStorageVersion(collection);
-        return fetchBlocks(fetch, fields, options, collection, version, stop.format(), blocks);
+        return fetchBlocks(fetch, fields, options, collection, version, stop.format(), blocks, latest);
     });
 }
 
@@ -684,7 +687,7 @@ function createStorageVersion() {
 /**
  * Checks if any of the blocks need to be updated
  */
-function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) {
+function fetchBlocks(fetch, fields, options, collection, version, stop, blocks, latest_blocks) {
     const cmsg = "Incomplete data try again without the read_only flag";
     const pmsg = "or without the read_only flag";
     const fetchComplete = options.read_only ? () => Promise.reject(Error(cmsg)) :
@@ -692,18 +695,18 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
     const fetchPartial = options.read_only ? () => Promise.reject(Error(pmsg)) :
         fetchPartialBlock.bind(this, fetch, fields, options, collection);
     return Promise.all(blocks.map((block, i, blocks) => {
-        const last = i == blocks.length -1;
+        const latest = i == blocks.length -1 && latest_blocks;
         if (!collection.exists(block))
-            return fetchComplete(block, last);
+            return fetchComplete(block, latest);
         if (collection.propertyOf(block, 'version') != version)
-            return fetchComplete(block, last);
+            return fetchComplete(block, latest);
         if (collection.propertyOf(block, 'tz') != options.tz)
-            return fetchComplete(block, last);
+            return fetchComplete(block, latest);
         const tail = collection.tailOf(block);
         if (_.isEmpty(tail) || !_.last(tail).incomplete)
             return; // empty blocks are complete
         if (_.first(tail).incomplete)
-            return fetchComplete(block, last);
+            return fetchComplete(block, latest);
         if (i < blocks.length -1 || _.last(tail).ending <= stop || _.last(tail).asof <= stop) {
             if (isWeekend(_.last(tail), options)) return;
             return fetchPartial(block, _.first(tail).ending).catch(error => {
@@ -715,7 +718,7 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks) 
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
         const version = createStorageVersion();
-        return fetchBlocks(fetch, fields, options, collection, version, stop, blocks);
+        return fetchBlocks(fetch, fields, options, collection, version, stop, blocks, latest_blocks);
     });
 }
 
@@ -748,9 +751,9 @@ function isBeforeStartOfWeek(asof, options) {
 /**
  * Attempts to load a complete block
  */
-async function fetchCompleteBlock(fetch, options, collection, version, block, last) {
+async function fetchCompleteBlock(fetch, options, collection, version, block, latest) {
     const records = await fetch(blockOptions(block, options));
-    if (last && _.isEmpty(records)) return records; // don't write incomplete empty blocks
+    if (latest && _.isEmpty(records)) return records; // don't write incomplete empty blocks
     await collection.replaceWith(records, block);
     await collection.propertyOf(block, 'version', version);
     await collection.propertyOf(block, 'tz', options.tz);
