@@ -86,12 +86,12 @@ function inlinePortfolio(collections, base, options, avoid) {
 }
 
 function loadCollection(collections, base, options, avoid) {
-    return options.load ? _.compact(_.flatten([options.load])).reduceRight((options, load) => {
+    return options.load ? _.compact(_.flatten([options.load])).reduce((options, load) => {
         const loaded = inlineCollections(collections, base, load, avoid);
-        return merge(options, loaded, options, {load:[]}, options.portfolio && loaded.portfolio ? {
+        return merge(options, loaded, options, options.portfolio && loaded.portfolio ? {
             portfolio: [].concat(options.portfolio, loaded.portfolio)
         } : {});
-    }, options) : options;
+    }, _.omit(options, 'load')) : options;
 }
 
 function readCollection(collections, base, filename, avoid) {
