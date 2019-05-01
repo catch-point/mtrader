@@ -211,7 +211,7 @@ async function interday(markets, adjustments, client, options) {
     const finish = moment.tz(options.end || options.now, options.tz).format();
     let first = _.sortedIndex(result, {ending: start}, 'ending');
     let last = _.sortedIndex(result, {ending: finish}, 'ending');
-    if (result[last] && result[last].ending == finish) last++;
+    if (result[last]) last++;
     if (first <= 0 && last >= result.length) return result;
     else return result.slice(first, last);
 }
@@ -231,7 +231,7 @@ async function intraday(markets, adjustments, client, options) {
     const finish = moment.tz(options.end || options.now, options.tz).format();
     let first = _.sortedIndex(result, {ending: start}, 'ending');
     let last = _.sortedIndex(result, {ending: finish}, 'ending');
-    if (result[last] && result[last].ending == finish) last++;
+    if (result[last]) last++;
     if (first <= 0 && last >= result.length) return result;
     else return result.slice(first, last);
 }

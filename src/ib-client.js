@@ -793,14 +793,16 @@ function requestWithId(ib) {
                 }
             };
             logger.log(cmd, ...args.map(arg => {
-                return arg && (arg.conId || arg.localSymbol || arg.symbol) || arg;
+                return arg && (arg.localSymbol || arg.symbol || arg.conId) || arg;
             }));
             ib[cmd].call(ib, reqId, ...args);
         });
     }, 50);
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
-            req_queue[info.id].reject(err);
+            // Some error messages might just be warnings
+            // @see https://groups.io/g/twsapi/message/40551
+            _.defer(() => ((req_queue[info.id]||{}).reject||logger.warn)(err));
         } else if (info && info.code == 1101) {
             logger.info("ib-client", err.message);
         } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
