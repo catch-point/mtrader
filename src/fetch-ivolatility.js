@@ -308,10 +308,10 @@ function nextDayOpen(ending, options) {
 
 function isMarketOpen(now, options) {
     const time = moment.tz(now, options.tz).format('HH:mm:ss');
-    if (options.marketOpensAt < options.marketClosesAt) {
-        return options.marketOpensAt < time && time <= options.marketClosesAt;
-    } else if (options.marketClosesAt < options.marketOpensAt) {
-        return time <= options.marketClosesAt || options.marketOpensAt < time;
+    if (options.premarketOpensAt < options.afterHoursClosesAt) {
+        return options.premarketOpensAt < time && time <= options.afterHoursClosesAt;
+    } else if (options.afterHoursClosesAt < options.premarketOpensAt) {
+        return time <= options.afterHoursClosesAt || options.premarketOpensAt < time;
     } else {
         return true; // 24 hour market
     }
