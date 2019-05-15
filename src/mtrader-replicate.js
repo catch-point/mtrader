@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // vim: set filetype=javascript:
-// mtrader-collective2.js
+// mtrader-replicate.js
 /*
  *  Copyright (c) 2018-2019 James Leigh, Some Rights Reserved
  *
@@ -39,11 +39,12 @@ const tabular = require('./tabular.js');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
-const Position = require('./position.js');
+const Replicate = require('./replicate.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
 const Collect = require('./mtrader-collect.js');
+const Broker = require('./mtrader-broker.js');
 
 function usage(command) {
     return command.version(require('../package.json').version)
@@ -78,57 +79,58 @@ function usage(command) {
 if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        const position = createInstance(program);
-        process.on('SIGINT', () => position.close());
-        process.on('SIGTERM', () => position.close());
+        const replicate = createInstance(program, config.options());
+        process.on('SIGINT', () => replicate.close());
+        process.on('SIGTERM', () => replicate.close());
         Promise.all(program.args.map(name => {
-            return readCallSave(name, position)
+            return readCallSave(name, replicate)
               .then(result => tabular(result, config()))
         })).catch(err => logger.error(err, err.stack))
-          .then(() => position.close());
+          .then(() => replicate.close());
     } else {
         program.help();
     }
 } else {
-    module.exports = function() {
-        return createInstance(usage(new commander.Command()));
+    module.exports = function(settings) {
+        return createInstance(usage(new commander.Command()), settings);
     };
 }
 
-function createInstance(program) {
+function createInstance(program, settings) {
     const collect = new Collect();
-    const position = new Position(collect);
+    const broker = new Broker(settings);
+    const replicate = new Replicate(broker, collect);
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
-            promiseKeys = position({help: true})
+            promiseKeys = replicate({help: true})
                 .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
         }
-        return promiseKeys.then(keys => _.pick(options, keys)).then(position);
+        return promiseKeys.then(keys => _.pick(options, keys)).then(replicate);
     };
     instance.close = function() {
         if (closed) return closed;
-        else return closed = position.close().then(collect.close);
+        else return closed = replicate.close().then(collect.close);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;
 }
 
-function shell(desc, position, app) {
-    app.on('quit', () => position.close());
-    app.on('exit', () => position.close());
-    app.cmd('position', desc, (cmd, sh, cb) => {
-        readCallSave(null, position, config('save'))
+function shell(desc, replicate, app) {
+    app.on('quit', () => replicate.close());
+    app.on('exit', () => replicate.close());
+    app.cmd('replicate', desc, (cmd, sh, cb) => {
+        readCallSave(null, replicate, config('save'))
           .then(() => sh.prompt(), cb);
     });
-    app.cmd("position :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
-        readCallSave(cmd.params.name, position, config('save'))
+    app.cmd("replicate :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
+        readCallSave(cmd.params.name, replicate, config('save'))
           .then(() => sh.prompt(), cb);
     });
 // help
-return position({help: true}).then(_.first).then(info => {
-help(app, 'position', `
-  Usage: position :name
+return replicate({help: true}).then(_.first).then(info => {
+help(app, 'replicate', `
+  Usage: replicate :name
 
   ${desc}
 

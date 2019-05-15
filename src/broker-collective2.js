@@ -44,8 +44,9 @@ const expect = require('chai').expect;
  */
 module.exports = function(settings) {
     if (settings.help) return helpSettings();
+    settings = {offline: config('offline'), ...config('tls'), ...config('broker.collective2'), ...settings};
     expect(settings).to.have.property('systemid').that.is.ok;
-    const client = Collective2(settings.systemid);
+    const client = Collective2(settings);
     const fetch = new Fetch(settings);
     const markets = _.mapObject(_.pick(config('markets'), market => {
         return (market.datasources||{}).collective2;
@@ -54,8 +55,9 @@ module.exports = function(settings) {
     });
     const lookup_fn = _.memoize(lookup.bind(this, fetch, markets), signal => signal.symbol);
     return _.extend(function(options) {
-        if (options.help) return helpOptions();
-        else return collective2(client, fetch, lookup_fn, options);
+        if (options && options.help) return helpOptions();
+        const c2_multipliers = settings.c2_multipliers || {};
+        return collective2(c2_multipliers, client, fetch, lookup_fn, options || {});
     }, {
         close() {
             return Promise.all([
@@ -78,6 +80,10 @@ function helpSettings() {
             systemid: {
                 usage: '<integer>',
                 description: "The Collective2 system identifier"
+            },
+            c2_multipliers: {
+                usage: '{c2_symbol: <number>}',
+                description: "A hash of collective2 symbols to their Value 1 Pt (if not 1)"
             }
         }
     }]);
@@ -101,6 +107,10 @@ function helpOptions() {
                     'balances'
                 ]
             },
+            asof: {
+                usage: '<dateTime>',
+                description: "The date and time of the balances to return"
+            },
             begin: {
                 usage: '<dateTime>',
                 description: "Include summary of position changes since this dateTime"
@@ -111,8 +121,9 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of recent trades and their effect on the account position",
         properties: [
-            'asof', 'price', 'change', 'dividend', 'action', 'quant', 'position',
-            'traded_price', 'net_change', 'commission', 'symbol', 'market', 'currency', 'secType'
+            'asof', 'action', 'quant', 'position', 'traded_at', 'traded_price', 'price',
+            'sales', 'purchases', 'dividend', 'commission', 'mtm', 'value',
+            'symbol', 'market', 'currency', 'secType', 'multiplier'
         ],
         options: {
             action: {
@@ -120,6 +131,10 @@ function helpOptions() {
                 values: [
                     'positions'
                 ]
+            },
+            asof: {
+                usage: '<dateTime>',
+                description: "The date and time of the positions to return"
             },
             begin: {
                 usage: '<dateTime>',
@@ -131,8 +146,8 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif',
-            'order_ref', 'symbol', 'market', 'secType', 'currency'
+            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif', 'status', 'price',
+            'order_ref', 'symbol', 'market', 'currency', 'secType', 'multiplier'
         ],
         options: {
             action: {
@@ -140,6 +155,10 @@ function helpOptions() {
                 values: [
                     'orders'
                 ]
+            },
+            asof: {
+                usage: '<dateTime>',
+                description: "The date and time of workings orders to return"
             },
             begin: {
                 usage: '<dateTime>',
@@ -259,7 +278,7 @@ function helpOptions() {
     }]);
 }
 
-function collective2(collective2, fetch, lookup, options) {
+function collective2(c2_multipliers, collective2, fetch, lookup, options) {
     expect(options).to.have.property('action').to.be.oneOf([
         'balances', 'positions', 'orders',
         'requestMarginEquity', 'retrieveSystemEquity',
@@ -268,8 +287,8 @@ function collective2(collective2, fetch, lookup, options) {
     ]);
     switch(options.action) {
         case 'balances': return listBalances(collective2, options);
-        case 'positions': return listPositions(collective2, fetch, lookup, options);
-        case 'orders': return listOrders(collective2, lookup, options);
+        case 'positions': return listPositions(c2_multipliers, collective2, fetch, lookup, options);
+        case 'orders': return listOrders(c2_multipliers, collective2, lookup, options);
         case 'requestMarginEquity': return collective2.requestMarginEquity();
         case 'retrieveSystemEquity': return collective2.retrieveSystemEquity();
         case 'retrieveSignalsWorking': return collective2.retrieveSignalsWorking();
@@ -284,10 +303,11 @@ function collective2(collective2, fetch, lookup, options) {
 }
 
 async function listBalances(collective2, options) {
-    const begin = options.begin && moment(options.begin).format('X');
+    const asof = moment(options.asof || options.now).format();
+    const begin = moment(options.begin || asof).format();
+    const earliest = moment(options.begin || options.asof).subtract(5, 'days').startOf('day').format('X');
     const equity_data = await collective2.retrieveSystemEquity();
-    const data = begin ? equity_data.filter(datum => datum.unix_timestamp > begin) :
-        equity_data.slice(resp.equity_data.length-1);
+    const data = equity_data.filter(datum => datum.unix_timestamp > earliest);
     return data.map(datum => {
         return {
             asof: moment(datum.unix_timestamp, 'X').format(),
@@ -295,12 +315,13 @@ async function listBalances(collective2, options) {
             rate: '1.0',
             net: datum.strategy_raw
         };
-    });
+    }).filter((b,i,a) => begin < b.asof && b.asof <= asof || b.asof == _.last(a).asof);
 }
 
-async function listPositions(collective2, fetch, lookup, options) {
-    const asof = moment(options.begin || options.now);
-    const earliest = moment(asof).subtract(5, 'days').startOf('day');
+async function listPositions(c2_multipliers, collective2, fetch, lookup, options) {
+    const asof = moment(options.asof || options.now).format();
+    const begin = moment(options.begin || asof);
+    const earliest = moment(begin).subtract(5, 'days').startOf('day');
     const positions = _.indexBy(await collective2.requestTradesOpen(), 'symbol');
     const filter = {
         filter_type: 'time_traded',
@@ -313,19 +334,26 @@ async function listPositions(collective2, fetch, lookup, options) {
         const tz = (moment.defaultZone||{}).name;
         const bars = await fetch({interval:'day', begin: earliest.format(), tz, ...contract});
         const trades = (signals[symbol]||[]).filter(signal => signal.status == 'traded');
-        if (_.isEmpty(trades)) return [];
-        const changes = await listSymbolPositions(contract, bars, positions[symbol], trades, options);
-        const asof_format = options.begin && asof.format();
-        if (options.begin) return changes.filter(position => asof_format <= position.asof);
-        else if (!changes.length || !_.last(changes).position) return [];
+        if (_.isEmpty(trades) && positions[symbol].quant_opened == positions[symbol].quant_closed) return [];
+        const multiplier = c2_multipliers[symbol] || contract.multiplier || 1;
+        const data = await listSymbolPositions(contract, multiplier, bars, positions[symbol], trades, options);
+        const changes = data.filter(p => p.asof <= asof);
+        const begin_format = options.begin && begin.format();
+        if (options.begin) return changes.filter((p,i,a) => begin_format <= p.asof || p.asof == _.last(a).asof);
+        else if (!changes.length) return [];
         else return [_.last(changes)];
     }));
-    return _.sortBy([].concat(...changes), 'asof');
+    const sorted = _.sortBy([].concat(...changes), 'asof');
+    if (options.begin) return sorted;
+    else return sorted.filter((p,i,a) => p.position || p.asof == _.last(a).asof);
 }
 
-async function listOrders(collective2, lookup, options) {
-    const filter_date_time_start = (options||{}).begin &&
-        moment(options.begin).tz('America/New_York').format('YYYY-MM-DD HH:mm:ss');
+async function listOrders(c2_multipliers, collective2, lookup, options) {
+    const asof = moment(options.asof || options.now).format();
+    const begin = moment(options.begin || asof).format();
+    const start = options.begin ? moment(options.begin) :
+        options.asof ? moment(options.asof).subtract(5, 'days') : null;
+    const filter_date_time_start = start && start.tz('America/New_York').format('YYYY-MM-DD HH:mm:ss');
     const signals = filter_date_time_start ?
         [].concat(...await Promise.all(['time_traded', 'time_expired', 'time_canceled'].map(async(filter_type) => {
             return collective2.retrieveSignalsAll({filter_type, filter_date_time_start});
@@ -336,6 +364,7 @@ async function listOrders(collective2, lookup, options) {
         const status = signal.status == 'working' ? 'working' :
             signal.status == 'traded' ? 'filled' : 'cancelled';
         return {
+            posted_at: moment(signal.posted_time_unix, 'X').format(),
             asof: moment(time_unix, 'X').format(),
             action: signal.action,
             quant: signal.quant,
@@ -345,19 +374,21 @@ async function listOrders(collective2, lookup, options) {
             offset: +signal.isStopOrder || null,
             tif: signal.tif || signal.duration,
             status: status,
+            price: signal.traded_price,
             order_ref: signal.localsignal_id || signal.signal_id,
             symbol: contract.symbol,
             market: contract.market,
+            currency: contract.currency,
             secType: contract.secType,
-            currency: contract.currency
+            multiplier: c2_multipliers[signal.symbol] || contract.multiplier || 1
         };
     }));
-    return _.sortBy(changes, 'asof');
+    return _.sortBy(changes.filter(o => o.asof <= asof), 'asof')
+      .filter((o,i,a) => begin < o.asof && o.asof <= asof || o.asof == _.last(a).asof);
 }
 
-async function listSymbolPositions(contract, bars, position, trades, options) {
+async function listSymbolPositions(contract, multiplier, bars, position, trades, options) {
     const changes = [];
-    const multiplier = contract.multiplier || 1;
     const ending_position = position ? +position.quant_opened - +position.quant_closed : 0;
     const last_markToMarket_time = moment(_.last(bars).ending).format('X');
     const newer_details = trades.filter(trade => {
@@ -391,17 +422,20 @@ async function listSymbolPositions(contract, bars, position, trades, options) {
     return changes.filter(trade => trade.action)
       .map(trade => Object.assign({
         asof: trade.asof,
+        sales: contract.secType == 'FUT' ? 0 : trade.sales,
+        purchases: contract.secType == 'FUT' ? 0 : trade.purchases,
         symbol: contract.symbol,
         market: contract.market,
         currency: contract.currency,
-        secType: contract.secType
+        secType: contract.secType,
+        multiplier: multiplier
     }, trade));
 }
 
 function changePosition(multiplier, prev_bar, details, bar, position) {
     const adj = Big(bar.close).div(bar.adj_close);
     const dividend = +Big(prev_bar.close).minus(Big(prev_bar.adj_close).times(adj)).toFixed(8);
-    const ending_value = position * bar.close * multiplier;
+    const ending_value = Big(position).times(bar.close).times(multiplier);
     const quant = details.reduce((shares, trade) => shares + +trade.quant, 0);
     const shares = details.reduce((shares, trade) => shares + +trade.quant * (trade.action.charAt(0) == 'S' ? -1 : 1), 0);
     const starting_position = position - shares;
@@ -411,7 +445,7 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
         .reduce((net, trade) => net.add(Big(trade.traded_price).times(trade.quant).times(multiplier)), Big(0));
     const sold = details.filter(trade => trade.action.charAt(0) == 'S')
         .reduce((net, trade) => net.add(Big(trade.traded_price).times(trade.quant).times(multiplier)), Big(0));
-    const net_change = Big(ending_value).minus(starting_value)
+    const mtm = Big(ending_value).minus(starting_value)
         .add(sold).minus(purchase).add(net_dividend);
     const action = position == 0 && quant == 0 ? '' :
         position > 0 && quant == 0 ? 'LONG' :
@@ -424,15 +458,16 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
     const traded_time_unix = _.max(details.map(trade => trade.traded_time_unix));
     return {
         asof: bar.ending,
+        action, quant: quant ? Math.abs(shares) : null, position,
         traded_at: _.isFinite(traded_time_unix) ? moment(traded_time_unix, 'X').format() : null,
-        price: bar.close,
         traded_price: shares ? +Big(purchase).add(sold).div(Big(quant).abs()).div(multiplier) : null,
-        change: +Big(bar.close).minus(Big(prev_bar.adj_close).times(bar.close).div(bar.adj_close)),
-        dividend,
-        action,
-        quant: quant ? Math.abs(shares) : null,
-        position,
-        net_change: +Big(net_change).toFixed(2)
+        price: bar.close,
+        sales: sold.toString(),
+        purchases: purchase.toFixed(2),
+        dividend: net_dividend.toFixed(2),
+        // c2 model account does not pay commission
+        mtm: +Big(mtm).toFixed(2),
+        value: ending_value.toFixed(2)
     };
 }
 

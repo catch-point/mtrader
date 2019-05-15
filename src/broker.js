@@ -37,7 +37,7 @@ const IB = require('./broker-ib.js');
 const Simulation = require('./broker-simulation.js');
 const expect = require('chai').expect;
 
-module.exports = function(settings) {
+module.exports = function(settings = {}) {
     const Brokers = [IB, Collective2, Simulation];
     let promiseHelpWithSettings, promiseHelpWithOptions;
     if (settings.help && !promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);

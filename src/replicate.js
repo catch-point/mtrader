@@ -1,4 +1,4 @@
-// position.js
+// replicate.js
 /*
  *  Copyright (c) 2018-2019 James Leigh, Some Rights Reserved
  *
@@ -43,22 +43,20 @@ const config = require('./config.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 const version = require('../package.json').version;
-const Broker = require('./broker.js');
 
 /**
- * Aligns the working signals on collective2 with the signal rows from the collect result
+ * Aligns the working signals on a broker with the signal rows from the collect result
  */
-module.exports = function(collect) {
+module.exports = function(broker, collect) {
     let promiseHelp;
     return _.extend(function(options) {
-        if (!promiseHelp) promiseHelp = help(collect, Broker);
+        if (!promiseHelp) promiseHelp = help(broker, collect);
         if (options.help) return promiseHelp;
         else return promiseHelp.then(help => {
             const opts = _.defaults({
                 now: moment(options.now).valueOf()
             }, _.pick(options, _.keys(_.first(help).options)));
-            const broker = Broker(opts);
-            return collective2(collect, broker, opts).then(ret => {
+            return replicate(broker, collect, opts).then(ret => {
                 return broker.close().then(() => ret);
             }, err => {
                 return broker.close().then(() => Promise.reject(err));
@@ -74,13 +72,13 @@ module.exports = function(collect) {
 /**
  * Array of one Object with description of module, including supported options
  */
-function help(collect, Broker) {
-    return Promise.all([collect({help: true}), Broker({help: true})]).then(_.flatten)
+function help(broker, collect) {
+    return Promise.all([collect({help: true}), broker({help: true})]).then(_.flatten)
       .then(list => list.reduce((help, delegate) => {
         return _.extend(help, {options: _.extend({}, delegate.options, help.options)});
     }, {
-        name: 'position',
-        usage: 'position(options)',
+        name: 'replicate',
+        usage: 'replicate(options)',
         description: "Changes workers orders to align with signal orders in result",
         properties: ['action', 'quant', 'symbol', 'typeofsymbol', 'duration', 'limit', 'parkUntilSecs', 'parkUntilYYYYMMDDHHMM'],
         options: {
@@ -101,12 +99,12 @@ function help(collect, Broker) {
 }
 
 /**
- * Aligns the working signals on collective2 with the signal rows from the collect result
+ * Aligns the working signals on the given broker with the signal rows from the collect result
  */
-function collective2(collect, broker, options) {
+function replicate(broker, collect, options) {
     const check = interrupt();
     return getWorkingPositions(broker, options)
-      .then(working => getDesiredPositions(collect, broker, options)
+      .then(working => getDesiredPositions(broker, collect, options)
       .then(desired => {
         const symbols = _.uniq(_.compact(_.keys(desired).concat(options.symbols)));
         _.forEach(working, (w, symbol) => {
@@ -130,7 +128,7 @@ function collective2(collect, broker, options) {
             const quant_threshold = getQuantThreshold(w, options);
             const update = updateWorking(d, w, _.defaults({quant_threshold}, options));
             if (update.length)
-                logger.debug("collective2", "desired", symbol, JSON.stringify(desired[symbol]));
+                logger.debug("replicate", "desired", symbol, JSON.stringify(desired[symbol]));
             return signals.concat(update);
         }, []);
     })).then(signals => signals.reduce((promise, signal) => promise.then(async(result) => {
@@ -163,7 +161,7 @@ function collective2(collect, broker, options) {
 /**
  * Collects the options results and converts the signals into positions
  */
-function getDesiredPositions(collect, broker, options) {
+function getDesiredPositions(broker, collect, options) {
     return broker({action: 'requestMarginEquity'})
       .then(requestMarginEquity => broker({action:'retrieveSystemEquity'})
       .then(retrieveSystemEquity => {
@@ -187,7 +185,7 @@ function getDesiredPositions(collect, broker, options) {
 }
 
 /**
- * Retrieves the open positions and working signals from collective2
+ * Retrieves the open positions and working signals from broker
  */
 function getWorkingPositions(broker, options) {
     return broker({action: 'retrieveSignalsWorking'})

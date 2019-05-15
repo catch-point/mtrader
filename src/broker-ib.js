@@ -47,7 +47,9 @@ module.exports = function(settings) {
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
     const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
-    const ib = new IB({lib_dir, ...config('broker.ib'), ...settings});
+    settings = {lib_dir, ...config('broker.ib'), ...settings};
+    expect(settings).to.have.property('account').that.is.ok;
+    const ib = new IB(settings);
     const fetch = new Fetch(settings);
     return _.extend(function(options) {
         if (options.help) return helpOptions();
@@ -171,8 +173,8 @@ function helpOptions() {
 }
 
 async function listBalances(markets, ib, fetch, settings, options) {
-    const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
-    const accounts = await listAccounts(ib, (settings||{}).account);
+    const ib_tz = settings.tz || (moment.defaultZone||{}).name || moment.tz.guess();
+    const accounts = await listAccounts(ib, settings.account);
     const now = moment().tz(ib_tz);
     const asof = moment(options.asof).tz(ib_tz);
     const begin = options.begin ? moment(options.begin || options.asof).tz(ib_tz) :
@@ -214,8 +216,8 @@ async function listBalances(markets, ib, fetch, settings, options) {
 }
 
 async function listPositions(markets, ib, fetch, settings, options) {
-    const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
-    const account = (settings||{}).account;
+    const ib_tz = settings.tz || (moment.defaultZone||{}).name || moment.tz.guess();
+    const account = settings.account;
     const positions = account && account != 'All' ? await ib.reqPositionsMulti(account) : await ib.reqPositions();
     if (!positions) throw Error(`No IB account ${account} exists`)
     const historical = {};
@@ -228,8 +230,8 @@ async function listPositions(markets, ib, fetch, settings, options) {
 }
 
 async function listOrders(markets, ib, settings, options) {
-    const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
-    const account = (settings||{}).account;
+    const ib_tz = settings.tz || (moment.defaultZone||{}).name || moment.tz.guess();
+    const account = settings.account;
     const accounts = await listAccounts(ib, account);
     const open_orders = await ib.reqOpenOrders();
     const begin = moment(options.begin || options.asof).tz(ib_tz).format('YYYYMMDD HH:mm:ss');

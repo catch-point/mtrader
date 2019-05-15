@@ -46,25 +46,25 @@ const version = require('../package.json').version;
 /**
  * Aligns the working signals on collective2 with the signal rows from the collect result
  */
-module.exports = function(systemid) {
-    expect(systemid).to.be.ok;
+module.exports = function(settings) {
+    expect(settings).to.have.property('systemid').that.is.ok;
+    const systemid = settings.systemid;
     const agent = new https.Agent({
-        keepAlive: config('broker.collective2.keepAlive') || false,
-        keepAliveMsecs: config('broker.collective2.keepAliveMsecs') || 1000,
-        maxSockets: config('broker.collective2.maxSockets'),
-        maxFreeSockets: config('broker.collective2.maxFreeSockets') || 256,
-        ciphers: config('tls.ciphers'),
-        honorCipherOrder: config('tls.honorCipherOrder'),
-        ecdhCurve: config('tls.ecdhCurve'),
-        secureProtocol: config('tls.secureProtocol'),
-        secureOptions: config('tls.secureOptions'),
-        handshakeTimeout: config('tls.handshakeTimeout'),
-        requestCert: config('tls.requestCert'),
-        rejectUnauthorized: config('tls.rejectUnauthorized'),
-        NPNProtocols: config('tls.NPNProtocols'),
-        ALPNProtocols: config('tls.ALPNProtocols')
+        keepAlive: settings.keepAlive || false,
+        keepAliveMsecs: settings.keepAliveMsecs || 1000,
+        maxSockets: settings.maxSockets,
+        maxFreeSockets: settings.maxFreeSockets || 256,
+        ciphers: settings.ciphers,
+        honorCipherOrder: settings.honorCipherOrder,
+        ecdhCurve: settings.ecdhCurve,
+        secureProtocol: settings.secureProtocol,
+        secureOptions: settings.secureOptions,
+        handshakeTimeout: settings.handshakeTimeout,
+        requestCert: settings.requestCert,
+        rejectUnauthorized: settings.rejectUnauthorized,
+        NPNProtocols: settings.NPNProtocols,
+        ALPNProtocols: settings.ALPNProtocols
     });
-    const settings = _.extend({offline: config('offline')}, config('broker.collective2'));
     expect(settings).to.have.property('apikey').that.is.a('string');
     return ({
         submitSignal(signal) {
@@ -100,12 +100,11 @@ module.exports = function(systemid) {
 /**
  * Retrieve the collective2 response
  */
-function retrieve(agent, name, posted, systemid, settings) {
+async function retrieve(agent, name, posted, systemid, settings) {
     expect(settings).to.have.property('apikey').that.is.a('string');
-    return new Promise((ready, error) => {
-        const uri = settings[name];
-        logger.log(uri, posted);
-        const parsed = _.isString(uri) && url.parse(uri);
+    const uri = settings[name];
+    const parsed = _.isString(uri) && url.parse(uri);
+    const body = await new Promise((ready, error) => {
         if (_.isObject(uri)) {
             ready(JSON.stringify(uri));
         } else if (parsed.protocol == 'https:' || parsed.protocol == 'http:') {
@@ -132,6 +131,7 @@ function retrieve(agent, name, posted, systemid, settings) {
                     error(err);
                 }
             }).on('error', error);
+            logger.log(uri, posted);
             request.end(JSON.stringify(Object.assign({
                 apikey: settings.apikey,
                 systemid: systemid
@@ -141,29 +141,33 @@ function retrieve(agent, name, posted, systemid, settings) {
         } else {
             throw Error("Unknown protocol " + uri);
         }
-    }).then(JSON.parse).then(res => {
-        if (!res.equity_data) logger.debug("collective2", name, JSON.stringify(res));
-        if (res.title)
-            logger.log(res.title);
-        else if (res.error && res.error.title)
-            logger.error(res.error.title);
-        if (!+res.ok)
-            throw Error(res.message || res.error && res.error.message || JSON.stringify(res));
-        return res;
     });
+    const res = JSON.parse(body);
+    if (!res.equity_data && parsed.protocol != 'file:')
+        logger.debug("collective2", name, JSON.stringify(res));
+    else if (parsed.protocol != 'file:')
+        logger.debug("collective2", name, JSON.stringify(Object.assign(_.omit(res,'equity_data'), {
+            equity_data: res.equity_data.slice(Math.max(res.equity_data.length-20,0))
+        })));
+    if (res.title)
+        logger.log(res.title);
+    else if (res.error && res.error.title)
+        logger.error(res.error.title);
+    if (!+res.ok)
+        throw Error(res.message || res.error && res.error.message || JSON.stringify(res));
+    return res;
 }
 
 /**
  * Submits a new or updated signal or cancels a signal
  */
-function submit(agent, name, systemid, signal, settings) {
+async function submit(agent, name, systemid, signal, settings) {
     expect(settings).to.have.property('apikey').that.is.a('string');
     const signalid = typeof signal == 'string' ? signal : undefined;
     const signalobj = typeof signal == 'object' ? signal : undefined;
-    return new Promise((ready, error) => {
-        const uri = settings[name];
-        logger.log(uri);
-        const parsed = _.isString(uri) && url.parse(uri);
+    const uri = settings[name];
+    const parsed = _.isString(uri) && url.parse(uri);
+    const body = await new Promise((ready, error) => {
         if (settings.offline || !parsed) {
             ready(JSON.stringify({
                 ok: 1,
@@ -195,6 +199,7 @@ function submit(agent, name, systemid, signal, settings) {
                     error(err);
                 }
             }).on('error', error);
+            logger.log(uri);
             request.end(JSON.stringify({
                 apikey: settings.apikey,
                 systemid: systemid,
@@ -212,16 +217,16 @@ function submit(agent, name, systemid, signal, settings) {
         } else {
             throw Error("Unknown protocol " + uri);
         }
-    }).then(JSON.parse).then(res => {
-        logger.debug("collective2", name, JSON.stringify(signal), JSON.stringify(res));
-        if (res.title)
-            logger.log(res.title, res.signalid || '');
-        else if (res.error && res.error.title)
-            logger.error(res.error.title, res.signalid || '');
-        if (name == 'cancelSignal' && _.property(['error', 'title'])(res) && res.error.title.indexOf('Signal already cancel'))
-            return res;
-        else if (!+res.ok)
-            throw Error(res.message || res.error && res.error.message || JSON.stringify(res));
-        else return res;
     });
+    const res = JSON.parse(body);
+    if (parsed.protocol != 'file:') logger.debug("collective2", name, JSON.stringify(signal), JSON.stringify(res));
+    if (res.title)
+        logger.log(res.title, res.signalid || '');
+    else if (res.error && res.error.title)
+        logger.error(res.error.title, res.signalid || '');
+    if (name == 'cancelSignal' && _.property(['error', 'title'])(res) && res.error.title.indexOf('Signal already cancel'))
+        return res;
+    else if (!+res.ok)
+        throw Error(res.message || res.error && res.error.message || JSON.stringify(res));
+    else return res;
 }

@@ -61,6 +61,7 @@ const Optimize = require('./mtrader-optimize.js');
 const Bestsignals = require('./mtrader-bestsignals.js');
 const Strategize = require('./mtrader-strategize.js');
 const Broker = require('./mtrader-broker.js');
+const Replicate = require('./mtrader-replicate.js');
 
 const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
 const WORKER_COUNT = require('os').cpus().length;
@@ -75,7 +76,7 @@ const program = require('commander')
     .command('optimize [identifier]', "Optimizes the parameter values in the given portfolio")
     .command('bestsignals [identifier]', "Determines the best signals for the given portfolio")
     .command('strategize [identifier]', "Modifies a strategy looking for improvements")
-    .command('collective2 [identifier]', "Changes workers orders to align with collected signal orders")
+    .command('replicate [identifier]', "Changes workers orders to align with collected signal orders")
     .command('broker [action]', "Retrieve or execute orders in broker account")
     .option('-V, --version', "Output the version number(s)")
     .option('-v, --verbose', "Include more information about what the system is doing")
@@ -200,6 +201,7 @@ function createInstance(settings) {
     const bestsignals = new Bestsignals(settings);
     const strategize = new Strategize(settings);
     const broker = new Broker(settings);
+    const replicate = new Replicate(settings);
     const servers = [];
     let closed;
     return Object.assign(new.target ? this : {}, {
@@ -222,6 +224,7 @@ function createInstance(settings) {
         bestsignals: bestsignals,
         strategize: strategize,
         broker: broker,
+        replicate: replicate,
         seed(number) {
             optimize.seed(number);
             strategize.seed(number);
@@ -240,7 +243,8 @@ function createInstance(settings) {
                     optimize.close(),
                     bestsignals.close(),
                     strategize.close(),
-                    broker.close()
+                    broker.close(),
+                    replicate.close()
                 ]).then(() => {});
             });
         },
@@ -254,7 +258,8 @@ function createInstance(settings) {
                 optimize.shell(app),
                 bestsignals.shell(app),
                 strategize.shell(app),
-                broker.shell(app)
+                broker.shell(app),
+                replicate.shell(app)
             ]).catch(err => console.error("Could not complete shell setup", err));
             app.cmd('exec :expression([\\s\\S]+)', "Evaluate common expressions using the values in this session", (cmd, sh, cb) => {
                 try {
@@ -374,6 +379,7 @@ function listen(mtrader, address) {
             .handle('bestsignals', mtrader.bestsignals)
             .handle('strategize', mtrader.strategize)
             .handle('broker', mtrader.broker)
+            .handle('replicate', mtrader.replicate)
             .handle('tz', p => (moment.defaultZone||{}).name || moment.tz.guess())
             .handle('version', () => version.toString())
             .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)

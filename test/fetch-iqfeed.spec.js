@@ -252,7 +252,7 @@ describe("fetch-iqfeed", function() {
             }));
         });
         describe("should lookup CFE weekly futures symbols", function() {
-            _.range(moment().isoWeek() + 1, moment().isoWeek() + 4).map(week => {
+            _.range(moment().isoWeek() + 2, moment().isoWeek() + 4).map(week => {
                 const year = moment(`${moment().year()}-01-01`);
                 const one = year.add((10 - year.isoWeekday()) % 7, 'days');
                 const expiry = moment(one).add(week - 1, 'weeks');
