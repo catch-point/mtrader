@@ -453,13 +453,14 @@ function openOrders(ib, store, ib_tz, clientId) {
         });
     }).on('openOrder', function(orderId, contract, order, orderStatus) {
         const status = orderStatus.status;
+        const time = moment().tz(ib_tz).milliseconds(0).format(F);
         orders[orderId] = Object.assign({
                 orderId,
                 conId: contract.conId,
                 symbol: contract.symbol,
                 secType: contract.secType,
                 exchange: contract.exchange,
-                time: moment().tz(ib_tz).milliseconds(0).format(F)
+                posted_time: time, time
             },
             orders[orderId],
             order, orderStatus
@@ -610,7 +611,7 @@ function execDetails(ib, store) {
     };
     const flusher = debounce(async() => {
         return Promise.all(Object.keys(details).map(async(acctCode) => {
-            const min_month = _.min(Object.keys(details[acctCode]||{}));
+            const min_month = _.isEmpty(details[acctCode]) ? null : _.min(Object.keys(details[acctCode]));
             return store && reduce_details({time: min_month}, (nil, exe) => {}, null);
         })).catch(err => logger.error("Could not flush IB executions", err));
     }, 10000); // 10s

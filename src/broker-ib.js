@@ -41,6 +41,37 @@ const IB = require('./ib-client.js');
 const Fetch = require('./fetch.js');
 const expect = require('chai').expect;
 
+module.exports = function(settings) {
+    if (settings.help) return helpSettings();
+    const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
+        _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
+    )), v => !v);
+    const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
+    const ib = new IB({lib_dir, ...config('broker.ib'), ...settings});
+    const fetch = new Fetch(settings);
+    return _.extend(function(options) {
+        if (options.help) return helpOptions();
+        switch(options.action) {
+            case 'balances': return listBalances(markets, ib, fetch, settings, options);
+            case 'positions': return listPositions(markets, ib, fetch, settings, options);
+            case 'orders': return listOrders(markets, ib, settings, options);
+            default: expect(options).to.have.property('action').to.be.oneOf([
+                'balances', 'positions', 'orders'
+            ]);
+        }
+    }, {
+        open() {
+            return ib.open();
+        },
+        close() {
+            return Promise.all([
+                fetch.close(),
+                ib.close()
+            ]);
+        }
+    });
+};
+
 /**
  * Array of one Object with description of module, including supported options
  */
@@ -77,9 +108,13 @@ function helpOptions() {
                     'balances'
                 ]
             },
+            asof: {
+                usage: '<dateTime>',
+                description: "Currency balances at a particular point in time (if available)"
+            },
             begin: {
                 usage: '<dateTime>',
-                description: "Include summary of position changes since this dateTime"
+                description: "Include historic balances since given dateTime, but before given asof"
             }
         }
     }, {
@@ -87,8 +122,9 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of recent trades and their effect on the account position",
         properties: [
-            'asof', 'acctNumber', 'price', 'change', 'dividend', 'action', 'quant', 'position',
-            'traded_price', 'net_change', 'commission', 'symbol', 'market', 'currency', 'secType'
+            'asof', 'acctNumber', 'action', 'quant', 'position', 'traded_at', 'traded_price', 'price',
+            'sales', 'purchases', 'dividend', 'commission', 'mtm', 'value',
+            'symbol', 'market', 'currency', 'secType', 'multiplier'
         ],
         options: {
             action: {
@@ -97,9 +133,13 @@ function helpOptions() {
                     'positions'
                 ]
             },
+            asof: {
+                usage: '<dateTime>',
+                description: "Positions at a particular point in time (if available)"
+            },
             begin: {
                 usage: '<dateTime>',
-                description: "Include summary of position changes since this dateTime"
+                description: "Include historic balances since given dateTime, but before given asof"
             }
         }
     }, {
@@ -107,9 +147,9 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif',
+            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif', 'status',
             'order_ref', 'parent_ref', 'group_ref', 'bag_ref',
-            'acctNumber', 'symbol', 'market', 'secType', 'currency'
+            'acctNumber', 'symbol', 'market', 'currency', 'secType', 'multiplier'
         ],
         options: {
             action: {
@@ -118,61 +158,44 @@ function helpOptions() {
                     'orders'
                 ]
             },
+            asof: {
+                usage: '<dateTime>',
+                description: "Open orders at a particular point in time (if available)"
+            },
             begin: {
                 usage: '<dateTime>',
-                description: "Include summary of position changes since this dateTime"
+                description: "Include historic balances since given dateTime, but before given asof"
             }
         }
     }]);
 }
 
-module.exports = function(settings) {
-    if (settings.help) return helpSettings();
-    const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
-        _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
-    )), v => !v);
-    const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
-    const ib = new IB({lib_dir, ...config('broker.ib'), ...settings});
-    const fetch = new Fetch(settings);
-    return _.extend(function(options) {
-        if (options.help) return helpOptions();
-        switch(options.action) {
-            case 'balances': return listBalances(markets, ib, fetch, settings, options);
-            case 'positions': return listPositions(markets, ib, fetch, settings, options);
-            case 'orders': return listOrders(markets, ib, settings, options);
-            default: expect(options).to.have.property('action').to.be.oneOf([
-                'balances', 'positions', 'orders'
-            ]);
-        }
-    }, {
-        open() {
-            return ib.open();
-        },
-        close() {
-            return Promise.all([
-                fetch.close(),
-                ib.close()
-            ]);
-        }
-    });
-};
-
 async function listBalances(markets, ib, fetch, settings, options) {
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const accounts = await listAccounts(ib, (settings||{}).account);
     const now = moment().tz(ib_tz);
-    const begin = options.begin && moment(options.begin).tz(ib_tz).format('YYYYMMDD HH:mm:ss');
+    const asof = moment(options.asof).tz(ib_tz);
+    const begin = options.begin ? moment(options.begin || options.asof).tz(ib_tz) :
+        moment(asof).subtract(5,'days');
+    const begin_format = begin.format('YYYYMMDD HH:mm:ss');
+    const asof_format = asof.format('YYYYMMDD HH:mm:ss');
     const balances = await Promise.all(accounts.map(async(acctNumber) => {
-        const previously = begin ? await ib.reqAccountHistory(acctNumber, begin) : [];
+        const previously = begin ? await ib.reqAccountHistory(acctNumber, begin_format) : [];
         const currently = await ib.reqAccountUpdate(acctNumber);
-        const history = !previously.length || _.last(previously).time != currently.time ?
+        const data = !previously.length || _.last(previously).time < currently.time ?
             previously.concat(currently) : previously;
-        return [].concat(...history.map(summary => {
-            const asof = summary.time ? parseTime(summary.time, ib_tz) : now;
+        const historic = data.filter(summary => summary.time <= asof_format);
+        const latest = _.last(historic);
+        const range = options.begin ? historic.filter(summary => {
+            if (summary.time == latest.time) return true;
+            else return begin_format < summary.time;
+        }) : [latest];
+        return [].concat(...range.map(summary => {
+            const time = summary.time ? parseTime(summary.time, ib_tz) : now;
             expect(summary).to.have.property('Currency').that.is.an('array');
             return summary.Currency.filter(currency => currency != 'BASE').map(currency => {
                 return {
-                    asof: asof.isValid() ? asof.format() : now.format(),
+                    asof: time.isValid() ? time.format() : now.format(),
                     acctNumber, currency,
                     rate: summary.ExchangeRate[currency],
                     net: summary.NetLiquidationByCurrency[currency],
@@ -199,7 +222,9 @@ async function listPositions(markets, ib, fetch, settings, options) {
     const changes = await Promise.all(Object.keys(positions).sort().map(account => {
         return listAccountPositions(markets, ib, fetch, account, positions[account], historical, ib_tz, options);
     }));
-    return _.sortBy([].concat(...changes), 'asof');
+    const sorted = _.sortBy([].concat(...changes), 'asof');
+    if (options.begin) return sorted;
+    else return sorted.filter((p,i,a) => p.position || p.asof == _.last(a).asof);
 }
 
 async function listOrders(markets, ib, settings, options) {
@@ -207,13 +232,16 @@ async function listOrders(markets, ib, settings, options) {
     const account = (settings||{}).account;
     const accounts = await listAccounts(ib, account);
     const open_orders = await ib.reqOpenOrders();
-    const completed_orders = options.begin ? await ib.reqCompletedOrders({
+    const begin = moment(options.begin || options.asof).tz(ib_tz).format('YYYYMMDD HH:mm:ss');
+    const asof = options.asof && moment(options.asof).tz(ib_tz).format('YYYYMMDD HH:mm:ss');
+    const completed_orders = options.begin || options.asof ? await ib.reqCompletedOrders({
         acctCode: accounts.length == 1 ? _.first(accounts) : null,
-        time: options.begin ? moment.tz(options.begin, ib_tz).format('YYYYMMDD HH:mm:ss') : null
+        time: asof
     }) : [];
-    const orders = open_orders.concat(completed_orders);
+    const orders = open_orders.concat(completed_orders.filter(order => begin < o.asof && asof <= o.asof));
     return orders.filter(order => {
-        if (!account || account == 'All') return true;
+        if (asof < order.posted_time) return false;
+        else if (!account || account == 'All') return true;
         else if (order.faGroup == account || order.faProfile == account) return true;
         else if (~accounts.indexOf(order.account)) return true;
         else return false;
@@ -225,12 +253,14 @@ async function listOrders(markets, ib, settings, options) {
         const working = ~open_orders.indexOf(order);
         const status = order.status == 'ApiPending' ? 'pending' :
             order.status == 'PendingSubmit' ? 'pending' :
-            order.status == 'PendingCancel' ? 'pending' :
-            order.status == 'PreSubmitted' ? 'pending' :
+            order.status == 'Inactive' ? 'pending' :
+            order.status == 'PendingCancel' ? 'working' :
+            order.status == 'PreSubmitted' ? 'working' :
             order.status == 'Submitted' ? 'working' :
             order.status == 'ApiCancelled' ? 'working' :
             order.status == 'Filled' ? 'filled' : 'cancelled';
         result.push({
+            posted_at: parseTime(order.posted_time, ib_tz).format(),
             asof: parseTime(order.time, ib_tz).format(),
             action: order.action,
             quant: working ? order.remaining : order.totalQuantity,
@@ -239,6 +269,7 @@ async function listOrders(markets, ib, settings, options) {
             offset: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
             tif: order.tif,
             status: status,
+            price: order.avgFillPrice,
             order_ref: order.orderRef || order.permId,
             parent_ref: parent ? parent.orderRef || parent.permId : null,
             group_ref: order.ocaGroup,
@@ -246,8 +277,9 @@ async function listOrders(markets, ib, settings, options) {
             account: order.faGroup || order.faProfile || order.account,
             symbol: bag ? null : asSymbol(contract),
             market: bag ? null : await asMarket(markets, ib, contract),
+            currency: contract.currency,
             secType: contract.secType,
-            currency: contract.currency
+            multiplier: contract.multiplier
         });
         if (!bag) return result;
         else return contract.comboLegs.reduce(async(promise, leg, i) => {
@@ -267,8 +299,9 @@ async function listOrders(markets, ib, settings, options) {
                 account: order.faGroup || order.faProfile || order.account,
                 symbol: asSymbol(contract),
                 market: await asMarket(markets, ib, contract),
+                currency: contract.currency,
                 secType: contract.secType,
-                currency: contract.currency
+                multiplier: contract.multiplier
             });
             return result;
         }, Promise.resolve(result));
@@ -292,9 +325,13 @@ async function listAccounts(ib, account) {
 }
 
 async function listAccountPositions(markets, ib, fetch, account, positions, historical, ib_tz, options) {
+    const begin_format = options.begin && moment(options.begin).format();
+    const asof_format = moment(options.asof).format();
+    const begin = options.begin ? moment(options.begin).tz(ib_tz) :
+        moment(options.asof).tz(ib_tz).subtract(5,'days');
     const executions = await ib.reqExecutions({
         acctCode: account,
-        time: options.begin ? moment.tz(options.begin, ib_tz).format('YYYYMMDD HH:mm:ss') : null
+        time: begin ? begin.format('YYYYMMDD HH:mm:ss') : null
     });
     const conIds = _.union(Object.keys(positions).map(i => parseInt(i)), collectConIds(executions));
     const listChanges = listContractPositions.bind(this, markets, ib, fetch);
@@ -304,7 +341,13 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
             asof: parseTime(exe.time, ib_tz).format(),
             ...exe
         }));
-        return listChanges(conId, con_pos, con_exe, historical, ib_tz, options);
+        const data = await listChanges(conId, con_pos, con_exe, historical, ib_tz, options);
+        const changes = data.filter(p => p.asof <= asof_format);
+        if (options.begin) return changes.filter((p,i,a) => {
+            return begin_format < p.asof || i == a.length-1 && p.position;
+        });
+        else if (!changes.length) return [];
+        else return [_.last(changes)];
     }));
     return [].concat(...changes).map(trade => Object.assign({
         asof: trade.asof,
@@ -318,8 +361,7 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
     const symbol = asSymbol(contract);
     const market = await asMarket(markets, ib, contract);
     const now = moment().format();
-    const asof = moment(options.begin || options.now);
-    const earliest = moment(asof).subtract(5, 'days').startOf('day');
+    const earliest = moment(options.asof).subtract(5, 'days').startOf('day');
     const key = `${conId} ${earliest.format()}`;
     const promise = historical[key] = historical[key] ||
         loadHistoricalData(fetch, symbol, market, earliest, {...options, ...markets[market]});
@@ -354,23 +396,22 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
     if (latest_trade.quant) {
         changes.push(latest_trade);
     }
-    const positions = changes.filter(trade => trade.action)
+    return changes.filter(trade => trade.action)
       .map(trade => Object.assign({
         asof: trade.asof,
+        sales: contract.secType == 'FUT' ? 0 : trade.sales,
+        purchases: contract.secType == 'FUT' ? 0 : trade.purchases,
         symbol, market,
         currency: contract.currency,
-        secType: contract.secType
+        secType: contract.secType,
+        multiplier: contract.multiplier
     }, trade, {asof: trade.asof < now ? trade.asof : now}));
-    const asof_format = options.begin && asof.format();
-    if (options.begin) return positions.filter(position => asof_format <= position.asof);
-    else if (!positions.length || !_.last(positions).position) return [];
-    else return [_.last(positions)];
 }
 
 function changePosition(multiplier, prev_bar, details, bar, position) {
     const adj = Big(bar.close).div(bar.adj_close);
     const dividend = +Big(prev_bar.close).minus(Big(prev_bar.adj_close).times(adj)).toFixed(8);
-    const ending_value = position * bar.close * multiplier;
+    const ending_value = Big(position).times(bar.close).times(multiplier);
     const quant = details.reduce((shares, exe) => shares + +exe.shares, 0);
     const shares = details.reduce((shares, exe) => shares + +exe.shares * (exe.side == 'SLD' ? -1 : 1), 0);
     const starting_position = position - shares;
@@ -381,7 +422,7 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
     const sold = details.filter(exe => exe.side == 'SLD')
         .reduce((net, exe) => net.add(Big(exe.price).times(exe.shares).times(multiplier)), Big(0));
     const commission = details.reduce((net, exe) => net.add(exe.commission || 0), Big(0));
-    const net_change = Big(ending_value).minus(starting_value)
+    const mtm = Big(ending_value).minus(starting_value)
         .add(sold).minus(purchase).add(net_dividend).minus(commission);
     const action = position == 0 && quant == 0 ? '' :
         position > 0 && quant == 0 ? 'LONG' :
@@ -393,16 +434,16 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
         shares > 0 ? 'BOT' : shares < 0 ? 'SLD' : '';
     return {
         asof: bar.ending,
+        action, quant: quant ? Math.abs(shares) : null, position,
         traded_at: details.reduce((at, exe) => at < exe.asof ? exe.asof : at, '') || null,
-        price: bar.close,
         traded_price: shares ? +Big(purchase).add(sold).div(Big(quant).abs()).div(multiplier) : null,
-        change: +Big(bar.close).minus(Big(prev_bar.adj_close).times(bar.close).div(bar.adj_close)),
-        dividend,
-        action,
-        quant: quant ? Math.abs(shares) : null,
-        position,
-        net_change: +Big(net_change).toFixed(2),
-        commission: +commission
+        price: bar.close,
+        sales: sold.toFixed(2),
+        purchases: purchase.toFixed(2),
+        dividend: net_dividend.toFixed(2),
+        commission: commission.toFixed(2),
+        mtm: +Big(mtm).toFixed(2),
+        value: ending_value.toFixed(2)
     };
 }
 

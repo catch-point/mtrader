@@ -1,6 +1,6 @@
 {
   "name": "mtrader",
-  "version": "4.0.10",
+  "version": "4.0.11",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
   "dependencies": {
@@ -24,20 +24,13 @@
     "yauzl": "^2.10.0"
   },
   "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-plugin-istanbul": "^5.1.0",
-    "babel-preset-es2015": "^6.24.1",
-    "babel-register": "^6.26.0",
     "chai": "^3.5.0",
     "chai-as-promised": "^6.0.0",
-    "cross-env": "^5.2.0",
-    "mocha": "^3.5.3",
-    "nyc": "^11.9.0"
+    "mocha": "^3.5.3"
   },
   "scripts": {
     "test": "mocha",
-    "inspect": "mocha --debug-brk --inspect",
-    "coverage": "cross-env NODE_ENV=test nyc --reporter=html mocha"
+    "inspect": "mocha --inspect-brk"
   },
   "nyc": {
     "require": [

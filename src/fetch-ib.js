@@ -81,7 +81,7 @@ function help() {
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
         properties: [
             'symbol', 'conId', 'market', 'name', 'secType', 'exchange', 'currency',
-            'tradingClass', 'industry', 'category', 'subcategory'
+            'tradingClass', 'industry', 'category', 'subcategory', 'multiplier', 'minTick'
         ],
         options: _.extend({}, commonOptions, {
             interval: {
@@ -192,6 +192,7 @@ async function lookup(markets, client, options) {
         industry: detail.industry,
         category: detail.category,
         subcategory: detail.subcategory,
+        multiplier: detail.multiplier,
         conId: detail.conId
     }, v => !v));
 }
