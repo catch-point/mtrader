@@ -119,6 +119,7 @@ function createInstance(program, settings) {
 function shell(desc, replicate, app) {
     app.on('quit', () => replicate.close());
     app.on('exit', () => replicate.close());
+return replicate({help: true}).then(_.first).then(info => {
     app.cmd('replicate', desc, (cmd, sh, cb) => {
         readCallSave(null, replicate, config('save'))
           .then(() => sh.prompt(), cb);
@@ -128,7 +129,6 @@ function shell(desc, replicate, app) {
           .then(() => sh.prompt(), cb);
     });
 // help
-return replicate({help: true}).then(_.first).then(info => {
 help(app, 'replicate', `
   Usage: replicate :name
 
@@ -152,7 +152,7 @@ option.seeAlso.reduce((buf, also) => buf + `
     help ${also}  `, '') + `  
 ` : ''));
 });
-});
+}).catch(err => logger.debug(err));
 }
 
 function listOptions(options) {

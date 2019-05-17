@@ -110,12 +110,12 @@ function createInstance(program, settings) {
 function shell(desc, broker, app) {
     app.on('quit', () => broker.close());
     app.on('exit', () => broker.close());
+return broker({help: true}).then(_.first).then(info => {
     app.cmd("broker :name([a-zA-Z0-9]+)", desc, (cmd, sh, cb) => {
         broker({...config.options(), action: cmd.params.name})
           .then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
 // help
-return broker({help: true}).then(_.first).then(info => {
 help(app, 'broker', `
   Usage: broker :action
 
@@ -138,7 +138,7 @@ option.seeAlso.reduce((buf, also) => buf + `
     help ${also}  `, '') + `  
 ` : ''));
 });
-});
+}).catch(err => logger.debug(err));
 }
 
 function listOptions(options) {
