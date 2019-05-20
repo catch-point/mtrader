@@ -60,7 +60,7 @@ describe("fetch", function() {
         return fetch({interval: 'lookup', symbol:'AABA', tz}).then(_.first).should.eventually.be.like({
             symbol: 'AABA', market: 'NASDAQ',
             yahoo_symbol: 'AABA',
-            name: "Altaba Inc"
+            name: /Altaba/
         });
     });
     it("should find IBM", function() {

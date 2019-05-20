@@ -149,8 +149,8 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif', 'status',
-            'order_ref', 'parent_ref', 'group_ref', 'bag_ref',
+            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif', 'status',
+            'order_ref', 'attach_ref',
             'acctNumber', 'symbol', 'market', 'currency', 'secType', 'multiplier'
         ],
         options: {
@@ -268,14 +268,14 @@ async function listOrders(markets, ib, settings, options) {
             quant: working ? order.remaining : order.totalQuantity,
             type: order.orderType,
             limit: order.lmtPrice == Number.MAX_VALUE ? null : order.lmtPrice,
+            price: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
             offset: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
             tif: order.tif,
             status: status,
             price: order.avgFillPrice,
             order_ref: order.orderRef || order.permId,
-            parent_ref: parent ? parent.orderRef || parent.permId : null,
-            group_ref: order.ocaGroup,
-            bag_ref: bag ? order.orderRef || order.permId : null,
+            attch_ref: bag ? order.orderRef || order.permId :
+                parent ? parent.orderRef|| parent.permId : order.ocaGroup,
             account: order.faGroup || order.faProfile || order.account,
             symbol: bag ? null : asSymbol(contract),
             market: bag ? null : await asMarket(markets, ib, contract),
@@ -290,14 +290,13 @@ async function listOrders(markets, ib, settings, options) {
             result.push({
                 action: leg.action,
                 quant: Big(order.remaining).times(leg.ratio).toString(),
-                type: null,
+                type: 'LEG',
                 limit: ((order.orderComboLegs||[])[i]||{}).price || null,
+                price: null,
                 offset: null,
                 tif: null,
                 order_ref: null,
-                parent_ref: null,
-                group_ref: null,
-                bag_ref: order.orderRef || order.permId,
+                attach_ref: order.orderRef || order.permId,
                 account: order.faGroup || order.faProfile || order.account,
                 symbol: asSymbol(contract),
                 market: await asMarket(markets, ib, contract),
@@ -342,9 +341,8 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
         const con_exe = executions.filter(exe => exe.conId == conId).map(exe => ({
             asof: parseTime(exe.time, ib_tz).format(),
             ...exe
-        }));
-        const data = await listChanges(conId, con_pos, con_exe, historical, ib_tz, options);
-        const changes = data.filter(p => p.asof <= asof_format);
+        })).filter(exe => exe.asof <= asof_format);
+        const changes = await listChanges(conId, con_pos, con_exe, historical, ib_tz, options);
         if (options.begin) return changes.filter((p,i,a) => {
             return begin_format < p.asof || i == a.length-1 && p.position;
         });
@@ -382,11 +380,7 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
                 (i == 0 || bars[i-1].ending < exe.asof);
         });
         changes[i] = changePosition(multiplier, bars[i-1] || bar, details, bar, position);
-        if (changes[i].action == 'LONG' && !changes[i].quant)
-            return position;
-        else if (changes[i].action == 'SHORT' && !changes[i].quant)
-            return position;
-        else if (!changes[i].action && !changes[i].quant)
+        if (!changes[i].quant)
             return position;
         else if (changes[i].action.charAt(0) == 'B')
             return position - changes[i].quant;
@@ -395,8 +389,8 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
         else
             throw Error(`Invalid trade action ${changes[i].action}`);
     }, ending_position - latest_trade.quant);
-    if (latest_trade.quant) {
-        changes.push(latest_trade);
+    if (latest_trade.mtm) {
+        changes.push({...latest_trade, asof: latest_trade.traded_at});
     }
     return changes.filter(trade => trade.action)
       .map(trade => Object.assign({
@@ -427,13 +421,13 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
     const mtm = Big(ending_value).minus(starting_value)
         .add(sold).minus(purchase).add(net_dividend).minus(commission);
     const action = position == 0 && quant == 0 ? '' :
-        position > 0 && quant == 0 ? 'LONG' :
-        position < 0 && quant == 0 ? 'SHORT' :
-        starting_position >= 0 && position >= 0 && shares >= 0 ? 'BTO' :
-        starting_position >= 0 && position >= 0 && shares <= 0 ? 'STC' :
-        starting_position <= 0 && position <= 0 && shares <= 0 ? 'STO' :
-        starting_position <= 0 && position <= 0 && shares >= 0 ? 'BTC' :
-        shares > 0 ? 'BOT' : shares < 0 ? 'SLD' : '';
+        position > 0 && shares == 0 ? 'LONG' :
+        position < 0 && shares == 0 ? 'SHORT' :
+        starting_position >= 0 && position >= 0 && shares > 0 ? 'BTO' :
+        starting_position >= 0 && position >= 0 && shares < 0 ? 'STC' :
+        starting_position <= 0 && position <= 0 && shares < 0 ? 'STO' :
+        starting_position <= 0 && position <= 0 && shares > 0 ? 'BTC' :
+        shares > 0 ? 'BOT' : shares < 0 ? 'SLD' : 'DAY';
     return {
         asof: bar.ending,
         action, quant: quant ? Math.abs(shares) : null, position,
@@ -457,9 +451,11 @@ function collectConIds(executions) {
     }, []);
 }
 
-function loadHistoricalData(fetch, symbol, market, begin, options) {
+async function loadHistoricalData(fetch, symbol, market, begin, options) {
     const tz = (moment.defaultZone||{}).name;
-    return fetch(_.defaults({interval:'day', begin, symbol, market, tz}, options));
+    const asof = moment(options.asof || options.now).format();
+    const bars = await fetch(_.defaults({interval:'day', begin, end: asof, symbol, market, tz}, options));
+    return bars.filter(bar => bar.ending <= asof);
 }
 
 function convertTime(market, tz) {

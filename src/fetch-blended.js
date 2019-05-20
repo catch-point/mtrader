@@ -184,6 +184,7 @@ function readTable(filename) {
 }
 
 function day(readTable, options) {
+    expect(options).to.have.property('tz').that.is.a('string');
     return readTable(options).then(result => {
         const begin = moment.tz(options.begin, options.tz);
         const start = begin.format();

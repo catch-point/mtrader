@@ -146,7 +146,7 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif', 'status', 'price',
+            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'price', 'tif', 'status', 'price',
             'order_ref', 'symbol', 'market', 'currency', 'secType', 'multiplier'
         ],
         options: {
@@ -305,9 +305,12 @@ function collective2(c2_multipliers, collective2, fetch, lookup, options) {
 async function listBalances(collective2, options) {
     const asof = moment(options.asof || options.now).format();
     const begin = moment(options.begin || asof).format();
-    const earliest = moment(options.begin || options.asof).subtract(5, 'days').startOf('day').format('X');
     const equity_data = await collective2.retrieveSystemEquity();
-    const data = equity_data.filter(datum => datum.unix_timestamp > earliest);
+    const earliest = Math.min(
+        (_.last(equity_data)||{}).unix_timestamp || Infinity,
+        moment(options.begin || options.asof).subtract(5, 'days').startOf('day').format('X')
+    );
+    const data = equity_data.filter(datum => datum.unix_timestamp >= earliest);
     return data.map(datum => {
         return {
             asof: moment(datum.unix_timestamp, 'X').format(),
@@ -320,24 +323,30 @@ async function listBalances(collective2, options) {
 
 async function listPositions(c2_multipliers, collective2, fetch, lookup, options) {
     const asof = moment(options.asof || options.now).format();
+    const asof_time_unix = moment(asof).format('X');
     const begin = moment(options.begin || asof);
     const earliest = moment(begin).subtract(5, 'days').startOf('day');
-    const positions = _.indexBy(await collective2.requestTradesOpen(), 'symbol');
+    const positions = _.indexBy(await collective2.requestTradesOpen(), s => s.fullSymbol || s.symbol);
     const filter = {
         filter_type: 'time_traded',
         filter_date_time_start: moment(earliest).tz('America/New_York').format('YYYY-MM-DD HH:mm:ss')
     };
-    const signals = _.groupBy(await collective2.retrieveSignalsAll(filter), 'symbol');
+    const signals = _.groupBy(await collective2.retrieveSignalsAll(filter), s => s.fullSymbol || s.symbol);
     const symbols = _.union(Object.keys(positions), Object.keys(signals));
     const changes = await Promise.all(symbols.map(async(symbol) => {
-        const contract = await lookup(positions[symbol] || _.first(signals[symbol]));
+        const pos = positions[symbol];
+        const contract = await lookup(pos || _.first(signals[symbol]));
+        if (!contract) throw Error(`Could not lookup contract ${symbol}`);
         const tz = (moment.defaultZone||{}).name;
-        const bars = await fetch({interval:'day', begin: earliest.format(), tz, ...contract});
-        const trades = (signals[symbol]||[]).filter(signal => signal.status == 'traded');
-        if (_.isEmpty(trades) && positions[symbol].quant_opened == positions[symbol].quant_closed) return [];
+        expect(contract).to.have.property('symbol').that.is.a('string');
+        const all_bars = await fetch({interval:'day', begin: earliest.format(), end: asof, tz, ...contract});
+        const bars = all_bars.filter(bar => bar.ending <= asof);
+        const trades = (signals[symbol]||[]).filter(signal => {
+            return signal.status == 'traded' && signal.traded_time_unix <= asof_time_unix;
+        });
+        if (_.isEmpty(trades) && (!pos || pos.quant_opened == pos.quant_closed)) return [];
         const multiplier = c2_multipliers[symbol] || contract.multiplier || 1;
-        const data = await listSymbolPositions(contract, multiplier, bars, positions[symbol], trades, options);
-        const changes = data.filter(p => p.asof <= asof);
+        const changes = await listSymbolPositions(contract, multiplier, bars, pos, trades, options);
         const begin_format = options.begin && begin.format();
         if (options.begin) return changes.filter((p,i,a) => begin_format <= p.asof || p.asof == _.last(a).asof);
         else if (!changes.length) return [];
@@ -357,34 +366,75 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
     const signals = filter_date_time_start ?
         [].concat(...await Promise.all(['time_traded', 'time_expired', 'time_canceled'].map(async(filter_type) => {
             return collective2.retrieveSignalsAll({filter_type, filter_date_time_start});
-        }))) : await collective2.retrieveSignalsWorking();
-    const changes = await Promise.all(signals.map(async(signal) => {
-        const contract = await lookup(signal);
-        const time_unix = _.max([signal.posted_time_unix, signal.canceled_time_unix, signal.traded_time_unix]);
-        const status = signal.status == 'working' ? 'working' :
-            signal.status == 'traded' ? 'filled' : 'cancelled';
-        return {
-            posted_at: moment(signal.posted_time_unix, 'X').format(),
-            asof: moment(time_unix, 'X').format(),
-            action: signal.action,
-            quant: signal.quant,
-            type: +signal.market || +signal.isMarketOrder ? 'MKT' :
-                +signal.isLimitOrder ? 'LMT' : +signal.isStopOrder ? 'STP' : null,
-            limit: +signal.isLimitOrder || null,
-            offset: +signal.isStopOrder || null,
-            tif: signal.tif || signal.duration,
-            status: status,
-            price: signal.traded_price,
-            order_ref: signal.localsignal_id || signal.signal_id,
-            symbol: contract.symbol,
-            market: contract.market,
-            currency: contract.currency,
-            secType: contract.secType,
-            multiplier: c2_multipliers[signal.symbol] || contract.multiplier || 1
-        };
+        }))).reduce((unique, signal) => {
+            if (unique.some(s => _.isEqual(s, signal))) return unique;
+            else return unique.concat(signal);
+        }, []) : await collective2.retrieveSignalsWorking();
+    const group = _.groupBy(signals, 'symbol');
+    const all_changes = await Promise.all(_.map(group, (signals, symbol) => attachSignals(signals))
+      .map(async(signals) => {
+        const contract = await lookup(_.first(signals));
+        const changes = await Promise.all(signals.map(async(signal) => {
+            const time_unix = _.max([signal.posted_time_unix, signal.canceled_time_unix, signal.traded_time_unix]);
+            const status = signal.status == 'working' ? 'working' :
+                signal.status == 'traded' ? 'filled' : 'cancelled';
+            const conditionalUponSignal = signals.find(s => s.signal_id == signal.conditionalupon) || {};
+            return {
+                posted_at: moment(signal.posted_time_unix, 'X').format(),
+                asof: moment(time_unix, 'X').format(),
+                action: signal.action.charAt(0) == 'B' ? 'BUY' :
+                    signal.action.charAt(0) == 'S' ? 'SELL' : sign.action,
+                quant: signal.quant,
+                type: +signal.market || +signal.isMarketOrder ? 'MKT' :
+                    +signal.isLimitOrder ? 'LMT' : +signal.isStopOrder ? 'STP' : null,
+                limit: +signal.isLimitOrder || null,
+                price: +signal.isStopOrder || null,
+                tif: signal.tif || signal.duration,
+                status: status,
+                price: signal.traded_price,
+                order_ref: signal.localsignal_id || signal.signal_id,
+                attach_ref: conditionalUponSignal.localsignal_id || conditionalUponSignal.signal_id,
+                symbol: contract.symbol,
+                market: contract.market,
+                currency: contract.currency,
+                secType: contract.secType,
+                multiplier: c2_multipliers[signal.fullSymbol] || c2_multipliers[signal.symbol] || contract.multiplier || 1
+            };
+        }));
+        return changes.filter(o => o.asof <= asof);
     }));
-    return _.sortBy(changes.filter(o => o.asof <= asof), 'asof')
-      .filter((o,i,a) => begin < o.asof && o.asof <= asof || o.asof == _.last(a).asof);
+    const changes = [].concat(...all_changes);
+    return _.sortBy(changes, 'asof')
+      .filter((o,i,a) => begin < o.asof && o.asof <= asof || o.asof == _.last(a).asof || o.status == 'working');
+}
+
+function attachSignals(signals) {
+    if (signals.length < 2) return signals;
+    const group = _.groupBy(signals, s => {
+        if (s.action == 'BTO' || s.action == 'STO') return 'open';
+        else if (+s.isStopOrder || +s.stoploss || +s.stop) return 'stop';
+        else return 'close';
+    });
+    return signals.map(s => { // open is conditionalupon close
+        if (s.action == 'BTO') return {...s,
+            conditionalupon: ((group.close||[]).find(o => o.action == 'BTC')||{}).signal_id
+        };
+        else if (s.action == 'STO') return {...s,
+            conditionalupon: ((group.close||[]).find(o => o.action == 'STC')||{}).signal_id
+        };
+        if (s.action == 'BTC') return {...s,
+            conditionalupon: ((group.open||[]).find(o => o.action == 'STO')||{}).signal_id
+        };
+        else if (s.action == 'STC') return {...s,
+            conditionalupon: ((group.open||[]).find(o => o.action == 'BTO')||{}).signal_id
+        };
+        else throw Error(`Unknown signal action ${s.action}`);
+    });
+}
+
+let sequence_counter = (Date.now() * process.pid) % 8589869056;
+function nextval() {
+    return (++sequence_counter).toString(16);
 }
 
 async function listSymbolPositions(contract, multiplier, bars, position, trades, options) {
@@ -399,25 +449,21 @@ async function listSymbolPositions(contract, multiplier, bars, position, trades,
         const markToMarket_time = moment(bar.ending).format('X');
         const prev_markToMarket_time = moment((bars[b-1]||{}).ending||0).format('X');
         const details = trades.filter(trade => {
-            return trade.traded_time_unix <= markToMarket_time &&
-                prev_markToMarket_time < trade.traded_time_unix;
+            return prev_markToMarket_time < trade.traded_time_unix &&
+                trade.traded_time_unix <= markToMarket_time;
         });
         changes[b] = changePosition(multiplier, bars[b-1] || bar, details, bar, position);
-        if (changes[b].action == 'LONG' && !changes[b].quant)
-            return position;
-        else if (changes[b].action == 'SHORT' && !changes[b].quant)
-            return position;
-        else if (!changes[b].action && !changes[b].quant)
+        if (!changes[b].quant)
             return position;
         else if (changes[b].action.charAt(0) == 'B')
             return position - changes[b].quant;
         else if (changes[b].action.charAt(0) == 'S')
             return position + changes[b].quant;
         else
-            throw Error(`Invalid trade action ${changes[i].action}`);
+            throw Error(`Invalid trade action ${changes[b].action}`);
     }, ending_position - latest_trade.quant);
-    if (latest_trade.quant) {
-        changes.push(latest_trade);
+    if (latest_trade.mtm) {
+        changes.push({...latest_trade, asof: latest_trade.traded_at});
     }
     return changes.filter(trade => trade.action)
       .map(trade => Object.assign({
@@ -448,13 +494,13 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
     const mtm = Big(ending_value).minus(starting_value)
         .add(sold).minus(purchase).add(net_dividend);
     const action = position == 0 && quant == 0 ? '' :
-        position > 0 && quant == 0 ? 'LONG' :
-        position < 0 && quant == 0 ? 'SHORT' :
-        starting_position >= 0 && position >= 0 && shares >= 0 ? 'BTO' :
-        starting_position >= 0 && position >= 0 && shares <= 0 ? 'STC' :
-        starting_position <= 0 && position <= 0 && shares <= 0 ? 'STO' :
-        starting_position <= 0 && position <= 0 && shares >= 0 ? 'BTC' :
-        shares > 0 ? 'BOT' : shares < 0 ? 'SLD' : '';
+        position > 0 && shares == 0 ? 'LONG' :
+        position < 0 && shares == 0 ? 'SHORT' :
+        starting_position >= 0 && position >= 0 && shares > 0 ? 'BTO' :
+        starting_position >= 0 && position >= 0 && shares < 0 ? 'STC' :
+        starting_position <= 0 && position <= 0 && shares < 0 ? 'STO' :
+        starting_position <= 0 && position <= 0 && shares > 0 ? 'BTC' :
+        shares > 0 ? 'BOT' : shares < 0 ? 'SLD' : 'DAY';
     const traded_time_unix = _.max(details.map(trade => trade.traded_time_unix));
     return {
         asof: bar.ending,
@@ -476,11 +522,17 @@ async function lookup(fetch, markets, signal) {
     const matches = await Promise.all(_.map(_.pick(markets, m => {
         return m.instrument == instrument;
     }), async(m, market) => {
-        const symbol = _.invert(m.c2_map||{})[signal.symbol] ||
-            signal.symbol.startsWith(m.c2_prefix) ? signal.symbol.substring(m.c2_prefix.length) :
-            signal.symbol;
-        const matches = await fetch({interval:'lookup', symbol, market});
-        return matches.filter(match => match.symbol == symbol && match.currency == 'USD');
+        const fullSymbol = signal.fullSymbol || signal.symbol;
+        const symbol = _.invert(m.c2_map||{})[fullSymbol] ||
+            fullSymbol.startsWith(m.c2_prefix) ? fullSymbol.substring(m.c2_prefix.length) :
+            fullSymbol;
+        expect(symbol).to.be.a('string');
+        return await fetch({interval:'lookup', symbol, market})
+          .then(matches => matches.filter(match => match.symbol == symbol && match.currency == 'USD'))
+          .then(matches => matches.length ? matches :
+            // expired futures cannot be looked up, this might be one of then
+            instrument == 'future' ? [{symbol, market, currency: m.currency, secType: 'FUT'}] : [])
+          .catch(err => []);
     }));
     return _.first(_.flatten(matches));
 }

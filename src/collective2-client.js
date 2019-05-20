@@ -149,6 +149,8 @@ async function retrieve(agent, name, posted, systemid, settings) {
         logger.debug("collective2", name, JSON.stringify(Object.assign(_.omit(res,'equity_data'), {
             equity_data: res.equity_data.slice(Math.max(res.equity_data.length-20,0))
         })));
+    else
+        logger.trace("collective2", name, JSON.stringify(res));
     if (res.title)
         logger.log(res.title);
     else if (res.error && res.error.title)
@@ -220,6 +222,7 @@ async function submit(agent, name, systemid, signal, settings) {
     });
     const res = JSON.parse(body);
     if (parsed.protocol != 'file:') logger.debug("collective2", name, JSON.stringify(signal), JSON.stringify(res));
+    else logger.trace("collective2", name, JSON.stringify(signal), JSON.stringify(res));
     if (res.title)
         logger.log(res.title, res.signalid || '');
     else if (res.error && res.error.title)

@@ -69,6 +69,7 @@ describe("broker-simulation", function() {
             await broker({action: 'reset'});
             return broker({asof: '2015-02-16T17:00:00-05:00', action: 'orders'}).should.eventually.be.like([]);
         });
+        
         it("no positions", async() => {
             await broker({action: 'reset'});
             return broker({asof: '2015-02-16T17:00:00-05:00', action: 'positions'}).should.eventually.be.like([]);
@@ -351,7 +352,7 @@ describe("broker-simulation", function() {
             });
             await broker({
                 asof: '2015-06-17',
-                action: 'cancel', order_ref: stc.order_ref
+                action: 'cancel', order_ref: stc[0].order_ref
             });
             await broker({asof: '2015-06-18', action: 'orders'})
               .should.eventually.be.like([]);
@@ -385,7 +386,7 @@ describe("broker-simulation", function() {
                 symbol: 'IBM', market: 'NYSE', currency: 'USD', secType: 'STK'
             });
             await broker({
-                asof: '2015-06-17', order_ref: stc.order_ref,
+                asof: '2015-06-17', order_ref: stc[0].order_ref,
                 action: 'SELL', quant: 2, type: 'MOC', tif: 'DAY',
                 symbol: 'IBM', market: 'NYSE', currency: 'USD', secType: 'STK'
             });
@@ -519,29 +520,26 @@ describe("broker-simulation", function() {
                 asof: '2016-10-03T17:00:00-04:00',
                 action: 'deposit', quant: 10000, currency: 'USD'
             });
-            const order_ref = 'sell-gc';
-            await broker({
+            const orders = await broker({
                 asof: '2016-10-03T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'MKT', tif: 'DAY',
-                order_ref
-            });
-            await broker({
-                asof: '2016-10-03T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
-                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', type: 'LMT', tif: 'GTC',
-                limit: 120,
-                parent_ref: order_ref
+                attached: [{
+                    asof: '2016-10-03T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
+                    action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', type: 'LMT', tif: 'GTC',
+                    limit: 120
+                }]
             });
             await broker({asof: '2016-10-03T17:00:00-04:00', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-03T17:00:00-04:00',
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'MKT', tif: 'DAY',
                 status: 'working', currency: 'USD', secType: 'FUT', multiplier: 100,
-                order_ref: order_ref
+                order_ref: _.first(orders).order_ref
             }, {
                 asof: '2016-10-03T17:00:00-04:00',
                 action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', type: 'LMT', tif: 'GTC',
                 status: 'pending', currency: 'USD', secType: 'FUT', multiplier: 100,
-                parent_ref: order_ref
+                attach_ref: _.first(orders).order_ref
             }]);
             await broker({asof: '2016-10-03T17:00:00-04:00', action: 'positions'})
               .should.eventually.be.like([]);
@@ -567,7 +565,7 @@ describe("broker-simulation", function() {
                 asof: '2016-10-03T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', type: 'LMT', tif: 'GTC',
                 limit: 120,
-                parent_ref: order_ref
+                attach_ref: order_ref
             });
             await broker({asof: '2016-10-05', action: 'orders'})
               .should.eventually.be.like([{
@@ -642,8 +640,8 @@ describe("broker-simulation", function() {
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', type: 'STP', tif: 'GTC',
-                offset: 120,
-                parent_ref: order_ref
+                price: 120,
+                attach_ref: order_ref
             });
             await broker({asof: '2016-10-03T17:00:00-04:00', action: 'orders'})
               .should.eventually.be.like([{
@@ -655,8 +653,8 @@ describe("broker-simulation", function() {
                 asof: '2016-10-03T17:00:00-04:00',
                 action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', type: 'STP', tif: 'GTC',
                 status: 'pending', currency: 'USD', secType: 'FUT', multiplier: 100,
-                offset: 120,
-                parent_ref: order_ref
+                price: 120,
+                attach_ref: order_ref
             }]);
             await broker({asof: '2016-10-03T17:00:00-04:00', action: 'positions'})
               .should.eventually.be.like([]);
@@ -679,20 +677,20 @@ describe("broker-simulation", function() {
             const stp = await broker({
                 asof: '2016-10-03T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'STP', tif: 'GTC',
-                offset: 1350
+                price: 1350
             });
             await broker({
                 asof: '2016-10-04T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'STP', tif: 'GTC',
-                offset: 1300,
-                order_ref: stp.order_ref
+                price: 1300,
+                order_ref: stp[0].order_ref
             });
             await broker({asof: '2016-10-05', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-04T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'STP', tif: 'GTC',
-                offset: 1300,
-                order_ref: stp.order_ref
+                price: 1300,
+                order_ref: stp[0].order_ref
             }]);
             await broker({asof: '2016-10-04T17:00:00-04:00', action: 'positions'})
               .should.eventually.be.like([{
@@ -723,27 +721,79 @@ describe("broker-simulation", function() {
             const stp = await broker({
                 asof: '2015-02-16T16:00:00-04:00', currency: 'USD', secType: 'STK', multiplier: 1,
                 action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'STP', tif: 'GTC',
-                offset: 150,
-                parent_ref: mkt.order_ref
+                price: 150,
+                attach_ref: mkt[0].order_ref
             });
-            const lmt = await broker({
+            await broker({
                 asof: '2015-02-16T16:00:00-05:00', currency: 'USD', secType: 'STK', multiplier: 1,
                 action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'LMT', tif: 'GTC',
                 limit: 170,
-                parent_ref: mkt.order_ref
+                attach_ref: mkt[0].order_ref
             });
             await broker({asof: '2015-02-18', action: 'orders'})
               .should.eventually.be.like([{
                 currency: 'USD', secType: 'STK', multiplier: 1,
                 action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'STP', tif: 'GTC',
-                offset: 150,
-                order_ref: stp.order_ref,
+                price: 150,
+                order_ref: stp[0].order_ref,
                 status: 'working'
             }, {
                 currency: 'USD', secType: 'STK', multiplier: 1,
                 action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'LMT', tif: 'GTC',
                 limit: 170,
-                parent_ref: mkt.order_ref,
+                attach_ref: mkt[0].order_ref,
+                status: 'working'
+            }]);
+            await broker({asof: '2015-02-17T16:00:00-05:00', action: 'positions'})
+              .should.eventually.be.like([{
+                asof: '2015-02-17T16:00:00-05:00',
+                action: 'BTO', position: 2,
+                price: 160.96,
+                dividend: '0.00', commission: 1,
+                mtm: (2*16096-2*15975-100)/100, value: 2*16096/100,
+                symbol: 'IBM', market: 'NYSE', currency: 'USD', secType: 'STK', multiplier: 1
+            }]);
+            await broker({asof: '2015-02-17T16:00:00-05:00', action: 'balances'})
+              .should.eventually.be.like([{
+                asof: '2015-02-17T16:00:00-05:00',
+                currency: 'USD', rate: 1, net: (100000+2*16096-2*15975-100)/100, settled: (100000-2*15975-100)/100
+            }]);
+        });
+        it("OCA Order", async() => {
+            await broker({action: 'reset'});
+            await broker({
+                asof: '2015-02-16T16:00:00-04:00',
+                action: 'deposit', quant: 1000, currency: 'USD'
+            });
+            await broker({
+                asof: '2015-02-16T16:00:00-04:00', currency: 'USD', secType: 'STK', multiplier: 1,
+                action: 'BUY', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'MKT', tif: 'DAY'
+            });
+            const oca = await broker({
+                asof: '2015-02-17T16:00:00-04:00',
+                action: 'OCA',
+                attached: [{
+                    currency: 'USD', secType: 'STK', multiplier: 1,
+                    action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'STP', tif: 'GTC',
+                    price: 150
+                }, {
+                    currency: 'USD', secType: 'STK', multiplier: 1,
+                    action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'LMT', tif: 'GTC',
+                    limit: 170
+                }]
+            });
+            await broker({asof: '2015-02-18', action: 'orders'})
+              .should.eventually.be.like([{
+                currency: 'USD', secType: 'STK', multiplier: 1,
+                action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'STP', tif: 'GTC',
+                price: 150,
+                attach_ref: oca[0].attach_ref,
+                status: 'working'
+            }, {
+                currency: 'USD', secType: 'STK', multiplier: 1,
+                action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'LMT', tif: 'GTC',
+                limit: 170,
+                attach_ref: oca[0].attach_ref,
                 status: 'working'
             }]);
             await broker({asof: '2015-02-17T16:00:00-05:00', action: 'positions'})
@@ -774,26 +824,26 @@ describe("broker-simulation", function() {
             const stp = await broker({
                 asof: '2015-02-16T16:00:00-04:00', currency: 'USD', secType: 'STK', multiplier: 1,
                 action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'STP', tif: 'GTC',
-                offset: 150,
-                parent_ref: mkt.order_ref
+                price: 150,
+                attach_ref: mkt[0].order_ref
             });
             const lmt = await broker({
                 asof: '2015-02-16T16:00:00-05:00', currency: 'USD', secType: 'STK', multiplier: 1,
                 action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'LMT', tif: 'DAY',
                 limit: 170,
-                parent_ref: mkt.order_ref
+                attach_ref: mkt[0].order_ref
             });
             await broker({
                 asof: '2015-02-17T16:00:00-05:00',
                 action: 'cancel',
-                order_ref: lmt.order_ref
+                order_ref: lmt[0].order_ref
             });
             await broker({asof: '2015-02-18', action: 'orders'})
               .should.eventually.be.like([{
                 currency: 'USD', secType: 'STK', multiplier: 1,
                 action: 'SELL', quant: 2, symbol: 'IBM', market: 'NYSE', type: 'STP', tif: 'GTC',
-                offset: 150,
-                order_ref: stp.order_ref,
+                price: 150,
+                order_ref: stp[0].order_ref,
                 status: 'working'
             }]);
             await broker({asof: '2015-02-17T16:00:00-05:00', action: 'positions'})
@@ -824,8 +874,8 @@ describe("broker-simulation", function() {
             const stp = await broker({
                 asof: '2015-05-18', currency: 'USD', secType: 'STK', multiplier: 1,
                 action: 'SELL', quant: 100, symbol: 'IBM', market: 'NYSE', type: 'STP', tif: 'GTC',
-                offset: 120,
-                parent_ref: mkt.order_ref
+                price: 120,
+                attach_ref: mkt[0].order_ref
             });
             await broker({
                 asof: '2015-05-19', currency: 'USD', secType: 'STK', multiplier: 1,
@@ -835,8 +885,8 @@ describe("broker-simulation", function() {
               .should.eventually.be.like([{
                 currency: 'USD', secType: 'STK', multiplier: 1,
                 action: 'SELL', quant: 100, symbol: 'IBM', market: 'NYSE', type: 'STP', tif: 'GTC',
-                offset: 120,
-                order_ref: stp.order_ref,
+                price: 120,
+                order_ref: stp[0].order_ref,
                 status: 'working'
             }, {
                 posted_at: '2015-05-19T00:00:00-04:00', currency: 'USD', secType: 'STK', multiplier: 1,
@@ -875,18 +925,18 @@ describe("broker-simulation", function() {
             await broker({
                 asof: '2016-10-05', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'MKT', tif: 'GTC',
-                parent_ref: sell.order_ref
+                attach_ref: sell[0].order_ref
             });
             // first day
             await broker({asof: '2016-10-05', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-05T00:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'MKT', tif: 'GTC',
-                order_ref: sell.order_ref
+                order_ref: sell[0].order_ref
             }, {
                 asof: '2016-10-05T00:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'MKT', tif: 'GTC',
-                parent_ref: sell.order_ref
+                attach_ref: sell[0].order_ref
             }]);
             await broker({asof: '2016-10-05', action: 'positions'})
               .should.eventually.be.like([{
@@ -929,11 +979,11 @@ describe("broker-simulation", function() {
             }, {
                 asof: '2016-10-05T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'MKT', tif: 'GTC',
-                order_ref: sell.order_ref
+                order_ref: sell[0].order_ref
             }, {
                 asof: '2016-10-05T17:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'MKT', tif: 'GTC',
-                parent_ref: sell.order_ref
+                attach_ref: sell[0].order_ref
             }]);
             await broker({begin: '2016-10-04', asof: '2016-10-06', action: 'positions'})
               .should.eventually.be.like([{
@@ -979,13 +1029,13 @@ describe("broker-simulation", function() {
             await broker({
                 asof: '2016-10-05', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'MKT', tif: 'GTC',
-                order_ref: sell.order_ref
+                order_ref: sell[0].order_ref
             });
             await broker({asof: '2016-10-05', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-05T00:00:00-04:00', currency: 'USD', secType: 'FUT', multiplier: 100,
                 action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', type: 'MKT', tif: 'GTC',
-                order_ref: sell.order_ref
+                order_ref: sell[0].order_ref
             }]);
             await broker({asof: '2016-10-05', action: 'positions'})
               .should.eventually.be.like([{

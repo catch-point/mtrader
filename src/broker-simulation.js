@@ -149,8 +149,8 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif', 'status', 'price',
-            'order_ref', 'parent_ref', 'group_ref', 'bag_ref',
+            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif', 'status', 'price',
+            'order_ref', 'attach_ref',
             'symbol', 'market', 'secType', 'currency', 'multiplier'
         ],
         options: {
@@ -200,14 +200,14 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif', 'status', 'price',
-            'order_ref', 'parent_ref', 'group_ref', 'bag_ref',
+            'asof', 'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif', 'status', 'price',
+            'order_ref', 'attach_ref',
             'symbol', 'market', 'secType', 'currency', 'multiplier'
         ],
         options: {
             action: {
                 usage: '<string>',
-                values: ['BUY', 'SELL', 'cancel']
+                values: ['BUY', 'SELL', 'OCA', 'cancel']
             },
             asof: {
                 usage: '<dateTime>',
@@ -225,9 +225,13 @@ function helpOptions() {
                 usage: '<limit-price>',
                 descirption: "The limit price for orders of type LMT"
             },
-            offset: {
+            price: {
                 usage: '<aux-price>',
                 description: "Stop limit price for STP orders"
+            },
+            offset: {
+                usage: '<price-offset>',
+                description: "Pegged and snap order offset"
             },
             tif: {
                 usage: '<time-in-forced>',
@@ -237,21 +241,17 @@ function helpOptions() {
                 usage: '<string>',
                 description: "The order identifier that is unique among working orders"
             },
-            parent_ref: {
+            attach_ref: {
                 usage: '<string>',
-                description: "The order_ref of the parent order that must be filled before this order"
+                description: "The order_ref of the parent order that must be filled before this order or a common identifier for orders in the same one-cancels-all (OCA) group."
             },
-            group_ref: {
-                usage: '<string>',
-                description: "A common identifier for orders in the same one-cancels-all (OCA) group."
-            },
-            bag_ref: {
-                usage: '<string>',
-                description: "Indicates this is just a leg of a combo order with the given order_ref"
+            attached: {
+                usage: '[...orders]',
+                description: "Submit attached parent/child orders together or OCA group of orders"
             },
             symbol: {
                 usage: '<string>',
-                description: "The symbol of the contract to be traded"
+                description: "The symbol of the contract to be traded, omit for OCA and bag orders"
             },
             market: {
                 usage: '<string>',
@@ -284,8 +284,8 @@ async function advance(barsFor, commissions, db, options) {
     const pending = await Promise.all(orders.map(async(order) => fillOrder(barsFor, order, options)));
     const filled = pending.filter(order => order.status == 'filled');
     const complete = pending.map(order => {
-        if (order.status == 'pending' && order.parent_ref) {
-          const parent = filled.find(parent => parent.order_ref == order.parent_ref);
+        if (order.status == 'pending' && order.attach_ref) {
+          const parent = filled.find(parent => parent.order_ref == order.attach_ref);
           if (parent) return {...order, status: 'working', asof: parent.asof};
         }
         return order;
@@ -325,6 +325,7 @@ async function dispatch(barsFor_fn, db, options) {
         case 'positions': return listPositions(db, options);
         case 'orders': return listOrders(db, options);
         case 'cancel': return cancelOrder(db, options);
+        case 'OCA': return oneCancelsAllOrders(db, options);
         case 'BUY':
         case 'SELL': return submitOrder(db, options);
         default: expect(options).to.have.property('action').to.be.oneOf([
@@ -440,8 +441,8 @@ async function cancelOrder(db, options) {
         const completed = data.filter(o => o.status != 'working' && o.status != 'pending');
         const working = data.filter(o => o.status == 'working' || o.status == 'pending');
         const order = _.pick(options, [
-            'asof', 'action', 'quant', 'type', 'limit', 'offset', 'tif', 'status', 'price',
-            'order_ref', 'parent_ref', 'group_ref', 'bag_ref',
+            'asof', 'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif', 'status', 'price',
+            'order_ref', 'attach_ref',
             'symbol', 'market', 'secType', 'currency', 'multiplier'
         ]);
         const cancelled = working.find(sameOrder(order));
@@ -459,7 +460,43 @@ async function cancelOrder(db, options) {
     });
 }
 
+async function oneCancelsAllOrders(db, options) {
+    const now = moment(options.asof);
+    const orders = await db.collection('orders');
+    const current_month = now.format('YYYYMM');
+    const recent_month = _.last(orders.listNames()) || current_month;
+    return orders.lockWith(_.uniq([recent_month, current_month]), async() => {
+        if (recent_month != current_month && orders.exists(recent_month)) {
+            const data = await orders.readFrom(recent_month);
+            const completed = data.filter(o => o.status != 'working' && o.status != 'pending');
+            const working = data.filter(o => o.status == 'working' || o.status == 'pending');
+            await orders.replaceWith(completed, recent_month);
+            await orders.writeTo(working, current_month);
+        }
+        const order_ref = options.order_ref || nextval();
+        return (options.attached||[]).reduce(async(promise, attached_order) => {
+            const result = await promise;
+            const attached = await appendOrders(orders, current_month, current_month, {
+                ..._.omit(options, 'action', 'attached'),
+                attach_ref: order_ref,
+                ...attached_order
+            });
+            return result.concat(attached);
+        }, []);
+    });
+}
+
 async function submitOrder(db, options) {
+    const now = moment(options.asof);
+    const orders = await db.collection('orders');
+    const current_month = now.format('YYYYMM');
+    const recent_month = _.last(orders.listNames()) || current_month;
+    return orders.lockWith(_.uniq([recent_month, current_month]), () => {
+        return appendOrders(orders, recent_month, current_month, options);
+    });
+}
+
+async function appendOrders(orders, recent_month, current_month, options) {
     expect(options).to.have.property('tif').that.is.oneOf(['GTC', 'DAY', 'IOC']);
     expect(options).to.have.property('type').that.is.oneOf(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']);
     expect(options).to.have.property('symbol').that.is.a('string');
@@ -467,33 +504,37 @@ async function submitOrder(db, options) {
     expect(options).to.have.property('currency').that.is.a('string');
     expect(options).to.have.property('secType').that.is.oneOf(['STK', 'FUT', 'OPT']);
     const now = moment(options.asof);
-    const orders = await db.collection('orders');
-    const current_month = now.format('YYYYMM');
-    const recent_month = _.last(orders.listNames()) || current_month;
-    return orders.lockWith(_.uniq([recent_month, current_month]), async() => {
-        const data = orders.exists(recent_month) ?
-            await orders.readFrom(recent_month) : [];
-        const completed = data.filter(o => o.status != 'working' && o.status != 'pending');
-        if (recent_month != current_month) await orders.replaceWith(completed, recent_month);
-        const current_completed = recent_month == current_month ? completed : [];
-        const working = data.filter(o => o.status == 'working' || o.status == 'pending');
-        const order = _.pick(options, [
-            'action', 'quant', 'type', 'limit', 'offset', 'tif',
-            'order_ref', 'parent_ref', 'group_ref', 'bag_ref',
-            'symbol', 'market', 'secType', 'currency', 'multiplier'
-        ]);
-        const order_ref = order.order_ref || nextval();
-        const modifying = order.order_ref && working.find(sameOrder(order));
-        const status = order.parent_ref || order.bag_ref || order.group_ref && order.group_ref != order.order_ref ?
-            'pending' : 'working';
-        const submitted = {posted_at: now.format(), asof: now.format(), ...order, order_ref, status};
-        const replacement = current_completed.concat(
-            working.filter(order => order != modifying),
-            submitted
-        );
-        await orders.replaceWith(replacement, current_month);
-        return submitted;
-    });
+    const data = orders.exists(recent_month) ?
+        await orders.readFrom(recent_month) : [];
+    const completed = data.filter(o => o.status != 'working' && o.status != 'pending');
+    if (recent_month != current_month) await orders.replaceWith(completed, recent_month);
+    const current_completed = recent_month == current_month ? completed : [];
+    const working = data.filter(o => o.status == 'working' || o.status == 'pending');
+    const order = _.pick(options, [
+        'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif',
+        'order_ref', 'attach_ref',
+        'symbol', 'market', 'secType', 'currency', 'multiplier'
+    ]);
+    const order_ref = order.order_ref || nextval();
+    const modifying = order.order_ref && working.find(sameOrder(order));
+    const status = order.attach_ref && working.some(ord => ord.order_ref == order.attach_ref) ?
+        'pending' : 'working';
+    const submitted = {posted_at: now.format(), asof: now.format(), ...order, order_ref, status};
+    const replacement = current_completed.concat(
+        working.filter(order => order != modifying),
+        submitted
+    );
+    await orders.replaceWith(replacement, current_month);
+    return (options.attached||[]).reduce(async(promise, attached_order) => {
+        const result = await promise;
+        const attached = await appendOrders(orders, current_month, current_month, {
+            ..._.omit(options, Object.keys(order)),
+            attach_ref: order_ref,
+            attached: [],
+            ...attached_order
+        });
+        return result.concat(attached);
+    }, [submitted]);
 }
 
 async function fillOrder(barsFor, order, options) {
@@ -510,10 +551,10 @@ async function fillOrder(barsFor, order, options) {
         case 'MOC': return {...order, asof: _.first(bars).asof, status: 'filled', price: _.first(bars).close};
         case 'MIT':
         case 'STP': {
-            const bar = bars.find(bar => bar.low <= order.offset && order.offset <= bar.high);
+            const bar = bars.find(bar => bar.low <= order.price && order.price <= bar.high);
             if (!bar && order.tif == 'GTC') return order;
             else if (!bar) return {...order, asof: all_bars[0].asof, status: 'cancelled'};
-            else return {...order, asof: bar.asof, status: 'filled', price: order.offset};
+            else return {...order, asof: bar.asof, status: 'filled', price: order.price};
         }
         case 'LOO': {
             const bar = order.action == 'BUY' ? bars.find(bar => bar.open <= order.limit) :
@@ -652,13 +693,13 @@ function advancePosition(commissions, position, orders, bar) {
     const mtm = Big(ending_value).minus(position.value || 0)
         .add(sold).minus(purchase).add(net_dividend).minus(commission).toFixed(2);
     const action = ending_pos == 0 && total_quant == 0 ? '' :
-        ending_pos > 0 && total_quant == 0 ? 'LONG' :
-        ending_pos < 0 && total_quant == 0 ? 'SHORT' :
-        starting_pos >= 0 && ending_pos >= 0 && net_quant >= 0 ? 'BTO' :
-        starting_pos >= 0 && ending_pos >= 0 && net_quant <= 0 ? 'STC' :
-        starting_pos <= 0 && ending_pos <= 0 && net_quant <= 0 ? 'STO' :
-        starting_pos <= 0 && ending_pos <= 0 && net_quant >= 0 ? 'BTC' :
-        net_quant > 0 ? 'BOT' : net_quant < 0 ? 'SLD' : '';
+        ending_pos > 0 && net_quant == 0 ? 'LONG' :
+        ending_pos < 0 && net_quant == 0 ? 'SHORT' :
+        starting_pos >= 0 && ending_pos >= 0 && net_quant > 0 ? 'BTO' :
+        starting_pos >= 0 && ending_pos >= 0 && net_quant < 0 ? 'STC' :
+        starting_pos <= 0 && ending_pos <= 0 && net_quant < 0 ? 'STO' :
+        starting_pos <= 0 && ending_pos <= 0 && net_quant > 0 ? 'BTC' :
+        net_quant > 0 ? 'BOT' : net_quant < 0 ? 'SLD' : 'DAY';
     return {
         asof: bar.asof,
         action, quant: Math.abs(net_quant), position: ending_pos,
@@ -677,7 +718,7 @@ function findCommission(commissions, contract) {
 }
 
 function sameOrder(options) {
-    const identifying = ['symbol', 'market', 'type', 'order_ref', 'parent_ref', 'group_ref', 'bag_ref'];
+    const identifying = ['symbol', 'market', 'type', 'order_ref', 'attach_ref'];
     return order => {
         return sameAction(order.action, options.action) && _.isMatch(order, _.pick(options, identifying));
     };

@@ -36,6 +36,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
 const tabular = require('./tabular.js');
+const merge = require('./merge.js');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
@@ -110,7 +111,7 @@ function createInstance(program, settings) {
 function shell(desc, broker, app) {
     app.on('quit', () => broker.close());
     app.on('exit', () => broker.close());
-return broker({help: true}).then(_.first).then(info => {
+return broker({help: true}).then(array => merge(...array)).then(info => {
     app.cmd("broker :name([a-zA-Z0-9]+)", desc, (cmd, sh, cb) => {
         broker({...config.options(), action: cmd.params.name})
           .then(result => tabular(result, config())).then(() => sh.prompt(), cb);

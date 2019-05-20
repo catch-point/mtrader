@@ -69,7 +69,8 @@ function fetchOptionsFactory(fetch, offline, read_only) {
             const matches = await fetch({
                 interval: 'lookup',
                 symbol: symbol,
-                market: market
+                market: market,
+                tz
             });
             const security = _.first(matches);
             if (_.isEmpty(security))
