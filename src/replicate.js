@@ -36,6 +36,7 @@ const url = require('url');
 const http = require('http');
 const https = require('https');
 const path = require('path');
+const Big = require('big.js');
 const moment = require('moment-timezone');
 const merge = require('./merge.js');
 const interrupt = require('./interrupt.js');
@@ -45,7 +46,10 @@ const expect = require('chai').expect;
 const version = require('../package.json').version;
 
 /**
- * Aligns the working signals on a broker with the signal rows from the collect result
+ * Aligns the working orders on a broker with the order rows from the collect result.
+ * Assumes all orders, that are not STP orders, will be filled and are
+ * conditional upon previous orders with the same contract.
+ * Assumes no orders are conditional upon a STP order.
  */
 module.exports = function(broker, collect) {
     let promiseHelp;
@@ -56,11 +60,7 @@ module.exports = function(broker, collect) {
             const opts = _.defaults({
                 now: moment(options.now).valueOf()
             }, _.pick(options, _.keys(_.first(help).options)));
-            return replicate(broker, collect, opts).then(ret => {
-                return broker.close().then(() => ret);
-            }, err => {
-                return broker.close().then(() => Promise.reject(err));
-            });
+            return replicate(broker, collect, opts);
         });
     }, {
         close() {
@@ -79,142 +79,162 @@ function help(broker, collect) {
     }, {
         name: 'replicate',
         usage: 'replicate(options)',
-        description: "Changes workers orders to align with signal orders in result",
-        properties: ['action', 'quant', 'symbol', 'typeofsymbol', 'duration', 'limit', 'parkUntilSecs', 'parkUntilYYYYMMDDHHMM'],
+        description: "Changes workers orders to align with orders in result",
+        properties: ['action', 'quant', 'type', 'limit', 'stop', 'tif', 'symbol', 'market', 'currency', 'secType', 'multiplier', 'order_ref', 'attach_ref'],
         options: {
-            symbols: {
-                usage: '[<symbol>]',
-                description: "Array of position symbols that should be closed if no desired position exists"
+            markets: {
+                usage: '[<market>]',
+                description: "Array of markets of positions that should be closed if no desired position exists"
+            },
+            currency: {
+                usage: '<currency>',
+                description: "The currency used in parameters, such as 'initial_deposit'"
+            },
+            margin_acct: {
+                usage: '<true>',
+                description: "Indicates all currencies should be considered in account value and initial_deposit"
             },
             quant_threshold: {
                 usage: '<integer>',
-                description: "Minimum quantity of shares/contracts that must change to generate a signal"
+                description: "Minimum quantity of shares/contracts that must change to generate a change order"
             },
             quant_threshold_percent: {
                 usage: '<decimal>',
-                description: "Minimum quantity, relative to current position, that must change to generate a signal"
+                description: "Minimum quantity, relative to current position, that must change to generate a change order"
             }
         }
     })).then(help => [help]);
 }
 
 /**
- * Aligns the working signals on the given broker with the signal rows from the collect result
+ * Aligns the working orders on the given broker with the order rows from the collect result
  */
-function replicate(broker, collect, options) {
+async function replicate(broker, collect, options) {
     const check = interrupt();
-    return getWorkingPositions(broker, options)
-      .then(working => getDesiredPositions(broker, collect, options)
-      .then(desired => {
-        const symbols = _.uniq(_.compact(_.keys(desired).concat(options.symbols)));
-        _.forEach(working, (w, symbol) => {
-            if (!desired[symbol] && w.quant_opened != w.quant_closed && !~symbols.indexOf(symbol)) {
-                logger.warn("Unknown", w.long_or_short, "position",
-                    w.quant_opened - w.quant_closed, w.symbol, w.symbol_description || '');
-            }
+    const desired = await getDesiredPositions(broker, collect, options);
+    const working = await getWorkingPositions(broker, options);
+    const portfolio = _.uniq(Object.keys(desired).concat(getPortfolio(options.markets, options))).sort();
+    logger.trace("replicate portfolio", ...portfolio);
+    _.forEach(working, (w, contract) => {
+        if (!desired[contract] && +w.position && !~portfolio.indexOf(contract)) {
+            logger.warn("Unknown position", w.position, w.symbol, w.market);
+        }
+    });
+    const orders = portfolio.reduce((orders, contract) => {
+        const [symbol, market] = contract.match(/^(.+)\W(\w+)$/);
+        const d = desired[contract] || { symbol, market, position:0, asof: 0 };
+        const w = working[contract] || { symbol, market, position:0, asof: 0 };
+        const quant_threshold = getQuantThreshold(w, options);
+        const update = updateWorking(d, w, _.defaults({quant_threshold}, options));
+        if (!update.length) return orders;
+        const cancelled = update.filter(ord => ord.action == 'cancel');
+        if (update.length == cancelled.length) return orders.concat(cancelled);
+        const parent_order = update.filter(ord => ord.action != 'cancel').reduceRight((pending, prior) => {
+            if (isStopOrder(prior)) // STP orders are assumed to be OCO orders
+                return {
+                    action: 'OCA',
+                    ..._.pick(prior, 'asof', 'symbol', 'market', 'currency', 'secType', 'multiplier'),
+                    attached:[prior, pending]
+                };
+            else if (pending.action == 'OCA')
+                return {...prior, attached: pending.attached};
+            else // assumed to be conditional upon prior orders of the same contract
+                return {...prior, attached: [pending]};
         });
-        return symbols.reduce((signals, symbol) => {
-            const d = desired[symbol] || {
-                symbol: symbol,
-                quant_opened:0,
-                quant_closed:0
-            };
-            const w = working[symbol] || {
-                symbol: symbol,
-                instrument: d.instrument,
-                quant_opened:0,
-                quant_closed:0
-            };
-            const quant_threshold = getQuantThreshold(w, options);
-            const update = updateWorking(d, w, _.defaults({quant_threshold}, options));
-            if (update.length)
-                logger.debug("replicate", "desired", symbol, JSON.stringify(desired[symbol]));
-            return signals.concat(update);
-        }, []);
-    })).then(signals => signals.reduce((promise, signal) => promise.then(async(result) => {
-        await check();
-        if (signal && signal.action) return broker(signal);
-        else if (_.isString(signal)) return broker({action: 'cancelSignal', signalid: signal});
-        else throw Error("Unknown signal: " + JSON.stringify(signal));
-    }).then(signal => {
-        const log = s => {
-            const type = +s.isStopOrder ? '@STOP ' + s.isStopOrder :
-                +s.isLimitOrder || +s.islimit ? '@LIMIT ' + (+s.isLimitOrder || +s.islimit) : '@MARKET';
-            const tif = s.duration || s.tif || (+s.gtc ? 'GTC' : +s.day ? 'DAY' : '')
-            logger.info(s.action, s.quant, s.symbol || '', type, tif, s.signalid || '', s.description || '');
-        }
-        if (signal.conditionalUponSignal) {
-            log(signal.conditionalUponSignal);
-            log(signal);
-            const conditionalupon = signal.conditionalUponSignal.signalid;
-            const flat = _.extend({conditionalupon}, _.omit(signal, 'conditionalUponSignal'));
-            return promise.then(ar => ar.concat(_.compact([signal.conditionalUponSignal, flat])));
-        } else if (signal.action) {
-            log(signal);
-            return promise.then(ar => ar.concat(signal));
-        } else {
-            return promise.then(ar => ar.concat(signal));
-        }
-    }), Promise.resolve([])));
+        logger.debug("replicate", "desired", contract, JSON.stringify(desired[contract]));
+        return orders.concat(cancelled, parent_order);
+    }, []);
+    await check();
+    logger.trace("replicate submit orders", ...orders);
+    const submitted = await Promise.all(orders.map(async(order) => broker({...order, now: options.now}), []));
+    const log = s => {
+        logger.info(s.action, s.quant, s.symbol, s.market, s.type, s.tif, s.order_ref, s.status);
+        return s;
+    }
+    return [].concat(...submitted).map(log);
 }
 
 /**
- * Collects the options results and converts the signals into positions
+ * Collects the options results and converts the orders into positions
  */
-function getDesiredPositions(broker, collect, options) {
-    return broker({action: 'requestMarginEquity'})
-      .then(requestMarginEquity => broker({action:'retrieveSystemEquity'})
-      .then(retrieveSystemEquity => {
-        const unix_timestamp = moment(options.begin).format('X');
-        const idx = _.sortedIndex(retrieveSystemEquity, {unix_timestamp}, 'unix_timestamp');
-        return retrieveSystemEquity[idx];
-    }).then(systemEquity => collect(merge(options, {
-        parameters: _.pick(requestMarginEquity, 'buyPower', 'marginUsed', 'modelAccountValue' , 'cash')
-    }, {
-        parameters: _.pick(systemEquity, 'strategy_with_cost', 'strategy_raw')
-    })).then(signals => {
-        return signals.reduce((positions, signal) => {
-            const symbol = signal.c2_symbol || signal.symbol;
-            const instrument = signal.typeofsymbol;
-            const prior = positions[symbol] || {symbol, instrument, quant_opened:0, quant_closed:0};
-            return _.defaults({
-                [symbol]: advance(prior, signal, options)
-            }, positions);
-        }, {});
-    })));
+async function getDesiredPositions(broker, collect, options) {
+    const balances = await broker({action: 'balances', asof: options.begin, now: options.now});
+    const local_balances = balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
+    const local_balance_rate = local_balances.length ? local_balances[0].rate : 1;
+    const initial_deposit = !options.margin_acct || !balances.length ? Big(local_balance_net) :
+        balances.map(bal => Big(bal.net).times(bal.rate).div(local_balance_rate)).reduce((a,b) => a.add(b));
+    const parameters = { initial_deposit: initial_deposit.toString(), strategy_raw: initial_deposit.toString() };
+    logger.debug("replicate parameters", parameters);
+    const orders = await collect(merge(options, {parameters}));
+    return orders.reduce((positions, row) => {
+        const traded_at = row.traded_at || row.asof || (row.parkUntilSecs || row.posted_time_unix ?
+                moment(row.parkUntilSecs || row.posted_time_unix, 'X').format() : null)
+        const order = c2signal({
+            action: row.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
+            quant: row.quant,
+            symbol: row.symbol,
+            market: row.market,
+            currency: row.currency,
+            secType: row.secType || (row.typeofsymbol == 'future' ? 'FUT' : 'STK'),
+            multiplier: row.multiplier,
+            type: row.type || (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
+            limit: row.limit,
+            stop: row.stop,
+            stoploss: row.stoploss,
+            tif: row.tif || row.duration || 'DAY',
+            status: traded_at && moment(traded_at).isAfter(options.now) ? 'pending' : null,
+            traded_at: traded_at
+        });
+        const symbol = order.symbol;
+        const market = order.market;
+        const contract = `${order.symbol}.${order.market}`;
+        const prior = positions[contract] ||
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'secType', 'multiplier'), {position: 0, asof: 0});
+        return _.defaults({
+            [contract]: advance(prior, order, options)
+        }, positions);
+    }, {});
 }
 
 /**
- * Retrieves the open positions and working signals from broker
+ * Retrieves the open positions and working orders from broker
  */
-function getWorkingPositions(broker, options) {
-    return broker({action: 'retrieveSignalsWorking'})
-      .then(retrieveSignalsWorking => broker({action: 'requestTrades'})
-      .then(requestTrades => {
-        expect(retrieveSignalsWorking).to.be.an('array');
-        expect(requestTrades).to.be.an('array');
-        const positions = requestTrades.reduce((positions, pos) => {
-            const dup = positions[pos.symbol];
-            if (dup && dup.quant_closed != dup.quant_opened && pos.quant_closed != pos.quant_opened)
-                throw Error("Two open positions for the same symbol found: " + JSON.stringify(dup) + JSON.stringify(pos));
-            else if (!dup || pos.quant_closed != pos.quant_opened)
-                return _.defaults({[pos.symbol]: pos}, positions);
-            else if (dup.quant_closed != dup.quant_opened || dup.closedWhen > pos.closedWhen)
-                return positions;
-            else
-                return _.defaults({[pos.symbol]: pos}, positions);
-        }, {});
-        const working = _.groupBy(retrieveSignalsWorking, 'symbol');
-        return _.reduce(working, (positions, signals, symbol) => signals.sort((a,b) => {
-            return sortSignals(positions[symbol], a, b);
-        }).reduce((positions, signal) => {
-            const instrument = signal.typeofsymbol;
-            const prior = positions[symbol] || {symbol, instrument, quant_opened:0, quant_closed:0};
-            return _.defaults({
-                [symbol]: advance(prior, signal, options)
-            }, positions);
-        }, positions), positions);
+async function getWorkingPositions(broker, options) {
+    const [broker_positions, broker_orders] = await Promise.all([
+        broker({action: 'positions', now: options.now}),
+        broker({action: 'orders', now: options.now})
+    ]);
+    const all_positions = _.groupBy(broker_positions, pos => `${pos.symbol}.${pos.market}`);
+    const positions = _.mapObject(all_positions, positions => positions.reduce((net, pos) => {
+        return {...net, position: +net.position + +pos.position};
     }));
+    const working = _.groupBy(broker_orders.filter(ord => {
+        return ord.status == 'pending' || ord.status == 'working';
+    }), ord => `${ord.symbol}.${ord.market}`);
+    return _.reduce(working, (positions, orders, contract) => sortOrders(orders)
+      .reduce((positions, order) => {
+        const symbol = order.symbol;
+        const market = order.market;
+        const prior = positions[contract] ||
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'secType', 'multiplier'), {position: 0, asof: 0});
+        return _.defaults({
+            [contract]: advance(prior, order, options)
+        }, positions);
+    }, positions), positions);
+}
+
+function getPortfolio(markets, options, portfolio = []) {
+    return [].concat(options.portfolio||[]).reduce((portfolio,item) => {
+        if (item && typeof item == 'object') return getPortfolio(markets, item, portfolio);
+        else if (typeof item == 'string' && !markets) return portfolio.concat(item);
+        const [, symbol, market] = (item||'').toString().match(/^(.+)\W(\w+)$/) || [];
+        if (!market) throw Error(`Unknown contract syntax ${item} in portfolio ${portfolio}`);
+        else if (~markets.indexOf(market)) return portfolio.concat(item);
+        else return portfolio;
+    }, portfolio);
 }
 
 /**
@@ -223,7 +243,7 @@ function getWorkingPositions(broker, options) {
 function getQuantThreshold(working, options) {
     if (!options.quant_threshold_percent) return options.quant_threshold || 0;
     if (working.prior) return getQuantThreshold(working.prior, options);
-    const opened = working.quant_opened - working.quant_closed;
+    const opened = working.position;
     const threshold = Math.floor(opened * options.quant_threshold_percent /100);
     if (!threshold) return options.quant_threshold || 0;
     else if (!options.quant_threshold) return threshold;
@@ -231,24 +251,26 @@ function getQuantThreshold(working, options) {
 }
 
 /**
- * Array of signals to update the working positions to the desired positions
+ * Array of orders to update the working positions to the desired positions
  */
 function updateWorking(desired, working, options) {
-    const ds = desired.signal;
-    const ws = working.signal;
-    const d_opened = desired.quant_opened - desired.quant_closed;
-    const w_opened = working.quant_opened - working.quant_closed;
+    const ds = desired.order;
+    const ws = working.order;
+    const d_opened = Math.abs(desired.position);
+    const w_opened = Math.abs(working.position);
     const within = Math.abs(d_opened - w_opened) <= (options.quant_threshold || 0);
-    const same_side = desired.long_or_short == working.long_or_short;
-    const ds_projected = ds && +ds.parkUntilSecs * 1000 > options.now;
-    if (_.has(ds, 'parkUntilSecs') && !working.prior && +working.closedWhenUnixTimeStamp > +ds.parkUntilSecs) {
-        // working position has since been closed (stoploss) since the last desired signal was produced
-        logger.warn(`Working ${desired.symbol} position has since been closed`);
+    const same_side = desired.position/Math.abs(+desired.position||1) != -1*working.position/Math.abs(+working.position||1);
+    const ds_projected = ds && ds.status == 'pending';
+    if (_.has(ds, 'traded_at') && !working.prior && working.traded_at && moment(working.traded_at).isAfter(ds.traded_at)) {
+        if (d_opened != w_opened || !same_side) {
+            // working position has since been closed (stoploss) since the last desired signal was produced
+            logger.warn(`Working ${desired.symbol} position has since been closed`);
+        }
         return [];
     } else if (!d_opened && !w_opened && !working.prior && !desired.prior) {
         // no open position
         return [];
-    } else if (within && !working.prior && same_side && desired.prior && +ds.isStopOrder) {
+    } else if (within && !working.prior && same_side && desired.prior && isStopOrder(ds)) {
         // advance working state
         const adj = updateWorking(desired.prior, working, options);
         return appendSignal(adj, _.defaults({
@@ -266,399 +288,259 @@ function updateWorking(desired, working, options) {
         const adj = updateWorking(desired.prior, working, options);
         return appendSignal(adj, _.defaults({
             // adjust quant if first signal
-            quant: _.isEmpty(adj.filter(a=>!+a.isStopOrder)) && Math.abs(d_opened - w_opened) || ds.quant
+            quant: _.isEmpty(adj.filter(a=>!isStopOrder(a))) && Math.abs(d_opened - w_opened) || ds.quant
         }, ds), options);
     } else if (working.prior && !desired.prior) {
         // cancel working signal
-        expect(ws).to.have.property('signal_id');
+        expect(ws).to.have.property('order_ref');
         return cancelSignal(desired, working, options);
     } else if (desired.prior && working.prior) {
         if (sameSignal(ds, ws, options.quant_threshold)) {
             // don't change this signal
             return updateWorking(desired.prior, working.prior, options);
-        } else if (+ds.isStopOrder && +ws.isStopOrder && sameSignal(ds, ws, options.quant_threshold)) {
+        } else if (isStopOrder(ds) && isStopOrder(ws) && sameSignal(ds, ws, options.quant_threshold)) {
             // signals are both stoploss orders and within quant_threshold
             return updateWorking(desired.prior, working.prior, options);
-        } else if (+ds.isStopOrder && +ws.isStopOrder && ds_projected) {
+        } else if (isStopOrder(ds) && isStopOrder(ws) && ds_projected && ds.action == ws.action) {
             // signals are both stoploss orders, but the desired stoploss has not come into effect yet
             return updateWorking(desired.prior, working.prior, options);
-        } else if (+ds.isStopOrder && !+ws.isStopOrder && ds_projected) {
+        } else if (isStopOrder(ds) && ds_projected) {
             // desired signal is stoploss order, but has not come into effect yet
             return updateWorking(desired.prior, working, options);
         } else if (similarSignals(ds, ws)) {
-            // update quant
-            expect(ws).to.have.property('signal_id');
+            // replace order
+            expect(ws).to.have.property('order_ref');
             const adj = updateWorking(desired.prior, working.prior, options);
-            return appendSignal(adj, _.defaults({
-                xreplace: ws.signal_id,
-                quant: d_opened == w_opened ? ws.quant : ds.quant
+            if (adj.some(ord => ord.action == 'cancel' && ord.order_ref == ws.attach_ref))
+                return appendSignal(adj, ds, options);
+            else return appendSignal(adj, _.defaults({ // parent order is not cancelled
+                order_ref: ws.order_ref
             }, ds), options);
         } else if (d_opened != w_opened && same_side) {
             return cancelSignal(desired, working, options);
         } else {
             // cancel and submit
             const upon = cancelSignal(desired.prior, working, options);
-            const cond = !_.isEmpty(upon) || +ws.isStopOrder || ws.conditionalupon ? ds : _.extend({
-                conditionalupon: ws.signal_id
-            }, ds);
-            // check if there are too many chained conditions
-            if (cond.conditionalupon && working.prior && working.prior.prior) return upon;
-            else return appendSignal(upon, cond, options);
+            const working_state = _.isEmpty(upon) ? working : working.prior;
+            const cond = {...ds, attach_ref: _.isEmpty(upon) && !isStopOrder(ws) ? ws.order_ref : ds.attach_ref};
+            return appendSignal(upon, cond, options);
         }
-    } else if (d_opened && w_opened && desired.long_or_short != working.long_or_short) {
-        // reverse position
-        return [c2signal({
-            action: desired.long_or_short=='short' ? 'STO' : 'BTO',
-            quant: d_opened,
-            symbol: desired.symbol,
-            typeofsymbol: desired.instrument,
-            market: desired.limit ? 0 : 1,
-            limit: desired.limit,
-            duration: 'DAY',
-            conditionalUponSignal: c2signal({
-                action: working.long_or_short=='short' ? 'BTC' : 'STC',
-                quant: w_opened,
-                symbol: working.symbol,
-                typeofsymbol: working.instrument,
-                market: desired.limit ? 0 : 1,
-                limit: desired.limit,
-                duration: 'DAY'
-            })
-        })];
-    } else if (d_opened < w_opened) {
-        // reduce position
-        return [c2signal({
-            action: working.long_or_short=='short' ? 'BTC' : 'STC',
-            quant: w_opened - d_opened,
-            symbol: working.symbol,
-            typeofsymbol: working.instrument,
-            market: desired.limit ? 0 : 1,
-            limit: desired.limit,
-            duration: 'DAY'
-        })];
     } else {
-        // increase position
         return [c2signal({
-            action: desired.long_or_short=='short' ? 'STO' : 'BTO',
-            quant: d_opened - w_opened,
+            action: desired.position > working.position ? 'BUY' : 'SELL',
+            quant: Math.abs(desired.position - working.position),
             symbol: desired.symbol,
-            typeofsymbol: desired.instrument,
-            market: desired.limit ? 0 : 1,
-            limit: desired.limit,
-            duration: 'DAY'
+            market: desired.market,
+            currency: desired.currency,
+            secType: desired.secType,
+            multiplier: desired.multiplier,
+            type: (ds||desired).limit ? 'LMT' : (ds||desired).type || 'MKT',
+            limit: (ds||desired).limit,
+            stop: (ds||desired).stop,
+            offset: (ds||desired).offset,
+            tif: (ds||desired).tif || 'DAY'
         })];
     }
 }
 
 /**
- * Checks if the two signals appear to be the same
+ * Checks if the two orders appear to be the same
  */
 function sameSignal(a, b, threshold) {
     if (!a || !b) return false;
-    const attrs = ['action', 'isLimitOrder', 'strike', 'isStopOrder', 'isMarketOrder', 'tif', 'expiration', 'putcall', 'duration', 'stop', 'market', 'profittarget', 'stoploss'];
-    return _.matcher(_.pick(a, attrs))(b) && Math.abs(a.quant - b.quant) <= (threshold || 0);
+    const attrs = ['action', 'type', 'limit', 'stop', 'offset', 'tif'];
+    return isMatch(b, _.pick(a, attrs)) && Math.abs(a.quant - b.quant) <= (threshold || 0);
+}
+
+function isMatch(object, attrs) {
+    var keys = _.keys(attrs), length = keys.length;
+    if (object == null) return !length;
+    var obj = Object(object);
+    for (var i = 0; i < length; i++) {
+        var key = keys[i];
+        if (!(key in obj) || attrs[key] != obj[key] && +attrs[key] != +obj[key]) return false;
+    }
+    return true;
 }
 
 /**
- * Cancels the latest working signal iff it would not be re-submitted
+ * Cancels the latest working order iff it would not be re-submitted
  */
 function cancelSignal(desired, working, options) {
-    const ws = working.signal;
-    expect(ws).to.have.property('signal_id');
+    const ws = working.order;
+    expect(ws).to.have.property('order_ref');
     const adj = updateWorking(desired, working.prior, options);
     // check if cancelling order is the same of submitting order
     const same = _.find(adj, a => sameSignal(a, ws));
-    const same_cond = _.find(adj, a => sameSignal(a.conditionalUponSignal, ws));
-    const similar = _.find(adj, a => !a.xreplace && similarSignals(a, ws));
+    const similar = _.find(adj, a => !a.order_ref && similarSignals(a, ws));
     if (same)
         return _.without(adj, same);
-    else if (same_cond)
-        return _.map(adj, a => a == same_cond ? _.omit(a, 'conditionalUponSignal') : a);
     else if (similar)
-        return adj.map(a => a == similar ? _.extend({xreplace: ws.signal_id}, a) : a);
-    else if (+ws.isStopOrder && !_.every(adj, a => !(+a.parkUntilSecs * 1000 > options.now)))
+        return adj.map(a => a == similar ? _.extend({order_ref: ws.order_ref}, a) : a);
+    else if (isStopOrder(ws) && adj.some(a => moment(a.traded_at).isAfter(options.now)))
         return adj; // don't cancel stoploss order until replacements orders come into effect
     else
-        return [ws.signal_id].concat(adj);
+        return [{...ws, action: 'cancel'}].concat(adj);
 }
 
 /**
- * Adds ds to the upon array use another signal as a conditionalupon and avoiding double conditionals
+ * Adds ds to the upon array
  */
 function appendSignal(upon, ds, options) {
-    expect(ds).not.to.have.property('conditionalUponSignal');
-    const adv = upon.find(s => _.isObject(s));
-    if (upon.some(s => s.conditionalupon || s.conditionalUponSignal || +s.stoploss || +s.profittarget || s.xreplace))
-        return upon; // Double conditionals not permitted
-    else if (!adv)
-        return upon.concat(ds);
-    else if (adv && +ds.isStopOrder && isOpenAndClose(adv, ds, options))
-        return _.without(upon, adv).concat(_.extend({stoploss: ds.isStopOrder}, adv));
-    else if (+adv.isStopOrder)
-        return _.without(upon, adv).concat(ds);
-    else
-        return _.without(upon, adv).concat(_.extend({conditionalUponSignal: adv}, ds));
+    return upon.concat(ds);
 }
 
 /**
- * If two signals have the same order type, but may different on quant
+ * If two orders have the same order type, but may different on quant
  */
 function similarSignals(a, b) {
     if (!a || !b) return false;
-    return a.action == b.action &&
-        !!+a.isStopOrder == !!+b.isStopOrder &&
-        !!+a.isLimitOrder == !!+b.isLimitOrder;
+    return a.action == b.action && a.type == b.type;
 }
 
 /**
- * If the open signal is opening and the close signal closes the same quant
+ * If the open and close orders have the same quant, but opposite actions
  */
 function isOpenAndClose(open, close, options) {
-    return open.quant == close.quant && !+open.stoploss &&
-        (open.parkUntilSecs == close.parkUntilSecs ||
-            !(+open.parkUntilSecs * 1000 >= options.now) &&
-            !(+close.parkUntilSects * 1000 >= options.now)) &&
-        (open.action == 'BTO' || open.action == 'STO') &&
-        (close.action == 'STC' || close.action == 'BTC');
+    return open.quant == close.quant &&
+        (open.traded_at == close.traded_at ||
+            moment(open.traded_at).isBefore(options.now) &&
+            moment(close.traded_at).isBefore(options.now)) &&
+        (open.action == 'BUY' && close.action == 'SELL' ||
+            open.action == 'SELL' && close.action == 'BUY');
 }
 
 /**
  * Position after applying the given signal
  */
-function advance(pos, signal, options) {
-    const position = updateStoploss(pos, signal, options);
-    if (!signal.limit) return position;
-    // record limit for use with adjustements
-    else return _.extend({}, position, {limit: signal.limit});
+function advance(pos, order, options) {
+    const position = updateStoploss(pos, order, options);
+    if (!order.limit && !order.offset) return position;
+    // record limit/offset for use with adjustements
+    else return _.extend({}, position, {limit: order.limit, offset: order.offset});
 }
 
-function updateStoploss(pos, signal, options) {
-    if (signal.quant === 0 && signal.parkUntilSecs && +signal.parkUntilSecs * 1000 > options.now) {
-        return pos; // don't update signal limits if in the future
-    } else if (signal.stoploss) {
-        const base = !+signal.quant && pos.prior && +pos.signal.isStopOrder ? pos.prior : pos;
-        const prior = advance(base, _.omit(signal, 'stop', 'stoploss'), options);
-        const stoploss = +signal.isStopOrder || +signal.stoploss || +signal.stop;
-        const quant = +prior.signal.quant;
-        expect(prior).to.have.property('long_or_short').that.is.oneOf(['long', 'short']);
-        const stopSignal = _.omit(_.extend(_.pick(c2signal(signal), 'typeofsymbol', 'symbol', 'parkUntilSecs'), {
-            action: prior.long_or_short == 'long' ? 'STC' : 'BTC',
-            quant: quant,
-            duration: 'GTC',
-            stop: stoploss,
-            isStopOrder: stoploss
+function updateStoploss(pos, order, options) {
+    if (order.quant === 0 && order.traded_at && moment(order.traded_at).isAfter(options.now)) {
+        return pos; // don't update order adjustement limits if in the future
+    } else if (order.stoploss) {
+        const base = !+order.quant && pos.prior && ~pos.order.type.indexOf('STP') ? pos.prior : pos;
+        const prior = advance(base, _.omit(order, 'stoploss'), options);
+        const stp_order = _.omit(_.extend(_.pick(c2signal(order), 'symbol', 'market', 'currency', 'secType', 'multipler', 'traded_at', 'status'), {
+            action: prior.position > 0 ? 'SELL' : 'BUY',
+            quant: Math.abs(prior.position),
+            tif: 'GTC',
+            type: 'STP',
+            stop: order.stoploss,
         }), _.isUndefined);
-        return _.defaults({stoploss, signal: stopSignal, prior}, prior);
-    } else if (+signal.isStopOrder || signal.stop) {
-        const stoploss = +signal.isStopOrder || signal.stoploss || signal.stop;
-        const prior = pos.prior && +pos.signal.isStopOrder ? pos.prior : pos;
-        return _.defaults({stoploss, signal: c2signal(signal), prior}, pos);
+        return _.defaults({order: stp_order, prior}, prior);
+    } else if (isStopOrder(order)) {
+        expect(order).to.have.property('stop').that.is.ok;
+        const prior = pos.prior && ~pos.order.type.indexOf('STP') ? pos.prior : pos;
+        return _.defaults({order: c2signal(order), prior}, pos);
     } else {
-        return updatePosition(pos, signal, options);
+        return updatePosition(pos, order, options);
     }
 }
 
 /**
- * Position after applying the given signal
+ * Position after applying the given order
  */
-function updatePosition(pos, signal, options) {
-    if (+signal.quant > 0) {
-        return changePosition(pos, signal, options);
+function updatePosition(pos, order, options) {
+    if (+order.quant > 0) {
+        return changePosition(pos, order, options);
     } else {
-        return updateParkUntilSecs(pos, signal, options);
+        return updateParkUntilSecs(pos, order, options);
     }
 }
 
 /**
- * Position after applying the given signal parkUntilSecs and limit
+ * Position after applying the given order traded_at date and limit
  */
-function updateParkUntilSecs(pos, signal, options) {
-    if (signal.parkUntilSecs && pos.signal) {
-        expect(signal).to.have.property('action').that.is.oneOf(['BTO', 'STO']);
-        const updated = _.defaults({signal: _.defaults(_.pick(signal, 'parkUntilSecs'), pos.signal)}, pos);
-        return updateLimit(updated, signal, options);
+function updateParkUntilSecs(pos, order, options) {
+    if (order.traded_at && pos.order) {
+        expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
+        const updated = _.defaults({order: _.defaults(_.pick(order, 'traded_at', 'status'), pos.order)}, pos);
+        return updateLimit(updated, order, options);
     } else {
-        return updateLimit(pos, signal, options);
+        return updateLimit(pos, order, options);
     }
 }
 
 /**
- * Position after applying the given signal limit
+ * Position after applying the given order limit
  */
-function updateLimit(pos, signal, options) {
-    if (signal.limit && pos.signal) {
-        return _.defaults({signal: _.defaults(_.pick(signal, 'limit'), pos.signal)}, pos);
+function updateLimit(pos, order, options) {
+    if ((order.limit || order.offset) && pos.order) {
+        return _.defaults({order: _.defaults(_.pick(order, 'limit', 'stop', 'offset'), pos.order)}, pos);
     } else {
         return pos;
     }
 }
 
 /**
- * Position after applying the given signal to change the position size
+ * Position after applying the given order to change the position size
  */
-function changePosition(pos, signal, options) {
-    expect(signal).has.property('quant').that.is.above(0);
-    const effective = (signal.parkUntilSecs || signal.posted_time_unix || Infinity) * 1000;
-    const prior = signal.status == 'working' || effective > options.now ? {prior: pos} : {};
-    if (signal.action == 'BTCBTO') {
-        const short = changePositionSize(pos, _.defaults({
-            action:'BTC',
-            quant: pos.quant_opened - pos.quant_closed
-        }, signal), options);
-        const long = changePositionSize({quant_opened:0,quant_closed:0}, _.defaults({
-            action:'BTO',
-            quant: pos.quant_closed - pos.quant_opened + +signal.quant
-        }, signal), options);
-        return _.isEmpty(prior) ? long : _.extend(long, {prior: _.extend(short, prior)});
-    } else if (signal.action == 'STCSTO') {
-        const long = changePositionSize(pos, _.defaults({
-            action:'STC',
-            quant: pos.quant_opened - pos.quant_closed
-        }, signal), options);
-        const short = changePositionSize({quant_opened:0,quant_closed:0}, _.defaults({
-            action:'STO',
-            quant: pos.quant_closed - pos.quant_opened + signal.quant
-        }, signal), options);
-        return _.isEmpty(prior) ? short : _.extend(short, {prior: _.extend(long, prior)});
-    } else {
-        return _.extend(prior, changePositionSize(pos, signal, options));
-    }
+function changePosition(pos, order, options) {
+    expect(order).has.property('quant').that.is.above(0);
+    const prior = order.status == 'working' || order.status == 'pending' ||
+        !order.traded_at || moment(order.traded_at).isAfter(options.now) ? {prior: pos} : {};
+    return _.extend(prior, changePositionSize(pos, order, options));
 }
 
 /**
  * Position after changing the position size
  */
-function changePositionSize(pos, signal, options) {
-    expect(signal).has.property('quant').that.is.above(0);
-    const parkUntilSecs = signal.parkUntilSecs || signal.posted_time_unix;
-    const m_when = parkUntilSecs ? moment.tz(parkUntilSecs, 'X', 'America/New_York') :
-        moment(options.now).tz('America/New_York');
-    if (!m_when.isValid()) throw Error("Invalid posted date: " + JSON.stringify(signal));
-    const when = m_when.format('YYYY-MM-DD HH:mm:ss');
-    if (signal.action == 'BTO') {
+function changePositionSize(pos, order, options) {
+    expect(order).has.property('quant').that.is.above(0);
+    if (order.action == 'BUY') {
         return {
-            symbol: signal.c2_symbol || signal.symbol,
-            instrument: signal.typeofsymbol || signal.instrument,
-            long_or_short: 'long',
-            quant_opened: +pos.quant_opened + +signal.quant,
-            quant_closed: pos.quant_closed,
-            openedWhen: pos.long_or_short == 'long' ? pos.openedWhen : when,
-            closedWhen: '',
-            signal: c2signal(signal)
+            asof: order.traded_at,
+            symbol: order.symbol,
+            market: order.market,
+            currency: order.currency,
+            secType: order.secType,
+            multiplier: order.multiplier,
+            position: +pos.position + +order.quant,
+            order: c2signal(order)
         };
-    } else if (signal.action == 'STC') {
-        expect(pos).to.have.property('long_or_short', 'long');
+    } else if (order.action == 'SELL') {
         return {
-            symbol: signal.c2_symbol || signal.symbol,
-            instrument: signal.typeofsymbol || signal.instrument,
-            long_or_short: 'long',
-            quant_opened: pos.quant_opened,
-            quant_closed: +pos.quant_closed + +signal.quant,
-            openedWhen: pos.openedWhen,
-            closedWhen: pos.quant_opened == pos.quant_closed + signal.quant ? when : "",
-            signal: c2signal(signal)
-        };
-    } else if (signal.action == 'STO') {
-        return {
-            symbol: signal.c2_symbol || signal.symbol,
-            instrument: signal.typeofsymbol || signal.instrument,
-            long_or_short: 'short',
-            quant_opened: +pos.quant_opened + +signal.quant,
-            quant_closed: pos.quant_closed,
-            openedWhen: pos.long_or_short == 'short' ? pos.openedWhen : when,
-            closedWhen: "",
-            signal: c2signal(signal)
-        };
-    } else if (signal.action == 'BTC') {
-        expect(pos).to.have.property('long_or_short', 'short');
-        return {
-            symbol: signal.c2_symbol || signal.symbol,
-            instrument: signal.typeofsymbol || signal.instrument,
-            long_or_short: 'short',
-            quant_opened: pos.quant_opened,
-            quant_closed: +pos.quant_closed + +signal.quant,
-            openedWhen: pos.openedWhen,
-            closedWhen: pos.quant_opened == pos.quant_closed + signal.quant ? when : "",
-            signal: c2signal(signal)
+            asof: order.traded_at,
+            symbol: order.symbol,
+            market: order.market,
+            currency: order.currency,
+            secType: order.secType,
+            multiplier: order.multiplier,
+            position: +pos.position - +order.quant,
+            order: c2signal(order)
         };
     } else {
-        throw Error("Unknown signal action: " + signal.action);
+        throw Error("Unknown order action: " + JSON.stringify(order));
     }
 }
 
 /**
- * Converts the signal into collective2 scheme
+ * Returns the order (identity function)
  */
-function c2signal(signal) {
-    const parameters = [
-        'action', 'typeofsymbol', 'duration', 'stop', 'limit', 'market', 'profittarget',
-        'stoploss', 'conditionalupon', 'conditionalUponSignal', 'xreplace',
-        'isLimitOrder', 'strike', 'status', 'name', 'isStopOrder', 'instrument',
-        'posted_time_unix', 'underlying', 'isMarketOrder', 'tif', 'putcall',
-        'expiration', 'quant', 'signal_id', 'posted_time', 'signalid', 'comments',
-        'day', 'systemid', 'parkUntilYYYYMMDDHHMM', 'conditionalupon', 'targetocagroupid',
-        'decimalprecision', 'expiresat', 'pointvalue', 'parkUntilSecs', 'currency',
-        'quant', 'gtc', 'ocaid', 'localsignalid', 'symbol_description', 'description',
-        'pointvalue'
-    ];
-    return _.omit(_.extend(_.pick(signal, parameters), {
-        symbol: signal.c2_symbol || signal.symbol,
-        tif: signal.tif || signal.duration,
-        duration: signal.duration || signal.tif,
-        stop: +signal.stop || +signal.isStopOrder,
-        isStopOrder: +signal.isStopOrder || +signal.stop,
-        isLimitOrder: +signal.isLimitOrder || +signal.limit,
-        limit: +signal.limit || +signal.isLimitOrder,
-        quant: +signal.quant
-    }), v => !v || v == '0');
+function c2signal(order) {
+    return _.mapObject(_.omit(order, v => v == null), v => v.toString());
 }
 
 /**
- * Sorts the signals into chronological order
+ * Sorts the orders such that orders with order_ref appears before orders with the same attach_ref 
  */
-function sortSignals(position, a, b) {
-    // increase position size
-    if (position) {
-        if (position.long_or_short == 'long' && a.action == 'BTO' && b.action != 'BTO') return -1;
-        if (position.long_or_short == 'long' && a.action != 'BTO' && b.action == 'BTO') return 1;
-        if (position.long_or_short == 'short' && a.action == 'STO' && b.action != 'STO') return -1;
-        if (position.long_or_short == 'short' && a.action != 'STO' && b.action == 'STO') return 1;
-        // reducing position size or profit target or stoploss
-        if (position.long_or_short == 'long' && a.action == 'STC' && b.action != 'STC') return -1;
-        if (position.long_or_short == 'long' && a.action != 'STC' && b.action == 'STC') return 1;
-        if (position.long_or_short == 'short' && a.action == 'BTC' && b.action != 'BTC') return -1;
-        if (position.long_or_short == 'short' && a.action != 'BTC' && b.action == 'BTC') return 1;
-        // reversed position
-        if (position.long_or_short == 'long' && a.action == 'STO' && b.action != 'STO') return -1;
-        if (position.long_or_short == 'long' && a.action != 'STO' && b.action == 'STO') return 1;
-        if (position.long_or_short == 'short' && a.action == 'BTO' && b.action != 'BTO') return -1;
-        if (position.long_or_short == 'short' && a.action != 'BTO' && b.action == 'BTO') return 1;
-        // reversed position's profit target or stoploss
-        if (position.long_or_short == 'long' && a.action == 'STC' && b.action != 'STC') return -1;
-        if (position.long_or_short == 'long' && a.action != 'STC' && b.action == 'STC') return 1;
-        if (position.long_or_short == 'short' && a.action == 'BTC' && b.action != 'BTC') return -1;
-        if (position.long_or_short == 'short' && a.action != 'BTC' && b.action == 'BTC') return 1;
-        // stoploss before closing order
-        if (+a.isStopOrder && !+b.isStopOrder && a.action == b.action) return -1;
-        if (!+a.isStopOrder && +b.isStopOrder && a.action == b.action) return 1;
-    }
-    // keep stoploss at the end as it would likely be the first to be cancelled
-    if (!+a.isStopOrder && +b.isStopOrder) return -1;
-    if (+a.isStopOrder && !+b.isStopOrder) return 1;
-    // parkUntilSecs is not available at this time
-    if (a.parkUntilSecs && !b.parkUntilSecs) return -1;
-    if (!a.parkUntilSecs && b.parkUntilSecs) return 1;
-    if (a.parkUntilSecs && b.parkUntilSecs && a.parkUntilSecs != b.parkUntilSecs)
-        return a.parkUntilSecs - b.parkUntilSecs;
-    // posted order
-    if (a.posted_time_unix && !b.posted_time_unix) return -1;
-    if (!a.posted_time_unix && b.posted_time_unix) return 1;
-    if (a.posted_time_unix && b.posted_time_unix && a.posted_time_unix != b.posted_time_unix)
-        return a.posted_time_unix - b.posted_time_unix;
-    // should be similar to posted order, but accurate to less than 1s
-    if (a.signal_id && b.signal_id)
-        return a.signal_id - b.signal_id;
-    // fallback for stable sorting, should not happen with live data
-    if (_.isEqual(a, b)) return 0;
-    else return JSON.stringify(a).length - JSON.stringify(b).length;
+function sortOrders(orders) {
+    if (orders.length < 2) return orders;
+    const order_refs = _.indexBy(orders.filter(ord => ord.order_ref), 'order_ref');
+    const target_orders = orders.filter(ord => !order_refs[ord.attach_ref] && !isStopOrder(ord));
+    const stop_orders = orders.filter(ord => !order_refs[ord.attach_ref] && isStopOrder(ord));
+    const working = [].concat(stop_orders, target_orders);
+    if (!working.length) throw Error(`Could not sort array ${JSON.stringify(orders)}`);
+    return working.concat(sortOrders(_.difference(orders, working)));
+}
+
+function isStopOrder(order) {
+    expect(order).to.have.property('type').that.is.ok;
+    return ~order.type.indexOf('STP');
 }

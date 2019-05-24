@@ -96,7 +96,7 @@ describe("fetch-blended", function() {
             symbol:'YHOO', market: 'NASDAQ'
         }).then(_.first).should.eventually.be.like({
             symbol: 'YHOO', market: 'NASDAQ',
-            name: "Altaba Inc."
+            name: /Altaba/i
         });
     });
     it("should blend XLC on June 18 (before inception)", function() {

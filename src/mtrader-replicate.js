@@ -110,7 +110,11 @@ function createInstance(program, settings) {
     };
     instance.close = function() {
         if (closed) return closed;
-        else return closed = replicate.close().then(collect.close);
+        else return closed = Promise.all([
+            replicate.close(),
+            broker.close(),
+            collect.close()
+        ]);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;

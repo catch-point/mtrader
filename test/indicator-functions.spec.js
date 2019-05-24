@@ -42,7 +42,7 @@ const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
 
 describe("indicator-functions", function(){
-    this.timeout(10000);
+    this.timeout(30000);
     var about = 0.01;
     var fetch, quote;
     before(function() {

@@ -149,9 +149,8 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif', 'status', 'price',
-            'order_ref', 'attach_ref',
-            'symbol', 'market', 'secType', 'currency', 'multiplier'
+            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'traded_price', 'tif', 'status',
+            'order_ref', 'attach_ref', 'symbol', 'market', 'secType', 'currency', 'multiplier'
         ],
         options: {
             action: {
@@ -198,11 +197,10 @@ function helpOptions() {
     }, {
         name: 'submit',
         usage: 'broker(options)',
-        description: "List a summary of open orders",
+        description: "Transmit order for trading",
         properties: [
-            'asof', 'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif', 'status', 'price',
-            'order_ref', 'attach_ref',
-            'symbol', 'market', 'secType', 'currency', 'multiplier'
+            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif', 'status',
+            'order_ref', 'attach_ref', 'symbol', 'market', 'secType', 'currency', 'multiplier'
         ],
         options: {
             action: {
@@ -225,7 +223,7 @@ function helpOptions() {
                 usage: '<limit-price>',
                 descirption: "The limit price for orders of type LMT"
             },
-            price: {
+            stop: {
                 usage: '<aux-price>',
                 description: "Stop limit price for STP orders"
             },
@@ -441,22 +439,23 @@ async function cancelOrder(db, options) {
         const completed = data.filter(o => o.status != 'working' && o.status != 'pending');
         const working = data.filter(o => o.status == 'working' || o.status == 'pending');
         const order = _.pick(options, [
-            'asof', 'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif', 'status', 'price',
+            'asof', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif', 'status',
             'order_ref', 'attach_ref',
             'symbol', 'market', 'secType', 'currency', 'multiplier'
         ]);
-        const cancelled = working.find(sameOrder(order));
-        if (!cancelled) {
+        const cancelling = working.find(sameOrder(order));
+        if (!cancelling) {
             const too_late = completed.find(sameOrder(order));
             if (too_late) return too_late;
             else throw Error(`Order ${options.order_ref} does not exist`);
         }
+        const cancelled = {...cancelling, asof: now.format(), status: 'cancelled'};
         const replacement = completed.concat(
-            working.filter(order => order != cancelled),
-            {...cancelled, asof: now.format(), status: 'cancelled'}
+            working.filter(order => order != cancelling),
+            cancelled
         );
         await orders.replaceWith(replacement, recent_month);
-        return cancelled;
+        return [cancelled];
     });
 }
 
@@ -511,7 +510,7 @@ async function appendOrders(orders, recent_month, current_month, options) {
     const current_completed = recent_month == current_month ? completed : [];
     const working = data.filter(o => o.status == 'working' || o.status == 'pending');
     const order = _.pick(options, [
-        'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif',
+        'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif',
         'order_ref', 'attach_ref',
         'symbol', 'market', 'secType', 'currency', 'multiplier'
     ]);
@@ -547,32 +546,32 @@ async function fillOrder(barsFor, order, options) {
         order.tif == 'IOC' ? [{...all_bars[0], high: mkt_price, low: mkt_price, close: mkt_price}] : all_bars;
     switch (order.type) {
         case 'MKT': // TODO slippage?
-        case 'MOO': return {...order, asof: _.first(bars).asof, status: 'filled', price: _.first(bars).open};
-        case 'MOC': return {...order, asof: _.first(bars).asof, status: 'filled', price: _.first(bars).close};
+        case 'MOO': return {...order, asof: _.first(bars).asof, status: 'filled', traded_price: _.first(bars).open};
+        case 'MOC': return {...order, asof: _.first(bars).asof, status: 'filled', traded_price: _.first(bars).close};
         case 'MIT':
         case 'STP': {
-            const bar = bars.find(bar => bar.low <= order.price && order.price <= bar.high);
+            const bar = bars.find(bar => bar.low <= order.stop && order.stop <= bar.high);
             if (!bar && order.tif == 'GTC') return order;
             else if (!bar) return {...order, asof: all_bars[0].asof, status: 'cancelled'};
-            else return {...order, asof: bar.asof, status: 'filled', price: order.price};
+            else return {...order, asof: bar.asof, status: 'filled', traded_price: order.stop};
         }
         case 'LOO': {
             const bar = order.action == 'BUY' ? bars.find(bar => bar.open <= order.limit) :
                 order.action == 'SELL' ? bars.find(bar => order.limit <= bar.open) : null;
             if (!bar) return {...order, asof: all_bars[0].asof, status: 'cancelled'};
-            else return {...order, asof: bar.asof, status: 'filled', price: bar.open};
+            else return {...order, asof: bar.asof, status: 'filled', traded_price: bar.open};
         }
         case 'LOC': {
             const bar = order.action == 'BUY' ? bars.find(bar => bar.close <= order.limit) :
                 order.action == 'SELL' ? bars.find(bar => order.limit <= bar.close) : null;
             if (!bar) return {...order, asof: all_bars[0].asof, status: 'cancelled'};
-            else return {...order, asof: bar.asof, status: 'filled', price: bar.close};
+            else return {...order, asof: bar.asof, status: 'filled', traded_price: bar.close};
         }
         case 'LMT': {
             const bar = bars.find(bar => bar.low <= order.limit && order.limit <= bar.high);
             if (!bar && order.tif == 'GTC') return order;
             else if (!bar) return {...order, asof: all_bars[0].asof, status: 'cancelled'};
-            else return {...order, asof: bar.asof, status: 'filled', price: order.limit};
+            else return {...order, asof: bar.asof, status: 'filled', traded_price: order.limit};
         }
         default: throw Error(`Unsupported order type ${order.type}`);
     }
@@ -678,13 +677,13 @@ function advancePosition(commissions, position, orders, bar) {
     const sld = orders.filter(order => order.action == 'SELL');
     const total_quant = orders.reduce((q, o) => q + o.quant, 0);
     const net_quant = bot.reduce((q, o) => q + o.quant, 0) - sld.reduce((q, o) => q + o.quant, 0);
-    const total = orders.reduce((n, o) => Big(n).add(Big(o.price).times(o.quant).times(multiplier)), Big(0));
+    const total = orders.reduce((n, o) => Big(n).add(Big(o.traded_price).times(o.quant).times(multiplier)), Big(0));
     const traded_price = +total_quant ? Big(total).div(total_quant).div(multiplier).toString() : null;
     const starting_pos = position.position || 0;
     const ending_pos = starting_pos + net_quant;
     const ending_value = Big(ending_pos).times(bar.close).times(multiplier);
-    const purchase = bot.reduce((net, o) => net.add(Big(o.price).times(o.quant).times(multiplier)), Big(0));
-    const sold = sld.reduce((net, o) => net.add(Big(o.price).times(o.quant).times(multiplier)), Big(0));
+    const purchase = bot.reduce((net, o) => net.add(Big(o.traded_price).times(o.quant).times(multiplier)), Big(0));
+    const sold = sld.reduce((net, o) => net.add(Big(o.traded_price).times(o.quant).times(multiplier)), Big(0));
     const net_dividend = Big(bar.dividend||0).times(starting_pos).times(multiplier);
     const com = findCommission(commissions, position);
     const commission = orders.reduce((c,o) => {

@@ -70,7 +70,7 @@ describe("fetch", function() {
         }).then(_.first).should.eventually.be.like({
             symbol: 'IBM',
             yahoo_symbol: 'IBM',
-            name: /International Business Machines Corp/
+            name: /International Business Machine/i
         });
     });
     it("should find USD/CAD details", function() {

@@ -3,7 +3,7 @@
   "fetch": {
     "files": {
       "enabled": true,
-      "fallback": ["yahoo", "iqfeed"]
+      "fallback": ["iqfeed", "yahoo"]
     }
   }
 }

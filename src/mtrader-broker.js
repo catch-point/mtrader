@@ -72,7 +72,7 @@ function usage(command) {
 if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        const broker = createInstance(program);
+        const broker = createInstance(program, config.options());
         process.on('SIGINT', () => broker.close());
         process.on('SIGTERM', () => broker.close());
         const action = program.args.join(' ');

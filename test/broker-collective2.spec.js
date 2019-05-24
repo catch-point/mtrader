@@ -148,7 +148,7 @@ describe("broker-collective2", function() {
               .should.eventually.be.like([]);
         });
         it("positions", async() => {
-            return broker({action: 'positions'})
+            return broker({action: 'positions', now: '2019-05-15'})
               .should.eventually.be.like([{
                 sales: '0',
                 purchases: '0.00',
@@ -283,7 +283,7 @@ describe("broker-collective2", function() {
                 limit: 73.98,
                 tif: 'DAY',
                 status: 'filled',
-                price: '74.090000000',
+                traded_price: '74.090000000',
                 order_ref: '123652206',
                 symbol: 'XLI',
                 market: 'ARCA',
@@ -317,7 +317,7 @@ describe("broker-collective2", function() {
                 sales: '0',
                 purchases: '0.00',
                 symbol: 'ITA',
-                market: 'ARCA',
+                market: 'BATS',
                 currency: 'USD',
                 secType: 'STK',
                 multiplier: 1,
@@ -326,7 +326,7 @@ describe("broker-collective2", function() {
                 position: 9,
                 traded_at: null,
                 traded_price: null,
-                price: 201.929993,
+                price: 201.93,
                 dividend: '0.00',
                 mtm: -54.36,
                 value: '1817.37'
@@ -425,10 +425,10 @@ describe("broker-collective2", function() {
         it("balance", async() => {
             return broker({asof: '2019-05-13T15:59:00-04:00', action: 'balances'})
               .should.eventually.be.like([{
-                asof: '2019-05-14T15:57:24-04:00',
+                asof: '2019-05-13T15:55:25-04:00',
                 currency: 'USD',
                 rate: '1.0',
-                net: 36694
+                net: 36520
             }]);
         });
     });
@@ -490,7 +490,7 @@ describe("broker-collective2", function() {
                 limit: 73.98,
                 tif: 'DAY',
                 status: 'filled',
-                price: '74.090000000',
+                traded_price: '74.090000000',
                 order_ref: '123652206',
                 symbol: 'XLI',
                 market: 'ARCA',
@@ -506,10 +506,10 @@ describe("broker-collective2", function() {
                 limit: 204.2,
                 tif: 'DAY',
                 status: 'filled',
-                price: '204.150000000',
+                traded_price: '204.150000000',
                 order_ref: '123670405',
                 symbol: 'ITA',
-                market: 'ARCA',
+                market: 'BATS',
                 currency: 'USD',
                 secType: 'STK',
                 multiplier: 1
@@ -648,7 +648,7 @@ describe("broker-collective2", function() {
                 sales: '0',
                 purchases: '1837.35',
                 symbol: 'ITA',
-                market: 'ARCA',
+                market: 'BATS',
                 currency: 'USD',
                 secType: 'STK',
                 multiplier: 1,
@@ -657,7 +657,7 @@ describe("broker-collective2", function() {
                 position: 9,
                 traded_at: '2019-05-14T15:55:45-04:00',
                 traded_price: 204.15,
-                price: 203.990005,
+                price: 203.99,
                 dividend: '0.00',
                 mtm: -1.44,
                 value: '1835.91'
@@ -845,8 +845,7 @@ describe("broker-collective2", function() {
                 action: 'BUY',
                 quant: 1,
                 type: 'STP',
-                limit: null,
-                price: undefined,
+                stop: 1.023,
                 tif: 'GTC',
                 status: 'working',
                 order_ref: 'xxx',
@@ -862,7 +861,6 @@ describe("broker-collective2", function() {
                 quant: '1',
                 type: 'LMT',
                 limit: 1.0118,
-                price: undefined,
                 tif: 'DAY',
                 status: 'working',
                 order_ref: '119080350',
@@ -878,9 +876,8 @@ describe("broker-collective2", function() {
                 quant: '1',
                 type: 'LMT',
                 limit: 1.0118,
-                price: undefined,
                 tif: 'DAY',
-                status: 'working',
+                status: 'pending',
                 order_ref: '119080352',
                 attach_ref: '119080350',
                 symbol: 'MSFU18',
@@ -922,15 +919,13 @@ describe("broker-collective2", function() {
                 asof: '2018-07-23T18:45:24-04:00',
                 action: 'BUY',
                 quant: 2,
-                type: null,
-                limit: null,
-                price: undefined,
+                type: 'LMT',
+                limit: 130,
                 tif: 'GTC',
                 status: 'working',
                 order_ref: '94974798',
-                attach_ref: undefined,
                 symbol: 'IBM',
-                market: 'ARCA',
+                market: 'NYSE',
                 currency: 'USD',
                 secType: 'STK',
                 multiplier: 1
@@ -940,14 +935,13 @@ describe("broker-collective2", function() {
                 action: 'SELL',
                 quant: 2,
                 type: 'STP',
-                limit: null,
-                price: undefined,
+                stop: 120,
                 tif: 'GTC',
-                status: 'working',
+                status: 'pending',
                 order_ref: '94974799',
                 attach_ref: '94974798',
                 symbol: 'IBM',
-                market: 'ARCA',
+                market: 'NYSE',
                 currency: 'USD',
                 secType: 'STK',
                 multiplier: 1

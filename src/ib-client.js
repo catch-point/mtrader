@@ -409,7 +409,7 @@ function openOrders(ib, store, ib_tz, clientId) {
     const log = order => {
         const ord = _.mapObject(order, v => Number.isNaN(v) || v == Number.MAX_VALUE ? null : v);
         const acct_log = order_log[order.account] = order_log[order.account] || [];
-        if (!_.isMatch(_.last(acct_log), _.omit(ord, 'time'))) acct_log.push(ord);
+        if (!_.isMatch(_.last(acct_log), _.omit(ord, 'posted_time', 'time'))) acct_log.push(ord);
         return ord;
     };
     const flusher = debounce(async() => {
@@ -419,21 +419,34 @@ function openOrders(ib, store, ib_tz, clientId) {
                 if (err) throw err;
                 const acct_log = order_log[acctCode].splice(0, order_log[acctCode].length);
                 if (!acct_log.length) return;
+                const coll = await db.collection('orders');
                 const first = moment.tz(_.first(acct_log).time, F, ib_tz).startOf('month');
                 const last = moment.tz(_.last(acct_log).time, F, ib_tz).startOf('month');
-                const months = [first.format('YYYYMM')];
+                const months = _.compact([_.last(coll.listNames()), first.format('YYYYMM')]);
                 while (first.isBefore(last)) months.push(first.add(1,'month').format('YYYYMM'));
-                const orders = await db.collection('orders');
-                return orders.lockWith(months, async() => {
+                const posted_times = {};
+                return coll.lockWith(_.uniq(months), async() => {
                     return months.reduce(async(promise, month) => {
                         const start = await promise;
                         const end = moment.tz(month, 'YYYYMM', ib_tz).add(1,'month').format(F);
                         const finish = _.sortedIndex(acct_log, {time: end}, 'time');
-                        if (start == end) return end;
-                        const values = orders.exists(month) ?
-                            await orders.readFrom(month) : [];
-                        const replacement = values.concat(acct_log.slice(start, finish));
-                        await orders.replaceWith(replacement, month);
+                        const values = coll.exists(month) ?
+                            await coll.readFrom(month) : [];
+                        values.reduce((posted_times, ord) => {
+                            if (orders[ord.orderId] && orders[ord.orderId].permId == ord.permId) {
+                                const posted = _.sortBy([orders[ord.orderId].posted_time, ord.posted_time])[0];
+                                orders[ord.orderId].posted_time = posted;
+                                posted_times[ord.orderId] = posted;
+                            }
+                            return posted_times;
+                        }, posted_times);
+                        if (start != end) {
+                            const replacement = values.concat(acct_log.slice(start, finish).filter(ord => {
+                                if (posted_times[ord.orderId]) ord.posted_time = posted_times[ord.orderId];
+                                return ord;
+                            }));
+                            await coll.replaceWith(replacement, month);
+                        }
                         return end;
                     }, Promise.resolve(0));
                 });
@@ -463,6 +476,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 posted_time: time, time
             },
             orders[orderId],
+            {time},
             order, orderStatus
         );
         if (flushed) flusher.flush();
@@ -480,13 +494,10 @@ function openOrders(ib, store, ib_tz, clientId) {
         if (flushed) flusher.flush();
         else flusher();
     }).on('openOrderEnd', function() {
-        const ready = orders_end;
-        _.defer(() => {
-            if (ready) ready(_.values(orders).filter(order => {
-                const status = order.status;
-                return status != 'Filled' && status != 'Cancelled' && status != 'Inactive';
-            }));
-        });
+        flusher.flush().then(() => _.values(orders).filter(order => {
+            const status = order.status;
+            return status != 'Filled' && status != 'Cancelled' && status != 'Inactive';
+        })).then(orders_end, orders_fail);
     });
     return {
         reqOpenOrders() {
@@ -662,7 +673,7 @@ function execDetails(ib, store) {
                 return executions;
             }, []);
             return req_queue[reqId].resolve(executions);
-        })().catch(err => req_queue[reqId].reject(err));
+        })().catch(err => req_queue[reqId] ? req_queue[reqId].reject(err) : logger.error(err));
     });
     return {
         async reqManagedAccts() {

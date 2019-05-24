@@ -149,9 +149,8 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'price', 'offset', 'tif', 'status',
-            'order_ref', 'attach_ref',
-            'acctNumber', 'symbol', 'market', 'currency', 'secType', 'multiplier'
+            'posted_at', 'asof', 'traded_at', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'traded_price', 'tif', 'status',
+            'order_ref', 'attach_ref', 'acctNumber', 'symbol', 'market', 'currency', 'secType', 'multiplier'
         ],
         options: {
             action: {
@@ -186,12 +185,12 @@ async function listBalances(markets, ib, fetch, settings, options) {
         const currently = await ib.reqAccountUpdate(acctNumber);
         const data = !previously.length || _.last(previously).time < currently.time ?
             previously.concat(currently) : previously;
-        const historic = data.filter(summary => summary.time <= asof_format);
+        const historic = data.filter((summary,i) => i === 0 || summary.time <= asof_format);
         const latest = _.last(historic);
         const range = options.begin ? historic.filter(summary => {
             if (summary.time == latest.time) return true;
             else return begin_format < summary.time;
-        }) : [latest];
+        }) : latest ? [latest] : [];
         return [].concat(...range.map(summary => {
             const time = summary.time ? parseTime(summary.time, ib_tz) : now;
             expect(summary).to.have.property('Currency').that.is.an('array');
@@ -264,15 +263,17 @@ async function listOrders(markets, ib, settings, options) {
         result.push({
             posted_at: parseTime(order.posted_time, ib_tz).format(),
             asof: parseTime(order.time, ib_tz).format(),
+            traded_at: order.completedTime ? parseTime(order.completedTime, ib_tz).format() : null,
             action: order.action,
             quant: working ? order.remaining : order.totalQuantity,
             type: order.orderType,
             limit: order.lmtPrice == Number.MAX_VALUE ? null : order.lmtPrice,
-            price: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
-            offset: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
+            stop: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
+            offset: order.auxPrice == Number.MAX_VALUE || order.orderType == 'STP' ||
+                order.orderType == 'STP LMT' ? null : order.auxPrice,
             tif: order.tif,
             status: status,
-            price: order.avgFillPrice,
+            traded_price: +order.avgFillPrice ? order.avgFillPrice : null,
             order_ref: order.orderRef || order.permId,
             attch_ref: bag ? order.orderRef || order.permId :
                 parent ? parent.orderRef|| parent.permId : order.ocaGroup,
@@ -292,7 +293,7 @@ async function listOrders(markets, ib, settings, options) {
                 quant: Big(order.remaining).times(leg.ratio).toString(),
                 type: 'LEG',
                 limit: ((order.orderComboLegs||[])[i]||{}).price || null,
-                price: null,
+                stop: null,
                 offset: null,
                 tif: null,
                 order_ref: null,
@@ -361,8 +362,8 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
     const symbol = asSymbol(contract);
     const market = await asMarket(markets, ib, contract);
     const now = moment().format();
-    const earliest = moment(options.asof).subtract(5, 'days').startOf('day');
-    const key = `${conId} ${earliest.format()}`;
+    const earliest = moment(options.asof).subtract(5, 'days').startOf('day').format();
+    const key = `${conId} ${earliest}`;
     const promise = historical[key] = historical[key] ||
         loadHistoricalData(fetch, symbol, market, earliest, {...options, ...markets[market]});
     const bars = await promise;
@@ -388,8 +389,8 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
             return position + changes[i].quant;
         else
             throw Error(`Invalid trade action ${changes[i].action}`);
-    }, ending_position - latest_trade.quant);
-    if (latest_trade.mtm) {
+    }, ending_position - latest_trade.quant * (latest_trade.action.charAt(0) == 'S' ? -1 : 1));
+    if (newer_details.length) {
         changes.push({...latest_trade, asof: latest_trade.traded_at});
     }
     return changes.filter(trade => trade.action)

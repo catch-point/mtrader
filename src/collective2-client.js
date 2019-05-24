@@ -171,6 +171,12 @@ async function submit(agent, name, systemid, signal, settings) {
     const parsed = _.isString(uri) && url.parse(uri);
     const body = await new Promise((ready, error) => {
         if (settings.offline || !parsed) {
+            console.log(uri || '', JSON.stringify({
+                apikey: settings.apikey,
+                systemid: systemid,
+                signalid: signalid,
+                signal: signalobj
+            }, null, 2));
             ready(JSON.stringify({
                 ok: 1,
                 signal: _.extend({
@@ -212,8 +218,10 @@ async function submit(agent, name, systemid, signal, settings) {
             const data = JSON.stringify({signalid, signal: signalobj}, null, ' ');
             fs.writeFile(parsed.pathname, data, err => err ? error(err) : ready(JSON.stringify({
                 ok: 1,
-                signal: _.extend({
-                    signalid: signalid || Math.floor(Math.random() * 100000000)
+                signal: merge({
+                    signalid: signalid || signalobj.xreplace || Math.floor(Math.random() * 100000000),
+                    conditionalUponSignal: signalobj && signalobj.conditionalUponSignal &&
+                        {signalid: signalobj.conditionalUponSignal.signalid || Math.floor(Math.random() * 100000000)}
                 }, signalobj)
             })));
         } else {

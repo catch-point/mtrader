@@ -57,7 +57,7 @@ module.exports = function(settings) {
     return _.extend(function(options) {
         if (options && options.help) return helpOptions();
         const c2_multipliers = settings.c2_multipliers || {};
-        return collective2(c2_multipliers, client, fetch, lookup_fn, options || {});
+        return collective2(c2_multipliers, client, fetch, markets, lookup_fn, options || {});
     }, {
         close() {
             return Promise.all([
@@ -146,8 +146,8 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'price', 'tif', 'status', 'price',
-            'order_ref', 'symbol', 'market', 'currency', 'secType', 'multiplier'
+            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'traded_price', 'tif', 'status',
+            'order_ref', 'attach_ref', 'symbol', 'market', 'currency', 'secType', 'multiplier'
         ],
         options: {
             action: {
@@ -166,139 +166,90 @@ function helpOptions() {
             }
         }
     }, {
-        name: 'retrieve',
+        name: 'submit',
         usage: 'broker(options)',
-        description: "Changes workers orders to align with signal orders in result",
-        properties: ["ok", "signal", "market", "strike", "signalid", "stoploss", "comments", "tif", "day", "systemid", "parkUntilYYYYMMDDHHMM", "symbol", "conditionalupon", "duration", "description", "targetocagroupid", "expiresat", "pointvalue", "isLimitOrder", "parkUntilSecs", "typeofsymbol", "currency", "quant", "limit", "gtc", "stop", "profittarget", "action", "ocaid","signalid", "elapsed_time", "buyPower", "marginUsed", "equity", "updatedLastTimeET", "ok", "modelAccountValue", "cash"],
+        description: "Transmit order for trading",
+        properties: [
+            'posted_at', 'asof', 'traded_at', 'action', 'quant', 'type', 'limit', 'stop', 'tif', 'status',
+            'order_ref', 'attach_ref', 'symbol', 'market', 'currency', 'secType', 'multiplier'
+        ],
         options: {
             action: {
                 usage: '<string>',
-                values: [
-                    'requestMarginEquity', 'retrieveSystemEquity',
-                    'retrieveSignalsWorking', 'requestTrades'
-                ]
-            }
-        }
-    }, {
-        name: 'cancelSignal',
-        usage: 'broker(options)',
-        description: "Changes workers orders to align with signal orders in result",
-        properties: ["ok", "signal", "market", "strike", "signalid", "stoploss", "comments", "tif", "day", "systemid", "parkUntilYYYYMMDDHHMM", "symbol", "conditionalupon", "duration", "description", "targetocagroupid", "expiresat", "pointvalue", "isLimitOrder", "parkUntilSecs", "typeofsymbol", "currency", "quant", "limit", "gtc", "stop", "profittarget", "action", "ocaid","signalid", "elapsed_time", "buyPower", "marginUsed", "equity", "updatedLastTimeET", "ok", "modelAccountValue", "cash"],
-        options: {
-            action: {
-                usage: '<string>',
-                values: ['cancelSignal']
+                values: ['BUY', 'SELL', 'cancel']
             },
-            signalid: {
-                usage: '<integer>',
-                description: "The signal identifier that should be cancelled"
-            }
-        }
-    }, {
-        name: 'submitSignal',
-        usage: 'broker(options)',
-        description: "Changes workers orders to align with signal orders in result",
-        properties: ["ok", "signal", "market", "strike", "signalid", "stoploss", "comments", "tif", "day", "systemid", "parkUntilYYYYMMDDHHMM", "symbol", "conditionalupon", "duration", "description", "targetocagroupid", "expiresat", "pointvalue", "isLimitOrder", "parkUntilSecs", "typeofsymbol", "currency", "quant", "limit", "gtc", "stop", "profittarget", "action", "ocaid","signalid", "elapsed_time", "buyPower", "marginUsed", "equity", "updatedLastTimeET", "ok", "modelAccountValue", "cash"],
-        options: {
-            action: {
-                usage: '<string>',
-                values: ['BTO', 'STO', 'BTC', 'STC']
+            traded_at: {
+                usage: '<dateTime>',
+                description: "The date and time of the collective2 parkUntil value"
             },
-            typeofsymbol: {
-                values: ['stock', 'option', 'future', 'forex'],
-                description: "instruments like ETFs and mutual funds should be treated as a 'stock' Click here for C2 Symbols Help"
+            quant: {
+                usage: '<positive-integer>',
+                description: "The number of shares or contracts to buy or sell"
             },
-            duration: {
-                values: ['DAY', 'GTC']
-            },
-            stop: {
-                usage: '<price>'
+            type: {
+                usage: '<order-type>',
+                values: ['MKT', 'LMT', 'STP']
             },
             limit: {
-                usage: '<price>'
+                usage: '<limit-price>',
+                descirption: "The limit price for orders of type LMT"
+            },
+            stop: {
+                usage: '<aux-price>',
+                description: "Stop limit price for STP orders"
+            },
+            tif: {
+                usage: '<time-in-forced>',
+                values: ['GTC', 'DAY', 'IOC']
+            },
+            order_ref: {
+                usage: '<string>',
+                description: "The order identifier that is unique among working orders"
+            },
+            attach_ref: {
+                usage: '<string>',
+                description: "The order_ref of the parent order that must be filled before this order"
+            },
+            attached: {
+                usage: '[...orders]',
+                description: "Submit attached parent/child orders together"
+            },
+            symbol: {
+                usage: '<string>',
+                description: "The symbol of the contract to be traded, omit for OCA and bag orders"
             },
             market: {
-                description: "Set to 1 to declare this is a market order. If you do not supply limit or stop parameters, order will be assumed to be a market order."
+                usage: '<string>',
+                description: "The market of the contract (might also be the name of the exchange)"
             },
-            profittarget: {
-                usage: '<price>',
-                description: "Used when submitting an position-entry order. Automatically create a conditional order to close the position at this limit price. When used in conjunction with stoploss, a One-Cancels-All group is created."
+            secType: {
+                values: ['STK', 'FUT', 'OPT']
             },
-            stoploss: {
-                usage: '<price>',
-                description: "Used when submitting an position-entry order. Automatically create a conditional order to close the position at this stop price. When used in conjunction with profittarget, a One-Cancels-All group is created."
+            currency: {
+                usage: '<string>',
+                values: ['USD']
             },
-            conditionalupon: {
-                usage: '<signalid>',
-                description: "Do not allow this order to start 'working' unless the parent order is filled (parent order has signalid = conditionalupon)"
-            },
-            conditionalUponSignal: {
-                description: "Same as conditionalupon, but instead of supplying already-determined signalid, you can provide nested JSON containing entire signal hash"
-            },
-            xreplace: {
-                usage: '<signalid>',
-                description: "Cancel the signalid specified, and if the cancel is successful, submit this new order to replace it"
-            },
-            symbol: {},
-            quant: {},
-            isLimitOrder: {},
-            strike: {},
-            status: {},
-            name: {},
-            isStopOrder: {},
-            instrument: {},
-            posted_time_unix: {},
-            underlying: {},
-            isMarketOrder: {},
-            tif: {},
-            putcall: {},
-            expiration: {},
-            quant: {},
-            signal_id: {},
-            posted_time: {},
-            signalid: {},
-            comments: {},
-            day: {},
-            systemid: {},
-            parkUntilYYYYMMDDHHMM: {},
-            targetocagroupid: {},
-            decimalprecision: {},
-            expiresat: {},
-            pointvalue: {},
-            parkUntilSecs: {},
-            currency: {},
-            quant: {},
-            gtc: {},
-            ocaid: {},
-            localsignalid: {},
-            symbol_description: {},
-            description: {},
-            pointvalue: {}
+            multiplier: {
+                usage: '<number>',
+                description: "The value of a single unit of change in price"
+            }
         }
     }]);
 }
 
-function collective2(c2_multipliers, collective2, fetch, lookup, options) {
-    expect(options).to.have.property('action').to.be.oneOf([
-        'balances', 'positions', 'orders',
-        'requestMarginEquity', 'retrieveSystemEquity',
-        'retrieveSignalsWorking', 'requestTrades',
-        'cancelSignal', 'BTO', 'STO', 'BTC', 'STC'
-    ]);
+function collective2(c2_multipliers, collective2, fetch, markets, lookup, options) {
     switch(options.action) {
         case 'balances': return listBalances(collective2, options);
         case 'positions': return listPositions(c2_multipliers, collective2, fetch, lookup, options);
         case 'orders': return listOrders(c2_multipliers, collective2, lookup, options);
-        case 'requestMarginEquity': return collective2.requestMarginEquity();
-        case 'retrieveSystemEquity': return collective2.retrieveSystemEquity();
-        case 'retrieveSignalsWorking': return collective2.retrieveSignalsWorking();
-        case 'requestTrades': return collective2.requestTrades();
-        case 'cancelSignal': return collective2.cancelSignal(options.signalid);
-        case 'BTO':
-        case 'STO':
-        case 'BTC':
-        case 'STC': return collective2.submitSignal(options);
-        default: throw Error("Unknown action: " + options.action);
+        case 'cancel': return cancelOrder(c2_multipliers, collective2, markets, lookup, options);
+        case 'OCA': return oneCancelsAllOrders(collective2, markets, options);
+        case 'BUY':
+        case 'SELL': return submitOrder(collective2, markets, options);
+        default: expect(options).to.have.property('action').to.be.oneOf([
+            'balances', 'positions', 'orders',
+            'cancel', 'OCA', 'BUY', 'SELL'
+        ]);
     }
 }
 
@@ -306,11 +257,12 @@ async function listBalances(collective2, options) {
     const asof = moment(options.asof || options.now).format();
     const begin = moment(options.begin || asof).format();
     const equity_data = await collective2.retrieveSystemEquity();
+    const latest = moment(asof).format('X');
     const earliest = Math.min(
         (_.last(equity_data)||{}).unix_timestamp || Infinity,
         moment(options.begin || options.asof).subtract(5, 'days').startOf('day').format('X')
     );
-    const data = equity_data.filter(datum => datum.unix_timestamp >= earliest);
+    const data = equity_data.filter(datum => earliest <= datum.unix_timestamp && datum.unix_timestamp <= latest);
     return data.map(datum => {
         return {
             asof: moment(datum.unix_timestamp, 'X').format(),
@@ -341,6 +293,7 @@ async function listPositions(c2_multipliers, collective2, fetch, lookup, options
         expect(contract).to.have.property('symbol').that.is.a('string');
         const all_bars = await fetch({interval:'day', begin: earliest.format(), end: asof, tz, ...contract});
         const bars = all_bars.filter(bar => bar.ending <= asof);
+        if (!bars.length) throw Error(`Could not load daily bars for ${JSON.stringify(contract)}`);
         const trades = (signals[symbol]||[]).filter(signal => {
             return signal.status == 'traded' && signal.traded_time_unix <= asof_time_unix;
         });
@@ -358,6 +311,7 @@ async function listPositions(c2_multipliers, collective2, fetch, lookup, options
 }
 
 async function listOrders(c2_multipliers, collective2, lookup, options) {
+    const now = moment(options.now).format('X');
     const asof = moment(options.asof || options.now).format();
     const begin = moment(options.begin || asof).format();
     const start = options.begin ? moment(options.begin) :
@@ -375,23 +329,31 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
       .map(async(signals) => {
         const contract = await lookup(_.first(signals));
         const changes = await Promise.all(signals.map(async(signal) => {
-            const time_unix = _.max([signal.posted_time_unix, signal.canceled_time_unix, signal.traded_time_unix]);
-            const status = signal.status == 'working' ? 'working' :
-                signal.status == 'traded' ? 'filled' : 'cancelled';
+            const time = _.max([
+                'killedwhen', 'tradedwhen', 'postedwhen', 'createdWhen',
+                'posted_time_unix', 'canceled_time_unix', 'traded_time_unix'
+            ].map(key => +signal[key] || 0));
             const conditionalUponSignal = signals.find(s => s.signal_id == signal.conditionalupon) || {};
-            return {
-                posted_at: moment(signal.posted_time_unix, 'X').format(),
-                asof: moment(time_unix, 'X').format(),
+            const parked = signal.parkUntilSecs && +now < +signal.parkUntilSecs;
+            const status = parked || !_.isEmpty(conditionalUponSignal) ? 'pending' :
+                signal.status == 'working' ? 'working' : signal.status == 'traded' ? 'filled' : 'cancelled';
+            return _.omit({
+                asof: (time ? moment(time, 'X') : moment(options.now)).format(),
+                posted_at: signal.posted_time_unix || signal.postedwhen ?
+                    moment(signal.posted_time_unix || signal.postedwhen, 'X').format() : null,
+                traded_at: signal.traded_time_unix || signal.tradedwhen || signal.parkUntilSecs ?
+                    moment(signal.traded_time_unix || signal.tradedwhen || signal.parkUntilSecs, 'X').format() : null,
                 action: signal.action.charAt(0) == 'B' ? 'BUY' :
                     signal.action.charAt(0) == 'S' ? 'SELL' : sign.action,
                 quant: signal.quant,
                 type: +signal.market || +signal.isMarketOrder ? 'MKT' :
-                    +signal.isLimitOrder ? 'LMT' : +signal.isStopOrder ? 'STP' : null,
-                limit: +signal.isLimitOrder || null,
-                price: +signal.isStopOrder || null,
+                    +signal.isLimitOrder || +signal.limit ? 'LMT' :
+                    +signal.isStopOrder || +signal.stop ? 'STP' : null,
+                limit: +signal.isLimitOrder ? signal.isLimitOrder : +signal.limit ? signal.limit : null,
+                stop: +signal.isStopOrder ? signal.isStopOrder : +signal.stop ? signal.stop : null,
+                traded_price: signal.traded_price,
                 tif: signal.tif || signal.duration,
                 status: status,
-                price: signal.traded_price,
                 order_ref: signal.localsignal_id || signal.signal_id,
                 attach_ref: conditionalUponSignal.localsignal_id || conditionalUponSignal.signal_id,
                 symbol: contract.symbol,
@@ -399,13 +361,182 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
                 currency: contract.currency,
                 secType: contract.secType,
                 multiplier: c2_multipliers[signal.fullSymbol] || c2_multipliers[signal.symbol] || contract.multiplier || 1
-            };
+            }, v => v == null);
         }));
         return changes.filter(o => o.asof <= asof);
     }));
     const changes = [].concat(...all_changes);
-    return _.sortBy(changes, 'asof')
-      .filter((o,i,a) => begin < o.asof && o.asof <= asof || o.asof == _.last(a).asof || o.status == 'working');
+    return _.sortBy(changes, 'asof').filter((o,i,a) => begin < o.asof && o.asof <= asof ||
+        o.asof == _.last(a).asof || o.status == 'pending' || o.status == 'working'
+    );
+}
+
+async function cancelOrder(c2_multipliers, collective2, markets, lookup, options) {
+    expect(options).to.have.property('order_ref').that.is.ok;
+    const working = await collective2.retrieveSignalsWorking();
+    const order_ref = options.order_ref;
+    const signal = working.find(sig => sig.localsignalid == order_ref || sig.signal_id == order_ref);
+    if (!signal) throw Error(`Could not find order: ${order_ref}`);
+    const resp = Object.assign({}, signal, await collective2.cancelSignal(signal.signal_id));
+    const contract = await lookup(signal);
+    const time = _.max([
+        'killedwhen', 'tradedwhen', 'postedwhen', 'createdWhen',
+        'posted_time_unix', 'canceled_time_unix', 'traded_time_unix'
+    ].map(key => +resp[key] || +signal[key] || 0));
+    return _.omit({
+        asof: time ? moment(time, 'X').format() : moment(options.now).format(),
+        posted_at: resp.posted_time_unix || resp.postedwhen ?
+            moment(resp.posted_time_unix || resp.postedwhen, 'X').format() : null,
+        traded_at: resp.traded_time_unix || resp.tradedwhen || resp.parkUntilSecs ?
+            moment(resp.traded_time_unix || resp.tradedwhen || resp.parkUntilSecs, 'X').format() : null,
+        action: resp.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
+        quant: resp.quant,
+        type: +signal.market || +signal.isMarketOrder ? 'MKT' :
+            +signal.isLimitOrder || +signal.limit ? 'LMT' :
+            +signal.isStopOrder || +signal.stop ? 'STP' : null,
+        limit: +signal.isLimitOrder ? signal.isLimitOrder : +signal.limit ? signal.limit : null,
+        stop: +signal.isStopOrder ? signal.isStopOrder : +signal.stop ? signal.stop : null,
+        traded_price: signal.traded_price,
+        tif: +resp.day ? 'DAY' : +resp.gtc ? 'GTC' : resp.tif || resp.duration,
+        status: resp.tradedwhen ? 'filled' : 'cancelled',
+        order_ref: resp.localsignalid || resp.signalid,
+        symbol: contract.symbol,
+        market: contract.market,
+        currency: contract.currency,
+        secType: contract.secType,
+        multiplier: c2_multipliers[signal.fullSymbol] || c2_multipliers[signal.symbol] || contract.multiplier || 1
+    }, v => v == null);
+}
+
+async function oneCancelsAllOrders(collective2, markets, options) {
+    expect(options).to.have.property('attached').that.is.an('array');
+    const positions = await collective2.requestTradesOpen();
+    const working = await collective2.retrieveSignalsWorking();
+    const signals = [].concat(...options.attached.map(order => c2signal(markets, positions, working, order, options)));
+    return _.flatten(await Promise.all(signals.map(async(signal) => {
+        const resp = await collective2.submitSignal(signal);
+        const child = signalToOrder(working, resp, options);
+        if (!resp.conditionalUponSignal) return [child];
+        const parent = signalToOrder(working, resp.conditionalUponSignal, options);
+        return [parent, {...child, attach_ref: parent.order_ref}];
+    })));
+}
+
+async function submitOrder(collective2, markets, options) {
+    expect(options).to.have.property('symbol').that.is.ok;
+    expect(options).to.have.property('market').that.is.ok;
+    expect(options).to.have.property('quant').that.is.ok;
+    const positions = await collective2.requestTradesOpen();
+    const working = await collective2.retrieveSignalsWorking();
+    const signals = c2signal(markets, positions, working, options, options);
+    return _.flatten(await Promise.all(signals.map(async(signal) => {
+        const resp = await collective2.submitSignal(signal);
+        const child = signalToOrder(working, resp, options);
+        if (!resp.conditionalUponSignal) return [child];
+        const parent = signalToOrder(working, resp.conditionalUponSignal, options);
+        return [parent, {...child, attach_ref: parent.order_ref}];
+    })));
+}
+
+function c2signal(markets, positions, working, order, options, conditionalUponSignal) {
+    expect(order.type).is.oneOf(['STP', 'LMT', 'MKT']);
+    const symbol = c2symbol(markets, order.symbol, order.market);
+    const pos = positions.find(pos => pos.symbol == symbol || pos.fullSymbol == symbol);
+    const action = order.action == 'BUY' ?
+        !pos || pos.quant_opened == pos.quant_closed || pos.long_or_short == 'long' ? 'BTO' : 'BTC' :
+        !pos || pos.quant_opened == pos.quant_closed || pos.long_or_short == 'short' ? 'STO' : 'STC';
+    const quant = action == 'BTC' || action == 'STC' ?
+        Math.min(+(pos.quant_opened||0) - +(pos.quant_closed||0), order.quant) : order.quant;
+    const replaces = order.order_ref &&
+        working.find(sig => sig.localsignalid == order.order_ref || sig.signal_id == order.order_ref);
+    const stoploss = order.attached && order.attached.find(ord => ord.type == 'STP');
+    const traded_at = order.traded_at && moment(order.traded_at);
+    const signal = _.omit({
+        action: action,
+        quant: quant,
+        symbol: symbol,
+        typeofsymbol: typeofsymbol(order.secType),
+        duration: order.tif,
+        stop: order.type == 'STP' ? order.stop : null,
+        limit: order.type == 'LMT' ? order.limit : null,
+        market: order.type == 'MKT' ? 1 : 0,
+        stoploss: +quant == +order.quant ? stoploss && stoploss.stop : null,
+        xreplace: replaces && replaces.signal_id,
+        parkUntilSecs: traded_at && traded_at.isAfter(options.now) ? traded_at.format('X') : null,
+        conditionalUponSignal
+    }, v => v == null);
+    const submit = !replaces || !sameSignal(signal, replaces);
+    const conditional_orders = (order.attached||[]).filter(ord => ord.type != 'STP')
+        .concat(+quant == +order.quant ? [] : {..._.omit(order, 'order_ref'), quant: (+order.quant - +quant)});
+    if (submit && !conditional_orders.length) return [signal];
+    else if (!conditional_orders.length) return [];
+    if (submit && replaces && conditional_orders.length)
+        logger.warn("Collective2 does not permit replacing signals with conditionalupon", conditional_orders);
+    if (submit && replaces && conditional_orders.length) return [signal];
+    if (submit && conditionalUponSignal)
+        logger.warn("Collective2 does not permit double conditionalupon signals", conditional_orders);
+    if (submit && conditionalUponSignal) return [signal]; // no double conditionalupon permitted
+    const position = +((pos||{}).quant_opened||0) - +((pos||{}).quant_closed||0) +
+        (action == 'BTO' || action == 'STO' ? +quant : -quant);
+    const long_or_short = action == 'STO' || action == 'BTC' ? 'short' : 'long';
+    const new_pos = +position ? [{symbol,long_or_short,quant_opened:position}] : [];
+    const conditional_signals = conditional_orders
+      .map(ord => c2signal(markets, new_pos, working, ord, options, submit ? signal : undefined));
+    return _.flatten(conditional_signals)
+      .map(sig => submit ? sig : {...sig, conditionalupon: signal.xreplace});
+}
+
+function sameSignal(signal, rep) {
+    if (signal.action != rep.action) return false;
+    if (signal.quant != rep.quant) return false;
+    if (signal.duration == 'GTC' && rep.duration != 'GTC' && rep.tif != 'GTC' && !+rep.gtc) return false;
+    if (signal.duration == 'DAY' && rep.duration != 'DAY' && rep.tif != 'DAY' && !+rep.day) return false;
+    if (signal.stoploss && +signal.stoploss != +rep.stoploss) return false;
+    if (signal.stop && +signal.stop != +rep.stop && +signal.stop != +rep.isStopOrder) return false;
+    if (signal.limit && +signal.limit != +rep.limit && +signal.limit != +rep.isLimitOrder) return false;
+    else return true;
+}
+
+function signalToOrder(working, signal, options) {
+    const index = _.indexBy(working, sig => sig.signalid || sig.signal_id);
+    const localsignalids = _.mapObject(index, sig => sig.localsignalid);
+    const time = _.max([
+        'killedwhen', 'tradedwhen', 'postedwhen', 'createdWhen',
+        'posted_time_unix', 'canceled_time_unix', 'traded_time_unix'
+    ].map(key => +signal[key] || 0));
+    return _.omit({
+        asof: time ? moment(time, 'X').format() : moment(options.now).format(),
+        posted_at: signal.posted_time_unix || signal.postedwhen ?
+            moment(signal.posted_time_unix || signal.postedwhen, 'X').format() : null,
+        traded_at: signal.traded_time_unix || signal.tradedwhen || signal.parkUntilSecs ?
+            moment(signal.traded_time_unix || signal.tradedwhen || signal.parkUntilSecs, 'X').format() : null,
+        action: signal.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
+        quant: signal.quant,
+        type: +signal.market ? 'MKT' : +signal.limit ? 'LMT' : 'STP',
+        limit: signal.limit,
+        stop: signal.stop,
+        traded_price: signal.traded_price,
+        tif: +signal.day ? 'DAY' : +signal.gtc ? 'GTC' : signal.tif || signal.duration,
+        status: signal.postedwhen ? 'working' : signal.tradedwhen ? 'filled' :
+            signal.killedwhen ? 'cancelled' : 'pending',
+        order_ref: signal.localsignalid || signal.signalid,
+        symbol: options.symbol,
+        market: options.market,
+        currency: options.currency,
+        secType: options.secType,
+        multiplier: options.multiplier,
+        attach_ref: localsignalids[signal.conditionalupon] || signal.conditionalupon
+    }, v => v == null);
+}
+
+function typeofsymbol(secType) {
+    switch(secType) {
+        case 'STK': return 'stock';
+        case 'FUT': return 'future';
+        case 'OPT': return 'option';
+        case 'CASH': return 'forex';
+        default: throw Error(`Unsupport secType: ${secType}`);
+    }
 }
 
 function attachSignals(signals) {
@@ -439,7 +570,8 @@ function nextval() {
 
 async function listSymbolPositions(contract, multiplier, bars, position, trades, options) {
     const changes = [];
-    const ending_position = position ? +position.quant_opened - +position.quant_closed : 0;
+    const ending_position = position ? (+position.quant_opened - +position.quant_closed) *
+        (position.long_or_short == 'short' ? -1 : 1) : 0;
     const last_markToMarket_time = moment(_.last(bars).ending).format('X');
     const newer_details = trades.filter(trade => {
         return trade.traded_time_unix > last_markToMarket_time;
@@ -461,8 +593,8 @@ async function listSymbolPositions(contract, multiplier, bars, position, trades,
             return position + changes[b].quant;
         else
             throw Error(`Invalid trade action ${changes[b].action}`);
-    }, ending_position - latest_trade.quant);
-    if (latest_trade.mtm) {
+    }, ending_position - latest_trade.quant * (latest_trade.action.charAt(0) == 'S' ? -1 : 1));
+    if (newer_details.length) {
         changes.push({...latest_trade, asof: latest_trade.traded_at});
     }
     return changes.filter(trade => trade.action)
@@ -517,13 +649,27 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
     };
 }
 
+function c2symbol(markets, symbol, market) {
+    expect(market).to.be.oneOf(Object.keys(markets));
+    const m = markets[market];
+    if (!m.c2_map && !m.c2_prefix) return symbol;
+    const sym = m.c2_map[symbol];
+    if (sym) return sym;
+    const prefix = Object.keys(m.c2_map).find(prefix => symbol.indexOf(prefix) === 0);
+    if (prefix) return m.c2_map[prefix] + symbol.substring(prefix.length);
+    else if (m.c2_prefix) return m.c2_prefix + symbol;
+    else return symbol;
+}
+
 async function lookup(fetch, markets, signal) {
     const instrument = signal.typeofsymbol || signal.instrument;
     const matches = await Promise.all(_.map(_.pick(markets, m => {
         return m.instrument == instrument;
     }), async(m, market) => {
-        const fullSymbol = signal.fullSymbol || signal.symbol;
-        const symbol = _.invert(m.c2_map||{})[fullSymbol] ||
+        const fullSymbol = signal.fullSymbol ||
+            (instrument == 'future' ? fromFutureSymbol(signal.symbol) : signal.symbol);
+        const sym2sig = Object.entries(m.c2_map || {}).find(([sym, c2s]) => fullSymbol.indexOf(c2s) === 0);
+        const symbol = sym2sig ? sym2sig[0] + fullSymbol.substring(sym2sig[1].length) :
             fullSymbol.startsWith(m.c2_prefix) ? fullSymbol.substring(m.c2_prefix.length) :
             fullSymbol;
         expect(symbol).to.be.a('string');
@@ -535,5 +681,15 @@ async function lookup(fetch, markets, signal) {
           .catch(err => []);
     }));
     return _.first(_.flatten(matches));
+}
+
+function fromFutureSymbol(symbol) {
+    const [, root, month, y] = symbol.match(/^(.*)([A-Z])(\d)$/) || [];
+    if (!y) return symbol;
+    const now = moment();
+    const decade = y >= (now.year() - 2) % 10 ?
+        (now.year() - 2).toString().substring(2, 3) :
+        (now.year() + 8).toString().substring(2, 3);
+    return `${root}${month}${decade}${y}`;
 }
 
