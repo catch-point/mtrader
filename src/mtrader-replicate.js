@@ -85,8 +85,8 @@ if (require.main === module) {
         Promise.all(program.args.map(name => {
             return readCallSave(name, replicate)
               .then(result => tabular(result, config()))
-        })).catch(err => logger.error(err, err.stack))
-          .then(() => replicate.close());
+              .catch(err => logger.error(err, err.stack))
+        })).then(() => replicate.close());
     } else {
         program.help();
     }

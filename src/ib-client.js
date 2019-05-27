@@ -40,7 +40,7 @@ const debounce = require('./debounce.js');
 const cache = require('./memoize-cache.js');
 const storage = require('./storage.js');
 
-let sequence_counter = Date.now() % 32768;
+let sequence_counter = (Date.now() * process.pid) % 32768;
 function nextval() {
     return ++sequence_counter;
 }
@@ -81,6 +81,7 @@ module.exports = function(settings) {
 
 function createClient(host, port, clientId, lib_dir, ib_tz) {
     const ib = new IB({host, port, clientId});
+    ib.setMaxListeners(20);
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
         ib.once('connected', () => {
@@ -88,13 +89,23 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
             self.connected = true;
             self.disconnected = false;
             logger.debug("ib-client connected", host, port, clientId);
-        }).once('error', err => {
+        }).once('error', (err, info) => {
             first_error = err;
             if (!self.connected) {
                 self.connecting = false;
                 self.connected = false;
                 self.disconnected = true;
                 fail(err);
+            // Some error messages might just be warnings
+            // @see https://groups.io/g/twsapi/message/40551
+            } else if (info && info.code == 1101) {
+                logger.info("ib-client", err.message);
+            } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
+                logger.log("ib-client", err.message);
+            } else if (info && info.code >= 2000 && info.code < 3000) {
+                logger.warn("ib-client", err.message);
+            } else {
+                logger.error("ib-client", JSON.stringify(_.pick(err, _.keys(err))), err.message);
             }
         }).once('nextValidId', order_id => {
             ready();
@@ -116,7 +127,6 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
     });
     const store = lib_dir && storage(lib_dir);
     const modules = [
-        nextValidId(ib),
         reqPositions(ib),
         currentTime(ib),
         requestFA(ib),
@@ -151,30 +161,6 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
             return once_connected.then(() => self);
         }
     });
-}
-
-function nextValidId(ib) {
-    const valid_id_queue = [];
-    const next_valid_id_queue = [];
-    ib.on('nextValidId', order_id => {
-        const next = next_valid_id_queue.shift();
-        if (next) next(order_id);
-        else valid_id_queue.push(order_id);
-    });
-    return {
-        async reqIds() {
-            ib.reqIds(1);
-            const order_id = valid_id_queue.shift();
-            if (order_id) return order_id;
-            return new Promise(ready => {
-                if (valid_id_queue.length)
-                    return ready(valid_id_queue.shift());
-                const reqId = nextval();
-                next_valid_id_queue.push(ready);
-                ib.reqIds(1);
-            });
-        }
-    };
 }
 
 function reqPositions(ib) {
@@ -400,6 +386,11 @@ function accountUpdates(ib, store, ib_tz) {
 
 function openOrders(ib, store, ib_tz, clientId) {
     const F = 'YYYYMMDD HH:mm:ss';
+    let last_order_id = 0;
+    const valid_id_queue = [];
+    const next_valid_id_queue = [];
+    const placing_orders = {};
+    const cancelling_orders = {};
     const orders = {};
     const order_log = {};
     const managed_accounts = [];
@@ -408,7 +399,8 @@ function openOrders(ib, store, ib_tz, clientId) {
     let promise_orders = Promise.resolve();
     const log = order => {
         const ord = _.mapObject(order, v => Number.isNaN(v) || v == Number.MAX_VALUE ? null : v);
-        const acct_log = order_log[order.account] = order_log[order.account] || [];
+        const account = order.account || order.faGroup || order.faProfile;
+        const acct_log = order_log[account] = order_log[account] || [];
         if (!_.isMatch(_.last(acct_log), _.omit(ord, 'posted_time', 'time'))) acct_log.push(ord);
         return ord;
     };
@@ -454,18 +446,45 @@ function openOrders(ib, store, ib_tz, clientId) {
         }, Promise.resolve()).catch(err => logger.error("Could not flush IB orders", err));
     }, 10*60*1000); // 10m
     ib.on('error', function (err, info) {
-        if (!isNormal(info)) {
+        if (info && info.id && placing_orders[info.id]) {
+            placing_orders[info.id].fail(err);
+            delete placing_orders[info.id];
+        } else if (info && info.id && cancelling_orders[info.id]) {
+            cancelling_orders[info.id].fail(err);
+            delete cancelling_orders[info.id];
+        } else if (!isNormal(info)) {
+            Object.entries(placing_orders).forEach(([orderId, req]) => {
+                req.fail(err);
+                delete placing_orders[orderId];
+            });
+            Object.entries(cancelling_orders).forEach(([orderId, req]) => {
+                req.fail(err);
+                delete cancelling_orders[orderId];
+            });
             if (orders_fail) orders_fail(err);
         }
     }).on('disconnected', () => {
-        if (orders_fail) orders_fail(Error("TWS has disconnected"));
+        const err = Error("TWS has disconnected");
+        Object.entries(placing_orders).forEach(([orderId, req]) => {
+            req.fail(err);
+            delete placing_orders[orderId];
+        });
+        Object.entries(cancelling_orders).forEach(([orderId, req]) => {
+            req.fail(err);
+            delete cancelling_orders[orderId];
+        });
+        if (orders_fail) orders_fail(err);
+    }).on('nextValidId', order_id => {
+        const next_id = last_order_id < order_id ? order_id : ++last_order_id;
+        const next = next_valid_id_queue.shift();
+        if (next) next(next_id);
+        else valid_id_queue.push(next_id);
     }).on('managedAccounts', accountsList => {
         _.compact(accountsList.split(',')).forEach(account => {
             if (!~managed_accounts.indexOf(account))
                 managed_accounts.push(account);
         });
     }).on('openOrder', function(orderId, contract, order, orderStatus) {
-        const status = orderStatus.status;
         const time = moment().tz(ib_tz).milliseconds(0).format(F);
         orders[orderId] = Object.assign({
                 orderId,
@@ -473,12 +492,19 @@ function openOrders(ib, store, ib_tz, clientId) {
                 symbol: contract.symbol,
                 secType: contract.secType,
                 exchange: contract.exchange,
+                primaryExch: contract.primaryExch,
+                currency: contract.currency,
+                multiplier: contract.multiplier,
                 posted_time: time, time
             },
             orders[orderId],
             {time},
             order, orderStatus
         );
+        if (placing_orders[orderId]) {
+            placing_orders[orderId].ready(orders[orderId]);
+            delete placing_orders[orderId];
+        }
         if (flushed) flusher.flush();
         else flusher();
     }).on('orderStatus', function(orderId, status, filled, remaining, avgFillPrice,
@@ -491,6 +517,9 @@ function openOrders(ib, store, ib_tz, clientId) {
             status, filled, remaining, avgFillPrice, permId, parentId,
             lastFillPrice, clientId, whyHeld, mktCapPrice
         }));
+        if (cancelling_orders[orderId]) {
+            cancelling_orders[orderId].ready(orders[orderId]);
+        }
         if (flushed) flusher.flush();
         else flusher();
     }).on('openOrderEnd', function() {
@@ -500,6 +529,50 @@ function openOrders(ib, store, ib_tz, clientId) {
         })).then(orders_end, orders_fail);
     });
     return {
+        async reqId() {
+            ib.reqIds(1);
+            const order_id = valid_id_queue.shift();
+            if (order_id) return last_order_id = order_id;
+            return new Promise(ready => {
+                if (valid_id_queue.length)
+                    return ready(last_order_id = valid_id_queue.shift());
+                const reqId = nextval();
+                next_valid_id_queue.push(ready);
+                ib.reqIds(1);
+            });
+        },
+        async placeOrder(orderId, contract, order) {
+            logger.log('placeOrder', orderId, contract, order);
+            ib.placeOrder(orderId, contract, order);
+            if (!order.transmit) return orders[orderId] = _.omit({
+                orderId,
+                conId: contract.conId,
+                symbol: contract.symbol || contract.localSymbol,
+                secType: contract.secType,
+                exchange: contract.exchange,
+                primaryExch: contract.primaryExch,
+                currency: contract.currency,
+                multiplier: contract.multiplier,
+                status: 'ApiPending',
+                ...order
+            }, v => v == null);
+            else return new Promise((ready, fail) => {
+                placing_orders[orderId] = {ready, fail};
+            });
+        },
+        async cancelOrder(orderId) {
+            logger.log('cancelOrder', orderId);
+            ib.cancelOrder(orderId);
+            return new Promise((ready, fail) => {
+                cancelling_orders[orderId] = {ready, fail};
+            });
+        },
+        reqRecentOrders() {
+            return _.values(orders).filter(order => {
+                const status = order.status;
+                return status != 'Filled' && status != 'Cancelled' && status != 'Inactive';
+            })
+        },
         reqOpenOrders() {
             return promise_orders = promise_orders.catch(logger.error)
               .then(() => new Promise((ready, fail) => {
@@ -812,17 +885,7 @@ function requestWithId(ib) {
     }, 50);
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
-            // Some error messages might just be warnings
-            // @see https://groups.io/g/twsapi/message/40551
             _.defer(() => ((req_queue[info.id]||{}).reject||logger.warn)(err));
-        } else if (info && info.code == 1101) {
-            logger.info("ib-client", err.message);
-        } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
-            logger.log("ib-client", err.message);
-        } else if (info && info.code >= 2000 && info.code < 3000) {
-            logger.warn("ib-client", err.message);
-        } else {
-            logger.error("ib-client", JSON.stringify(_.pick(err, _.keys(err))), err.message);
         }
     }).on('disconnected', () => {
         const err = Error("TWS has disconnected");

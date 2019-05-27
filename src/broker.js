@@ -85,7 +85,7 @@ async function createBroker(promiseHelpWithSettings, Brokers, settings) {
 function chooseBroker(help, settings) {
     return _.sortBy(help.map(help => {
         return _.max(help.map(help => {
-            return _.filter(help.options, (desc, name) => name in settings).length;
+            return _.filter(help.options, (desc, name) => settings[name]).length;
         }));
     }).map((count, index) => ({count, index})), 'count')
       .reverse().map(obj => obj.index);

@@ -90,10 +90,6 @@ function help(broker, collect) {
                 usage: '<currency>',
                 description: "The currency used in parameters, such as 'initial_deposit'"
             },
-            margin_acct: {
-                usage: '<true>',
-                description: "Indicates all currencies should be considered in account value and initial_deposit"
-            },
             quant_threshold: {
                 usage: '<integer>',
                 description: "Minimum quantity of shares/contracts that must change to generate a change order"
@@ -111,12 +107,15 @@ function help(broker, collect) {
  */
 async function replicate(broker, collect, options) {
     const check = interrupt();
-    const desired = await getDesiredPositions(broker, collect, options);
+    const balances = await broker({action: 'balances', asof: options.begin, now: options.now});
+    const desired = await getDesiredPositions(balances, collect, options);
     const working = await getWorkingPositions(broker, options);
     const portfolio = _.uniq(Object.keys(desired).concat(getPortfolio(options.markets, options))).sort();
     logger.trace("replicate portfolio", ...portfolio);
+    const margin_acct = !balances.every(bal => bal.margin == null);
     _.forEach(working, (w, contract) => {
-        if (!desired[contract] && +w.position && !~portfolio.indexOf(contract)) {
+        if (!desired[contract] && +w.position && !~portfolio.indexOf(contract) &&
+                (w.currency == options.currency || margin_acct)) {
             logger.warn("Unknown position", w.position, w.symbol, w.market);
         }
     });
@@ -141,14 +140,15 @@ async function replicate(broker, collect, options) {
             else // assumed to be conditional upon prior orders of the same contract
                 return {...prior, attached: [pending]};
         });
-        logger.debug("replicate", "desired", contract, JSON.stringify(desired[contract]));
+        logger.debug("replicate", "working", working[contract]);
+        logger.debug("replicate", "desired", desired[contract]);
         return orders.concat(cancelled, parent_order);
     }, []);
     await check();
     logger.trace("replicate submit orders", ...orders);
-    const submitted = await Promise.all(orders.map(async(order) => broker({...order, now: options.now}), []));
+    const submitted = await Promise.all(orders.map(async(order) => broker({...options, ...order}), []));
     const log = s => {
-        logger.info(s.action, s.quant, s.symbol, s.market, s.type, s.tif, s.order_ref, s.status);
+        logger.info(s.action, s.quant, s.symbol, s.market, s.type, s.limit || s.stop || '', s.tif, s.order_ref, s.status);
         return s;
     }
     return [].concat(...submitted).map(log);
@@ -157,14 +157,14 @@ async function replicate(broker, collect, options) {
 /**
  * Collects the options results and converts the orders into positions
  */
-async function getDesiredPositions(broker, collect, options) {
-    const balances = await broker({action: 'balances', asof: options.begin, now: options.now});
+async function getDesiredPositions(balances, collect, options) {
+    const cash_acct = balances.every(bal => bal.margin == null);
     const local_balances = balances.filter(options.currency ?
         bal => bal.currency == options.currency : bal => +bal.rate == 1
     );
     const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
     const local_balance_rate = local_balances.length ? local_balances[0].rate : 1;
-    const initial_deposit = !options.margin_acct || !balances.length ? Big(local_balance_net) :
+    const initial_deposit = cash_acct || !balances.length ? Big(local_balance_net) :
         balances.map(bal => Big(bal.net).times(bal.rate).div(local_balance_rate)).reduce((a,b) => a.add(b));
     const parameters = { initial_deposit: initial_deposit.toString(), strategy_raw: initial_deposit.toString() };
     logger.debug("replicate parameters", parameters);
@@ -307,7 +307,9 @@ function updateWorking(desired, working, options) {
         } else if (isStopOrder(ds) && ds_projected) {
             // desired signal is stoploss order, but has not come into effect yet
             return updateWorking(desired.prior, working, options);
-        } else if (similarSignals(ds, ws)) {
+        } else if (similarSignals(ds, ws) && (
+                ws.action == 'BUY' && working.prior.position < desired.position ||
+                ws.action == 'SELL' && working.prior.position > desired.position)) {
             // replace order
             expect(ws).to.have.property('order_ref');
             const adj = updateWorking(desired.prior, working.prior, options);
@@ -326,19 +328,11 @@ function updateWorking(desired, working, options) {
             return appendSignal(upon, cond, options);
         }
     } else {
+        const recent_order = ds || desired.last_order || desired;
         return [c2signal({
+            ..._.omit(recent_order, 'traded_at'),
             action: desired.position > working.position ? 'BUY' : 'SELL',
-            quant: Math.abs(desired.position - working.position),
-            symbol: desired.symbol,
-            market: desired.market,
-            currency: desired.currency,
-            secType: desired.secType,
-            multiplier: desired.multiplier,
-            type: (ds||desired).limit ? 'LMT' : (ds||desired).type || 'MKT',
-            limit: (ds||desired).limit,
-            stop: (ds||desired).stop,
-            offset: (ds||desired).offset,
-            tif: (ds||desired).tif || 'DAY'
+            quant: Math.abs(desired.position - working.position)
         })];
     }
 }
@@ -387,7 +381,23 @@ function cancelSignal(desired, working, options) {
  * Adds ds to the upon array
  */
 function appendSignal(upon, ds, options) {
-    return upon.concat(ds);
+    const reversed = upon.find(ord => isReverse(ord, ds, options));
+    const replaced = upon.find(ord => ord.action != 'cancel' &&
+        ord.action != ds.action && ord.type == ds.type && +ord.quant < +ds.quant);
+    const reduced = upon.find(ord => ord.action != 'cancel' &&
+        ord.action != ds.action && ord.type == ds.type && +ord.quant > +ds.quant);
+    if (reversed)
+        return _.without(upon, reversed);
+    else if (replaced)
+        return _.without(upon, replaced).concat({
+            ...ds, quant: ds.quant - replaced.quant
+        });
+    else if (reduced)
+        return _.without(upon, reduced).concat({
+            ...reduced, quant: reduced.quant - ds.quant
+        });
+    else
+        return upon.concat(ds);
 }
 
 /**
@@ -401,13 +411,12 @@ function similarSignals(a, b) {
 /**
  * If the open and close orders have the same quant, but opposite actions
  */
-function isOpenAndClose(open, close, options) {
-    return open.quant == close.quant &&
-        (open.traded_at == close.traded_at ||
-            moment(open.traded_at).isBefore(options.now) &&
-            moment(close.traded_at).isBefore(options.now)) &&
-        (open.action == 'BUY' && close.action == 'SELL' ||
-            open.action == 'SELL' && close.action == 'BUY');
+function isReverse(a, b, options) {
+    if (!a || !b) return false;
+    const threshold = options.quant_threshold;
+    return a.action != 'cancel' && b.action != 'cancel' &&
+        a.action != b.action && a.type == b.type &&
+        Math.abs(a.quant - b.quant) <= (threshold || 0);
 }
 
 /**
@@ -415,9 +424,8 @@ function isOpenAndClose(open, close, options) {
  */
 function advance(pos, order, options) {
     const position = updateStoploss(pos, order, options);
-    if (!order.limit && !order.offset) return position;
-    // record limit/offset for use with adjustements
-    else return _.extend({}, position, {limit: order.limit, offset: order.offset});
+    // record most recent order type/limit/stop/offset for use with adjustements
+    return {...position, last_order: order};
 }
 
 function updateStoploss(pos, order, options) {
@@ -471,8 +479,8 @@ function updateParkUntilSecs(pos, order, options) {
  * Position after applying the given order limit
  */
 function updateLimit(pos, order, options) {
-    if ((order.limit || order.offset) && pos.order) {
-        return _.defaults({order: _.defaults(_.pick(order, 'limit', 'stop', 'offset'), pos.order)}, pos);
+    if (pos.order) {
+        return _.defaults({order: _.defaults(_.pick(order, 'type', 'limit', 'stop', 'offset'), pos.order)}, pos);
     } else {
         return pos;
     }

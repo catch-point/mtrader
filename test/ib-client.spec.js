@@ -35,7 +35,7 @@ const like = require('./should-be-like.js');
 const IB = require('../src/ib-client.js');
 
 describe("ib-client", function() {
-    this.timeout(10000);
+    this.timeout(30000);
     var tz = 'America/New_York';
     var client = new IB();
     before(function() {
@@ -375,5 +375,24 @@ describe("ib-client", function() {
     });
     it.skip("should reqOpenOrders", function() {
         return client.reqOpenOrders().then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d).should.eventually.be.an('array');
+    });
+    it.skip("should placeOrder", async() => {
+        const contract = {
+            localSymbol: 'SPY',
+            secType: 'STK',
+            exchange: 'ARCA',
+            currency: 'USD'
+        };
+        const order = {
+            account: 'Hedged',
+            action: 'BUY',
+            tif: 'DAY',
+            orderType: 'LMT',
+            totalQuantity: 1,
+            lmtPrice: 270,
+            transmit: false
+        };
+        const placed = await client.placeOrder(await client.reqId(), contract, order).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
+        await client.cancelOrder(placed.orderId).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
     });
 });

@@ -3931,7 +3931,7 @@ describe("replicate-collective2", function() {
                 currency: 'USD',
                 secType: 'FUT',
                 attach_ref: '122787034'
-              }]);
+            }]);
         });
     });
 });

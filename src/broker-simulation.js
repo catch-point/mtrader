@@ -271,8 +271,8 @@ function helpOptions() {
 }
 
 async function advance(barsFor, commissions, db, options) {
-    const now = moment(options.asof);
-    if (!now.isValid()) throw Error(`Invalid asof option ${options.asof}`);
+    const now = moment(options.asof || options.now);
+    if (!now.isValid()) throw Error(`Invalid asof option ${options.asof || options.now}`);
     const asof = now.format();
     const yesterday = await lastTime(db, options);
     if (!yesterday || yesterday >= asof) return false;
@@ -342,7 +342,7 @@ async function lastTime(db, options) {
 }
 
 async function listBalances(db, options) {
-    const asof = moment(options.asof).format();
+    const asof = moment(options.asof || options.now).format();
     const begin = moment(options.begin || asof).format();
     return reduceMonths(await db.collection('balances'), options, (result, data) => {
         const latest = _.last(data.filter(balance => balance.asof <= asof))
@@ -352,7 +352,7 @@ async function listBalances(db, options) {
 }
 
 async function listPositions(db, options) {
-    const asof = moment(options.asof).format();
+    const asof = moment(options.asof || options.now).format();
     const begin = moment(options.begin || asof).format();
     const historic = await reduceMonths(await db.collection('positions'), options, (result, data) => {
         return result.concat(data.filter(p => p.asof <= asof));
@@ -362,7 +362,7 @@ async function listPositions(db, options) {
 }
 
 async function listOrders(db, options) {
-    const asof = moment(options.asof).format();
+    const asof = moment(options.asof || options.now).format();
     const begin = moment(options.begin || asof).format();
     return reduceMonths(await db.collection('orders'), options, (result, data) => {
         return result.concat(data.filter(o => {
@@ -385,7 +385,7 @@ async function deposit(barsFor, db, options) {
     expect(options).to.have.property('currency').that.is.ok;
     expect(options).to.have.property('quant').that.is.ok;
     const currency = options.currency;
-    const now = moment(options.asof);
+    const now = moment(options.asof || options.now);
     const asof = now.format();
     const month = now.format('YYYYMM');
     const coll = await db.collection('balances');
@@ -430,7 +430,7 @@ async function withdraw(barsFor, db, options) {
 
 async function cancelOrder(db, options) {
     expect(options).to.have.property('order_ref').that.is.ok;
-    const now = moment(options.asof);
+    const now = moment(options.asof || options.now);
     const orders = await db.collection('orders');
     const recent_month = _.last(orders.listNames());
     if (!recent_month) throw Error(`No orders, not even ${options.order_ref}, exist`);
@@ -460,22 +460,22 @@ async function cancelOrder(db, options) {
 }
 
 async function oneCancelsAllOrders(db, options) {
-    const now = moment(options.asof);
-    const orders = await db.collection('orders');
+    const now = moment(options.asof || options.now);
+    const coll = await db.collection('orders');
     const current_month = now.format('YYYYMM');
-    const recent_month = _.last(orders.listNames()) || current_month;
-    return orders.lockWith(_.uniq([recent_month, current_month]), async() => {
-        if (recent_month != current_month && orders.exists(recent_month)) {
-            const data = await orders.readFrom(recent_month);
+    const recent_month = _.last(coll.listNames()) || current_month;
+    return coll.lockWith(_.uniq([recent_month, current_month]), async() => {
+        if (recent_month != current_month && coll.exists(recent_month)) {
+            const data = await coll.readFrom(recent_month);
             const completed = data.filter(o => o.status != 'working' && o.status != 'pending');
             const working = data.filter(o => o.status == 'working' || o.status == 'pending');
-            await orders.replaceWith(completed, recent_month);
-            await orders.writeTo(working, current_month);
+            await coll.replaceWith(completed, recent_month);
+            await coll.writeTo(working, current_month);
         }
         const order_ref = options.order_ref || nextval();
         return (options.attached||[]).reduce(async(promise, attached_order) => {
             const result = await promise;
-            const attached = await appendOrders(orders, current_month, current_month, {
+            const attached = await appendOrders(coll, current_month, current_month, {
                 ..._.omit(options, 'action', 'attached'),
                 attach_ref: order_ref,
                 ...attached_order
@@ -486,27 +486,27 @@ async function oneCancelsAllOrders(db, options) {
 }
 
 async function submitOrder(db, options) {
-    const now = moment(options.asof);
-    const orders = await db.collection('orders');
+    const now = moment(options.asof || options.now);
+    const coll = await db.collection('orders');
     const current_month = now.format('YYYYMM');
-    const recent_month = _.last(orders.listNames()) || current_month;
-    return orders.lockWith(_.uniq([recent_month, current_month]), () => {
-        return appendOrders(orders, recent_month, current_month, options);
+    const recent_month = _.last(coll.listNames()) || current_month;
+    return coll.lockWith(_.uniq([recent_month, current_month]), () => {
+        return appendOrders(coll, recent_month, current_month, options);
     });
 }
 
-async function appendOrders(orders, recent_month, current_month, options) {
+async function appendOrders(coll, recent_month, current_month, options) {
     expect(options).to.have.property('tif').that.is.oneOf(['GTC', 'DAY', 'IOC']);
     expect(options).to.have.property('type').that.is.oneOf(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']);
     expect(options).to.have.property('symbol').that.is.a('string');
     expect(options).to.have.property('market').that.is.a('string');
     expect(options).to.have.property('currency').that.is.a('string');
     expect(options).to.have.property('secType').that.is.oneOf(['STK', 'FUT', 'OPT']);
-    const now = moment(options.asof);
-    const data = orders.exists(recent_month) ?
-        await orders.readFrom(recent_month) : [];
+    const now = moment(options.asof || options.now);
+    const data = coll.exists(recent_month) ?
+        await coll.readFrom(recent_month) : [];
     const completed = data.filter(o => o.status != 'working' && o.status != 'pending');
-    if (recent_month != current_month) await orders.replaceWith(completed, recent_month);
+    if (recent_month != current_month) await coll.replaceWith(completed, recent_month);
     const current_completed = recent_month == current_month ? completed : [];
     const working = data.filter(o => o.status == 'working' || o.status == 'pending');
     const order = _.pick(options, [
@@ -523,11 +523,11 @@ async function appendOrders(orders, recent_month, current_month, options) {
         working.filter(order => order != modifying),
         submitted
     );
-    await orders.replaceWith(replacement, current_month);
+    await coll.replaceWith(replacement, current_month);
     return (options.attached||[]).reduce(async(promise, attached_order) => {
         const result = await promise;
-        const attached = await appendOrders(orders, current_month, current_month, {
-            ..._.omit(options, Object.keys(order)),
+        const attached = await appendOrders(coll, current_month, current_month, {
+            ..._.omit(options, 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif', 'order_ref'),
             attach_ref: order_ref,
             attached: [],
             ...attached_order
@@ -582,7 +582,7 @@ async function rateOf(barsFor, base, quote, options) {
     expect(quote).to.be.oneOf(majors);
     const b = majors.indexOf(base);
     const q = majors.indexOf(quote);
-    const since = moment(options.asof).subtract(1,'weeks').format();
+    const since = moment(options.asof || options.now).subtract(1,'weeks').format();
     if (b == q) return '1';
     else if (b < q) return _.last(await barsFor(base, quote, since, options)).close
     else return Big(1).div(_.last(await barsFor(quote, base, since, options)).close).toString();
@@ -600,7 +600,7 @@ async function barsFor(markets, collect, symbol, market, since, options) {
             dividend: 'OFFSET(1,day.close) - OFFSET(1,day.adj_close) * day.close/day.adj_close'
         },
         begin: since,
-        end: moment(options.asof).format()
+        end: moment(options.asof || options.now).format()
     });
     return result.filter(bar => bar.asof > since);
 }
@@ -657,7 +657,7 @@ async function updateBalance(barsFor, db, positions, options) {
 }
 
 function reduceMonths(coll, options, fn, initial) {
-    const asof = moment(options.asof);
+    const asof = moment(options.asof || options.now);
     const max_month = asof.format('YYYYMM');
     const all_months = coll.listNames();
     const filtered = all_months.filter(month => month <= max_month);

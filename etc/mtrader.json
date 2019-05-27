@@ -35,7 +35,14 @@
     }
   },
   "broker": {
+    "ib": {
+      "account": "",
+      "transmit": false,
+      "host": "localhost",
+      "port": 7496
+    },
     "simulation": {
+      "simulation": "",
       "commissions": [
         {"secType": "STK", "currency": "USD", "per_quant": "0.005", "minimum": "1.00"},
         {"secType": "STK", "currency": "CAD", "per_quant": "0.01", "minimum": "1.00"},
@@ -46,6 +53,8 @@
       ]
     },
     "collective2": {
+      "apikey": "",
+      "systemid": "",
       "requestMarginEquity": "https://collective2.com/world/apiv3/requestMarginEquity",
       "retrieveSystemEquity": "https://api.collective2.com/world/apiv3/retrieveSystemEquity",
       "retrieveSignalsWorking": "https://collective2.com/world/apiv3/retrieveSignalsWorking",

@@ -51,14 +51,19 @@ module.exports = function(settings) {
     expect(settings).to.have.property('account').that.is.ok;
     const ib = new IB(settings);
     const fetch = new Fetch(settings);
+    const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
     return _.extend(function(options) {
         if (options.help) return helpOptions();
         switch(options.action) {
             case 'balances': return listBalances(markets, ib, fetch, settings, options);
             case 'positions': return listPositions(markets, ib, fetch, settings, options);
             case 'orders': return listOrders(markets, ib, settings, options);
+            case 'cancel': return cancelOrder(markets, ib, settings, options);
+            case 'OCA': return oneCancelsAllOrders(root_ref, markets, ib, settings, options);
+            case 'BUY':
+            case 'SELL': return submitOrder(root_ref, markets, ib, settings, options);
             default: expect(options).to.have.property('action').to.be.oneOf([
-                'balances', 'positions', 'orders'
+                'balances', 'positions', 'orders', 'cancel', 'OCA', 'BUY', 'SELL'
             ]);
         }
     }, {
@@ -86,6 +91,10 @@ function helpSettings() {
             account: {
                 usage: '<string>',
                 description: "IB account and/or model"
+            },
+            transmit: {
+                usage: 'true|false',
+                description: "If the system should transmit orders automatically for execution, otherwise wait for manual transmition via TWS user interface"
             }
         }
     }]);
@@ -168,6 +177,75 @@ function helpOptions() {
                 description: "Include historic balances since given dateTime, but before given asof"
             }
         }
+    }, {
+        name: 'submit',
+        usage: 'broker(options)',
+        description: "Transmit order for trading",
+        properties: [
+            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif', 'status',
+            'order_ref', 'attach_ref', 'symbol', 'market', 'secType', 'currency', 'multiplier'
+        ],
+        options: {
+            action: {
+                usage: '<string>',
+                values: ['BUY', 'SELL', 'OCA', 'cancel']
+            },
+            quant: {
+                usage: '<positive-integer>',
+                description: "The number of shares or contracts to buy or sell"
+            },
+            type: {
+                usage: '<order-type>',
+                values: ['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']
+            },
+            limit: {
+                usage: '<limit-price>',
+                descirption: "The limit price for orders of type LMT"
+            },
+            stop: {
+                usage: '<aux-price>',
+                description: "Stop limit price for STP orders"
+            },
+            offset: {
+                usage: '<price-offset>',
+                description: "Pegged and snap order offset"
+            },
+            tif: {
+                usage: '<time-in-forced>',
+                values: ['GTC', 'DAY', 'IOC']
+            },
+            order_ref: {
+                usage: '<string>',
+                description: "The order identifier that is unique among working orders"
+            },
+            attach_ref: {
+                usage: '<string>',
+                description: "The order_ref of the parent order that must be filled before this order or a common identifier for orders in the same one-cancels-all (OCA) group."
+            },
+            attached: {
+                usage: '[...orders]',
+                description: "Submit attached parent/child orders together or OCA group of orders"
+            },
+            symbol: {
+                usage: '<string>',
+                description: "The symbol of the contract to be traded, omit for OCA and bag orders"
+            },
+            market: {
+                usage: '<string>',
+                description: "The market of the contract (might also be the name of the exchange)"
+            },
+            secType: {
+                values: ['STK', 'FUT', 'OPT']
+            },
+            currency: {
+                usage: '<string>',
+                values: ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY']
+            },
+            multiplier: {
+                usage: '<number>',
+                description: "The value of a single unit of change in price"
+            }
+        }
     }]);
 }
 
@@ -206,7 +284,8 @@ async function listBalances(markets, ib, fetch, settings, options) {
                         .add(summary.FuturesPNL[currency]||0).toString(),
                     realized: summary.RealizedPnL[currency],
                     unrealized: summary.UnrealizedPnL[currency],
-                    margin: summary.MaintMarginReq[currency]
+                    margin: summary.TotalCashValue[currency] != summary.BuyingPower[currency] ?
+                        summary.MaintMarginReq[currency] : null
                 };
             });
         }));
@@ -249,40 +328,16 @@ async function listOrders(markets, ib, settings, options) {
     }).reduce(async(promise, order) => {
         const result = await promise;
         const contract = await ib.reqContract(order.conId);
+        const ord = await ibToOrder(markets, ib, settings, order, contract, options);
         const parent = order.parentId && orders.find(p => order.parentId == p.orderId);
         const bag = contract.secType == 'BAG';
         const working = ~open_orders.indexOf(order);
-        const status = order.status == 'ApiPending' ? 'pending' :
-            order.status == 'PendingSubmit' ? 'pending' :
-            order.status == 'Inactive' ? 'pending' :
-            order.status == 'PendingCancel' ? 'working' :
-            order.status == 'PreSubmitted' ? 'working' :
-            order.status == 'Submitted' ? 'working' :
-            order.status == 'ApiCancelled' ? 'working' :
-            order.status == 'Filled' ? 'filled' : 'cancelled';
-        result.push({
-            posted_at: parseTime(order.posted_time, ib_tz).format(),
-            asof: parseTime(order.time, ib_tz).format(),
-            traded_at: order.completedTime ? parseTime(order.completedTime, ib_tz).format() : null,
-            action: order.action,
+        result.push({...ord,
             quant: working ? order.remaining : order.totalQuantity,
-            type: order.orderType,
-            limit: order.lmtPrice == Number.MAX_VALUE ? null : order.lmtPrice,
-            stop: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
-            offset: order.auxPrice == Number.MAX_VALUE || order.orderType == 'STP' ||
-                order.orderType == 'STP LMT' ? null : order.auxPrice,
-            tif: order.tif,
-            status: status,
-            traded_price: +order.avgFillPrice ? order.avgFillPrice : null,
-            order_ref: order.orderRef || order.permId,
             attch_ref: bag ? order.orderRef || order.permId :
                 parent ? parent.orderRef|| parent.permId : order.ocaGroup,
-            account: order.faGroup || order.faProfile || order.account,
             symbol: bag ? null : asSymbol(contract),
-            market: bag ? null : await asMarket(markets, ib, contract),
-            currency: contract.currency,
-            secType: contract.secType,
-            multiplier: contract.multiplier
+            market: bag ? null : await asMarket(markets, ib, contract)
         });
         if (!bag) return result;
         else return contract.comboLegs.reduce(async(promise, leg, i) => {
@@ -297,8 +352,8 @@ async function listOrders(markets, ib, settings, options) {
                 offset: null,
                 tif: null,
                 order_ref: null,
-                attach_ref: order.orderRef || order.permId,
-                account: order.faGroup || order.faProfile || order.account,
+                attach_ref: ord.order_ref,
+                account: ord.account,
                 symbol: asSymbol(contract),
                 market: await asMarket(markets, ib, contract),
                 currency: contract.currency,
@@ -308,6 +363,150 @@ async function listOrders(markets, ib, settings, options) {
             return result;
         }, Promise.resolve(result));
     }, Promise.resolve([]));
+}
+
+async function cancelOrder(markets, ib, settings, options) {
+    expect(options).to.have.property('order_ref').that.is.ok;
+    const ib_order = await orderByRef(ib, options.order_ref);
+    const cancelled_order = await ib.cancelOrder(ib_order.orderId);
+    const contract = cancelled_order.conId ? await ib.reqContract(cancelled_order.conId) :
+        (_.first(await ib.reqContractDetails(cancelled_order))||{}).summary || {};
+    const order = ibToOrder(markets, ib, settings, {...ib_order, ...cancelled_order}, options);
+    return [order];
+}
+
+async function oneCancelsAllOrders(root_ref, markets, ib, settings, options) {
+    expect(options).to.have.property('attached').that.is.an('array');
+    const order_ref = orderRef(root_ref, await ib.reqId(), options);
+    return await options.attached.reduce(async(promise, order, i, orders) => {
+        const posted_orders = await submitOrder(root_ref, markets, ib, {
+            ...settings,
+            transmit: i == orders.length -1 && settings.transmit || false
+        }, order, null, order_ref);
+        return (await promise).concat(posted_orders.map(ord => ({...ord, attach_ref: order_ref})));
+    }, []);
+}
+
+async function submitOrder(root_ref, markets, ib, settings, options, parentId, ocaGroup) {
+    const attach_order = options.attach_ref ? await orderByRef(ib, options.attach_ref) : null;
+    const oca_group = ocaGroup || (options.attach_ref && !attach_order ? options.attach_ref : null);
+    const order_id = (await orderByRef(ib, options.order_ref)||{}).orderId || await ib.reqId();
+    const order_ref = orderRef(root_ref, order_id, options);
+    const contract = await toContract(markets, ib, options);
+    if (contract.secType == 'BAG' && !settings.transmit)
+        throw Error(`Transmit flag must be enabled to send combo orders for ${contract.symbol}`);
+    const submit_order = {
+        ...await orderToIbOrder(ib, settings, contract, options, options),
+        orderId: order_id, orderRef: order_ref,
+        transmit: (contract.secType == 'BAG' || _.isEmpty(options.attached)) && settings.transmit || false,
+        parentId: parentId || (attach_order ? attach_order.orderId : null),
+        ocaGroup: oca_group, ocaType: oca_group ? 1 : 0,
+        smartComboRoutingParams: contract.secType == 'BAG' ? [{tag:'NonGuaranteed',value:'1'}] : []
+    };
+    const ib_order = await ib.placeOrder(order_id, contract, submit_order);
+    const parent_order = await ibToOrder(markets, ib, settings, ib_order, contract, options);
+    return (options.attached||[]).reduce(async(promise, attach, i, attached) => {
+        const child_orders = attach.type == 'LEG' ? [{
+            ..._.omit(parent_order, 'limit', 'stop', 'offset', 'traded_price', 'order_ref'),
+            ..._.pick(attach, 'symbol', 'market', 'currency', 'multiplier', 'action', 'quant', 'type', 'limit', 'stop', 'offset'),
+            attach_ref: parent_order.order_ref
+        }] : await submitOrder(root_ref, markets, ib, {
+            ...settings,
+            transmit: i == attached.length -1 && settings.transmit || false
+        }, attach, order_id);
+        return (await promise).concat(child_orders.map(ord => ({...ord, attach_ref: order_ref})));
+    }, [parent_order]);
+}
+
+function orderRef(root_ref, order_id, options) {
+    return options.order_ref || `${(options.type||'').replace(/\W+/g,'')}${root_ref}.${order_id}`;
+}
+
+async function orderByRef(ib, order_ref) {
+    if (!order_ref) return null;
+    const recent_ib_orders = await ib.reqRecentOrders();
+    const recent_ib_order = recent_ib_orders.find(ord => {
+        return ord.orderRef == order_ref || ord.permId == order_ref || ord.orderId == order_ref;
+    });
+    if (recent_ib_order) return recent_ib_order;
+    else if (recent_ib_orders.some(ord => ord.ocaGroup == order_ref)) return null;
+    const open_ib_orders = await ib.reqOpenOrders();
+    const ib_order = open_ib_orders.find(ord => {
+        return ord.orderRef == order_ref || ord.permId == order_ref || ord.orderId == order_ref;
+    });
+    if (ib_order) return ib_order;
+    else if (open_ib_orders.some(ord => ord.ocaGroup == order_ref)) return null;
+    else throw Error(`Order ${order_ref} is not open, either filled, cancelled, or not yet transmitted`);
+}
+
+async function orderToIbOrder(ib, settings, contract, order, options) {
+    expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
+    expect(order).to.have.property('quant').that.is.ok;
+    expect(order).to.have.property('type').that.is.ok;
+    expect(order).to.have.property('tif').that.is.oneOf(['DAY', 'GTC', 'IOC', 'GTD', 'OPG', 'FOK', 'DTC']);
+    return {
+        action: order.action,
+        totalQuantity: order.quant,
+        orderType: order.type,
+        lmtPrice: order.limit,
+        auxPrice: order.stop || order.offset,
+        tif: order.tif,
+        orderRef: order.order_ref,
+        transmit: settings.transmit || false,
+        ...await ibAccountOrderProperties(ib, settings)
+    };
+}
+
+async function ibAccountOrderProperties(ib, settings) {
+    const account = settings.account;
+    const managed_accts = await ib.reqManagedAccts();
+    if (~managed_accts.indexOf(account)) return {account};
+    const aliases = await ib.requestAliases();
+    const alias = aliases.find(a => account == a.alias);
+    if (alias) return {account: alias.account};
+    const groups = await ib.requestGroups();
+    const group = groups.find(g => account == g.name);
+    if (group) return {faGroup: group.name, faMethod: group.defaultMethod};
+    const profiles = await ib.requestProfiles();
+    const profile = profiles.find(p => account == p.name);
+    if (profile) return {faProfile: profile.name};
+    return {account: managed_accts[0], modelCode: account}; // maybe a model?
+}
+
+async function ibToOrder(markets, ib, settings, order, contract, options) {
+    const ib_tz = settings.tz || (moment.defaultZone||{}).name || moment.tz.guess();
+    const status = order.status == 'ApiPending' ? 'pending' :
+        order.status == 'PendingSubmit' ? 'pending' :
+        order.status == 'Inactive' ? 'pending' :
+        order.status == 'PendingCancel' ? 'cancelled' :
+        order.status == 'PreSubmitted' ? 'working' :
+        order.status == 'Submitted' ? 'working' :
+        order.status == 'ApiCancelled' ? 'working' :
+        order.status == 'Filled' ? 'filled' : 'cancelled';
+    return {
+        posted_at: order.posted_time ? parseTime(order.posted_time, ib_tz).format() : null,
+        asof: order.time ? parseTime(order.time, ib_tz).format() : null,
+        traded_at: order.completedTime ? parseTime(order.completedTime, ib_tz).format() : null,
+        action: order.action,
+        quant: order.totalQuantity,
+        type: order.orderType,
+        limit: order.lmtPrice == Number.MAX_VALUE ? null : order.lmtPrice,
+        stop: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
+        offset: order.auxPrice == Number.MAX_VALUE || order.orderType == 'STP' ||
+            order.orderType == 'STP LMT' ? null : order.auxPrice,
+        tif: order.tif,
+        status: status,
+        traded_price: +order.avgFillPrice ? order.avgFillPrice : null,
+        order_ref: order.orderRef || order.permId || order.orderId,
+        attach_ref: options.attach_ref,
+        account: order.faGroup || order.faProfile || order.account,
+        symbol: contract ? asSymbol(contract) : null,
+        market: options.market ? options.market :
+            contract && contract.secType != 'BAG' ? await asMarket(markets, ib, contract) : null,
+        currency: contract.currency,
+        secType: contract.secType,
+        multiplier: contract.multiplier
+    };
 }
 
 async function listAccounts(ib, account) {
@@ -473,6 +672,7 @@ function asSymbol(contract) {
     if (contract.secType == 'FUT') return fromFutSymbol(contract.localSymbol);
     else if (contract.secType == 'CASH') return contract.symbol;
     else if (contract.secType == 'OPT') return contract.localSymbol;
+    else if (!contract.localSymbol) return contract.symbol;
     else return ~contract.localSymbol.indexOf(' ') ? contract.localSymbol.replace(' ', '.') : contract.localSymbol;
 }
 
@@ -492,6 +692,91 @@ function fromFutSymbol(symbol) {
     } else {
         return symbol;
     }
+}
+
+async function toContract(markets, ib, options) {
+    const has_legs = !_.isEmpty(options.attached) && options.attached.some(ord => ord.type == 'LEG');
+    if (options.symbol && options.secType != 'BAG' && !has_legs) {
+        expect(options).to.have.property('symbol').that.is.ok;
+        expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
+        const market = markets[options.market];
+        return _.omit({
+            conId: options.conId,
+            localSymbol: toLocalSymbol(market, options.symbol),
+            secType: market.secType,
+            primaryExch: market.primaryExch,
+            exchange: market.exchange,
+            currency: market.currency,
+            includeExpired: market.secType == 'FUT'
+        }, v => !v);
+    } else if (ib != null && options.attached && options.attached.length) {
+        const contracts = await Promise.all(options.attached.map(async(attach) => {
+            return toContractWithId(markets, ib, {...options, attached: [], ...attach});
+        }));
+        const currencies = _.uniq(contracts.map(leg => leg.currency));
+        if (currencies.length > 1) throw Error(`Cannot mix ${currencies.join(' and ')} in the same Combo order`);
+        const exchanges = _.uniq(contracts.map(leg => leg.exchange));
+        return {
+            secType: 'BAG',
+            symbol: _.first(_.uniq(contracts.map(leg => leg.symbol))),
+            currency: _.first(currencies),
+            exchange: exchanges.length < 2 ? _.first(exchanges) : 'SMART',
+            comboLegs: options.attached.map((leg, i) => {
+                const contract = contracts[i];
+                return {
+                    action: leg.action,
+                    ratio: leg.quant,
+                    conId: contract.conId,
+                    exchange: contract.exchange
+                };
+            })
+        };
+    } else {
+        expect(options).to.have.property('symbol').that.is.ok;
+        expect(options).to.have.property('attached').that.is.an('array');
+        throw Error(`Could not create contract from ${util.inspect(contract, {breakLength:Infinity})}`);
+    }
+}
+
+async function toContractWithId(markets, ib, options) {
+    const contract = await toContract(markets, null, options);
+    if (contract.conId) return contract;
+    const details = await ib.reqContractDetails(contract);
+    if (details.length) return _.first(details).summary;
+    else throw Error(`Could not determin contract from ${util.inspect(contract, {breakLength:Infinity})}`);
+}
+
+function toLocalSymbol(market, symbol) {
+    if (market.secType == 'FUT') return toFutSymbol(market, symbol);
+    else if (market.secType == 'CASH') return toCashSymbol(market, symbol);
+    else if (market.secType == 'OPT') return symbol;
+    else if (market.secType) return symbol;
+    else if (symbol.match(/^(.*)([A-Z])(\d)(\d)$/)) return toFutSymbol(market, symbol);
+    else return symbol;
+}
+
+function toSymbol(market, detail) {
+    if (detail.secType == 'FUT') return fromFutSymbol(market, detail.localSymbol);
+    else if (detail.secType == 'CASH') return detail.symbol;
+    else if (detail.secType == 'OPT') return detail.localSymbol;
+    else return ~detail.localSymbol.indexOf(' ') ? detail.localSymbol.replace(' ', '.') : detail.localSymbol;
+}
+
+function toFutSymbol(market, symbol) {
+    if ((market||{}).month_abbreviation) {
+        const abbreviations = {F: 'JAN', G: 'FEB', H: 'MAR', J: 'APR', K: 'MAY', M: 'JUN', N: 'JUL', Q: 'AUG', U: 'SEP', V: 'OCT', X: 'NOV', Z: 'DEC'};
+        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)$/);
+        if (!m) return symbol;
+        const [, root, code, decade, year] = m;
+        const space = '    '.substring(root.length);
+        return `${root}${space} ${abbreviations[code]} ${decade}${year}`;
+    } else {
+        return symbol.replace(/^(.*)([A-Z])(\d)(\d)$/,'$1$2$4');
+    }
+}
+
+function toCashSymbol(market, symbol) {
+    return `${symbol}.${market.currency}`;
 }
 
 async function asMarket(markets, ib, contract) {

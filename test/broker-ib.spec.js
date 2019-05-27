@@ -68,4 +68,53 @@ describe("broker-ib", function() {
     it("should list open orders", function() {
         return client({action: 'orders'}).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:20,breakLength:100}))||d);
     });
+    it.skip("should submit order", async() => {
+        const order = await client({action: 'BUY', quant: 1, limit: 270, type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'ARCA'}).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:20,breakLength:100}))||d);
+        await client({...order, action: 'cancel'});
+    });
+    it.skip("should submit attached order", async() => {
+        const orders = await client({
+            action: 'BUY', quant: 1, limit: 270, type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'ARCA',
+            attached:[{
+                action: 'SELL', quant: 1, type: 'STP', stop: 260, tif: 'DAY', symbol: 'SPY', market: 'ARCA'
+            }]
+        }).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:20,breakLength:100}))||d);
+        await client({...order, action: 'cancel'});
+    });
+    it.skip("should submit attached order", async() => {
+        const orders = await client({
+            action: 'BUY', quant: 1, limit: 270, type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'ARCA',
+            attached:[{
+                action: 'SELL', quant: 1, type: 'STP', stop: 260, tif: 'DAY', symbol: 'SPY', market: 'ARCA'
+            }]
+        }).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:20,breakLength:100}))||d);
+        const profit = await client({
+            attach_ref: _.first(orders).order_ref,
+            action: 'SELL', quant: 1, type: 'LMT', limit: 280, tif: 'DAY', symbol: 'SPY', market: 'ARCA'
+        });
+    });
+    it.skip("should submit OCA order", async() => {
+        const orders = await client({
+            action: 'OCA',
+            attached: [{
+                action: 'BUY', quant: 1, limit: 270, type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'ARCA'
+            }, {
+                action: 'BUY', quant: 1, limit: 50, type: 'LMT', tif: 'DAY', symbol: 'XLU', market: 'ARCA'
+            }]
+        }).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:20,breakLength:100}))||d);
+        const xlp = await client({
+            attach_ref: _.first(orders).attach_ref,
+            action: 'BUY', quant: 1, limit: 50, type: 'LMT', tif: 'DAY', symbol: 'XLP', market: 'ARCA'
+        });
+    });
+    it.skip("should submit combo order", async() => {
+        const orders = await client({
+            action: 'SELL', quant: 1, limit: 3, type: 'LMT', tif: 'DAY',
+            attached: [{
+                action: 'SELL', quant: 1, type: 'LEG', symbol: 'SPX   190719P02400000', market: 'OPRA'
+            }, {
+                action: 'BUY', quant: 1, type: 'LEG', symbol: 'SPX   190719P02450000', market: 'OPRA'
+            }]
+        }).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:20,breakLength:100}))||d);
+    });
 });
