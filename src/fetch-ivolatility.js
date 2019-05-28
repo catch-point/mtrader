@@ -146,7 +146,6 @@ async function lookup(options) {
     const right = symbol.charAt(12);
     const dollar = symbol.substring(13, 18);
     const decimal = symbol.substring(18, 21);
-    const mo = right_month_alpha[right][month];
     const strike = +Big(dollar).add(Big(decimal).div(1000));
     const exdate = `20${year}-${month}-${day}`;
     const expiry = moment.tz(exdate, options.tz);
