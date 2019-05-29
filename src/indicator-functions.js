@@ -300,10 +300,10 @@ const functions = module.exports.functions = {
 function adj(bars) {
     const last = _.last(bars);
     if (!last.adj_close) return bars;
-    const norm = Big(last.close).div(last.adj_close);
+    const norm = +last.adj_close ? Big(last.close).div(last.adj_close) : 1;
     return bars.map(bar => {
-        const scale = Big(bar.adj_close).div(bar.close).times(norm);
-        if (Math.abs(scale -1) < 0.0000001) return bar;
+        const scale = +bar.close ? Big(bar.adj_close).div(bar.close).times(norm) : norm;
+        if (Big(scale).minus(1).abs().lt(0.0000001)) return bar;
         else return _.defaults({
             open: +Big(bar.open||0).times(scale),
             high: +Big(bar.high||0).times(scale),
