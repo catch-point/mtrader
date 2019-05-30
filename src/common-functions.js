@@ -702,7 +702,7 @@ const functions = module.exports.functions = {
             const callPut = cp == 'P' ? 'put' : cp == 'C' ? 'call' :
                 cp.charAt(0).toUpperCase() == 'P' ? 'put' :
                 cp.charAt(0).toUpperCase() == 'C' ? 'call': null;
-            if (!cp) throw Error("Must include a right 'C'/'P' value");
+            if (!cp) throw Error(`Must include a right 'C'/'P' value in BS(${[s, k, t, v, r, cp].join(', ')})`);
             return bs.blackScholes(s, k, t, v, r, callPut);
         };
     }, {
@@ -719,7 +719,7 @@ const functions = module.exports.functions = {
             const callPut = cp == 'P' ? 'put' : cp == 'C' ? 'call' :
                 cp.charAt(0).toUpperCase() == 'P' ? 'put' :
                 cp.charAt(0).toUpperCase() == 'C' ? 'call': null;
-            if (!cp) throw Error("Must include a right 'C'/'P' value");
+            if (!cp) throw Error(`Must include a right 'C'/'P' value in BS(${[s, k, t, v, r, cp].join(', ')})`);
             return iv.getImpliedVolatility(c, s, k, t, r, callPut) * 100;
         };
     }, {
