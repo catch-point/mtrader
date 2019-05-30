@@ -1113,17 +1113,16 @@ describe("broker-simulation", function() {
                     currency: 'USD', secType: 'OPT', multiplier: 100
                 }]
             });
-            await broker({asof: '2019-05-28', action: 'cancel', order_ref: spread[1].order_ref});
-            await broker({asof: '2019-05-28', action: 'cancel', order_ref: spread[2].order_ref});
+            await broker({asof: '2019-05-28', action: 'cancel', order_ref: spread[0].order_ref});
             await broker({asof: '2019-05-28', action: 'orders'})
               .should.eventually.be.like([{
+                status: 'cancelled',
+                action: 'BUY', quant: 1, type: 'MKT', limit: '', tif: 'DAY',
+            }, {
                 status: 'cancelled',
                 action: 'SELL', quant: 1, type: 'LEG',
                 symbol: 'SPX   190719P02400000', market: 'OPRA',
                 currency: 'USD', secType: 'OPT', multiplier: 100
-            }, {
-                status: 'cancelled',
-                action: 'BUY', quant: 1, type: 'MKT', limit: '', tif: 'DAY',
             }, {
                 status: 'cancelled',
                 action: 'BUY', quant: 1, type: 'LEG',

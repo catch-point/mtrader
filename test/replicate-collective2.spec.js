@@ -1950,7 +1950,7 @@ describe("replicate-collective2", function() {
                 order_ref: "94974799"
             }]);
         });
-        it("IBM submit BTO with stoploss and different quant", function() {
+        it("IBM submit BTO with stoploss and different quant", async() => {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
 	          closeVWAP_timestamp: "1434055203",
 	          strike: "0",
@@ -1986,7 +1986,7 @@ describe("replicate-collective2", function() {
                 isStopOrder: 120,
                 duration: 'GTC'
             }]}));
-            return Replicate(broker, function(options) {
+            await Replicate(broker, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -2016,7 +2016,17 @@ describe("replicate-collective2", function() {
                 quant_threshold: 5,
                 now: moment.tz("2015-06-16T15:59:59", 'America/New_York').valueOf(),
                 begin: "2015-01-01"
-            }).then(() => fs.readFileSync(submitSignal, 'utf8')).then(JSON.parse)
+            }).should.eventually.be.like([{
+                action: 'BUY',
+                quant: 52,
+                type: 'MKT',
+                tif: 'GTC',
+                symbol: 'IBM',
+                market: 'NYSE',
+                currency: 'USD',
+                secType: 'STK'
+            }]);
+            await util.promisify(fs.readFile)(submitSignal, 'utf8').then(JSON.parse)
               .should.eventually.be.like({signal:{
                 action: 'BTO',
                 quant: 52,

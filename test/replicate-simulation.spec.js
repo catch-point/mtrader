@@ -262,6 +262,114 @@ describe("replicate-simulation", function() {
                 limit: '305'
             }]);
         });
+        it("Combine default order with LOC order for CSU", async() => {
+            await broker({
+                asof: '2019-05-29T00:00:00-04:00',
+                symbol: 'CSU',
+                market: 'TSE',
+                currency: 'CAD',
+                secType: 'STK',
+                multiplier: '',
+                action: 'BUY',
+                quant: 4,
+                type: 'MOC',
+                tif: 'DAY'
+            });
+            return Replicate(broker, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                     quant: '6',
+                     symbol: 'CSU',
+                     market: 'TSE',
+                     secType: 'STK',
+                     type: 'LOC',
+                     limit: '1171.24',
+                     tif: 'DAY',
+                     status: 'pending',
+                     traded_at: '2019-05-30T16:00:00-04:00',
+                     traded_price: '1175.215'
+                }]);
+            })({
+                now: "2019-05-30T12:00:00",
+                currency: 'CAD',
+                markets: ['TSE']
+            }).should.eventually.be.like([{
+                action: 'BUY',
+                 quant: 2,
+                 symbol: 'CSU',
+                 market: 'TSE',
+                 secType: 'STK',
+                 type: 'LOC',
+                 limit: '1171.24',
+                 tif: 'DAY'
+            }]);
+        });
+        it("Combine same side orders for TRI", async() => {
+            await broker({asof: '2019-05-29T00:00:00-04:00',
+                symbol: 'TRI',
+                market: 'TSE',
+                currency: 'CAD',
+                secType: 'STK',
+                multiplier: '',
+                action: 'BUY',
+                quant: 283,
+                position: 283,
+                price: 85.77,
+                type: 'MOC',
+                tif: 'DAY'
+            });
+            return Replicate(broker, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    quant: '281',
+                    symbol: 'TRI',
+                    market: 'TSE',
+                    secType: 'STK',
+                    type: 'MOC',
+                    tif: 'DAY',
+                    traded_at: '2019-05-28T16:00:00-04:00',
+                    traded_price: '85.77'
+                }, {
+                    action: 'BUY',
+                    quant: '65',
+                    symbol: 'TRI',
+                    market: 'TSE',
+                    secType: 'STK',
+                    type: 'LOC',
+                    limit: '85.92',
+                    tif: 'DAY',
+                    traded_at: '2019-05-29T16:00:00-04:00',
+                    traded_price: '85.77'
+                }, {
+                    action: 'BUY',
+                    quant: '48',
+                    symbol: 'TRI',
+                    market: 'TSE',
+                    secType: 'STK',
+                    type: 'LOC',
+                    limit: '86.1',
+                    tif: 'DAY',
+                    status: 'pending',
+                    traded_at: '2019-05-30T16:00:00-04:00',
+                    traded_price: '85.835'
+                }]);
+            })({
+                now: "2019-05-30T12:00:00",
+                currency: 'CAD',
+                markets: ['TSE']
+            }).should.eventually.be.like([{
+                action: 'BUY',
+                quant: 111,
+                symbol: 'TRI',
+                market: 'TSE',
+                secType: 'STK',
+                type: 'LOC',
+                limit: '86.1',
+                tif: 'DAY'
+            }]);
+        });
     });
     describe("Options", function() {
         it("submit BUY combo order", async() => {

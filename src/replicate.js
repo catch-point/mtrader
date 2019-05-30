@@ -129,8 +129,8 @@ async function replicate(broker, collect, options) {
     });
     const orders = portfolio.reduce((orders, contract) => {
         const [symbol, market] = contract.match(/^(.+)\W(\w+)$/);
-        const d = desired[contract] || { symbol, market, position:0, asof: 0 };
-        const w = working[contract] || { symbol, market, position:0, asof: 0 };
+        const d = desired[contract] || { symbol, market, position:0, asof: options.begin };
+        const w = working[contract] || { symbol, market, position:0, asof: options.begin };
         const quant_threshold = getQuantThreshold(w, options);
         const update = updateWorking(d, w, _.defaults({quant_threshold}, options));
         if (!update.length) return orders;
@@ -196,7 +196,7 @@ async function getDesiredPositions(balances, collect, options) {
         const market = order.market;
         const contract = `${order.symbol}.${order.market}`;
         const prior = positions[contract] ||
-            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'secType', 'multiplier'), {position: 0, asof: 0});
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'secType', 'multiplier'), {position: 0, asof: options.begin});
         return _.defaults({
             [contract]: advance(prior, order, options)
         }, positions);
@@ -234,7 +234,7 @@ async function getWorkingPositions(broker, options) {
         const symbol = order.symbol;
         const market = order.market;
         const prior = positions[contract] ||
-            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'secType', 'multiplier'), {position: 0, asof: 0});
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'secType', 'multiplier'), {position: 0, asof: options.begin});
         return _.defaults({
             [contract]: advance(prior, order, options)
         }, positions);
@@ -282,8 +282,11 @@ async function submitOrders(broker, orders, options) {
         };
     });
     const pending_orders = _.difference(orders, _.flatten(order_legs)).concat(combo_orders);
-    const submitted = await Promise.all(pending_orders.map(async(order) => {
-        return await broker({...options, ...order}).catch(err => err);
+    const grouped_orders = _.values(_.groupBy(pending_orders, ord => `${ord.symbol}.${ord.market}`));
+    const submitted = await Promise.all(grouped_orders.map(async(orders) => {
+        return orders.reduce(async(promise, order) => {
+            return (await promise).concat(await broker({...options, ...order}));
+        }, []).catch(err => err);
     }));
     const errors = submitted.filter(posted => !_.isArray(posted));
     if (errors.length > 1) errors.forEach((err, i) => {
@@ -480,9 +483,11 @@ function cancelSignal(desired, working, options) {
 function appendSignal(upon, ds, options) {
     const reversed = upon.find(ord => isReverse(ord, ds, options));
     const replaced = upon.find(ord => ord.action != 'cancel' &&
-        ord.action != ds.action && ord.type == ds.type && +ord.quant < +ds.quant);
+        ord.action != ds.action && sameOrderType(ord, ds, options) && +ord.quant < +ds.quant);
     const reduced = upon.find(ord => ord.action != 'cancel' &&
-        ord.action != ds.action && ord.type == ds.type && +ord.quant > +ds.quant);
+        ord.action != ds.action && sameOrderType(ord, ds, options) && +ord.quant > +ds.quant);
+    const increased = upon.find(ord => ord.action != 'cancel' &&
+        ord.action == ds.action && sameOrderType(ord, ds, options));
     if (reversed)
         return _.without(upon, reversed);
     else if (replaced)
@@ -492,6 +497,10 @@ function appendSignal(upon, ds, options) {
     else if (reduced)
         return _.without(upon, reduced).concat({
             ...reduced, quant: reduced.quant - ds.quant
+        });
+    else if (increased)
+        return _.without(upon, increased).concat({
+            ...ds, quant: +increased.quant + +ds.quant
         });
     else
         return upon.concat(ds);
@@ -512,8 +521,12 @@ function isReverse(a, b, options) {
     if (!a || !b) return false;
     const threshold = options.quant_threshold;
     return a.action != 'cancel' && b.action != 'cancel' &&
-        a.action != b.action && a.type == b.type &&
+        a.action != b.action && sameOrderType(a, b, options) &&
         Math.abs(a.quant - b.quant) <= (threshold || 0);
+}
+
+function sameOrderType(a, b, options) {
+    return a.type == b.type || isStopOrder(a) == isStopOrder(b) && a.type == (options.default_order_type || 'MKT');
 }
 
 /**
