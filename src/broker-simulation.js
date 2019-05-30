@@ -279,8 +279,15 @@ async function advance(barsFor, commissions, db, options) {
     const orders = await listOrders(db, {});
     const positions = await listPositions(db, {});
     const balances = await listBalances(db, {});
-    const pending = await Promise.all(orders.map(async(order) => fillOrder(barsFor, order, options)));
-    const filled = pending.filter(order => order.status == 'filled');
+    const all_legs = orders.filter(ord => ord.type == 'LEG');
+    const pending = [].concat(...await Promise.all(orders.map(async(order) => {
+        const legs = all_legs.filter(ord => ord.attach_ref == order.order_ref);
+        if (order.type == 'LEG') return [];
+        else if (order.status != 'working') return [order].concat(legs);
+        else return fillOrder(barsFor, order, legs, options);
+    })));
+    const combos = _.uniq(all_legs.map(ord => ord.attach_ref));
+    const filled = pending.filter(ord => ord.status == 'filled' && !~combos.indexOf(ord.order_ref));
     const complete = pending.map(order => {
         if (order.status == 'pending' && order.attach_ref) {
           const parent = filled.find(parent => parent.order_ref == order.attach_ref);
@@ -446,17 +453,29 @@ async function cancelOrder(db, options) {
         const cancelling = working.find(sameOrder(order));
         if (!cancelling) {
             const too_late = completed.find(sameOrder(order));
-            if (too_late) return too_late;
+            if (too_late) return [too_late];
             else throw Error(`Order ${options.order_ref} does not exist`);
         }
-        const cancelled = {...cancelling, asof: now.format(), status: 'cancelled'};
+        const target_order = cancelling.type == 'LEG' &&
+            working.every(ord => ord == cancelling || ord.attach_ref != cancelling.attach_ref) ?
+            working.find(ord => ord.order_ref == cancelling.attach_ref) : cancelling;
+        const cancelling_orders = [target_order].concat(findAttachedOrders(target_order.order_ref, working));
+        const cancelled_orders = cancelling_orders.map(ord => ({
+            ...ord, asof: now.format(), status: 'cancelled'
+        }));
         const replacement = completed.concat(
-            working.filter(order => order != cancelling),
-            cancelled
+            working.filter(order => !~cancelling_orders.indexOf(order)),
+            cancelled_orders
         );
         await orders.replaceWith(replacement, recent_month);
-        return [cancelled];
+        return cancelled_orders;
     });
+}
+
+function findAttachedOrders(order_ref, orders) {
+    if (!order_ref) return [];
+    return [].concat(...orders.filter(ord => ord.attach_ref == order_ref)
+      .map(ord => [ord].concat(findAttachedOrders(ord.order_ref, orders))));
 }
 
 async function oneCancelsAllOrders(db, options) {
@@ -496,12 +515,18 @@ async function submitOrder(db, options) {
 }
 
 async function appendOrders(coll, recent_month, current_month, options) {
-    expect(options).to.have.property('tif').that.is.oneOf(['GTC', 'DAY', 'IOC']);
-    expect(options).to.have.property('type').that.is.oneOf(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']);
-    expect(options).to.have.property('symbol').that.is.a('string');
-    expect(options).to.have.property('market').that.is.a('string');
-    expect(options).to.have.property('currency').that.is.a('string');
-    expect(options).to.have.property('secType').that.is.oneOf(['STK', 'FUT', 'OPT']);
+    if (options.type != 'LEG') {
+        expect(options).to.have.property('tif').that.is.oneOf(['GTC', 'DAY', 'IOC']);
+        expect(options).to.have.property('type').that.is.oneOf(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']);
+    } else if (!_.isEmpty(options.attached)) {
+        expect(options).not.to.have.property('attached');
+    }
+    if (_.isEmpty(options.attached) || options.attached.every(leg => leg.type != 'LEG')) {
+        expect(options).to.have.property('symbol').that.is.a('string');
+        expect(options).to.have.property('market').that.is.a('string');
+        expect(options).to.have.property('currency').that.is.a('string');
+        expect(options).to.have.property('secType').that.is.oneOf(['STK', 'FUT', 'OPT']);
+    }
     const now = moment(options.asof || options.now);
     const data = coll.exists(recent_month) ?
         await coll.readFrom(recent_month) : [];
@@ -514,7 +539,7 @@ async function appendOrders(coll, recent_month, current_month, options) {
         'order_ref', 'attach_ref',
         'symbol', 'market', 'secType', 'currency', 'multiplier'
     ]);
-    const order_ref = order.order_ref || nextval();
+    const order_ref = options.type != 'LEG' ? order.order_ref || nextval() : null;
     const modifying = order.order_ref && working.find(sameOrder(order));
     const status = order.attach_ref && working.some(ord => ord.order_ref == order.attach_ref) ?
         'pending' : 'working';
@@ -528,15 +553,53 @@ async function appendOrders(coll, recent_month, current_month, options) {
         const result = await promise;
         const attached = await appendOrders(coll, current_month, current_month, {
             ..._.omit(options, 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif', 'order_ref'),
-            attach_ref: order_ref,
             attached: [],
-            ...attached_order
+            ...attached_order,
+            attach_ref: order_ref
         });
         return result.concat(attached);
     }, [submitted]);
 }
 
-async function fillOrder(barsFor, order, options) {
+async function fillOrder(barsFor, order, legs, options) {
+    if (_.isEmpty(legs) || legs.every(ord => ord.type != 'LEG'))
+        return [await fillSingleOrder(barsFor, order, options)];
+    expect(order).to.have.property('type').that.is.oneOf(['MKT', 'MOO', 'MOC', 'LOO', 'LOC']);
+    const filled_legs = await Promise.all(legs.map(async(leg) => {
+        return fillSingleOrder(barsFor, {
+            ...leg,
+            action: order.action == 'BUY' ? leg.action : leg.action == 'BUY' ? order.action : 'BUY',
+            quant: order.quant == 1 ? leg.quant : order.quant * leg.quant,
+            type: order.type == 'LOO' ? 'MOO' : order.type == 'LOC' ? 'MOC' : order.type,
+            tif: order.tif,
+            status: order.status
+        }, options);
+    }));
+    const asof = _.last(_.sortBy(filled_legs.map(leg => leg.asof)));
+    if (filled_legs.some(leg => leg.status == 'cancelled'))
+        return [{...order, asof, status: 'cancelled'}]
+          .concat(legs.map(leg => ({...leg, status: 'cancelled'})));
+    if (filled_legs.some(leg => leg.status != 'filled'))
+        return [{...order, asof}].concat(legs);
+    const traded_price = filled_legs.reduce((gross_price, leg) => {
+        const value = Big(leg.traded_price||1).times(leg.quant);
+        if (leg.action == 'BUY') return gross_price.add(value);
+        else return gross_price.minus(value);
+    }, Big(0)).div(order.quant).toString();
+    if (order.type == 'LOO' || order.type == 'LOC') {
+        if (order.action == 'BUY' && +order.limit < +traded_price ||
+                order.action == 'SELL' && +traded_price < +order.limit) {
+            if (order.tif == 'GTC') return [order];
+        }
+    }
+    return [{...order, asof, status: 'filled', traded_price}].concat(legs.map((leg, i) => {
+        return {...leg, ..._.pick(filled_legs[i], 'asof', 'status', 'traded_price')};
+    }));
+}
+
+async function fillSingleOrder(barsFor, order, options) {
+    expect(order).to.have.property('symbol').that.is.ok;
+    expect(order).to.have.property('market').that.is.ok;
     expect(order).to.have.property('tif').that.is.oneOf(['GTC', 'DAY', 'IOC']);
     expect(order).to.have.property('type').that.is.oneOf(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']);
     const all_bars = await barsFor(order.symbol, order.market, order.asof, options);

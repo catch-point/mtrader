@@ -164,7 +164,7 @@ async function collect(quote, callCollect, fields, options) {
             begin: segment, end: options.end
         }, compacted);
     }).map(opts => compactPortfolio(fields, opts.begin, opts.end, opts));
-    const dataset = await Promise.all(optionset.map(opts => callCollect(opts)))
+    const dataset = await Promise.all(optionset.map(opts => callCollect(opts)));
     return _.flatten(dataset, true);
 }
 

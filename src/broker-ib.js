@@ -393,8 +393,10 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const order_id = (await orderByRef(ib, options.order_ref)||{}).orderId || await ib.reqId();
     const order_ref = orderRef(root_ref, order_id, options);
     const contract = await toContract(markets, ib, options);
-    if (contract.secType == 'BAG' && !settings.transmit)
-        throw Error(`Transmit flag must be enabled to send combo orders for ${contract.symbol}`);
+    if (contract.secType == 'BAG' && !settings.transmit) {
+        logger.warn(`Transmit flag must be enabled to submit combo orders for ${contract.symbol} ${order_ref}\n`, options);
+        throw Error(`Transmit flag must be enabled to submit combo orders for ${contract.symbol} ${order_ref}`);
+    }
     const submit_order = {
         ...await orderToIbOrder(ib, settings, contract, options, options),
         orderId: order_id, orderRef: order_ref,
@@ -419,7 +421,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
 }
 
 function orderRef(root_ref, order_id, options) {
-    return options.order_ref || `${(options.type||'').replace(/\W+/g,'')}${root_ref}.${order_id}`;
+    return options.order_ref || `${(options.type||'').replace(/\W+/g,'')}.${root_ref}.${order_id}`;
 }
 
 async function orderByRef(ib, order_ref) {

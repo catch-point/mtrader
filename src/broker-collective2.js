@@ -383,7 +383,7 @@ async function cancelOrder(c2_multipliers, collective2, markets, lookup, options
         'killedwhen', 'tradedwhen', 'postedwhen', 'createdWhen',
         'posted_time_unix', 'canceled_time_unix', 'traded_time_unix'
     ].map(key => +resp[key] || +signal[key] || 0));
-    return _.omit({
+    return [_.omit({
         asof: time ? moment(time, 'X').format() : moment(options.now).format(),
         posted_at: resp.posted_time_unix || resp.postedwhen ?
             moment(resp.posted_time_unix || resp.postedwhen, 'X').format() : null,
@@ -405,7 +405,7 @@ async function cancelOrder(c2_multipliers, collective2, markets, lookup, options
         currency: contract.currency,
         secType: contract.secType,
         multiplier: c2_multipliers[signal.fullSymbol] || c2_multipliers[signal.symbol] || contract.multiplier || 1
-    }, v => v == null);
+    }, v => v == null)];
 }
 
 async function oneCancelsAllOrders(collective2, markets, options) {

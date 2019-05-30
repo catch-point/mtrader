@@ -62,6 +62,10 @@ describe("replicate-simulation", function() {
             asof: '2019-05-04T00:00:00-05:00',
             action: 'deposit', quant: 10000, currency: 'CAD'
         });
+        await broker({
+            asof: '2019-05-04T00:00:00-05:00',
+            action: 'deposit', quant: 10000, currency: 'USD'
+        });
     });
     after(function() {
         config.unset('prefix');
@@ -171,46 +175,46 @@ describe("replicate-simulation", function() {
             return Replicate(broker, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
-                    symbol:	'CP',
-                    market:	'TSE',
-                    traded_at:	'2019-05-17T16:00:00-04:00',
-                    action:	'BUY',
-                    quant:	'63',
-                    type:	'LOC',
-                    limit:	'297.69',
-                    traded_price:	'307.99',
+                    symbol: 'CP',
+                    market: 'TSE',
+                    traded_at: '2019-05-17T16:00:00-04:00',
+                    action: 'BUY',
+                    quant: '63',
+                    type: 'LOC',
+                    limit: '297.69',
+                    traded_price: '307.99',
                     order_ref: 'buy-order'
                 }, {
-                    symbol:	'CP',
-                    market:	'TSE',
-                    traded_at:	'2019-05-23T16:00:00-04:00',
-                    action:	'SELL',
-                    quant:	'9',
-                    type:	'LOC',
-                    limit:	'293.94',
-                    traded_price:	'299'
+                    symbol: 'CP',
+                    market: 'TSE',
+                    traded_at: '2019-05-23T16:00:00-04:00',
+                    action: 'SELL',
+                    quant: '9',
+                    type: 'LOC',
+                    limit: '293.94',
+                    traded_price: '299'
                 }]);
             })({
                 now: "2019-05-23T12:00:00",
                 currency: 'CAD',
                 markets: ['TSE']
             }).should.eventually.be.like([{
-                symbol:	'CP',
-                market:	'TSE',
-                action:	'BUY',
-                quant:	54,
-                type:	'LOC',
-                limit:	'297.69'
+                symbol: 'CP',
+                market: 'TSE',
+                action: 'BUY',
+                quant: 54,
+                type: 'LOC',
+                limit: '297.69'
             }]);
         });
         it("Replace after SELL miss of CP", async() => {
             await broker({
-                symbol:	'CP',
-                market:	'TSE',
-                now:	'2019-05-17T00:00:00-04:00',
-                action:	'BUY',
-                quant:	'63',
-                type:	'MOC',
+                symbol: 'CP',
+                market: 'TSE',
+                now: '2019-05-17T00:00:00-04:00',
+                action: 'BUY',
+                quant: '63',
+                type: 'MOC',
                 tif: 'DAY',
                 currency: 'CAD',
                 secType: 'STK'
@@ -218,45 +222,311 @@ describe("replicate-simulation", function() {
             return Replicate(broker, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
-                    symbol:	'CP',
-                    market:	'TSE',
-                    traded_at:	'2019-05-17T16:00:00-04:00',
-                    action:	'BUY',
-                    quant:	'63',
-                    type:	'LOC',
-                    limit:	'297.69',
-                    traded_price:	'307.99'
+                    symbol: 'CP',
+                    market: 'TSE',
+                    traded_at: '2019-05-17T16:00:00-04:00',
+                    action: 'BUY',
+                    quant: '63',
+                    type: 'LOC',
+                    limit: '297.69',
+                    traded_price: '307.99'
                 }, {
-                    symbol:	'CP',
-                    market:	'TSE',
-                    traded_at:	'2019-05-23T16:00:00-04:00',
-                    action:	'SELL',
-                    quant:	'9',
-                    type:	'LOC',
-                    limit:	'293.94',
-                    traded_price:	'299'
+                    symbol: 'CP',
+                    market: 'TSE',
+                    traded_at: '2019-05-23T16:00:00-04:00',
+                    action: 'SELL',
+                    quant: '9',
+                    type: 'LOC',
+                    limit: '293.94',
+                    traded_price: '299'
                 }, {
-                    symbol:	'CP',
-                    market:	'TSE',
-                    traded_at:	'2019-05-24T16:00:00-04:00',
-                    action:	'BUY',
-                    quant:	'19',
-                    type:	'LOC',
-                    limit:	'305',
-                    traded_price:	'300.21'
+                    symbol: 'CP',
+                    market: 'TSE',
+                    traded_at: '2019-05-24T16:00:00-04:00',
+                    action: 'BUY',
+                    quant: '19',
+                    type: 'LOC',
+                    limit: '305',
+                    traded_price: '300.21'
                 }]);
             })({
                 now: "2019-05-24T12:00:00",
                 currency: 'CAD',
                 markets: ['TSE']
             }).should.eventually.be.like([{
-                symbol:	'CP',
-                market:	'TSE',
-                action:	'BUY',
-                quant:	10,
-                type:	'LOC',
-                limit:	'305'
+                symbol: 'CP',
+                market: 'TSE',
+                action: 'BUY',
+                quant: 10,
+                type: 'LOC',
+                limit: '305'
             }]);
+        });
+    });
+    describe("Options", function() {
+        it("submit BUY combo order", async() => {
+            return Replicate(broker, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    symbol: 'SPX   190621C03075000',
+                    market: 'OPRA',
+                    secType: 'OPT',
+                    currency: 'USD',
+                    multiplier: 100,
+                    name: 'SPX Jun 2019 C 3075',
+                    traded_at: '2019-05-29T16:15:00-04:00',
+                    action: 'BUY',
+                    quant: '3',
+                    position: '0',
+                    type: 'MKT',
+                    offset: '0',
+                    traded_price: '0.15',
+                    basis: '0.3',
+                    commission: '4',
+                    value: '0',
+                    realized: '-7.4',
+                    unrealized: '0',
+                    date: '2019-05-29',
+                    year: '2019',
+                    qtr: '2',
+                    month: '5',
+                    day: '107'
+                }, {
+                    symbol: 'SPX   190621C03125000',
+                    market: 'OPRA',
+                    secType: 'OPT',
+                    currency: 'USD',
+                    multiplier: 100,
+                    name: 'SPX Jun 2019 C 3125',
+                    traded_at: '2019-05-29T16:15:00-04:00',
+                    action: 'SELL',
+                    quant: '3',
+                    position: '0',
+                    type: 'MKT',
+                    offset: '0',
+                    traded_price: '0.05',
+                    basis: '0.18',
+                    commission: '4',
+                    value: '0',
+                    realized: '-8.24',
+                    unrealized: '0',
+                    date: '2019-05-29',
+                    year: '2019',
+                    qtr: '2',
+                    month: '5',
+                    day: '107'
+                }]);
+            })({
+                now: "2019-05-27T12:00:00",
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MKT']
+            }).should.eventually.be.like([{
+                posted_at: '2019-05-27T12:00:00-04:00',
+                asof: '2019-05-27T12:00:00-04:00',
+                action: 'BUY',
+                quant: 3,
+                type: 'MKT',
+                tif: 'DAY'
+            }, {
+                posted_at: '2019-05-27T12:00:00-04:00',
+                asof: '2019-05-27T12:00:00-04:00',
+                action: 'BUY',
+                quant: 1,
+                type: 'LEG',
+                symbol: 'SPX   190621C03075000',
+                market: 'OPRA',
+                secType: 'OPT',
+                currency: 'USD',
+                multiplier: '100'
+            }, {
+                posted_at: '2019-05-27T12:00:00-04:00',
+                asof: '2019-05-27T12:00:00-04:00',
+                action: 'SELL',
+                quant: 1,
+                type: 'LEG',
+                symbol: 'SPX   190621C03125000',
+                market: 'OPRA',
+                secType: 'OPT',
+                currency: 'USD',
+                multiplier: '100'
+            }]);
+        });
+        it("submit SELL combo order", async() => {
+            return Replicate(broker, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    symbol: 'SPX   190621C03075000',
+                    market: 'OPRA',
+                    secType: 'OPT',
+                    currency: 'USD',
+                    multiplier: 100,
+                    name: 'SPX Jun 2019 C 3075',
+                    traded_at: '2019-05-29T16:15:00-04:00',
+                    action: 'SELL',
+                    quant: '3',
+                    position: '0',
+                    type: 'MKT',
+                    offset: '0',
+                    traded_price: '0.15',
+                    basis: '0.3',
+                    commission: '4',
+                    value: '0',
+                    realized: '-7.4',
+                    unrealized: '0',
+                    date: '2019-05-29',
+                    year: '2019',
+                    qtr: '2',
+                    month: '5',
+                    day: '107'
+                }, {
+                    symbol: 'SPX   190621C03125000',
+                    market: 'OPRA',
+                    secType: 'OPT',
+                    currency: 'USD',
+                    multiplier: 100,
+                    name: 'SPX Jun 2019 C 3125',
+                    traded_at: '2019-05-29T16:15:00-04:00',
+                    action: 'BUY',
+                    quant: '3',
+                    position: '0',
+                    type: 'MKT',
+                    offset: '0',
+                    traded_price: '0.05',
+                    basis: '0.18',
+                    commission: '4',
+                    value: '0',
+                    realized: '-8.24',
+                    unrealized: '0',
+                    date: '2019-05-29',
+                    year: '2019',
+                    qtr: '2',
+                    month: '5',
+                    day: '107'
+                }]);
+            })({
+                now: "2019-05-27T12:00:00",
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MKT']
+            }).should.eventually.be.like([{
+                posted_at: '2019-05-27T12:00:00-04:00',
+                asof: '2019-05-27T12:00:00-04:00',
+                action: 'SELL',
+                quant: 3,
+                type: 'MKT',
+                tif: 'DAY'
+            }, {
+                posted_at: '2019-05-27T12:00:00-04:00',
+                asof: '2019-05-27T12:00:00-04:00',
+                action: 'BUY',
+                quant: 1,
+                type: 'LEG',
+                symbol: 'SPX   190621C03075000',
+                market: 'OPRA',
+                secType: 'OPT',
+                currency: 'USD',
+                multiplier: '100'
+            }, {
+                posted_at: '2019-05-27T12:00:00-04:00',
+                asof: '2019-05-27T12:00:00-04:00',
+                action: 'SELL',
+                quant: 1,
+                type: 'LEG',
+                symbol: 'SPX   190621C03125000',
+                market: 'OPRA',
+                secType: 'OPT',
+                currency: 'USD',
+                multiplier: '100'
+            }]);
+        });
+        it("adjust combo order", async() => {
+            await broker({
+                order_ref: 'combo_order',
+                asof: '2019-05-27T12:00:00-04:00',
+                action: 'SELL',
+                quant: 3,
+                type: 'MKT',
+                tif: 'DAY',
+                attached: [{
+                    action: 'BUY',
+                    quant: 1,
+                    type: 'LEG',
+                    symbol: 'SPX   190621C03075000',
+                    market: 'OPRA',
+                    secType: 'OPT',
+                    currency: 'USD',
+                    multiplier: '100'
+                }, {
+                    action: 'SELL',
+                    quant: 1,
+                    type: 'LEG',
+                    symbol: 'SPX   190621C03125000',
+                    market: 'OPRA',
+                    secType: 'OPT',
+                    currency: 'USD',
+                    multiplier: '100'
+                }]
+            });
+            return Replicate(broker, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    symbol: 'SPX   190621C03075000',
+                    market: 'OPRA',
+                    secType: 'OPT',
+                    currency: 'USD',
+                    multiplier: 100,
+                    name: 'SPX Jun 2019 C 3075',
+                    traded_at: '2019-05-29T16:15:00-04:00',
+                    action: 'SELL',
+                    quant: '3',
+                    position: '0',
+                    type: 'MKT',
+                    offset: '0',
+                    traded_price: '0.15',
+                    basis: '0.3',
+                    commission: '4',
+                    value: '0',
+                    realized: '-7.4',
+                    unrealized: '0',
+                    date: '2019-05-29',
+                    year: '2019',
+                    qtr: '2',
+                    month: '5',
+                    day: '107'
+                }, {
+                    symbol: 'SPX   190621C03125000',
+                    market: 'OPRA',
+                    secType: 'OPT',
+                    currency: 'USD',
+                    multiplier: 100,
+                    name: 'SPX Jun 2019 C 3125',
+                    traded_at: '2019-05-29T16:15:00-04:00',
+                    action: 'BUY',
+                    quant: '3',
+                    position: '0',
+                    type: 'MKT',
+                    offset: '0',
+                    traded_price: '0.05',
+                    basis: '0.18',
+                    commission: '4',
+                    value: '0',
+                    realized: '-8.24',
+                    unrealized: '0',
+                    date: '2019-05-29',
+                    year: '2019',
+                    qtr: '2',
+                    month: '5',
+                    day: '107'
+                }]);
+            })({
+                now: "2019-05-27T12:00:00",
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MKT']
+            })
+              .then(d=>d.forEach(d=>console.log(d))||d)
+              .should.eventually.be.like([]);
         });
     });
 });

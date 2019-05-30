@@ -97,6 +97,14 @@ function help(broker, collect) {
             quant_threshold_percent: {
                 usage: '<decimal>',
                 description: "Minimum quantity, relative to current position, that must change to generate a change order"
+            },
+            default_order_type: {
+                usage: '<orderType>',
+                description: "Default order type to close unexpected positions, defaults to MKT"
+            },
+            combo_order_types: {
+                usage: '[<orderType>...]',
+                description: "Order types that can be combined into combo BAG orders with matching legs"
             }
         }
     })).then(help => [help]);
@@ -146,12 +154,7 @@ async function replicate(broker, collect, options) {
     }, []);
     await check();
     logger.trace("replicate submit orders", ...orders);
-    const submitted = await Promise.all(orders.map(async(order) => broker({...options, ...order}), []));
-    const log = s => {
-        logger.info(s.action, s.quant, s.symbol, s.market, s.type, s.limit || s.stop || '', s.tif, s.order_ref, s.status);
-        return s;
-    }
-    return [].concat(...submitted).map(log);
+    return submitOrders(broker, orders, options);
 }
 
 /**
@@ -186,7 +189,8 @@ async function getDesiredPositions(balances, collect, options) {
             stoploss: row.stoploss,
             tif: row.tif || row.duration || 'DAY',
             status: traded_at && moment(traded_at).isAfter(options.now) ? 'pending' : null,
-            traded_at: traded_at
+            traded_at: traded_at,
+            traded_price: row.traded_price
         });
         const symbol = order.symbol;
         const market = order.market;
@@ -211,7 +215,18 @@ async function getWorkingPositions(broker, options) {
     const positions = _.mapObject(all_positions, positions => positions.reduce((net, pos) => {
         return {...net, position: +net.position + +pos.position};
     }));
-    const working = _.groupBy(broker_orders.filter(ord => {
+    const inline_legs = broker_orders.map(leg => {
+        if (leg.type != 'LEG') return leg;
+        const combo = broker_orders.find(combo => combo.order_ref == leg.attach_ref);
+        return {
+            ...leg,
+            ..._.pick(combo, 'type', 'limit', 'offset', 'stop', 'tif', 'status'),
+            action: combo.action == 'BUY' ? leg.action : leg.action == 'BUY' ? 'SELL' : 'BUY',
+            quant: Big(combo.quant).times(leg.quant).toString(),
+            order_ref: leg.order_ref || combo.order_ref
+        };
+    });
+    const working = _.groupBy(inline_legs.filter(ord => {
         return ord.status == 'pending' || ord.status == 'working';
     }), ord => `${ord.symbol}.${ord.market}`);
     return _.reduce(working, (positions, orders, contract) => sortOrders(orders)
@@ -235,6 +250,86 @@ function getPortfolio(markets, options, portfolio = []) {
         else if (~markets.indexOf(market)) return portfolio.concat(item);
         else return portfolio;
     }, portfolio);
+}
+
+async function submitOrders(broker, orders, options) {
+    const potential_combos = options.combo_order_types ?
+        orders.filter(ord => ~options.combo_order_types.indexOf(ord.type) && ord.secType == 'OPT') : [];
+    const grouped = _.groupBy(potential_combos, ord => {
+        return [
+            ord.symbol.substring(0, 13), ord.market,
+            ord.secType, ord.currency, ord.multiplier,
+            ord.type, ord.limit, ord.offset, ord.stop, ord.tif
+        ].join(' ');
+    });
+    const order_legs = _.values(grouped).filter(legs => legs.length > 1);
+    const combo_orders = order_legs.map(legs => {
+        const quant = greatestCommonFactor(_.uniq(legs.map(leg => Math.abs(leg.quant))));
+        const traded_price = legs.reduce((net, leg) => {
+            return net.add(Big(leg.traded_price || 1).times(leg.action == 'BUY' ? 1 : -1).times(leg.quant));
+        }, Big(0)).div(quant).toString();
+        return {
+            action: traded_price < 0 ? 'SELL' : 'BUY',
+            quant,
+            ..._.pick(_.first(legs), 'type', 'limit', 'offset', 'stop', 'tif'),
+            attached: legs.map(leg => ({
+                ..._.omit(leg, 'type', 'limit', 'offset', 'stop', 'tif'),
+                action: traded_price < 0 && leg.action == 'BUY' ? 'SELL' :
+                    traded_price < 0 && leg.action == 'SELL' ? 'BUY' : leg.action,
+                quant: Big(leg.quant).div(quant).toString(),
+                type: 'LEG'
+            }))
+        };
+    });
+    const pending_orders = _.difference(orders, _.flatten(order_legs)).concat(combo_orders);
+    const submitted = await Promise.all(pending_orders.map(async(order) => {
+        return await broker({...options, ...order}).catch(err => err);
+    }));
+    const errors = submitted.filter(posted => !_.isArray(posted));
+    if (errors.length > 1) errors.forEach((err, i) => {
+        logger.error("Could not submit order", orders[i], err);
+    });
+    if (errors.length) throw _.last(errors);
+    return logOrders([].concat(...submitted));
+}
+
+function logOrders(orders) {
+    const posted_orders = sortAttachedOrders(orders);
+    const order_stack = [];
+    posted_orders.forEach((ord,i,orders) => {
+        while (ord.attach_ref != _.last(order_stack) && order_stack.length) order_stack.pop();
+        const prefix = order_stack.map(ref => ord.attach_ref == ref ? '  \\_ ' :
+            orders.some((ord,o) => ord.attach_ref == ref && o > i) ? '  |  ' : '     ').join('');
+        logger.info(prefix + ord.action,
+            ord.quant, ord.symbol||'Combo', ord.market||'', ord.type,
+            ord.limit || ord.stop || '', ord.tif||'', ord.order_ref||'', ord.status);
+        if (ord.order_ref) order_stack.push(ord.order_ref);
+    });
+    return posted_orders;
+}
+
+function sortAttachedOrders(orders) {
+    const top = orders.filter(ord => {
+        return !ord.attach_ref ||
+            !orders.some(parent => parent.order_ref == ord.attach_ref);
+    });
+    let sorted = top;
+    while (sorted.length < orders.length) {
+        _.difference(orders, sorted).reduceRight((sorted, ord) => {
+            const idx = sorted.findIndex(parent => parent.order_ref == ord.attach_ref);
+            if (idx < 0) return sorted;
+            sorted.splice(idx + 1, 0, ord);
+            return sorted;
+        }, sorted);
+    }
+    return sorted;
+}
+
+function greatestCommonFactor(numbers) {
+    if (numbers.length == 1) return _.first(numbers);
+    return _.range(Math.min(...numbers), 0, -1).find(dem => {
+        return numbers.every(number => number/dem == Math.floor(number/dem));
+    });
 }
 
 /**
@@ -309,7 +404,8 @@ function updateWorking(desired, working, options) {
             return updateWorking(desired.prior, working, options);
         } else if (similarSignals(ds, ws) && (
                 ws.action == 'BUY' && working.prior.position < desired.position ||
-                ws.action == 'SELL' && working.prior.position > desired.position)) {
+                ws.action == 'SELL' && working.prior.position > desired.position ||
+                ws.type == 'STP' && working.prior.position == desired.position)) {
             // replace order
             expect(ws).to.have.property('order_ref');
             const adj = updateWorking(desired.prior, working.prior, options);
@@ -328,7 +424,8 @@ function updateWorking(desired, working, options) {
             return appendSignal(upon, cond, options);
         }
     } else {
-        const recent_order = ds || desired.last_order || desired;
+        const recent_order = ds || desired.last_order ||
+            {...desired, type: options.default_order_type || 'MKT', tif: 'DAY'};
         return [c2signal({
             ..._.omit(recent_order, 'traded_at'),
             action: desired.position > working.position ? 'BUY' : 'SELL',
