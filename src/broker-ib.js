@@ -371,7 +371,7 @@ async function cancelOrder(markets, ib, settings, options) {
     const cancelled_order = await ib.cancelOrder(ib_order.orderId);
     const contract = cancelled_order.conId ? await ib.reqContract(cancelled_order.conId) :
         (_.first(await ib.reqContractDetails(cancelled_order))||{}).summary || {};
-    const order = ibToOrder(markets, ib, settings, {...ib_order, ...cancelled_order}, options);
+    const order = ibToOrder(markets, ib, settings, {...ib_order, ...cancelled_order}, contract, options);
     return [order];
 }
 
@@ -796,9 +796,12 @@ async function asMarket(markets, ib, contract) {
         return true;
     });
     if (market) return market;
-    const details = ib ? await ib.reqContractDetails(contract): [];
-    if (details.length) return asMarket(markets, null, details[0].summary);
-    else throw Error(`Could not determine market for ${util.inspect(contract, {breakLength:Infinity})}`);
+    const details = ib ? await ib.reqContractDetails(contract.conId ? {conId: contract.conId} : contract): [];
+    return details.reduce(async(promise, detail) => {
+        const prior = await promise.catch(err => err);
+        if (!(prior instanceof Error)) return prior;
+        else return asMarket(markets, null, detail.summary).catch(err => Promise.reject(prior));
+    }, Promise.reject(Error(`Could not determine market for ${util.inspect(contract, {breakLength:Infinity})}`)));
 }
 
 function parseTime(time, ib_tz) {

@@ -246,7 +246,7 @@ async function openBar(ib, options) {
         const bar = await ib.reqMktData({
             conId: options.conId,
             localSymbol: options.symbol,
-            security_type: 'OPT',
+            secType: 'OPT',
             exchange: 'SMART',
             currency: options.currency
         });
@@ -263,7 +263,7 @@ async function openBar(ib, options) {
     const bars = await ib.reqHistoricalData({
             conId: options.conId,
             localSymbol: options.symbol,
-            security_type: 'OPT',
+            secType: 'OPT',
             exchange: 'SMART',
             currency: options.currency
         },
