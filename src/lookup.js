@@ -54,7 +54,7 @@ module.exports = function(fetch) {
         return options.offline ? fetchOffline(options) :
             options.read_only ? fetchReadOnly(options) : fetchOnline(options);
     };
-    self.close = () => store.close();
+    self.close = () => Promise.resolve();
     return self;
 };
 
@@ -88,23 +88,27 @@ function fetchOptionsFactory(fetch, offline, read_only) {
         const symbol = options.symbol.toUpperCase();
         const market = options.market;
         const markets = config('markets');
-        const args = _.toArray(arguments);
         return memoizeFirstLookup(symbol, market).then(security => {
-            return _.defaults(
-                _.omit(markets[security.market] || {}, 'datasources', 'label', 'description'),
-                markets[security.market] && convertTime(markets[security.market]),
+            return _.defaults({},
                 security,
-                options
+                options,
+                markets[security.market] && convertTime(markets[security.market]),
+                markets[security.market] && {
+                    currency: markets[security.market].currency,
+                    security_type: markets[security.market].default_security_type
+                }
             );
         }, err => {
             memoizeFirstLookup.cache = {};
             if (!market) throw err;
             logger.debug("Fetch lookup failed on ", symbol + '.' + market, err);
-            return _.defaults(
-                _.omit(markets[market] || {}, 'datasources', 'label', 'description'),
-                markets[market] && convertTime(markets[market]),
+            return _.defaults({},
                 options,
-                {symbol: symbol}
+                markets[market] && convertTime(markets[market]),
+                markets[market] && {
+                    currency: markets[market].currency,
+                    security_type: markets[market].default_security_type
+                }
             );
         });
     };

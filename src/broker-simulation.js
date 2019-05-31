@@ -38,7 +38,9 @@ const Big = require('big.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
 const storage = require('./storage.js');
+const Fetch = require('./mtrader-fetch.js');
 const Collect = require('./mtrader-collect.js');
+const Lookup = require('./lookup.js');
 const expect = require('chai').expect;
 
 const majors = ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'];
@@ -58,6 +60,8 @@ module.exports = function(settings) {
     const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     const store = storage(lib_dir);
     const collect = new Collect(settings);
+    const fetch = new Fetch(settings);
+    const lookup = new Lookup(fetch);
     let advance_lock = Promise.resolve();
     return _.extend(async(options) => {
         if (options.help) return helpOptions();
@@ -67,12 +71,14 @@ module.exports = function(settings) {
             if (options.action != 'reset') advance_lock = advance_lock
                 .then(() => advance(barsFor_fn, settings.commissions, db, options));
             await advance_lock;
-            return dispatch(barsFor_fn, db, options);
+            return dispatch(barsFor_fn, db, lookup, options);
         });
     }, {
         close() {
             return Promise.all([
+                lookup.close(),
                 collect.close(),
+                fetch.close(),
                 store.close()
             ]);
         }
@@ -320,7 +326,7 @@ async function advance(barsFor, commissions, db, options) {
     await updateBalance(barsFor, db, advanced_positions, options);
 }
 
-async function dispatch(barsFor_fn, db, options) {
+async function dispatch(barsFor_fn, db, lookup, options) {
     expect(options).to.have.property('action');
     switch(options.action) {
         case 'reset': return reset(db, options);
@@ -330,9 +336,9 @@ async function dispatch(barsFor_fn, db, options) {
         case 'positions': return listPositions(db, options);
         case 'orders': return listOrders(db, options);
         case 'cancel': return cancelOrder(db, options);
-        case 'OCA': return oneCancelsAllOrders(db, options);
+        case 'OCA': return oneCancelsAllOrders(db, lookup, options);
         case 'BUY':
-        case 'SELL': return submitOrder(db, options);
+        case 'SELL': return submitOrder(db, lookup, options);
         default: expect(options).to.have.property('action').to.be.oneOf([
             'deposit', 'withdraw',
             'balances', 'positions', 'orders',
@@ -478,7 +484,7 @@ function findAttachedOrders(order_ref, orders) {
       .map(ord => [ord].concat(findAttachedOrders(ord.order_ref, orders))));
 }
 
-async function oneCancelsAllOrders(db, options) {
+async function oneCancelsAllOrders(db, lookup, options) {
     const now = moment(options.asof || options.now);
     const coll = await db.collection('orders');
     const current_month = now.format('YYYYMM');
@@ -494,7 +500,7 @@ async function oneCancelsAllOrders(db, options) {
         const order_ref = options.order_ref || nextval();
         return (options.attached||[]).reduce(async(promise, attached_order) => {
             const result = await promise;
-            const attached = await appendOrders(coll, current_month, current_month, {
+            const attached = await appendOrders(lookup, coll, current_month, current_month, {
                 ..._.omit(options, 'action', 'attached'),
                 attach_ref: order_ref,
                 ...attached_order
@@ -504,28 +510,30 @@ async function oneCancelsAllOrders(db, options) {
     });
 }
 
-async function submitOrder(db, options) {
+async function submitOrder(db, lookup, options) {
     const now = moment(options.asof || options.now);
     const coll = await db.collection('orders');
     const current_month = now.format('YYYYMM');
     const recent_month = _.last(coll.listNames()) || current_month;
     return coll.lockWith(_.uniq([recent_month, current_month]), () => {
-        return appendOrders(coll, recent_month, current_month, options);
+        return appendOrders(lookup, coll, recent_month, current_month, options);
     });
 }
 
-async function appendOrders(coll, recent_month, current_month, options) {
+async function appendOrders(lookup, coll, recent_month, current_month, options) {
     if (options.order_type != 'LEG') {
         expect(options).to.have.property('tif').that.is.oneOf(['GTC', 'DAY', 'IOC']);
         expect(options).to.have.property('order_type').that.is.oneOf(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']);
     } else if (!_.isEmpty(options.attached)) {
         expect(options).not.to.have.property('attached');
     }
+    const contract = options.symbol && (!options.market || !options.security_type || !options.currency) ?
+        await lookup(_.pick(options, 'symbol', 'market')) : {};
     if (_.isEmpty(options.attached) || options.attached.every(leg => leg.order_type != 'LEG')) {
         expect(options).to.have.property('symbol').that.is.a('string');
-        expect(options).to.have.property('market').that.is.a('string');
-        expect(options).to.have.property('currency').that.is.a('string');
-        expect(options).to.have.property('security_type').that.is.oneOf(['STK', 'FUT', 'OPT']);
+        expect(options.market || contract.market).to.be.a('string');
+        expect(options.currency || contract.currency).to.be.a('string');
+        expect(options.security_type || contract.security_type).to.be.oneOf(['STK', 'FUT', 'OPT']);
     }
     const now = moment(options.asof || options.now);
     const data = coll.exists(recent_month) ?
@@ -534,11 +542,13 @@ async function appendOrders(coll, recent_month, current_month, options) {
     if (recent_month != current_month) await coll.replaceWith(completed, recent_month);
     const current_completed = recent_month == current_month ? completed : [];
     const working = data.filter(o => o.status == 'working' || o.status == 'pending');
-    const order = _.pick(options, [
+    const order = _.extend(_.pick(options, [
         'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'tif',
         'order_ref', 'attach_ref',
         'symbol', 'market', 'security_type', 'currency', 'multiplier'
-    ]);
+    ]), {
+        multiplier: options.multiplier || 1
+    }, _.pick(contract, 'symbol', 'market', 'currency', 'security_type', 'multiplier'));
     const order_ref = options.order_type != 'LEG' ? order.order_ref || nextval() : null;
     const modifying = order.order_ref && working.find(sameOrder(order));
     const status = order.attach_ref && working.some(ord => ord.order_ref == order.attach_ref) ?
@@ -551,7 +561,7 @@ async function appendOrders(coll, recent_month, current_month, options) {
     await coll.replaceWith(replacement, current_month);
     return (options.attached||[]).reduce(async(promise, attached_order) => {
         const result = await promise;
-        const attached = await appendOrders(coll, current_month, current_month, {
+        const attached = await appendOrders(lookup, coll, current_month, current_month, {
             ..._.omit(options, 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'tif', 'order_ref'),
             attached: [],
             ...attached_order,

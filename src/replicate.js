@@ -44,6 +44,7 @@ const config = require('./config.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 const version = require('../package.json').version;
+const Lookup = require('./lookup.js');
 
 /**
  * Aligns the working orders on a broker with the order rows from the collect result.
@@ -51,8 +52,9 @@ const version = require('../package.json').version;
  * conditional upon previous orders with the same contract.
  * Assumes no orders are conditional upon a STP order.
  */
-module.exports = function(broker, collect) {
+module.exports = function(broker, fetch, collect) {
     let promiseHelp;
+    const lookup = new Lookup(fetch);
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(broker, collect);
         if (options.help) return promiseHelp;
@@ -60,11 +62,11 @@ module.exports = function(broker, collect) {
             const opts = _.defaults({
                 now: moment(options.now).valueOf()
             }, _.pick(options, _.keys(_.first(help).options)));
-            return replicate(broker, collect, opts);
+            return replicate(broker, collect, lookup, opts);
         });
     }, {
         close() {
-            return Promise.resolve();
+            return lookup.close();
         }
     });
 };
@@ -105,6 +107,10 @@ function help(broker, collect) {
             combo_order_types: {
                 usage: '[<order_type>...]',
                 description: "Order types that can be combined into combo BAG orders with matching legs"
+            },
+            default_multiplier: {
+                usage: '<number>',
+                description: "Default value multiplier defaults to 1"
             }
         }
     })).then(help => [help]);
@@ -113,10 +119,10 @@ function help(broker, collect) {
 /**
  * Aligns the working orders on the given broker with the order rows from the collect result
  */
-async function replicate(broker, collect, options) {
+async function replicate(broker, collect, lookup, options) {
     const check = interrupt();
     const balances = await broker({action: 'balances', asof: options.begin, now: options.now});
-    const desired = await getDesiredPositions(balances, collect, options);
+    const desired = await getDesiredPositions(balances, collect, lookup, options);
     const working = await getWorkingPositions(broker, options);
     const portfolio = _.uniq(Object.keys(desired).concat(getPortfolio(options.markets, options))).sort();
     logger.trace("replicate portfolio", ...portfolio);
@@ -160,7 +166,7 @@ async function replicate(broker, collect, options) {
 /**
  * Collects the options results and converts the orders into positions
  */
-async function getDesiredPositions(balances, collect, options) {
+async function getDesiredPositions(balances, collect, lookup, options) {
     const cash_acct = balances.every(bal => bal.margin == null);
     const local_balances = balances.filter(options.currency ?
         bal => bal.currency == options.currency : bal => +bal.rate == 1
@@ -172,18 +178,20 @@ async function getDesiredPositions(balances, collect, options) {
     const parameters = { initial_deposit: initial_deposit.toString(), strategy_raw: initial_deposit.toString() };
     logger.debug("replicate parameters", parameters);
     const orders = await collect(merge(options, {parameters}));
-    return orders.reduce((positions, row) => {
+    return orders.reduce(async(positions, row) => {
+        const security_type = row.security_type || row.typeofsymbol == 'future' && 'FUT';
+        const contract = !security_type ? await lookup(_.pick(row, 'symbol', 'market')) : {};
         const traded_at = row.traded_at || row.asof || (row.parkUntilSecs || row.posted_time_unix ?
                 moment(row.parkUntilSecs || row.posted_time_unix, 'X').format() : null)
         const order = c2signal({
             action: row.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
             quant: row.quant,
             symbol: row.symbol,
-            market: row.market,
-            currency: row.currency,
-            security_type: row.security_type || (row.typeofsymbol == 'future' ? 'FUT' : 'STK'),
-            multiplier: row.multiplier,
-            order_type: row.order_type || (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
+            market: row.market || contract.market,
+            currency: row.currency || contract.currency || options.currency,
+            security_type: security_type || contract.security_type || 'STK',
+            multiplier: row.multiplier || contract.multiplier || options.default_multiplier,
+            order_type: row.order_type || options.default_order_type || (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
             limit: row.limit,
             stop: row.stop,
             stoploss: row.stoploss,
@@ -194,12 +202,13 @@ async function getDesiredPositions(balances, collect, options) {
         });
         const symbol = order.symbol;
         const market = order.market;
-        const contract = `${order.symbol}.${order.market}`;
-        const prior = positions[contract] ||
+        const key = `${order.symbol}.${order.market}`;
+        const hash = await positions;
+        const prior = hash[key] ||
             Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier'), {position: 0, asof: options.begin});
         return _.defaults({
-            [contract]: advance(prior, order, options)
-        }, positions);
+            [key]: advance(prior, order, options)
+        }, hash);
     }, {});
 }
 

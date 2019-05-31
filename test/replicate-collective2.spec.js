@@ -74,7 +74,7 @@ describe("replicate-collective2", function() {
             requestTradesOpen: 'file://' + requestTradesOpen,
             retrieveSignalsAll: 'file://' + retrieveSignalsAll
         });
-        replicate = new Replicate(broker, collect);
+        replicate = new Replicate(broker, fetch, collect);
     });
     beforeEach(function() {
         fs.writeFileSync(requestMarginEquity, JSON.stringify({ok:1}));
@@ -452,7 +452,7 @@ describe("replicate-collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -737,7 +737,7 @@ describe("replicate-collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -793,7 +793,7 @@ describe("replicate-collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -842,7 +842,7 @@ describe("replicate-collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -901,7 +901,7 @@ describe("replicate-collective2", function() {
                 isStopOrder: 120,
                 duration: 'GTC'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -928,7 +928,7 @@ describe("replicate-collective2", function() {
         it("IBM submit BTO limit signal", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -1000,7 +1000,7 @@ describe("replicate-collective2", function() {
                 currency: 'USD',
                 status: 'working'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1063,7 +1063,7 @@ describe("replicate-collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1181,7 +1181,7 @@ describe("replicate-collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            await Replicate(broker, function(options) {
+            await Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -1241,7 +1241,7 @@ describe("replicate-collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -1556,7 +1556,7 @@ describe("replicate-collective2", function() {
 	          symbol_description: "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -1626,7 +1626,7 @@ describe("replicate-collective2", function() {
         it("submit stoploss order", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1660,7 +1660,7 @@ describe("replicate-collective2", function() {
                 long_or_short: 'long'
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1712,7 +1712,7 @@ describe("replicate-collective2", function() {
                 signal_id: '117389066',
                 posted_time: '2018-04-05 13:15:40'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1757,7 +1757,7 @@ describe("replicate-collective2", function() {
                 signal_id: '117389066',
                 posted_time: '2018-04-05 13:15:40'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1819,7 +1819,7 @@ describe("replicate-collective2", function() {
                 signal_id: '117389066',
                 posted_time: '2018-04-05 13:15:40'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -1871,7 +1871,7 @@ describe("replicate-collective2", function() {
                 duration: 'GTC',
                 status: 'working'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -1924,7 +1924,7 @@ describe("replicate-collective2", function() {
                 duration: 'GTC',
                 status: 'working'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -1986,7 +1986,7 @@ describe("replicate-collective2", function() {
                 isStopOrder: 120,
                 duration: 'GTC'
             }]}));
-            await Replicate(broker, function(options) {
+            await Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -2038,7 +2038,7 @@ describe("replicate-collective2", function() {
         it("catch up with multiple stoploss orders", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -2084,7 +2084,7 @@ describe("replicate-collective2", function() {
         it("triggered before catch up", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -2180,7 +2180,7 @@ describe("replicate-collective2", function() {
                 symbol: "@MCDU8"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: "BTO",
@@ -2214,7 +2214,7 @@ describe("replicate-collective2", function() {
                 traded_time_unix: moment('2018-01-02').format('X')
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -2242,7 +2242,7 @@ describe("replicate-collective2", function() {
                 closedWhenUnixTimeStamp: moment('2018-01-02').format('X')
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -2317,7 +2317,7 @@ describe("replicate-collective2", function() {
                 isStopOrder: 130,
                 status: 'working'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2413,7 +2413,7 @@ describe("replicate-collective2", function() {
                 market: 1,
                 status: 'working'
             }]}));
-            await Replicate(broker, function(options) {
+            await Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2524,7 +2524,7 @@ describe("replicate-collective2", function() {
                 market: 1,
                 status: 'working'
             }]}));
-            await Replicate(broker, function(options) {
+            await Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2644,7 +2644,7 @@ describe("replicate-collective2", function() {
                 duration: 'GTC',
                 status: 'working'
             }]}));
-            await Replicate(broker, function(options) {
+            await Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2754,7 +2754,7 @@ describe("replicate-collective2", function() {
 	          symbol_description: "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            await Replicate(broker, function(options) {
+            await Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -2893,7 +2893,7 @@ describe("replicate-collective2", function() {
                 tif: "DAY",
                 underlying: "CAD"
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: "STO",
@@ -2985,7 +2985,7 @@ describe("replicate-collective2", function() {
                    action: 'BTC',
                    signal_id: '123812942',
                    posted_time: '2019-05-24 11:09:38' } ] }));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action:	'STO',
@@ -3026,7 +3026,7 @@ describe("replicate-collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -3095,7 +3095,7 @@ describe("replicate-collective2", function() {
 	          symbol_description: "IBM"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -3128,7 +3128,7 @@ describe("replicate-collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -3170,7 +3170,7 @@ describe("replicate-collective2", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -3259,7 +3259,7 @@ describe("replicate-collective2", function() {
 	          symbol_description: "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -3339,7 +3339,7 @@ describe("replicate-collective2", function() {
                 duration: 'GTC',
                 status: 'working'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2015-02-17',
@@ -3365,7 +3365,7 @@ describe("replicate-collective2", function() {
         it("catch up with multiple stoploss orders", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -3411,7 +3411,7 @@ describe("replicate-collective2", function() {
         it("triggered before catch up", function() {
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -3473,7 +3473,7 @@ describe("replicate-collective2", function() {
                 closedWhenUnixTimeStamp: moment('2018-01-02').format('X')
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BTO',
@@ -3538,7 +3538,7 @@ describe("replicate-collective2", function() {
 	          symbol_description: "GLD"
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     date: '2016-10-03',
@@ -3678,7 +3678,7 @@ describe("replicate-collective2", function() {
                 signal_id: '119080352',
                 posted_time: '2018-07-23 18:45:24'
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'STO',
@@ -3781,7 +3781,7 @@ describe("replicate-collective2", function() {
                 tif: "DAY",
                 underlying: null
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: "BTO",
@@ -3887,7 +3887,7 @@ describe("replicate-collective2", function() {
                 signal_id: "122787036",
                 posted_time: "2019-03-05 09:00:57"
             }]}));
-            return Replicate(broker, function(options) {
+            return Replicate(broker, fetch, function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     limit: 0.74915,

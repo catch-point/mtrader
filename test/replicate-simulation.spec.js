@@ -45,7 +45,7 @@ const createTempDir = require('./create-temp-dir.js');
 
 describe("replicate-simulation", function() {
     this.timeout(60000);
-    var fetch, quote, collect, broker;
+    var fetch, quote, collect, broker, replicate;
     before(function() {
         config('workers', 0);
         config.load(path.resolve(__dirname, 'testdata.json'));
@@ -55,6 +55,7 @@ describe("replicate-simulation", function() {
         quote = new Quote(fetch);
         collect = new Collect(quote);
         broker = new Broker({...config(), simulation: 'test'});
+        replicate = Replicate.bind({}, broker, fetch);
     });
     beforeEach(async() => {
         await broker({action: 'reset'});
@@ -79,14 +80,13 @@ describe("replicate-simulation", function() {
     });
     describe("TSE", function() {
         it("Open and Close ENB", async() => {
-            return Replicate(broker, function(options) {
+            return replicate(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '111',
                     symbol: 'ENB',
                     market: 'TSE',
-                    security_type: 'STK',
                     order_type: 'LOC',
                     limit: '49.18',
                     tif: 'DAY',
@@ -96,7 +96,6 @@ describe("replicate-simulation", function() {
                     quant: '111',
                     symbol: 'ENB',
                     market: 'TSE',
-                    security_type: 'STK',
                     order_type: 'LOC',
                     limit: '48.4',
                     tif: 'DAY',
@@ -138,14 +137,13 @@ describe("replicate-simulation", function() {
                 currency:      'CAD',
                 security_type:       'STK'
             });
-            return Replicate(broker, function(options) {
+            return replicate(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '36',
                     symbol: 'CP',
                     market: 'TSE',
-                    security_type: 'STK',
                     order_type: 'LOC',
                     limit: '298.56',
                     tif: 'DAY',
@@ -155,7 +153,6 @@ describe("replicate-simulation", function() {
                      quant: '19',
                      symbol: 'CP',
                      market: 'TSE',
-                     security_type: 'STK',
                      order_type: 'LOC',
                      limit: '293.84',
                      tif: 'DAY',
@@ -172,7 +169,7 @@ describe("replicate-simulation", function() {
             }]);
         });
         it("Reduce after BUY miss of CP", async() => {
-            return Replicate(broker, function(options) {
+            return replicate(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     symbol: 'CP',
@@ -219,7 +216,7 @@ describe("replicate-simulation", function() {
                 currency: 'CAD',
                 security_type: 'STK'
             });
-            return Replicate(broker, function(options) {
+            return replicate(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     symbol: 'CP',
@@ -275,14 +272,13 @@ describe("replicate-simulation", function() {
                 order_type: 'MOC',
                 tif: 'DAY'
             });
-            return Replicate(broker, function(options) {
+            return replicate(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                      quant: '6',
                      symbol: 'CSU',
                      market: 'TSE',
-                     security_type: 'STK',
                      order_type: 'LOC',
                      limit: '1171.24',
                      tif: 'DAY',
@@ -319,7 +315,7 @@ describe("replicate-simulation", function() {
                 order_type: 'MOC',
                 tif: 'DAY'
             });
-            return Replicate(broker, function(options) {
+            return replicate(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
@@ -373,14 +369,11 @@ describe("replicate-simulation", function() {
     });
     describe("Options", function() {
         it("submit BUY combo order", async() => {
-            return Replicate(broker, function(options) {
+            return replicate(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
-                    security_type: 'OPT',
-                    currency: 'USD',
-                    multiplier: 100,
                     name: 'SPX Jun 2019 C 3075',
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'BUY',
@@ -388,23 +381,10 @@ describe("replicate-simulation", function() {
                     position: '0',
                     order_type: 'MKT',
                     offset: '0',
-                    traded_price: '0.15',
-                    basis: '0.3',
-                    commission: '4',
-                    value: '0',
-                    realized: '-7.4',
-                    unrealized: '0',
-                    date: '2019-05-29',
-                    year: '2019',
-                    qtr: '2',
-                    month: '5',
-                    day: '107'
+                    traded_price: '0.15'
                 }, {
                     symbol: 'SPX   190621C03125000',
                     market: 'OPRA',
-                    security_type: 'OPT',
-                    currency: 'USD',
-                    multiplier: 100,
                     name: 'SPX Jun 2019 C 3125',
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'SELL',
@@ -412,23 +392,14 @@ describe("replicate-simulation", function() {
                     position: '0',
                     order_type: 'MKT',
                     offset: '0',
-                    traded_price: '0.05',
-                    basis: '0.18',
-                    commission: '4',
-                    value: '0',
-                    realized: '-8.24',
-                    unrealized: '0',
-                    date: '2019-05-29',
-                    year: '2019',
-                    qtr: '2',
-                    month: '5',
-                    day: '107'
+                    traded_price: '0.05'
                 }]);
             })({
                 now: "2019-05-27T12:00:00",
                 currency: 'USD',
                 markets: ['OPRA'],
-                combo_order_types: ['MKT']
+                combo_order_types: ['MKT'],
+                default_multiplier: 100
             }).should.eventually.be.like([{
                 posted_at: '2019-05-27T12:00:00-04:00',
                 asof: '2019-05-27T12:00:00-04:00',
@@ -461,7 +432,7 @@ describe("replicate-simulation", function() {
             }]);
         });
         it("submit SELL combo order", async() => {
-            return Replicate(broker, function(options) {
+            return replicate(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
@@ -576,7 +547,7 @@ describe("replicate-simulation", function() {
                     multiplier: '100'
                 }]
             });
-            return Replicate(broker, function(options) {
+            return replicate(function(options) {
                 if (options.help) return collect(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',

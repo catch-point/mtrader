@@ -43,6 +43,7 @@ const Replicate = require('./replicate.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
+const Fetch = require('./mtrader-fetch.js');
 const Collect = require('./mtrader-collect.js');
 const Broker = require('./mtrader-broker.js');
 
@@ -97,9 +98,10 @@ if (require.main === module) {
 }
 
 function createInstance(program, settings) {
+    const fetch = new Fetch();
     const collect = new Collect();
     const broker = new Broker(settings);
-    const replicate = new Replicate(broker, collect);
+    const replicate = new Replicate(broker, fetch, collect);
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
@@ -113,7 +115,8 @@ function createInstance(program, settings) {
         else return closed = Promise.all([
             replicate.close(),
             broker.close(),
-            collect.close()
+            collect.close(),
+            fetch.close()
         ]);
     };
     instance.shell = shell.bind(this, program.description(), instance);
