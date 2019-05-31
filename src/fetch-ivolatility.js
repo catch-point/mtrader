@@ -81,7 +81,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol",
-        properties: ['symbol', 'market', 'name', 'secType'],
+        properties: ['symbol', 'market', 'name', 'security_type'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -152,7 +152,7 @@ async function lookup(options) {
     return [{
         symbol: symbol,
         market: 'OPRA',
-        secType: 'OPT',
+        security_type: 'OPT',
         name: `${underlying.trim()} ${expiry.format('MMM Y')} ${right} ${strike}`,
         strike_price: strike,
         expiration_date: exdate
@@ -245,7 +245,7 @@ async function openBar(ib, options) {
         const bar = await ib.reqMktData({
             conId: options.conId,
             localSymbol: options.symbol,
-            secType: 'OPT',
+            security_type: 'OPT',
             exchange: 'SMART',
             currency: options.currency
         });
@@ -262,7 +262,7 @@ async function openBar(ib, options) {
     const bars = await ib.reqHistoricalData({
             conId: options.conId,
             localSymbol: options.symbol,
-            secType: 'OPT',
+            security_type: 'OPT',
             exchange: 'SMART',
             currency: options.currency
         },

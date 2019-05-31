@@ -1224,7 +1224,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }]);
             await util.promisify(fs.readFile)(submitSignal, 'utf8').then(JSON.parse)
               .should.eventually.be.like({signal:{
@@ -1396,7 +1396,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }, {
                 action: 'SELL',
                 quant: 2,
@@ -1405,7 +1405,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }]);
         });
         it("GLD STCSTO working", function() {
@@ -1495,7 +1495,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }, {
                 action: 'SELL',
                 quant: 2,
@@ -1504,7 +1504,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }]);
         });
         it("GLD STCSTO miss", function() {
@@ -1609,7 +1609,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }, {
                 action: 'SELL',
                 quant: 2,
@@ -1618,7 +1618,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }]);
         });
     });
@@ -2024,7 +2024,7 @@ describe("replicate-collective2", function() {
                 symbol: 'IBM',
                 market: 'NYSE',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }]);
             await util.promisify(fs.readFile)(submitSignal, 'utf8').then(JSON.parse)
               .should.eventually.be.like({signal:{
@@ -2465,7 +2465,7 @@ describe("replicate-collective2", function() {
                 action: 'SELL',
                 quant: 2,
                 symbol: 'GLD',
-                secType: 'STK',
+                security_type: 'STK',
                 type: 'STP',
                 stop: 130,
                 tif: 'GTC'
@@ -2473,7 +2473,7 @@ describe("replicate-collective2", function() {
                 action: 'SELL',
                 quant: 2,
                 symbol: 'GLD',
-                secType: 'STK',
+                security_type: 'STK',
                 type: 'MKT',
                 tif: 'GTC'
             }]);
@@ -2576,7 +2576,7 @@ describe("replicate-collective2", function() {
                 action: 'SELL',
                 quant: 2,
                 symbol: 'GLD',
-                secType: 'STK',
+                security_type: 'STK',
                 type: 'STP',
                 stop: 130,
                 tif: 'GTC'
@@ -2584,7 +2584,7 @@ describe("replicate-collective2", function() {
                 action: 'SELL',
                 quant: 2,
                 symbol: 'GLD',
-                secType: 'STK',
+                security_type: 'STK',
                 type: 'MKT',
                 tif: 'GTC'
             }]);
@@ -2704,7 +2704,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }, {
                 action: 'SELL',
                 quant: 2,
@@ -2714,7 +2714,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }, {
                 action: 'SELL',
                 quant: 2,
@@ -2724,7 +2724,7 @@ describe("replicate-collective2", function() {
                 symbol: 'GLD',
                 market: 'ARCA',
                 currency: 'USD',
-                secType: 'STK'
+                security_type: 'STK'
             }]);
         });
         it("GLD STCSTO with stoploss", async() => {
@@ -2807,7 +2807,7 @@ describe("replicate-collective2", function() {
                 action: 'SELL',
                 quant: 2,
                 symbol: 'GLD',
-                secType: 'STK',
+                security_type: 'STK',
                 type: 'MKT',
                 tif: 'GTC'
             }]);
@@ -3009,7 +3009,7 @@ describe("replicate-collective2", function() {
                     "symbol":"6EM19",
                     "market":"CME",
                     "currency":"USD",
-                    "secType":"FUT",
+                    "security_type":"FUT",
                     "type":"LMT",
                     "tif":"DAY"
                 }]);
@@ -3726,7 +3726,7 @@ describe("replicate-collective2", function() {
                 symbol: 'MSFU18',
                 market: 'CME',
                 currency: 'USD',
-                secType: 'FUT',
+                security_type: 'FUT',
                 attach_ref: '119080350'
               }]);
         });
@@ -3930,7 +3930,7 @@ describe("replicate-collective2", function() {
                 symbol: '6CH19',
                 market: 'CME',
                 currency: 'USD',
-                secType: 'FUT',
+                security_type: 'FUT',
                 attach_ref: '122787034'
             }]);
         });

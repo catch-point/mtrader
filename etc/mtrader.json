@@ -44,12 +44,12 @@
     "simulation": {
       "simulation": "",
       "commissions": [
-        {"secType": "STK", "currency": "USD", "per_quant": "0.005", "minimum": "1.00"},
-        {"secType": "STK", "currency": "CAD", "per_quant": "0.01", "minimum": "1.00"},
-        {"secType": "OPT", "currency": "USD", "per_quant": "0.70", "minimum": "1.00"},
-        {"secType": "FUT", "currency": "USD", "per_quant": "2.05", "minimum": "0.00"},
-        {"secType": "CASH", "currency": "CAD", "per_quant": "0.00002", "minimum": "2.70"},
-        {"secType": "CASH", "per_quant": "0.00002", "minimum": "2.00"}
+        {"security_type": "STK", "currency": "USD", "per_quant": "0.005", "minimum": "1.00"},
+        {"security_type": "STK", "currency": "CAD", "per_quant": "0.01", "minimum": "1.00"},
+        {"security_type": "OPT", "currency": "USD", "per_quant": "0.70", "minimum": "1.00"},
+        {"security_type": "FUT", "currency": "USD", "per_quant": "2.05", "minimum": "0.00"},
+        {"security_type": "CASH", "currency": "CAD", "per_quant": "0.00002", "minimum": "2.70"},
+        {"security_type": "CASH", "per_quant": "0.00002", "minimum": "2.00"}
       ]
     },
     "collective2": {
@@ -161,6 +161,7 @@
       "liquid_hours": "09:30:00 - 16:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
+      "default_security_type": "STK",
       "datasources": {
         "yahoo": {
           "exchs": ["NYQ", "PCX"],
@@ -188,6 +189,7 @@
       "liquid_hours": "09:30:00 - 16:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
+      "default_security_type": "STK",
       "datasources": {
         "yahoo": {
           "exchs": ["NYQ", "PCX", "BTS"],
@@ -215,6 +217,7 @@
       "liquid_hours": "09:30:00 - 16:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
+      "default_security_type": "STK",
       "datasources": {
         "yahoo": {
           "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
@@ -242,6 +245,7 @@
       "liquid_hours": "09:30:00 - 16:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
+      "default_security_type": "STK",
       "datasources": {
         "yahoo": {
           "exchs": ["NYQ"],
@@ -269,6 +273,7 @@
       "liquid_hours": "09:30:00 - 16:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
+      "default_security_type": "STK",
       "datasources": {
         "yahoo": {
           "exchs": ["ASE"],
@@ -296,6 +301,7 @@
       "liquid_hours": "08:00:00 - 16:30:00",
       "market_tz": "Europe/London",
       "currency": "GBP",
+      "default_security_type": "STK",
       "datasources": {
         "yahoo": {
           "exchs": ["LSE"],
@@ -322,6 +328,7 @@
       "liquid_hours": "09:30:00 - 16:00:00",
       "market_tz": "America/Toronto",
       "currency": "CAD",
+      "default_security_type": "STK",
       "datasources": {
         "yahoo": {
           "exchs": ["TOR", "YHD"],
@@ -395,6 +402,7 @@
       "liquid_hours": "09:30:00 - 16:00:00",
       "market_tz": "America/Toronto",
       "currency": "CAD",
+      "default_security_type": "STK",
       "datasources": {
         "yahoo": {
           "exchs": ["TOR"],
@@ -420,6 +428,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "GBP",
+      "default_security_type": "CASH",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "GBP.FXCM",
@@ -439,6 +448,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "AUD",
+      "default_security_type": "CASH",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "AUD.FXCM",
@@ -458,6 +468,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "NZD",
+      "default_security_type": "CASH",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "NZD.FXCM",
@@ -477,6 +488,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
+      "default_security_type": "CASH",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "USD.FXCM",
@@ -496,6 +508,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "CAD",
+      "default_security_type": "CASH",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CAD.FXCM",
@@ -515,6 +528,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "CHF",
+      "default_security_type": "CASH",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "CHF.FXCM",
@@ -534,6 +548,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "NOK",
+      "default_security_type": "CASH",
       "datasources": {
         "ib": {
           "whatToShow": "MIDPOINT",
@@ -548,6 +563,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "SEK",
+      "default_security_type": "CASH",
       "datasources": {
         "ib": {
           "whatToShow": "MIDPOINT",
@@ -562,6 +578,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "CNH",
+      "default_security_type": "CASH",
       "datasources": {
         "ib": {
           "whatToShow": "MIDPOINT",
@@ -576,6 +593,7 @@
       "liquid_hours": "17:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "JPY",
+      "default_security_type": "CASH",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": "JPY.FXCM",
@@ -595,6 +613,7 @@
       "liquid_hours": "08:30:00 - 16:00:00",
       "market_tz": "America/Chicago",
       "currency": "USD",
+      "default_security_type": "FUT",
       "datasources": {
         "iqfeed": {
           "dtnPrefix": "@",
@@ -717,6 +736,7 @@
       "liquid_hours": "09:30:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
+      "default_security_type": "FUT",
       "datasources": {
         "iqfeed": {
           "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
@@ -744,6 +764,7 @@
       "liquid_hours": "18:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
+      "default_security_type": "FUT",
       "datasources": {
         "iqfeed": {
           "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPOT", "SPREAD", "STRATSPREAD", "STRIP"],
@@ -767,6 +788,7 @@
       "liquid_hours": "08:30:00 - 15:15:00",
       "market_tz": "America/Chicago",
       "currency": "USD",
+      "default_security_type": "OPT",
       "datasources": {
         "iqfeed": {
           "security_types": ["IEOPTION", "FOPTION"],
@@ -785,6 +807,7 @@
       "liquid_hours": "08:30:00 - 15:00:00",
       "market_tz": "America/Chicago",
       "currency": "USD",
+      "default_security_type": "IND",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": ".XO",
@@ -804,6 +827,7 @@
       "liquid_hours": "08:30:00 - 16:00:00",
       "market_tz": "America/Chicago",
       "currency": "USD",
+      "default_security_type": "FUT",
       "datasources": {
         "iqfeed": {
           "security_types": ["FUTURE", "FOPTION", "COMBINED_FUTURE", "COMBINED_FOPTION", "ICSPREAD", "SPREAD", "STRATSPREAD"],
@@ -842,6 +866,7 @@
       "liquid_hours": "08:30:00 - 15:15:00",
       "market_tz": "America/Chicago",
       "currency": "USD",
+      "default_security_type": "FUT",
       "datasources": {
         "iqfeed": {
           "dtnPrefix": "@",
@@ -866,6 +891,7 @@
       "liquid_hours": "09:30:00 - 16:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
+      "default_security_type": "IND",
       "datasources": {
         "iqfeed": {
           "dtnSuffix": ".X",

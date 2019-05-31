@@ -86,7 +86,7 @@ describe("replicate-simulation", function() {
                     quant: '111',
                     symbol: 'ENB',
                     market: 'TSE',
-                    secType: 'STK',
+                    security_type: 'STK',
                     type: 'LOC',
                     limit: '49.18',
                     tif: 'DAY',
@@ -96,7 +96,7 @@ describe("replicate-simulation", function() {
                     quant: '111',
                     symbol: 'ENB',
                     market: 'TSE',
-                    secType: 'STK',
+                    security_type: 'STK',
                     type: 'LOC',
                     limit: '48.4',
                     tif: 'DAY',
@@ -121,7 +121,7 @@ describe("replicate-simulation", function() {
                 symbol:        'CP',
                 market:        'TSE',
                 currency:      'CAD',
-                secType:       'STK'
+                security_type:       'STK'
             });
             await broker({
                 posted_at:     '2019-05-28T10:02:04-04:00',
@@ -136,7 +136,7 @@ describe("replicate-simulation", function() {
                 symbol:        'CP',
                 market:        'TSE',
                 currency:      'CAD',
-                secType:       'STK'
+                security_type:       'STK'
             });
             return Replicate(broker, function(options) {
                 if (options.help) return collect(options);
@@ -145,7 +145,7 @@ describe("replicate-simulation", function() {
                     quant: '36',
                     symbol: 'CP',
                     market: 'TSE',
-                    secType: 'STK',
+                    security_type: 'STK',
                     type: 'LOC',
                     limit: '298.56',
                     tif: 'DAY',
@@ -155,7 +155,7 @@ describe("replicate-simulation", function() {
                      quant: '19',
                      symbol: 'CP',
                      market: 'TSE',
-                     secType: 'STK',
+                     security_type: 'STK',
                      type: 'LOC',
                      limit: '293.84',
                      tif: 'DAY',
@@ -217,7 +217,7 @@ describe("replicate-simulation", function() {
                 type: 'MOC',
                 tif: 'DAY',
                 currency: 'CAD',
-                secType: 'STK'
+                security_type: 'STK'
             });
             return Replicate(broker, function(options) {
                 if (options.help) return collect(options);
@@ -268,7 +268,7 @@ describe("replicate-simulation", function() {
                 symbol: 'CSU',
                 market: 'TSE',
                 currency: 'CAD',
-                secType: 'STK',
+                security_type: 'STK',
                 multiplier: '',
                 action: 'BUY',
                 quant: 4,
@@ -282,7 +282,7 @@ describe("replicate-simulation", function() {
                      quant: '6',
                      symbol: 'CSU',
                      market: 'TSE',
-                     secType: 'STK',
+                     security_type: 'STK',
                      type: 'LOC',
                      limit: '1171.24',
                      tif: 'DAY',
@@ -299,7 +299,7 @@ describe("replicate-simulation", function() {
                  quant: 2,
                  symbol: 'CSU',
                  market: 'TSE',
-                 secType: 'STK',
+                 security_type: 'STK',
                  type: 'LOC',
                  limit: '1171.24',
                  tif: 'DAY'
@@ -310,7 +310,7 @@ describe("replicate-simulation", function() {
                 symbol: 'TRI',
                 market: 'TSE',
                 currency: 'CAD',
-                secType: 'STK',
+                security_type: 'STK',
                 multiplier: '',
                 action: 'BUY',
                 quant: 283,
@@ -326,7 +326,7 @@ describe("replicate-simulation", function() {
                     quant: '281',
                     symbol: 'TRI',
                     market: 'TSE',
-                    secType: 'STK',
+                    security_type: 'STK',
                     type: 'MOC',
                     tif: 'DAY',
                     traded_at: '2019-05-28T16:00:00-04:00',
@@ -336,7 +336,7 @@ describe("replicate-simulation", function() {
                     quant: '65',
                     symbol: 'TRI',
                     market: 'TSE',
-                    secType: 'STK',
+                    security_type: 'STK',
                     type: 'LOC',
                     limit: '85.92',
                     tif: 'DAY',
@@ -347,7 +347,7 @@ describe("replicate-simulation", function() {
                     quant: '48',
                     symbol: 'TRI',
                     market: 'TSE',
-                    secType: 'STK',
+                    security_type: 'STK',
                     type: 'LOC',
                     limit: '86.1',
                     tif: 'DAY',
@@ -364,7 +364,7 @@ describe("replicate-simulation", function() {
                 quant: 111,
                 symbol: 'TRI',
                 market: 'TSE',
-                secType: 'STK',
+                security_type: 'STK',
                 type: 'LOC',
                 limit: '86.1',
                 tif: 'DAY'
@@ -378,7 +378,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
-                    secType: 'OPT',
+                    security_type: 'OPT',
                     currency: 'USD',
                     multiplier: 100,
                     name: 'SPX Jun 2019 C 3075',
@@ -402,7 +402,7 @@ describe("replicate-simulation", function() {
                 }, {
                     symbol: 'SPX   190621C03125000',
                     market: 'OPRA',
-                    secType: 'OPT',
+                    security_type: 'OPT',
                     currency: 'USD',
                     multiplier: 100,
                     name: 'SPX Jun 2019 C 3125',
@@ -444,7 +444,7 @@ describe("replicate-simulation", function() {
                 type: 'LEG',
                 symbol: 'SPX   190621C03075000',
                 market: 'OPRA',
-                secType: 'OPT',
+                security_type: 'OPT',
                 currency: 'USD',
                 multiplier: '100'
             }, {
@@ -455,7 +455,7 @@ describe("replicate-simulation", function() {
                 type: 'LEG',
                 symbol: 'SPX   190621C03125000',
                 market: 'OPRA',
-                secType: 'OPT',
+                security_type: 'OPT',
                 currency: 'USD',
                 multiplier: '100'
             }]);
@@ -466,7 +466,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
-                    secType: 'OPT',
+                    security_type: 'OPT',
                     currency: 'USD',
                     multiplier: 100,
                     name: 'SPX Jun 2019 C 3075',
@@ -490,7 +490,7 @@ describe("replicate-simulation", function() {
                 }, {
                     symbol: 'SPX   190621C03125000',
                     market: 'OPRA',
-                    secType: 'OPT',
+                    security_type: 'OPT',
                     currency: 'USD',
                     multiplier: 100,
                     name: 'SPX Jun 2019 C 3125',
@@ -532,7 +532,7 @@ describe("replicate-simulation", function() {
                 type: 'LEG',
                 symbol: 'SPX   190621C03075000',
                 market: 'OPRA',
-                secType: 'OPT',
+                security_type: 'OPT',
                 currency: 'USD',
                 multiplier: '100'
             }, {
@@ -543,7 +543,7 @@ describe("replicate-simulation", function() {
                 type: 'LEG',
                 symbol: 'SPX   190621C03125000',
                 market: 'OPRA',
-                secType: 'OPT',
+                security_type: 'OPT',
                 currency: 'USD',
                 multiplier: '100'
             }]);
@@ -562,7 +562,7 @@ describe("replicate-simulation", function() {
                     type: 'LEG',
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
-                    secType: 'OPT',
+                    security_type: 'OPT',
                     currency: 'USD',
                     multiplier: '100'
                 }, {
@@ -571,7 +571,7 @@ describe("replicate-simulation", function() {
                     type: 'LEG',
                     symbol: 'SPX   190621C03125000',
                     market: 'OPRA',
-                    secType: 'OPT',
+                    security_type: 'OPT',
                     currency: 'USD',
                     multiplier: '100'
                 }]
@@ -581,7 +581,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
-                    secType: 'OPT',
+                    security_type: 'OPT',
                     currency: 'USD',
                     multiplier: 100,
                     name: 'SPX Jun 2019 C 3075',
@@ -605,7 +605,7 @@ describe("replicate-simulation", function() {
                 }, {
                     symbol: 'SPX   190621C03125000',
                     market: 'OPRA',
-                    secType: 'OPT',
+                    security_type: 'OPT',
                     currency: 'USD',
                     multiplier: 100,
                     name: 'SPX Jun 2019 C 3125',

@@ -58,7 +58,7 @@ describe("fetch-ib", function() {
                 minTick: 0.01,
                 name: 'ALTABA INC',
                 symbol: 'AABA',
-                secType: 'STK',
+                security_type: 'STK',
                 exchange: 'SMART',
                 currency: 'USD',
                 tradingClass: 'NMS',

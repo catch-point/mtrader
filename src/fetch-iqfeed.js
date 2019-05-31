@@ -81,7 +81,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
-        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'secType', 'currency'],
+        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -242,7 +242,11 @@ function createInstance() {
             });
             return iqclient.fundamental(symbol(options),
                 options.marketClosesAt, options.tz
-            ).then(fundamental => [_.extend({name: fundamental.company_name}, fundamental)]);
+            ).then(fundamental => [{
+                ...fundamental,
+                name: fundamental.company_name,
+                security_type: security_types_map[fundamental.security_type]
+            }]);
         } else if ('day' == options.interval) {
             expect(options).to.be.like({
                 interval: _.isString,
@@ -414,7 +418,7 @@ function isOptionExpired(symbol) {
     return exdate.isValid() && exdate.isBefore();
 }
 
-const secTypes = {
+const security_types_map = {
     EQUITY: "STK",
     IEOPTION: "OPT",
     MUTUAL: "FUND",
@@ -477,7 +481,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
             market: _.first(_.keys(sources)),
             name: row.name,
             listed_market: row.listed_market,
-            secType: secTypes[row.security_type],
+            security_type: security_types_map[row.security_type],
             currency: (ds||{}).currency
         };
     })).then(rows => rows.filter(row => row.market));

@@ -123,7 +123,7 @@ function helpOptions() {
         properties: [
             'asof', 'action', 'quant', 'position', 'traded_at', 'traded_price', 'price',
             'sales', 'purchases', 'dividend', 'commission', 'mtm', 'value',
-            'symbol', 'market', 'currency', 'secType', 'multiplier'
+            'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
             action: {
@@ -147,7 +147,7 @@ function helpOptions() {
         description: "List a summary of open orders",
         properties: [
             'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'traded_price', 'tif', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'currency', 'secType', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
             action: {
@@ -171,7 +171,7 @@ function helpOptions() {
         description: "Transmit order for trading",
         properties: [
             'posted_at', 'asof', 'traded_at', 'action', 'quant', 'type', 'limit', 'stop', 'tif', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'currency', 'secType', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
             action: {
@@ -222,7 +222,7 @@ function helpOptions() {
                 usage: '<string>',
                 description: "The market of the contract (might also be the name of the exchange)"
             },
-            secType: {
+            security_type: {
                 values: ['STK', 'FUT', 'OPT']
             },
             currency: {
@@ -359,7 +359,7 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
                 symbol: contract.symbol,
                 market: contract.market,
                 currency: contract.currency,
-                secType: contract.secType,
+                security_type: contract.security_type,
                 multiplier: c2_multipliers[signal.fullSymbol] || c2_multipliers[signal.symbol] || contract.multiplier || 1
             }, v => v == null);
         }));
@@ -403,7 +403,7 @@ async function cancelOrder(c2_multipliers, collective2, markets, lookup, options
         symbol: contract.symbol,
         market: contract.market,
         currency: contract.currency,
-        secType: contract.secType,
+        security_type: contract.security_type,
         multiplier: c2_multipliers[signal.fullSymbol] || c2_multipliers[signal.symbol] || contract.multiplier || 1
     }, v => v == null)];
 }
@@ -455,7 +455,7 @@ function c2signal(markets, positions, working, order, options, conditionalUponSi
         action: action,
         quant: quant,
         symbol: symbol,
-        typeofsymbol: typeofsymbol(order.secType),
+        typeofsymbol: typeofsymbol(order.security_type),
         duration: order.tif,
         stop: order.type == 'STP' ? order.stop : null,
         limit: order.type == 'LMT' ? order.limit : null,
@@ -523,19 +523,19 @@ function signalToOrder(working, signal, options) {
         symbol: options.symbol,
         market: options.market,
         currency: options.currency,
-        secType: options.secType,
+        security_type: options.security_type,
         multiplier: options.multiplier,
         attach_ref: localsignalids[signal.conditionalupon] || signal.conditionalupon
     }, v => v == null);
 }
 
-function typeofsymbol(secType) {
-    switch(secType) {
+function typeofsymbol(security_type) {
+    switch(security_type) {
         case 'STK': return 'stock';
         case 'FUT': return 'future';
         case 'OPT': return 'option';
         case 'CASH': return 'forex';
-        default: throw Error(`Unsupport secType: ${secType}`);
+        default: throw Error(`Unsupport security_type: ${security_type}`);
     }
 }
 
@@ -600,12 +600,12 @@ async function listSymbolPositions(contract, multiplier, bars, position, trades,
     return changes.filter(trade => trade.action)
       .map(trade => Object.assign({
         asof: trade.asof,
-        sales: contract.secType == 'FUT' ? 0 : trade.sales,
-        purchases: contract.secType == 'FUT' ? 0 : trade.purchases,
+        sales: contract.security_type == 'FUT' ? 0 : trade.sales,
+        purchases: contract.security_type == 'FUT' ? 0 : trade.purchases,
         symbol: contract.symbol,
         market: contract.market,
         currency: contract.currency,
-        secType: contract.secType,
+        security_type: contract.security_type,
         multiplier: multiplier
     }, trade));
 }
@@ -677,7 +677,7 @@ async function lookup(fetch, markets, signal) {
           .then(matches => matches.filter(match => match.symbol == symbol && match.currency == 'USD'))
           .then(matches => matches.length ? matches :
             // expired futures cannot be looked up, this might be one of then
-            instrument == 'future' ? [{symbol, market, currency: m.currency, secType: 'FUT'}] : [])
+            instrument == 'future' ? [{symbol, market, currency: m.currency, security_type: 'FUT'}] : [])
           .catch(err => []);
     }));
     return _.first(_.flatten(matches));

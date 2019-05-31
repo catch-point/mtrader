@@ -128,7 +128,7 @@ function helpOptions() {
         properties: [
             'asof', 'action', 'quant', 'position', 'traded_at', 'traded_price', 'price',
             'sales', 'purchases', 'dividend', 'commission', 'mtm', 'value',
-            'symbol', 'market', 'currency', 'secType', 'multiplier'
+            'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
             action: {
@@ -150,7 +150,7 @@ function helpOptions() {
         description: "List a summary of open orders",
         properties: [
             'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'traded_price', 'tif', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'secType', 'currency', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
         ],
         options: {
             action: {
@@ -200,7 +200,7 @@ function helpOptions() {
         description: "Transmit order for trading",
         properties: [
             'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'secType', 'currency', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
         ],
         options: {
             action: {
@@ -255,7 +255,7 @@ function helpOptions() {
                 usage: '<string>',
                 description: "The market of the contract (might also be the name of the exchange)"
             },
-            secType: {
+            security_type: {
                 values: ['STK', 'FUT', 'OPT']
             },
             currency: {
@@ -301,7 +301,7 @@ async function advance(barsFor, commissions, db, options) {
     const advanced_positions = [].concat(...await Promise.all(symbol_markets.map(async(sm) => {
         const filled = grouped_filled[sm] || [];
         const position = indexed_positions[sm] ||
-            _.pick(filled[0], 'symbol', 'market', 'currency', 'secType', 'multiplier');
+            _.pick(filled[0], 'symbol', 'market', 'currency', 'security_type', 'multiplier');
         const symbol = position.symbol || _.first(filled).symbol;
         const market = position.market || _.first(filled).market;
         const since = position.asof || _.first(orders).asof;
@@ -448,7 +448,7 @@ async function cancelOrder(db, options) {
         const order = _.pick(options, [
             'asof', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif', 'status',
             'order_ref', 'attach_ref',
-            'symbol', 'market', 'secType', 'currency', 'multiplier'
+            'symbol', 'market', 'security_type', 'currency', 'multiplier'
         ]);
         const cancelling = working.find(sameOrder(order));
         if (!cancelling) {
@@ -525,7 +525,7 @@ async function appendOrders(coll, recent_month, current_month, options) {
         expect(options).to.have.property('symbol').that.is.a('string');
         expect(options).to.have.property('market').that.is.a('string');
         expect(options).to.have.property('currency').that.is.a('string');
-        expect(options).to.have.property('secType').that.is.oneOf(['STK', 'FUT', 'OPT']);
+        expect(options).to.have.property('security_type').that.is.oneOf(['STK', 'FUT', 'OPT']);
     }
     const now = moment(options.asof || options.now);
     const data = coll.exists(recent_month) ?
@@ -537,7 +537,7 @@ async function appendOrders(coll, recent_month, current_month, options) {
     const order = _.pick(options, [
         'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif',
         'order_ref', 'attach_ref',
-        'symbol', 'market', 'secType', 'currency', 'multiplier'
+        'symbol', 'market', 'security_type', 'currency', 'multiplier'
     ]);
     const order_ref = options.type != 'LEG' ? order.order_ref || nextval() : null;
     const modifying = order.order_ref && working.find(sameOrder(order));
@@ -707,7 +707,7 @@ async function updateBalance(barsFor, db, positions, options) {
                 return mtm.add(position.mtm);
             }, Big(0));
             const proceeds = positions.reduce((proceeds, p) => {
-                return p.secType == 'FUT' ? proceeds.add(p.mtm) :
+                return p.security_type == 'FUT' ? proceeds.add(p.mtm) :
                     proceeds.add(p.sales).minus(p.purchases).add(p.dividend).minus(p.commission);
             }, Big(0));
             await deposit(barsFor, db, {...options,
@@ -750,7 +750,7 @@ function advancePosition(commissions, position, orders, bar) {
     const net_dividend = Big(bar.dividend||0).times(starting_pos).times(multiplier);
     const com = findCommission(commissions, position);
     const commission = orders.reduce((c,o) => {
-        return c.add(Math.max(Big(com.per_quant).times(o.quant), com.minimum || 0));
+        return c.add(Math.max(Big(com.per_quant||0).times(o.quant), com.minimum || 0));
     }, Big(0));
     const mtm = Big(ending_value).minus(position.value || 0)
         .add(sold).minus(purchase).add(net_dividend).minus(commission).toFixed(2);
@@ -767,11 +767,11 @@ function advancePosition(commissions, position, orders, bar) {
         action, quant: Math.abs(net_quant), position: ending_pos,
         traded_at: orders.reduce((at, o) => at < o.asof ? o.asof : at, '') || null,
         traded_price, price: bar.close,
-        sales: position.secType == 'FUT' ? 0 : sold.toFixed(2),
-        purchases: position.secType == 'FUT' ? 0 : purchase.toFixed(2),
+        sales: position.security_type == 'FUT' ? 0 : sold.toFixed(2),
+        purchases: position.security_type == 'FUT' ? 0 : purchase.toFixed(2),
         dividend: net_dividend.toFixed(2), commission: commission.toFixed(2),
         mtm, value: ending_value.toFixed(2),
-        ..._.pick(position, 'symbol', 'market', 'currency', 'secType', 'multiplier')
+        ..._.pick(position, 'symbol', 'market', 'currency', 'security_type', 'multiplier')
     };
 }
 

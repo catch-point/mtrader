@@ -57,7 +57,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix on the Yahoo! network",
-        properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'secType', 'currency'],
+        properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -156,7 +156,7 @@ function lookup(markets, yahoo, options) {
             yahoo_symbol: row.symbol,
             market: _.first(_.keys(sources)),
             name: row.name,
-            secType: row.type == 'S' || row.type == 'E' ? 'STK' : row.type,
+            security_type: row.type == 'S' || row.type == 'E' ? 'STK' : row.type,
             currency: (ds||{}).currency
         };
     })).then(rows => rows.filter(row => row.market));

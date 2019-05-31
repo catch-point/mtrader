@@ -135,7 +135,7 @@ function helpOptions() {
         properties: [
             'asof', 'acctNumber', 'action', 'quant', 'position', 'traded_at', 'traded_price', 'price',
             'sales', 'purchases', 'dividend', 'commission', 'mtm', 'value',
-            'symbol', 'market', 'currency', 'secType', 'multiplier'
+            'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
             action: {
@@ -159,7 +159,7 @@ function helpOptions() {
         description: "List a summary of open orders",
         properties: [
             'posted_at', 'asof', 'traded_at', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'traded_price', 'tif', 'status',
-            'order_ref', 'attach_ref', 'acctNumber', 'symbol', 'market', 'currency', 'secType', 'multiplier'
+            'order_ref', 'attach_ref', 'acctNumber', 'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
             action: {
@@ -183,7 +183,7 @@ function helpOptions() {
         description: "Transmit order for trading",
         properties: [
             'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'secType', 'currency', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
         ],
         options: {
             action: {
@@ -234,7 +234,7 @@ function helpOptions() {
                 usage: '<string>',
                 description: "The market of the contract (might also be the name of the exchange)"
             },
-            secType: {
+            security_type: {
                 values: ['STK', 'FUT', 'OPT']
             },
             currency: {
@@ -357,7 +357,7 @@ async function listOrders(markets, ib, settings, options) {
                 symbol: asSymbol(contract),
                 market: await asMarket(markets, ib, contract),
                 currency: contract.currency,
-                secType: contract.secType,
+                security_type: contract.secType,
                 multiplier: contract.multiplier
             });
             return result;
@@ -506,7 +506,7 @@ async function ibToOrder(markets, ib, settings, order, contract, options) {
         market: options.market ? options.market :
             contract && contract.secType != 'BAG' ? await asMarket(markets, ib, contract) : null,
         currency: contract.currency,
-        secType: contract.secType,
+        security_type: contract.secType,
         multiplier: contract.multiplier
     };
 }
@@ -601,7 +601,7 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
         purchases: contract.secType == 'FUT' ? 0 : trade.purchases,
         symbol, market,
         currency: contract.currency,
-        secType: contract.secType,
+        security_type: contract.secType,
         multiplier: contract.multiplier
     }, trade, {asof: trade.asof < now ? trade.asof : now}));
 }
@@ -698,7 +698,7 @@ function fromFutSymbol(symbol) {
 
 async function toContract(markets, ib, options) {
     const has_legs = !_.isEmpty(options.attached) && options.attached.some(ord => ord.type == 'LEG');
-    if (options.symbol && options.secType != 'BAG' && !has_legs) {
+    if (options.symbol && !has_legs) {
         expect(options).to.have.property('symbol').that.is.ok;
         expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
         const market = markets[options.market];

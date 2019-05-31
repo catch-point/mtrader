@@ -123,11 +123,11 @@ describe("broker-ib", function() {
             attached: [{
                 action: 'BUY', quant: 1, type: 'LEG',
                 symbol: 'SPX   190621C03075000', market: 'OPRA',
-                currency: 'USD', secType: 'OPT', multiplier: 100
+                currency: 'USD', security_type: 'OPT', multiplier: 100
             }, {
                 action: 'SELL', quant: 1, type: 'LEG',
                 symbol: 'SPX   190621C03125000', market: 'OPRA',
-                currency: 'USD', secType: 'OPT', multiplier: 100
+                currency: 'USD', security_type: 'OPT', multiplier: 100
             }]
         }).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:20,breakLength:100}))||d);
     });

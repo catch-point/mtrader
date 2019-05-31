@@ -80,7 +80,7 @@ function help() {
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
         properties: [
-            'symbol', 'conId', 'market', 'name', 'secType', 'exchange', 'currency',
+            'symbol', 'conId', 'market', 'name', 'security_type', 'exchange', 'currency',
             'tradingClass', 'industry', 'category', 'subcategory', 'multiplier', 'minTick'
         ],
         options: _.extend({}, commonOptions, {
@@ -183,7 +183,7 @@ async function lookup(markets, client, options) {
     return conIds.map(details => flattenContractDetails(details)).map(detail => _.omit({
         symbol: toSymbol(markets[options.market] || markets[detail.primaryExch], detail),
         market: options.market || markets[detail.primaryExch] && detail.primaryExch,
-        secType: detail.secType,
+        security_type: detail.secType,
         name: detail.longName,
         exchange: detail.exchange,
         minTick: detail.minTick,

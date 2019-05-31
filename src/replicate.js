@@ -80,7 +80,7 @@ function help(broker, collect) {
         name: 'replicate',
         usage: 'replicate(options)',
         description: "Changes workers orders to align with orders in result",
-        properties: ['action', 'quant', 'type', 'limit', 'stop', 'tif', 'symbol', 'market', 'currency', 'secType', 'multiplier', 'order_ref', 'attach_ref'],
+        properties: ['action', 'quant', 'type', 'limit', 'stop', 'tif', 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'order_ref', 'attach_ref'],
         options: {
             markets: {
                 usage: '[<market>]',
@@ -140,7 +140,7 @@ async function replicate(broker, collect, options) {
             if (isStopOrder(prior)) // STP orders are assumed to be OCO orders
                 return {
                     action: 'OCA',
-                    ..._.pick(prior, 'asof', 'symbol', 'market', 'currency', 'secType', 'multiplier'),
+                    ..._.pick(prior, 'asof', 'symbol', 'market', 'currency', 'security_type', 'multiplier'),
                     attached:[prior, pending]
                 };
             else if (pending.action == 'OCA')
@@ -181,7 +181,7 @@ async function getDesiredPositions(balances, collect, options) {
             symbol: row.symbol,
             market: row.market,
             currency: row.currency,
-            secType: row.secType || (row.typeofsymbol == 'future' ? 'FUT' : 'STK'),
+            security_type: row.security_type || (row.typeofsymbol == 'future' ? 'FUT' : 'STK'),
             multiplier: row.multiplier,
             type: row.type || (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
             limit: row.limit,
@@ -196,7 +196,7 @@ async function getDesiredPositions(balances, collect, options) {
         const market = order.market;
         const contract = `${order.symbol}.${order.market}`;
         const prior = positions[contract] ||
-            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'secType', 'multiplier'), {position: 0, asof: options.begin});
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier'), {position: 0, asof: options.begin});
         return _.defaults({
             [contract]: advance(prior, order, options)
         }, positions);
@@ -234,7 +234,7 @@ async function getWorkingPositions(broker, options) {
         const symbol = order.symbol;
         const market = order.market;
         const prior = positions[contract] ||
-            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'secType', 'multiplier'), {position: 0, asof: options.begin});
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier'), {position: 0, asof: options.begin});
         return _.defaults({
             [contract]: advance(prior, order, options)
         }, positions);
@@ -254,11 +254,11 @@ function getPortfolio(markets, options, portfolio = []) {
 
 async function submitOrders(broker, orders, options) {
     const potential_combos = options.combo_order_types ?
-        orders.filter(ord => ~options.combo_order_types.indexOf(ord.type) && ord.secType == 'OPT') : [];
+        orders.filter(ord => ~options.combo_order_types.indexOf(ord.type) && ord.security_type == 'OPT') : [];
     const grouped = _.groupBy(potential_combos, ord => {
         return [
             ord.symbol.substring(0, 13), ord.market,
-            ord.secType, ord.currency, ord.multiplier,
+            ord.security_type, ord.currency, ord.multiplier,
             ord.type, ord.limit, ord.offset, ord.stop, ord.tif
         ].join(' ');
     });
@@ -544,7 +544,7 @@ function updateStoploss(pos, order, options) {
     } else if (order.stoploss) {
         const base = !+order.quant && pos.prior && ~pos.order.type.indexOf('STP') ? pos.prior : pos;
         const prior = advance(base, _.omit(order, 'stoploss'), options);
-        const stp_order = _.omit(_.extend(_.pick(c2signal(order), 'symbol', 'market', 'currency', 'secType', 'multipler', 'traded_at', 'status'), {
+        const stp_order = _.omit(_.extend(_.pick(c2signal(order), 'symbol', 'market', 'currency', 'security_type', 'multipler', 'traded_at', 'status'), {
             action: prior.position > 0 ? 'SELL' : 'BUY',
             quant: Math.abs(prior.position),
             tif: 'GTC',
@@ -617,7 +617,7 @@ function changePositionSize(pos, order, options) {
             symbol: order.symbol,
             market: order.market,
             currency: order.currency,
-            secType: order.secType,
+            security_type: order.security_type,
             multiplier: order.multiplier,
             position: +pos.position + +order.quant,
             order: c2signal(order)
@@ -628,7 +628,7 @@ function changePositionSize(pos, order, options) {
             symbol: order.symbol,
             market: order.market,
             currency: order.currency,
-            secType: order.secType,
+            security_type: order.security_type,
             multiplier: order.multiplier,
             position: +pos.position - +order.quant,
             order: c2signal(order)
