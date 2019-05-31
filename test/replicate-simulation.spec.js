@@ -87,7 +87,7 @@ describe("replicate-simulation", function() {
                     symbol: 'ENB',
                     market: 'TSE',
                     security_type: 'STK',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '49.18',
                     tif: 'DAY',
                     traded_at: '2019-05-24T16:00:00-04:00'
@@ -97,7 +97,7 @@ describe("replicate-simulation", function() {
                     symbol: 'ENB',
                     market: 'TSE',
                     security_type: 'STK',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '48.4',
                     tif: 'DAY',
                     status: 'pending',
@@ -115,7 +115,7 @@ describe("replicate-simulation", function() {
                 asof:          '2019-05-27T00:00:00-04:00',
                 action:        'BUY',
                 quant:         '17',
-                type:          'MOC',
+                order_type:          'MOC',
                 tif:           'DAY',
                 status:        'working',
                 symbol:        'CP',
@@ -128,7 +128,7 @@ describe("replicate-simulation", function() {
                 asof:          '2019-05-28T11:42:27-04:00',
                 action:        'SELL',
                 quant:         '17',
-                type:          'LOC',
+                order_type:          'LOC',
                 limit:         '293.74',
                 tif:           'DAY',
                 status:        'working',
@@ -146,7 +146,7 @@ describe("replicate-simulation", function() {
                     symbol: 'CP',
                     market: 'TSE',
                     security_type: 'STK',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '298.56',
                     tif: 'DAY',
                     traded_at: '2019-05-24T16:00:00-04:00'
@@ -156,7 +156,7 @@ describe("replicate-simulation", function() {
                      symbol: 'CP',
                      market: 'TSE',
                      security_type: 'STK',
-                     type: 'LOC',
+                     order_type: 'LOC',
                      limit: '293.84',
                      tif: 'DAY',
                      status: 'pending',
@@ -180,7 +180,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-17T16:00:00-04:00',
                     action: 'BUY',
                     quant: '63',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '297.69',
                     traded_price: '307.99',
                     order_ref: 'buy-order'
@@ -190,7 +190,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-23T16:00:00-04:00',
                     action: 'SELL',
                     quant: '9',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '293.94',
                     traded_price: '299'
                 }]);
@@ -203,7 +203,7 @@ describe("replicate-simulation", function() {
                 market: 'TSE',
                 action: 'BUY',
                 quant: 54,
-                type: 'LOC',
+                order_type: 'LOC',
                 limit: '297.69'
             }]);
         });
@@ -214,7 +214,7 @@ describe("replicate-simulation", function() {
                 now: '2019-05-17T00:00:00-04:00',
                 action: 'BUY',
                 quant: '63',
-                type: 'MOC',
+                order_type: 'MOC',
                 tif: 'DAY',
                 currency: 'CAD',
                 security_type: 'STK'
@@ -227,7 +227,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-17T16:00:00-04:00',
                     action: 'BUY',
                     quant: '63',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '297.69',
                     traded_price: '307.99'
                 }, {
@@ -236,7 +236,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-23T16:00:00-04:00',
                     action: 'SELL',
                     quant: '9',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '293.94',
                     traded_price: '299'
                 }, {
@@ -245,7 +245,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-24T16:00:00-04:00',
                     action: 'BUY',
                     quant: '19',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '305',
                     traded_price: '300.21'
                 }]);
@@ -258,7 +258,7 @@ describe("replicate-simulation", function() {
                 market: 'TSE',
                 action: 'BUY',
                 quant: 10,
-                type: 'LOC',
+                order_type: 'LOC',
                 limit: '305'
             }]);
         });
@@ -272,7 +272,7 @@ describe("replicate-simulation", function() {
                 multiplier: '',
                 action: 'BUY',
                 quant: 4,
-                type: 'MOC',
+                order_type: 'MOC',
                 tif: 'DAY'
             });
             return Replicate(broker, function(options) {
@@ -283,7 +283,7 @@ describe("replicate-simulation", function() {
                      symbol: 'CSU',
                      market: 'TSE',
                      security_type: 'STK',
-                     type: 'LOC',
+                     order_type: 'LOC',
                      limit: '1171.24',
                      tif: 'DAY',
                      status: 'pending',
@@ -300,7 +300,7 @@ describe("replicate-simulation", function() {
                  symbol: 'CSU',
                  market: 'TSE',
                  security_type: 'STK',
-                 type: 'LOC',
+                 order_type: 'LOC',
                  limit: '1171.24',
                  tif: 'DAY'
             }]);
@@ -316,7 +316,7 @@ describe("replicate-simulation", function() {
                 quant: 283,
                 position: 283,
                 price: 85.77,
-                type: 'MOC',
+                order_type: 'MOC',
                 tif: 'DAY'
             });
             return Replicate(broker, function(options) {
@@ -327,7 +327,7 @@ describe("replicate-simulation", function() {
                     symbol: 'TRI',
                     market: 'TSE',
                     security_type: 'STK',
-                    type: 'MOC',
+                    order_type: 'MOC',
                     tif: 'DAY',
                     traded_at: '2019-05-28T16:00:00-04:00',
                     traded_price: '85.77'
@@ -337,7 +337,7 @@ describe("replicate-simulation", function() {
                     symbol: 'TRI',
                     market: 'TSE',
                     security_type: 'STK',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '85.92',
                     tif: 'DAY',
                     traded_at: '2019-05-29T16:00:00-04:00',
@@ -348,7 +348,7 @@ describe("replicate-simulation", function() {
                     symbol: 'TRI',
                     market: 'TSE',
                     security_type: 'STK',
-                    type: 'LOC',
+                    order_type: 'LOC',
                     limit: '86.1',
                     tif: 'DAY',
                     status: 'pending',
@@ -365,7 +365,7 @@ describe("replicate-simulation", function() {
                 symbol: 'TRI',
                 market: 'TSE',
                 security_type: 'STK',
-                type: 'LOC',
+                order_type: 'LOC',
                 limit: '86.1',
                 tif: 'DAY'
             }]);
@@ -386,7 +386,7 @@ describe("replicate-simulation", function() {
                     action: 'BUY',
                     quant: '3',
                     position: '0',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.15',
                     basis: '0.3',
@@ -410,7 +410,7 @@ describe("replicate-simulation", function() {
                     action: 'SELL',
                     quant: '3',
                     position: '0',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.05',
                     basis: '0.18',
@@ -434,14 +434,14 @@ describe("replicate-simulation", function() {
                 asof: '2019-05-27T12:00:00-04:00',
                 action: 'BUY',
                 quant: 3,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'DAY'
             }, {
                 posted_at: '2019-05-27T12:00:00-04:00',
                 asof: '2019-05-27T12:00:00-04:00',
                 action: 'BUY',
                 quant: 1,
-                type: 'LEG',
+                order_type: 'LEG',
                 symbol: 'SPX   190621C03075000',
                 market: 'OPRA',
                 security_type: 'OPT',
@@ -452,7 +452,7 @@ describe("replicate-simulation", function() {
                 asof: '2019-05-27T12:00:00-04:00',
                 action: 'SELL',
                 quant: 1,
-                type: 'LEG',
+                order_type: 'LEG',
                 symbol: 'SPX   190621C03125000',
                 market: 'OPRA',
                 security_type: 'OPT',
@@ -474,7 +474,7 @@ describe("replicate-simulation", function() {
                     action: 'SELL',
                     quant: '3',
                     position: '0',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.15',
                     basis: '0.3',
@@ -498,7 +498,7 @@ describe("replicate-simulation", function() {
                     action: 'BUY',
                     quant: '3',
                     position: '0',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.05',
                     basis: '0.18',
@@ -522,14 +522,14 @@ describe("replicate-simulation", function() {
                 asof: '2019-05-27T12:00:00-04:00',
                 action: 'SELL',
                 quant: 3,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'DAY'
             }, {
                 posted_at: '2019-05-27T12:00:00-04:00',
                 asof: '2019-05-27T12:00:00-04:00',
                 action: 'BUY',
                 quant: 1,
-                type: 'LEG',
+                order_type: 'LEG',
                 symbol: 'SPX   190621C03075000',
                 market: 'OPRA',
                 security_type: 'OPT',
@@ -540,7 +540,7 @@ describe("replicate-simulation", function() {
                 asof: '2019-05-27T12:00:00-04:00',
                 action: 'SELL',
                 quant: 1,
-                type: 'LEG',
+                order_type: 'LEG',
                 symbol: 'SPX   190621C03125000',
                 market: 'OPRA',
                 security_type: 'OPT',
@@ -554,12 +554,12 @@ describe("replicate-simulation", function() {
                 asof: '2019-05-27T12:00:00-04:00',
                 action: 'SELL',
                 quant: 3,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'DAY',
                 attached: [{
                     action: 'BUY',
                     quant: 1,
-                    type: 'LEG',
+                    order_type: 'LEG',
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
                     security_type: 'OPT',
@@ -568,7 +568,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: 1,
-                    type: 'LEG',
+                    order_type: 'LEG',
                     symbol: 'SPX   190621C03125000',
                     market: 'OPRA',
                     security_type: 'OPT',
@@ -589,7 +589,7 @@ describe("replicate-simulation", function() {
                     action: 'SELL',
                     quant: '3',
                     position: '0',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.15',
                     basis: '0.3',
@@ -613,7 +613,7 @@ describe("replicate-simulation", function() {
                     action: 'BUY',
                     quant: '3',
                     position: '0',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.05',
                     basis: '0.18',

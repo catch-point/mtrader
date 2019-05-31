@@ -158,7 +158,7 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'posted_at', 'asof', 'traded_at', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'traded_price', 'tif', 'status',
+            'posted_at', 'asof', 'traded_at', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'traded_price', 'tif', 'status',
             'order_ref', 'attach_ref', 'acctNumber', 'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
@@ -182,7 +182,7 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "Transmit order for trading",
         properties: [
-            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'offset', 'tif', 'status',
+            'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'tif', 'status',
             'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
         ],
         options: {
@@ -194,7 +194,7 @@ function helpOptions() {
                 usage: '<positive-integer>',
                 description: "The number of shares or contracts to buy or sell"
             },
-            type: {
+            order_type: {
                 usage: '<order-type>',
                 values: ['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']
             },
@@ -346,7 +346,7 @@ async function listOrders(markets, ib, settings, options) {
             result.push({
                 action: leg.action,
                 quant: Big(order.remaining).times(leg.ratio).toString(),
-                type: 'LEG',
+                order_type: 'LEG',
                 limit: ((order.orderComboLegs||[])[i]||{}).price || null,
                 stop: null,
                 offset: null,
@@ -408,9 +408,9 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const ib_order = await ib.placeOrder(order_id, contract, submit_order);
     const parent_order = await ibToOrder(markets, ib, settings, ib_order, contract, options);
     return (options.attached||[]).reduce(async(promise, attach, i, attached) => {
-        const child_orders = attach.type == 'LEG' ? [{
+        const child_orders = attach.order_type == 'LEG' ? [{
             ..._.omit(parent_order, 'limit', 'stop', 'offset', 'traded_price', 'order_ref'),
-            ..._.pick(attach, 'symbol', 'market', 'currency', 'multiplier', 'action', 'quant', 'type', 'limit', 'stop', 'offset'),
+            ..._.pick(attach, 'symbol', 'market', 'currency', 'multiplier', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset'),
             attach_ref: parent_order.order_ref
         }] : await submitOrder(root_ref, markets, ib, {
             ...settings,
@@ -421,7 +421,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
 }
 
 function orderRef(root_ref, order_id, options) {
-    return options.order_ref || `${(options.type||'').replace(/\W+/g,'')}.${root_ref}.${order_id}`;
+    return options.order_ref || `${(options.order_type||'').replace(/\W+/g,'')}.${root_ref}.${order_id}`;
 }
 
 async function orderByRef(ib, order_ref) {
@@ -444,12 +444,12 @@ async function orderByRef(ib, order_ref) {
 async function orderToIbOrder(ib, settings, contract, order, options) {
     expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
     expect(order).to.have.property('quant').that.is.ok;
-    expect(order).to.have.property('type').that.is.ok;
+    expect(order).to.have.property('order_type').that.is.ok;
     expect(order).to.have.property('tif').that.is.oneOf(['DAY', 'GTC', 'IOC', 'GTD', 'OPG', 'FOK', 'DTC']);
     return {
         action: order.action,
         totalQuantity: order.quant,
-        orderType: order.type,
+        orderType: order.order_type,
         lmtPrice: order.limit,
         auxPrice: order.stop || order.offset,
         tif: order.tif,
@@ -491,7 +491,7 @@ async function ibToOrder(markets, ib, settings, order, contract, options) {
         traded_at: order.completedTime ? parseTime(order.completedTime, ib_tz).format() : null,
         action: order.action,
         quant: order.totalQuantity,
-        type: order.orderType,
+        order_type: order.orderType,
         limit: order.lmtPrice == Number.MAX_VALUE ? null : order.lmtPrice,
         stop: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
         offset: order.auxPrice == Number.MAX_VALUE || order.orderType == 'STP' ||
@@ -697,7 +697,7 @@ function fromFutSymbol(symbol) {
 }
 
 async function toContract(markets, ib, options) {
-    const has_legs = !_.isEmpty(options.attached) && options.attached.some(ord => ord.type == 'LEG');
+    const has_legs = !_.isEmpty(options.attached) && options.attached.some(ord => ord.order_type == 'LEG');
     if (options.symbol && !has_legs) {
         expect(options).to.have.property('symbol').that.is.ok;
         expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));

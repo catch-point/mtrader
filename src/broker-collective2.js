@@ -146,7 +146,7 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'posted_at', 'asof', 'action', 'quant', 'type', 'limit', 'stop', 'traded_price', 'tif', 'status',
+            'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'traded_price', 'tif', 'status',
             'order_ref', 'attach_ref', 'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
@@ -170,7 +170,7 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "Transmit order for trading",
         properties: [
-            'posted_at', 'asof', 'traded_at', 'action', 'quant', 'type', 'limit', 'stop', 'tif', 'status',
+            'posted_at', 'asof', 'traded_at', 'action', 'quant', 'order_type', 'limit', 'stop', 'tif', 'status',
             'order_ref', 'attach_ref', 'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
@@ -186,7 +186,7 @@ function helpOptions() {
                 usage: '<positive-integer>',
                 description: "The number of shares or contracts to buy or sell"
             },
-            type: {
+            order_type: {
                 usage: '<order-type>',
                 values: ['MKT', 'LMT', 'STP']
             },
@@ -346,7 +346,7 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
                 action: signal.action.charAt(0) == 'B' ? 'BUY' :
                     signal.action.charAt(0) == 'S' ? 'SELL' : sign.action,
                 quant: signal.quant,
-                type: +signal.market || +signal.isMarketOrder ? 'MKT' :
+                order_type: +signal.market || +signal.isMarketOrder ? 'MKT' :
                     +signal.isLimitOrder || +signal.limit ? 'LMT' :
                     +signal.isStopOrder || +signal.stop ? 'STP' : null,
                 limit: +signal.isLimitOrder ? signal.isLimitOrder : +signal.limit ? signal.limit : null,
@@ -391,7 +391,7 @@ async function cancelOrder(c2_multipliers, collective2, markets, lookup, options
             moment(resp.traded_time_unix || resp.tradedwhen || resp.parkUntilSecs, 'X').format() : null,
         action: resp.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
         quant: resp.quant,
-        type: +signal.market || +signal.isMarketOrder ? 'MKT' :
+        order_type: +signal.market || +signal.isMarketOrder ? 'MKT' :
             +signal.isLimitOrder || +signal.limit ? 'LMT' :
             +signal.isStopOrder || +signal.stop ? 'STP' : null,
         limit: +signal.isLimitOrder ? signal.isLimitOrder : +signal.limit ? signal.limit : null,
@@ -439,7 +439,7 @@ async function submitOrder(collective2, markets, options) {
 }
 
 function c2signal(markets, positions, working, order, options, conditionalUponSignal) {
-    expect(order.type).is.oneOf(['STP', 'LMT', 'MKT']);
+    expect(order.order_type).is.oneOf(['STP', 'LMT', 'MKT']);
     const symbol = c2symbol(markets, order.symbol, order.market);
     const pos = positions.find(pos => pos.symbol == symbol || pos.fullSymbol == symbol);
     const action = order.action == 'BUY' ?
@@ -449,7 +449,7 @@ function c2signal(markets, positions, working, order, options, conditionalUponSi
         Math.min(+(pos.quant_opened||0) - +(pos.quant_closed||0), order.quant) : order.quant;
     const replaces = order.order_ref &&
         working.find(sig => sig.localsignalid == order.order_ref || sig.signal_id == order.order_ref);
-    const stoploss = order.attached && order.attached.find(ord => ord.type == 'STP');
+    const stoploss = order.attached && order.attached.find(ord => ord.order_type == 'STP');
     const traded_at = order.traded_at && moment(order.traded_at);
     const signal = _.omit({
         action: action,
@@ -457,16 +457,16 @@ function c2signal(markets, positions, working, order, options, conditionalUponSi
         symbol: symbol,
         typeofsymbol: typeofsymbol(order.security_type),
         duration: order.tif,
-        stop: order.type == 'STP' ? order.stop : null,
-        limit: order.type == 'LMT' ? order.limit : null,
-        market: order.type == 'MKT' ? 1 : 0,
+        stop: order.order_type == 'STP' ? order.stop : null,
+        limit: order.order_type == 'LMT' ? order.limit : null,
+        market: order.order_type == 'MKT' ? 1 : 0,
         stoploss: +quant == +order.quant ? stoploss && stoploss.stop : null,
         xreplace: replaces && replaces.signal_id,
         parkUntilSecs: traded_at && traded_at.isAfter(options.now) ? traded_at.format('X') : null,
         conditionalUponSignal
     }, v => v == null);
     const submit = !replaces || !sameSignal(signal, replaces);
-    const conditional_orders = (order.attached||[]).filter(ord => ord.type != 'STP')
+    const conditional_orders = (order.attached||[]).filter(ord => ord.order_type != 'STP')
         .concat(+quant == +order.quant ? [] : {..._.omit(order, 'order_ref'), quant: (+order.quant - +quant)});
     if (submit && !conditional_orders.length) return [signal];
     else if (!conditional_orders.length) return [];
@@ -512,7 +512,7 @@ function signalToOrder(working, signal, options) {
             moment(signal.traded_time_unix || signal.tradedwhen || signal.parkUntilSecs, 'X').format() : null,
         action: signal.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
         quant: signal.quant,
-        type: +signal.market ? 'MKT' : +signal.limit ? 'LMT' : 'STP',
+        order_type: +signal.market ? 'MKT' : +signal.limit ? 'LMT' : 'STP',
         limit: signal.limit,
         stop: signal.stop,
         traded_price: signal.traded_price,

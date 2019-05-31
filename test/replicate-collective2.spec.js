@@ -1154,7 +1154,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'IF(action="BTO" OR action="BTCBTO","long", action="STO" OR action="STCSTO","short", PREV("long_or_short"))',
                     quant: 'IF(PREV("action"), 4, 2)',
                     typeofsymbol: '"stock"',
-                    type: '"MKT"',
+                    order_type: '"MKT"',
                     duration: '"GTC"',
                     currency: '"USD"',
                     parkUntilSecs: "TEXT(ending,'X')"
@@ -1192,7 +1192,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 2,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X')
@@ -1205,7 +1205,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'long',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X')
@@ -1218,7 +1218,7 @@ describe("replicate-collective2", function() {
                 traded_at: '2016-10-13T16:00:00-04:00',
                 action: 'BUY',
                 quant: 2,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC',
                 status: 'pending',
                 symbol: 'GLD',
@@ -1252,7 +1252,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 2,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X')
@@ -1265,7 +1265,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'long',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X')
@@ -1313,7 +1313,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'IF(action="BTO" OR action="BTCBTO","long", action="STO" OR action="STCSTO","short", PREV("long_or_short"))',
                     quant: 'IF(PREV("action"), 4, 2)',
                     typeofsymbol: '"stock"',
-                    type: '"MKT"',
+                    order_type: '"MKT"',
                     duration: '"GTC"',
                     currency: '"USD"',
                     parkUntilSecs: "TEXT(ending,'X')"
@@ -1331,7 +1331,7 @@ describe("replicate-collective2", function() {
                 action: 'SELL',
                 quant: 2,
                 symbol: 'GLD',
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC'
             }]);
         });
@@ -1377,7 +1377,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'IF(action="BTO" OR action="BTCBTO","long", action="STO" OR action="STCSTO","short", PREV("long_or_short"))',
                     quant: 'IF(PREV("long_or_short"), 4, 2)',
                     typeofsymbol: '"stock"',
-                    type: '"MKT"',
+                    order_type: '"MKT"',
                     duration: '"GTC"',
                     currency: '"USD"',
                     parkUntilSecs: "TEXT(ending,'X')"
@@ -1391,7 +1391,7 @@ describe("replicate-collective2", function() {
             }).should.eventually.be.like([{
                 action: 'SELL',
                 quant: 2,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC',
                 symbol: 'GLD',
                 market: 'ARCA',
@@ -1400,7 +1400,7 @@ describe("replicate-collective2", function() {
             }, {
                 action: 'SELL',
                 quant: 2,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC',
                 symbol: 'GLD',
                 market: 'ARCA',
@@ -1472,7 +1472,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'IF(action="BTO" OR action="BTCBTO","long", action="STO" OR action="STCSTO","short", PREV("long_or_short"))',
                     quant: 'IF(PREV("long_or_short"), 4, 2)',
                     typeofsymbol: '"stock"',
-                    type: '"MKT"',
+                    order_type: '"MKT"',
                     duration: '"GTC"',
                     currency: '"USD"',
                     parkUntilSecs: "TEXT(ending,'X')"
@@ -1490,7 +1490,7 @@ describe("replicate-collective2", function() {
             }, {
                 action: 'SELL',
                 quant: 2,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC',
                 symbol: 'GLD',
                 market: 'ARCA',
@@ -1499,7 +1499,7 @@ describe("replicate-collective2", function() {
             }, {
                 action: 'SELL',
                 quant: 2,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC',
                 symbol: 'GLD',
                 market: 'ARCA',
@@ -1567,7 +1567,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 2,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X')
@@ -1580,7 +1580,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'long',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X')
@@ -1593,7 +1593,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X')
@@ -1604,7 +1604,7 @@ describe("replicate-collective2", function() {
             }).should.eventually.be.like([{
                 action: 'SELL',
                 quant: 2,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC',
                 symbol: 'GLD',
                 market: 'ARCA',
@@ -1613,7 +1613,7 @@ describe("replicate-collective2", function() {
             }, {
                 action: 'SELL',
                 quant: 2,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC',
                 symbol: 'GLD',
                 market: 'ARCA',
@@ -1634,7 +1634,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '130'
                 }]);
@@ -1668,7 +1668,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '130'
                 }]);
@@ -1720,7 +1720,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '130',
                     parkUntilSecs: moment.tz("2018-04-04", 'America/New_York').format('X')
@@ -1765,7 +1765,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '130'
                 }, {
@@ -1774,7 +1774,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '120'
                 }]);
@@ -1827,7 +1827,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: 130,
                     parkUntilSecs: moment.tz("2018-04-05T15:00:00", 'America/New_York').format('X')
@@ -1837,7 +1837,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: 120,
                     parkUntilSecs: moment.tz("2018-04-05T16:00:00", 'America/New_York').format('X')
@@ -2005,7 +2005,7 @@ describe("replicate-collective2", function() {
                     symbol: 'IBM',
                     market: 'NYSE',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2015-06-16T16:00:00-04:00').format('X')
@@ -2019,7 +2019,7 @@ describe("replicate-collective2", function() {
             }).should.eventually.be.like([{
                 action: 'BUY',
                 quant: 52,
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC',
                 symbol: 'IBM',
                 market: 'NYSE',
@@ -2046,7 +2046,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '130'
                 }, {
@@ -2055,7 +2055,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '120'
                 }, {
@@ -2064,7 +2064,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '110'
                 }]);
@@ -2092,7 +2092,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '130'
                 }, {
@@ -2101,7 +2101,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '120'
                 }, {
@@ -2110,7 +2110,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '110'
                 }, {
@@ -2119,7 +2119,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '130'
                 }]);
@@ -2222,7 +2222,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '130',
                     parkUntilSecs: moment('2018-01-01').format('X')
@@ -2250,7 +2250,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '130',
                     parkUntilSecs: moment('2018-01-01').format('X')
@@ -2260,7 +2260,7 @@ describe("replicate-collective2", function() {
                     symbol: 'GLD',
                     market: 'ARCA',
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'DAY',
                     stoploss: '120',
                     parkUntilSecs: moment('2018-01-03').format('X')
@@ -2328,7 +2328,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 2,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
@@ -2342,7 +2342,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'long',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
@@ -2356,7 +2356,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
@@ -2424,7 +2424,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 2,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
@@ -2438,7 +2438,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'long',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
@@ -2452,7 +2452,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
@@ -2466,7 +2466,7 @@ describe("replicate-collective2", function() {
                 quant: 2,
                 symbol: 'GLD',
                 security_type: 'STK',
-                type: 'STP',
+                order_type: 'STP',
                 stop: 130,
                 tif: 'GTC'
             }, {
@@ -2474,7 +2474,7 @@ describe("replicate-collective2", function() {
                 quant: 2,
                 symbol: 'GLD',
                 security_type: 'STK',
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC'
             }]);
             await util.promisify(fs.readFile)(submitSignal, 'utf8').then(JSON.parse)
@@ -2535,7 +2535,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 2,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
@@ -2549,7 +2549,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'long',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
@@ -2563,7 +2563,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
@@ -2577,7 +2577,7 @@ describe("replicate-collective2", function() {
                 quant: 2,
                 symbol: 'GLD',
                 security_type: 'STK',
-                type: 'STP',
+                order_type: 'STP',
                 stop: 130,
                 tif: 'GTC'
             }, {
@@ -2585,7 +2585,7 @@ describe("replicate-collective2", function() {
                 quant: 2,
                 symbol: 'GLD',
                 security_type: 'STK',
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC'
             }]);
             await util.promisify(fs.readFile)(submitSignal, 'utf8').then(JSON.parse)
@@ -2655,7 +2655,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 2,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
@@ -2669,7 +2669,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'long',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
@@ -2698,7 +2698,7 @@ describe("replicate-collective2", function() {
             }, {
                 action: 'SELL',
                 quant: 2,
-                type: 'STP',
+                order_type: 'STP',
                 stop: '130',
                 tif: 'GTC',
                 symbol: 'GLD',
@@ -2708,7 +2708,7 @@ describe("replicate-collective2", function() {
             }, {
                 action: 'SELL',
                 quant: 2,
-                type: 'LMT',
+                order_type: 'LMT',
                 limit: '120.56',
                 tif: 'GTC',
                 symbol: 'GLD',
@@ -2718,7 +2718,7 @@ describe("replicate-collective2", function() {
             }, {
                 action: 'SELL',
                 quant: 2,
-                type: 'LMT',
+                order_type: 'LMT',
                 limit: '120.56',
                 tif: 'GTC',
                 symbol: 'GLD',
@@ -2765,7 +2765,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 2,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-03T16:00:00-04:00').format('X'),
@@ -2779,7 +2779,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'long',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-13T16:00:00-04:00').format('X'),
@@ -2793,7 +2793,7 @@ describe("replicate-collective2", function() {
                     long_or_short: 'short',
                     quant: 4,
                     typeofsymbol: 'stock',
-                    type: 'MKT',
+                    order_type: 'MKT',
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2016-10-24T16:00:00-04:00').format('X'),
@@ -2808,7 +2808,7 @@ describe("replicate-collective2", function() {
                 quant: 2,
                 symbol: 'GLD',
                 security_type: 'STK',
-                type: 'MKT',
+                order_type: 'MKT',
                 tif: 'GTC'
             }]);
             await util.promisify(fs.readFile)(submitSignal, 'utf8').then(JSON.parse)
@@ -3010,7 +3010,7 @@ describe("replicate-collective2", function() {
                     "market":"CME",
                     "currency":"USD",
                     "security_type":"FUT",
-                    "type":"LMT",
+                    "order_type":"LMT",
                     "tif":"DAY"
                 }]);
             })({
@@ -3720,7 +3720,7 @@ describe("replicate-collective2", function() {
             }, {
                 action: 'BUY',
                 quant: 1,
-                type: 'LMT',
+                order_type: 'LMT',
                 limit: '1.0118',
                 tif: 'DAY',
                 symbol: 'MSFU18',
@@ -3924,7 +3924,7 @@ describe("replicate-collective2", function() {
             }, {
                 action: 'BUY',
                 quant: 1,
-                type: 'LMT',
+                order_type: 'LMT',
                 limit: '0.74915',
                 tif: 'DAY',
                 symbol: '6CH19',

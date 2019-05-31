@@ -80,7 +80,7 @@ function help(broker, collect) {
         name: 'replicate',
         usage: 'replicate(options)',
         description: "Changes workers orders to align with orders in result",
-        properties: ['action', 'quant', 'type', 'limit', 'stop', 'tif', 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'order_ref', 'attach_ref'],
+        properties: ['action', 'quant', 'order_type', 'limit', 'stop', 'tif', 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'order_ref', 'attach_ref'],
         options: {
             markets: {
                 usage: '[<market>]',
@@ -99,11 +99,11 @@ function help(broker, collect) {
                 description: "Minimum quantity, relative to current position, that must change to generate a change order"
             },
             default_order_type: {
-                usage: '<orderType>',
+                usage: '<order_type>',
                 description: "Default order type to close unexpected positions, defaults to MKT"
             },
             combo_order_types: {
-                usage: '[<orderType>...]',
+                usage: '[<order_type>...]',
                 description: "Order types that can be combined into combo BAG orders with matching legs"
             }
         }
@@ -183,7 +183,7 @@ async function getDesiredPositions(balances, collect, options) {
             currency: row.currency,
             security_type: row.security_type || (row.typeofsymbol == 'future' ? 'FUT' : 'STK'),
             multiplier: row.multiplier,
-            type: row.type || (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
+            order_type: row.order_type || (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
             limit: row.limit,
             stop: row.stop,
             stoploss: row.stoploss,
@@ -216,11 +216,11 @@ async function getWorkingPositions(broker, options) {
         return {...net, position: +net.position + +pos.position};
     }));
     const inline_legs = broker_orders.map(leg => {
-        if (leg.type != 'LEG') return leg;
+        if (leg.order_type != 'LEG') return leg;
         const combo = broker_orders.find(combo => combo.order_ref == leg.attach_ref);
         return {
             ...leg,
-            ..._.pick(combo, 'type', 'limit', 'offset', 'stop', 'tif', 'status'),
+            ..._.pick(combo, 'order_type', 'limit', 'offset', 'stop', 'tif', 'status'),
             action: combo.action == 'BUY' ? leg.action : leg.action == 'BUY' ? 'SELL' : 'BUY',
             quant: Big(combo.quant).times(leg.quant).toString(),
             order_ref: leg.order_ref || combo.order_ref
@@ -254,12 +254,12 @@ function getPortfolio(markets, options, portfolio = []) {
 
 async function submitOrders(broker, orders, options) {
     const potential_combos = options.combo_order_types ?
-        orders.filter(ord => ~options.combo_order_types.indexOf(ord.type) && ord.security_type == 'OPT') : [];
+        orders.filter(ord => ~options.combo_order_types.indexOf(ord.order_type) && ord.security_type == 'OPT') : [];
     const grouped = _.groupBy(potential_combos, ord => {
         return [
             ord.symbol.substring(0, 13), ord.market,
             ord.security_type, ord.currency, ord.multiplier,
-            ord.type, ord.limit, ord.offset, ord.stop, ord.tif
+            ord.order_type, ord.limit, ord.offset, ord.stop, ord.tif
         ].join(' ');
     });
     const order_legs = _.values(grouped).filter(legs => legs.length > 1);
@@ -271,13 +271,13 @@ async function submitOrders(broker, orders, options) {
         return {
             action: traded_price < 0 ? 'SELL' : 'BUY',
             quant,
-            ..._.pick(_.first(legs), 'type', 'limit', 'offset', 'stop', 'tif'),
+            ..._.pick(_.first(legs), 'order_type', 'limit', 'offset', 'stop', 'tif'),
             attached: legs.map(leg => ({
-                ..._.omit(leg, 'type', 'limit', 'offset', 'stop', 'tif'),
+                ..._.omit(leg, 'order_type', 'limit', 'offset', 'stop', 'tif'),
                 action: traded_price < 0 && leg.action == 'BUY' ? 'SELL' :
                     traded_price < 0 && leg.action == 'SELL' ? 'BUY' : leg.action,
                 quant: Big(leg.quant).div(quant).toString(),
-                type: 'LEG'
+                order_type: 'LEG'
             }))
         };
     });
@@ -304,7 +304,7 @@ function logOrders(orders) {
         const prefix = order_stack.map(ref => ord.attach_ref == ref ? '  \\_ ' :
             orders.some((ord,o) => ord.attach_ref == ref && o > i) ? '  |  ' : '     ').join('');
         logger.info(prefix + ord.action,
-            ord.quant, ord.symbol||'Combo', ord.market||'', ord.type,
+            ord.quant, ord.symbol||'Combo', ord.market||'', ord.order_type,
             ord.limit || ord.stop || '', ord.tif||'', ord.order_ref||'', ord.status);
         if (ord.order_ref) order_stack.push(ord.order_ref);
     });
@@ -408,7 +408,7 @@ function updateWorking(desired, working, options) {
         } else if (similarSignals(ds, ws) && (
                 ws.action == 'BUY' && working.prior.position < desired.position ||
                 ws.action == 'SELL' && working.prior.position > desired.position ||
-                ws.type == 'STP' && working.prior.position == desired.position)) {
+                ws.order_type == 'STP' && working.prior.position == desired.position)) {
             // replace order
             expect(ws).to.have.property('order_ref');
             const adj = updateWorking(desired.prior, working.prior, options);
@@ -428,7 +428,7 @@ function updateWorking(desired, working, options) {
         }
     } else {
         const recent_order = ds || desired.last_order ||
-            {...desired, type: options.default_order_type || 'MKT', tif: 'DAY'};
+            {...desired, order_type: options.default_order_type || 'MKT', tif: 'DAY'};
         return [c2signal({
             ..._.omit(recent_order, 'traded_at'),
             action: desired.position > working.position ? 'BUY' : 'SELL',
@@ -442,7 +442,7 @@ function updateWorking(desired, working, options) {
  */
 function sameSignal(a, b, threshold) {
     if (!a || !b) return false;
-    const attrs = ['action', 'type', 'limit', 'stop', 'offset', 'tif'];
+    const attrs = ['action', 'order_type', 'limit', 'stop', 'offset', 'tif'];
     return isMatch(b, _.pick(a, attrs)) && Math.abs(a.quant - b.quant) <= (threshold || 0);
 }
 
@@ -507,11 +507,11 @@ function appendSignal(upon, ds, options) {
 }
 
 /**
- * If two orders have the same order type, but may different on quant
+ * If two orders have the same order order_type, but may different on quant
  */
 function similarSignals(a, b) {
     if (!a || !b) return false;
-    return a.action == b.action && a.type == b.type;
+    return a.action == b.action && a.order_type == b.order_type;
 }
 
 /**
@@ -526,7 +526,8 @@ function isReverse(a, b, options) {
 }
 
 function sameOrderType(a, b, options) {
-    return a.type == b.type || isStopOrder(a) == isStopOrder(b) && a.type == (options.default_order_type || 'MKT');
+    return a.order_type == b.order_type ||
+        isStopOrder(a) == isStopOrder(b) && a.order_type == (options.default_order_type || 'MKT');
 }
 
 /**
@@ -534,7 +535,7 @@ function sameOrderType(a, b, options) {
  */
 function advance(pos, order, options) {
     const position = updateStoploss(pos, order, options);
-    // record most recent order type/limit/stop/offset for use with adjustements
+    // record most recent order order_type/limit/stop/offset for use with adjustements
     return {...position, last_order: order};
 }
 
@@ -542,19 +543,19 @@ function updateStoploss(pos, order, options) {
     if (order.quant === 0 && order.traded_at && moment(order.traded_at).isAfter(options.now)) {
         return pos; // don't update order adjustement limits if in the future
     } else if (order.stoploss) {
-        const base = !+order.quant && pos.prior && ~pos.order.type.indexOf('STP') ? pos.prior : pos;
+        const base = !+order.quant && pos.prior && ~pos.order.order_type.indexOf('STP') ? pos.prior : pos;
         const prior = advance(base, _.omit(order, 'stoploss'), options);
         const stp_order = _.omit(_.extend(_.pick(c2signal(order), 'symbol', 'market', 'currency', 'security_type', 'multipler', 'traded_at', 'status'), {
             action: prior.position > 0 ? 'SELL' : 'BUY',
             quant: Math.abs(prior.position),
             tif: 'GTC',
-            type: 'STP',
+            order_type: 'STP',
             stop: order.stoploss,
         }), _.isUndefined);
         return _.defaults({order: stp_order, prior}, prior);
     } else if (isStopOrder(order)) {
         expect(order).to.have.property('stop').that.is.ok;
-        const prior = pos.prior && ~pos.order.type.indexOf('STP') ? pos.prior : pos;
+        const prior = pos.prior && ~pos.order.order_type.indexOf('STP') ? pos.prior : pos;
         return _.defaults({order: c2signal(order), prior}, pos);
     } else {
         return updatePosition(pos, order, options);
@@ -590,7 +591,7 @@ function updateParkUntilSecs(pos, order, options) {
  */
 function updateLimit(pos, order, options) {
     if (pos.order) {
-        return _.defaults({order: _.defaults(_.pick(order, 'type', 'limit', 'stop', 'offset'), pos.order)}, pos);
+        return _.defaults({order: _.defaults(_.pick(order, 'order_type', 'limit', 'stop', 'offset'), pos.order)}, pos);
     } else {
         return pos;
     }
@@ -659,6 +660,6 @@ function sortOrders(orders) {
 }
 
 function isStopOrder(order) {
-    expect(order).to.have.property('type').that.is.ok;
-    return ~order.type.indexOf('STP');
+    expect(order).to.have.property('order_type').that.is.ok;
+    return ~order.order_type.indexOf('STP');
 }
