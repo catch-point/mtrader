@@ -182,9 +182,10 @@ async function getDesiredPositions(balances, collect, lookup, options) {
         const security_type = row.security_type || row.typeofsymbol == 'future' && 'FUT';
         const contract = !security_type ? await lookup(_.pick(row, 'symbol', 'market')) : {};
         const traded_at = row.traded_at || row.asof || (row.parkUntilSecs || row.posted_time_unix ?
-                moment(row.parkUntilSecs || row.posted_time_unix, 'X').format() : null)
+                moment(row.parkUntilSecs || row.posted_time_unix, 'X').format() : null);
+        const a = row.action ? row.action.charAt(0) : '';
         const order = c2signal({
-            action: row.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
+            action: a == 'B' ? 'BUY' : a == 'S' ? 'SELL' : row.action,
             quant: row.quant,
             symbol: row.symbol,
             market: row.market || contract.market,
@@ -295,26 +296,32 @@ async function submitOrders(broker, orders, options) {
     const submitted = await Promise.all(grouped_orders.map(async(orders) => {
         return orders.reduce(async(promise, order) => {
             return (await promise).concat(await broker({...options, ...order}));
-        }, []).catch(err => err);
+        }, []).catch(err => {
+            logOrders(logger.error, orders);
+            return err;
+        });
     }));
     const errors = submitted.filter(posted => !_.isArray(posted));
     if (errors.length > 1) errors.forEach((err, i) => {
         logger.error("Could not submit order", orders[i], err);
     });
     if (errors.length) throw _.last(errors);
-    return logOrders([].concat(...submitted));
+    return logOrders(logger.info, [].concat(...submitted));
 }
 
-function logOrders(orders) {
+function logOrders(log, orders) {
     const posted_orders = sortAttachedOrders(orders);
     const order_stack = [];
     posted_orders.forEach((ord,i,orders) => {
         while (ord.attach_ref != _.last(order_stack) && order_stack.length) order_stack.pop();
         const prefix = order_stack.map(ref => ord.attach_ref == ref ? '  \\_ ' :
             orders.some((ord,o) => ord.attach_ref == ref && o > i) ? '  |  ' : '     ').join('');
-        logger.info(prefix + ord.action,
+        log(prefix + ord.action,
             ord.quant, ord.symbol||'Combo', ord.market||'', ord.order_type,
-            ord.limit || ord.stop || '', ord.tif||'', ord.order_ref||'', ord.status);
+            ord.limit || ord.stop || '', ord.tif||'', ord.order_ref||'', ord.status||'not submitted');
+        if (!_.isEmpty(ord.attached)) {
+            logOrders((...args) => log(prefix + '  \\_ ' + args[0], ..._.rest(args)), ord.attached);
+        }
         if (ord.order_ref) order_stack.push(ord.order_ref);
     });
     return posted_orders;
@@ -587,7 +594,6 @@ function updatePosition(pos, order, options) {
  */
 function updateParkUntilSecs(pos, order, options) {
     if (order.traded_at && pos.order) {
-        expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
         const updated = _.defaults({order: _.defaults(_.pick(order, 'traded_at', 'status'), pos.order)}, pos);
         return updateLimit(updated, order, options);
     } else {
@@ -611,6 +617,7 @@ function updateLimit(pos, order, options) {
  */
 function changePosition(pos, order, options) {
     expect(order).has.property('quant').that.is.above(0);
+    expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
     const prior = order.status == 'working' || order.status == 'pending' ||
         !order.traded_at || moment(order.traded_at).isAfter(options.now) ? {prior: pos} : {};
     return _.extend(prior, changePositionSize(pos, order, options));

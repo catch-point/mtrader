@@ -394,7 +394,6 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const order_ref = orderRef(root_ref, order_id, options);
     const contract = await toContract(markets, ib, options);
     if (contract.secType == 'BAG' && !settings.transmit) {
-        logger.warn(`Transmit flag must be enabled to submit combo orders for ${contract.symbol} ${order_ref}\n`, options);
         throw Error(`Transmit flag must be enabled to submit combo orders for ${contract.symbol} ${order_ref}`);
     }
     const submit_order = {
