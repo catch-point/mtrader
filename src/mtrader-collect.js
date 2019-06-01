@@ -104,7 +104,7 @@ if (require.main === module) {
         Promise.all(args.map(name => readCallSave(name, collect)))
           .then(results => [].concat(...results))
           .then(result => tabular(result, config()))
-          .catch(err => logger.error(err, err.stack))
+          .catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
           .then(() => collect.close());
     } else {
         spawn();

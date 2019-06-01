@@ -65,7 +65,8 @@ if (require.main === module) {
                 readCallSave(config('save'), data => {
                     config.session(name, value);
                     return merge(config.read(config('save')), config.session());
-                }, config('save')).catch(err => logger.error(err, err.stack));
+                }, config('save'))
+                  .catch(err => logger.error(err, err.stack) || (process.exitCode = 1));
             } else if (program.args.length > 1) {
                 config.store(name, value);
             } else {

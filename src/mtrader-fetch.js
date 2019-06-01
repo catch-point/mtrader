@@ -85,7 +85,7 @@ if (require.main === module) {
             interval, symbol, market, tz
         }, config.options())))
         .then(result => tabular(result, config()))
-        .catch(err => logger.error(err, err.stack))
+        .catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
         .then(() => fetch.close())
         .then(() => {
             setTimeout(() => {

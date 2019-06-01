@@ -79,7 +79,7 @@ if (require.main === module) {
         const save = config('save');
         return broker({...config.options(), action})
           .then(result => tabular(result, config()))
-          .catch(err => logger.error(err, err.stack))
+          .catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
           .then(() => broker.close());
     } else {
         program.help();

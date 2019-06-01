@@ -91,7 +91,7 @@ if (require.main === module) {
         const save = config('save');
         Promise.all(program.args.map((name, i) => {
             return readCallSave(name, bestsignals, _.isArray(save) ? save[i] : save);
-        })).catch(err => logger.error(err, err.stack))
+        })).catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
           .then(() => bestsignals.close());
     } else {
         program.help();
