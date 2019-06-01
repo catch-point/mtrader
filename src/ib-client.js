@@ -191,7 +191,7 @@ function reqPositions(ib) {
                 positions_fail = fail;
                 logger.log('reqPositions');
                 ib.reqPositions();
-            })).catch(err => logger.error('reqPositions', err.message) || err);
+            })).catch(err => logger.error('reqPositions', err.message) || Promise.reject(err));
         }
     };
 }
@@ -214,7 +214,7 @@ function currentTime(ib) {
                 received = resolve;
                 fail = reject;
                 ib.reqCurrentTime();
-            })).catch(err => logger.error('reqCurrentTime', err.message) || err);
+            })).catch(err => logger.error('reqCurrentTime', err.message) || Promise.reject(err));
         }
     };
 }
@@ -243,7 +243,7 @@ function requestFA(ib) {
                 received = resolve;
                 fail = reject;
                 return ib.requestFA(IB.FA_DATA_TYPE.GROUPS);
-            })).catch(err => logger.error('requestFA', err.message) || err);
+            })).catch(err => logger.error('requestFA', err.message) || Promise.reject(err));
         },
         requestProfiles() {
             return promise = promise.catch(err => {})
@@ -251,7 +251,7 @@ function requestFA(ib) {
                 received = resolve;
                 fail = reject;
                 return ib.requestFA(IB.FA_DATA_TYPE.PROFILES);
-            })).catch(err => logger.error('requestFA', err.message) || err);
+            })).catch(err => logger.error('requestFA', err.message) || Promise.reject(err));
         },
         requestAliases() {
             return promise = promise.catch(err => {})
@@ -259,7 +259,7 @@ function requestFA(ib) {
                 received = resolve;
                 fail = reject;
                 return ib.requestFA(IB.FA_DATA_TYPE.ALIASES);
-            })).catch(err => logger.error('requestFA', err.message) || err);
+            })).catch(err => logger.error('requestFA', err.message) || Promise.reject(err));
         }
     };
 }
@@ -353,7 +353,7 @@ function accountUpdates(ib, store, ib_tz) {
                 subscriptions[acctCode] = +reqId;
             logger.log('reqAccountUpdates', acctCode, modelCode || '', false);
             ib.reqAccountUpdatesMulti(+reqId, acctCode, modelCode || '', false);
-        }).catch(err => logger.error('reqAccountUpdates', err.message) || err);
+        }).catch(err => logger.error('reqAccountUpdates', err.message) || Promise.reject(err));
     };
     return {
         reqAccountUpdate,
@@ -448,8 +448,8 @@ function openOrders(ib, store, ib_tz, clientId) {
     }, 10*60*1000); // 10m
     ib.on('error', function (err, info) {
         if (info && info.id && placing_orders[info.id]) {
-            placing_orders[info.id].fail(err);
-            delete placing_orders[info.id];
+            //placing_orders[info.id].fail(err);
+            //delete placing_orders[info.id];
         } else if (info && info.id && cancelling_orders[info.id]) {
             cancelling_orders[info.id].fail(err);
             delete cancelling_orders[info.id];
@@ -543,6 +543,9 @@ function openOrders(ib, store, ib_tz, clientId) {
             });
         },
         async placeOrder(orderId, contract, order) {
+            if (contract.secType == 'BAG' && !order.transmit) {
+                throw Error(`Transmit flag must be enabled to submit combo orders for ${contract.symbol} ${order.orderRef}`);
+            }
             logger.log('placeOrder', orderId, contract, order);
             ib.placeOrder(orderId, contract, order);
             if (!order.transmit) return orders[orderId] = _.omit({
@@ -559,14 +562,14 @@ function openOrders(ib, store, ib_tz, clientId) {
             }, v => v == null);
             else return new Promise((ready, fail) => {
                 placing_orders[orderId] = {ready, fail};
-            }).catch(err => logger.error('cancelOrder', err.message) || err);
+            }).catch(err => logger.error('cancelOrder', err.message) || Promise.reject(err));
         },
         async cancelOrder(orderId) {
             logger.log('cancelOrder', orderId);
             ib.cancelOrder(orderId);
             return new Promise((ready, fail) => {
                 cancelling_orders[orderId] = {ready, fail};
-            }).catch(err => logger.error('placeOrder', orderId, contract, order, err.message) || err);
+            }).catch(err => logger.error('placeOrder', orderId, contract, order, err.message) || Promise.reject(err));
         },
         reqRecentOrders() {
             return _.values(orders).filter(order => {
@@ -582,7 +585,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 logger.log('reqOpenOrders');
                 ib.reqOpenOrders();
             })).then(orders => orders.filter(order => order.clientId == clientId))
-              .catch(err => logger.error('reqOpenOrders', err.message) || err);
+              .catch(err => logger.error('reqOpenOrders', err.message) || Promise.reject(err));
         },
         reqAllOpenOrders() {
             return promise_orders = promise_orders.catch(logger.error)
@@ -591,7 +594,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 orders_fail = fail;
                 logger.log('reqAllOpenOrders');
                 ib.reqAllOpenOrders();
-            })).catch(err => logger.error('reqAllOpenOrders', err.message) || err);
+            })).catch(err => logger.error('reqAllOpenOrders', err.message) || Promise.reject(err));
         },
         async reqCompletedOrders(filter) {
             const acctCode = (filter||{}).acctCode;

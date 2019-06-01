@@ -41,7 +41,7 @@ const IB = require('./ib-client.js');
 const Fetch = require('./fetch.js');
 const expect = require('chai').expect;
 
-module.exports = function(settings) {
+module.exports = function(settings, mock_ib_client) {
     if (settings.help) return helpSettings();
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
@@ -49,7 +49,7 @@ module.exports = function(settings) {
     const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     settings = {lib_dir, ...config('broker.ib'), ...settings};
     expect(settings).to.have.property('account').that.is.ok;
-    const ib = new IB(settings);
+    const ib = mock_ib_client || new IB(settings);
     const fetch = new Fetch(settings);
     const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
     return _.extend(function(options) {
@@ -119,6 +119,10 @@ function helpOptions() {
                     'balances'
                 ]
             },
+            now: {
+                usage: '<dateTime>',
+                description: "Overrides the system clock"
+            },
             asof: {
                 usage: '<dateTime>',
                 description: "Currency balances at a particular point in time (if available)"
@@ -144,6 +148,10 @@ function helpOptions() {
                     'positions'
                 ]
             },
+            now: {
+                usage: '<dateTime>',
+                description: "Overrides the system clock"
+            },
             asof: {
                 usage: '<dateTime>',
                 description: "Positions at a particular point in time (if available)"
@@ -167,6 +175,10 @@ function helpOptions() {
                 values: [
                     'orders'
                 ]
+            },
+            now: {
+                usage: '<dateTime>',
+                description: "Overrides the system clock"
             },
             asof: {
                 usage: '<dateTime>',
@@ -253,8 +265,8 @@ async function listBalances(markets, ib, fetch, settings, options) {
     const ib_tz = settings.tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const accounts = await listAccounts(ib, settings.account);
     const now = moment().tz(ib_tz);
-    const asof = moment(options.asof).tz(ib_tz);
-    const begin = options.begin ? moment(options.begin || options.asof).tz(ib_tz) :
+    const asof = moment(options.asof || options.now).tz(ib_tz);
+    const begin = options.begin ? moment(options.begin).tz(ib_tz) :
         moment(asof).subtract(5,'days');
     const begin_format = begin.format('YYYYMMDD HH:mm:ss');
     const asof_format = asof.format('YYYYMMDD HH:mm:ss');
@@ -393,9 +405,6 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const order_id = (await orderByRef(ib, options.order_ref)||{}).orderId || await ib.reqId();
     const order_ref = orderRef(root_ref, order_id, options);
     const contract = await toContract(markets, ib, options);
-    if (contract.secType == 'BAG' && !settings.transmit) {
-        throw Error(`Transmit flag must be enabled to submit combo orders for ${contract.symbol} ${order_ref}`);
-    }
     const submit_order = {
         ...await orderToIbOrder(ib, settings, contract, options, options),
         orderId: order_id, orderRef: order_ref,
@@ -420,7 +429,10 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
 }
 
 function orderRef(root_ref, order_id, options) {
-    return options.order_ref || `${(options.order_type||'').replace(/\W+/g,'')}.${root_ref}.${order_id}`;
+    if (options.order_ref) return options.order_ref;
+    const idx = (options.order_type||'').indexOf(' (IBALGO)');
+    const label = ~idx && options.order_type.substring(0, idx) || options.order_type || options.action || '';
+    return `${label.replace(/\W+/g,'')}.${root_ref}.${order_id}`;
 }
 
 async function orderByRef(ib, order_ref) {
@@ -445,17 +457,36 @@ async function orderToIbOrder(ib, settings, contract, order, options) {
     expect(order).to.have.property('quant').that.is.ok;
     expect(order).to.have.property('order_type').that.is.ok;
     expect(order).to.have.property('tif').that.is.oneOf(['DAY', 'GTC', 'IOC', 'GTD', 'OPG', 'FOK', 'DTC']);
-    return {
-        action: order.action,
-        totalQuantity: order.quant,
-        orderType: order.order_type,
-        lmtPrice: order.limit,
-        auxPrice: order.stop || order.offset,
-        tif: order.tif,
-        orderRef: order.order_ref,
-        transmit: settings.transmit || false,
-        ...await ibAccountOrderProperties(ib, settings)
-    };
+    const ibalgo = order.order_type.indexOf(' (IBALGO)');
+    if (~ibalgo) {
+        const algoParams = order.order_type.substring(ibalgo + ' (IBALGO)'.length).split(';')
+            .filter(a=>a.length).map(pair => _.object(['tag', 'value'], pair.trim().split('=', 2)));
+        return {
+            action: order.action,
+            totalQuantity: order.quant,
+            orderType: order.limit ? 'LMT' : 'MKT',
+            algoStrategy: order.order_type.substring(0, ibalgo),
+            algoParams,
+            lmtPrice: order.limit,
+            auxPrice: order.stop || order.offset,
+            tif: order.tif,
+            orderRef: order.order_ref,
+            transmit: settings.transmit || false,
+            ...await ibAccountOrderProperties(ib, settings)
+        };
+    } else {
+        return {
+            action: order.action,
+            totalQuantity: order.quant,
+            orderType: order.order_type,
+            lmtPrice: order.limit,
+            auxPrice: order.stop || order.offset,
+            tif: order.tif,
+            orderRef: order.order_ref,
+            transmit: settings.transmit || false,
+            ...await ibAccountOrderProperties(ib, settings)
+        };
+    }
 }
 
 async function ibAccountOrderProperties(ib, settings) {
@@ -490,7 +521,7 @@ async function ibToOrder(markets, ib, settings, order, contract, options) {
         traded_at: order.completedTime ? parseTime(order.completedTime, ib_tz).format() : null,
         action: order.action,
         quant: order.totalQuantity,
-        order_type: order.orderType,
+        order_type: orderTypeFromIB(order),
         limit: order.lmtPrice == Number.MAX_VALUE ? null : order.lmtPrice,
         stop: order.auxPrice == Number.MAX_VALUE ? null : order.auxPrice,
         offset: order.auxPrice == Number.MAX_VALUE || order.orderType == 'STP' ||
@@ -508,6 +539,12 @@ async function ibToOrder(markets, ib, settings, order, contract, options) {
         security_type: contract.secType,
         multiplier: contract.multiplier
     };
+}
+
+function orderTypeFromIB(order) {
+    if (!order.algoStrategy) return order.orderType;
+    const algoParams = (order.algoParams||[]).map(tv => `${tv.tag}=${tv.value}`).join(';');
+    return (`${order.algoStrategy} (IBALGO) ${algoParams}`).trim();
 }
 
 async function listAccounts(ib, account) {
@@ -562,7 +599,7 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
     const symbol = asSymbol(contract);
     const market = await asMarket(markets, ib, contract);
     const now = moment().format();
-    const earliest = moment(options.asof).subtract(5, 'days').startOf('day').format();
+    const earliest = moment(options.asof || options.now).subtract(5, 'days').startOf('day').format();
     const key = `${conId} ${earliest}`;
     const promise = historical[key] = historical[key] ||
         loadHistoricalData(fetch, symbol, market, earliest, {...options, ...markets[market]});

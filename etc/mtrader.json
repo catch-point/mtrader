@@ -672,7 +672,8 @@
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "FUT"
+          "secType": "FUT",
+          "exchange": "GLOBEX"
         },
         "collective2": {
           "c2_prefix": "@",
