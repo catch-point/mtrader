@@ -406,7 +406,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const order_ref = orderRef(root_ref, order_id, options);
     const contract = await toContract(markets, ib, options);
     const submit_order = {
-        ...await orderToIbOrder(ib, settings, contract, options, options),
+        ...await orderToIbOrder(markets, ib, settings, contract, options, options),
         orderId: order_id, orderRef: order_ref,
         transmit: (contract.secType == 'BAG' || _.isEmpty(options.attached)) && settings.transmit || false,
         parentId: parentId || (attach_order ? attach_order.orderId : null),
@@ -452,7 +452,7 @@ async function orderByRef(ib, order_ref) {
     else throw Error(`Order ${order_ref} is not open, either filled, cancelled, or not yet transmitted`);
 }
 
-async function orderToIbOrder(ib, settings, contract, order, options) {
+async function orderToIbOrder(markets, ib, settings, contract, order, options) {
     expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
     expect(order).to.have.property('quant').that.is.ok;
     expect(order).to.have.property('order_type').that.is.ok;
@@ -474,6 +474,17 @@ async function orderToIbOrder(ib, settings, contract, order, options) {
             transmit: settings.transmit || false,
             ...await ibAccountOrderProperties(ib, settings)
         };
+    } else if (order.order_type == 'SNAP STK') {
+        return {
+            action: order.action,
+            totalQuantity: order.quant,
+            orderType: 'LMT',
+            lmtPrice: await snapStockLimit(markets, ib, contract, order),
+            tif: order.tif,
+            orderRef: order.order_ref,
+            transmit: settings.transmit || false,
+            ...await ibAccountOrderProperties(ib, settings)
+        };
     } else {
         return {
             action: order.action,
@@ -487,6 +498,96 @@ async function orderToIbOrder(ib, settings, contract, order, options) {
             ...await ibAccountOrderProperties(ib, settings)
         };
     }
+}
+
+async function snapStockLimit(markets, ib, contract, order) {
+    if (_.isEmpty(order.attached)) {
+        expect(contract.secType).to.be.oneOf(['FUT', 'OPT','FOP']);
+        const detail = _.first(await ib.reqContractDetails(contract));
+        const right = detail.summary.right;
+        expect(right).is.oneOf(['C', 'P']);
+        const minTick = detail.minTick;
+        const [bar, under_bar] = await Promise.all([
+            ib.reqMktData(contract),
+            ib.reqMktData({conId: detail.underConId, exchange: detail.summary.exchange})
+        ]);
+        if (!bar || !bar.bid || !bar.ask)
+            throw Error("Can only submit SNAP STK orders while market is open");
+        const net_offset = order.action == 'BUY' && right == 'C' ||
+            order.action == 'SELL' && right == 'P' ?
+            Big(order.offset||0).times(-1) : Big(order.offset||0);
+        const price = await snapStockPrice(ib, contract, bar, under_bar, net_offset);
+        return +Big(price).div(minTick).round(0, order.action == 'BUY' ? 0 : 3).times(minTick);
+    } else {
+        order.attached.forEach(leg => {
+            expect(leg).to.have.property('symbol').that.is.a('string');
+            expect(leg).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
+            expect(leg).to.have.property('order_type').that.eql('LEG');
+            expect(leg).to.have.property('security_type').that.is.oneOf(['FUT', 'OPT','FOP']);
+        });
+        const [detail, contracts] = await Promise.all([
+            toContract(markets, ib, _.first(order.attached)).then(contract => {
+                return ib.reqContractDetails(contract).then(_.first);
+            }),
+            Promise.all(order.attached.map(async(leg) => {
+                return toContractWithId(markets, ib, leg);
+            }))
+        ]);
+        const minTick = detail.minTick;
+        const right = detail.summary.right;
+        const exchange = (detail.validExchanges||'').split(',').find(ex => ex != 'SMART') ||
+            detail.summary.exchange;
+        contracts.forEach(contract => {
+            expect(contract.right).is.oneOf(['C', 'P']);
+            expect(contract.right).to.eql(right);
+        });
+        const [bars, under_bar] = await Promise.all([
+            Promise.all(contracts.map(async(contract) => {
+                return ib.reqMktData(contract);
+            })),
+            ib.reqMktData({
+                conId: detail.underConId,
+                symbol: detail.underSymbol,
+                secType: detail.underSecType,
+                exchange: exchange
+            })
+        ]);
+        if (bars.some(bar => !bar.bid || !bar.ask))
+            throw Error("Can only submit SNAP STK orders while market is open");
+        const net_mid_price = netPrice(order.attached, bars.map(bar => +Big(bar.bid).add(bar.ask).div(2)));
+        const net_offset = order.action == 'BUY' && right == 'C' && +net_mid_price >= 0 ||
+            order.action == 'SELL' && right == 'P' && +net_mid_price >= 0 ?
+            Big(order.offset||0).times(-1) : Big(order.offset||0);
+        const prices = await Promise.all(order.attached.map(async(leg, i) => {
+            return snapStockPrice(ib, contracts[i], bars[i], under_bar, net_offset);
+        }));
+        const price = netPrice(order.attached, prices);
+        return +Big(price).div(minTick).round(0, order.action == 'BUY' ? 0 : 3).times(minTick);
+    }
+}
+
+async function snapStockPrice(ib, contract, bar, under_bar, net_offset) {
+    if (!+net_offset) return +Big(bar.bid).add(bar.ask).div(2);
+    else if (!bar.ask_option && contract.secType != 'OPT' && contract.secType != 'FOP')
+        return +Big(bar.bid).add(bar.ask).div(2).add(net_offset);
+    const undPrice = bar.ask_option.undPrice != Number.MAX_VALUE && bar.ask_option.undPrice || null;
+    const asset_price = undPrice || under_bar.last || +Big(under_bar.bid).add(under_bar.ask).div(2);
+    if (!+asset_price)
+        throw Error(`Can only submit SNAP STK orders while market is open ${util.inspect(under_bar)}`);
+    const asset_offset = +Big(asset_price).add(net_offset);
+    const iv = +Big(bar.ask_option.iv).add(bar.bid_option.iv).div(2);
+    if (!iv || bar.ask_option.iv == Number.MAX_VALUE || bar.bid_option.iv == Number.MAX_VALUE)
+        throw Error(`No implied volatility for option ${contract.localSymbol} ${util.inspect(bar.ask_option)}`);
+    const option = await ib.calculateOptionPrice(contract, iv, asset_offset);
+    return option.optPrice;
+}
+
+function netPrice(legs, leg_prices) {
+    return +leg_prices.reduce((net, leg_price, i) => {
+        const leg = legs[i];
+        const buy = leg.action == 'BUY' ? 1 : -1;
+        return net.add(Big(leg_price).times(leg.quant).times(buy));
+    }, Big(0));
 }
 
 async function ibAccountOrderProperties(ib, settings) {
@@ -542,6 +643,7 @@ async function ibToOrder(markets, ib, settings, order, contract, options) {
 }
 
 function orderTypeFromIB(order) {
+    if (order.orderRef && order.orderRef.indexOf('SNAPSTK') === 0) return 'SNAP STK';
     if (!order.algoStrategy) return order.orderType;
     const algoParams = (order.algoParams||[]).map(tv => `${tv.tag}=${tv.value}`).join(';');
     return (`${order.algoStrategy} (IBALGO) ${algoParams}`).trim();
@@ -707,7 +809,7 @@ function convertTime(market, tz) {
 }
 
 function asSymbol(contract) {
-    if (contract.secType == 'FUT') return fromFutSymbol(contract.localSymbol);
+    if (contract.secType == 'FUT' || contract.secType == 'FOP') return fromFutSymbol(contract.localSymbol);
     else if (contract.secType == 'CASH') return contract.symbol;
     else if (contract.secType == 'OPT') return contract.localSymbol;
     else if (!contract.localSymbol) return contract.symbol;
@@ -741,11 +843,12 @@ async function toContract(markets, ib, options) {
         return _.omit({
             conId: options.conId,
             localSymbol: toLocalSymbol(market, options.symbol),
-            secType: market.secType,
+            secType: options.security_type || market.secType,
             primaryExch: market.primaryExch,
             exchange: market.exchange,
             currency: market.currency,
-            includeExpired: market.secType == 'FUT'
+            includeExpired: market.secType == 'FUT',
+            multiplier: options.multiplier
         }, v => !v);
     } else if (ib != null && options.attached && options.attached.length) {
         const contracts = await Promise.all(options.attached.map(async(attach) => {
@@ -809,7 +912,7 @@ function toFutSymbol(market, symbol) {
         const space = '    '.substring(root.length);
         return `${root}${space} ${abbreviations[code]} ${decade}${year}`;
     } else {
-        return symbol.replace(/^(.*)([A-Z])(\d)(\d)$/,'$1$2$4');
+        return symbol.replace(/^(.*)([A-Z])(\d)(\d)( [CP]\d+)?$/,'$1$2$4');
     }
 }
 

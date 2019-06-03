@@ -191,7 +191,7 @@ function reqPositions(ib) {
                 positions_fail = fail;
                 logger.log('reqPositions');
                 ib.reqPositions();
-            })).catch(err => logger.error('reqPositions', err.message) || Promise.reject(err));
+            })).catch(err => logger.warn('reqPositions', err.message) || Promise.reject(err));
         }
     };
 }
@@ -214,7 +214,7 @@ function currentTime(ib) {
                 received = resolve;
                 fail = reject;
                 ib.reqCurrentTime();
-            })).catch(err => logger.error('reqCurrentTime', err.message) || Promise.reject(err));
+            })).catch(err => logger.warn('reqCurrentTime', err.message) || Promise.reject(err));
         }
     };
 }
@@ -243,7 +243,7 @@ function requestFA(ib) {
                 received = resolve;
                 fail = reject;
                 return ib.requestFA(IB.FA_DATA_TYPE.GROUPS);
-            })).catch(err => logger.error('requestFA', err.message) || Promise.reject(err));
+            })).catch(err => logger.warn('requestFA', err.message) || Promise.reject(err));
         },
         requestProfiles() {
             return promise = promise.catch(err => {})
@@ -251,7 +251,7 @@ function requestFA(ib) {
                 received = resolve;
                 fail = reject;
                 return ib.requestFA(IB.FA_DATA_TYPE.PROFILES);
-            })).catch(err => logger.error('requestFA', err.message) || Promise.reject(err));
+            })).catch(err => logger.warn('requestFA', err.message) || Promise.reject(err));
         },
         requestAliases() {
             return promise = promise.catch(err => {})
@@ -259,7 +259,7 @@ function requestFA(ib) {
                 received = resolve;
                 fail = reject;
                 return ib.requestFA(IB.FA_DATA_TYPE.ALIASES);
-            })).catch(err => logger.error('requestFA', err.message) || Promise.reject(err));
+            })).catch(err => logger.warn('requestFA', err.message) || Promise.reject(err));
         }
     };
 }
@@ -353,7 +353,7 @@ function accountUpdates(ib, store, ib_tz) {
                 subscriptions[acctCode] = +reqId;
             logger.log('reqAccountUpdates', acctCode, modelCode || '', false);
             ib.reqAccountUpdatesMulti(+reqId, acctCode, modelCode || '', false);
-        }).catch(err => logger.error('reqAccountUpdates', err.message) || Promise.reject(err));
+        }).catch(err => logger.warn('reqAccountUpdates', err.message) || Promise.reject(err));
     };
     return {
         reqAccountUpdate,
@@ -544,7 +544,7 @@ function openOrders(ib, store, ib_tz, clientId) {
         },
         async placeOrder(orderId, contract, order) {
             if (contract.secType == 'BAG' && !order.transmit) {
-                throw Error(`Transmit flag must be enabled to submit combo orders for ${contract.symbol} ${order.orderRef}`);
+                logger.warn(`Transmit flag should be enabled to submit combo orders for ${contract.symbol} ${order.orderRef}`, orderId, contract, order);
             }
             logger.log('placeOrder', orderId, contract, order);
             ib.placeOrder(orderId, contract, order);
@@ -562,14 +562,14 @@ function openOrders(ib, store, ib_tz, clientId) {
             }, v => v == null);
             else return new Promise((ready, fail) => {
                 placing_orders[orderId] = {ready, fail};
-            }).catch(err => logger.error('cancelOrder', err.message) || Promise.reject(err));
+            }).catch(err => logger.warn('placeOrder', orderId, contract, order, err.message) || Promise.reject(err));
         },
         async cancelOrder(orderId) {
             logger.log('cancelOrder', orderId);
             ib.cancelOrder(orderId);
             return new Promise((ready, fail) => {
                 cancelling_orders[orderId] = {ready, fail};
-            }).catch(err => logger.error('placeOrder', orderId, contract, order, err.message) || Promise.reject(err));
+            }).catch(err => logger.warn('cancelOrder', orderId, err.message) || Promise.reject(err));
         },
         reqRecentOrders() {
             return _.values(orders).filter(order => {
@@ -585,7 +585,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 logger.log('reqOpenOrders');
                 ib.reqOpenOrders();
             })).then(orders => orders.filter(order => order.clientId == clientId))
-              .catch(err => logger.error('reqOpenOrders', err.message) || Promise.reject(err));
+              .catch(err => logger.warn('reqOpenOrders', err.message) || Promise.reject(err));
         },
         reqAllOpenOrders() {
             return promise_orders = promise_orders.catch(logger.error)
@@ -594,7 +594,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 orders_fail = fail;
                 logger.log('reqAllOpenOrders');
                 ib.reqAllOpenOrders();
-            })).catch(err => logger.error('reqAllOpenOrders', err.message) || Promise.reject(err));
+            })).catch(err => logger.warn('reqAllOpenOrders', err.message) || Promise.reject(err));
         },
         async reqCompletedOrders(filter) {
             const acctCode = (filter||{}).acctCode;
@@ -928,9 +928,9 @@ function requestWithId(ib) {
     }).on('tickGeneric', function (tickerId, tickType, value) {
         if (req_queue[tickerId]) req_queue[tickerId].tickData[getTickTypeName(tickType)] = value;
         if (isTickComplete(ib, req_queue[tickerId])) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
-    }).on('tickOptionComputation', function (tickerId, tickType, impliedVolatility, delta, optPrice,
+    }).on('tickOptionComputation', function (tickerId, tickType, iv, delta, optPrice,
             pvDividend, gamma, vega, theta, undPrice) {
-        const tick = _.omit({impliedVolatility, delta, optPrice,
+        const tick = _.omit({iv, delta, optPrice,
             pvDividend, gamma, vega, theta, undPrice}, v => v == null);
         const cmd = (req_queue[tickerId]||{}).cmd;
         if (cmd == 'calculateImpliedVolatility' || cmd == 'calculateOptionPrice')
@@ -1008,7 +1008,7 @@ function requestWithId(ib) {
 }
 
 function isTickComplete(ib, req) {
-    if (!req) return false;
+    if (!req || req.cmd != 'reqMktData') return false;
     const genericTickList = req.args[1];
     if (!genericTickList) return false;
     const genericTickNameArray = genericTickList.split(',').map(getTickTypeName);

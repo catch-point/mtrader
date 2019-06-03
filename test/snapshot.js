@@ -54,12 +54,12 @@ function Snapshot(target, stateful) {
                 } else if (!calls[0].args.length && calls.filter(call => !call.repeat).length == 1) {
                     return `() => ${util.inspect(_.first(calls).result, options)}`;
                 } else if (calls.filter(call => !call.repeat).length == 1) {
-                    return `(...args) => {expect(args).to.be.like(${util.inspect(calls[0].args, options)});` +
+                    return `(...args) => {expect(args).to.be.like(${util.inspect(calls[0].args, options)});\n` +
                         `return ${util.inspect(_.first(calls).result, options)};}`;
                 } else if (!stateful && calls.every(call => call.getter)) {
-                    const one_of = calls.map(call => call.args[0]);
+                    const one_of = _.uniq(calls.map(call => call.args[0]));
                     return `(arg) => {switch(arg) {\n` +
-                        calls.map(call => {
+                        calls.filter(call => !call.repeat).map(call => {
                             const key = JSON.stringify(call.args[0]);
                             return `case ${key}: return ${util.inspect(call.result, options)}`;
                         }).join('\n') +
@@ -99,7 +99,7 @@ function Snapshot(target, stateful) {
                     return function(depth, options) {
                         return mock_code;
                     };
-                } else if (prop == 'constructor') { // call by util.inspect
+                } else if (prop == 'constructor' || prop == 'toString' || prop == 'valueOf') {
                     return target[prop];
                 } else {
                     return target[prop] === undefined ? target[prop] :

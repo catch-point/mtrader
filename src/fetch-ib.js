@@ -81,7 +81,7 @@ function help() {
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
         properties: [
             'symbol', 'conId', 'market', 'name', 'security_type', 'exchange', 'currency',
-            'tradingClass', 'industry', 'category', 'subcategory', 'multiplier', 'minTick'
+            'tradingClass', 'industry', 'category', 'subcategory', 'multiplier'
         ],
         options: _.extend({}, commonOptions, {
             interval: {
@@ -186,7 +186,6 @@ async function lookup(markets, client, options) {
         security_type: detail.secType,
         name: detail.longName,
         exchange: detail.exchange,
-        minTick: detail.minTick,
         currency: detail.currency,
         tradingClass: detail.tradingClass,
         industry: detail.industry,
@@ -337,7 +336,7 @@ function toBarSizeSetting(interval) {
 
 function flattenContractDetails(details) {
     const omit = [];
-    const picking = ['minTick', 'longName', 'industry', 'category', 'subcategory'];
+    const picking = ['longName', 'industry', 'category', 'subcategory'];
     const picked = details
       .map(detail => Object.assign(_.pick(detail, picking), detail.summary));
     return joinCommon(picked);
@@ -393,9 +392,9 @@ function toFutSymbol(market, symbol) {
         const abbreviations = {F: 'JAN', G: 'FEB', H: 'MAR', J: 'APR', K: 'MAY', M: 'JUN', N: 'JUL', Q: 'AUG', U: 'SEP', V: 'OCT', X: 'NOV', Z: 'DEC'};
         const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)$/);
         if (!m) return symbol;
-        const [, root, code, decade, year] = m;
-        const space = '    '.substring(root.length);
-        return `${root}${space} ${abbreviations[code]} ${decade}${year}`;
+        const [, tradingClass, code, decade, year] = m;
+        const space = '    '.substring(tradingClass.length);
+        return `${tradingClass}${space} ${abbreviations[code]} ${decade}${year}`;
     } else {
         return symbol.replace(/^(.*)([A-Z])(\d)(\d)$/,'$1$2$4');
     }

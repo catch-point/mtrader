@@ -35,7 +35,7 @@ const like = require('./should-be-like.js');
 const IB = require('../src/ib-client.js');
 
 describe("ib-client", function() {
-    this.timeout(30000);
+    this.timeout(60000);
     var tz = 'America/New_York';
     var client = new IB();
     before(function() {
@@ -93,6 +93,16 @@ describe("ib-client", function() {
             longName: 'S&P 500 Stock Index',
             contractMonth: '202112'
         })));
+    });
+    it.skip("options ES options lookup", function() {
+        return client.reqContractDetails({
+            localSymbol:'ESM9 P2625',
+            strike:'2625',
+            right:'P',
+            currency:'USD',
+            secType:'FOP',
+            exchange:'GLOBEX'
+        }).then(d=>d.forEach(d=>console.log(d))||d);
     });
     it("should find IBM", function() {
         return client.reqContractDetails({
