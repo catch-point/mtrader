@@ -284,7 +284,7 @@ async function listBalances(markets, ib, fetch, settings, options) {
         return [].concat(...range.map(summary => {
             const time = summary.time ? parseTime(summary.time, ib_tz) : now;
             expect(summary).to.have.property('Currency').that.is.an('array');
-            return summary.Currency.filter(currency => currency != 'BASE').map(currency => {
+            return _.uniq(summary.Currency).filter(currency => currency != 'BASE').map(currency => {
                 return {
                     asof: time.isValid() ? time.format() : now.format(),
                     acctNumber, currency,

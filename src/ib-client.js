@@ -185,7 +185,7 @@ function reqPositions(ib) {
     });
     return {
         reqPositions() {
-            return promise_positions = promise_positions.catch(logger.error)
+            return promise_positions = promise_positions.catch(logger.debug)
               .then(() => new Promise((ready, fail) => {
                 positions_end = ready;
                 positions_fail = fail;
@@ -325,8 +325,8 @@ function accountUpdates(ib, store, ib_tz) {
         if (req_queue[reqId]) {
             const acct = req_queue[reqId].summary;
             acct[key] = currency ? acct[key] || (currency == value ? [] : {}) : value;
-            if (_.isArray(acct[key])) acct[key].push(value);
-            else if (currency) acct[key][currency] = value;
+            if (currency && !_.isArray(acct[key])) acct[key][currency] = value;
+            else if (_.isArray(acct[key]) && !~acct[key].indexOf(value)) acct[key].push(value);
         }
         if (!closed) flush();
     }).on('accountUpdateMultiEnd', function(reqId) {
@@ -578,7 +578,7 @@ function openOrders(ib, store, ib_tz, clientId) {
             });
         },
         reqOpenOrders() {
-            return promise_orders = promise_orders.catch(logger.error)
+            return promise_orders = promise_orders.catch(logger.debug)
               .then(() => new Promise((ready, fail) => {
                 orders_end = ready;
                 orders_fail = fail;
@@ -588,7 +588,7 @@ function openOrders(ib, store, ib_tz, clientId) {
               .catch(err => logger.warn('reqOpenOrders', err.message) || Promise.reject(err));
         },
         reqAllOpenOrders() {
-            return promise_orders = promise_orders.catch(logger.error)
+            return promise_orders = promise_orders.catch(logger.debug)
               .then(() => new Promise((ready, fail) => {
                 orders_end = ready;
                 orders_fail = fail;
@@ -775,7 +775,7 @@ function execDetails(ib, store) {
                         });
                     },
                     reject(err) {
-                        logger.error('reqExecutions', filter || '', err.message);
+                        logger.warn('reqExecutions', filter || '', err.message);
                         fail(err);
                         setImmediate(() => {
                             delete req_queue[reqId];
@@ -807,7 +807,7 @@ function reqContract(ib) {
                     });
                 },
                 reject(err) {
-                    logger.error('reqContractDetails', conId, err.message);
+                    logger.warn('reqContractDetails', conId, err.message);
                     fail(err);
                     setImmediate(() => {
                         delete req_queue[reqId];
@@ -878,7 +878,7 @@ function requestWithId(ib) {
                     });
                 },
                 reject(err) {
-                    logger.error(cmd, ...args, err.message);
+                    logger.warn(cmd, ...args, err.message);
                     fail(err);
                     setImmediate(() => {
                         delete req_queue[reqId];
@@ -960,8 +960,8 @@ function requestWithId(ib) {
         const sum = req_queue[tickerId].accountSummary = req_queue[tickerId].accountSummary || {};
         const acct = sum[account] = sum[account] || {};
         acct[tag] = currency ? acct[tag] || (currency == value ? [] : {}) : value;
-        if (_.isArray(acct[tag])) acct[tag].push(value);
-        else if (currency) acct[tag][currency] = value;
+        if (currency && !_.isArray(acct[tag])) acct[tag][currency] = value;
+        else if (_.isArray(acct[tag]) && !~acct[tag].indexOf(value)) acct[tag].push(value);
     }).on('accountSummaryEnd', function(tickerId, account, tag, value, currency) {
         if (req_queue[tickerId]) req_queue[tickerId].resolve(req_queue[tickerId].accountSummary);
     }).on('positionMulti', function(reqId, account, modelCode, contract, position, averageCost) {

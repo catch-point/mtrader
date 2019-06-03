@@ -55,7 +55,6 @@ describe("fetch-ib", function() {
         it("should find AABA", function() {
             return client({interval:'lookup',symbol:'AABA'})
               .should.eventually.be.like(results => _.some(results, like({
-                minTick: 0.01,
                 name: 'ALTABA INC',
                 symbol: 'AABA',
                 security_type: 'STK',
@@ -211,8 +210,9 @@ describe("fetch-ib", function() {
             }));
         });
         describe("should lookup CFE monthly futures symbols", function() {
+            const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
             const year = (moment().year())%100;
-            ['H', 'J', 'K', 'M', 'N'].map(mo => {
+            ['H', 'J', 'K', 'M', 'N'].filter(mo => month_code.indexOf(mo) > moment().month()).map(mo => {
                 it(`VX${mo}${year}`, function() {
                     return client({
                         interval:'lookup',
