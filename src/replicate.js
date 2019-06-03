@@ -377,8 +377,8 @@ function updateWorking(desired, working, options) {
     const ds_projected = ds && ds.status == 'pending';
     if (_.has(ds, 'traded_at') && !working.prior && working.traded_at && moment(working.traded_at).isAfter(ds.traded_at)) {
         if (d_opened != w_opened || !same_side) {
-            // working position has since been closed (stoploss) since the last desired signal was produced
-            logger.warn(`Working ${desired.symbol} position has since been closed`);
+            // working position has since been closed (stoploss?) since the last desired signal was produced
+            logger.warn(`Working ${desired.symbol} position has since been changed`);
         }
         return [];
     } else if (!d_opened && !w_opened && !working.prior && !desired.prior) {
@@ -458,8 +458,12 @@ function updateWorking(desired, working, options) {
  */
 function sameSignal(a, b, threshold) {
     if (!a || !b) return false;
-    const attrs = ['action', 'order_type', 'limit', 'stop', 'offset', 'tif'];
-    return isMatch(b, _.pick(a, attrs)) && Math.abs(a.quant - b.quant) <= (threshold || 0);
+    else if (!isMatch(b, _.pick(a, 'action', 'order_type', 'tif'))) return false;
+    else if (Math.abs(a.quant - b.quant) > (threshold || 0)) return false;
+    else if (a.limit && b.limit && a.limit != b.limit) return false;
+    else if (a.offset && b.offset && a.offset != b.offset) return false;
+    else if (a.stop && b.stop && a.stop != b.stop) return false;
+    else return true;
 }
 
 function isMatch(object, attrs) {

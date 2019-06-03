@@ -507,9 +507,14 @@ async function snapStockLimit(markets, ib, contract, order) {
         const right = detail.summary.right;
         expect(right).is.oneOf(['C', 'P']);
         const minTick = detail.minTick;
+        const exchange = (detail.validExchanges||'').split(',').find(ex => ex != 'SMART') ||
+            detail.summary.exchange;
         const [bar, under_bar] = await Promise.all([
             ib.reqMktData(contract),
-            ib.reqMktData({conId: detail.underConId, exchange: detail.summary.exchange})
+            ib.reqMktData({
+                conId: detail.underConId,
+                exchange: exchange
+            })
         ]);
         if (!bar || !bar.bid || !bar.ask)
             throw Error("Can only submit SNAP STK orders while market is open");
