@@ -58,9 +58,7 @@ describe("fetch-ib", function() {
                 name: 'ALTABA INC',
                 symbol: 'AABA',
                 security_type: 'STK',
-                exchange: 'SMART',
                 currency: 'USD',
-                tradingClass: 'NMS',
                 market: 'NASDAQ'
             })));
         });
@@ -225,7 +223,7 @@ describe("fetch-ib", function() {
             });
         });
         describe("should lookup CFE weekly futures symbols", function() {
-            const week = moment().isoWeek() + 2;
+            const week = moment().isoWeek() + 3;
             const year = moment(`${moment().year()}-01-01`);
             const one = year.add((10 - year.isoWeekday()) % 7, 'days');
             const expiry = moment(one).add(week - 1, 'weeks');

@@ -79,10 +79,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
-        properties: [
-            'symbol', 'conId', 'market', 'name', 'security_type', 'exchange', 'currency',
-            'tradingClass', 'industry', 'category', 'subcategory', 'multiplier'
-        ],
+        properties: ['symbol', 'conId', 'market', 'name', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -185,13 +182,7 @@ async function lookup(markets, client, options) {
         market: options.market || markets[detail.primaryExch] && detail.primaryExch,
         security_type: detail.secType,
         name: detail.longName,
-        exchange: detail.exchange,
         currency: detail.currency,
-        tradingClass: detail.tradingClass,
-        industry: detail.industry,
-        category: detail.category,
-        subcategory: detail.subcategory,
-        multiplier: detail.multiplier,
         conId: detail.conId
     }, v => !v));
 }

@@ -731,7 +731,7 @@ function execDetails(ib, store) {
         if (flushed) flusher.flush();
         else flusher();
     }).on('commissionReport', function(commissionReport) {
-        logger.info("commissionReport", commissionReport.commission, commissionReport.currency, commissionReport.realizedPNL == Number.MAX_VALUE ? '' : commissionReport.realizedPNL);
+        logger.log("commissionReport", commissionReport.commission, commissionReport.currency, commissionReport.realizedPNL == Number.MAX_VALUE ? '' : commissionReport.realizedPNL);
         commissions[commissionReport.execId] = commissionReport;
         if (flushed) flusher.flush();
         else flusher();

@@ -81,7 +81,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
-        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'listed_market', 'security_type', 'currency'],
+        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -480,7 +480,6 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
             iqfeed_symbol: row.symbol,
             market: _.first(_.keys(sources)),
             name: row.name,
-            listed_market: row.listed_market,
             security_type: security_types_map[row.security_type],
             currency: (ds||{}).currency
         };
