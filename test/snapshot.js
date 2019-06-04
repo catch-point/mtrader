@@ -61,7 +61,7 @@ function Snapshot(target, stateful) {
                     return `(arg) => {switch(arg) {\n` +
                         calls.filter(call => !call.repeat).map(call => {
                             const key = JSON.stringify(call.args[0]);
-                            return `case ${key}: return ${util.inspect(call.result, options)}`;
+                            return `case ${key}: return ${util.inspect(call.result, options)};`;
                         }).join('\n') +
                         `\ndefault: expect(arg).to.be.oneOf(${util.inspect(one_of, options)})` + `\n}}`;
                 } else {
@@ -69,9 +69,9 @@ function Snapshot(target, stateful) {
                         calls.map((call, count) => {
                             const key = JSON.stringify(call.args[0]);
                             return `case ${count}: expect(args).to.be.like(${util.inspect(call.args, options)});`+
-                                `return ${util.inspect(call.result, options)}`;
+                                `return ${util.inspect(call.result, options)};`;
                         }).join('\n') +
-                        `\ndefault: throw Error("Too many times")` + `\n}}})()`;
+                        `\ndefault: throw Error("Too many times");` + `\n}}})()`;
                 }
             }
         });

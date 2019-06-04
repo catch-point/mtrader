@@ -40,12 +40,14 @@ const Quote = require('../src/quote.js');
 const Collect = require('../src/collect.js');
 const Replicate = require('../src/replicate.js');
 const Broker = require('../src/broker-simulation.js');
+const beautify = require('js-beautify');
 const like = require('./should-be-like.js');
+const Snapshot = require('./snapshot.js');
 const createTempDir = require('./create-temp-dir.js');
 
 describe("replicate-simulation", function() {
     this.timeout(60000);
-    var fetch, quote, collect, broker, replicate;
+    var fetch, quote, collect, broker, snapshot, replicate;
     before(function() {
         config('workers', 0);
         config.load(path.resolve(__dirname, 'testdata.json'));
@@ -67,6 +69,17 @@ describe("replicate-simulation", function() {
             asof: '2019-05-04T00:00:00-05:00',
             action: 'deposit', quant: 10000, currency: 'USD'
         });
+    });
+    beforeEach(async() => {
+        snapshot = new Snapshot(broker);
+    });
+    afterEach(async() => {
+        if (snapshot) {
+            const code = beautify(util.inspect(snapshot, {depth: Infinity}), {
+                brace_style: 'none,preserve-inline'
+            });
+            if (!code.match(/^[()=>{}\s]*$/)) console.log(code);
+        }
     });
     after(function() {
         config.unset('prefix');
@@ -364,6 +377,227 @@ describe("replicate-simulation", function() {
                 order_type: 'LOC',
                 limit: '86.1',
                 tif: 'DAY'
+            }]);
+        });
+        it("Already filled XGB", async() => {
+            return Replicate((options) => {
+                    switch (options.help ? 'help' : options.action) {
+                        case 'help':
+                            return broker({help:true});
+                        case 'balances':
+                            return Promise.resolve([{ currency: 'USD' },
+                                { currency: 'CAD', net: '10033.84', rate: '1' }
+                            ])
+                        case 'positions':
+                            return Promise.resolve([{
+                                symbol: 'XGB',
+                                market: 'TSE',
+                                position: 564,
+                                traded_at: '2019-06-04T10:00:00-04:00'
+                            }])
+                        case 'orders':
+                            return Promise.resolve([]);
+                        case 'SELL':
+                            return {
+                            currency: 'CAD',
+                            markets: [ 'TSE' ],
+                            action: 'SELL',
+                            quant: 96,
+                            symbol: 'XGB',
+                            market: 'TSE',
+                            security_type: 'STK',
+                            order_type: 'MKT',
+                            tif: 'DAY',
+                            status: 'pending',
+                            traded_at: '2019-06-04T16:00:00-04:00',
+                            traded_price: '22.215'
+                        };
+                        default:
+                            throw Error("Unexpected: " + util.inspect(options))
+                    }
+                }, fetch, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    quant: '324',
+                    symbol: 'XGB',
+                    market: 'TSE',
+                    currency: 'CAD',
+                    security_type: 'STK',
+                    order_type: 'MKT',
+                    tif: 'DAY',
+                    traded_at: '2019-06-03T16:00:00-04:00',
+                    traded_price: '22.27'
+                }, {
+                    action: 'BUY',
+                    quant: '144',
+                    symbol: 'XGB',
+                    market: 'TSE',
+                    currency: 'CAD',
+                    security_type: 'STK',
+                    order_type: 'MKT',
+                    tif: 'DAY',
+                    status: 'pending',
+                    traded_at: '2019-06-04T16:00:00-04:00',
+                    traded_price: '22.215'
+                }]);
+            })({
+                now: "2019-06-04T12:00:00",
+                currency: 'CAD',
+                markets: ['TSE']
+            }).should.eventually.be.like([{
+                currency: 'CAD',
+                markets: [ 'TSE' ],
+                action: 'SELL',
+                quant: 96,
+                symbol: 'XGB',
+                market: 'TSE',
+                security_type: 'STK',
+                order_type: 'MKT',
+                tif: 'DAY',
+                status: 'pending',
+                traded_at: '2019-06-04T16:00:00-04:00',
+                traded_price: '22.215'
+            }]);
+        });
+        it("Already filled XHB", async() => {
+            return Replicate((options) => {
+                    switch (options.help ? 'help' : options.action) {
+                        case 'help':
+                            return broker({help:true});
+                        case 'balances':
+                            return Promise.resolve([{ currency: 'USD' },
+                                { currency: 'CAD', net: '10033.84', rate: '1' }
+                            ]);
+                        case 'positions':
+                            return Promise.resolve([{
+                                asof: '2019-06-04T10:38:36-04:00',
+                                acctNumber: 'U1664535',
+                                sales: '2076.00',
+                                purchases: '0.00',
+                                symbol: 'XHB',
+                                market: 'TSE',
+                                currency: 'CAD',
+                                security_type: 'STK',
+                                multiplier: '',
+                                action: 'STC',
+                                quant: 100,
+                                position: 399,
+                                traded_at: '2019-06-04T10:38:36-04:00',
+                                traded_price: 20.76,
+                                price: 20.77,
+                                dividend: '0.00',
+                                commission: '1.00',
+                                mtm: -2,
+                                value: '1661.60'
+                            }]);
+                        case 'orders':
+                            return Promise.resolve([{
+                                posted_at: '2019-06-04T10:06:21-04:00',
+                                asof: '2019-06-04T14:08:16-04:00',
+                                action: 'SELL',
+                                quant: '22',
+                                order_type: 'SNAP MID',
+                                stop: '0.01',
+                                offset: '0.01',
+                                tif: 'DAY',
+                                status: 'working',
+                                traded_price: '20.76',
+                                order_ref: 'SNAPPRIM.1c3b555f2.112',
+                                account: 'MKSTK',
+                                symbol: 'XHB',
+                                market: 'TSE',
+                                currency: 'CAD',
+                                security_type: 'STK'
+                            }]);
+                        case 'SELL':
+                            options.should.be.like({
+                                currency: 'CAD',
+                                markets: [ 'TSE' ],
+                                quant: 21,
+                                order_ref: 'SNAPPRIM.1c3b555f2.112',
+                                action: 'SELL',
+                                symbol: 'XHB',
+                                market: 'TSE',
+                                security_type: 'STK',
+                                order_type: 'SNAP MID',
+                                tif: 'DAY',
+                                status: 'pending',
+                                traded_at: '2019-06-04T16:00:00-04:00',
+                                traded_price: '20.755'
+                            });
+                            return {
+                                currency: 'CAD',
+                                markets: [ 'TSE' ],
+                                quant: 21,
+                                order_ref: 'SNAPPRIM.1c3b555f2.112',
+                                action: 'SELL',
+                                symbol: 'XHB',
+                                market: 'TSE',
+                                security_type: 'STK',
+                                order_type: 'SNAP MID',
+                                tif: 'DAY',
+                                status: 'pending',
+                                traded_at: '2019-06-04T16:00:00-04:00',
+                                traded_price: '20.755'
+                            };
+                        default:
+                            throw Error("Unexpected: " + util.inspect(options))
+                    }
+                }, fetch, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    quant: '1248',
+                    symbol: 'XHB',
+                    market: 'TSE',
+                    currency: 'CAD',
+                    security_type: 'STK',
+                    order_type: 'SNAP MID',
+                    tif: 'DAY',
+                    traded_at: '2019-06-02T16:00:00-04:00'
+                }, {
+                    action: 'SELL',
+                    quant: '345',
+                    symbol: 'XHB',
+                    market: 'TSE',
+                    currency: 'CAD',
+                    security_type: 'STK',
+                    order_type: 'SNAP MID',
+                    tif: 'DAY',
+                    traded_at: '2019-06-03T16:00:00-04:00',
+                    traded_price: '20.77'
+                }, {
+                    action: 'SELL',
+                    quant: '525',
+                    symbol: 'XHB',
+                    market: 'TSE',
+                    currency: 'CAD',
+                    security_type: 'STK',
+                    order_type: 'SNAP MID',
+                    tif: 'DAY',
+                    status: 'pending',
+                    traded_at: '2019-06-04T16:00:00-04:00',
+                    traded_price: '20.755'
+                }]);
+            })({
+                now: "2019-06-04T12:00:00",
+                currency: 'CAD',
+                markets: ['TSE']
+            }).should.eventually.be.like([{
+                currency: 'CAD',
+                markets: [ 'TSE' ],
+                quant: 21,
+                order_ref: 'SNAPPRIM.1c3b555f2.112',
+                action: 'SELL',
+                symbol: 'XHB',
+                market: 'TSE',
+                security_type: 'STK',
+                order_type: 'SNAP MID',
+                tif: 'DAY',
+                status: 'pending',
+                traded_at: '2019-06-04T16:00:00-04:00',
+                traded_price: '20.755'
             }]);
         });
     });

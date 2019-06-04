@@ -233,7 +233,7 @@ function adjustment(base, bar) {
 }
 
 function parseCurrency(string, adj_split_only) {
-    return Big(string).div(adj_split_only);
+    return Big(_.isFinite(string) ? string : 0).div(adj_split_only);
 }
 
 function adjRight(bars, adjustments, options, cb) {

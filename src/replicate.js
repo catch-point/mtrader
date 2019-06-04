@@ -400,9 +400,11 @@ function updateWorking(desired, working, options) {
     } else if (desired.prior && !working.prior) {
         // advance working state
         const adj = updateWorking(desired.prior, working, options);
-        return appendSignal(adj, _.defaults({
+        if (adj.filter(a=>!isStopOrder(a)).length) return appendSignal(adj, ds, options);
+        else return appendSignal(adj, _.defaults({
             // adjust quant if first signal
-            quant: _.isEmpty(adj.filter(a=>!isStopOrder(a))) && Math.abs(d_opened - w_opened) || ds.quant
+            action: working.position < desired.position ? 'BUY' : 'SELL',
+            quant: Math.abs(desired.position - working.position)
         }, ds), options);
     } else if (working.prior && !desired.prior) {
         // cancel working signal
@@ -429,10 +431,18 @@ function updateWorking(desired, working, options) {
             expect(ws).to.have.property('order_ref');
             const adj = updateWorking(desired.prior, working.prior, options);
             if (adj.some(ord => ord.action == 'cancel' && ord.order_ref == ws.attach_ref))
-                return appendSignal(adj, ds, options);
-            else return appendSignal(adj, _.defaults({ // parent order is not cancelled
-                order_ref: ws.order_ref
-            }, ds), options);
+                return appendSignal(adj, ds, options); // parent order is cancelled
+            else if (working.prior.position < desired.position && ws.action == 'BUY' ||
+                    working.prior.position > desired.position && ws.action == 'SELL')
+                return appendSignal(adj, _.defaults({
+                    // adjust quant if first signal
+                    quant: Math.abs(desired.position - working.prior.position),
+                    order_ref: ws.order_ref
+                }, ds), options);
+            else
+                return appendSignal(adj, _.defaults({
+                    order_ref: ws.order_ref
+                }, ds), options);
         } else if (d_opened != w_opened && same_side) {
             return cancelSignal(desired, working, options);
         } else {
