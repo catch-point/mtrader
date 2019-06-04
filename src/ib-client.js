@@ -82,13 +82,28 @@ module.exports = function(settings) {
 function createClient(host, port, clientId, lib_dir, ib_tz) {
     const ib = new IB({host, port, clientId});
     ib.setMaxListeners(20);
+    ib.on('error', (err, info) => {
+        // Some error messages might just be warnings
+        // @see https://groups.io/g/twsapi/message/40551
+        if (info && info.code == 1101) {
+            logger.info("ib-client", err.message);
+        } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
+            logger.log("ib-client", err.message);
+        } else if (info && info.code >= 2000 && info.code < 3000) {
+            logger.warn("ib-client", err.message);
+        } else {
+            logger.error("ib-client", info || '', err.message);
+        }
+    }).on('result', (event, args) => {
+        logger.trace("ib", event, ...args);
+    });
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
         ib.once('connected', () => {
             self.connecting = false;
             self.connected = true;
             self.disconnected = false;
-            logger.debug("ib-client connected", host, port, clientId);
+            logger.trace("ib-client connected", host, port, clientId);
         }).once('error', (err, info) => {
             first_error = err;
             if (!self.connected) {
@@ -96,20 +111,11 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
                 self.connected = false;
                 self.disconnected = true;
                 fail(err);
-            // Some error messages might just be warnings
-            // @see https://groups.io/g/twsapi/message/40551
-            } else if (info && info.code == 1101) {
-                logger.info("ib-client", err.message);
-            } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
-                logger.log("ib-client", err.message);
-            } else if (info && info.code >= 2000 && info.code < 3000) {
-                logger.warn("ib-client", err.message);
-            } else {
-                logger.error("ib-client", JSON.stringify(_.pick(err, _.keys(err))), err.message);
             }
         }).once('nextValidId', order_id => {
             ready();
         }).once('disconnected', () => {
+            logger.trace("ib disconnected");
             fail(first_error || Error("disconnected"));
         });
     });
@@ -300,6 +306,8 @@ function accountUpdates(ib, store, ib_tz) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].fail(err);
+        } else if (info && info.id < 0) {
+            Object.keys(req_queue).forEach(id => req_queue[id].fail(err));
         }
     }).on('disconnected', () => {
         const err = Error("TWS has disconnected");
@@ -707,6 +715,8 @@ function execDetails(ib, store) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].reject(err);
+        } else if (info && info.id < 0) {
+            Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
     }).on('disconnected', () => {
         const err = Error("TWS has disconnected");
@@ -821,6 +831,8 @@ function reqContract(ib) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].reject(err);
+        } else if (info && info.id < 0) {
+            Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
     }).on('disconnected', () => {
         const err = Error("TWS has disconnected");
@@ -894,6 +906,8 @@ function requestWithId(ib) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             _.defer(() => ((req_queue[info.id]||{}).reject||logger.warn)(err));
+        } else if (info && info.id < 0) {
+            Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
     }).on('disconnected', () => {
         const err = Error("TWS has disconnected");
