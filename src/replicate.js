@@ -140,6 +140,8 @@ async function replicate(broker, collect, lookup, options) {
         const quant_threshold = getQuantThreshold(w, options);
         const update = updateWorking(d, w, _.defaults({quant_threshold}, options));
         if (!update.length) return orders;
+        logger.debug("replicate", "working", working[contract]);
+        logger.debug("replicate", "desired", desired[contract]);
         const cancelled = update.filter(ord => ord.action == 'cancel');
         if (update.length == cancelled.length) return orders.concat(cancelled);
         const parent_order = update.filter(ord => ord.action != 'cancel').reduceRight((pending, prior) => {
@@ -154,8 +156,6 @@ async function replicate(broker, collect, lookup, options) {
             else // assumed to be conditional upon prior orders of the same contract
                 return {...prior, attached: [pending]};
         });
-        logger.debug("replicate", "working", working[contract]);
-        logger.debug("replicate", "desired", desired[contract]);
         return orders.concat(cancelled, parent_order);
     }, []);
     await check();
@@ -192,8 +192,10 @@ async function getDesiredPositions(balances, collect, lookup, options) {
             currency: row.currency || contract.currency || options.currency,
             security_type: security_type || contract.security_type || 'STK',
             multiplier: row.multiplier || contract.multiplier || options.default_multiplier,
-            order_type: row.order_type || options.default_order_type || (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
+            order_type: row.order_type || options.default_order_type ||
+                (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
             limit: row.limit,
+            offset: row.offset,
             stop: row.stop,
             stoploss: row.stoploss,
             tif: row.tif || row.duration || 'DAY',
