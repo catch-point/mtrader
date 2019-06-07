@@ -134,7 +134,7 @@ async function replicate(broker, collect, lookup, options) {
         }
     });
     const orders = portfolio.reduce((orders, contract) => {
-        const [symbol, market] = contract.match(/^(.+)\W(\w+)$/);
+        const [, symbol, market] = contract.match(/^(.+)\W(\w+)$/);
         const d = desired[contract] || { symbol, market, position:0, asof: options.begin };
         const w = working[contract] || { symbol, market, position:0, asof: options.begin };
         const quant_threshold = getQuantThreshold(w, options);
@@ -142,6 +142,7 @@ async function replicate(broker, collect, lookup, options) {
         if (!update.length) return orders;
         logger.debug("replicate", "working", working[contract]);
         logger.debug("replicate", "desired", desired[contract]);
+        logger.debug("replicate", "change", update);
         const cancelled = update.filter(ord => ord.action == 'cancel');
         if (update.length == cancelled.length) return orders.concat(cancelled);
         const parent_order = update.filter(ord => ord.action != 'cancel').reduceRight((pending, prior) => {
@@ -176,7 +177,7 @@ async function getDesiredPositions(balances, collect, lookup, options) {
     const initial_deposit = cash_acct || !balances.length ? Big(local_balance_net) :
         balances.map(bal => Big(bal.net).times(bal.rate).div(local_balance_rate)).reduce((a,b) => a.add(b));
     const parameters = { initial_deposit: initial_deposit.toString(), strategy_raw: initial_deposit.toString() };
-    logger.debug("replicate parameters", parameters);
+    logger.debug("replicate", options.begin, "parameters", parameters);
     const orders = await collect(merge(options, {parameters}));
     return orders.reduce(async(positions, row) => {
         const security_type = row.security_type || row.typeofsymbol == 'future' && 'FUT';
