@@ -276,7 +276,7 @@ function accountUpdates(ib, store, ib_tz) {
     const req_queue = {};
     let closed = false;
     const save = async(acctCode, month, summary) => {
-        if (!store) return summary;
+        if (!store || closed) return summary;
         return store.open(acctCode, async(err, db) => {
             if (err) throw err;
             const balances = await db.collection('balances');
@@ -296,7 +296,7 @@ function accountUpdates(ib, store, ib_tz) {
         });
     };
     const flush = debounce(async() => {
-        if (!store) return;
+        if (!store || closed) return;
         return Promise.all(_.values(subscriptions).map(reqId => {
             const summary = req_queue[reqId].summary;
             const month = moment().tz(ib_tz).format('YYYYMM');
@@ -368,7 +368,8 @@ function accountUpdates(ib, store, ib_tz) {
         reqAccountHistory(acctCode, time) {
             const min_month = time ? moment.tz(time.substring(0, 8), ib_tz).format('YYYYMM') : '';
             if (!store) return [];
-            return store.open(acctCode, async(err, db) => {
+            else if (closed) throw Error("IB client has closed");
+            else return store.open(acctCode, async(err, db) => {
                 if (err) throw err;
                 const balances = await db.collection('balances');
                 const months = balances.listNames().filter(month => min_month <= month);
@@ -403,7 +404,7 @@ function openOrders(ib, store, ib_tz, clientId) {
     const orders = {};
     const order_log = {};
     const managed_accounts = [];
-    let flushed = false;
+    let flushed = false, closed = false;
     let orders_end, orders_fail;
     let promise_orders = Promise.resolve();
     const log = order => {
@@ -414,8 +415,9 @@ function openOrders(ib, store, ib_tz, clientId) {
         return ord;
     };
     const flusher = debounce(async() => {
-        if (!store) return;
+        if (!store || closed) return;
         return Object.keys(order_log).reduce(async(promise, acctCode) => {
+            if (closed) return;
             return store.open(acctCode, async(err, db) => {
                 if (err) throw err;
                 const acct_log = order_log[acctCode].splice(0, order_log[acctCode].length);
@@ -649,7 +651,10 @@ function openOrders(ib, store, ib_tz, clientId) {
         },
         close() {
             flushed = true;
-            return flusher.flush();
+            return flusher.flush().then(() => closed = true, err => {
+                closed = true;
+                throw err;
+            });
         }
     };
 }
@@ -659,14 +664,14 @@ function execDetails(ib, store) {
     const commissions = {};
     const req_queue = {};
     const managed_accounts = [];
-    let flushed = false;
+    let flushed = false, closed = false;
     const reduce_details = async(filter, cb, initial) => {
         const min_month = ((filter||{}).time||'').substring(0, 6);
         const acctNumbers = (filter||{}).acctCode ? [filter.acctCode] :
             _.union(managed_accounts, Object.keys(details));
         return acctNumbers.reduce(async(promise, acctCode) => {
             const memo = await promise;
-            if (!store) return Object.keys(details[acctCode]||{}).reduce(async(promise, month) => {
+            if (!store || closed) return Object.keys(details[acctCode]||{}).reduce(async(promise, month) => {
                 const memo = await promise;
                 return _.values(details[acctCode][month]).reduce((memo, exe) => {
                     const item = exe.execId in commissions ?
@@ -709,7 +714,7 @@ function execDetails(ib, store) {
     const flusher = debounce(async() => {
         return Promise.all(Object.keys(details).map(async(acctCode) => {
             const min_month = _.isEmpty(details[acctCode]) ? null : _.min(Object.keys(details[acctCode]));
-            return store && reduce_details({time: min_month}, (nil, exe) => {}, null);
+            return store && !closed && reduce_details({time: min_month}, (nil, exe) => {}, null);
         })).catch(err => logger.error("Could not flush IB executions", err));
     }, 10000); // 10s
     ib.on('error', function (err, info) {
@@ -798,7 +803,10 @@ function execDetails(ib, store) {
         },
         close() {
             flushed = true;
-            return flusher.flush();
+            return flusher.flush().then(() => closed = true, err => {
+                closed = true;
+                throw err;
+            });
         }
     };
 }

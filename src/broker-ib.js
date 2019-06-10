@@ -330,7 +330,7 @@ async function listOrders(markets, ib, settings, options) {
         acctCode: accounts.length == 1 ? _.first(accounts) : null,
         time: asof
     }) : [];
-    const orders = open_orders.concat(completed_orders.filter(order => begin < o.asof && asof <= o.asof));
+    const orders = open_orders.concat(completed_orders.filter(o => begin < o.asof && asof <= o.asof));
     return orders.filter(order => {
         if (asof < order.posted_time) return false;
         else if (!account || account == 'All') return true;

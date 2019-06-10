@@ -284,7 +284,7 @@ async function submitOrders(broker, orders, options) {
         return {
             action: traded_price < 0 ? 'SELL' : 'BUY',
             quant,
-            ..._.pick(_.first(legs), 'order_type', 'limit', 'offset', 'stop', 'tif'),
+            ..._.pick(_.first(legs), 'order_ref', 'order_type', 'limit', 'offset', 'stop', 'tif'),
             attached: legs.map(leg => ({
                 ..._.omit(leg, 'order_type', 'limit', 'offset', 'stop', 'tif'),
                 action: traded_price < 0 && leg.action == 'BUY' ? 'SELL' :
@@ -332,7 +332,7 @@ function logOrders(log, orders) {
 
 function sortAttachedOrders(orders) {
     const top = orders.filter(ord => {
-        return !ord.attach_ref ||
+        return !ord.attach_ref || ord.attach_ref == ord.order_ref ||
             !orders.some(parent => parent.order_ref == ord.attach_ref);
     });
     let sorted = top;
@@ -685,9 +685,8 @@ function c2signal(order) {
 function sortOrders(orders) {
     if (orders.length < 2) return orders;
     const order_refs = _.indexBy(orders.filter(ord => ord.order_ref), 'order_ref');
-    const target_orders = orders.filter(ord => !order_refs[ord.attach_ref] && !isStopOrder(ord));
-    const stop_orders = orders.filter(ord => !order_refs[ord.attach_ref] && isStopOrder(ord));
-    const working = [].concat(stop_orders, target_orders);
+    const target_orders = orders.filter(ord => !order_refs[ord.attach_ref] || ord.order_ref == ord.attach_ref);
+    const working = [].concat(target_orders.filter(isStopOrder), target_orders.filter(ord => !isStopOrder(ord)));
     if (!working.length) throw Error(`Could not sort array ${JSON.stringify(orders)}`);
     return working.concat(sortOrders(_.difference(orders, working)));
 }
