@@ -403,18 +403,23 @@ async function oneCancelsAllOrders(root_ref, markets, ib, settings, options) {
 async function submitOrder(root_ref, markets, ib, settings, options, parentId, ocaGroup) {
     const attach_order = options.attach_ref ? await orderByRef(ib, options.attach_ref) : null;
     const oca_group = ocaGroup || (options.attach_ref && !attach_order ? options.attach_ref : null);
-    const order_id = (await orderByRef(ib, options.order_ref)||{}).orderId || await ib.reqId();
-    const order_ref = orderRef(root_ref, order_id, options);
+    const replacing_id = (await orderByRef(ib, options.order_ref)||{}).orderId;
+    const reqId = replacing_id ? async(fn) => fn(replacing_id) : ib.reqId;
     const contract = await toContract(markets, ib, options);
-    const submit_order = {
-        ...await orderToIbOrder(markets, ib, settings, contract, options, options),
-        orderId: order_id, orderRef: order_ref,
-        transmit: (contract.secType == 'BAG' || _.isEmpty(options.attached)) && settings.transmit || false,
-        parentId: parentId || (attach_order ? attach_order.orderId : null),
-        ocaGroup: oca_group, ocaType: oca_group ? 1 : 0,
-        smartComboRoutingParams: contract.secType == 'BAG' ? [{tag:'NonGuaranteed',value:'1'}] : []
-    };
-    const ib_order = await ib.placeOrder(order_id, contract, submit_order);
+    const ib_order = await reqId(async(order_id) => {
+        const order_ref = orderRef(root_ref, order_id, options);
+        const submit_order = {
+            ...await orderToIbOrder(markets, ib, settings, contract, options, options),
+            orderId: order_id, orderRef: order_ref,
+            transmit: (contract.secType == 'BAG' || _.isEmpty(options.attached)) && settings.transmit || false,
+            parentId: parentId || (attach_order ? attach_order.orderId : null),
+            ocaGroup: oca_group, ocaType: oca_group ? 1 : 0,
+            smartComboRoutingParams: contract.secType == 'BAG' ? [{tag:'NonGuaranteed',value:'1'}] : []
+        };
+        return await ib.placeOrder(order_id, contract, submit_order);
+    });
+    const order_id = ib_order.orderId;
+    const order_ref = orderRef(root_ref, order_id, options);
     const parent_order = await ibToOrder(markets, ib, settings, ib_order, contract, options);
     return (options.attached||[]).reduce(async(promise, attach, i, attached) => {
         const child_orders = attach.order_type == 'LEG' ? [{

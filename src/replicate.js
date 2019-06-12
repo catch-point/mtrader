@@ -182,8 +182,10 @@ async function getDesiredPositions(balances, collect, lookup, options) {
     return orders.reduce(async(positions, row) => {
         const security_type = row.security_type || row.typeofsymbol == 'future' && 'FUT';
         const contract = !security_type ? await lookup(_.pick(row, 'symbol', 'market')) : {};
-        const traded_at = row.traded_at || row.asof || (row.parkUntilSecs || row.posted_time_unix ?
-                moment(row.parkUntilSecs || row.posted_time_unix, 'X').format() : null);
+        const posted_at = row.posted_at || row.asof || row.posted_time_unix &&
+                moment(row.posted_time_unix, 'X').format() || null;
+        const traded_at = row.traded_at || row.parkUntilSecs &&
+                moment(row.parkUntilSecs, 'X').format() || null;
         const a = row.action ? row.action.charAt(0) : '';
         const order = c2signal({
             action: a == 'B' ? 'BUY' : a == 'S' ? 'SELL' : row.action,
@@ -200,7 +202,9 @@ async function getDesiredPositions(balances, collect, lookup, options) {
             stop: row.stop,
             stoploss: row.stoploss,
             tif: row.tif || row.duration || 'DAY',
-            status: traded_at && moment(traded_at).isAfter(options.now) ? 'pending' : null,
+            status: traded_at && moment(traded_at).isAfter(options.now) ? 'pending' :
+                posted_at && moment(posted_at).isAfter(options.now) ? 'pending' : null,
+            posted_at: posted_at,
             traded_at: traded_at,
             traded_price: row.traded_price
         });
@@ -383,7 +387,8 @@ function updateWorking(desired, working, options) {
     const within = Math.abs(d_opened - w_opened) <= (options.quant_threshold || 0);
     const same_side = desired.position/Math.abs(+desired.position||1) != -1*working.position/Math.abs(+working.position||1);
     const ds_projected = ds && ds.status == 'pending';
-    if (_.has(ds, 'traded_at') && !working.prior && working.traded_at && moment(working.traded_at).isAfter(ds.traded_at)) {
+    if (ds && (ds.traded_at || ds.posted_at) && !working.prior && working.traded_at &&
+            moment(working.traded_at).isAfter(ds.traded_at || ds.posted_at)) {
         if (d_opened != w_opened || !same_side) {
             // working position has since been closed (stoploss?) since the last desired signal was produced
             logger.warn(`Working ${desired.symbol} position has since been changed`);
@@ -464,7 +469,7 @@ function updateWorking(desired, working, options) {
         const recent_order = ds || desired.last_order ||
             {...desired, order_type: options.default_order_type || 'MKT', tif: 'DAY'};
         return [c2signal({
-            ..._.omit(recent_order, 'traded_at'),
+            ..._.omit(recent_order, 'traded_at', 'posted_at'),
             action: desired.position > working.position ? 'BUY' : 'SELL',
             quant: Math.abs(desired.position - working.position)
         })];
@@ -509,7 +514,7 @@ function cancelSignal(desired, working, options) {
         return _.without(adj, same);
     else if (similar)
         return adj.map(a => a == similar ? _.extend({order_ref: ws.order_ref}, a) : a);
-    else if (isStopOrder(ws) && adj.some(a => moment(a.traded_at).isAfter(options.now)))
+    else if (isStopOrder(ws) && adj.some(a => moment(a.traded_at || a.posted_at).isAfter(options.now)))
         return adj; // don't cancel stoploss order until replacements orders come into effect
     else
         return [{...ws, action: 'cancel'}].concat(adj);
@@ -578,12 +583,13 @@ function advance(pos, order, options) {
 }
 
 function updateStoploss(pos, order, options) {
-    if (order.quant === 0 && order.traded_at && moment(order.traded_at).isAfter(options.now)) {
+    if (order.quant === 0 && (order.traded_at || order.posted_at) &&
+            moment(order.traded_at || order.posted_at).isAfter(options.now)) {
         return pos; // don't update order adjustement limits if in the future
     } else if (order.stoploss) {
         const base = !+order.quant && pos.prior && ~pos.order.order_type.indexOf('STP') ? pos.prior : pos;
         const prior = advance(base, _.omit(order, 'stoploss'), options);
-        const stp_order = _.omit(_.extend(_.pick(c2signal(order), 'symbol', 'market', 'currency', 'security_type', 'multipler', 'traded_at', 'status'), {
+        const stp_order = _.omit(_.extend(_.pick(c2signal(order), 'symbol', 'market', 'currency', 'security_type', 'multipler', 'traded_at', 'posted_at', 'status'), {
             action: prior.position > 0 ? 'SELL' : 'BUY',
             quant: Math.abs(prior.position),
             tif: 'GTC',
@@ -615,8 +621,9 @@ function updatePosition(pos, order, options) {
  * Position after applying the given order traded_at date and limit
  */
 function updateParkUntilSecs(pos, order, options) {
-    if (order.traded_at && pos.order) {
-        const updated = _.defaults({order: _.defaults(_.pick(order, 'traded_at', 'status'), pos.order)}, pos);
+    if ((order.traded_at || order.posted_at) && pos.order) {
+        const ord = _.defaults(_.pick(order, 'traded_at', 'posted_at', 'status'), pos.order);
+        const updated = _.defaults({order: ord}, pos);
         return updateLimit(updated, order, options);
     } else {
         return updateLimit(pos, order, options);
@@ -641,7 +648,8 @@ function changePosition(pos, order, options) {
     expect(order).has.property('quant').that.is.above(0);
     expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
     const prior = order.status == 'working' || order.status == 'pending' ||
-        !order.traded_at || moment(order.traded_at).isAfter(options.now) ? {prior: pos} : {};
+        !order.traded_at && !order.posted_at ||
+        moment(order.traded_at || order.posted_at).isAfter(options.now) ? {prior: pos} : {};
     return _.extend(prior, changePositionSize(pos, order, options));
 }
 
@@ -652,7 +660,7 @@ function changePositionSize(pos, order, options) {
     expect(order).has.property('quant').that.is.above(0);
     if (order.action == 'BUY') {
         return {
-            asof: order.traded_at,
+            asof: order.traded_at || order.posted_at,
             symbol: order.symbol,
             market: order.market,
             currency: order.currency,
@@ -663,7 +671,7 @@ function changePositionSize(pos, order, options) {
         };
     } else if (order.action == 'SELL') {
         return {
-            asof: order.traded_at,
+            asof: order.traded_at || order.posted_at,
             symbol: order.symbol,
             market: order.market,
             currency: order.currency,

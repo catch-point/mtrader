@@ -206,7 +206,8 @@ describe("broker-ib", function() {
         await broker.close();
     });
     it("should submit order", async() => {
-        const broker = new Broker({account: 'test'}, { reqId: () => Promise.resolve(1),
+        const broker = new Broker({account: 'test'}, {
+          reqId: cb => cb(1),
           reqManagedAccts: () => Promise.resolve([ 'test' ]),
           requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
           placeOrder: (...args) => {expect(args).to.be.like([ 1,
@@ -242,7 +243,7 @@ describe("broker-ib", function() {
         await broker.close();
     });
     it("should submit attached order", async() => {
-        const broker = new Broker({account: 'test'}, { reqId: () => Promise.resolve(1),
+        const broker = new Broker({account: 'test'}, { reqId: cb => cb(1),
               reqManagedAccts: () => Promise.resolve([ 'test' ]),
               requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
               placeOrder: (()=>{let count=0;return(...args) => {switch(count++) {
@@ -264,7 +265,9 @@ describe("broker-ib", function() {
                    parentId: null,
                    ocaGroup: null,
                    ocaType: 0,
-                   smartComboRoutingParams: [] } ]);return Promise.resolve({ status: 'ApiPending',
+                   smartComboRoutingParams: [] } ]);
+                 return Promise.resolve({ status: 'ApiPending',
+                 orderId: 1,
                  action: 'BUY',
                  totalQuantity: 1,
                  orderType: 'LMT',
@@ -290,7 +293,8 @@ describe("broker-ib", function() {
                    parentId: 1,
                    ocaGroup: null,
                    ocaType: 0,
-                   smartComboRoutingParams: [] } ]);return Promise.resolve({ status: 'ApiPending',
+                   smartComboRoutingParams: [] } ]);
+                 return Promise.resolve({ status: 'ApiPending',
                  action: 'SELL',
                  totalQuantity: 1,
                  orderType: 'STP',
@@ -347,7 +351,7 @@ describe("broker-ib", function() {
     it("should submit to attach an order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqRecentOrders: () => Promise.resolve([ { orderRef: 'LMT.32f027a8.1', orderId: 1 }, {} ]),
-            reqId: () => Promise.resolve(3),
+            reqId: cb => cb(3),
             reqManagedAccts: () => Promise.resolve([ 'test' ]),
             requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
             requestGroups: () => Promise.resolve([ ]),
@@ -401,7 +405,7 @@ describe("broker-ib", function() {
     });
     it("should submit OCA order", async() => {
         const broker = new Broker({account: 'test'}, {
-              reqId: () => Promise.resolve(1),
+              reqId: cb => (cb || _.identity)(1),
               reqManagedAccts: () => Promise.resolve([ 'test' ]),
               requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
               placeOrder: (()=>{let count=0;return(...args) => {switch(count++) {
@@ -558,7 +562,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-          reqId: () => Promise.resolve(1),
+          reqId: cb => cb(1),
           reqContractDetails: (()=>{let count=0;return(...args) => {switch(count++) {
         case 0: expect(args).to.be.like([ { localSymbol: 'SPX   190719P02400000',
                secType: 'OPT',
@@ -662,7 +666,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY SNAP MID combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-          reqId: () => Promise.resolve(1),
+          reqId: cb => cb(1),
           reqContractDetails: (()=>{let count=0;return(...args) => {switch(count++) {
         case 0: expect(args).to.be.like([ { localSymbol: 'SPX   190621C03075000',
                secType: 'OPT',
@@ -770,7 +774,7 @@ describe("broker-ib", function() {
     });
     it("should round trip ibalog order", async() => {
         const broker = new Broker({account: 'test'}, {
-          reqId: () => Promise.resolve(1),
+          reqId: cb => cb(1),
           reqManagedAccts: () => Promise.resolve([ 'test' ]),
           placeOrder: (...args) => {expect(args).to.be.like([ 1,
              { localSymbol: 'MESM9',
@@ -881,7 +885,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Call SNAP STK MID offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(1),
+            reqId: cb => cb(1),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
                     localSymbol: 'ESM9 C2800',
@@ -980,7 +984,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Call SNAP STK offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(1),
+            reqId: cb => cb(1),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
                     localSymbol: 'ESM9 C2800',
@@ -1095,7 +1099,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL Call SNAP STK offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(2),
+            reqId: cb => cb(2),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
                     localSymbol: 'ESM9 C2800',
@@ -1210,7 +1214,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Put SNAP STK offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(3),
+            reqId: cb => cb(3),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
                     localSymbol: 'ESM9 P2625',
@@ -1325,7 +1329,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL Put SNAP STK offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(4),
+            reqId: cb => cb(4),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
                     localSymbol: 'ESM9 P2625',
@@ -1440,7 +1444,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Call SNAP STK MID combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(1),
+            reqId: cb => cb(1),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {
@@ -1719,7 +1723,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(2),
+            reqId: cb => cb(2),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {
@@ -2055,7 +2059,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(3),
+            reqId: cb => cb(3),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {
@@ -2392,7 +2396,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Put SNAP STK MID combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(4),
+            reqId: cb => cb(4),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {
@@ -2672,7 +2676,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(5),
+            reqId: cb => cb(5),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {
@@ -3009,7 +3013,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(6),
+            reqId: cb => cb(6),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {
@@ -3346,7 +3350,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL negative Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(7),
+            reqId: cb => cb(7),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {
@@ -3683,7 +3687,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY negative Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(8),
+            reqId: cb => cb(8),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {
@@ -4020,7 +4024,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL negative Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(9),
+            reqId: cb => cb(9),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {
@@ -4362,7 +4366,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY negative Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
-            reqId: () => Promise.resolve(10),
+            reqId: cb => cb(10),
             reqContractDetails: (() => {
                 let count = 0;
                 return (...args) => {

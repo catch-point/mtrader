@@ -407,6 +407,7 @@ function openOrders(ib, store, ib_tz, clientId) {
     let flushed = false, closed = false;
     let orders_end, orders_fail;
     let promise_orders = Promise.resolve();
+    let order_id_lock = Promise.resolve();
     const log = order => {
         const ord = _.mapObject(order, v => Number.isNaN(v) || v == Number.MAX_VALUE ? null : v);
         const account = order.account || order.faGroup || order.faProfile;
@@ -458,8 +459,8 @@ function openOrders(ib, store, ib_tz, clientId) {
     }, 10*60*1000); // 10m
     ib.on('error', function (err, info) {
         if (info && info.id && placing_orders[info.id]) {
-            //placing_orders[info.id].fail(err);
-            //delete placing_orders[info.id];
+            placing_orders[info.id].fail(err);
+            delete placing_orders[info.id];
         } else if (info && info.id && cancelling_orders[info.id]) {
             cancelling_orders[info.id].fail(err);
             delete cancelling_orders[info.id];
@@ -540,17 +541,19 @@ function openOrders(ib, store, ib_tz, clientId) {
         })).then(orders_end, orders_fail);
     });
     return {
-        async reqId() {
-            ib.reqIds(1);
-            const order_id = valid_id_queue.shift();
-            if (order_id) return last_order_id = order_id;
-            return new Promise(ready => {
-                if (valid_id_queue.length)
-                    return ready(last_order_id = valid_id_queue.shift());
-                const reqId = nextval();
-                next_valid_id_queue.push(ready);
+        async reqId(cb) {
+            // IB requires orderIds to be used in sequence
+            return order_id_lock = order_id_lock.catch(err => {}).then(() => {
                 ib.reqIds(1);
-            });
+                const order_id = valid_id_queue.shift();
+                if (order_id) return last_order_id = order_id;
+                return new Promise(ready => {
+                    if (valid_id_queue.length)
+                        return ready(last_order_id = valid_id_queue.shift());
+                    next_valid_id_queue.push(ready);
+                    ib.reqIds(1);
+                });
+            }).then(cb);
         },
         async placeOrder(orderId, contract, order) {
             logger.log('placeOrder', orderId, contract, order);
@@ -836,6 +839,11 @@ function reqContract(ib) {
             ib.reqContractDetails(reqId, {conId});
         });
     }, 1);
+    const replaceEntry = contract => {
+        if (contract.tradingClass != 'COMB' || contract.comboLegs) {
+            reqCachedContract.replaceEntry(contract.conId, contract);
+        }
+    };
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].reject(err);
@@ -849,23 +857,23 @@ function reqContract(ib) {
         });
         reqCachedContract.close();
     }).on('updatePortfolio', function(contract) {
-        reqCachedContract.replaceEntry(contract.conId, contract);
+        replaceEntry(contract);
     }).on('position', function(account, contract, position, averageCost) {
-        reqCachedContract.replaceEntry(contract.conId, contract);
+        replaceEntry(contract);
     }).on('openOrder', function(orderId, contract, order, orderStatus) {
-        reqCachedContract.replaceEntry(contract.conId, contract);
+        replaceEntry(contract);
     }).on('contractDetails', (reqId, detail) => {
         if (req_queue[reqId]) req_queue[reqId].contract = detail.summary;
-        reqCachedContract.replaceEntry(detail.summary.conId, detail.summary);
+        replaceEntry(detail.summary);
     }).on('bondContractDetails', (reqId, detail) => {
         if (req_queue[reqId]) req_queue[reqId].contract = detail.summary;
-        reqCachedContract.replaceEntry(detail.summary.conId, detail.summary);
+        replaceEntry(detail.summary);
     }).on('contractDetailsEnd', reqId => {
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].contract);
     }).on('positionMulti', function(reqId, account, modelCode, contract, position, averageCost) {
-        reqCachedContract.replaceEntry(contract.conId, contract);
+        replaceEntry(contract);
     }).on('execDetails', function(reqId, contract, execution) {
-        reqCachedContract.replaceEntry(contract.conId, contract);
+        replaceEntry(contract);
     });
     const reqCachedContract = cache(reqContract, _.identity, 1000);
     return {reqContract: reqCachedContract};
