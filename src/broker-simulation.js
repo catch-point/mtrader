@@ -753,7 +753,7 @@ function advancePosition(commissions, position, orders, bar) {
     const total = orders.reduce((n, o) => Big(n).add(Big(o.traded_price).times(o.quant).times(multiplier)), Big(0));
     const traded_price = +total_quant ? Big(total).div(total_quant).div(multiplier).toString() : null;
     const starting_pos = position.position || 0;
-    const ending_pos = starting_pos + net_quant;
+    const ending_pos = +Big(starting_pos).add(net_quant);
     const ending_value = Big(ending_pos).times(bar.close).times(multiplier);
     const purchase = bot.reduce((net, o) => net.add(Big(o.traded_price).times(o.quant).times(multiplier)), Big(0));
     const sold = sld.reduce((net, o) => net.add(Big(o.traded_price).times(o.quant).times(multiplier)), Big(0));

@@ -62,11 +62,11 @@ describe("replicate-simulation", function() {
     beforeEach(async() => {
         await broker({action: 'reset'});
         await broker({
-            asof: '2019-05-04T00:00:00-05:00',
+            asof: '2018-12-01T00:00:00-05:00',
             action: 'deposit', quant: 10000, currency: 'CAD'
         });
         await broker({
-            asof: '2019-05-04T00:00:00-05:00',
+            asof: '2018-12-01T00:00:00-05:00',
             action: 'deposit', quant: 10000, currency: 'USD'
         });
     });
@@ -840,6 +840,645 @@ describe("replicate-simulation", function() {
             })
               .then(d=>d.forEach(d=>console.log(d))||d)
               .should.eventually.be.like([]);
+        });
+    });
+    describe("Futures", function() {
+        it("no position in ZNH19", async() => {
+            const posted = await replicate(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T16:00:00-05:00',
+                    action: 'BUY',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    offset: '0',
+                    limit: '',
+                    stop: '',
+                    traded_price: '120.9375',
+                    basis: '120.94',
+                    commission: '10.25',
+                    value: '604531.25',
+                    realized: '2.25',
+                    unrealized: '-168.75',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T17:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '120.5625',
+                    stop: '120.59375',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '604687.5',
+                    realized: '2.25',
+                    unrealized: '-12.5',
+                    date: '2018-12-26'
+                }]);
+            })({
+                now: "2018-12-26T17:00:00",
+                currency: 'USD',
+                markets: ['CBOT']
+            });
+            posted.should.be.like([{
+                  action: 'BUY',
+                  quant: '5',
+                  order_type: 'MOC',
+                  tif: 'DAY',
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD',
+                  order_ref: posted[0].order_ref,
+                  status: 'working'
+                }, {
+                  action: 'SELL',
+                  quant: '5',
+                  order_type: 'STP',
+                  stop: '120.59375',
+                  tif: 'GTC',
+                  attach_ref: posted[0].order_ref,
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD',
+                  status: 'pending'
+            }]);
+        });
+        it("no stoploss in ZNH19", async() => {
+            await broker({
+                  asof: '2018-12-26',
+                  action: 'BUY',
+                  quant: '5',
+                  order_type: 'MOC',
+                  tif: 'DAY',
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD',
+                  multiplier: 1000
+            });
+            const posted = await replicate(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T16:00:00-05:00',
+                    action: 'BUY',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    offset: '0',
+                    limit: '',
+                    stop: '',
+                    traded_price: '120.9375',
+                    basis: '120.94',
+                    commission: '10.25',
+                    value: '604531.25',
+                    realized: '2.25',
+                    unrealized: '-168.75',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T17:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '120.5625',
+                    stop: '120.59375',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '604687.5',
+                    realized: '2.25',
+                    unrealized: '-12.5',
+                    date: '2018-12-26'
+                }]);
+            })({
+                now: "2018-12-26T17:00:00",
+                currency: 'USD',
+                markets: ['CBOT']
+            });
+            posted.should.be.like([{
+                  action: 'SELL',
+                  quant: 5,
+                  order_type: 'STP',
+                  stop: '120.59375',
+                  tif: 'GTC',
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD',
+                  status: 'working'
+            }]);
+        });
+        it("update stoploss ZNH19", async() => {
+            await broker({
+                  asof: '2018-12-26',
+                  action: 'BUY',
+                  quant: '5',
+                  order_type: 'MOC',
+                  tif: 'DAY',
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD',
+                  multiplier: 1000
+            });
+            const stp = await broker({
+                  asof: '2018-12-26T17:00:00',
+                  action: 'SELL',
+                  quant: 5,
+                  order_type: 'STP',
+                  stop: '120.59375',
+                  tif: 'GTC',
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD',
+                  multiplier: 1000
+            });
+            return replicate(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T16:00:00-05:00',
+                    action: 'BUY',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    offset: '0',
+                    limit: '',
+                    stop: '',
+                    traded_price: '120.9375',
+                    basis: '120.94',
+                    commission: '10.25',
+                    value: '604531.25',
+                    realized: '2.25',
+                    unrealized: '-168.75',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T17:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '120.5625',
+                    stop: '120.59375',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '604687.5',
+                    realized: '2.25',
+                    unrealized: '-12.5',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2019-01-04T09:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '122.21875',
+                    stop: '122.25',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '612890.625',
+                    realized: '2.25',
+                    unrealized: '8190.63',
+                    date: '2019-01-04'
+                }]);
+            })({
+                now: "2019-01-04T09:00:00",
+                currency: 'USD',
+                markets: ['CBOT']
+            }).should.eventually.be.like([{
+                  order_ref: stp[0].order_ref,
+                  action: 'SELL',
+                  quant: 5,
+                  order_type: 'STP',
+                  stop: '122.25',
+                  tif: 'GTC',
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD'
+            }]);
+        });
+        it("close position for ZNH19", async() => {
+            await broker({
+                  asof: '2018-12-26',
+                  action: 'BUY',
+                  quant: '5',
+                  order_type: 'MOC',
+                  tif: 'DAY',
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD',
+                  multiplier: 1000
+            });
+            const stp = await broker({
+                  asof: '2019-01-04',
+                  action: 'SELL',
+                  quant: 5,
+                  order_type: 'STP',
+                  stop: '122.25',
+                  tif: 'GTC',
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD',
+                  multiplier: 1000
+            });
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T16:00:00-05:00',
+                    action: 'BUY',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    offset: '0',
+                    limit: '',
+                    stop: '',
+                    traded_price: '120.9375',
+                    basis: '120.94',
+                    commission: '10.25',
+                    value: '604531.25',
+                    realized: '2.25',
+                    unrealized: '-168.75',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T17:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '120.5625',
+                    stop: '120.59375',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '604687.5',
+                    realized: '2.25',
+                    unrealized: '-12.5',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2019-01-04T09:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '122.21875',
+                    stop: '122.25',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '612890.625',
+                    realized: '2.25',
+                    unrealized: '8190.63',
+                    date: '2019-01-04'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2019-01-04T11:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '',
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    offset: '0',
+                    limit: '',
+                    stop: '',
+                    traded_price: '122.21875',
+                    basis: '120.91',
+                    commission: '10.25',
+                    value: '0',
+                    realized: '6385.75',
+                    unrealized: '0',
+                    date: '2019-01-04'
+                }]);
+            })({
+                now: "2019-01-04T11:00:00",
+                currency: 'USD',
+                markets: ['CBOT']
+            }).should.eventually.be.like([{
+                action: 'SELL',
+                quant: '5',
+                order_type: 'MOC',
+                tif: 'DAY',
+                symbol: 'ZNH19',
+                market: 'CBOT',
+                security_type: 'FUT',
+                currency: 'USD'
+            }]);
+        });
+        it("check position is closed for ZNH19", async() => {
+            await broker({
+                asof: '2018-12-26',
+                action: 'BUY',
+                quant: '5',
+                order_type: 'MOC',
+                tif: 'DAY',
+                symbol: 'ZNH19',
+                market: 'CBOT',
+                security_type: 'FUT',
+                currency: 'USD',
+                multiplier: 1000
+            });
+            const stp = await broker({
+                asof: '2019-01-04',
+                action: 'SELL',
+                quant: 5,
+                order_type: 'STP',
+                stop: '122.25',
+                tif: 'GTC',
+                symbol: 'ZNH19',
+                market: 'CBOT',
+                security_type: 'FUT',
+                currency: 'USD',
+                multiplier: 1000
+            });
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T16:00:00-05:00',
+                    action: 'BUY',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    offset: '0',
+                    limit: '',
+                    stop: '',
+                    traded_price: '120.9375',
+                    basis: '120.94',
+                    commission: '10.25',
+                    value: '604531.25',
+                    realized: '2.25',
+                    unrealized: '-168.75',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T17:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '120.5625',
+                    stop: '120.59375',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '604687.5',
+                    realized: '2.25',
+                    unrealized: '-12.5',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2019-01-04T09:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '122.21875',
+                    stop: '122.25',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '612890.625',
+                    realized: '2.25',
+                    unrealized: '8190.63',
+                    date: '2019-01-04'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2019-01-04T11:00:00-05:00',
+                    traded_at: '2019-01-04T17:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '',
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    offset: '0',
+                    limit: '',
+                    stop: '',
+                    traded_price: '122.21875',
+                    basis: '120.91',
+                    commission: '10.25',
+                    value: '0',
+                    realized: '6385.75',
+                    unrealized: '0',
+                    date: '2019-01-04'
+                }]);
+            })({
+                now: "2019-01-04T17:00:00",
+                currency: 'USD',
+                markets: ['CBOT']
+            })
+              .then(d=>d.forEach(d=>console.log(d))||d)
+              .should.eventually.be.like([]);
+        });
+        it("cancel stoploss for ZNH19", async() => {
+            await broker({
+                asof: '2018-12-26',
+                action: 'BUY',
+                quant: '5',
+                order_type: 'MOC',
+                tif: 'DAY',
+                symbol: 'ZNH19',
+                market: 'CBOT',
+                security_type: 'FUT',
+                currency: 'USD',
+                multiplier: 1000
+            });
+            const stp = await broker({
+                asof: '2019-01-04',
+                action: 'SELL',
+                quant: 5,
+                order_type: 'STP',
+                stop: '122.00',
+                tif: 'GTC',
+                symbol: 'ZNH19',
+                market: 'CBOT',
+                security_type: 'FUT',
+                currency: 'USD',
+                multiplier: 1000
+            });
+            await broker({
+                asof: '2019-01-04',
+                action: 'SELL',
+                quant: '5',
+                order_type: 'MOC',
+                tif: 'DAY',
+                symbol: 'ZNH19',
+                market: 'CBOT',
+                security_type: 'FUT',
+                currency: 'USD',
+                multiplier: 1000
+            });
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T16:00:00-05:00',
+                    action: 'BUY',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    offset: '0',
+                    limit: '',
+                    stop: '',
+                    traded_price: '120.9375',
+                    basis: '120.94',
+                    commission: '10.25',
+                    value: '604531.25',
+                    realized: '2.25',
+                    unrealized: '-168.75',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2018-12-26T17:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '120.5625',
+                    stop: '120.59375',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '604687.5',
+                    realized: '2.25',
+                    unrealized: '-12.5',
+                    date: '2018-12-26'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2019-01-04T09:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '5',
+                    order_type: 'STP',
+                    tif: 'GTC',
+                    offset: '0',
+                    limit: '122.21875',
+                    stop: '122.25',
+                    traded_price: '',
+                    basis: '120.94',
+                    commission: '',
+                    value: '612890.625',
+                    realized: '2.25',
+                    unrealized: '8190.63',
+                    date: '2019-01-04'
+                }, {
+                    symbol: 'ZNH19',
+                    market: 'CBOT',
+                    name: 'ZN Mar 15 2019',
+                    posted_at: '2019-01-04T11:00:00-05:00',
+                    traded_at: '2019-01-04T17:00:00-05:00',
+                    action: 'SELL',
+                    quant: '5',
+                    position: '',
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    offset: '0',
+                    limit: '',
+                    stop: '',
+                    traded_price: '122.21875',
+                    basis: '120.91',
+                    commission: '10.25',
+                    value: '0',
+                    realized: '6385.75',
+                    unrealized: '0',
+                    date: '2019-01-04'
+                }]);
+            })({
+                now: "2019-01-04T17:00:00",
+                currency: 'USD',
+                markets: ['CBOT']
+            }).should.eventually.be.like([{
+                action: 'SELL',
+                quant: 5,
+                order_type: 'STP',
+                stop: '122.00',
+                tif: 'GTC',
+                symbol: 'ZNH19',
+                market: 'CBOT',
+                security_type: 'FUT',
+                currency: 'USD',
+                multiplier: 1000,
+                order_ref: stp[0].order_ref,
+                status: 'cancelled'
+            }]);
         });
     });
 });

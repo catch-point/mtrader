@@ -135,7 +135,6 @@ function help() {
 }
 
 module.exports = function() {
-    const helpInfo = help();
     const self = options => {
         if (self.closed) throw Error("IQFeed has closed");
         else return sharedInstance(options);
