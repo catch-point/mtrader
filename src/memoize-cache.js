@@ -50,7 +50,9 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
     const cache = {};
     const debounced = debounce(sweep, 10000, maxPoolSize);
     const releaseEntry = release.bind(this, debounced, size, cache);
+    let closed = false;
     const cached = async function() {
+        if (closed) throw Error(`Cache has been closed ${closed}`);
         const cb = _.isFunction(_.last(arguments)) ? _.last(arguments) : (err, result) => {
             if (err) throw err;
             else return result;
@@ -62,7 +64,8 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             const entry = cache[key] = {
                 id: key,
                 result: func.apply(cached, args),
-                registered: 0
+                registered: 0,
+                locks: []
             };
             return aquireEntry(releaseEntry, entry, cb);
         } else if (cache[key]) {
@@ -72,7 +75,8 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             const entry = cache[key] = {
                 id: key,
                 result: func.apply(this, args),
-                registered: 0
+                registered: 0,
+                locks: []
             };
             return aquireEntry(releaseEntry, entry, cb);
         }
@@ -83,6 +87,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             result: result,
             error: null,
             registered: 0,
+            locks: [],
             age: 0,
             marked: false
         };
@@ -92,30 +97,18 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
         _.forEach(cache, entry => entry.marked = true);
         return sweep(cache);
     };
-    cached.close = () => {
-        _.forEach(cache, entry => entry.marked = true);
+    cached.close = async(closedBy) => {
+        closed = closedBy || 'already';
+        await Promise.all(_.map(cache, async(entry) => {
+            await Promise.all(entry.locks.map(lock => lock.catch(err => {})));
+            entry.marked = true;
+        }));
         return Promise.all([
             debounced.close(),
             sweep(cache)
         ]);
     };
     return cached;
-}
-
-function createEntry(key, func, args) {
-    try {
-        return {
-            id: key,
-            result: func.apply(this, args),
-            registered: 0
-        };
-    } catch(err) {
-        return {
-            id: key,
-            error: err,
-            registered: 0
-        };
-    }
 }
 
 function aquireEntry(releaseEntry, entry, cb) {
@@ -126,17 +119,18 @@ function aquireEntry(releaseEntry, entry, cb) {
                 result => cb.call(this, null, result),
                 err => cb.call(this, err)
             ) : cb.call(this, entry.error, entry.result);
+        if (next && _.isFunction(next.catch)) entry.locks.push(next);
         if (next && _.isFunction(next.then)) return next.then(result => {
-            releaseEntry(entry);
+            releaseEntry(entry, next);
             return result;
         }, err => {
-            releaseEntry(entry);
+            releaseEntry(entry, next);
             throw err;
         });
-        releaseEntry(entry);
+        releaseEntry(entry, next);
         return next;
     } catch(err) {
-        releaseEntry(entry);
+        releaseEntry(entry, next);
         throw err;
     }
 }
@@ -147,9 +141,11 @@ function aquire(entry) {
     entry.marked = false;
 }
 
-function release(sweep, size, cache, entry) {
+function release(sweep, size, cache, entry, lock) {
     _.forEach(cache, entry => !entry.registered && !entry.marked && entry.age++);
     entry.registered--;
+    const idx = entry.locks.indexOf(lock);
+    if (idx >= 0) entry.locks.splice(idx, 1);
     while(_.reject(cache, 'marked').length > size && mark(cache));
     sweep(cache);
 }
