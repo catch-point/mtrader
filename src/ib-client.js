@@ -553,23 +553,23 @@ function openOrders(ib, store, ib_tz, clientId) {
             });
         },
         async placeOrder(orderId, contract, order) {
-            if (contract.secType == 'BAG' && !order.transmit) {
-                logger.warn(`Transmit flag should be enabled to submit combo orders for ${contract.symbol} ${order.orderRef}`, orderId, contract, order);
-            }
             logger.log('placeOrder', orderId, contract, order);
             ib.placeOrder(orderId, contract, order);
-            if (!order.transmit) return orders[orderId] = _.omit({
-                orderId,
-                conId: contract.conId,
-                symbol: contract.symbol || contract.localSymbol,
-                secType: contract.secType,
-                exchange: contract.exchange,
-                primaryExch: contract.primaryExch,
-                currency: contract.currency,
-                multiplier: contract.multiplier,
-                status: 'ApiPending',
-                ...order
-            }, v => v == null);
+            if (!order.transmit) return new Promise(ready => {
+                const placed = orders[orderId] = _.omit({
+                    orderId,
+                    conId: contract.conId,
+                    symbol: contract.symbol || contract.localSymbol,
+                    secType: contract.secType,
+                    exchange: contract.exchange,
+                    primaryExch: contract.primaryExch,
+                    currency: contract.currency,
+                    multiplier: contract.multiplier,
+                    status: 'ApiPending',
+                    ...order
+                }, v => v == null);
+                setTimeout(() => ready(placed), contract.secType == 'BAG' ? 1000 : 500);
+            });
             else return new Promise((ready, fail) => {
                 placing_orders[orderId] = {ready, fail};
             }).catch(err => logger.warn('placeOrder', orderId, contract, order, err.message) || Promise.reject(err));

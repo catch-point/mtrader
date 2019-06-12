@@ -352,6 +352,7 @@ async function listOrders(markets, ib, settings, options) {
             market: bag ? null : await asMarket(markets, ib, contract)
         });
         if (!bag) return result;
+        else if (!contract.comboLegs) throw Error(`Missing comboLegs on BAG order ${util.inspect(contract)}`);
         else return contract.comboLegs.reduce(async(promise, leg, i) => {
             await promise;
             const contract = await ib.reqContract(leg.conId);
@@ -517,7 +518,7 @@ async function snapStockLimit(markets, ib, contract, order) {
             })
         ]);
         if (!bar || !bar.bid || !bar.ask)
-            throw Error("Can only submit SNAP STK orders while market is open");
+            throw Error(`Can only submit SNAP STK ${order.order_ref} orders while market is open`);
         const net_offset = order.action == 'BUY' && right == 'C' ||
             order.action == 'SELL' && right == 'P' ?
             Big(order.offset||0).times(-1) : Big(order.offset||0);

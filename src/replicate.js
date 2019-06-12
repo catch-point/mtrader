@@ -240,6 +240,7 @@ async function getWorkingPositions(broker, options) {
         };
     });
     const working = _.groupBy(inline_legs.filter(ord => {
+        if (!ord.symbol || !ord.market) return false;
         return ord.status == 'pending' || ord.status == 'working';
     }), ord => `${ord.symbol}.${ord.market}`);
     return _.reduce(working, (positions, orders, contract) => sortOrders(orders)
@@ -294,11 +295,15 @@ async function submitOrders(broker, orders, options) {
             }))
         };
     });
-    const pending_orders = _.difference(orders, _.flatten(order_legs)).concat(combo_orders);
-    const grouped_orders = _.values(_.groupBy(pending_orders, ord => `${ord.symbol}.${ord.market}`));
-    const submitted = await Promise.all(grouped_orders.map(async(orders) => {
+    const pending_orders = _.difference(orders, _.flatten(order_legs));
+    const grouped_orders = _.groupBy(pending_orders, ord => `${ord.symbol}.${ord.market}`);
+    const all_orders = _.values(grouped_orders).concat(combo_orders.map(ord => [ord]));
+    const submitted = await Promise.all(all_orders.map(async(orders) => {
         return orders.reduce(async(promise, order) => {
-            return (await promise).concat(await broker({...options, ...order}));
+            const submitted = await promise;
+            logger.trace("replicate submit", order);
+            const submit = await broker({...options, ...order});
+            return submitted.concat(submit);
         }, []).catch(err => {
             logOrders(logger.error, orders);
             return err;
