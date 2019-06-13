@@ -143,16 +143,16 @@ async function replicate(broker, collect, lookup, options) {
         negative_duration: true,
         now: options.now
     }) || options.now;
-    const balances = await broker({action: 'balances', asof: begin, now: options.now});
-    const desired = await getDesiredPositions(balances, collect, lookup, begin, options);
-    const [broker_positions, broker_orders] = await Promise.all([
+    const desired = await getDesiredPositions(broker, collect, lookup, begin, options);
+    const [broker_balances, broker_positions, broker_orders] = await Promise.all([
+        broker({action: 'balances', now: options.now}),
         broker({action: 'positions', now: options.now}),
         broker({action: 'orders', now: options.now})
     ]);
     const working = getWorkingPositions(broker_positions, broker_orders, begin, options);
     const portfolio = _.uniq(Object.keys(desired).concat(getPortfolio(options.markets, options))).sort();
     logger.trace("replicate portfolio", ...portfolio);
-    const margin_acct = !balances.every(bal => bal.margin == null);
+    const margin_acct = !broker_balances.every(bal => bal.margin == null);
     _.forEach(working, (w, contract) => {
         if (!desired[contract] && +w.position && !~portfolio.indexOf(contract) &&
                 (w.currency == options.currency || margin_acct)) {
@@ -193,19 +193,8 @@ async function replicate(broker, collect, lookup, options) {
 /**
  * Collects the options results and converts the orders into positions
  */
-async function getDesiredPositions(balances, collect, lookup, begin, options) {
-    const cash_acct = balances.every(bal => bal.margin == null);
-    const local_balances = balances.filter(options.currency ?
-        bal => bal.currency == options.currency : bal => +bal.rate == 1
-    );
-    const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
-    const local_balance_rate = local_balances.length ? local_balances[0].rate : 1;
-    const initial_balance = cash_acct || !balances.length ? Big(local_balance_net) :
-        balances.map(bal => Big(bal.net).times(bal.rate).div(local_balance_rate)).reduce((a,b) => a.add(b));
-    const initial_deposit = Math.min(Math.max(
-        initial_balance.times(options.allocation_pct || 100).div(100),
-        options.allocation_min||0), options.allocation_max||Infinity);
-    const parameters = { initial_deposit, strategy_raw: initial_deposit };
+async function getDesiredPositions(broker, collect, lookup, begin, options) {
+    const parameters = await getDesiredParameters(broker, begin, options);
     logger.debug("replicate", begin, "parameters", parameters);
     const orders = await collect(merge(options, {begin, parameters}));
     return orders.reduce(async(positions, row) => {
@@ -249,6 +238,81 @@ async function getDesiredPositions(balances, collect, lookup, begin, options) {
     }, {});
 }
 
+async function getDesiredParameters(broker, begin, options) {
+    const [current_balances, past_positions] = await Promise.all([
+        broker({action: 'balances', now: options.now}),
+        broker({action: 'positions', begin, now: options.now})
+    ]);
+    const first_traded_at = getFirstTradedAt(past_positions, begin, options);
+    const initial_balances = await broker({action: 'balances', asof: first_traded_at, now: options.now});
+    const initial_deposit = getAllocation(initial_balances, options);
+    const net_allocation = getAllocation(current_balances, options);
+    const net_deposit = getNetDeposit(current_balances, past_positions, options);
+    const settled_cash = getSettledCash(current_balances, options);
+    return { initial_deposit, net_deposit, net_allocation, settled_cash, strategy_raw: initial_deposit };
+}
+
+function getFirstTradedAt(positions, begin, options) {
+    const portfolio = getPortfolio(options.markets, options).reduce((hash, item) => {
+        const [, symbol, market] = item.match(/^(.+)\W(\w+)$/);
+        (hash[symbol] = hash[symbol] || []).push(market);
+        return hash;
+    }, {});
+    const relevant = positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
+    if (!relevant.length) return options.asof;
+    const initial_positions = _.flatten(_.values(_.groupBy(relevant, pos => {
+        return `${pos.symbol}.${pos.market}`;
+    })).map(positions => {
+        return positions.reduce((earliest, pos) => {
+            if (!earliest.length) return earliest.concat(pos);
+            else if (pos.asof == earliest[0].asof) return earliest.concat(pos);
+            else if (pos.asof < earliest[0].asof) return [pos];
+            else return earliest;
+        }, []);
+    }));
+    // check if there was an open initial position
+    if (initial_positions.some(pos => pos.position != pos.quant)) return begin;
+    const eod = initial_positions.reduce((earliest, pos) => {
+        if (!earliest || pos.traded_at < eariest.traded_at) return pos;
+        else return earliest;
+    }, null).asof;
+    return moment(eod).subtract(1, 'days').format();
+}
+
+function getAllocation(balances, options) {
+    const cash_acct = balances.every(bal => bal.margin == null);
+    const local_balances = balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
+    const local_balance_rate = local_balances.length ? local_balances[0].rate : 1;
+    const initial_balance = cash_acct ? Big(local_balance_net) : balances.map(bal => {
+        return Big(bal.net).times(bal.rate).div(local_balance_rate);
+    }).reduce((a,b) => a.add(b), Big(0));
+    return Math.min(Math.max(
+        initial_balance.times(options.allocation_pct || 100).div(100),
+        options.allocation_min||0), options.allocation_max||Infinity);
+}
+
+function getNetDeposit(balances, positions, options) {
+    const portfolio = getPortfolio(options.markets, options).reduce((hash, item) => {
+        const [, symbol, market] = item.match(/^(.+)\W(\w+)$/);
+        (hash[symbol] = hash[symbol] || []).push(market);
+        return hash;
+    }, {});
+    const relevant = positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
+    const mtm = relevant.map(pos => Big(pos.mtm)).reduce((a,b) => a.add(b), Big(0));
+    const balance = getAllocation(balances, options);
+    return +Big(balance).minus(mtm);
+}
+
+function getSettledCash(current_balances, options) {
+    const local_balances = current_balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    return +local_balances.map(bal => Big(bal.settled||0)).reduce((a,b) => a.add(b), Big(0));
+}
+
 /**
  * Retrieves the open positions and working orders from broker
  */
@@ -286,12 +350,16 @@ function getWorkingPositions(broker_positions, broker_orders, begin, options) {
 
 function getPortfolio(markets, options, portfolio = []) {
     return [].concat(options.portfolio||[]).reduce((portfolio,item) => {
-        if (item && typeof item == 'object') return getPortfolio(markets, item, portfolio);
-        else if (typeof item == 'string' && !markets) return portfolio.concat(item);
+        if (item && typeof item == 'object')
+            return getPortfolio(markets, item, portfolio);
+        else if (typeof item == 'string' && !markets)
+            return ~portfolio.indexOf(item) ? portfolio : portfolio.concat(item);
         const [, symbol, market] = (item||'').toString().match(/^(.+)\W(\w+)$/) || [];
         if (!market) throw Error(`Unknown contract syntax ${item} in portfolio ${portfolio}`);
-        else if (~markets.indexOf(market)) return portfolio.concat(item);
-        else return portfolio;
+        else if (~markets.indexOf(market) && !~portfolio.indexOf(item))
+            return portfolio.concat(item);
+        else
+            return portfolio;
     }, portfolio);
 }
 

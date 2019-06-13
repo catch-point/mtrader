@@ -766,7 +766,7 @@ async function listContractPositions(markets, ib, fetch, conId, pos, executions,
         else if (changes[i].action.charAt(0) == 'B')
             return position - changes[i].quant;
         else if (changes[i].action.charAt(0) == 'S')
-            return position + changes[i].quant;
+            return +position + +changes[i].quant;
         else
             throw Error(`Invalid trade action ${changes[i].action}`);
     }, ending_position - latest_trade.quant * (latest_trade.action.charAt(0) == 'S' ? -1 : 1));

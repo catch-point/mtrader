@@ -359,7 +359,7 @@ async function listBalances(db, options) {
     const begin = moment(options.begin || asof).format();
     return reduceMonths(await db.collection('balances'), options, (result, data) => {
         const latest = _.last(data.filter(balance => balance.asof <= asof))
-        if (!latest) return [];
+        if (!latest) return result;
         return data.filter(b => begin < b.asof && b.asof <= asof || b.asof == latest.asof);
     }, []);
 }
@@ -730,6 +730,7 @@ async function updateBalance(barsFor, db, positions, options) {
 }
 
 function reduceMonths(coll, options, fn, initial) {
+    // TODO consider options.begin
     const asof = moment(options.asof || options.now);
     const max_month = asof.format('YYYYMM');
     const all_months = coll.listNames();

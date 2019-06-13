@@ -1546,5 +1546,127 @@ describe("replicate-simulation", function() {
                 markets: ['NYSE']
             }).should.eventually.be.like([]);
         });
+        it("net_deposit", async() => {
+            await broker({
+                  asof: '2018-12-26',
+                  action: 'BUY',
+                  quant: '1',
+                  order_type: 'MOC',
+                  tif: 'DAY',
+                  symbol: 'ZNH19',
+                  market: 'CBOT',
+                  security_type: 'FUT',
+                  currency: 'USD',
+                  multiplier: 1000
+            });
+            const balance = Math.floor(1000000+(122296875-121031250)/10-205)/100;
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                expect(options).to.be.like({
+                    now: 1546639200000,
+                    parameters: {
+                        // initial_deposit is balance after begin
+                        initial_deposit: 9000,
+                        // net_allocation is balance asof now
+                        net_allocation: balance*100*0.9/100,
+                        // net_deposit is net_allocation minus mtm since begin
+                        net_deposit: balance*100*0.9/100-balance+10000,
+                        // settled_cash is available local currency cash asof now
+                        settled_cash: balance
+                    }
+                });
+                return Promise.resolve([])
+            })({
+                begin: '2018-12-26',
+                now: "2019-01-04T17:00:00",
+                currency: 'USD',
+                markets: ['CBOT'],
+                portfolio: 'ZNH19.CBOT',
+                allocation_pct: 90
+            });
+        });
+        it("settled_cash", async() => {
+            await broker({asof: '2019-05-29T00:00:00-04:00',
+                symbol: 'TRI',
+                market: 'TSE',
+                currency: 'CAD',
+                security_type: 'STK',
+                multiplier: '',
+                action: 'BUY',
+                quant: 100,
+                position: 100,
+                price: 85.77,
+                order_type: 'MOC',
+                tif: 'DAY'
+            });
+            const balance = 10000+(8500-8577)-1;
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                expect(options).to.be.like({
+                    parameters: {
+                        // initial_deposit is balance after begin
+                        initial_deposit: 9000,
+                        // net_allocation is balance asof now
+                        net_allocation: balance*100*0.9/100,
+                        // net_deposit is net_allocation minus mtm since begin
+                        net_deposit: balance*100*0.9/100-balance+10000,
+                        // settled_cash is available local currency cash asof now
+                        settled_cash: 10000-8577-1
+                    }
+                });
+                return Promise.resolve([])
+            })({
+                begin: '2019-05-29',
+                now: "2019-06-04T16:00:00",
+                currency: 'CAD',
+                markets: ['TSE'],
+                portfolio: 'TRI.TSE',
+                allocation_pct: 90
+            });
+        });
+        it("initial_deposit", async() => {
+            await broker({
+                asof: '2019-05-20',
+                action: 'withdraw',
+                currency: 'CAD',
+                quant: 1000
+            });
+            await broker({asof: '2019-05-29T00:00:00-04:00',
+                symbol: 'TRI',
+                market: 'TSE',
+                currency: 'CAD',
+                security_type: 'STK',
+                multiplier: '',
+                action: 'BUY',
+                quant: 100,
+                position: 100,
+                price: 85.77,
+                order_type: 'MOC',
+                tif: 'DAY'
+            });
+            const balance = 9000+(8500-8577)-1;
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                expect(options).to.be.like({
+                    parameters: {
+                        // initial_deposit is balance after begin
+                        initial_deposit: 9000,
+                        // net_allocation is balance asof now
+                        net_allocation: balance,
+                        // net_deposit is net_allocation minus mtm since begin
+                        net_deposit: 9000,
+                        // settled_cash is available local currency cash asof now
+                        settled_cash: 9000-8577-1
+                    }
+                });
+                return Promise.resolve([])
+            })({
+                begin: '2019-05-01',
+                now: "2019-06-04T16:00:00",
+                currency: 'CAD',
+                markets: ['TSE'],
+                portfolio: 'TRI.TSE'
+            });
+        });
     });
 });
