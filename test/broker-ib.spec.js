@@ -40,7 +40,7 @@ const config = require('../src/config.js');
 const IB = require('../src/ib-client.js');
 const Broker = require('../src/broker-ib.js');
 const createTempDir = require('./create-temp-dir.js');
-const expect = require('chai').use(like).expect
+const expect = require('chai').use(like).expect;
 
 describe("broker-ib", function() {
     this.timeout(120000);
@@ -602,7 +602,8 @@ describe("broker-ib", function() {
                parentId: null,
                ocaGroup: null,
                ocaType: 0,
-               smartComboRoutingParams: [ { tag: 'NonGuaranteed', value: '1' } ] } ]);return Promise.resolve({ status: 'ApiPending',
+               smartComboRoutingParams: [ { tag: 'NonGuaranteed', value: '1' } ] } ]);
+             return Promise.resolve({ status: 'ApiPending',
              action: 'SELL',
              totalQuantity: 1,
              orderType: 'LMT',
@@ -706,7 +707,8 @@ describe("broker-ib", function() {
                parentId: null,
                ocaGroup: null,
                ocaType: 0,
-               smartComboRoutingParams: [ { tag: 'NonGuaranteed', value: '1' } ] } ]);return Promise.resolve({ status: 'ApiPending',
+               smartComboRoutingParams: [ { tag: 'NonGuaranteed', value: '1' } ] } ]);
+             return Promise.resolve({ status: 'ApiPending',
              action: 'BUY',
              totalQuantity: 1,
              orderType: 'SNAP MID',
@@ -796,7 +798,8 @@ describe("broker-ib", function() {
                parentId: null,
                ocaGroup: null,
                ocaType: 0,
-               smartComboRoutingParams: [] } ]);return Promise.resolve({ status: 'PreSubmitted',
+               smartComboRoutingParams: [] } ]);
+             return Promise.resolve({ status: 'PreSubmitted',
              posted_time: '20190601 15:57:41',
              time: '20190601 15:57:41',
              action: 'BUY',

@@ -44,6 +44,7 @@ const beautify = require('js-beautify');
 const like = require('./should-be-like.js');
 const Snapshot = require('./snapshot.js');
 const createTempDir = require('./create-temp-dir.js');
+const expect = require('chai').use(like).expect;
 
 describe("replicate-simulation", function() {
     this.timeout(60000);
@@ -1479,6 +1480,71 @@ describe("replicate-simulation", function() {
                 order_ref: stp[0].order_ref,
                 status: 'cancelled'
             }]);
+        });
+    });
+    describe("parameters", function() {
+        it("working_duration", async() => {
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                expect(options).to.be.like({
+                    now: 1546639200000,
+                    begin: '2019-01-03T17:00:00-05:00',
+                    parameters: { initial_deposit: 10000 }
+                });
+                return Promise.resolve([])
+            })({
+                now: "2019-01-04T17:00:00",
+                working_duration: 'P1D',
+                currency: 'USD',
+                markets: ['NYSE']
+            }).should.eventually.be.like([]);
+        });
+        it("allocation_pct", async() => {
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                expect(options).to.be.like({
+                    now: 1546639200000,
+                    parameters: { initial_deposit: 6000 }
+                });
+                return Promise.resolve([])
+            })({
+                now: "2019-01-04T17:00:00",
+                allocation_pct: 60,
+                currency: 'USD',
+                markets: ['NYSE']
+            }).should.eventually.be.like([]);
+        });
+        it("allocation_min", async() => {
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                expect(options).to.be.like({
+                    now: 1546639200000,
+                    parameters: { initial_deposit: 9000 }
+                });
+                return Promise.resolve([])
+            })({
+                now: "2019-01-04T17:00:00",
+                allocation_pct: 60,
+                allocation_min: 9000,
+                currency: 'USD',
+                markets: ['NYSE']
+            }).should.eventually.be.like([]);
+        });
+        it("allocation_max", async() => {
+            await replicate(function(options) {
+                if (options.help) return collect(options);
+                expect(options).to.be.like({
+                    now: 1546639200000,
+                    parameters: { initial_deposit: 5000 }
+                });
+                return Promise.resolve([])
+            })({
+                now: "2019-01-04T17:00:00",
+                allocation_pct: 60,
+                allocation_max: 5000,
+                currency: 'USD',
+                markets: ['NYSE']
+            }).should.eventually.be.like([]);
         });
     });
 });

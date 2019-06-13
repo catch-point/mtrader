@@ -108,14 +108,23 @@ function formatDate(format, options) {
     const date = moment(options.now);
     const durations = _.isArray(options.duration) ? options.duration :
         _.isString(options.duration) ? options.duration.split(',') : [];
-    const advanced = durations.reduce((date, d) => {
-        if (d.match(/^[PYMWDTHMS0-9\-\+,.:]+$/)) return date.add(moment.duration(d));
-        else if (d == 'open') return nextOpen(date);
-        else if (d == '-open') return lastOpen(date);
-        else if (d && d.charAt(0) == '-') return reverse(date, d.substring(1));
-        else return advance(date, d);
-    }, date);
-    return advanced.format(format);
+    if (options.negative_duration) {
+        return durations.reduce((date, d) => {
+            if (d.match(/^[PYMWDTHMS0-9\-\+,.:]+$/)) return date.subtract(moment.duration(d));
+            else if (d == 'open') return lastOpen(date);
+            else if (d == '-open') return nextOpen(date);
+            else if (d && d.charAt(0) == '-') return advance(date, d.substring(1));
+            else return reverse(date, d);
+        }, date).format(format);
+    } else {
+        return durations.reduce((date, d) => {
+            if (d.match(/^[PYMWDTHMS0-9\-\+,.:]+$/)) return date.add(moment.duration(d));
+            else if (d == 'open') return nextOpen(date);
+            else if (d == '-open') return lastOpen(date);
+            else if (d && d.charAt(0) == '-') return reverse(date, d.substring(1));
+            else return advance(date, d);
+        }, date).format(format);
+    }
 }
 
 function advance(date, w) {

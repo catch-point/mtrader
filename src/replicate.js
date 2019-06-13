@@ -42,6 +42,7 @@ const merge = require('./merge.js');
 const interrupt = require('./interrupt.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
+const formatDate = new require('./mtrader-date.js')();
 const expect = require('chai').expect;
 const version = require('../package.json').version;
 const Lookup = require('./lookup.js');
@@ -111,6 +112,22 @@ function help(broker, collect) {
             default_multiplier: {
                 usage: '<number>',
                 description: "Default value multiplier defaults to 1"
+            },
+            working_duration: {
+                usage: '<duration>,..',
+                description: "Offset of now to begin by these comma separated durations or to values"
+            },
+            allocation_pct: {
+                usage: '<number>',
+                description: "Positive number 0-100 of the balance that should be allocated to this strategy"
+            },
+            allocation_min: {
+                usage: '<number>',
+                description: "Minimum amount that should be allocated to this strategy"
+            },
+            allocation_max: {
+                usage: '<number>',
+                description: "Maximum amount that should be allocated to this strategy"
             }
         }
     })).then(help => [help]);
@@ -121,9 +138,18 @@ function help(broker, collect) {
  */
 async function replicate(broker, collect, lookup, options) {
     const check = interrupt();
-    const balances = await broker({action: 'balances', asof: options.begin, now: options.now});
-    const desired = await getDesiredPositions(balances, collect, lookup, options);
-    const working = await getWorkingPositions(broker, options);
+    const begin = options.begin || options.working_duration && formatDate(moment.defaultFormat, {
+        duration: options.working_duration,
+        negative_duration: true,
+        now: options.now
+    }) || options.now;
+    const balances = await broker({action: 'balances', asof: begin, now: options.now});
+    const desired = await getDesiredPositions(balances, collect, lookup, begin, options);
+    const [broker_positions, broker_orders] = await Promise.all([
+        broker({action: 'positions', now: options.now}),
+        broker({action: 'orders', now: options.now})
+    ]);
+    const working = getWorkingPositions(broker_positions, broker_orders, begin, options);
     const portfolio = _.uniq(Object.keys(desired).concat(getPortfolio(options.markets, options))).sort();
     logger.trace("replicate portfolio", ...portfolio);
     const margin_acct = !balances.every(bal => bal.margin == null);
@@ -135,8 +161,8 @@ async function replicate(broker, collect, lookup, options) {
     });
     const orders = portfolio.reduce((orders, contract) => {
         const [, symbol, market] = contract.match(/^(.+)\W(\w+)$/);
-        const d = desired[contract] || { symbol, market, position:0, asof: options.begin };
-        const w = working[contract] || { symbol, market, position:0, asof: options.begin };
+        const d = desired[contract] || { symbol, market, position:0, asof: begin };
+        const w = working[contract] || { symbol, market, position:0, asof: begin };
         const quant_threshold = getQuantThreshold(w, options);
         const update = updateWorking(d, w, _.defaults({quant_threshold}, options));
         if (!update.length) return orders;
@@ -161,24 +187,27 @@ async function replicate(broker, collect, lookup, options) {
     }, []);
     await check();
     logger.trace("replicate submit orders", ...orders);
-    return submitOrders(broker, orders, options);
+    return submitOrders(broker, broker_orders, orders, options);
 }
 
 /**
  * Collects the options results and converts the orders into positions
  */
-async function getDesiredPositions(balances, collect, lookup, options) {
+async function getDesiredPositions(balances, collect, lookup, begin, options) {
     const cash_acct = balances.every(bal => bal.margin == null);
     const local_balances = balances.filter(options.currency ?
         bal => bal.currency == options.currency : bal => +bal.rate == 1
     );
     const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
     const local_balance_rate = local_balances.length ? local_balances[0].rate : 1;
-    const initial_deposit = cash_acct || !balances.length ? Big(local_balance_net) :
+    const initial_balance = cash_acct || !balances.length ? Big(local_balance_net) :
         balances.map(bal => Big(bal.net).times(bal.rate).div(local_balance_rate)).reduce((a,b) => a.add(b));
-    const parameters = { initial_deposit: initial_deposit.toString(), strategy_raw: initial_deposit.toString() };
-    logger.debug("replicate", options.begin, "parameters", parameters);
-    const orders = await collect(merge(options, {parameters}));
+    const initial_deposit = Math.min(Math.max(
+        initial_balance.times(options.allocation_pct || 100).div(100),
+        options.allocation_min||0), options.allocation_max||Infinity);
+    const parameters = { initial_deposit, strategy_raw: initial_deposit };
+    logger.debug("replicate", begin, "parameters", parameters);
+    const orders = await collect(merge(options, {begin, parameters}));
     return orders.reduce(async(positions, row) => {
         const security_type = row.security_type || row.typeofsymbol == 'future' && 'FUT';
         const contract = !security_type ? await lookup(_.pick(row, 'symbol', 'market')) : {};
@@ -213,7 +242,7 @@ async function getDesiredPositions(balances, collect, lookup, options) {
         const key = `${order.symbol}.${order.market}`;
         const hash = await positions;
         const prior = hash[key] ||
-            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier'), {position: 0, asof: options.begin});
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier'), {position: 0, asof: begin});
         return _.defaults({
             [key]: advance(prior, order, options)
         }, hash);
@@ -223,11 +252,7 @@ async function getDesiredPositions(balances, collect, lookup, options) {
 /**
  * Retrieves the open positions and working orders from broker
  */
-async function getWorkingPositions(broker, options) {
-    const [broker_positions, broker_orders] = await Promise.all([
-        broker({action: 'positions', now: options.now}),
-        broker({action: 'orders', now: options.now})
-    ]);
+function getWorkingPositions(broker_positions, broker_orders, begin, options) {
     const all_positions = _.groupBy(broker_positions, pos => `${pos.symbol}.${pos.market}`);
     const positions = _.mapObject(all_positions, positions => positions.reduce((net, pos) => {
         return {...net, position: +net.position + +pos.position};
@@ -252,7 +277,7 @@ async function getWorkingPositions(broker, options) {
         const symbol = order.symbol;
         const market = order.market;
         const prior = positions[contract] ||
-            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier'), {position: 0, asof: options.begin});
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier'), {position: 0, asof: begin});
         return _.defaults({
             [contract]: advance(prior, order, options)
         }, positions);
@@ -270,7 +295,7 @@ function getPortfolio(markets, options, portfolio = []) {
     }, portfolio);
 }
 
-async function submitOrders(broker, orders, options) {
+async function submitOrders(broker, broker_orders, orders, options) {
     const potential_combos = options.combo_order_types ?
         orders.filter(ord => ~options.combo_order_types.indexOf(ord.order_type) && ord.security_type == 'OPT') : [];
     const grouped = _.groupBy(potential_combos, ord => {
@@ -283,17 +308,22 @@ async function submitOrders(broker, orders, options) {
     const order_legs = _.values(grouped).filter(legs => legs.length > 1);
     const combo_orders = order_legs.map(legs => {
         const quant = greatestCommonFactor(_.uniq(legs.map(leg => Math.abs(leg.quant))));
-        const traded_price = legs.reduce((net, leg) => {
+        const existing_order = broker_orders.find(ord => {
+            return ord.order_type != 'LEG' && ord.order_ref == _.first(legs).attach_ref;
+        });
+        const traded_price = +legs.reduce((net, leg) => {
             return net.add(Big(leg.traded_price || 1).times(leg.action == 'BUY' ? 1 : -1).times(leg.quant));
-        }, Big(0)).div(quant).toString();
+        }, Big(0)).div(quant);
+        if (existing_order) logger.trace("existing_order", traded_price, existing_order);
+        const action = existing_order ? existing_order.action : traded_price < 0 ? 'SELL' : 'BUY';
         return {
-            action: traded_price < 0 ? 'SELL' : 'BUY',
+            action,
             quant,
             ..._.pick(_.first(legs), 'order_ref', 'order_type', 'limit', 'offset', 'stop', 'tif'),
             attached: legs.map(leg => ({
                 ..._.omit(leg, 'order_type', 'limit', 'offset', 'stop', 'tif'),
-                action: traded_price < 0 && leg.action == 'BUY' ? 'SELL' :
-                    traded_price < 0 && leg.action == 'SELL' ? 'BUY' : leg.action,
+                action: action == 'SELL' && leg.action == 'BUY' ? 'SELL' :
+                    action == 'SELL' && leg.action == 'SELL' ? 'BUY' : leg.action,
                 quant: Big(leg.quant).div(quant).toString(),
                 order_type: 'LEG'
             }))
@@ -450,11 +480,13 @@ function updateWorking(desired, working, options) {
                 return appendSignal(adj, _.defaults({
                     // adjust quant if first signal
                     quant: Math.abs(desired.position - working.prior.position),
-                    order_ref: ws.order_ref
+                    order_ref: ws.order_ref,
+                    attach_ref: ws.attach_ref
                 }, ds), options);
             else
                 return appendSignal(adj, _.defaults({
-                    order_ref: ws.order_ref
+                    order_ref: ws.order_ref,
+                    attach_ref: ws.attach_ref
                 }, ds), options);
         } else if (d_opened != w_opened && same_side) {
             return cancelSignal(desired, working, options);
@@ -513,7 +545,7 @@ function cancelSignal(desired, working, options) {
     if (same)
         return _.without(adj, same);
     else if (similar)
-        return adj.map(a => a == similar ? _.extend({order_ref: ws.order_ref}, a) : a);
+        return adj.map(a => a == similar ? _.extend({order_ref: ws.order_ref, attach_ref: ws.attach_ref}, a) : a);
     else if (isStopOrder(ws) && adj.some(a => moment(a.traded_at || a.posted_at).isAfter(options.now)))
         return adj; // don't cancel stoploss order until replacements orders come into effect
     else
@@ -599,7 +631,7 @@ function updateStoploss(pos, order, options) {
         return _.defaults({order: stp_order, prior}, prior);
     } else if (isStopOrder(order)) {
         expect(order).to.have.property('stop').that.is.ok;
-        const prior = pos.prior && ~pos.order.order_type.indexOf('STP') ? pos.prior : pos;
+        const prior = pos.prior && isStopOrder(pos.order) ? pos.prior : pos;
         return _.defaults({order: c2signal(order), prior}, pos);
     } else {
         return updatePosition(pos, order, options);
