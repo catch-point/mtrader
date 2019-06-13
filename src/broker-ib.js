@@ -333,13 +333,14 @@ async function listOrders(markets, ib, settings, options) {
     const orders = open_orders.concat(completed_orders.filter(o => begin < o.asof && asof <= o.asof));
     return orders.filter(order => {
         if (asof < order.posted_time) return false;
+        else if (order.secType == 'BAG' && !order.comboLegsDescrip) return false; // completed
         else if (!account || account == 'All') return true;
         else if (order.faGroup == account || order.faProfile == account) return true;
         else if (~accounts.indexOf(order.account)) return true;
         else return false;
     }).reduce(async(promise, order) => {
         const result = await promise;
-        const contract = await ib.reqContract(order.conId);
+        const contract = await reqOrderContract(ib, order);
         const ord = await ibToOrder(markets, ib, settings, order, contract, options);
         const parent = order.parentId && orders.find(p => order.parentId == p.orderId);
         const bag = contract.secType == 'BAG';
@@ -378,6 +379,28 @@ async function listOrders(markets, ib, settings, options) {
     }, Promise.resolve([]));
 }
 
+async function reqOrderContract(ib, order) {
+    if (order.comboLegsDescrip) {
+        const legs = order.comboLegsDescrip.split(',').map(descrip => {
+            const [conId, ratio] = descrip.split('|', 2);
+            const action = ratio > 0 ? 'BUY' : 'SELL';
+            return {conId, ratio: Math.abs(ratio), action};
+        });
+        const leg_contracts = await Promise.all(legs.map(async(leg) => ib.reqContract(leg.conId)));
+        const currencies = _.uniq(leg_contracts.map(leg => leg.currency));
+        const exchanges = _.uniq(leg_contracts.map(leg => leg.exchange));
+        return {
+            secType: 'BAG',
+            currency: currencies.length == 1 ? currencies[0] : undefined,
+            exchange: exchanges.length == 1 ? exchanges[0] : order.exchange,
+            comboLegsDescrip: order.comboLegsDescrip,
+            comboLegs: legs.map((leg, i) => ({...leg, exchange: leg_contracts[i].exchange}))
+        };
+    }
+    if (order.conId) return ib.reqContract(order.conId);
+    throw Error(`Missing contract for order ${util.inspect(order)}`);
+}
+
 async function cancelOrder(markets, ib, settings, options) {
     expect(options).to.have.property('order_ref').that.is.ok;
     const ib_order = await orderByRef(ib, options.order_ref);
@@ -406,10 +429,11 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const replacing_id = (await orderByRef(ib, options.order_ref)||{}).orderId;
     const reqId = replacing_id ? async(fn) => fn(replacing_id) : ib.reqId;
     const contract = await toContract(markets, ib, options);
-    const ib_order = await reqId(async(order_id) => {
+    const ib_order = await orderToIbOrder(markets, ib, settings, contract, options, options);
+    const posted_order = await reqId(async(order_id) => {
         const order_ref = orderRef(root_ref, order_id, options);
         const submit_order = {
-            ...await orderToIbOrder(markets, ib, settings, contract, options, options),
+            ...ib_order,
             orderId: order_id, orderRef: order_ref,
             transmit: (contract.secType == 'BAG' || _.isEmpty(options.attached)) && settings.transmit || false,
             parentId: parentId || (attach_order ? attach_order.orderId : null),
@@ -418,9 +442,9 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
         };
         return await ib.placeOrder(order_id, contract, submit_order);
     });
-    const order_id = ib_order.orderId;
+    const order_id = posted_order.orderId;
     const order_ref = orderRef(root_ref, order_id, options);
-    const parent_order = await ibToOrder(markets, ib, settings, ib_order, contract, options);
+    const parent_order = await ibToOrder(markets, ib, settings, posted_order, contract, options);
     return (options.attached||[]).reduce(async(promise, attach, i, attached) => {
         const child_orders = attach.order_type == 'LEG' ? [{
             ..._.omit(parent_order, 'limit', 'stop', 'offset', 'traded_price', 'order_ref'),
@@ -573,7 +597,13 @@ async function snapStockLimit(markets, ib, contract, order) {
             return snapStockPrice(ib, contracts[i], bars[i], under_bar, net_offset);
         }));
         const price = netPrice(order.attached, prices);
-        return +Big(price).div(minTick).round(0, order.action == 'BUY' ? 0 : 3).times(minTick);
+        if (order.action == 'BUY') {
+            const buy_limit = +Big(price).div(minTick).round(0, 0).times(minTick);
+            if (buy_limit) return buy_limit;
+        }
+        const sell_limit = +Big(price).div(minTick).round(0, 3).times(minTick);
+        if (sell_limit) return sell_limit;
+        else return +Big(price).div(minTick).round(0, 0).times(minTick);
     }
 }
 
@@ -796,6 +826,7 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
 
 function collectConIds(executions) {
     return executions.reduce((conIds, execution) => {
+        if (execution.secType == 'BAG') return conIds;
         const idx = _.sortedIndex(conIds, execution.conId);
         conIds.splice(idx, 0, execution.conId);
         return conIds;

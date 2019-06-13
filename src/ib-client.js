@@ -501,7 +501,8 @@ function openOrders(ib, store, ib_tz, clientId) {
         orders[orderId] = Object.assign({
                 orderId,
                 conId: contract.conId,
-                symbol: contract.symbol,
+                comboLegsDescrip: contract.comboLegsDescrip,
+                symbol: contract.symbol || contract.localSymbol,
                 secType: contract.secType,
                 exchange: contract.exchange,
                 primaryExch: contract.primaryExch,
@@ -559,9 +560,15 @@ function openOrders(ib, store, ib_tz, clientId) {
             logger.log('placeOrder', orderId, contract, order);
             ib.placeOrder(orderId, contract, order);
             if (!order.transmit) return new Promise(ready => {
+                const comboLegsDescrip = contract.comboLegsDescrip ? contract.comboLegsDescrip :
+                    contract.comboLegs ? contract.comboLegs.map(leg => {
+                        return `${leg.conId}|${leg.action == 'SELL' ? '-' : ''}${leg.ratio}`;
+                    }).join(',') :
+                    undefined;
                 const placed = orders[orderId] = _.omit({
                     orderId,
                     conId: contract.conId,
+                    comboLegsDescrip,
                     symbol: contract.symbol || contract.localSymbol,
                     secType: contract.secType,
                     exchange: contract.exchange,
@@ -742,10 +749,12 @@ function execDetails(ib, store) {
         const key = exe.execId.substring(0, exe.execId.lastIndexOf('.'));
         const acct = details[exe.acctNumber] = details[exe.acctNumber] || {};
         const recent = acct[month] = acct[month] || {};
-        recent[key] = Object.assign({},
-            {conId: contract.conId, symbol: contract.symbol, secType: contract.secType},
-            exe
-        );
+        recent[key] = Object.assign({}, {
+            conId: contract.conId,
+            comboLegsDescrip: contract.comboLegsDescrip,
+            symbol: contract.symbol || contract.localSymbol,
+            secType: contract.secType
+        }, exe);
         if (flushed) flusher.flush();
         else flusher();
     }).on('commissionReport', function(commissionReport) {
@@ -840,7 +849,7 @@ function reqContract(ib) {
         });
     }, 1);
     const replaceEntry = contract => {
-        if (contract.tradingClass != 'COMB' || contract.comboLegs) {
+        if (contract.secType != 'BAG') {
             reqCachedContract.replaceEntry(contract.conId, contract);
         }
     };
@@ -914,7 +923,7 @@ function requestWithId(ib) {
                 }
             };
             logger.log(cmd, ...args.map(arg => {
-                return arg && (arg.localSymbol || arg.symbol || arg.conId) || arg;
+                return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip || arg.conId) || arg;
             }));
             ib[cmd].call(ib, reqId, ...args);
         });
