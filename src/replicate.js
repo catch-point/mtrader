@@ -161,8 +161,14 @@ async function replicate(broker, collect, lookup, options) {
     });
     const orders = portfolio.reduce((orders, contract) => {
         const [, symbol, market] = contract.match(/^(.+)\W(\w+)$/);
-        const d = desired[contract] || { symbol, market, position:0, asof: begin };
-        const w = working[contract] || { symbol, market, position:0, asof: begin };
+        const no_position = {
+            symbol, market, position:0, asof: begin,
+            ..._.pick(desired[contract] || working[contract],
+                'symbol', 'market', 'currency', 'security_type', 'multiplier'
+            )
+        };
+        const d = desired[contract] || no_position;
+        const w = working[contract] || no_position;
         const quant_threshold = getQuantThreshold(w, options);
         const update = updateWorking(d, w, _.defaults({quant_threshold}, options));
         if (!update.length) return orders;
@@ -258,7 +264,8 @@ function getFirstTradedAt(positions, begin, options) {
         (hash[symbol] = hash[symbol] || []).push(market);
         return hash;
     }, {});
-    const relevant = positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
+    const relevant = _.isEmpty(portfolio) ? positions :
+        positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
     if (!relevant.length) return options.asof;
     const initial_positions = _.flatten(_.values(_.groupBy(relevant, pos => {
         return `${pos.symbol}.${pos.market}`;
@@ -300,8 +307,9 @@ function getNetDeposit(balances, positions, options) {
         (hash[symbol] = hash[symbol] || []).push(market);
         return hash;
     }, {});
-    const relevant = positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
-    const mtm = relevant.map(pos => Big(pos.mtm)).reduce((a,b) => a.add(b), Big(0));
+    const relevant = _.isEmpty(portfolio) ? positions :
+        positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
+    const mtm = relevant.map(pos => Big(pos.mtm||0)).reduce((a,b) => a.add(b), Big(0));
     const balance = getAllocation(balances, options);
     return +Big(balance).minus(mtm);
 }
