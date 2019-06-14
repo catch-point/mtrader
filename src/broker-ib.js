@@ -340,23 +340,21 @@ async function listOrders(markets, ib, settings, options) {
         else return false;
     }).reduce(async(promise, order) => {
         const result = await promise;
-        const contract = await reqOrderContract(ib, order);
-        const ord = await ibToOrder(markets, ib, settings, order, contract, options);
+        const ord = await ibToOrder(markets, ib, settings, order, options);
         const parent = order.parentId && orders.find(p => order.parentId == p.orderId);
-        const bag = contract.secType == 'BAG';
+        const bag = order.secType == 'BAG';
         const working = ~open_orders.indexOf(order);
         result.push({...ord,
             quant: working ? order.remaining : order.totalQuantity,
             attch_ref: bag ? order.orderRef || order.permId :
                 parent ? parent.orderRef|| parent.permId : order.ocaGroup,
-            symbol: bag ? null : asSymbol(contract),
-            market: bag ? null : await asMarket(markets, ib, contract)
+            symbol: bag ? null : asSymbol(order),
+            market: bag ? null : await asMarket(markets, ib, order)
         });
         if (!bag) return result;
-        else if (!contract.comboLegs) throw Error(`Missing comboLegs on BAG order ${util.inspect(contract)}`);
-        else return contract.comboLegs.reduce(async(promise, leg, i) => {
-            await promise;
-            const contract = await ib.reqContract(leg.conId);
+        else if (!order.comboLegs) throw Error(`Missing comboLegs on BAG order ${util.inspect(order)}`);
+        else return order.comboLegs.reduce(async(promise, leg, i) => {
+            const result = await promise;
             result.push({
                 action: leg.action,
                 quant: Big(order.remaining).times(leg.ratio).toString(),
@@ -368,46 +366,22 @@ async function listOrders(markets, ib, settings, options) {
                 order_ref: null,
                 attach_ref: ord.order_ref,
                 account: ord.account,
-                symbol: asSymbol(contract),
-                market: await asMarket(markets, ib, contract),
-                currency: contract.currency,
-                security_type: contract.secType,
-                multiplier: contract.multiplier
+                symbol: asSymbol(leg),
+                market: await asMarket(markets, ib, leg),
+                currency: leg.currency,
+                security_type: leg.secType,
+                multiplier: leg.multiplier
             });
             return result;
         }, Promise.resolve(result));
     }, Promise.resolve([]));
 }
 
-async function reqOrderContract(ib, order) {
-    if (order.comboLegsDescrip) {
-        const legs = order.comboLegsDescrip.split(',').map(descrip => {
-            const [conId, ratio] = descrip.split('|', 2);
-            const action = ratio > 0 ? 'BUY' : 'SELL';
-            return {conId, ratio: Math.abs(ratio), action};
-        });
-        const leg_contracts = await Promise.all(legs.map(async(leg) => ib.reqContract(leg.conId)));
-        const currencies = _.uniq(leg_contracts.map(leg => leg.currency));
-        const exchanges = _.uniq(leg_contracts.map(leg => leg.exchange));
-        return {
-            secType: 'BAG',
-            currency: currencies.length == 1 ? currencies[0] : undefined,
-            exchange: exchanges.length == 1 ? exchanges[0] : order.exchange,
-            comboLegsDescrip: order.comboLegsDescrip,
-            comboLegs: legs.map((leg, i) => ({...leg, exchange: leg_contracts[i].exchange}))
-        };
-    }
-    if (order.conId) return ib.reqContract(order.conId);
-    throw Error(`Missing contract for order ${util.inspect(order)}`);
-}
-
 async function cancelOrder(markets, ib, settings, options) {
     expect(options).to.have.property('order_ref').that.is.ok;
     const ib_order = await orderByRef(ib, options.order_ref);
     const cancelled_order = await ib.cancelOrder(ib_order.orderId);
-    const contract = cancelled_order.conId ? await ib.reqContract(cancelled_order.conId) :
-        (_.first(await ib.reqContractDetails(cancelled_order))||{}).summary || {};
-    const order = ibToOrder(markets, ib, settings, {...ib_order, ...cancelled_order}, contract, options);
+    const order = ibToOrder(markets, ib, settings, {...ib_order, ...cancelled_order}, options);
     return [order];
 }
 
@@ -444,7 +418,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     });
     const order_id = posted_order.orderId;
     const order_ref = orderRef(root_ref, order_id, options);
-    const parent_order = await ibToOrder(markets, ib, settings, posted_order, contract, options);
+    const parent_order = await ibToOrder(markets, ib, settings, posted_order, options);
     return (options.attached||[]).reduce(async(promise, attach, i, attached) => {
         const child_orders = attach.order_type == 'LEG' ? [{
             ..._.omit(parent_order, 'limit', 'stop', 'offset', 'traded_price', 'order_ref'),
@@ -647,7 +621,7 @@ async function ibAccountOrderProperties(ib, settings) {
     return {account: managed_accts[0], modelCode: account}; // maybe a model?
 }
 
-async function ibToOrder(markets, ib, settings, order, contract, options) {
+async function ibToOrder(markets, ib, settings, order, options) {
     const ib_tz = settings.tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const status = order.status == 'ApiPending' ? 'pending' :
         order.status == 'PendingSubmit' ? 'pending' :
@@ -674,12 +648,12 @@ async function ibToOrder(markets, ib, settings, order, contract, options) {
         order_ref: order.orderRef || order.permId || order.orderId,
         attach_ref: options.attach_ref,
         account: order.faGroup || order.faProfile || order.account,
-        symbol: contract ? asSymbol(contract) : null,
+        symbol: asSymbol(order),
         market: options.market ? options.market :
-            contract && contract.secType != 'BAG' ? await asMarket(markets, ib, contract) : null,
-        currency: contract.currency,
-        security_type: contract.secType,
-        multiplier: contract.multiplier
+            order.secType != 'BAG' ? await asMarket(markets, ib, order) : null,
+        currency: order.currency,
+        security_type: order.secType,
+        multiplier: order.multiplier
     };
 }
 
@@ -715,6 +689,7 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
         acctCode: account,
         time: begin ? begin.format('YYYYMMDD HH:mm:ss') : null
     });
+    // TODO don't assume conIds in executions mean the same in positions
     const conIds = _.union(Object.keys(positions).map(i => parseInt(i)), collectConIds(executions));
     const listChanges = listContractPositions.bind(this, markets, ib, fetch);
     const changes = await Promise.all(conIds.sort().map(async(conId) => {
@@ -723,7 +698,9 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
             asof: parseTime(exe.time, ib_tz).format(),
             ...exe
         })).filter(exe => exe.asof <= asof_format);
-        const changes = await listChanges(conId, con_pos, con_exe, historical, ib_tz, options);
+        const contract = con_pos ? await ib.reqContract(conId) : _.first(con_exe);
+        if (contract.secType == 'BAG') return [];
+        const changes = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options);
         if (options.begin) return changes.filter((p,i,a) => {
             return begin_format < p.asof || i == a.length-1 && p.position;
         });
@@ -736,14 +713,12 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
     }, trade));
 }
 
-async function listContractPositions(markets, ib, fetch, conId, pos, executions, historical, ib_tz, options) {
-    const contract = await ib.reqContract(conId);
-    if (contract.secType == 'BAG') return [];
+async function listContractPositions(markets, ib, fetch, contract, pos, executions, historical, ib_tz, options) {
     const symbol = asSymbol(contract);
     const market = await asMarket(markets, ib, contract);
     const now = moment().format();
     const earliest = moment(options.asof || options.now).subtract(5, 'days').startOf('day').format();
-    const key = `${conId} ${earliest}`;
+    const key = `${contract.conId} ${earliest}`;
     const promise = historical[key] = historical[key] ||
         loadHistoricalData(fetch, symbol, market, earliest, {...options, ...markets[market]});
     const bars = await promise;

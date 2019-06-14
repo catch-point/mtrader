@@ -112,7 +112,7 @@ describe("broker-ib", function() {
         await broker.close();
     });
     it("should list positions", async() => {
-        const broker = new Broker({account: 'test'}, {
+        const broker = new Broker({account: 'MKSTK'}, {
             reqPositionsMulti: () => Promise.resolve({ test: {
                 '4215235': { position: 64 }
             } }),
@@ -153,31 +153,38 @@ describe("broker-ib", function() {
         const broker = new Broker({account: 'test'}, { reqManagedAccts: () => Promise.resolve([ 'test' ]),
           requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
           reqOpenOrders: () => Promise.resolve([ { posted_time: '20190601 14:48:27',
-               faGroup: '',
-               faProfile: '',
-               account: 'test',
-               conId: 756733,
-               status: 'PreSubmitted',
-               time: '20190601 14:48:27',
-               action: 'BUY',
-               totalQuantity: 1,
-               algoStrategy: '',
-               orderType: 'LMT',
-               lmtPrice: 270,
-               auxPrice: null,
-               tif: 'DAY',
-               avgFillPrice: 0,
-               orderRef: 'LMT.5ef8dbb8.1',
-               parentId: 0,
-               remaining: 1,
-               ocaGroup: '' } ]),
-          reqContract: (...args) => {expect(args).to.be.like([ 756733 ]);return Promise.resolve({ secType: 'STK',
+            faGroup: '',
+            faProfile: '',
+            account: 'test',
+            secType: 'STK',
+            localSymbol: 'SPY',
+            exchange: 'SMART',
+            currency: 'USD',
+            conId: 756733,
+            status: 'PreSubmitted',
+            time: '20190601 14:48:27',
+            action: 'BUY',
+            totalQuantity: 1,
+            algoStrategy: '',
+            orderType: 'LMT',
+            lmtPrice: 270,
+            auxPrice: null,
+            tif: 'DAY',
+            avgFillPrice: 0,
+            orderRef: 'LMT.5ef8dbb8.1',
+            parentId: 0,
+            remaining: 1,
+            ocaGroup: ''
+            } ]),
+          reqContract: (...args) => {expect(args).to.be.like([ 756733 ]);
+          return Promise.resolve({ secType: 'STK',
              localSymbol: 'SPY',
              exchange: 'SMART',
              currency: 'USD',
              conId: 756733,
              multiplier: '' });},
-          reqContractDetails: (...args) => {expect(args).to.be.like([ { conId: 756733 } ]);return Promise.resolve([ { summary: { exchange: 'SMART',
+          reqContractDetails: (...args) => {expect(args).to.be.like([ { conId: 756733 } ]);
+          return Promise.resolve([ { summary: { exchange: 'SMART',
                   currency: 'USD',
                   secType: 'STK',
                   primaryExch: 'ARCA' } } ]);},
@@ -201,7 +208,6 @@ describe("broker-ib", function() {
             market: 'ARCA',
             currency: 'USD',
             security_type: 'STK',
-            multiplier: '',
             attch_ref: '' } ]);
         await broker.close();
     });
@@ -226,6 +232,11 @@ describe("broker-ib", function() {
                ocaType: 0,
                smartComboRoutingParams: [] } ]);
            return Promise.resolve({ status: 'ApiPending',
+             localSymbol: 'SPY',
+             secType: 'STK',
+             primaryExch: 'ARCA',
+             exchange: 'SMART',
+             currency: 'USD',
              action: 'BUY',
              totalQuantity: 1,
              orderType: 'LMT',
@@ -267,6 +278,11 @@ describe("broker-ib", function() {
                    ocaType: 0,
                    smartComboRoutingParams: [] } ]);
                  return Promise.resolve({ status: 'ApiPending',
+                   localSymbol: 'SPY',
+                   secType: 'STK',
+                   primaryExch: 'ARCA',
+                   exchange: 'SMART',
+                   currency: 'USD',
                  orderId: 1,
                  action: 'BUY',
                  totalQuantity: 1,
@@ -295,6 +311,11 @@ describe("broker-ib", function() {
                    ocaType: 0,
                    smartComboRoutingParams: [] } ]);
                  return Promise.resolve({ status: 'ApiPending',
+                   localSymbol: 'SPY',
+                   secType: 'STK',
+                   primaryExch: 'ARCA',
+                   exchange: 'SMART',
+                   currency: 'USD',
                  action: 'SELL',
                  totalQuantity: 1,
                  orderType: 'STP',
@@ -373,7 +394,13 @@ describe("broker-ib", function() {
                parentId: 1,
                ocaGroup: null,
                ocaType: 0,
-               smartComboRoutingParams: [] } ]);return Promise.resolve({ status: 'ApiPending',
+               smartComboRoutingParams: [] } ]);
+               return Promise.resolve({ status: 'ApiPending',
+               localSymbol: 'SPY',
+               secType: 'STK',
+               primaryExch: 'ARCA',
+               exchange: 'SMART',
+               currency: 'USD',
              action: 'SELL',
              totalQuantity: 1,
              orderType: 'LMT',
@@ -427,7 +454,13 @@ describe("broker-ib", function() {
                    parentId: null,
                    ocaGroup: /OCA/,
                    ocaType: 1,
-                   smartComboRoutingParams: [] } ]);return Promise.resolve({ status: 'ApiPending',
+                   smartComboRoutingParams: [] } ]);
+                   return Promise.resolve({ status: 'ApiPending',
+                   localSymbol: 'SPY',
+                   secType: 'STK',
+                   primaryExch: 'ARCA',
+                   exchange: 'SMART',
+                   currency: 'USD',
                  action: 'BUY',
                  totalQuantity: 1,
                  orderType: 'LMT',
@@ -453,7 +486,13 @@ describe("broker-ib", function() {
                    parentId: null,
                    ocaGroup: /OCA/,
                    ocaType: 1,
-                   smartComboRoutingParams: [] } ]);return Promise.resolve({ status: 'ApiPending',
+                   smartComboRoutingParams: [] } ]);
+                   return Promise.resolve({ status: 'ApiPending',
+                   localSymbol: 'XLU',
+                   secType: 'STK',
+                   primaryExch: 'ARCA',
+                   exchange: 'SMART',
+                   currency: 'USD',
                  action: 'BUY',
                  totalQuantity: 1,
                  orderType: 'LMT',
@@ -479,7 +518,13 @@ describe("broker-ib", function() {
                    parentId: null,
                    ocaGroup: /^OCA.*/,
                    ocaType: 1,
-                   smartComboRoutingParams: [] } ]);return Promise.resolve({ status: 'ApiPending',
+                   smartComboRoutingParams: [] } ]);
+                   return Promise.resolve({ status: 'ApiPending',
+                   localSymbol: 'XLP',
+                   secType: 'STK',
+                   primaryExch: 'ARCA',
+                   exchange: 'SMART',
+                   currency: 'USD',
                  action: 'BUY',
                  totalQuantity: 1,
                  orderType: 'LMT',
@@ -567,14 +612,16 @@ describe("broker-ib", function() {
         case 0: expect(args).to.be.like([ { localSymbol: 'SPX   190719P02400000',
                secType: 'OPT',
                exchange: 'SMART',
-               currency: 'USD' } ]);return Promise.resolve([ { summary: { currency: 'USD',
+               currency: 'USD' } ]);
+               return Promise.resolve([ { summary: { currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
                   conId: 354278083 } } ])
         case 1: expect(args).to.be.like([ { localSymbol: 'SPX   190719P02450000',
                secType: 'OPT',
                exchange: 'SMART',
-               currency: 'USD' } ]);return Promise.resolve([ { summary: { currency: 'USD',
+               currency: 'USD' } ]);
+               return Promise.resolve([ { summary: { currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
                   conId: 354278089 } } ])
@@ -604,6 +651,17 @@ describe("broker-ib", function() {
                ocaType: 0,
                smartComboRoutingParams: [ { tag: 'NonGuaranteed', value: '1' } ] } ]);
              return Promise.resolve({ status: 'ApiPending',
+               secType: 'BAG',
+               symbol: 'SPX',
+               currency: 'USD',
+               exchange: 'SMART',
+               comboLegs: 
+                [ { action: 'SELL', ratio: 1, conId: 354278083, currency: 'USD',
+                  exchange: 'SMART',
+                  symbol: 'SPX', },
+                  { action: 'BUY', ratio: 1, conId: 354278089, currency: 'USD',
+                  exchange: 'SMART',
+                  symbol: 'SPX', } ],
              action: 'SELL',
              totalQuantity: 1,
              orderType: 'LMT',
@@ -672,14 +730,16 @@ describe("broker-ib", function() {
         case 0: expect(args).to.be.like([ { localSymbol: 'SPX   190621C03075000',
                secType: 'OPT',
                exchange: 'SMART',
-               currency: 'USD' } ]);return Promise.resolve([ { summary: { currency: 'USD',
+               currency: 'USD' } ]);
+               return Promise.resolve([ { summary: { currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
                   conId: 304784993 } } ])
         case 1: expect(args).to.be.like([ { localSymbol: 'SPX   190621C03125000',
                secType: 'OPT',
                exchange: 'SMART',
-               currency: 'USD' } ]);return Promise.resolve([ { summary: { currency: 'USD',
+               currency: 'USD' } ]);
+               return Promise.resolve([ { summary: { currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
                   conId: 304784996 } } ])
@@ -709,6 +769,19 @@ describe("broker-ib", function() {
                ocaType: 0,
                smartComboRoutingParams: [ { tag: 'NonGuaranteed', value: '1' } ] } ]);
              return Promise.resolve({ status: 'ApiPending',
+               secType: 'BAG',
+               symbol: 'SPX',
+               currency: 'USD',
+               exchange: 'SMART',
+               comboLegs: 
+                [ { action: 'BUY', ratio: 1, currency: 'USD',
+                  exchange: 'SMART',
+                  symbol: 'SPX',
+                  conId: 304784993 },
+                  { action: 'SELL', ratio: 1, currency: 'USD',
+                  exchange: 'SMART',
+                  symbol: 'SPX',
+                  conId: 304784996 } ],
              action: 'BUY',
              totalQuantity: 1,
              orderType: 'SNAP MID',
@@ -800,6 +873,10 @@ describe("broker-ib", function() {
                ocaType: 0,
                smartComboRoutingParams: [] } ]);
              return Promise.resolve({ status: 'PreSubmitted',
+               localSymbol: 'MESM9',
+               secType: 'FUT',
+               exchange: 'GLOBEX',
+               currency: 'USD',
              posted_time: '20190601 15:57:41',
              time: '20190601 15:57:41',
              action: 'BUY',
@@ -818,6 +895,11 @@ describe("broker-ib", function() {
                faProfile: '',
                account: 'test',
                conId: 362699310,
+               secType: 'FUT',
+               localSymbol: 'MESM9',
+               exchange: 'GLOBEX',
+               currency: 'USD',
+               multiplier: '5',
                status: 'PreSubmitted',
                time: '20190601 15:57:41',
                action: 'BUY',
@@ -833,7 +915,8 @@ describe("broker-ib", function() {
                parentId: 0,
                remaining: 1,
                ocaGroup: '' } ]),
-          reqContract: (...args) => {expect(args).to.be.like([ 362699310 ]);return Promise.resolve({ secType: 'FUT',
+          reqContract: (...args) => {expect(args).to.be.like([ 362699310 ]);
+          return Promise.resolve({ secType: 'FUT',
              localSymbol: 'MESM9',
              exchange: 'GLOBEX',
              currency: 'USD',
@@ -955,6 +1038,11 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: []
                 }]);
                 return Promise.resolve({
+                    localSymbol: 'ESM9 C2800',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    multiplier: 50,
                     status: 'ApiPending',
                     action: 'BUY',
                     totalQuantity: 1,
@@ -1070,6 +1158,11 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: []
                 }]);
                 return Promise.resolve({
+                    localSymbol: 'ESM9 C2800',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    multiplier: 50,
                     status: 'ApiPending',
                     action: 'BUY',
                     totalQuantity: 1,
@@ -1167,7 +1260,6 @@ describe("broker-ib", function() {
                     secType: 'FOP',
                     exchange: 'GLOBEX',
                     currency: 'USD',
-                    includeExpired: true,
                     multiplier: 50
                 },
                 {
@@ -1185,6 +1277,11 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: []
                 }]);
                 return Promise.resolve({
+                    localSymbol: 'ESM9 C2800',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    multiplier: 50,
                     status: 'ApiPending',
                     action: 'SELL',
                     totalQuantity: 1,
@@ -1282,7 +1379,6 @@ describe("broker-ib", function() {
                     secType: 'FOP',
                     exchange: 'GLOBEX',
                     currency: 'USD',
-                    includeExpired: true,
                     multiplier: 50
                 },
                 {
@@ -1300,6 +1396,11 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: []
                 }]);
                 return Promise.resolve({
+                    localSymbol: 'ESM9 P2625',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    multiplier: 50,
                     status: 'ApiPending',
                     action: 'BUY',
                     totalQuantity: 1,
@@ -1397,7 +1498,6 @@ describe("broker-ib", function() {
                     secType: 'FOP',
                     exchange: 'GLOBEX',
                     currency: 'USD',
-                    includeExpired: true,
                     multiplier: 50
                 },
                 {
@@ -1415,6 +1515,11 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: []
                 }]);
                 return Promise.resolve({
+                    localSymbol: 'ESM9 P2625',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    multiplier: 50,
                     status: 'ApiPending',
                     action: 'SELL',
                     totalQuantity: 1,
@@ -1448,144 +1553,63 @@ describe("broker-ib", function() {
     it("should submit BUY Call SNAP STK MID combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(1),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719C03025000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03025000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277718,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3025,
+                                localSymbol: 'SPX   190719C03025000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719C03075000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03075000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277733,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3075,
                                 localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -1662,6 +1686,13 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'BUY', ratio: 1, conId: 354277718, exchange: 'SMART' },
+                        { action: 'SELL', ratio: 1, conId: 354277733, exchange: 'SMART' }
+                    ],
                     status: 'ApiPending',
                     action: 'BUY',
                     totalQuantity: 2,
@@ -1727,144 +1758,63 @@ describe("broker-ib", function() {
     it("should submit BUY Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(2),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719C03025000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03025000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277718,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3025,
+                                localSymbol: 'SPX   190719C03025000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719C03075000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03075000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277733,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3075,
                                 localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -1998,6 +1948,27 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'BUY', ratio: 1, 
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277718,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719C03025000',
+                                multiplier: '100' },
+                        { action: 'SELL', ratio: 1,
+                                    currency: 'USD',
+                                    exchange: 'SMART',
+                                    symbol: 'SPX',
+                                    conId: 354277733,
+                                    secType: 'OPT',
+                                    localSymbol: 'SPX   190719C03075000',
+                                    multiplier: '100', }
+                    ],
                     status: 'ApiPending',
                     action: 'BUY',
                     totalQuantity: 2,
@@ -2063,144 +2034,63 @@ describe("broker-ib", function() {
     it("should submit SELL Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(3),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719C03025000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03025000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277718,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3025,
+                                localSymbol: 'SPX   190719C03025000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719C03075000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03075000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277733,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3075,
                                 localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -2334,6 +2224,27 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'BUY', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277718,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719C03025000',
+                                multiplier: '100', },
+                        { action: 'SELL', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277733,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719C03075000',
+                                multiplier: '100', }
+                    ],
                     status: 'ApiPending',
                     action: 'SELL',
                     totalQuantity: 2,
@@ -2400,144 +2311,63 @@ describe("broker-ib", function() {
     it("should submit BUY Put SNAP STK MID combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(4),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719P02450000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02450000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2450,
+                                localSymbol: 'SPX   190719P02450000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719P02400000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02400000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2400,
                                 localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -2614,6 +2444,27 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'BUY', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02450000',
+                                multiplier: '100', },
+                        { action: 'SELL', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02400000',
+                                multiplier: '100', }
+                    ],
                     status: 'ApiPending',
                     action: 'BUY',
                     totalQuantity: 2,
@@ -2680,144 +2531,63 @@ describe("broker-ib", function() {
     it("should submit BUY Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(5),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719P02450000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02450000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2450,
+                                localSymbol: 'SPX   190719P02450000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719P02400000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02400000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2400,
                                 localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -2951,6 +2721,27 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'BUY', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02450000',
+                                multiplier: '100', },
+                        { action: 'SELL', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02400000',
+                                multiplier: '100', }
+                    ],
                     status: 'ApiPending',
                     action: 'BUY',
                     totalQuantity: 2,
@@ -3017,144 +2808,63 @@ describe("broker-ib", function() {
     it("should submit SELL Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(6),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719P02450000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02450000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2450,
+                                localSymbol: 'SPX   190719P02450000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719P02400000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02400000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2400,
                                 localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -3288,6 +2998,27 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'BUY', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02450000',
+                                multiplier: '100' },
+                        { action: 'SELL', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02400000',
+                                multiplier: '100', }
+                    ],
                     status: 'ApiPending',
                     action: 'SELL',
                     totalQuantity: 2,
@@ -3354,144 +3085,63 @@ describe("broker-ib", function() {
     it("should submit SELL negative Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(7),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719C03025000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03025000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277718,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3025,
+                                localSymbol: 'SPX   190719C03025000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719C03075000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03075000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277733,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3075,
                                 localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -3625,6 +3275,27 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'SELL', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277718,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719C03025000',
+                                multiplier: '100' },
+                        { action: 'BUY', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277733,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719C03075000',
+                                multiplier: '100' }
+                    ],
                     status: 'ApiPending',
                     action: 'SELL',
                     totalQuantity: 2,
@@ -3691,144 +3362,63 @@ describe("broker-ib", function() {
     it("should submit BUY negative Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(8),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719C03025000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03025000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277718,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3025,
+                                localSymbol: 'SPX   190719C03025000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719C03075000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719C03075000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277733,
+                                right: 'C',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 3075,
                                 localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03025000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277718,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3025,
-                                    localSymbol: 'SPX   190719C03025000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719C03075000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354277733,
-                                    right: 'C',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 3075,
-                                    localSymbol: 'SPX   190719C03075000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -3962,6 +3552,27 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'SELL', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277718,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719C03025000',
+                                multiplier: '100', },
+                        { action: 'BUY', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354277733,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719C03075000',
+                                multiplier: '100' }
+                    ],
                     status: 'ApiPending',
                     action: 'BUY',
                     totalQuantity: 2,
@@ -4028,144 +3639,63 @@ describe("broker-ib", function() {
     it("should submit SELL negative Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(9),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719P02450000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02450000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2450,
+                                localSymbol: 'SPX   190719P02450000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719P02400000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02400000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2400,
                                 localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -4305,6 +3835,27 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'SELL', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02450000',
+                                multiplier: '100' },
+                        { action: 'BUY', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02400000',
+                                multiplier: '100' }
+                    ],
                     status: 'ApiPending',
                     action: 'SELL',
                     totalQuantity: 2,
@@ -4370,144 +3921,63 @@ describe("broker-ib", function() {
     it("should submit BUY negative Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
             reqId: cb => cb(10),
-            reqContractDetails: (() => {
-                let count = 0;
-                return (...args) => {
-                    switch (count++) {
-                        case 0:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
+            reqContractDetails: (...args) => {
+                switch (args[0].localSymbol) {
+                    case 'SPX   190719P02450000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02450000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
                                 currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 1:
-                            expect(args).to.be.like([{
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2450,
+                                localSymbol: 'SPX   190719P02450000',
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 'SPX   190719P02400000':
+                        expect(args).to.be.like([{
+                            localSymbol: 'SPX   190719P02400000',
+                            secType: 'OPT',
+                            exchange: 'SMART',
+                            currency: 'USD',
+                            multiplier: 100
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                right: 'P',
+                                secType: 'OPT',
+                                expiry: '20190718',
+                                strike: 2400,
                                 localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        case 2:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 3:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02450000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278089,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2450,
-                                    localSymbol: 'SPX   190719P02450000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                },
-                                minTick: 0.05,
-                                validExchanges: 'SMART,CBOE',
-                                underConId: 416904
-                            }])
-                        case 4:
-                            expect(args).to.be.like([{
-                                localSymbol: 'SPX   190719P02400000',
-                                secType: 'OPT',
-                                exchange: 'SMART',
-                                currency: 'USD',
-                                multiplier: 100
-                            }]);
-                            return Promise.resolve([{
-                                summary: {
-                                    currency: 'USD',
-                                    exchange: 'SMART',
-                                    symbol: 'SPX',
-                                    conId: 354278083,
-                                    right: 'P',
-                                    secType: 'OPT',
-                                    expiry: '20190718',
-                                    strike: 2400,
-                                    localSymbol: 'SPX   190719P02400000',
-                                    tradingClass: 'SPX',
-                                    multiplier: '100',
-                                    primaryExch: ''
-                                }
-                            }])
-                        default:
-                            throw Error("Too many times")
-                    }
+                                tradingClass: 'SPX',
+                                multiplier: '100',
+                                primaryExch: ''
+                            }
+                        }])
+                    default:
+                        throw Error("Too many times")
                 }
-            })(),
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -4647,6 +4117,27 @@ describe("broker-ib", function() {
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
                 return Promise.resolve({
+                    secType: 'BAG',
+                    symbol: 'SPX',
+                    currency: 'USD',
+                    exchange: 'SMART',
+                    comboLegs: [{ action: 'SELL', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278089,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02450000',
+                                multiplier: '100' },
+                        { action: 'BUY', ratio: 1,
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 354278083,
+                                secType: 'OPT',
+                                localSymbol: 'SPX   190719P02400000',
+                                multiplier: '100' }
+                    ],
                     status: 'ApiPending',
                     action: 'BUY',
                     totalQuantity: 2,

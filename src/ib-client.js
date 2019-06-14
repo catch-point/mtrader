@@ -131,18 +131,18 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
             ready();
         });
     });
+    const self = new.target ? this : {};
     const store = lib_dir && storage(lib_dir);
     const modules = [
-        reqPositions(ib),
-        currentTime(ib),
-        requestFA(ib),
-        accountUpdates(ib, store, ib_tz),
-        openOrders(ib, store, ib_tz, clientId),
-        execDetails(ib, store),
-        reqContract(ib),
-        requestWithId(ib)
+        reqPositions.call(self, ib),
+        currentTime.call(self, ib),
+        requestFA.call(self, ib),
+        accountUpdates.call(self, ib, store, ib_tz),
+        openOrders.call(self, ib, store, ib_tz, clientId),
+        execDetails.call(self, ib, store),
+        reqContract.call(self, ib),
+        requestWithId.call(self, ib)
     ];
-    const self = new.target ? this : {};
     return Object.assign(self, ...modules, {
         connecting: false,
         connected: false,
@@ -395,6 +395,7 @@ function accountUpdates(ib, store, ib_tz) {
 }
 
 function openOrders(ib, store, ib_tz, clientId) {
+    const self = this;
     const F = 'YYYYMMDD HH:mm:ss';
     let last_order_id = 0;
     const valid_id_queue = [];
@@ -498,32 +499,36 @@ function openOrders(ib, store, ib_tz, clientId) {
         });
     }).on('openOrder', function(orderId, contract, order, orderStatus) {
         const time = moment().tz(ib_tz).milliseconds(0).format(F);
-        orders[orderId] = Object.assign({
-                orderId,
-                conId: contract.conId,
-                comboLegsDescrip: contract.comboLegsDescrip,
-                symbol: contract.symbol || contract.localSymbol,
-                secType: contract.secType,
-                exchange: contract.exchange,
-                primaryExch: contract.primaryExch,
-                currency: contract.currency,
-                multiplier: contract.multiplier,
-                posted_time: time, time
-            },
-            orders[orderId],
-            {time},
-            order, orderStatus
-        );
-        if (placing_orders[orderId]) {
-            placing_orders[orderId].ready(orders[orderId]);
-            delete placing_orders[orderId];
-        }
-        if (flushed) flusher.flush();
-        else flusher();
+        expandComboLegs(self, contract).then(comboLegs => {
+            orders[orderId] = Object.assign({
+                    orderId,
+                    conId: contract.conId,
+                    comboLegsDescrip: contract.comboLegsDescrip,
+                    symbol: contract.symbol,
+                    localSymbol: contract.localSymbol,
+                    secType: contract.secType,
+                    exchange: contract.exchange,
+                    primaryExch: contract.primaryExch,
+                    currency: contract.currency,
+                    multiplier: contract.multiplier,
+                    posted_time: time, time
+                },
+                comboLegs,
+                orders[orderId],
+                {time},
+                order, orderStatus
+            );
+            if (placing_orders[orderId]) {
+                placing_orders[orderId].ready(orders[orderId]);
+                delete placing_orders[orderId];
+            }
+            if (flushed) flusher.flush();
+            else flusher();
+        }, err => logger.error);
     }).on('orderStatus', function(orderId, status, filled, remaining, avgFillPrice,
             permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice) {
         const order = orders[orderId] || {};
-        logger.info(`${order.orderRef || orderId}`, order.action, order.symbol,
+        if (orders[orderId]) logger.info(`${order.orderRef || orderId}`, order.action, order.symbol,
             status, order.orderType, order.tif, filled, '/', remaining, avgFillPrice);
         orders[orderId] = log(Object.assign({}, order, {
             time: moment().tz(ib_tz).milliseconds(0).format(F),
@@ -539,7 +544,11 @@ function openOrders(ib, store, ib_tz, clientId) {
         flusher.flush().then(() => _.values(orders).filter(order => {
             const status = order.status;
             return status != 'Filled' && status != 'Cancelled' && status != 'Inactive';
-        })).then(orders_end, orders_fail);
+        })).then(orders => {
+            if (orders.every(ord => ord.conId)) return orders;
+            // give the system 1s for orderStatus, otherwise continue without those orders
+            else return new Promise(ready => setTimeout(ready, 1000)).then(() => orders.filter(ord => ord.conId));
+        }).then(orders_end, orders_fail);
     });
     return {
         async reqId(cb) {
@@ -559,27 +568,25 @@ function openOrders(ib, store, ib_tz, clientId) {
         async placeOrder(orderId, contract, order) {
             logger.log('placeOrder', orderId, contract, order);
             ib.placeOrder(orderId, contract, order);
-            if (!order.transmit) return new Promise(ready => {
-                const comboLegsDescrip = contract.comboLegsDescrip ? contract.comboLegsDescrip :
-                    contract.comboLegs ? contract.comboLegs.map(leg => {
-                        return `${leg.conId}|${leg.action == 'SELL' ? '-' : ''}${leg.ratio}`;
-                    }).join(',') :
-                    undefined;
+            if (!order.transmit) {
                 const placed = orders[orderId] = _.omit({
                     orderId,
                     conId: contract.conId,
-                    comboLegsDescrip,
-                    symbol: contract.symbol || contract.localSymbol,
+                    symbol: contract.symbol,
+                    localSymbol: contract.localSymbol,
                     secType: contract.secType,
                     exchange: contract.exchange,
                     primaryExch: contract.primaryExch,
                     currency: contract.currency,
                     multiplier: contract.multiplier,
                     status: 'ApiPending',
+                    ...await expandComboLegs(self, contract),
                     ...order
                 }, v => v == null);
-                setTimeout(() => ready(placed), contract.secType == 'BAG' ? 1000 : 500);
-            });
+                return new Promise(ready => {
+                    setTimeout(() => ready(placed), 1000);
+                });
+            }
             else return new Promise((ready, fail) => {
                 placing_orders[orderId] = {ready, fail};
             }).catch(err => logger.warn('placeOrder', orderId, contract, order, err.message) || Promise.reject(err));
@@ -752,8 +759,13 @@ function execDetails(ib, store) {
         recent[key] = Object.assign({}, {
             conId: contract.conId,
             comboLegsDescrip: contract.comboLegsDescrip,
-            symbol: contract.symbol || contract.localSymbol,
-            secType: contract.secType
+            symbol: contract.symbol,
+            localSymbol: contract.localSymbol,
+            secType: contract.secType,
+            exchange: contract.exchange,
+            primaryExch: contract.primaryExch,
+            currency: contract.currency,
+            multiplier: contract.multiplier,
         }, exe);
         if (flushed) flusher.flush();
         else flusher();
@@ -856,7 +868,7 @@ function reqContract(ib) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].reject(err);
-        } else if (info && info.id < 0) {
+        } else if (!isNormal(info) && info && info.id < 0) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
     }).on('disconnected', () => {
@@ -1043,6 +1055,34 @@ function requestWithId(ib) {
         calculateOptionPrice(contract, volatility, underPrice) {
             return request('calculateOptionPrice', contract, volatility, underPrice);
         }
+    };
+}
+
+async function expandComboLegs(self, contract) {
+    const legs = !_.isEmpty(contract.comboLegs) ? contract.comboLegs :
+            (contract.comboLegsDescrip||'').split(',').filter(item => item).map(descrip => {
+        const [conId, ratio] = descrip.split('|', 2);
+        const action = ratio > 0 ? 'BUY' : 'SELL';
+        return {conId, ratio: Math.abs(ratio), action};
+    });
+    if (_.isEmpty(legs)) return {};
+    const comboLegsDescrip = contract.comboLegsDescrip ? contract.comboLegsDescrip :
+        legs.map(leg => {
+            return `${leg.conId}|${leg.action == 'SELL' ? '-' : ''}${leg.ratio}`;
+        }).join(',');
+    const leg_contracts = await Promise.all(legs.map(async(leg) => self.reqContract(leg.conId)));
+    const symbols = _.uniq(leg_contracts.map(leg => leg.symbol));
+    const currencies = _.uniq(leg_contracts.map(leg => leg.currency));
+    const exchanges = _.uniq(leg_contracts.map(leg => leg.exchange));
+    return {
+        secType: contract.secType || 'BAG',
+        symbol: symbols.length == 1 ? symbols[0] : contract.symbol,
+        currency: currencies.length == 1 ? currencies[0] : contract.currency,
+        exchange: exchanges.length == 1 ? exchanges[0] : contract.exchange,
+        comboLegsDescrip,
+        comboLegs: legs.map((leg, i) => ({...leg,
+            ..._.pick(leg_contracts[i], 'symbol', 'localSymbol', 'secType', 'exchange', 'primaryExch', 'currency', 'multiplier')
+        }))
     };
 }
 
