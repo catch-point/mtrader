@@ -491,7 +491,7 @@ function updateWorking(desired, working, options) {
     const d_opened = Math.abs(desired.position);
     const w_opened = Math.abs(working.position);
     const within = Math.abs(d_opened - w_opened) <= (options.quant_threshold || 0);
-    const same_side = desired.position/Math.abs(+desired.position||1) != -1*working.position/Math.abs(+working.position||1);
+    const same_side = !desired.position || desired.position/Math.abs(+desired.position||1) != -1*working.position/Math.abs(+working.position||1);
     const ds_projected = ds && ds.status == 'pending';
     if (ds && (ds.traded_at || ds.posted_at) && !working.prior && working.traded_at &&
             moment(working.traded_at).isAfter(ds.traded_at || ds.posted_at)) {

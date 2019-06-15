@@ -657,8 +657,10 @@ async function rateOf(barsFor, base, quote, options) {
     const q = majors.indexOf(quote);
     const since = moment(options.asof || options.now).subtract(1,'weeks').format();
     if (b == q) return '1';
-    else if (b < q) return _.last(await barsFor(base, quote, since, options)).close
-    else return Big(1).div(_.last(await barsFor(quote, base, since, options)).close).toString();
+    const bar = b < q ? _.last(await barsFor(base, quote, since, options)) :
+        _.last(await barsFor(quote, base, since, options));
+    if (!bar) return '1';
+    else return b < q ? bar.close : Big(1).div(bar.close).toString();
 }
 
 async function barsFor(markets, collect, symbol, market, since, options) {

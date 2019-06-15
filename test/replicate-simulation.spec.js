@@ -842,6 +842,87 @@ describe("replicate-simulation", function() {
               .then(d=>d.forEach(d=>console.log(d))||d)
               .should.eventually.be.like([]);
         });
+        it("option position already closed", async() => {
+            return Replicate((...args) => {
+                if (args[0].help) return broker({help:true});
+                switch (args[0].action) {
+                    case 'balances':
+                        return Promise.resolve([{ currency: 'USD', net: '9995.65', rate: '1', settled: '9995.65' },
+                            { currency: 'CAD' }
+                        ]);
+                    case 'positions':
+                        return Promise.resolve([{
+                            asof: '2019-06-14T15:51:18-04:00',
+                            acctNumber: 'U1878120',
+                            sales: '24.00',
+                            purchases: '0.00',
+                            symbol: 'SPX   190621P02575000',
+                            market: 'OPRA',
+                            currency: 'USD',
+                            security_type: 'OPT',
+                            multiplier: '100',
+                            action: 'STC',
+                            quant: 3,
+                            position: 0,
+                            traded_at: '2019-06-14T15:51:18-04:00',
+                            traded_price: 0.08,
+                            price: 0.15,
+                            dividend: '0.00',
+                            commission: '3.33',
+                            mtm: -24.33,
+                            value: '0.00'
+                        }]);
+                    case 'orders':
+                        return Promise.resolve([]);
+                    default:
+                        throw Error(`Unexpected call ${util.inspect(args)}`);
+                }
+            }, fetch, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    quant: '3',
+                    symbol: 'SPX   190621P02575000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    order_type: 'MKT',
+                    tif: 'DAY',
+                    traded_at: '2019-06-11T16:15:00-04:00',
+                    traded_price: '0.1'
+                }, {
+                    action: 'SELL',
+                    quant: '2',
+                    symbol: 'SPX   190621P02575000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    order_type: 'MKT',
+                    tif: 'DAY',
+                    traded_at: '2019-06-13T16:15:00-04:00',
+                    traded_price: '0.1'
+                }, {
+                    action: 'SELL',
+                    quant: '1',
+                    symbol: 'SPX   190621P02575000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    order_type: 'MKT',
+                    tif: 'DAY',
+                    status: 'pending',
+                    traded_at: '2019-06-14T16:15:00-04:00',
+                    traded_price: '0.08'
+                }]);
+            })({
+                now: '2019-06-14T15:51:18-04:00',
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MKT']
+            })
+              .then(d=>d.forEach(d=>console.log(d))||d)
+              .should.eventually.be.like([]);
+        });
     });
     describe("Futures", function() {
         it("no position in ZNH19", async() => {
