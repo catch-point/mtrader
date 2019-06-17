@@ -386,10 +386,12 @@ function accountUpdates(ib, store, ib_tz) {
             });
         },
         async close() {
-            closed = true;
             _.values(subscriptions).forEach(reqId => ib.cancelAccountUpdatesMulti(+reqId));
             _.values(req_queue).forEach(item => item.fail(Error("IB client is closing")));
-            return flush.flush();
+            return flush.flush().then(() => closed = true, err => {
+                closed = true;
+                throw err;
+            });
         }
     };
 }
