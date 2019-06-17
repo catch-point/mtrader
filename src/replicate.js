@@ -592,9 +592,9 @@ function sameSignal(a, b, threshold) {
     if (!a || !b) return false;
     else if (!isMatch(b, _.pick(a, 'action', 'order_type', 'tif'))) return false;
     else if (Math.abs(a.quant - b.quant) > (threshold || 0)) return false;
-    else if (a.limit && b.limit && a.limit != b.limit) return false;
-    else if (a.offset && b.offset && a.offset != b.offset) return false;
-    else if (a.stop && b.stop && a.stop != b.stop) return false;
+    else if (a.limit && b.limit && a.limit != b.limit || !+a.limit != !+b.limit) return false;
+    else if (a.offset && b.offset && a.offset != b.offset || !+a.offset != !+b.offset) return false;
+    else if (a.stop && b.stop && a.stop != b.stop || !+a.stop != !+b.stop) return false;
     else return true;
 }
 
