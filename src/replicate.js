@@ -155,6 +155,7 @@ async function replicate(broker, collect, lookup, options) {
     const margin_acct = !broker_balances.every(bal => bal.margin == null);
     _.forEach(working, (w, contract) => {
         if (!desired[contract] && +w.position && !~portfolio.indexOf(contract) &&
+                (!options.markets || ~options.markets.indexOf(w.market)) &&
                 (w.currency == options.currency || margin_acct)) {
             logger.warn("Unknown position", w.position, w.symbol, w.market);
         }
