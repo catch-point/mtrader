@@ -135,6 +135,53 @@ if [ -z "$CERTBOT" -a "$(id -u)" = "0" ]; then
   fi
 fi
 
+# Check if IB Gateway is installed
+if ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
+  IBG_LATEST=$(ls -t "$BASEDIR/Jts/ibgateway"/*/ibgateway |head -n 1)
+  JAVA_LATEST="$(cat "$(dirname "$IBG_LATEST")/.install4j/inst_jre.cfg")/bin/java"
+fi
+if [ "`tty`" != "not a tty" ] && ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
+  read -p "Do you want to check for an update to IB Gateway $(basename "$(dirname "$IBG_LATEST")")? [y,N]:" INSTALL_IBG
+elif [ "`tty`" != "not a tty" ]; then
+  read -p "Do you want to install IB Gateway? [y,N]:" INSTALL_IBG
+elif ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
+  INSTALL_IBG="Y"
+fi
+if [ "$INSTALL_IBG" = "Y" -o "$INSTALL_IBG" = "y" -o "$INSTALL_IBG" = "YES" -o "$INSTALL_IBG" = "yes" ]; then
+  INSTALL_IBG="Y"
+  IBG_INSTALLER="$PREFIX/bin/ibgateway-stable-standalone-linux-x64.sh"
+  IBG_URL="https://download2.interactivebrokers.com/installers/ibgateway/stable-standalone/ibgateway-stable-standalone-linux-x64.sh"
+  wget "$IBG_URL" -O "$IBG_INSTALLER"
+  yes n|sudo -iu "$DAEMON_USER" sh "$IBG_INSTALLER" -c -q -overwrite
+fi
+
+if [ "$INSTALL_IBG" = "Y" ] && ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
+  IBG_EXE=$(ls -t "$BASEDIR/Jts/ibgateway"/*/ibgateway |head -n 1)
+  if [ -n "$IBG_LATEST" -a "$IBG_LATEST" != "$IBG_EXE" ]; then
+    if [ "`tty`" != "not a tty" ]; then
+      read -p "Do you want to uninstall the previous version of IB Gateway $(basename "$(dirname "$IBG_LATEST")")? [Y,n]:" UNINSTALL_IBG
+    fi
+    if [ "$UNINSTALL_IBG" = "Y" -o "$UNINSTALL_IBG" = "y" -o "$UNINSTALL_IBG" = "YES" -o "$UNINSTALL_IBG" = "yes" -o -z "$UNINSTALL_IBG" ]; then
+      IBG_PREVIOUS=$(basename "$(dirname "$IBG_LATEST")")
+      yes |sudo -iu "$DAEMON_USER" sh $(dirname "$IBG_LATEST")/uninstall -c -q
+    fi
+  fi
+  IBC_JAR="$PREFIX/lib/IBC.jar"
+  if [ ! -e "$IBC_JAR" ]; then
+    mkdir -p "$PREFIX/lib"
+    IBC_URL="https://github.com/IbcAlpha/IBC/releases/download/3.8.1/IBCLinux-3.8.1.zip"
+    wget "$IBC_URL" -O "/tmp/ibclinux.zip"
+    unzip "/tmp/ibclinux.zip" $(basename "$IBC_JAR") -d $(dirname "$IBC_JAR")
+    rm "/tmp/ibclinux.zip"
+  fi
+  IBG_NAME=$(grep Name "$(dirname "$IBG_EXE")"/*.desktop | awk -F= '{print $2}')
+  IBG_VERSION=$(basename "$(dirname "$IBG_EXE")")
+  JAVA_EXE="$(cat "$(dirname "$IBG_EXE")/.install4j/inst_jre.cfg")/bin/java"
+  IBG_JARS="$(dirname "$IBG_EXE")/jars/*:$IBC_JAR"
+  IBG_VMARGS_FILE="$IBG_EXE.vmoptions"
+  IBC_ENTRY_POINT="ibcalpha.ibc.IbcGateway"
+fi
+
 # Setup configuration
 if [ -z "$CONFIG_DIR" ]; then
   if [ "$PREFIX" = "$BASEDIR" ]; then
@@ -166,7 +213,7 @@ if [ -z "$SECURE_OPTIONS" ]; then
 fi
 
 if [ -z "$DOMAINS" -a ! -f "$PREFIX/etc/mtrader.json" ]; then
-  EXTERNAL_HOST=$(dig +short -x $(dig +short myip.opendns.com @resolver1.opendns.com))
+  EXTERNAL_HOST=$(echo dig +short -x $(dig -4 TXT +short o-o.myaddr.l.google.com @ns1.google.com) |sh)
   DEFAULT_DOMAINS=$(node -pe "'$EXTERNAL_HOST'.replace(/\\.$/,'')")
   if [ -z "$DOMAINS" -a "`tty`" != "not a tty" ]; then
     read -p "Comma-separated list of domains [$DEFAULT_DOMAINS]:" DOMAINS
@@ -366,6 +413,75 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ]; then
   "lib_dir": "$LIB_DIR",
   "listen": "ws://$USERINFO@$HOST:$PORT"
 }
+EOF
+fi
+
+# Update IB Gateway lanucher
+if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY_POINT" ]; then
+  node << EOF
+    var fs = require('fs');
+    var json = JSON.parse(fs.readFileSync('$PREFIX/etc/mtrader.json',{encoding:'utf-8'}));
+    var vmargs = fs.readFileSync('$IBG_VMARGS_FILE',{encoding:'utf-8'})
+      .split(/\s*(\r|\n)\s*/).filter(line => line.trim() && line.charAt(0) != '#');
+    var ibg_version = '$IBG_VERSION';
+    var ibg_name = '$IBG_NAME' || ibg_version;
+    var ibc_command = ['$JAVA_EXE', '-cp', '$IBG_JARS'].concat(vmargs, ['$IBC_ENTRY_POINT']);
+    var ibg_previous = '$IBG_PREVIOUS';
+    var broker_ibg = (((json||{}).broker||{}).ib||{}).ibg_version||'';
+    if (broker_ibg == ibg_previous) {
+      Object.assign(json, {
+        broker: Object.assign((json||{}).broker||{}, {
+          ib: Object.assign(((json||{}).broker||{}).ib||{clientId: '$RANDOM'}, {ibg_version})
+        })
+      });
+    }
+    var fetch_ibg = (((json||{}).fetch||{}).ib||{}).ibg_version||'';
+    if (fetch_ibg == ibg_previous) {
+      Object.assign(json, {
+        fetch: Object.assign((json||{}).fetch||{}, {
+          ib: Object.assign(((json||{}).fetch||{}).ib||{}, {ibg_version})
+        })
+      });
+    }
+    var ivolatility_ibg = ((((json||{}).fetch||{}).ivolatility||{}).ib||{}).ibg_version;
+    if (ivolatility_ibg == ibg_previous) {
+      Object.assign(json.fetch.ivolatility.ib, {ibg_version});
+    }
+    var installs = json.ibgateway_installs||[];
+    var previous = installs.find(ibg => ibg.ibg_version == ibg_previous)||{};
+    var existing = installs.find(ibg => ibg.ibg_version == ibg_version)||{};
+    if (!existing.ibc_command || existing.ibc_command[0] == ibc_command[0]) {
+      var ibgateway = {
+        ibg_name,
+        ibg_version,
+        TradingMode: 'live',
+        StoreSettingsOnServer: '',
+        MinimizeMainWindow: 'no',
+        ExistingSessionDetectedAction: 'manual',
+        AcceptIncomingConnectionAction: 'manual',
+        ReadOnlyLogin: 'no',
+        ReadOnlyApi: '',
+        AcceptNonBrokerageAccountWarning: 'yes',
+        AllowBlindTrading: 'no',
+        DismissPasswordExpiryWarning: 'no',
+        DismissNSEComplianceNotice: 'yes',
+        BindAddress: '',
+        CommandPrompt: '',
+        SuppressInfoMessages: 'yes',
+        LogComponents: 'never',
+        ...previous,
+        ...existing,
+        ibg_name,
+        ibg_version,
+        ibc_command
+      };
+      Object.assign(json, {
+        ibgateway_installs: installs
+          .filter(ibg => ibg.ibg_version != ibg_previous || ibg.ibc_command[0] != '$JAVA_LATEST')
+          .filter(ibg => ibg.ibg_version != ibg_version).concat(ibgateway)
+      });
+    }
+    fs.writeFileSync('$PREFIX/etc/mtrader.json', JSON.stringify(json, null, 2));
 EOF
 fi
 

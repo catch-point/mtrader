@@ -101,6 +101,21 @@ if [ -z "$CONFIG_DIR" ]; then
   fi
 fi
 
+# Check if IB Gateway is installed
+if ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
+  IBG_LATEST=$(ls -t "$BASEDIR/Jts/ibgateway"/*/ibgateway |head -n 1)
+  if [ "`tty`" != "not a tty" ]; then
+    read -p "Do you want to uninstall IB Gateway $(basename "$(dirname "$IBG_LATEST")")? [Y,n]:" UNINSTALL_IBG
+  fi
+  if [ "$UNINSTALL_IBG" = "Y" -o "$UNINSTALL_IBG" = "y" -o "$UNINSTALL_IBG" = "YES" -o "$UNINSTALL_IBG" = "yes" -o -z "$UNINSTALL_IBG" ]; then
+    yes |sudo -iu "$DAEMON_USER" sh $(dirname "$IBG_LATEST")/uninstall -c -q
+  fi
+fi
+IBC_JAR="$PREFIX/lib/IBC.jar"
+if [ -e "$IBC_JAR" ]; then
+  rm "$IBC_JAR"
+fi
+
 # Check if certbot was installed
 if [ -z "$CERTBOT" -a "$(id -u)" = "0" ]; then
   if [ -x "$PREFIX/bin/certbot" ]; then
