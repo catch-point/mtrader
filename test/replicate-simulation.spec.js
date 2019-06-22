@@ -1049,6 +1049,79 @@ describe("replicate-simulation", function() {
               .then(d=>d.forEach(d=>console.log(d))||d)
               .should.eventually.be.like([]);
         });
+        it("option minTick", async() => {
+            return Replicate((...args) => {
+                if (args[0].help) return broker({help:true});
+                switch (args[0].action) {
+                    case 'balances':
+                        return Promise.resolve([{ currency: 'USD', net: '10000', rate: '1', settled: '10000' },
+                            { currency: 'CAD' }
+                        ]);
+                    case 'positions':
+                        return Promise.resolve([]);
+                    case 'orders':
+                        return Promise.resolve([]);
+                    case 'BUY':
+                        expect(args).to.be.like([{
+                            currency: 'USD',
+                            action: 'BUY',
+                            quant: 2,
+                            symbol: 'SPX   190920C02975000',
+                            market: 'OPRA',
+                            security_type: 'OPT',
+                            minTick: '0.1',
+                            order_type: 'SNAP STK',
+                            offset: '3.67',
+                            tif: 'DAY'
+                        }]);
+                        return Promise.resolve([{
+                            currency: 'USD',
+                            action: 'BUY',
+                            quant: 2,
+                            symbol: 'SPX   190920C02975000',
+                            market: 'OPRA',
+                            security_type: 'OPT',
+                            order_type: 'SNAP STK',
+                            offset: '3.67',
+                            tif: 'DAY'
+                        }]);
+                    default:
+                        throw Error(`Unexpected call ${util.inspect(args)}`);
+                }
+            }, fetch, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    quant: '2',
+                    symbol: 'SPX   190920C02975000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    minTick: '0.1',
+                    order_type: 'SNAP STK',
+                    offset: '3.67',
+                    tif: 'DAY',
+                    status: 'pending',
+                    traded_at: '2019-06-20T16:15:00-04:00',
+                    traded_price: '67.41'
+                }]);
+            })({
+                now: '2019-06-14T15:51:18-04:00',
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MKT']
+            }).should.eventually.be.like([{
+                currency: 'USD',
+                action: 'BUY',
+                quant: 2,
+                symbol: 'SPX   190920C02975000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                order_type: 'SNAP STK',
+                offset: '3.67',
+                tif: 'DAY'
+              }]);
+        });
     });
     describe("Futures", function() {
         it("no position in ZNH19", async() => {

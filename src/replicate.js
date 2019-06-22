@@ -113,6 +113,10 @@ function help(broker, collect) {
                 usage: '<number>',
                 description: "Default value multiplier defaults to 1"
             },
+            minTick: {
+                usage: '<decimal>',
+                description: "The default minimun increment passed to broker"
+            },
             working_duration: {
                 usage: '<duration>,..',
                 description: "Offset of now to begin by these comma separated durations or to values"
@@ -165,7 +169,7 @@ async function replicate(broker, collect, lookup, options) {
         const no_position = {
             symbol, market, position:0, asof: begin,
             ..._.pick(desired[contract] || working[contract],
-                'symbol', 'market', 'currency', 'security_type', 'multiplier'
+                'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick'
             )
         };
         const d = desired[contract] || no_position;
@@ -182,7 +186,7 @@ async function replicate(broker, collect, lookup, options) {
             if (isStopOrder(prior)) // STP orders are assumed to be OCO orders
                 return {
                     action: 'OCA',
-                    ..._.pick(prior, 'asof', 'symbol', 'market', 'currency', 'security_type', 'multiplier'),
+                    ..._.pick(prior, 'asof', 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick'),
                     attached:[prior, pending]
                 };
             else if (pending.action == 'OCA')
@@ -220,6 +224,7 @@ async function getDesiredPositions(broker, collect, lookup, begin, options) {
             currency: row.currency || contract.currency || options.currency,
             security_type: security_type || contract.security_type || 'STK',
             multiplier: row.multiplier || contract.multiplier || options.default_multiplier,
+            minTick: row.minTick || options.minTick,
             order_type: row.order_type || options.default_order_type ||
                 (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
             limit: row.limit,
@@ -238,7 +243,7 @@ async function getDesiredPositions(broker, collect, lookup, begin, options) {
         const key = `${order.symbol}.${order.market}`;
         const hash = await positions;
         const prior = hash[key] ||
-            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier'), {position: 0, asof: begin});
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick'), {position: 0, asof: begin});
         return _.defaults({
             [key]: advance(prior, order, options)
         }, hash);
@@ -350,7 +355,7 @@ function getWorkingPositions(broker_positions, broker_orders, begin, options) {
         const symbol = order.symbol;
         const market = order.market;
         const prior = positions[contract] ||
-            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier'), {position: 0, asof: begin});
+            Object.assign(_.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick'), {position: 0, asof: begin});
         return _.defaults({
             [contract]: advance(prior, order, options)
         }, positions);
@@ -775,6 +780,7 @@ function changePositionSize(pos, order, options) {
             currency: order.currency,
             security_type: order.security_type,
             multiplier: order.multiplier,
+            minTick: order.minTick,
             position: +pos.position + +order.quant,
             order: c2signal(order)
         };
@@ -786,6 +792,7 @@ function changePositionSize(pos, order, options) {
             currency: order.currency,
             security_type: order.security_type,
             multiplier: order.multiplier,
+            minTick: order.minTick,
             position: +pos.position - +order.quant,
             order: c2signal(order)
         };

@@ -2946,7 +2946,7 @@ describe("broker-ib", function() {
                                 0.237930139142082,
                                 2722.4500000000003
                             ]);
-                            return Promise.resolve({ optPrice: 11.043861353951042 })
+                            return Promise.resolve({ optPrice: 11 })
                         case 1:
                             expect(args).to.be.like([{
                                     currency: 'USD',
@@ -2997,6 +2997,8 @@ describe("broker-ib", function() {
                     ocaType: 0,
                     smartComboRoutingParams: [{ tag: 'NonGuaranteed', value: '1' }]
                 }]);
+                // check that it is using the minTick of the legs (0.1) and not of the contract (0.05)
+                expect(args[2].lmtPrice).to.equal(3.2);
                 return Promise.resolve({
                     secType: 'BAG',
                     symbol: 'SPX',
@@ -3036,11 +3038,11 @@ describe("broker-ib", function() {
             attached: [{
                 action: 'BUY', quant: 1, order_type: 'LEG',
                 symbol: 'SPX   190719P02450000', market: 'OPRA',
-                currency: 'USD', security_type: 'OPT', multiplier: 100
+                currency: 'USD', security_type: 'OPT', multiplier: 100, minTick: 0.1
             }, {
                 action: 'SELL', quant: 1, order_type: 'LEG',
                 symbol: 'SPX   190719P02400000', market: 'OPRA',
-                currency: 'USD', security_type: 'OPT', multiplier: 100
+                currency: 'USD', security_type: 'OPT', multiplier: 100, minTick: 0.1
             }]
         }).should.eventually.be.like([ {
             action: 'SELL',

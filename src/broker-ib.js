@@ -256,6 +256,10 @@ function helpOptions() {
             multiplier: {
                 usage: '<number>',
                 description: "The value of a single unit of change in price"
+            },
+            minTick: {
+                usage: '<decimal>',
+                description: "The minimum increment at the current price level (used by SNAP STK)"
             }
         }
     }]);
@@ -510,7 +514,7 @@ async function snapStockLimit(markets, ib, contract, order) {
         const detail = _.first(await ib.reqContractDetails(contract));
         const right = detail.summary.right;
         expect(right).is.oneOf(['C', 'P']);
-        const minTick = detail.minTick;
+        const minTick = Math.max(order.minTick||0, detail.minTick||0.000001);
         const exchange = (detail.validExchanges||'').split(',').find(ex => ex != 'SMART') ||
             detail.summary.exchange;
         const [bar, under_bar] = await Promise.all([
@@ -542,7 +546,11 @@ async function snapStockLimit(markets, ib, contract, order) {
                 return toContractWithId(markets, ib, leg);
             }))
         ]);
-        const minTick = detail.minTick;
+        const detail_minTick = detail.minTick||0.000001;
+        const leg_minTick = order.attached.reduce((minTick, leg) => {
+            return Math.min(minTick, leg.minTick||detail_minTick);
+        }, Infinity);
+        const minTick = Math.max(detail_minTick, leg_minTick, order.minTick||0);
         const right = detail.summary.right;
         const exchange = (detail.validExchanges||'').split(',').find(ex => ex != 'SMART') ||
             detail.summary.exchange;

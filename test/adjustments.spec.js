@@ -215,8 +215,8 @@ describe("adjustments", function() {
               }));
         }).should.eventually.be.like([{
             exdate: '2017-03-17',
-            adj: 0.9956683997931635,
-            adj_dividend_only: 0.9956683997931635,
+            adj: 0.995668,
+            adj_dividend_only: 0.995668,
             adj_split_only: 1,
             cum_close: 238.479996,
             split: 1,
