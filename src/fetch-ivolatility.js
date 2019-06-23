@@ -42,7 +42,7 @@ const config = require('./config.js');
 const logger = require('./logger.js');
 const periods = require('./periods.js');
 const iqfeed = require('./fetch-iqfeed.js');
-const IB = require('./ib-client.js');
+const IB = require('./ib-gateway.js');
 const Ivolatility = require('./ivolatility-client.js');
 const expect = require('chai').expect;
 
@@ -242,6 +242,7 @@ function interday(ivolatility, ib, options) {
 }
 
 async function openBar(ib, options) {
+    await ib.open();
     if (isMarketOpen(undefined, options)) {
         const bar = await ib.reqMktData({
             conId: options.conId,

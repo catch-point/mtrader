@@ -945,7 +945,7 @@ function requestWithId(ib) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             _.defer(() => ((req_queue[info.id]||{}).reject||logger.warn)(err));
-        } else if (info && info.id < 0) {
+        } else if (info && info.id < 0 && !isNormal(info)) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
     }).on('disconnected', () => {

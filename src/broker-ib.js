@@ -37,7 +37,7 @@ const moment = require('moment-timezone');
 const Big = require('big.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
-const IB = require('./ib-client.js');
+const IB = require('./ib-gateway.js');
 const Fetch = require('./fetch.js');
 const expect = require('chai').expect;
 
@@ -52,8 +52,9 @@ module.exports = function(settings, mock_ib_client) {
     const ib = mock_ib_client || new IB(settings);
     const fetch = new Fetch(settings);
     const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
-    return _.extend(function(options) {
+    return _.extend(async function(options) {
         if (options.help) return helpOptions();
+        await ib.open();
         switch(options.action) {
             case 'balances': return listBalances(markets, ib, fetch, settings, options);
             case 'positions': return listPositions(markets, ib, fetch, settings, options);

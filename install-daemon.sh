@@ -59,6 +59,22 @@ if [ ! -x "$(which npm)" ]; then
   exit 5
 fi
 
+# Check if unzip is installed
+if [ ! -x "$(which unzip)" ]; then
+  echo "unzip is not installed" 1>&2
+  if [ -x "$(which apt-get)" -a -x "$(which curl)" -a "$(id -u)" = "0" ]; then
+    apt-get install -y unzip
+  fi
+fi
+
+# Check if libXtst.so.6 is installed
+if ! ls /usr/lib/x86_64-linux-gnu/libXtst.so.6 >/dev/null 2>/dev/null ; then
+  echo "libXtst.so.6 is not installed" 1>&2
+  if [ -x "$(which apt-get)" -a -x "$(which curl)" -a "$(id -u)" = "0" ]; then
+    apt-get install -y libxtst6
+  fi
+if
+
 # install daemon user/group
 if [ "$(id -u)" != "0" ]; then
   BASEDIR=$HOME
@@ -140,12 +156,14 @@ if ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
   IBG_LATEST=$(ls -t "$BASEDIR/Jts/ibgateway"/*/ibgateway |head -n 1)
   JAVA_LATEST="$(cat "$(dirname "$IBG_LATEST")/.install4j/inst_jre.cfg")/bin/java"
 fi
-if [ "`tty`" != "not a tty" ] && ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
-  read -p "Do you want to check for an update to IB Gateway $(basename "$(dirname "$IBG_LATEST")")? [y,N]:" INSTALL_IBG
-elif [ "`tty`" != "not a tty" ]; then
-  read -p "Do you want to install IB Gateway? [y,N]:" INSTALL_IBG
-elif ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
-  INSTALL_IBG="Y"
+if [ -x "$(which unzip)" ]; then
+  if [ "`tty`" != "not a tty" ] && ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
+    read -p "Do you want to check for an update to IB Gateway $(basename "$(dirname "$IBG_LATEST")")? [y,N]:" INSTALL_IBG
+  elif [ "`tty`" != "not a tty" ]; then
+    read -p "Do you want to install IB Gateway? [y,N]:" INSTALL_IBG
+  elif ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
+    INSTALL_IBG="Y"
+  fi
 fi
 if [ "$INSTALL_IBG" = "Y" -o "$INSTALL_IBG" = "y" -o "$INSTALL_IBG" = "YES" -o "$INSTALL_IBG" = "yes" ]; then
   INSTALL_IBG="Y"

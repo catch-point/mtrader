@@ -73,7 +73,9 @@ describe("broker-ib", function() {
         config.unset('fetch.files.dirname');
     });
     it("should list balances", async() => {
-        const broker = new Broker({account: 'test'}, { reqManagedAccts: () => Promise.resolve([ 'test' ]),
+        const broker = new Broker({account: 'test'}, {
+          async open() { return this; },
+          reqManagedAccts: () => Promise.resolve([ 'test' ]),
           reqAccountHistory: () => Promise.resolve([]),
           reqAccountUpdate: () => Promise.resolve({ time: '20190601 10:48:00',
              Currency: [ 'BASE', 'CAD', 'USD', 'BASE' ],
@@ -113,6 +115,7 @@ describe("broker-ib", function() {
     });
     it("should list positions", async() => {
         const broker = new Broker({account: 'MKSTK'}, {
+          async open() { return this; },
             reqPositionsMulti: () => Promise.resolve({ test: {
                 '4215235': { position: 64 }
             } }),
@@ -150,7 +153,9 @@ describe("broker-ib", function() {
         await broker.close();
     });
     it("should list open orders", async() => {
-        const broker = new Broker({account: 'test'}, { reqManagedAccts: () => Promise.resolve([ 'test' ]),
+        const broker = new Broker({account: 'test'}, {
+          async open() { return this; },
+          reqManagedAccts: () => Promise.resolve([ 'test' ]),
           requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
           reqOpenOrders: () => Promise.resolve([ { posted_time: '20190601 14:48:27',
             faGroup: '',
@@ -213,6 +218,7 @@ describe("broker-ib", function() {
     });
     it("should submit order", async() => {
         const broker = new Broker({account: 'test'}, {
+          async open() { return this; },
           reqId: cb => cb(1),
           reqManagedAccts: () => Promise.resolve([ 'test' ]),
           requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
@@ -254,7 +260,9 @@ describe("broker-ib", function() {
         await broker.close();
     });
     it("should submit attached order", async() => {
-        const broker = new Broker({account: 'test'}, { reqId: cb => cb(1),
+        const broker = new Broker({account: 'test'}, {
+              async open() { return this; },
+              reqId: cb => cb(1),
               reqManagedAccts: () => Promise.resolve([ 'test' ]),
               requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
               placeOrder: (()=>{let count=0;return(...args) => {switch(count++) {
@@ -371,6 +379,7 @@ describe("broker-ib", function() {
     });
     it("should submit to attach an order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqRecentOrders: () => Promise.resolve([ { orderRef: 'LMT.32f027a8.1', orderId: 1 }, {} ]),
             reqId: cb => cb(3),
             reqManagedAccts: () => Promise.resolve([ 'test' ]),
@@ -432,6 +441,7 @@ describe("broker-ib", function() {
     });
     it("should submit OCA order", async() => {
         const broker = new Broker({account: 'test'}, {
+              async open() { return this; },
               reqId: cb => (cb || _.identity)(1),
               reqManagedAccts: () => Promise.resolve([ 'test' ]),
               requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
@@ -607,6 +617,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+          async open() { return this; },
           reqId: cb => cb(1),
           reqContractDetails: (()=>{let count=0;return(...args) => {switch(count++) {
         case 0: expect(args).to.be.like([ { localSymbol: 'SPX   190719P02400000',
@@ -725,6 +736,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY SNAP MID combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+          async open() { return this; },
           reqId: cb => cb(1),
           reqContractDetails: (()=>{let count=0;return(...args) => {switch(count++) {
         case 0: expect(args).to.be.like([ { localSymbol: 'SPX   190621C03075000',
@@ -849,6 +861,7 @@ describe("broker-ib", function() {
     });
     it("should round trip ibalog order", async() => {
         const broker = new Broker({account: 'test'}, {
+          async open() { return this; },
           reqId: cb => cb(1),
           reqManagedAccts: () => Promise.resolve([ 'test' ]),
           placeOrder: (...args) => {expect(args).to.be.like([ 1,
@@ -971,6 +984,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Call SNAP STK MID offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(1),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
@@ -1075,6 +1089,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Call SNAP STK offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(1),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
@@ -1195,6 +1210,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL Call SNAP STK offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(2),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
@@ -1314,6 +1330,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Put SNAP STK offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(3),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
@@ -1433,6 +1450,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL Put SNAP STK offset options order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(4),
             reqContractDetails: (...args) => {
                 expect(args).to.be.like([{
@@ -1552,6 +1570,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Call SNAP STK MID combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(1),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {
@@ -1757,6 +1776,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(2),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {
@@ -2033,6 +2053,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(3),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {
@@ -2310,6 +2331,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Put SNAP STK MID combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(4),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {
@@ -2530,6 +2552,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(5),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {
@@ -2807,6 +2830,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(6),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {
@@ -3086,6 +3110,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL negative Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(7),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {
@@ -3363,6 +3388,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY negative Call SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(8),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {
@@ -3640,6 +3666,7 @@ describe("broker-ib", function() {
     });
     it("should submit SELL negative Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(9),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {
@@ -3922,6 +3949,7 @@ describe("broker-ib", function() {
     });
     it("should submit BUY negative Put SNAP STK combo order", async() => {
         const broker = new Broker({account: 'test'}, {
+            async open() { return this; },
             reqId: cb => cb(10),
             reqContractDetails: (...args) => {
                 switch (args[0].localSymbol) {

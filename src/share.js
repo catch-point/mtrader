@@ -36,7 +36,7 @@
  * function of the returned instance is called. Care should be taken to not call
  * closed more then the number of times the given factory function is called.
  */
-module.exports = function(factory) {
+module.exports = function(factory, onclose) {
     let used = 0;
     const shared = function() {
         used++;
@@ -45,13 +45,12 @@ module.exports = function(factory) {
         let closed = false;
         used = 1;
         const close_handler = self.close ? self.close.bind(self) : () => Promise.resolve();
-        self.close = function(force) {
-            return Promise.resolve().then(() => {
-                if (closed || --used && !force) return Promise.resolve();
-                closed = true;
-                if (shared.instance === self) shared.instance = null;
-                return close_handler.apply(this, arguments);
-            });
+        self.close = async function(force) {
+            if (closed || --used && !force) return;
+            closed = true;
+            if (shared.instance === self) shared.instance = null;
+            if (onclose) await onclose.apply(this, arguments);
+            return close_handler.apply(this, arguments);
         };
         return self;
     };

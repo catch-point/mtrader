@@ -38,7 +38,7 @@ const logger = require('./logger.js');
 const config = require('./config.js');
 const periods = require('./periods.js');
 const Adjustments = require('./adjustments.js');
-const IB = require('./ib-client.js');
+const IB = require('./ib-gateway.js');
 const expect = require('chai').expect;
 
 function help() {
@@ -128,6 +128,7 @@ module.exports = function() {
     )), v => !v);
     const self = async(options) => {
         if (options.help) return help();
+        await client.open();
         const adj = isNotEquity(markets, options) ? null : adjustments;
         if (options.interval == 'lookup') return lookup(markets, client, options);
         else if (options.interval == 'day') return interday(markets, adj, client, options);
