@@ -112,7 +112,8 @@ module.exports = function() {
     const cacheDir = config('fetch.ivolatility.cache') || path.resolve(cache_dir, 'ivolatility');
     const libDir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     const downloadDir = config('fetch.ivolatility.downloads') || path.resolve(libDir, 'ivolatility');
-    const auth_file = config('fetch.ivolatility.auth_file');
+    const auth_file = config('fetch.ivolatility.auth_file') &&
+        path.resolve(config('prefix'), 'etc', config('fetch.ivolatility.auth_file'));
     const downloadType = config('fetch.ivolatility.downloadType');
     if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
     const ib_cfg = config('fetch.ivolatility.ib');

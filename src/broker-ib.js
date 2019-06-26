@@ -47,8 +47,9 @@ module.exports = function(settings, mock_ib_client) {
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
     const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
-    settings = {lib_dir, ...config('broker.ib'), ...settings};
+    settings = {...settings, lib_dir, ...config('broker.ib')};
     expect(settings).to.have.property('account').that.is.ok;
+    if (settings.local_accounts) expect(settings.account).to.be.oneOf(settings.local_accounts);
     const ib = mock_ib_client || new IB(settings);
     const fetch = new Fetch(settings);
     const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
@@ -96,6 +97,10 @@ function helpSettings() {
             transmit: {
                 usage: 'true|false',
                 description: "If the system should transmit orders automatically for execution, otherwise wait for manual transmition via TWS user interface"
+            },
+            local_accounts: {
+                usage: '[<stirng>,...]',
+                description: "An array of accounts that can be used with this broker"
             }
         }
     }]);
@@ -296,9 +301,9 @@ async function listBalances(markets, ib, fetch, settings, options) {
                     rate: summary.ExchangeRate[currency],
                     net: summary.NetLiquidationByCurrency[currency],
                     settled: summary.CashBalance[currency],
-                    accrued: Big(summary.AccruedCash[currency]||0)
-                        .add(summary.AccruedDividend[currency]||0)
-                        .add(summary.FuturesPNL[currency]||0).toString(),
+                    accrued: Big((summary.AccruedCash||{})[currency]||0)
+                        .add((summary.AccruedDividend||{})[currency]||0)
+                        .add((summary.FuturesPNL||{})[currency]||0).toString(),
                     realized: summary.RealizedPnL[currency],
                     unrealized: summary.UnrealizedPnL[currency],
                     margin: summary.TotalCashValue[currency] != summary.BuyingPower[currency] ?

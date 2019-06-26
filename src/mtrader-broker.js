@@ -85,13 +85,13 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = function(settings) {
+    module.exports = function(settings = {}) {
         return createInstance(usage(new commander.Command()), settings);
     };
 }
 
-function createInstance(program, settings) {
-    const broker = new Broker(settings);
+function createInstance(program, settings = {}) {
+    const broker = new Broker(settings.broker);
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {

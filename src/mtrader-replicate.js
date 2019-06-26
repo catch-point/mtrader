@@ -92,12 +92,12 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = function(settings) {
+    module.exports = function(settings = {}) {
         return createInstance(usage(new commander.Command()), settings);
     };
 }
 
-function createInstance(program, settings) {
+function createInstance(program, settings = {}) {
     const fetch = new Fetch();
     const collect = new Collect();
     const broker = new Broker(settings);

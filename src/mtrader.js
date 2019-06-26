@@ -191,7 +191,7 @@ function parseKnownOptions(program, argv) {
     });
 }
 
-function createInstance(settings) {
+function createInstance(settings = {}) {
     const config = new Config(settings);
     const date = new Dater(settings);
     const fetch = new Fetch(settings);

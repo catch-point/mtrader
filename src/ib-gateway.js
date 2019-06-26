@@ -85,8 +85,8 @@ async function promiseInstance(self, settings) {
     const install = (config('ibgateway_installs')||[])
       .find(inst => inst.ibg_version == settings.ibg_version);
     if (install.name) logger.info(`Launching ${install.name}`);
-    const overrideTwsApiPort = await findAvailablePort(settings.OverrideTwsApiPort || settings.port || 4001);
-    const commandServerPort = await findAvailablePort(settings.CommandServerPort || 7462);
+    const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port || await findAvailablePort(4001);
+    const commandServerPort = settings.CommandServerPort || await findAvailablePort(7462);
     const ibc = await spawn(install.ibc_command, overrideTwsApiPort, commandServerPort, {...install, ...settings});
     const timeout = (install.login_timeout || 90) * 1000;
     const host = settings.BindAddress || install.BindAddress || 'localhost';
@@ -175,8 +175,9 @@ async function createIniFile(overrideTwsApiPort, commandServerPort, settings) {
 
 async function setDefaultSettings(overrideTwsApiPort, commandServerPort, settings) {
     const readFile = util.promisify(fs.readFile);
+    const auth_file = path.resolve(config('prefix'), 'etc', settings.auth_file);
     const token = settings.auth_base64 ? settings.auth_base64 :
-        settings.auth_file ? (await readFile(settings.auth_file, 'utf8')||'').trim() : '';
+        settings.auth_file ? (await readFile(auth_file, 'utf8')||'').trim() : '';
     const [username, password] = new Buffer.from(token, 'base64').toString().split(/:/, 2);
     const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     const default_dir = path.resolve(lib_dir, settings.IbLoginId || username || '');

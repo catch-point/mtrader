@@ -247,7 +247,7 @@ if (require.main === module && process.send) {
             Promise.all(msg.payload.map(sink)).then(ready).catch(error);
         } else if (msg && msg.cmd == 'close') {
             sink.close().catch(error).then(() => {
-                process.disconnect();
+                if (process.connected) process.disconnect();
             });
         }
     }).on('disconnect', () => sink.close());

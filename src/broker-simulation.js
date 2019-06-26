@@ -52,7 +52,7 @@ function nextval() {
 
 module.exports = function(settings) {
     if (settings.help) return helpSettings();
-    settings = {...config('broker.simulation'), ...settings};
+    settings = {...settings, ...config('broker.simulation')};
     expect(settings).to.have.property('simulation').that.is.ok;
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).simulation

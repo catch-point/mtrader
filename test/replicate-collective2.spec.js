@@ -59,20 +59,20 @@ describe("replicate-collective2", function() {
         config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('collective2'));
         config('fetch.files.dirname', path.resolve(__dirname, 'data'));
+        config('broker.collective2.requestMarginEquity', 'file://' + requestMarginEquity);
+        config('broker.collective2.retrieveSystemEquity', 'file://' + retrieveSystemEquity);
+        config('broker.collective2.requestTrades', 'file://' + requestTrades);
+        config('broker.collective2.retrieveSignalsWorking', 'file://' + retrieveSignalsWorking);
+        config('broker.collective2.submitSignal', 'file://' + submitSignal);
+        config('broker.collective2.cancelSignal', 'file://' + cancelSignal);
+        config('broker.collective2.requestTradesOpen', 'file://' + requestTradesOpen);
+        config('broker.collective2.retrieveSignalsAll', 'file://' + retrieveSignalsAll);
         fetch = new Fetch();
         quote = new Quote(fetch);
         collect = new Collect(quote);
         broker = new Broker({
             systemid: 'test',
-            apikey: 'test',
-            requestMarginEquity: 'file://' + requestMarginEquity,
-            retrieveSystemEquity: 'file://' + retrieveSystemEquity,
-            requestTrades: 'file://' + requestTrades,
-            retrieveSignalsWorking: 'file://' + retrieveSignalsWorking,
-            submitSignal: 'file://' + submitSignal,
-            cancelSignal: 'file://' + cancelSignal,
-            requestTradesOpen: 'file://' + requestTradesOpen,
-            retrieveSignalsAll: 'file://' + retrieveSignalsAll
+            apikey: 'test'
         });
         replicate = new Replicate(broker, fetch, collect);
     });

@@ -32,16 +32,21 @@
 
 const _ = require('underscore');
 const logger = require('./logger.js');
+const config = require('./config.js');
 const Collective2 = require('./broker-collective2.js');
 const IB = require('./broker-ib.js');
 const Simulation = require('./broker-simulation.js');
 const expect = require('chai').expect;
 
 module.exports = function(settings = {}) {
-    const Brokers = [IB, Collective2, Simulation];
+    const Brokers = _.object(_.compact([
+        config('broker.ib.enabled') && ['ib', IB],
+        config('broker.collective2.enabled') && ['collective2', Collective2],
+        config('broker.simulation.enabled') && ['simulation', Simulation]
+    ]));
     let promiseHelpWithSettings, promiseHelpWithOptions;
     if (settings.help && !promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
-    if (settings.help) return promiseHelpWithSettings.then(help => [].concat(...help));
+    if (settings.help) return promiseHelpWithSettings.then(help => [].concat(...Object.values(help)));
     let broker_promise;
     return Object.assign(async function(options) {
         if (!promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
@@ -59,18 +64,18 @@ module.exports = function(settings = {}) {
     });
 };
 
-function helpWithSettings(Brokers) {
-    return Promise.all(Brokers.map(Broker => Broker({help:true})));
+async function helpWithSettings(Brokers) {
+    const values = await Promise.all(Object.values(Brokers).map(Broker => Broker({help:true})));
+    return _.object(Object.keys(Brokers), values);
 }
 
 async function createBroker(promiseHelpWithSettings, Brokers, settings) {
     const help = await promiseHelpWithSettings;
     let error;
-    const broker = chooseBroker(help, settings).reduce((broker, idx) => {
+    const broker = chooseBroker(help, settings).reduce((broker, key) => {
         if (broker) return broker; // already found one
-        const mini_settings = _.pick(settings, _.flatten(_.map(help[idx], info => _.keys(info.options))));
         try {
-            return new Brokers[idx](mini_settings);
+            return new Brokers[key](settings[key]);
         } catch (err) {
             if (error) logger.debug("Could not created broker", error);
             error = err;
@@ -83,10 +88,10 @@ async function createBroker(promiseHelpWithSettings, Brokers, settings) {
 }
 
 function chooseBroker(help, settings) {
-    return _.sortBy(help.map(help => {
+    return _.sortBy(_.map(_.mapObject(help, (help, key) => {
         return _.max(help.map(help => {
-            return _.filter(help.options, (desc, name) => settings[name]).length;
+            return _.filter(help.options, (desc, name) => (settings[key]||{})[name]).length;
         }));
-    }).map((count, index) => ({count, index})), 'count')
-      .reverse().map(obj => obj.index);
+    }), (count, key) => ({count, key})), 'count')
+      .reverse().map(obj => obj.key);
 }
