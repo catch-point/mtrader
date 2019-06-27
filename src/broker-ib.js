@@ -306,8 +306,8 @@ async function listBalances(markets, ib, fetch, settings, options) {
                         .add((summary.FuturesPNL||{})[currency]||0).toString(),
                     realized: summary.RealizedPnL[currency],
                     unrealized: summary.UnrealizedPnL[currency],
-                    margin: summary.TotalCashValue[currency] != summary.BuyingPower[currency] ?
-                        summary.MaintMarginReq[currency] : null
+                    margin: (summary.TotalCashValue||{})[currency] != (summary.BuyingPower||{})[currency] ?
+                        (summary.MaintMarginReq||{})[currency] : null
                 };
             });
         }));
