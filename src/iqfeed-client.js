@@ -401,7 +401,7 @@ function historical(nextval, ready) {
             });
         }
         _.forEach(pending, item => item.marked = true);
-        return marker = setTimeout(mark, 60000).unref();
+        return marker = setTimeout(mark, 90000).unref();
     };
     marker = mark();
     const lookup = function(){

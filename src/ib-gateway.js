@@ -88,7 +88,7 @@ async function promiseInstance(self, settings) {
     const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port || await findAvailablePort(4001);
     const commandServerPort = settings.CommandServerPort || await findAvailablePort(7462);
     const ibc = await spawn(install.ibc_command, overrideTwsApiPort, commandServerPort, {...install, ...settings});
-    const timeout = (install.login_timeout || 90) * 1000;
+    const timeout = (install.login_timeout || 300) * 1000;
     const host = settings.BindAddress || install.BindAddress || 'localhost';
     const ibc_socket = await createSocket(commandServerPort, host, Date.now() + timeout);
     const client = new ib({
@@ -143,7 +143,7 @@ async function spawn(ibc_command, overrideTwsApiPort, commandServerPort, setting
         const timer = setTimeout(() => {
             ibc.kill();
             fail(Error("IBC login timed out"));
-        }, (settings.login_timeout || 90) * 1000);
+        }, (settings.login_timeout || 300) * 1000);
         const onlogin = data => {
             if (data && ~data.indexOf('IBC: Login completed')) {
                 clearTimeout(timer);
