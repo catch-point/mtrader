@@ -43,11 +43,14 @@ const ib = require('./ib-client.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 
-const private_settings = ['ibg_version', 'IbLoginId', 'IbPassword', 'auth_base64', 'auth_file'];
+const private_settings = [
+    'ibg_version', 'TradingMode', 'IbLoginId', 'IbPassword',
+    'auth_base64', 'auth_file', 'auth_sha256'
+];
 const instances = {};
 
 module.exports = function(settings) {
-    const json = private_settings.filter(key => key in settings).map(key => [key, settings[key]]);
+    const json = _.object(private_settings.filter(key => key in settings).map(key => [key, settings[key]]));
     const key = crypto.createHash('sha256').update(JSON.stringify(json)).digest('hex');
     const shared = instances[key] = instances[key] || share(createInstance, () => {
         delete instances[key];
@@ -85,8 +88,10 @@ async function promiseInstance(self, settings) {
     const install = (config('ibgateway_installs')||[])
       .find(inst => inst.ibg_version == settings.ibg_version);
     if (install.name) logger.info(`Launching ${install.name}`);
-    const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port || await findAvailablePort(4001);
-    const commandServerPort = settings.CommandServerPort || await findAvailablePort(7462);
+    const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port ||
+        await findAvailablePort(settings.TradingMode == 'live' ? 4001 : 4002);
+    const commandServerPort = settings.CommandServerPort ||
+        await findAvailablePort(settings.TradingMode == 'live' ? 7461 : 7462);
     const ibc = await spawn(install.ibc_command, overrideTwsApiPort, commandServerPort, {...install, ...settings});
     const timeout = (install.login_timeout || 300) * 1000;
     const host = settings.BindAddress || install.BindAddress || 'localhost';
@@ -179,6 +184,12 @@ async function setDefaultSettings(overrideTwsApiPort, commandServerPort, setting
     const token = settings.auth_base64 ? settings.auth_base64 :
         settings.auth_file ? (await readFile(auth_file, 'utf8')||'').trim() : '';
     const [username, password] = new Buffer.from(token, 'base64').toString().split(/:/, 2);
+    if (settings.auth_file && username) {
+        const string = `${username}:${settings.auth_nonce||''}:${password}`;
+        const hash = crypto.createHash('sha256').update(string).digest('hex');
+        if (hash != settings.auth_sha256)
+            throw Error("auth_sha256 of username:auth_nonce:password is required when using auth_file");
+    }
     const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     const default_dir = path.resolve(lib_dir, settings.IbLoginId || username || '');
     return {

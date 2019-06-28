@@ -73,7 +73,7 @@ if ! ls /usr/lib/x86_64-linux-gnu/libXtst.so.6 >/dev/null 2>/dev/null ; then
   if [ -x "$(which apt-get)" -a -x "$(which curl)" -a "$(id -u)" = "0" ]; then
     apt-get install -y libxtst6
   fi
-if
+fi
 
 # install daemon user/group
 if [ "$(id -u)" != "0" ]; then
@@ -449,7 +449,7 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
     if (broker_ibg == ibg_previous) {
       Object.assign(json, {
         broker: Object.assign((json||{}).broker||{}, {
-          ib: Object.assign(((json||{}).broker||{}).ib||{clientId: '$RANDOM'}, {ibg_version})
+          ib: Object.assign(((json||{}).broker||{}).ib||{TradingMode: 'live'}, {ibg_version})
         })
       });
     }
@@ -457,7 +457,7 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
     if (fetch_ibg == ibg_previous) {
       Object.assign(json, {
         fetch: Object.assign((json||{}).fetch||{}, {
-          ib: Object.assign(((json||{}).fetch||{}).ib||{}, {ibg_version})
+          ib: Object.assign(((json||{}).fetch||{}).ib||{TradingMode: 'live'}, {ibg_version})
         })
       });
     }
@@ -472,7 +472,8 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
       var ibgateway = {
         ibg_name,
         ibg_version,
-        TradingMode: 'live',
+        clientId: '$RANDOM',
+        auth_nonce: '$RANDOM',
         StoreSettingsOnServer: '',
         MinimizeMainWindow: 'no',
         ExistingSessionDetectedAction: 'manual',

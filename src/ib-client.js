@@ -414,8 +414,10 @@ function openOrders(ib, store, ib_tz, clientId) {
     const log = order => {
         const ord = _.mapObject(order, v => Number.isNaN(v) || v == Number.MAX_VALUE ? null : v);
         const account = order.account || order.faGroup || order.faProfile;
-        const acct_log = order_log[account] = order_log[account] || [];
-        if (!_.isMatch(_.last(acct_log), _.omit(ord, 'posted_time', 'time'))) acct_log.push(ord);
+        if (account) {
+            const acct_log = order_log[account] = order_log[account] || [];
+            if (!_.isMatch(_.last(acct_log), _.omit(ord, 'posted_time', 'time'))) acct_log.push(ord);
+        }
         return ord;
     };
     const flusher = debounce(async() => {

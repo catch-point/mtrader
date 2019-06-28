@@ -251,7 +251,7 @@ describe("fetch-iqfeed", function() {
                 });
             }));
         });
-        describe("should lookup CFE weekly futures symbols", function() {
+        describe.skip("should lookup CFE weekly futures symbols", function() {
             const week = moment().isoWeek() + 3;
             const year = moment(`${moment().year()}-01-01`);
             const one = year.add((10 - year.isoWeekday()) % 7, 'days');
