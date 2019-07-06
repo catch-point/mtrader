@@ -55,7 +55,7 @@ module.exports = function(settings) {
     const shared = instances[key] = instances[key] || share(createInstance, () => {
         delete instances[key];
     });
-    return shared(settings);
+    return shared({label: key, ...settings});
 };
 
 function createInstance(settings) {
@@ -65,10 +65,10 @@ function createInstance(settings) {
     if (!install) throw Error(`IB Gateway ${ibg_version} is not installed or configured correctly`);
     const self = new.target ? this : {};
     return Object.assign(self, {
-        async open() {
+        open: _.memoize(async() => {
             const client = await promiseInitializedInstance(self, settings);
             return client.open();
-        },
+        }),
         async close() {
             // don't do anything until instance is initialized
             return Promise.resolve();
@@ -87,7 +87,7 @@ async function promiseInitializedInstance(self, settings) {
 async function promiseInstance(self, settings) {
     const install = (config('ibgateway_installs')||[])
       .find(inst => inst.ibg_version == settings.ibg_version);
-    if (install.name) logger.info(`Launching ${install.name}`);
+    if (install.ibg_name) logger.info(`Launching ${install.ibg_name} ${settings.label||''}`);
     const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port ||
         await findAvailablePort(settings.TradingMode == 'live' ? 4001 : 4002);
     const commandServerPort = settings.CommandServerPort ||
@@ -143,8 +143,15 @@ async function spawn(ibc_command, overrideTwsApiPort, commandServerPort, setting
         });
         ibc.once('exit', (code, signal) => fail(Error(`IBC exited with code ${code} ${signal}`)));
         ibc.once('error', fail);
-        ibc.stdout.setEncoding('utf8').on('data', logger.log);
-        ibc.stderr.setEncoding('utf8').on('data', logger.error);
+        const regex = /^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d:\d\d\d IBC: |\s+$/g;
+        ibc.stdout.setEncoding('utf8').on('data', txt => {
+            const entry = txt.replace(regex,'');
+            if (entry) logger.log(entry);
+        });
+        ibc.stderr.setEncoding('utf8').on('data', txt => {
+            const entry = txt.replace(regex,'');
+            if (entry) logger.error(entry);
+        });
         const timer = setTimeout(() => {
             ibc.kill();
             fail(Error("IBC login timed out"));

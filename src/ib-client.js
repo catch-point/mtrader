@@ -300,7 +300,8 @@ function accountUpdates(ib, store, ib_tz) {
         return Promise.all(_.values(subscriptions).map(reqId => {
             const summary = req_queue[reqId].summary;
             const month = moment().tz(ib_tz).format('YYYYMM');
-            return save(summary.AccountCode, month, summary);
+            if (summary.AccountCode && summary.time)
+                return save(summary.AccountCode, month, summary);
         })).catch(err => logger.error("Could not flush IB balances", err));
     }, 60*1000); // 1m
     ib.on('error', function (err, info) {
