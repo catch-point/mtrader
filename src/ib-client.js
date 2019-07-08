@@ -86,13 +86,13 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
         // Some error messages might just be warnings
         // @see https://groups.io/g/twsapi/message/40551
         if (info && info.code == 1101) {
-            logger.info("ib-client", err.message);
-        } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
             logger.log("ib-client", err.message);
+        } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
+            logger.debug("ib-client", err.message);
         } else if (info && info.code >= 2000 && info.code < 3000) {
-            logger.warn("ib-client", err.message);
+            logger.info("ib-client", err.message);
         } else {
-            logger.error("ib-client", info || '', err.message);
+            logger.warn("ib-client", info || '', err.message);
         }
     }).on('result', (event, args) => {
         logger.trace("ib", event, ...args);
@@ -229,7 +229,9 @@ function requestFA(ib) {
     let received, fail, promise = Promise.resolve();
     ib.on('error', function (err, info) {
         if (!isNormal(info)) {
-            if (fail) fail(err);
+            // Error validating request: FA data operations ignored for non FA customers.
+            if (info && info.code == 321 && received) received([]);
+            else if (fail) fail(err);
         }
     }).on('disconnected', () => {
         if (fail) fail(Error("TWS has disconnected"));
@@ -470,6 +472,25 @@ function openOrders(ib, store, ib_tz, clientId) {
         } else if (info && info.id && cancelling_orders[info.id]) {
             cancelling_orders[info.id].fail(err);
             delete cancelling_orders[info.id];
+        } else if (info && info.id && info.code == 201) {
+            // Order rejected
+            const order = orders[info.id];
+            if (order) {
+                const m = ((err||{}).message||'')
+                  .match(/CASH AVAILABLE: (\d+\.\d+); CASH NEEDED FOR THIS ORDER AND OTHER PENDING ORDERS: (\d+\.\d+)/);
+                // Only reduce quant if quant is whole number
+                const whole = +order.totalQuantity == Math.round(order.totalQuantity);
+                if (m && +order.totalQuantity && whole && oder.secType == 'STK') {
+                    const [, avail, needed] = m;
+                    const totalQuantity = Math.floor(order.totalQuantity * avail / needed);
+                    if (+totalQuantity != +totalQuantity) {
+                        const contract = _.pick(order, 'conId', 'exchange', 'currency');
+                        const update = {...order, totalQuantity};
+                        logger.log('placeOrder', update.orderId, contract, update);
+                        ib.placeOrder(update.orderId, contract, update);
+                    }
+                }
+            }
         } else if (!isNormal(info)) {
             Object.entries(placing_orders).forEach(([orderId, req]) => {
                 req.fail(err);

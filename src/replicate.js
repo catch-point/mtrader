@@ -580,8 +580,12 @@ function updateWorking(desired, working, options) {
             return appendSignal(upon, cond, options);
         }
     } else {
-        const recent_order = ds || desired.last_order ||
-            {...desired, order_type: options.default_order_type || 'MKT', tif: 'DAY'};
+        const recent_order = ds || desired.last_order || {
+            ...desired,
+            order_type: options.default_order_type || 'MKT',
+            offset: desired.offset || 0,
+            tif: 'DAY'
+        };
         return [c2signal({
             ..._.omit(recent_order, 'traded_at', 'posted_at'),
             action: desired.position > working.position ? 'BUY' : 'SELL',

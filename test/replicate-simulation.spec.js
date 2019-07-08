@@ -381,7 +381,7 @@ describe("replicate-simulation", function() {
             }]);
         });
         it("Already filled XGB", async() => {
-            return Replicate((options) => {
+            return Replicate(async(options) => {
                     switch (options.help ? 'help' : options.action) {
                         case 'help':
                             return broker({help:true});
@@ -462,7 +462,7 @@ describe("replicate-simulation", function() {
             }]);
         });
         it("Already filled XHB", async() => {
-            return Replicate((options) => {
+            return Replicate(async(options) => {
                     switch (options.help ? 'help' : options.action) {
                         case 'help':
                             return broker({help:true});
@@ -969,7 +969,7 @@ describe("replicate-simulation", function() {
               .should.eventually.be.like([]);
         });
         it("option position already closed", async() => {
-            return Replicate((...args) => {
+            return Replicate(async(...args) => {
                 if (args[0].help) return broker({help:true});
                 switch (args[0].action) {
                     case 'balances':
@@ -1050,7 +1050,7 @@ describe("replicate-simulation", function() {
               .should.eventually.be.like([]);
         });
         it("option minTick", async() => {
-            return Replicate((...args) => {
+            return Replicate(async(...args) => {
                 if (args[0].help) return broker({help:true});
                 switch (args[0].action) {
                     case 'balances':
