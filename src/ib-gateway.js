@@ -143,7 +143,7 @@ async function spawn(ibc_command, overrideTwsApiPort, commandServerPort, setting
         });
         ibc.once('exit', (code, signal) => fail(Error(`IBC exited with code ${code} ${signal}`)));
         ibc.once('error', fail);
-        const regex = /^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d:\d\d\d IBC: |\s+$/g;
+        const regex = /\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d:\d\d\d IBC: |\s+$/g;
         ibc.stdout.setEncoding('utf8').on('data', txt => {
             const entry = txt.replace(regex,'');
             if (entry) logger.log(entry);

@@ -105,6 +105,10 @@ function help(broker, collect) {
                 usage: '<order_type>',
                 description: "Default order type to close unexpected positions, defaults to MKT"
             },
+            combo_order_type: {
+                usage: '<order_type>',
+                description: "Order type used for combo BAG orders"
+            },
             combo_order_types: {
                 usage: '[<order_type>...]',
                 description: "Order types that can be combined into combo BAG orders with matching legs"
@@ -384,7 +388,8 @@ async function submitOrders(broker, broker_orders, orders, options) {
         return [
             ord.symbol.substring(0, 13), ord.market,
             ord.security_type, ord.currency, ord.multiplier,
-            ord.order_type, ord.limit, ord.offset, ord.stop, ord.tif
+            ord.order_type, ord.limit, ord.offset, ord.stop, ord.tif,
+            ord.order_ref
         ].join(' ');
     });
     const order_legs = _.values(grouped).filter(legs => legs.length > 1);
@@ -401,7 +406,8 @@ async function submitOrders(broker, broker_orders, orders, options) {
         return {
             action,
             quant,
-            ..._.pick(_.first(legs), 'order_ref', 'order_type', 'limit', 'offset', 'stop', 'tif'),
+            order_type: options.combo_order_type || _.first(legs).order_type,
+            ..._.pick(_.first(legs), 'limit', 'offset', 'stop', 'tif', 'order_ref'),
             attached: legs.map(leg => ({
                 ..._.omit(leg, 'order_type', 'limit', 'offset', 'stop', 'tif'),
                 action: action == 'SELL' && leg.action == 'BUY' ? 'SELL' :
