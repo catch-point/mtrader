@@ -30,6 +30,7 @@
  */
 
 const _ = require('underscore');
+const Big = require('big.js');
 const moment = require('moment-timezone');
 const like = require('./should-be-like.js');
 const Adjustments = require('../src/adjustments.js');
@@ -53,11 +54,11 @@ describe("adjustments", function() {
             var after = adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
             return adjustments
               .filter(datum => datum.exdate <= end)
-              .map(datum => _.extend(datum, {
-                adj: datum.adj / after.adj,
-                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
-                adj_split_only: datum.adj_split_only / after.adj_split_only
-              }));
+              .map(datum => _.mapObject({...datum,
+                adj: Big(datum.adj).div(after.adj),
+                adj_dividend_only: Big(datum.adj_dividend_only).div(after.adj_dividend_only),
+                adj_split_only: Big(datum.adj_split_only).div(after.adj_split_only)
+              }, num => _.isFinite(num) ? +num : num));
         }).should.eventually.be.like([
             {exdate:'2017-03-17',dividend:1.03,adj:0.9809},
             {exdate:'2017-06-16',dividend:1.18,adj:0.9852},
@@ -77,11 +78,11 @@ describe("adjustments", function() {
             var after = adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
             return adjustments
               .filter(datum => datum.exdate <= end)
-              .map(datum => _.extend(datum, {
-                adj: datum.adj / after.adj,
-                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
-                adj_split_only: datum.adj_split_only / after.adj_split_only
-              }));
+              .map(datum => _.mapObject({...datum,
+                adj: Big(datum.adj).div(after.adj),
+                adj_dividend_only: Big(datum.adj_dividend_only).div(after.adj_dividend_only),
+                adj_split_only: Big(datum.adj_split_only).div(after.adj_split_only)
+              }, num => _.isFinite(num) ? +num : num));
         }).should.eventually.be.like([
             {exdate:'2016-03-18',adj:0.79},
             {exdate:'2016-06-17',adj:0.80},
@@ -102,11 +103,11 @@ describe("adjustments", function() {
             var after = adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
             return adjustments
               .filter(datum => datum.exdate <= end)
-              .map(datum => _.extend(datum, {
-                adj: datum.adj / after.adj,
-                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
-                adj_split_only: datum.adj_split_only / after.adj_split_only
-              }));
+              .map(datum => _.mapObject({...datum,
+                adj: +Big(datum.adj).div(after.adj),
+                adj_dividend_only: Big(datum.adj_dividend_only).div(after.adj_dividend_only),
+                adj_split_only: Big(datum.adj_split_only).div(after.adj_split_only)
+              }, num => _.isFinite(num) ? +num : num));
         }).should.eventually.be.like([
             {exdate:'2014-02-06',dividend:3.05,cum_close:512.59,adj:0.1399},
             {exdate:'2014-05-08',dividend:3.29,cum_close:592.33,adj:0.1408},
@@ -127,11 +128,11 @@ describe("adjustments", function() {
             var after = adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
             return adjustments
               .filter(datum => datum.exdate <= end)
-              .map(datum => _.extend(datum, {
-                adj: datum.adj / after.adj,
-                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
-                adj_split_only: datum.adj_split_only / after.adj_split_only
-              }));
+              .map(datum => _.mapObject({...datum,
+                adj: Big(datum.adj).div(after.adj),
+                adj_dividend_only: Big(datum.adj_dividend_only).div(after.adj_dividend_only),
+                adj_split_only: Big(datum.adj_split_only).div(after.adj_split_only)
+              }, num => _.isFinite(num) ? +num : num));
         }).should.eventually.be.like([
             {exdate:'2004-04-15',dividend:0.15,cum_close:55.00,adj:0.3313},
             {exdate:'2004-05-19',split:3/1,    cum_close:54.99,adj:0.3323},
@@ -150,11 +151,11 @@ describe("adjustments", function() {
             var after = adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
             return adjustments
               .filter(datum => datum.exdate <= end)
-              .map(datum => _.extend(datum, {
-                adj: datum.adj / after.adj,
-                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
-                adj_split_only: datum.adj_split_only / after.adj_split_only
-              }));
+              .map(datum => _.mapObject({...datum,
+                adj: Big(datum.adj).div(after.adj),
+                adj_dividend_only: Big(datum.adj_dividend_only).div(after.adj_dividend_only),
+                adj_split_only: Big(datum.adj_split_only).div(after.adj_split_only)
+              }, num => _.isFinite(num) ? +num : num));
         }).should.eventually.be.like([
             {exdate:'2016-03-23',dividend:0.27,cum_close:9.84,adj:3.61},
             {exdate:'2016-06-21',dividend:0.27,cum_close:10.34,adj:3.71},
@@ -175,11 +176,11 @@ describe("adjustments", function() {
             var after = adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
             return adjustments
               .filter(datum => datum.exdate <= end)
-              .map(datum => _.extend(datum, {
-                adj: datum.adj / after.adj,
-                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
-                adj_split_only: datum.adj_split_only / after.adj_split_only
-              }));
+              .map(datum => _.mapObject({...datum,
+                adj: Big(datum.adj).div(after.adj),
+                adj_dividend_only: Big(datum.adj_dividend_only).div(after.adj_dividend_only),
+                adj_split_only: Big(datum.adj_split_only).div(after.adj_split_only)
+              }, num => _.isFinite(num) ? +num : num));
         }).should.eventually.be.like([
             {exdate:'2011-05-09',split:1/10,   cum_close:4.52,adj:9.99},
             {exdate:'2011-05-25',dividend:0.01,cum_close:40.51,adj:0.9992},
@@ -208,11 +209,11 @@ describe("adjustments", function() {
             var after = adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
             return adjustments
               .filter(datum => datum.exdate <= end)
-              .map(datum => _.extend(datum, {
-                adj: datum.adj / after.adj,
-                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
-                adj_split_only: datum.adj_split_only / after.adj_split_only
-              }));
+              .map(datum => _.mapObject({...datum,
+                adj: Big(datum.adj).div(after.adj),
+                adj_dividend_only: Big(datum.adj_dividend_only).div(after.adj_dividend_only),
+                adj_split_only: Big(datum.adj_split_only).div(after.adj_split_only)
+              }, num => _.isFinite(num) ? +num : num));
         }).should.eventually.be.like([{
             exdate: '2017-03-17',
             adj: 0.995668,
@@ -235,14 +236,14 @@ describe("adjustments", function() {
             var after = adjustments[idx] && adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
             return adjustments
               .filter(datum => datum.exdate <= end)
-              .map(datum => _.extend(datum, {
-                adj: datum.adj / after.adj,
-                adj_dividend_only: datum.adj_dividend_only / after.adj_dividend_only,
-                adj_split_only: datum.adj_split_only / after.adj_split_only
-              }));
+              .map(datum => _.mapObject({...datum,
+                adj: Big(datum.adj).div(after.adj),
+                adj_dividend_only: Big(datum.adj_dividend_only).div(after.adj_dividend_only),
+                adj_split_only: Big(datum.adj_split_only).div(after.adj_split_only)
+              }, num => _.isFinite(num) ? +num : num));
         }).should.eventually.be.like([
-            {exdate:"2018-11-14",split:1,dividend:0.35},
-            {exdate:"2018-11-27",split:1,dividend:5.898}
+            {exdate:"2018-11-14",split:1},
+            {exdate:"2018-11-27",split:1}
         ]);
     });
 });

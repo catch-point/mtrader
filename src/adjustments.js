@@ -216,9 +216,9 @@ async function adjustments(yahoo, db, symbol, options) {
                 split = Big(1);
             }
         }
-        // check if reverse split is enough for yahoo to change it dividends
-        if (split.lt(Big(1).div(3))) {
-            // AAPL.NASDAQ 2014-06-09 not anymore as of 2019-01-11
+        // check if split is large enough for yahoo to change it dividends
+        if (split.gte(3) || split.lt(Big(1).div(3))) {
+            // AAPL.NASDAQ 2014-06-09 not anymore as of 2019-01-11, but again in 2019-07-01
             // REM.ARCA 2016-11-07
             adj_yahoo_divs = adj_yahoo_divs.times(split);
         }
