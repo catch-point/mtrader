@@ -309,7 +309,7 @@ function accountUpdates(ib, store, ib_tz) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].fail(err);
-        } else if (info && info.id < 0) {
+        } else if (info && info.id < 0 && !isNormal(info)) {
             Object.keys(req_queue).forEach(id => req_queue[id].fail(err));
         }
     }).on('disconnected', () => {
@@ -480,7 +480,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                   .match(/CASH AVAILABLE: (\d+\.\d+); CASH NEEDED FOR THIS ORDER AND OTHER PENDING ORDERS: (\d+\.\d+)/);
                 // Only reduce quant if quant is whole number
                 const whole = +order.totalQuantity == Math.round(order.totalQuantity);
-                if (m && +order.totalQuantity && whole && oder.secType == 'STK') {
+                if (m && +order.totalQuantity && whole && order.secType == 'STK') {
                     const [, avail, needed] = m;
                     const totalQuantity = Math.floor(order.totalQuantity * avail / needed);
                     if (+totalQuantity != +totalQuantity) {
@@ -763,7 +763,7 @@ function execDetails(ib, store) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].reject(err);
-        } else if (info && info.id < 0) {
+        } else if (!isNormal(info) && info && info.id < 0) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
     }).on('disconnected', () => {
@@ -815,7 +815,7 @@ function execDetails(ib, store) {
                 executions.push(exe);
                 return executions;
             }, []);
-            return req_queue[reqId].resolve(executions);
+            if (req_queue[reqId]) return req_queue[reqId].resolve(executions);
         })().catch(err => req_queue[reqId] ? req_queue[reqId].reject(err) : logger.error(err));
     });
     return {
