@@ -95,7 +95,19 @@ describe("parser", function() {
         expect(parser.parse('5 × 5 / (2 + 3) / 5')()).to.equal(1);
     });
     it("MOD", function() {
-        expect(parser.parse('6 % 5')()).to.equal(1);
+        expect(parser.parse('9 % 5')()).to.equal(4);
+        expect(parser.parse('2 * (9 % 5)')()).to.equal(8);
+        expect(new Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return parser.parse(expr);
+            }
+        }).parse('2 * (9 % 5)')()).to.equal(8);
     });
     it("NEGATIVE", function() {
         expect(parser.parse('5 × -(2 + 3)')()).to.equal(-25);

@@ -205,8 +205,8 @@ function serialize(expr) {
             const aop = operators[_.first(arg)];
             if (!_.isArray(arg) || !aop || aop.priority < operator.priority)
                 return serialize(arg);
-            else if (aop.priority == operator.priority && operator.associative)
-                return serialize(arg); // 1 * 2 / 3 or 1 + 2 - 3
+            else if (aop.priority == operator.priority && operator.associative && typeof aop.associative == 'boolean')
+                return serialize(arg); // 1 * 2 / 3 or 1 + 2 - 3, but not 2 * (3%4)
             else if (aop == operator && operator.associative)
                 return serialize(arg); // 1 != 2 AND 3 != 4 AND 5
             else return '(' + serialize(arg) + ')';
