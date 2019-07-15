@@ -167,8 +167,8 @@ if [ -x "$(which unzip)" ]; then
 fi
 if [ "$INSTALL_IBG" = "Y" -o "$INSTALL_IBG" = "y" -o "$INSTALL_IBG" = "YES" -o "$INSTALL_IBG" = "yes" ]; then
   INSTALL_IBG="Y"
-  IBG_INSTALLER="$PREFIX/bin/ibgateway-stable-standalone-linux-x64.sh"
-  IBG_URL="https://download2.interactivebrokers.com/installers/ibgateway/stable-standalone/ibgateway-stable-standalone-linux-x64.sh"
+  IBG_URL="https://download2.interactivebrokers.com/installers/ibgateway/latest-standalone/ibgateway-latest-standalone-linux-x64.sh"
+  IBG_INSTALLER="$PREFIX/bin/$(basename "$IBG_URL")"
   wget "$IBG_URL" -O "$IBG_INSTALLER"
   yes n|sudo -iu "$DAEMON_USER" sh "$IBG_INSTALLER" -c -q -overwrite
 fi
@@ -443,8 +443,13 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
       .split(/\s*(\r|\n)\s*/).filter(line => line.trim() && line.charAt(0) != '#');
     var ibg_version = '$IBG_VERSION';
     var ibg_name = '$IBG_NAME' || ibg_version;
-    var ibc_command = ['$JAVA_EXE', '-cp', '$IBG_JARS'].concat(vmargs, ['$IBC_ENTRY_POINT']);
     var ibg_previous = '$IBG_PREVIOUS';
+    var installs = json.ibgateway_installs||[];
+    var previous = installs.find(ibg => ibg.ibg_version == ibg_previous)||{};
+    var existing = installs.find(ibg => ibg.ibg_version == ibg_version)||{};
+    var pre_ibc_command = (existing.ibc_command || previous.ibc_command || []);
+    var pre_java = pre_ibc_command.slice(0, pre_ibc_command.findIndex(cmd => ~cmd.indexOf('bin/java'))+1).slice(0,-1);
+    var ibc_command = pre_java.concat(['$JAVA_EXE', '-cp', '$IBG_JARS'], vmargs, ['$IBC_ENTRY_POINT']);
     var broker_ibg = (((json||{}).broker||{}).ib||{}).ibg_version||'';
     if (broker_ibg == ibg_previous) {
       Object.assign(json, {
@@ -465,9 +470,6 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
     if (ivolatility_ibg == ibg_previous) {
       Object.assign(json.fetch.ivolatility.ib, {ibg_version});
     }
-    var installs = json.ibgateway_installs||[];
-    var previous = installs.find(ibg => ibg.ibg_version == ibg_previous)||{};
-    var existing = installs.find(ibg => ibg.ibg_version == ibg_version)||{};
     if (!existing.ibc_command || existing.ibc_command[0] == ibc_command[0]) {
       var ibgateway = {
         ibg_name,
