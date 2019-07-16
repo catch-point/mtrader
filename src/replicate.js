@@ -181,8 +181,8 @@ async function replicate(broker, collect, lookup, options) {
         const quant_threshold = getQuantThreshold(w, options);
         const update = updateWorking(d, w, _.defaults({quant_threshold}, options));
         if (!update.length) return orders;
-        logger.debug("replicate", "working", working[contract]);
-        logger.debug("replicate", "desired", desired[contract]);
+        logger.debug("replicate", "working", working[contract] || Object.keys(working));
+        logger.debug("replicate", "desired", desired[contract] || Object.keys(desired));
         logger.debug("replicate", "change", update);
         const cancelled = update.filter(ord => ord.action == 'cancel');
         if (update.length == cancelled.length) return orders.concat(cancelled);
@@ -383,7 +383,11 @@ function getPortfolio(markets, options, portfolio = []) {
 
 async function submitOrders(broker, broker_orders, orders, options) {
     const potential_combos = options.combo_order_types ?
-        orders.filter(ord => ~options.combo_order_types.indexOf(ord.order_type) && ord.security_type == 'OPT') : [];
+        orders.filter(ord => {
+            return ~options.combo_order_types.indexOf(ord.order_type) &&
+                ord.security_type == 'OPT' &&
+                ( ord.action == 'BUY' || ord.action == 'SELL' );
+        }) : [];
     const grouped = _.groupBy(potential_combos, ord => {
         return [
             ord.symbol.substring(0, 13), ord.market,

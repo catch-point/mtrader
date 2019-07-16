@@ -367,7 +367,7 @@ async function listOrders(markets, ib, settings, options) {
             const result = await promise;
             result.push({
                 action: leg.action,
-                quant: Big(order.remaining).times(leg.ratio).toString(),
+                quant: Big(order.remaining).div(ord.quant).div(leg.ratio).toString(),
                 order_type: 'LEG',
                 limit: ((order.orderComboLegs||[])[i]||{}).price || null,
                 stop: null,

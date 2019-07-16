@@ -483,9 +483,12 @@ function openOrders(ib, store, ib_tz, clientId) {
                 if (m && +order.totalQuantity && whole && order.secType == 'STK') {
                     const [, avail, needed] = m;
                     const totalQuantity = Math.floor(order.totalQuantity * avail / needed);
-                    if (+totalQuantity != +totalQuantity) {
+                    if (+totalQuantity != +order.totalQuantity) {
                         const contract = _.pick(order, 'conId', 'exchange', 'currency');
-                        const update = {...order, totalQuantity};
+                        const update = {
+                            ..._.omit(order, v => Number.isNaN(v) || v == Number.MAX_VALUE),
+                            totalQuantity
+                        };
                         logger.log('placeOrder', update.orderId, contract, update);
                         ib.placeOrder(update.orderId, contract, update);
                     }
@@ -958,6 +961,11 @@ function requestWithId(ib) {
                     setImmediate(() => {
                         delete req_queue[reqId];
                     });
+                },
+                retry(err) {
+                    req_queue[reqId].retry = req_queue[reqId].reject;
+                    logger.log(cmd, ...args, err.message);
+                    ib[cmd].call(ib, reqId, ...args);
                 }
             };
             logger.log(cmd, ...args.map(arg => {
@@ -968,7 +976,12 @@ function requestWithId(ib) {
     }, 50);
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
-            _.defer(() => ((req_queue[info.id]||{}).reject||logger.warn)(err));
+            _.delay(() => {
+                const req = req_queue[info.id] || {};
+                // E10197: connectivity problems or No market data during competing live session
+                const fn = info.code == 10197 && req.retry || req.reject || _.noop;
+                return fn(err);
+            }, info.code == 10197 ? 10000 : 0);
         } else if (info && info.id < 0 && !isNormal(info)) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
