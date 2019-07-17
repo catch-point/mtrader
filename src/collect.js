@@ -343,7 +343,7 @@ function compactPortfolio(fields, begin, end, options) {
         if (send && !send.isAfter(mbegin) || sbegin && !sbegin.isBefore(mend)) return null;
         const begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
         const end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
-        const compact = compactPortfolio(fields, begin, end, subcollect);
+        const compact = compactPortfolio(fields, begin, end, {...subcollect, now: options.now});
         if (compact.id != null) return compact;
         else return _.extend({id: 'c' + idx}, compact);
     }));
