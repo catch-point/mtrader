@@ -298,7 +298,7 @@
       "default_security_type": "STK",
       "datasources": {
         "yahoo": {
-          "exchs": ["LSE"],
+          "exchs": ["LSE", "YHD"],
           "marketLang": "en-GB",
           "yahooSuffix": ".L"
         },
