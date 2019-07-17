@@ -152,12 +152,18 @@ async function replicate(broker, collect, lookup, options) {
         now: options.now
     }) || options.now;
     const desired = await getDesiredPositions(broker, collect, lookup, begin, options);
+    const asof = _.reduce(desired, (asof, d) => {
+        if (asof.isBefore(d.asof)) return moment(d.asof);
+        else return asof;
+    }, moment(begin)).format();
+    logger.debug("replicate desired", asof || '', ...Object.keys(desired));
     const [broker_balances, broker_positions, broker_orders] = await Promise.all([
         broker({action: 'balances', now: options.now}),
         broker({action: 'positions', now: options.now}),
         broker({action: 'orders', now: options.now})
     ]);
     const working = getWorkingPositions(broker_positions, broker_orders, begin, options);
+    logger.debug("replicate working", ...Object.keys(working));
     const portfolio = _.uniq(Object.keys(desired).concat(getPortfolio(options.markets, options))).sort();
     logger.trace("replicate portfolio", ...portfolio);
     const margin_acct = !broker_balances.every(bal => bal.margin == null);
@@ -176,7 +182,7 @@ async function replicate(broker, collect, lookup, options) {
                 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick'
             )
         };
-        const d = desired[contract] || no_position;
+        const d = desired[contract] || {...no_position, asof};
         const w = working[contract] || no_position;
         const quant_threshold = getQuantThreshold(w, options);
         const update = updateWorking(d, w, _.defaults({quant_threshold}, options));
@@ -509,8 +515,7 @@ function updateWorking(desired, working, options) {
     const within = Math.abs(d_opened - w_opened) <= (options.quant_threshold || 0);
     const same_side = !desired.position || desired.position/Math.abs(+desired.position||1) != -1*working.position/Math.abs(+working.position||1);
     const ds_projected = ds && ds.status == 'pending';
-    if (ds && (ds.traded_at || ds.posted_at) && !working.prior && working.traded_at &&
-            moment(working.traded_at).isAfter(ds.traded_at || ds.posted_at)) {
+    if (!working.prior && working.traded_at && moment(working.traded_at).isAfter(desired.asof)) {
         if (d_opened != w_opened || !same_side) {
             // working position has since been closed (stoploss?) since the last desired signal was produced
             logger.warn(`Working ${desired.symbol} position has since been changed`);
@@ -728,7 +733,8 @@ function updateStoploss(pos, order, options) {
     } else if (isStopOrder(order)) {
         expect(order).to.have.property('stop').that.is.ok;
         const prior = pos.prior && isStopOrder(pos.order) ? pos.prior : pos;
-        return _.defaults({order: c2signal(order), prior}, pos);
+        const asof = order.traded_at || order.posted_at;
+        return _.defaults({order: c2signal(order), prior, asof}, pos);
     } else {
         return updatePosition(pos, order, options);
     }
@@ -751,7 +757,8 @@ function updatePosition(pos, order, options) {
 function updateParkUntilSecs(pos, order, options) {
     if ((order.traded_at || order.posted_at) && pos.order) {
         const ord = _.defaults(_.pick(order, 'traded_at', 'posted_at', 'status'), pos.order);
-        const updated = _.defaults({order: ord}, pos);
+        const asof = order.traded_at || order.posted_at;
+        const updated = _.defaults({order: ord, asof}, pos);
         return updateLimit(updated, order, options);
     } else {
         return updateLimit(pos, order, options);

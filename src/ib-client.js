@@ -944,7 +944,7 @@ function requestWithId(ib) {
         return new Promise((ready, fail) => {
             const reqId = nextval();
             const args = _.rest(_.toArray(arguments));
-            req_queue[reqId] = {
+            const req = req_queue[reqId] = {
                 reqId,
                 cmd: cmd,
                 args: args,
@@ -965,7 +965,7 @@ function requestWithId(ib) {
                     });
                 },
                 retry(err) {
-                    req_queue[reqId].retry = req_queue[reqId].reject;
+                    req.retry = req.reject;
                     logger.log(cmd, ...args, err.message);
                     ib[cmd].call(ib, reqId, ...args);
                 }
