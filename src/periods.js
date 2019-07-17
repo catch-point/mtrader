@@ -65,7 +65,9 @@ const m1 = {
     value: 'm1',
     millis: 60 * 1000,
     floor: function(ex, dateTime, amount) {
-        return moment.tz(dateTime, ex.tz).startOf('minute');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return point.startOf('minute');
     },
     ceil: function(ex, dateTime) {
         const start = m1.floor(ex, dateTime);
@@ -128,10 +130,14 @@ const m2 = {
     value: 'm2',
     millis: 2 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(Math.floor(moment(dateTime).valueOf() /2 /60 /1000) *2 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.floor(point.valueOf() /2 /60 /1000) *2 *60 *1000, ex.tz);
     },
     ceil: function(ex, dateTime) {
-        return moment.tz(Math.ceil(moment(dateTime).valueOf() /2 /60 /1000) *2 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.ceil(point.valueOf() /2 /60 /1000) *2 *60 *1000, ex.tz);
     },
     inc: function(ex, dateTime, amount) {
         return m1.inc(ex, m2.ceil(ex, dateTime), amount * 2);
@@ -150,10 +156,14 @@ const m5 = {
     value: 'm5',
     millis: 5 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(Math.floor(moment(dateTime).valueOf() /5 /60 /1000) *5 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.floor(point.valueOf() /5 /60 /1000) *5 *60 *1000, ex.tz);
     },
     ceil: function(ex, dateTime) {
-        return moment.tz(Math.ceil(moment(dateTime).valueOf() /5 /60 /1000) *5 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.ceil(point.valueOf() /5 /60 /1000) *5 *60 *1000, ex.tz);
     },
     inc: function(ex, dateTime, amount) {
         return m1.inc(ex, m5.ceil(ex, dateTime), amount * 5);
@@ -172,10 +182,14 @@ const m10 = {
     value: 'm10',
     millis: 10 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(Math.floor(moment(dateTime).valueOf() /10 /60 /1000) *10 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.floor(point.valueOf() /10 /60 /1000) *10 *60 *1000, ex.tz);
     },
     ceil: function(ex, dateTime) {
-        return moment.tz(Math.ceil(moment(dateTime).valueOf() /10 /60 /1000) *10 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.ceil(point.valueOf() /10 /60 /1000) *10 *60 *1000, ex.tz);
     },
     inc: function(ex, dateTime, amount) {
         return m1.inc(ex, m10.ceil(ex, dateTime), amount * 10);
@@ -194,10 +208,14 @@ const m15 = {
     value: 'm15',
     millis: 15 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(Math.floor(moment(dateTime).valueOf() /15 /60 /1000) *15 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.floor(point.valueOf() /15 /60 /1000) *15 *60 *1000, ex.tz);
     },
     ceil: function(ex, dateTime) {
-        return moment.tz(Math.ceil(moment(dateTime).valueOf() /15 /60 /1000) *15 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.ceil(point.valueOf() /15 /60 /1000) *15 *60 *1000, ex.tz);
     },
     inc: function(ex, dateTime, amount) {
         return m1.inc(ex, m15.ceil(ex, dateTime), amount * 15);
@@ -216,10 +234,14 @@ const m20 = {
     value: 'm20',
     millis: 20 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(Math.floor(moment(dateTime).valueOf() /20 /60 /1000) *20 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.floor(point.valueOf() /20 /60 /1000) *20 *60 *1000, ex.tz);
     },
     ceil: function(ex, dateTime) {
-        return moment.tz(Math.ceil(moment(dateTime).valueOf() /20 /60 /1000) *20 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.ceil(point.valueOf() /20 /60 /1000) *20 *60 *1000, ex.tz);
     },
     inc: function(ex, dateTime, amount) {
         return m1.inc(ex, m20.ceil(ex, dateTime), amount * 20);
@@ -238,10 +260,14 @@ const m30 = {
     value: 'm30',
     millis: 30 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(Math.floor(moment(dateTime).valueOf() /30 /60 /1000) *30 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.floor(point.valueOf() /30 /60 /1000) *30 *60 *1000, ex.tz);
     },
     ceil: function(ex, dateTime) {
-        return moment.tz(Math.ceil(moment(dateTime).valueOf() /30 /60 /1000) *30 *60 *1000, ex.tz);
+        const point = moment(dateTime);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return moment.tz(Math.ceil(point.valueOf() /30 /60 /1000) *30 *60 *1000, ex.tz);
     },
     inc: function(ex, dateTime, amount) {
         return m1.inc(ex, m30.ceil(ex, dateTime), amount * 30);
@@ -260,7 +286,9 @@ const m60 = {
     value: 'm60',
     millis: 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(dateTime, ex.tz).startOf('hour');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return point.startOf('hour');
     },
     ceil: function(ex, dateTime) {
         const start = m60.floor(ex, dateTime);
@@ -488,7 +516,9 @@ const day = {
     value: 'day',
     millis: 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(dateTime, ex.tz).startOf('day');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return point.startOf('day');
     },
     ceil: function(ex, dateTime) {
         const start = day.floor(ex, dateTime);
@@ -542,7 +572,9 @@ const week = {
     value: 'week',
     millis: 7 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(dateTime, ex.tz).startOf('isoweek');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return point.startOf('isoweek');
     },
     ceil: function(ex, dateTime) {
         const start = moment.tz(dateTime, ex.tz).startOf('isoweek');
@@ -568,10 +600,14 @@ const month = {
     value: 'month',
     millis: 31 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(dateTime, ex.tz).startOf('month');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return point.startOf('month');
     },
     ceil: function(ex, dateTime) {
-        const start = moment.tz(dateTime, ex.tz).startOf('month');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        const start = point.startOf('month');
         if (start.valueOf() < moment(dateTime).valueOf())
             return start.month(start.month() + 1);
         return start;
@@ -594,7 +630,9 @@ const quarter = {
     value: 'quarter',
     millis: 3 * 31 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(dateTime, ex.tz).startOf('quarter');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return point.startOf('quarter');
     },
     ceil: function(ex, dateTime) {
         const start = quarter.floor(ex, dateTime);
@@ -623,7 +661,9 @@ const year = {
     value: 'year',
     millis: 365 * 24 * 60 * 60 * 1000,
     floor: function(ex, dateTime) {
-        return moment.tz(dateTime, ex.tz).startOf('year');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return point.startOf('year');
     },
     ceil: function(ex, dateTime) {
         const start = year.floor(ex, dateTime);
@@ -632,10 +672,14 @@ const year = {
         return start;
     },
     inc: function(ex, dateTime, amount) {
-        return moment.tz(dateTime, ex.tz).add(amount, 'years');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return point.add(amount, 'years');
     },
     dec: function(ex, dateTime, amount) {
-        return moment.tz(dateTime, ex.tz).subtract(amount, 'years');
+        const point = moment.tz(dateTime, ex.tz);
+        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+        return point.subtract(amount, 'years');
     },
     diff: function(ex, to, from) {
         const start = moment.tz(from, ex.tz);
