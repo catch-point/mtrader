@@ -467,8 +467,10 @@ function openOrders(ib, store, ib_tz, clientId) {
     }, 10*60*1000); // 10m
     ib.on('error', function (err, info) {
         if (info && info.id && placing_orders[info.id]) {
-            placing_orders[info.id].fail(err);
-            delete placing_orders[info.id];
+            if (info.code != 481) { // Order size was reduced warning
+                placing_orders[info.id].fail(err);
+                delete placing_orders[info.id];
+            }
         } else if (info && info.id && cancelling_orders[info.id]) {
             cancelling_orders[info.id].fail(err);
             delete cancelling_orders[info.id];
