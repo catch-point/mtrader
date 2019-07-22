@@ -281,7 +281,7 @@ if [ "$(id -u)" = "0" -a "$PORT" -lt 1024 ]; then
   setcap 'cap_net_bind_service=+ep' $(readlink -f $(which node))
 fi
 
-if [ "`tty`" == "not a tty" ]; then
+if [ "`tty`" = "not a tty" ]; then
   CERTBOT_OPTS="-n --agree-tos --register-unsafely-without-email"
 fi
 

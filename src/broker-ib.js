@@ -775,7 +775,7 @@ async function listContractPositions(markets, ib, fetch, contract, pos, executio
 }
 
 function changePosition(multiplier, prev_bar, details, bar, position) {
-    const adj = Big(bar.close).div(bar.adj_close);
+    const adj = Big(bar.close).div(+bar.adj_close || +bar.close || 1);
     const dividend = +Big(prev_bar.close).minus(Big(prev_bar.adj_close).times(adj)).toFixed(8);
     const ending_value = Big(position).times(bar.close).times(multiplier);
     const quant = details.reduce((shares, exe) => shares + +exe.shares, 0);
