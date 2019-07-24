@@ -737,6 +737,7 @@
           "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
           "listed_markets": ["COMEX_GBX"],
           "dtnPrefixMap": {
+            "HG": "QHG",
             "GC": "QGC",
             "MGC": "QMGC"
           }
@@ -748,6 +749,7 @@
         },
         "collective2": {
           "c2_map": {
+            "HG": "QHG",
             "GC": "QGC",
             "MGC": "QMGC"
           },
