@@ -299,7 +299,7 @@ const functions = module.exports.functions = {
  */
 function adj(bars) {
     const last = _.last(bars);
-    if (!last.adj_close) return bars;
+    if (!last || !last.adj_close) return bars;
     const norm = +last.adj_close ? Big(last.close).div(last.adj_close) : 1;
     return bars.map(bar => {
         const scale = +bar.close ? Big(bar.adj_close).div(bar.close).times(norm) : norm;

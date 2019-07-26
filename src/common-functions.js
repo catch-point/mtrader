@@ -426,7 +426,9 @@ const functions = module.exports.functions = {
             const b1 = b(context);
             return a1 > b1 || b1 == null ? a1 : b1;
         }; else return context => {
-            return _.max(numbers.map(num => num(context)));
+            const result = _.max(numbers.map(num => num(context)));
+            if (result == -Infinity) return null;
+            else return result;
         };
     },
     MIN(opts, a, b) {
@@ -445,7 +447,9 @@ const functions = module.exports.functions = {
             const b1 = b(context);
             return a1 < b1 || b1 == null ? a1 : b1;
         }; else return context => {
-            return _.min(numbers.map(num => num(context)));
+            const result = _.min(numbers.map(num => num(context)));
+            if (result == Infinity) return null;
+            else return result;
         };
     },
     /* Returns the sign of a number. Returns 1 if the number is positive, -1 if negative and 0 if zero. */
@@ -617,7 +621,7 @@ const functions = module.exports.functions = {
         };
         else return context => {
             const divisor = d(context);
-            if (!divisor) return null;
+            if (!+divisor) return null;
             else return z(Big(n(context)||0).div(divisor), opts);
         };
     },
@@ -628,7 +632,7 @@ const functions = module.exports.functions = {
         };
         return context => {
             const d = divisor(context);
-            if (!d) return null;
+            if (!+d) return null;
             else return z(Big(number(context)||0).mod(d), opts);
         };
     },
@@ -735,7 +739,7 @@ const functions = module.exports.functions = {
         };
         else return bars => {
             const d = den(bars);
-            if (!d) return null;
+            if (!+d) return null;
             return z(Big(target(bars)||0).minus(reference(bars)||0).times(100).div(d).round(2), opts);
         };
     }
@@ -747,7 +751,10 @@ _.forEach(functions, fn => {
 
 function z(big, opts) {
     if (!big) return big;
-    else if (typeof big == 'number') return big;
+    else if (typeof big == 'number' && Number.isFinite(big)) return big;
+    else if (typeof big == 'number' && Number.MAX_VALUE < big) return Number.MAX_VALUE;
+    else if (typeof big == 'number' && big < Number.MIN_VALUE) return Number.MIN_VALUE;
+    else if (typeof big == 'number') return null;
     else if (!(big instanceof Big)) return big;
     else if (big.c[0] == 0) return +big; // zero
     else if (opts && opts.high_precision) return big; // high precision number
