@@ -739,7 +739,8 @@
           "dtnPrefixMap": {
             "HG": "QHG",
             "GC": "QGC",
-            "MGC": "QMGC"
+            "MGC": "QMGC",
+            "SI": "QSI"
           }
         },
         "ib": {
@@ -877,6 +878,30 @@
           "whatToShow": "TRADES",
           "secType": "FUT",
           "exchange": "CFE"
+        },
+        "collective2": {
+          "c2_prefix": "@",
+          "instrument": "future"
+        }
+      }
+    },
+    "ICE": {
+      "description": "Intercontinental Exchange",
+      "trading_hours": "20:00:00 - 17:00:00",
+      "liquid_hours": "20:00:00 - 17:00:00",
+      "market_tz": "America/New_York",
+      "currency": "USD",
+      "default_security_type": "FUT",
+      "datasources": {
+        "iqfeed": {
+          "dtnPrefix": "@",
+          "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPREAD", "STRATSPREAD"],
+          "listed_markets": ["ICEEA", "ICEEC", "ICEEF", "ICEENDEX", "ICEFC", "ICEFU"]
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "FUT",
+          "exchange": "NYBOT"
         },
         "collective2": {
           "c2_prefix": "@",
