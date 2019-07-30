@@ -235,8 +235,8 @@ async function getDesiredPositions(broker, collect, lookup, begin, options) {
             security_type: security_type || contract.security_type || 'STK',
             multiplier: row.multiplier || contract.multiplier || options.default_multiplier,
             minTick: row.minTick || options.minTick,
-            order_type: row.order_type || options.default_order_type ||
-                (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT'),
+            order_type: row.order_type || a && options.default_order_type ||
+                a && (+row.limit ? 'LMT' : +row.stop ? 'STP' : 'MKT') || null,
             limit: row.limit,
             offset: row.offset,
             stop: row.stop,
@@ -716,7 +716,7 @@ function advance(pos, order, options) {
 }
 
 function updateStoploss(pos, order, options) {
-    if (order.quant === 0 && (order.traded_at || order.posted_at) &&
+    if (!+order.quant && (order.traded_at || order.posted_at) &&
             moment(order.traded_at || order.posted_at).isAfter(options.now)) {
         return pos; // don't update order adjustement limits if in the future
     } else if (order.stoploss) {
@@ -842,6 +842,5 @@ function sortOrders(orders) {
 }
 
 function isStopOrder(order) {
-    expect(order).to.have.property('order_type').that.is.ok;
-    return ~order.order_type.indexOf('STP');
+    return ~(order.order_type||'').indexOf('STP');
 }
