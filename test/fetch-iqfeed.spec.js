@@ -197,13 +197,13 @@ describe("fetch-iqfeed", function() {
                 });
             }));
         });
-        describe("should lookup COMEX futures symbols", function() {
+        describe("should lookup NYMEX futures symbols", function() {
             _.range((moment().year()+1)%100,(moment().year()+5)%100).map(year => ['M','Z'].map(mo => {
                 it(`GC${mo}${year}`, function() {
                     return client({
                         interval:'lookup',
                         symbol: `GC${mo}${year}`,
-                        market: "COMEX"
+                        market: "NYMEX"
                     })
                       .then(array => array.filter(item => item.symbol == `GC${mo}${year}`))
                       .should.eventually.be.like([{symbol: `GC${mo}${year}`}]);

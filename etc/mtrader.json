@@ -725,17 +725,18 @@
         }
       }
     },
-    "COMEX": {
-      "description": "Commodity Exchange, a division of the New York Mercantile Exchange",
-      "trading_hours": "18:00:00 - 17:00:00",
-      "liquid_hours": "09:30:00 - 17:00:00",
+    "NYMEX": {
+      "description": "New York Mercantile Exchange",
+      "trading_hours": "00:00:00 - 24:00:00",
+      "liquid_hours": "18:00:00 - 17:00:00",
       "market_tz": "America/New_York",
       "currency": "USD",
       "default_security_type": "FUT",
       "datasources": {
         "iqfeed": {
-          "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
-          "listed_markets": ["COMEX_GBX"],
+          "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPOT", "SPREAD", "STRATSPREAD", "IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
+          "listed_markets": ["CLEARPORT", "NYMEX", "NYMEX_GBX", "NYMEXMINI", "COMEX_GBX"],
+          "dtnPrefix": "@",
           "dtnPrefixMap": {
             "HG": "QHG",
             "GC": "QGC",
@@ -749,35 +750,13 @@
           "exchange":"NYMEX"
         },
         "collective2": {
+          "c2_prefix": "@",
           "c2_map": {
             "HG": "QHG",
             "GC": "QGC",
-            "MGC": "QMGC"
+            "MGC": "QMGC",
+            "SI": "QSI"
           },
-          "instrument": "future"
-        }
-      }
-    },
-    "NYMEX": {
-      "description": "New York Mercantile Exchange",
-      "trading_hours": "00:00:00 - 24:00:00",
-      "liquid_hours": "18:00:00 - 17:00:00",
-      "market_tz": "America/New_York",
-      "currency": "USD",
-      "default_security_type": "FUT",
-      "datasources": {
-        "iqfeed": {
-          "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPOT", "SPREAD", "STRATSPREAD", "STRIP"],
-          "listed_markets": ["CLEARPORT", "NYMEX", "NYMEX_GBX", "NYMEXMINI"],
-          "dtnPrefix": "@"
-        },
-        "ib": {
-          "whatToShow": "TRADES",
-          "secType": "FUT",
-          "exchange":"NYMEX"
-        },
-        "collective2": {
-          "c2_prefix": "@",
           "instrument": "future"
         }
       }

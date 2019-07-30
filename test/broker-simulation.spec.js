@@ -481,12 +481,12 @@ describe("broker-simulation", function() {
             });
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOC', tif: 'DAY'
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOC', tif: 'DAY'
             });
             await broker({asof: '2016-10-03T17:00:00-04:00', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-03T17:00:00-04:00',
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOC', tif: 'DAY',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOC', tif: 'DAY',
                 status: 'working', currency: 'USD', security_type: 'FUT', multiplier: 100
             }]);
             await broker({asof: '2016-10-03T17:00:00-04:00', action: 'positions'})
@@ -504,22 +504,22 @@ describe("broker-simulation", function() {
             });
             const orders = await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY',
                 attached: [{
                     asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                    action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', order_type: 'LMT', tif: 'GTC',
+                    action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'NYMEX', order_type: 'LMT', tif: 'GTC',
                     limit: 120
                 }]
             });
             await broker({asof: '2016-10-03T17:00:00-04:00', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-03T17:00:00-04:00',
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY',
                 status: 'working', currency: 'USD', security_type: 'FUT', multiplier: 100,
                 order_ref: _.first(orders).order_ref
             }, {
                 asof: '2016-10-03T17:00:00-04:00',
-                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', order_type: 'LMT', tif: 'GTC',
+                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'NYMEX', order_type: 'LMT', tif: 'GTC',
                 status: 'pending', multiplier: 100,
                 attach_ref: _.first(orders).order_ref
             }]);
@@ -539,19 +539,19 @@ describe("broker-simulation", function() {
             const order_ref = 'sell-gc';
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY',
                 order_ref
             });
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', order_type: 'LMT', tif: 'GTC',
+                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'NYMEX', order_type: 'LMT', tif: 'GTC',
                 limit: 120,
                 attach_ref: order_ref
             });
             await broker({asof: '2016-10-05', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-04T17:00:00-04:00',
-                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', order_type: 'LMT', tif: 'GTC',
+                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'NYMEX', order_type: 'LMT', tif: 'GTC',
                 status: 'working', currency: 'USD', security_type: 'FUT', multiplier: 100,
                 limit: 120
             }]);
@@ -563,7 +563,7 @@ describe("broker-simulation", function() {
                 traded_price: '1315', price: 1269.7,
                 sales: 0, purchases: 0, dividend: '0.00', commission: '4.10',
                 mtm: 2*131500-2*126970-4.10, value: -2*126970,
-                symbol: 'GCZ16', market: 'COMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
+                symbol: 'GCZ16', market: 'NYMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
             }]);
             await broker({asof: '2016-10-04T17:00:00-04:00', action: 'balances'})
               .should.eventually.be.like([{
@@ -579,7 +579,7 @@ describe("broker-simulation", function() {
             const order_ref = 'sell-gold';
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY',
                 order_ref
             });
             await broker({
@@ -588,12 +588,12 @@ describe("broker-simulation", function() {
             });
             await broker({
                 asof: '2016-10-04T17:00:00-04:00', multiplier: 100,
-                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOC', tif: 'DAY'
+                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOC', tif: 'DAY'
             });
             await broker({asof: '2016-10-04T17:00:00-04:00', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-04T17:00:00-04:00',
-                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOC', tif: 'DAY',
+                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOC', tif: 'DAY',
                 status: 'working', currency: 'USD', security_type: 'FUT', multiplier: 100
             }]);
             await broker({asof: '2016-10-04T17:00:00-04:00', action: 'positions'})
@@ -613,24 +613,24 @@ describe("broker-simulation", function() {
             const order_ref = 'sell-gold';
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY',
                 order_ref
             });
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', order_type: 'STP', tif: 'GTC',
+                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'NYMEX', order_type: 'STP', tif: 'GTC',
                 stop: 120,
                 attach_ref: order_ref
             });
             await broker({asof: '2016-10-03T17:00:00-04:00', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-03T17:00:00-04:00',
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY',
                 status: 'working', currency: 'USD', security_type: 'FUT', multiplier: 100,
                 order_ref: order_ref
             }, {
                 asof: '2016-10-03T17:00:00-04:00',
-                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'COMEX', order_type: 'STP', tif: 'GTC',
+                action: 'BUY', quant: 4, symbol: 'GCZ16', market: 'NYMEX', order_type: 'STP', tif: 'GTC',
                 status: 'pending', currency: 'USD', security_type: 'FUT', multiplier: 100,
                 stop: 120,
                 attach_ref: order_ref
@@ -650,23 +650,23 @@ describe("broker-simulation", function() {
             });
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY'
+                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY'
             });
             const stp = await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'STP', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'STP', tif: 'GTC',
                 stop: 1350
             });
             await broker({
                 asof: '2016-10-04T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'STP', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'STP', tif: 'GTC',
                 stop: 1300,
                 order_ref: stp[0].order_ref
             });
             await broker({asof: '2016-10-05', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-04T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'STP', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'STP', tif: 'GTC',
                 stop: 1300,
                 order_ref: stp[0].order_ref
             }]);
@@ -678,7 +678,7 @@ describe("broker-simulation", function() {
                 traded_price: '1315', price: 1269.7,
                 sales: 0, purchases: 0, dividend: '0.00', commission: '4.10',
                 mtm: '-9064.10', value: '253940.00',
-                symbol: 'GCZ16', market: 'COMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
+                symbol: 'GCZ16', market: 'NYMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
             }]);
             await broker({asof: '2016-10-04T17:00:00-04:00', action: 'balances'})
               .should.eventually.be.like([{
@@ -918,26 +918,26 @@ describe("broker-simulation", function() {
             });
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY'
+                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY'
             });
             const sell = await broker({
                 asof: '2016-10-05', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOC', tif: 'GTC'
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOC', tif: 'GTC'
             });
             await broker({
                 asof: '2016-10-05', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOO', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOO', tif: 'GTC',
                 attach_ref: sell[0].order_ref
             });
             // first day
             await broker({asof: '2016-10-05', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-05T00:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOC', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOC', tif: 'GTC',
                 order_ref: sell[0].order_ref
             }, {
                 asof: '2016-10-05T00:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOO', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOO', tif: 'GTC',
                 attach_ref: sell[0].order_ref
             }]);
             await broker({asof: '2016-10-05', action: 'positions'})
@@ -948,7 +948,7 @@ describe("broker-simulation", function() {
                 traded_price: '1315', price: 1269.7,
                 sales: 0, purchases: 0, dividend: '0.00', commission: '4.10',
                 mtm: '-9064.10', value: '253940.00',
-                symbol: 'GCZ16', market: 'COMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
+                symbol: 'GCZ16', market: 'NYMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
             }]);
             await broker({asof: '2016-10-05', action: 'balances'})
               .should.eventually.be.like([{
@@ -959,7 +959,7 @@ describe("broker-simulation", function() {
             await broker({asof: '2016-10-06', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-05T17:00:00-04:00', currency: 'USD', security_type: 'FUT', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOO', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOO', tif: 'GTC',
                 attach_ref: sell[0].order_ref
             }]);
             await broker({asof: '2016-10-06', action: 'positions'})
@@ -970,7 +970,7 @@ describe("broker-simulation", function() {
                 traded_price: '1268.6', price: 1268.6,
                 sales: 0, purchases: 0, dividend: '0.00', commission: '4.10',
                 mtm: '-224.10', value: '0.00',
-                symbol: 'GCZ16', market: 'COMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
+                symbol: 'GCZ16', market: 'NYMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
             }]);
             await broker({asof: '2016-10-06', action: 'balances'})
               .should.eventually.be.like([{
@@ -981,14 +981,14 @@ describe("broker-simulation", function() {
             await broker({begin: '2016-10-04', asof: '2016-10-06', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-04T17:00:00-04:00', multiplier: 100,
-                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY'
+                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY'
             }, {
                 asof: '2016-10-05T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOC', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOC', tif: 'GTC',
                 order_ref: sell[0].order_ref
             }, {
                 asof: '2016-10-05T17:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MOO', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MOO', tif: 'GTC',
                 attach_ref: sell[0].order_ref
             }]);
             await broker({begin: '2016-10-04', asof: '2016-10-06', action: 'positions'})
@@ -999,7 +999,7 @@ describe("broker-simulation", function() {
                 traded_price: '1315', price: 1269.7,
                 sales: 0, purchases: 0, dividend: '0.00', commission: '4.10',
                 mtm: '-9064.10', value: '253940.00',
-                symbol: 'GCZ16', market: 'COMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
+                symbol: 'GCZ16', market: 'NYMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
             }, {
                 asof: '2016-10-05T17:00:00-04:00',
                 action: 'STC', quant: 2, position: 0,
@@ -1007,7 +1007,7 @@ describe("broker-simulation", function() {
                 traded_price: '1268.6', price: 1268.6,
                 sales: 0, purchases: 0, dividend: '0.00', commission: '4.10',
                 mtm: '-224.10', value: '0.00',
-                symbol: 'GCZ16', market: 'COMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
+                symbol: 'GCZ16', market: 'NYMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
             }]);
             await broker({begin: '2016-10-04', asof: '2016-10-06', action: 'balances'})
               .should.eventually.be.like([{
@@ -1025,21 +1025,21 @@ describe("broker-simulation", function() {
             });
             await broker({
                 asof: '2016-10-03T17:00:00-04:00', multiplier: 100,
-                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'DAY'
+                action: 'BUY', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'DAY'
             });
             const sell = await broker({
                 asof: '2016-10-05', multiplier: 100,
-                action: 'SELL', quant: 1, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'GTC'
+                action: 'SELL', quant: 1, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'GTC'
             });
             await broker({
                 asof: '2016-10-05', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'GTC',
                 order_ref: sell[0].order_ref
             });
             await broker({asof: '2016-10-05', action: 'orders'})
               .should.eventually.be.like([{
                 asof: '2016-10-05T00:00:00-04:00', multiplier: 100,
-                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'COMEX', order_type: 'MKT', tif: 'GTC',
+                action: 'SELL', quant: 2, symbol: 'GCZ16', market: 'NYMEX', order_type: 'MKT', tif: 'GTC',
                 order_ref: sell[0].order_ref
             }]);
             await broker({asof: '2016-10-05', action: 'positions'})
@@ -1050,7 +1050,7 @@ describe("broker-simulation", function() {
                 traded_price: '1315', price: 1269.7,
                 sales: 0, purchases: 0, dividend: '0.00', commission: '4.10',
                 mtm: '-9064.10', value: '253940.00',
-                symbol: 'GCZ16', market: 'COMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
+                symbol: 'GCZ16', market: 'NYMEX', currency: 'USD', security_type: 'FUT', multiplier: 100
             }]);
             await broker({asof: '2016-10-05', action: 'balances'})
               .should.eventually.be.like([{
