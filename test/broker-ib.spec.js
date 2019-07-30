@@ -213,7 +213,7 @@ describe("broker-ib", function() {
             market: 'ARCA',
             currency: 'USD',
             security_type: 'STK',
-            attch_ref: '' } ]);
+            attach_ref: '' } ]);
         await broker.close();
     });
     it("should submit order", async() => {
@@ -979,7 +979,7 @@ describe("broker-ib", function() {
             currency: 'USD',
             security_type: 'FUT',
             multiplier: '5',
-            attch_ref: '' } ]);
+            attach_ref: '' } ]);
         await broker.close();
     });
     it("should submit BUY Call SNAP STK MID offset options order", async() => {

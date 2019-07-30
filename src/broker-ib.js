@@ -356,7 +356,7 @@ async function listOrders(markets, ib, settings, options) {
         const working = ~open_orders.indexOf(order);
         result.push({...ord,
             quant: working ? order.remaining : order.totalQuantity,
-            attch_ref: bag ? order.orderRef || order.permId :
+            attach_ref: bag ? order.orderRef || order.permId :
                 parent ? parent.orderRef|| parent.permId : order.ocaGroup,
             symbol: bag ? null : asSymbol(order),
             market: bag ? null : await asMarket(markets, ib, order)
