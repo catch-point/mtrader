@@ -753,10 +753,12 @@ function z(big, opts) {
     if (!big) return big;
     else if (typeof big == 'number' && Number.isFinite(big)) return big;
     else if (typeof big == 'number' && Number.MAX_VALUE < big) return Number.MAX_VALUE;
-    else if (typeof big == 'number' && big < Number.MIN_VALUE) return Number.MIN_VALUE;
+    else if (typeof big == 'number' && big < -Number.MAX_VALUE) return -Number.MAX_VALUE;
     else if (typeof big == 'number') return null;
     else if (!(big instanceof Big)) return big;
     else if (big.c[0] == 0) return +big; // zero
     else if (opts && opts.high_precision) return big; // high precision number
+    else if (big.gt(Number.MAX_VALUE)) return Number.MAX_VALUE;
+    else if (big.lt(-Number.MAX_VALUE)) return -Number.MAX_VALUE;
     else return +big; // non-zero number
 }
