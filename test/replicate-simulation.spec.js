@@ -92,7 +92,7 @@ describe("replicate-simulation", function() {
             fetch.close()
         ]);
     });
-    describe("TSE", function() {
+    describe("Stocks", function() {
         it("Open and Close ENB", async() => {
             return replicate(function(options) {
                 if (options.help) return collect(options);
@@ -600,6 +600,184 @@ describe("replicate-simulation", function() {
                 traded_at: '2019-06-04T16:00:00-04:00',
                 traded_price: '20.755'
             }]);
+        });
+        it("Reduce HYMB", async() => {
+            return Replicate(async(options) => {
+                    switch (options.help ? 'help' : options.action) {
+                        case 'help':
+                            return broker({help:true});
+                        case 'balances':
+                            return Promise.resolve([
+                                { currency: 'USD', net: '100000', rate: '1' }
+                            ]);
+                        case 'positions':
+                            return Promise.resolve([{
+                                asof: '2019-07-31T16:00:00-04:00',
+                                acctNumber: 'U1664535',
+                                sales: '0.00',
+                                purchases: '0.00',
+                                symbol: 'HYMB',
+                                market: 'ARCA',
+                                currency: 'USD',
+                                security_type: 'STK',
+                                multiplier: '',
+                                action: 'LONG',
+                                quant: null,
+                                position: 538,
+                                traded_at: null,
+                                traded_price: null,
+                                price: 58.63,
+                                dividend: '0.00',
+                                commission: '0.00',
+                                mtm: 2.14,
+                                value: '6273.41'
+                            }]);
+                        case 'orders':
+                            return Promise.resolve([{
+                                posted_at: '2019-08-01T11:30:03-04:00',
+                                asof: '2019-08-01T15:48:27-04:00',
+                                action: 'SELL',
+                                quant: '194',
+                                order_type: 'LOC',
+                                limit: '58.25',
+                                tif: 'DAY',
+                                status: 'working',
+                                order_ref: 'LOC.820c38d8.22',
+                                attach_ref: '',
+                                account: 'MKSTK',
+                                symbol: 'HYMB',
+                                market: 'ARCA',
+                                currency: 'USD',
+                                security_type: 'STK',
+                                multiplier: ''
+                            }]);
+                        case 'SELL':
+                            options.should.be.like({
+                                quant: 538-177,
+                                order_ref: 'LOC.820c38d8.22',
+                                attach_ref: '',
+                                action: 'SELL',
+                                symbol: 'HYMB',
+                                market: 'ARCA',
+                                currency: 'USD',
+                                security_type: 'STK',
+                                order_type: 'LOC',
+                                limit: '58.25',
+                                tif: 'DAY',
+                                status: 'pending',
+                                traded_at: '2019-08-01T16:00:00-04:00',
+                                traded_price: '58.52'
+                            });
+                            return {
+                                quant: 538-177,
+                                order_ref: 'LOC.820c38d8.22',
+                                attach_ref: '',
+                                action: 'SELL',
+                                symbol: 'HYMB',
+                                market: 'ARCA',
+                                currency: 'USD',
+                                security_type: 'STK',
+                                order_type: 'LOC',
+                                limit: '58.25',
+                                tif: 'DAY',
+                                status: 'pending',
+                                traded_at: '2019-08-01T16:00:00-04:00',
+                                traded_price: '58.52'
+                            };
+                        default:
+                            throw Error("Unexpected: " + util.inspect(options))
+                    }
+                }, fetch, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    traded_at: '2019-07-30T16:00:00-04:00',
+                    symbol: 'HYMB',
+                    market: 'ARCA',
+                    currency: 'USD',
+                    security_type: 'STK',
+                    quant: 343+446,
+                }, {
+                    action: 'SELL',
+                    quant: '446',
+                    symbol: 'HYMB',
+                    market: 'ARCA',
+                    currency: 'USD',
+                    security_type: 'STK',
+                    order_type: 'LOC',
+                    limit: '58.25',
+                    tif: 'DAY',
+                    traded_at: '2019-07-31T16:00:00-04:00',
+                    traded_price: '58.63'
+                }, {
+                    action: 'SELL',
+                    quant: '166',
+                    symbol: 'HYMB',
+                    market: 'ARCA',
+                    currency: 'USD',
+                    security_type: 'STK',
+                    order_type: 'LOC',
+                    limit: '58.25',
+                    tif: 'DAY',
+                    status: 'pending',
+                    traded_at: '2019-08-01T16:00:00-04:00',
+                    traded_price: '58.52'
+                }]);
+            })({
+                now: "2019-08-01T15:48:31-04:00",
+                currency: 'USD',
+                markets: ['ARCA']
+            }).should.eventually.be.like([{
+                quant: 538-177,
+                order_ref: 'LOC.820c38d8.22',
+                attach_ref: '',
+                action: 'SELL',
+                symbol: 'HYMB',
+                market: 'ARCA',
+                currency: 'USD',
+                security_type: 'STK',
+                order_type: 'LOC',
+                limit: '58.25',
+                tif: 'DAY'
+            }]);
+        });
+        it("Thrown error", async() => {
+            return Replicate(async(options) => {
+                    switch (options.help ? 'help' : options.action) {
+                        case 'help':
+                            return broker({help:true});
+                        case 'balances':
+                            return Promise.resolve([{ currency: 'USD' },
+                                { currency: 'CAD', net: '10033.84', rate: '1' }
+                            ])
+                        case 'positions':
+                            return Promise.resolve([])
+                        case 'orders':
+                            return Promise.resolve([]);
+                        case 'BUY':
+                            throw Error("thrown error");
+                        default:
+                            throw Error("Unexpected: " + util.inspect(options))
+                    }
+                }, fetch, function(options) {
+                if (options.help) return collect(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    quant: '324',
+                    symbol: 'XGB',
+                    market: 'TSE',
+                    currency: 'CAD',
+                    security_type: 'STK',
+                    order_type: 'MKT',
+                    tif: 'DAY',
+                    traded_at: '2019-06-03T16:00:00-04:00',
+                    traded_price: '22.27'
+                }]);
+            })({
+                now: "2019-06-04T12:00:00",
+                currency: 'CAD',
+                markets: ['TSE']
+            }).should.eventually.be.rejectedWith(Error);
         });
     });
     describe("Options", function() {

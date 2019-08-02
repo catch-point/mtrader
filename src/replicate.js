@@ -436,17 +436,24 @@ async function submitOrders(broker, broker_orders, orders, options) {
             logger.trace("replicate submit", order);
             const submit = await broker({...options, ...order});
             return submitted.concat(submit);
-        }, []).catch(err => {
-            logOrders(logger.error, orders);
-            return err;
+        }, []).then(posted => ({posted, orders}), error => {
+            logOrders(logger.debug, orders);
+            logger.debug(error);
+            return {error, orders};
         });
     }));
-    const errors = submitted.filter(posted => !_.isArray(posted));
-    if (errors.length > 1) errors.forEach((err, i) => {
-        logger.error("Could not submit order", orders[i], err);
-    });
-    if (errors.length) throw _.last(errors);
-    return logOrders(logger.info, [].concat(...submitted));
+    const posted_orders = logOrders(logger.info, [].concat(..._.compact(submitted.map(item => item.posted))));
+    const errors = _.values(_.groupBy(submitted.filter(item => !item.posted), item => item.error.message));
+    if (errors.length) {
+        const message = errors.map(group => {
+            const orders = [].concat(...group.map(item => item.orders));
+            let messages = [_.first(group).error.message];
+            logOrders((...args) => messages.push(`\t${args.join(' ')}`), orders);
+            return messages.join('\n');
+        }).join('\n\n');
+        throw Error(message);
+    }
+    return posted_orders;
 }
 
 function logOrders(log, orders) {
@@ -572,10 +579,11 @@ function updateWorking(desired, working, options) {
             const adj = updateWorking(desired.prior, working.prior, options);
             if (adj.some(ord => ord.action == 'cancel' && ord.order_ref == ws.attach_ref))
                 return appendSignal(adj, ds, options); // parent order is cancelled
-            else if (working.prior.position < desired.position && ws.action == 'BUY' ||
-                    working.prior.position > desired.position && ws.action == 'SELL')
+            else if (adj.every(ord => ord.action == 'cancel' || isStopOrder(ord)) &&
+                    (working.prior.position < desired.position && ws.action == 'BUY' ||
+                    working.prior.position > desired.position && ws.action == 'SELL'))
                 return appendSignal(adj, _.defaults({
-                    // adjust quant if first signal
+                    // adjust quant as first working signal
                     quant: Math.abs(desired.position - working.prior.position),
                     order_ref: ws.order_ref,
                     attach_ref: ws.attach_ref
