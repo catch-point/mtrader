@@ -296,7 +296,7 @@ function getFirstTradedAt(positions, begin, options) {
     // check if there was an open initial position
     if (initial_positions.some(pos => pos.position != pos.quant)) return begin;
     const eod = initial_positions.reduce((earliest, pos) => {
-        if (!earliest || pos.traded_at < eariest.traded_at) return pos;
+        if (!earliest || pos.traded_at < earliest.traded_at) return pos;
         else return earliest;
     }, null).asof;
     return moment(eod).subtract(1, 'days').format();
@@ -327,7 +327,9 @@ function getNetDeposit(balances, positions, options) {
         positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
     const mtm = relevant.map(pos => Big(pos.mtm||0)).reduce((a,b) => a.add(b), Big(0));
     const balance = getAllocation(balances, options);
-    return +Big(balance).minus(mtm);
+    return Math.min(Math.max(
+        +Big(balance).minus(mtm),
+        options.allocation_min||0), options.allocation_max||Infinity);
 }
 
 function getSettledCash(current_balances, options) {
