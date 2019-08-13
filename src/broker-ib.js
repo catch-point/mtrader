@@ -41,13 +41,19 @@ const IB = require('./ib-gateway.js');
 const Fetch = require('./fetch.js');
 const expect = require('chai').expect;
 
-module.exports = function(settings, mock_ib_client) {
+module.exports = function(settings = {}, mock_ib_client = null) {
     if (settings.help) return helpSettings();
+    settings = {...settings, ...config('broker.ib')};
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
-    const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
-    settings = {...settings, lib_dir, ...config('broker.ib')};
+    const lib_dir = config('broker.ib.lib_dir') || config('lib_dir') ||
+        path.resolve(config('prefix'), config('default_lib_dir'));
+    if ('clientId' in settings) {
+        settings.lib_dir = path.resolve(lib_dir, `ib${settings.clientId}`);
+    } else {
+        delete settings.lib_dir;
+    }
     expect(settings).to.have.property('account').that.is.ok;
     if (settings.local_accounts) expect(settings.account).to.be.oneOf(settings.local_accounts);
     const ib = mock_ib_client || new IB(settings);

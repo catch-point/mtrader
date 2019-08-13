@@ -68,7 +68,7 @@ module.exports = function(settings) {
             closed = true;
             return opened_client.close();
         } else if (closed) {
-            throw Error("IB API has been closed");
+            throw Error(`IB API has been closed to ${clientId}`);
         } else if (cmd == 'open') {
             return open();
         } else {
@@ -86,16 +86,16 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
         // Some error messages might just be warnings
         // @see https://groups.io/g/twsapi/message/40551
         if (info && info.code == 1101) {
-            logger.log("ib-client", err.message);
+            logger.log("ib-client", clientId, err.message);
         } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
-            logger.debug("ib-client", err.message);
+            logger.debug("ib-client", clientId, err.message);
         } else if (info && info.code >= 2000 && info.code < 3000) {
-            logger.info("ib-client", err.message);
+            logger.info("ib-client", clientId, err.message);
         } else {
-            logger.warn("ib-client", info || '', err.message);
+            logger.warn("ib-client", clientId, info || '', err.message);
         }
     }).on('result', (event, args) => {
-        logger.trace("ib", event, ...args);
+        logger.trace("ib", clientId, event, ...args);
     });
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
@@ -103,7 +103,7 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
             self.connecting = false;
             self.connected = true;
             self.disconnected = false;
-            logger.trace("ib-client connected", host, port, clientId);
+            logger.debug("ib-client connected", host, port, clientId);
         }).once('error', (err, info) => {
             first_error = err;
             if (!self.connected) {
