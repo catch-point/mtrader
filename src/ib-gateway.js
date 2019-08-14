@@ -48,7 +48,7 @@ const private_settings = [
     'ibg_name', 'ibg_version', 'TradingMode', 'IbLoginId', 'IbPassword',
     'auth_base64', 'auth_file', 'auth_sha256'
 ];
-const client_settings = ['host', 'port', 'clientId', 'lib_dir', 'tz'].concat(private_settings);
+const client_settings = ['host', 'port', 'clientId'].concat(private_settings);
 const gateway_instances = {};
 const client_instances = {};
 

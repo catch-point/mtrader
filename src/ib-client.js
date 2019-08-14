@@ -51,15 +51,16 @@ module.exports = function(settings) {
     const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : nextval();
     const lib_dir = settings && settings.lib_dir;
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
+    const timeout = settings && settings.timeout || 600000;
     const self = new.target ? this : {};
-    let opened_client = createClient(host, port, clientId, lib_dir, ib_tz);
+    let opened_client = createClient(host, port, clientId, lib_dir, ib_tz, timeout);
     let promise_ib, closed = false;
     const open = () => {
         if (opened_client && !opened_client.disconnected) return opened_client.open();
         else return promise_ib = (promise_ib || Promise.reject())
           .catch(err => ({disconnected: true})).then(client => {
             if (!client.disconnected) return client;
-            opened_client = createClient(host, port, clientId, lib_dir, ib_tz);
+            opened_client = createClient(host, port, clientId, lib_dir, ib_tz, timeout);
             return opened_client.open();
         });
     };
@@ -79,7 +80,7 @@ module.exports = function(settings) {
 };
 
 
-function createClient(host, port, clientId, lib_dir, ib_tz) {
+function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
     const ib = new IB({host, port, clientId});
     ib.setMaxListeners(20);
     ib.on('error', (err, info) => {
@@ -131,6 +132,7 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
             ready();
         });
     });
+    let pulse_timeout, pulse_counter = 0, active = [];
     const self = new.target ? this : {};
     const store = lib_dir && storage(lib_dir);
     const modules = [
@@ -139,16 +141,51 @@ function createClient(host, port, clientId, lib_dir, ib_tz) {
         requestFA.call(self, ib),
         accountUpdates.call(self, ib, store, ib_tz),
         openOrders.call(self, ib, store, ib_tz, clientId),
-        execDetails.call(self, ib, store),
+        execDetails.call(self, ib, store, ib_tz),
         reqContract.call(self, ib),
         requestWithId.call(self, ib)
     ];
-    return Object.assign(self, ...modules, {
+    const methods = _.mapObject(Object.assign({}, ...modules), (fn, cmd) => {
+        return function() {
+            return new Promise((ready, abort) => {
+                const entry = {
+                    cmd, arguments,
+                    expires: pulse_counter +timeout/1000,
+                    ready, abort
+                };
+                active.push(entry);
+                if (!pulse_timeout) pulse_timeout = setTimeout(pulse_fn, 1000).unref();
+                return Promise.resolve(fn.apply(this, arguments)).then(result => {
+                    const idx = active.indexOf(entry);
+                    if (~idx) active.splice(idx, 1);
+                    return ready(result);
+                }, err => {
+                    const idx = active.indexOf(entry);
+                    if (~idx) active.splice(idx, 1);
+                    return abort(err);
+                });
+            });
+        };
+    });
+    const pulse_fn = () => {
+        pulse_counter++;
+        const expired = active.filter(entry => entry.expires < pulse_counter);
+        const err = expired.length && Error(`ib-client ${clientId} timed out`);
+        expired.forEach(entry => {
+            entry.abort(err);
+            const idx = active.indexOf(entry);
+            if (~idx) active.splice(idx, 1);
+        });
+        if (active.length) pulse_timeout = setTimeout(pulse_fn, 1000).unref();
+        else pulse_timeout = null;
+    };
+    return Object.assign(self, methods, {
         connecting: false,
         connected: false,
         disconnected: false,
         async close() {
             let error;
+            if (pulse_timeout) clearTimeout(pulse_timeout);
             await Promise.all(modules.map(module => {
                 if (module.close) return module.close().catch(err => error = error || err);
             }));
@@ -629,7 +666,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 cancelling_orders[orderId] = {ready, fail};
             }).catch(err => logger.warn('cancelOrder', orderId, err.message) || Promise.reject(err));
         },
-        reqRecentOrders() {
+        async reqRecentOrders() {
             return _.values(orders).filter(order => {
                 const status = order.status;
                 return status != 'Filled' && status != 'Cancelled' && status != 'Inactive';
@@ -707,11 +744,12 @@ function openOrders(ib, store, ib_tz, clientId) {
     };
 }
 
-function execDetails(ib, store) {
+function execDetails(ib, store, ib_tz) {
     const details = {};
     const commissions = {};
     const req_queue = {};
     const managed_accounts = [];
+    const today = moment().tz(ib_tz).format('YYYYMMDD');
     let flushed = false, closed = false;
     const reduce_details = async(filter, cb, initial) => {
         const min_month = ((filter||{}).time||'').substring(0, 6);
@@ -782,7 +820,9 @@ function execDetails(ib, store) {
                 managed_accounts.push(account);
         });
     }).on('execDetails', function(reqId, contract, exe) {
-        logger.info("execDetails", reqId, exe.time, exe.acctNumber, exe.side, exe.shares, exe.price);
+        const date = exe.time.substring(0, 8);
+        const log = today <= date ? logger.info : logger.trace;
+        log("execDetails", reqId, exe.time, exe.acctNumber, exe.side, exe.shares, exe.price);
         const month = exe.time.substring(0, 6);
         const key = exe.execId.substring(0, exe.execId.lastIndexOf('.'));
         const acct = details[exe.acctNumber] = details[exe.acctNumber] || {};
@@ -801,7 +841,8 @@ function execDetails(ib, store) {
         if (flushed) flusher.flush();
         else flusher();
     }).on('commissionReport', function(commissionReport) {
-        logger.log("commissionReport", commissionReport.commission, commissionReport.currency, commissionReport.realizedPNL == Number.MAX_VALUE ? '' : commissionReport.realizedPNL);
+        const realizedPNL = commissionReport.realizedPNL == Number.MAX_VALUE ? '' : commissionReport.realizedPNL;
+        logger.debug("commissionReport", commissionReport.commission, commissionReport.currency, realizedPNL);
         commissions[commissionReport.execId] = commissionReport;
         if (flushed) flusher.flush();
         else flusher();

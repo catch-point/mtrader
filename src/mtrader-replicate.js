@@ -84,10 +84,14 @@ if (require.main === module) {
         process.on('SIGINT', () => replicate.close());
         process.on('SIGTERM', () => replicate.close());
         Promise.all(program.args.map(name => {
-            return readCallSave(name, replicate)
-              .then(result => tabular(result, config()))
-              .catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
-        })).then(() => replicate.close());
+            return readCallSave(name, replicate).catch(err => {
+                logger.error(err, err.stack);
+                process.exitCode = 1;
+            });
+        })).then(results => [].concat(...results))
+          .then(result => !result.length || _.compact(result).length ? result : null)
+          .then(result => _.isArray(result) && tabular(result, config()))
+          .then(() => replicate.close());
     } else {
         program.help();
     }

@@ -442,6 +442,7 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
     var vmargs = fs.readFileSync('$IBG_VMARGS_FILE',{encoding:'utf-8'})
       .split(/\s*(\r|\n)\s*/).filter(line => line.trim() && line.charAt(0) != '#');
     var clientId = '$RANDOM';
+    var timeout = 60000;
     var ibg_version = '$IBG_VERSION';
     var ibg_name = '$IBG_NAME' || ibg_version;
     var ibg_previous = '$IBG_PREVIOUS';
@@ -455,7 +456,7 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
     if (broker_ibg == ibg_previous) {
       Object.assign(json, {
         broker: Object.assign((json||{}).broker||{}, {
-          ib: Object.assign(((json||{}).broker||{}).ib||{clientId}, {ibg_name, ibg_version})
+          ib: Object.assign(((json||{}).broker||{}).ib||{clientId, timeout}, {ibg_name, ibg_version})
         })
       });
     }
@@ -463,7 +464,7 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
     if (fetch_ibg == ibg_previous) {
       Object.assign(json, {
         fetch: Object.assign((json||{}).fetch||{}, {
-          ib: Object.assign(((json||{}).fetch||{}).ib||{clientId}, {ibg_name, ibg_version})
+          ib: Object.assign(((json||{}).fetch||{}).ib||{clientId, timeout}, {ibg_name, ibg_version})
         })
       });
     }
