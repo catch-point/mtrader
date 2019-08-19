@@ -133,8 +133,6 @@ if (require.main === module) {
         instance.shell = shell.bind(this, program.description(), instance);
         return instance;
     });
-    process.on('SIGINT', () => shared.instance && shared.instance.close(true));
-    process.on('SIGTERM', () => shared.instance && shared.instance.close(true));
 } else {
     const shared = module.exports = share(() => {
         const program = usage(new commander.Command());
@@ -159,8 +157,6 @@ if (require.main === module) {
         instance.shell = shell.bind(this, program.description(), instance);
         return instance;
     });
-    process.on('SIGINT', () => shared.instance && shared.instance.close(true));
-    process.on('SIGTERM', () => shared.instance && shared.instance.close(true));
 }
 
 function shell(desc, fetch, app) {

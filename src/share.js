@@ -45,7 +45,7 @@ module.exports = function(factory, onclose) {
         let closed = false;
         used = 1;
         const close_handler = self.close ? self.close.bind(self) : () => Promise.resolve();
-        self.close = async function(force) {
+        self.close = async function(closedBy, force) {
             if (closed || --used && !force) return;
             closed = true;
             if (shared.instance === self) shared.instance = null;
@@ -54,5 +54,7 @@ module.exports = function(factory, onclose) {
         };
         return self;
     };
+    process.on('SIGINT', () => shared.instance && shared.instance.close('SIGINT', true));
+    process.on('SIGTERM', () => shared.instance && shared.instance.close('SIGTERM', true));
     return shared;
 }

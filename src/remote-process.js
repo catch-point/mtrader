@@ -154,6 +154,7 @@ function readFileSync(filename) {
 }
 
 function getSocketUrl(settings) {
+    expect(settings).to.have.property('location').that.is.ok;
     const base = parseLocation(settings.location, false).href;
     const params = flattenObjectPaths(_.omit(settings, 'location', 'enabled'));
     const qs = querystring.stringify(params);

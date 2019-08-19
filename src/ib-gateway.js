@@ -83,12 +83,10 @@ async function assignClient(self, settings) {
         port: gateway.port
     });
     const locks = new ReadWriteLock();
-    const shared_close = self.close;
     return Object.assign(self, _.mapObject(client, (fn, name) => {
         if (name == 'close') return async function(closedBy) {
             await client.close(closedBy);
             await gateway.close(closedBy);
-            return shared_close.call(self, closedBy);
         }; else if (name == 'open') return async function(openedBy) {
             const current_client = client;
             return locks.readLock(async() => {

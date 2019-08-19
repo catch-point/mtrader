@@ -113,10 +113,7 @@ if (require.main === module) {
 } else {
     const prog = usage(new commander.Command());
     const shared = module.exports = share(() => createInstance(prog));
-    process.on('SIGTERM', () => shared.instance && shared.instance.close(true));
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
-    process.on('SIGINT', () => shared.instance && shared.instance.reset()
-      .then(_.noop, err => logger.warn("Collect reset", err)));
 }
 
 function createInstance(program) {

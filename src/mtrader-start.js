@@ -207,8 +207,10 @@ function listen(settings) {
     }).on('error', err => logger.error(err, err.stack))
       .on('listening', () => logger.info(`Service ${version.patch_version} listening on port ${server.address().port}`));
     server.once('close', () => logger.log("Service has closed", address));
+    const common = new MTrader(settings); // keep common resources open
     const server_close = server.close;
     server.close = () => {
+        common.close();
         server_close.call(server);
         wsserver.clients.forEach(client => client.close());
         return Promise.all(connections);

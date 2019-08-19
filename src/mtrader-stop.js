@@ -59,7 +59,7 @@ module.exports = function(settings = {}) {
     settings = {...settings, ...config('remote')};
     const address = settings.listen;
     if (!address) throw Error("Service listen address is required to stop service");
-    const worker = replyTo(remote(address, {checkServerIdentity: _.noop}))
+    const worker = replyTo(remote({...settings, location: settings.listen, checkServerIdentity: _.noop}))
         .on('error', err => logger.debug(err, err.stack))
         .on('error', () => worker.disconnect());
     return function(options = {}) {

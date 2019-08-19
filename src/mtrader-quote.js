@@ -121,10 +121,7 @@ if (require.main === module) {
 } else {
     const program = usage(new commander.Command());
     const shared = module.exports = share(() => createInstance(program));
-    process.on('SIGTERM', () => shared.instance && shared.instance.close(true));
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
-    process.on('SIGINT', () => shared.instance && shared.instance.reset()
-      .then(_.noop, err => logger.warn("Quote reset", err)));
 }
 
 function createInstance(program) {
