@@ -338,9 +338,10 @@ function inlinePadBegin(quoteBars, interval, opts) {
  * Formats begin and end options.
  */
 function formatBeginEnd(options) {
-    const eod = moment.tz(options.now, options.tz).endOf('day');
-    const begin = options.begin ? moment.tz(options.begin, options.tz) : eod;
-    const oend = options.end && moment.tz(options.end, options.tz);
+    const tz = (moment.defaultZone||{}).name || moment.tz.guess();
+    const eod = moment.tz(options.now, options.tz || tz).endOf('day').tz(tz);
+    const begin = options.begin ? moment.tz(options.begin, options.tz || tz).tz(tz) : eod;
+    const oend = options.end && moment.tz(options.end, options.tz || tz).tz(tz);
     const end = !oend || eod.isBefore(oend) ? eod : oend; // limit end to end of today
     const pad_begin = options.pad_begin ? options.pad_begin :
             options.begin ? 0 : 100;
@@ -353,7 +354,9 @@ function formatBeginEnd(options) {
         begin: begin.format(),
         pad_begin: pad_begin,
         end: end && end.format(),
-        pad_end: pad_end
+        pad_end: pad_end,
+        ending_format: moment.defaultFormat,
+        tz
     }, options);
 }
 
@@ -702,6 +705,8 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks, 
             return fetchComplete(block, latest);
         if (collection.propertyOf(block, 'tz') != options.tz)
             return fetchComplete(block, latest);
+        if (collection.propertyOf(block, 'ending_format') != options.ending_format)
+            return fetchComplete(block, latest);
         const tail = collection.tailOf(block);
         if (_.isEmpty(tail) || !_.last(tail).incomplete)
             return; // empty blocks are complete
@@ -757,6 +762,7 @@ async function fetchCompleteBlock(fetch, options, collection, version, block, la
     await collection.replaceWith(records, block);
     await collection.propertyOf(block, 'version', version);
     await collection.propertyOf(block, 'tz', options.tz);
+    await collection.propertyOf(block, 'ending_format', options.ending_format);
 }
 
 /**

@@ -57,11 +57,12 @@ module.exports = function() {
                 const others = _.flatten(_.map(datasources, _.keys));
                 expect(market).to.be.oneOf(_.uniq(_.union(_.keys(markets), others)));
             }
-            const opt = market ? _.extend(
-                _.omit(markets[market], 'datasources', 'label', 'description'),
-                markets[market] && options.tz && convertTime(markets[market], options.tz),
+            const opt = _.extend(
+                {ending_format: moment.defaultFormat},
+                market && _.omit(markets[market], 'datasources', 'label', 'description'),
+                market && markets[market] && options.tz && convertTime(markets[market], options.tz),
                 options
-            ) : options;
+            );
             const interval = options.interval;
             if (interval == 'lookup') return lookup(datasources.lookup, opt);
             if (interval == 'fundamental') return fundamental(datasources.fundamental, opt);
@@ -264,7 +265,7 @@ function fundamental(datasources, options) {
             symbol: options.symbol,
             market: options.market,
             name: result.name,
-            asof: now.format()
+            asof: now.format(options.ending_format)
         }, result)];
     });
 }
@@ -298,7 +299,7 @@ async function quarter(day, options) {
         begin: moment.tz(options.begin, options.tz).startOf('quarter'),
         end: end && (end.isAfter(moment(end).startOf('quarter')) ? end.endOf('quarter') : end)
     }, options));
-    const quarters = _.groupBy(bars, bar => moment(bar.ending).format('Y-Q'));
+    const quarters = _.groupBy(bars, bar => moment.tz(bar.ending, options.tz).format('Y-Q'));
     return _.map(quarters, bars => bars.reduce((quarter, month) => {
         const adj = adjustment(_.last(bars), month);
         return _.defaults({
@@ -320,7 +321,7 @@ async function month(day, options) {
         begin: moment.tz(options.begin, options.tz).startOf('month'),
         end: end && (end.isAfter(moment(end).startOf('month')) ? end.endOf('month') : end)
     }, options));
-    const months = _.groupBy(bars, bar => moment(bar.ending).format('Y-MM'));
+    const months = _.groupBy(bars, bar => moment.tz(bar.ending, options.tz).format('Y-MM'));
     return _.map(months, bars => bars.reduce((month, day) => {
         const adj = adjustment(_.last(bars), day);
         return _.defaults({
@@ -343,7 +344,7 @@ async function week(day, options) {
             begin.startOf('isoWeek').subtract(1, 'days'),
         end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days')
     }, options));
-    const weeks = _.groupBy(bars, bar => moment(bar.ending).format('gggg-WW'));
+    const weeks = _.groupBy(bars, bar => moment.tz(bar.ending, options.tz).format('gggg-WW'));
     return _.map(weeks, bars => bars.reduce((week, day) => {
         const adj = adjustment(_.last(bars), day);
         return _.defaults({
@@ -369,8 +370,8 @@ function interday(datasources, options) {
     const begin = options.begin ? moment.tz(options.begin, options.tz) :
         moment(now).startOf('month').subtract(1, 'month');
     const early = begin.year() < now.year() - 5 ?
-        moment(now).subtract(5,'years').format('Y-MM-DD') : // results okay if >5yrs
-        moment(begin).add(1,'weeks').format('Y-MM-DD'); // or starts within a week
+        moment(now).subtract(5,'years').format(options.ending_format) : // results okay if >5yrs
+        moment(begin).add(1,'weeks').format(options.ending_format); // or starts within a week
     const opts = _.defaults({
         begin: begin.format()
     }, options);
@@ -379,7 +380,7 @@ function interday(datasources, options) {
             if (err && !_.isArray(err)) logger.debug("Fetch", opts.interval, "failed", err.stack);
             if (_.isArray(err) && err.length >= result.length)
                 return err;
-            if (_.isEmpty(result) || _.first(result).ending > early)
+            if (_.isEmpty(result) || _.first(result).ending >= early)
                 return Promise.reject(result); // not within a week of begin or >5yrs
             return result;
         }, err2 => {
@@ -396,7 +397,7 @@ function interday(datasources, options) {
         const latest = _.last(results);
         if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {
             // latest line might yet be incomplete (or not yet finalized/adjusted)
-            latest.asof = now.format();
+            latest.asof = now.format(options.ending_format);
             latest.incomplete = true;
         }
         return results;
@@ -427,7 +428,7 @@ function intraday(datasources, options) {
         const latest = _.last(results);
         if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {
             // first line might yet be incomplete (or not yet finalized/adjusted)
-            latest.asof = now.format();
+            latest.asof = now.format(options.ending_format);
             latest.incomplete = true;
         }
         return results;
@@ -452,6 +453,6 @@ function endOf(unit, date, options) {
         closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + start.format('HH:mm:ss'), options.tz);
         if (closes.isBefore(start)) ending = moment(start).add(++days, 'days').endOf(unit);
     } while (closes.isBefore(start));
-    return closes.format();
+    return closes.format(options.ending_format);
 }
 

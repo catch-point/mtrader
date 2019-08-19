@@ -65,6 +65,9 @@ function help() {
         },
         tz: {
             description: "Timezone of the market formatted using the identifier in the tz database"
+        },
+        ending_format: {
+            description: "Date and time format of the resulting ending field"
         }
     };
     const durationOptions = {
@@ -194,14 +197,14 @@ function interday(ivolatility, ib, options) {
     const end = moment.tz(options.end || now, options.tz);
     if (!isOptionActive(options.symbol, begin, end)) return Promise.resolve([]);
     return readTable(options).then(result => {
-        const start = begin.format();
+        const start = begin.format(options.ending_format);
         const first = _.sortedIndex(result, {ending: start}, 'ending');
         if (first < 1) return result;
         else return result.slice(first);
     }).then(result => {
         if (!options.end) return result;
         if (end.isAfter()) return result;
-        const final = end.format();
+        const final = end.format(options.ending_format);
         let last = _.sortedIndex(result, {ending: final}, 'ending');
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
@@ -321,7 +324,7 @@ function isMarketOpen(now, options) {
 
 function endOfDay(ending, options) {
     const today = moment.tz(ending, options.tz).format('YYYY-MM-DD');
-    return moment.tz(`${today} ${options.marketClosesAt}`, options.tz).format();
+    return moment.tz(`${today} ${options.marketClosesAt}`, options.tz).format(options.ending_format);
 }
 
 async function loadIvolatility(ivolatility, options) {
@@ -331,7 +334,7 @@ async function loadIvolatility(ivolatility, options) {
         const mdy = datum.date.match(/^(\d\d)\/(\d\d)\/(\d\d\d\d)$/);
         const closes = moment.tz(`${mdy[3]}-${mdy[1]}-${mdy[2]} ${options.marketClosesAt}`, options.tz);
         return {
-            ending: closes.format(),
+            ending: closes.format(options.ending_format),
             open: mid,
             high: mid,
             low: mid,

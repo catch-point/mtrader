@@ -116,11 +116,11 @@ function blendCall(delegate, cfg, cmd, options) {
     const asset = findAsset(cfg, cmd, options);
     if (!asset || !asset.blend)
         return delegateCall(delegate, cfg, cmd, _.defaults({interval: 'day'}, options));
-    const end = options.end && moment.tz(options.end, options.tz).format();
+    const end = options.end && moment.tz(options.end, options.tz).format(options.ending_format);
     return asset.blend.reduceRight((promise, blend, i) => promise.then(result => {
         return readData(cfg, blend, options).then(part => {
             if (i == asset.blend.length-1) {
-                const begining = _.isEmpty(part) && moment.tz(options.begin, options.tz).format();
+                const begining = _.isEmpty(part) && moment.tz(options.begin, options.tz).format(options.ending_format);
                 const ending = !_.isEmpty(part) && _.last(part).ending;
                 const earlier = _.last(_.sortBy(_.compact([begining, ending])));
                 const later = _.last(_.sortBy(_.compact([end, ending])));
@@ -187,7 +187,7 @@ function day(readTable, options) {
     expect(options).to.have.property('tz').that.is.a('string');
     return readTable(options).then(result => {
         const begin = moment.tz(options.begin, options.tz);
-        const start = begin.format();
+        const start = begin.format(options.ending_format);
         const first = _.sortedIndex(result, {ending: start}, 'ending');
         if (first < 1) return result;
         else return result.slice(first);
@@ -195,7 +195,7 @@ function day(readTable, options) {
         if (!options.end) return result;
         const end = moment.tz(options.end || now, options.tz);
         if (end.isAfter()) return result;
-        const final = end.format();
+        const final = end.format(options.ending_format);
         let last = _.sortedIndex(result, {ending: final}, 'ending');
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;

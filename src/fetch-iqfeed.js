@@ -65,6 +65,9 @@ function help() {
         },
         tz: {
             description: "Timezone of the market formatted using the identifier in the tz database"
+        },
+        ending_format: {
+            description: "Date and time format of the resulting ending field"
         }
     };
     const durationOptions = {
@@ -504,7 +507,7 @@ async function interday(iqclient, adjustments, symbol, options) {
         if (!options.end) return result;
         const end = moment.tz(options.end || options.now, options.tz);
         if (end.isAfter()) return result;
-        const final = end.format();
+        const final = end.format(options.ending_format);
         let last = _.sortedIndex(result, {ending: final}, 'ending');
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
@@ -520,7 +523,7 @@ async function intraday(iqclient, adjustments, symbol, options) {
         adjustments && adjustments(options)
     ]);
     const result = adjRight(prices, adjusts, options, (datum, adj, adj_split_only) => ({
-        ending: moment.tz(datum.Time_Stamp, 'America/New_York').tz(options.tz).format(),
+        ending: moment.tz(datum.Time_Stamp, 'America/New_York').tz(options.tz).format(options.ending_format),
         open: parseFloat(datum.Open),
         high: parseFloat(datum.High),
         low: parseFloat(datum.Low),
@@ -533,7 +536,7 @@ async function intraday(iqclient, adjustments, symbol, options) {
     if (!options.end) return result;
     const end = moment.tz(options.end, options.tz);
     if (end.isAfter()) return result;
-    const final = end.format();
+    const final = end.format(options.ending_format);
     let last = _.sortedIndex(result, {ending: final}, 'ending');
     if (result[last] && result[last].ending == final) last++;
     if (last == result.length) return result;
@@ -598,7 +601,7 @@ async function mostRecentTrade(iqclient, adjustments, symbol, options) {
 
 async function rollday(iqclient, adjustments, interval, symbol, options) {
     expect(options).to.have.property('minutes').that.is.finite;
-    const asof = moment().tz(options.tz).format();
+    const asof = moment().tz(options.tz).format(options.ending_format);
     const bars = await intraday(iqclient, adjustments, symbol, _.defaults({
         interval: 'm' + options.minutes
     }, options));
@@ -622,7 +625,7 @@ async function rollday(iqclient, adjustments, interval, symbol, options) {
 
 async function summarize(iqclient, symbol, options) {
     const now = moment();
-    const asof = moment(now).tz(options.tz).format();
+    const asof = moment(now).tz(options.tz).format(options.ending_foramt);
     const summary = await iqclient.summary(symbol).catch(err => ({}));
     const use_mid = summary.decimal_precision && summary.ask && summary.bid;
     if (!use_mid && !summary.most_recent_trade_date) return [];
@@ -679,7 +682,7 @@ function endOf(unit, date, options) {
         if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
         if (closes.isBefore(start)) ending = moment(start).add(++days, 'days').endOf(unit);
     } while (closes.isBefore(start));
-    return closes.format();
+    return closes.format(options.ending_format);
 }
 
 function isBeforeOpen(ending, options) {

@@ -91,6 +91,9 @@ function help() {
             },
             tz: {
                 description: "Timezone of the market formatted using the identifier in the tz database"
+            },
+            ending_format: {
+                description: "Date and time format of the resulting ending field"
             }
         })
     };
@@ -259,6 +262,6 @@ function endOf(unit, begin, options) {
     else if (ending.days() == 6) ending.subtract(1, 'days');
     const closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
     if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
-    return closes.format();
+    return closes.format(options.ending_format);
 }
 

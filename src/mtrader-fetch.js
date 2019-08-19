@@ -82,7 +82,7 @@ if (require.main === module) {
         process.on('SIGINT', () => fetch.close());
         process.on('SIGTERM', () => fetch.close());
         Promise.resolve().then(() => fetch(_.defaults({
-            interval, symbol, market, tz
+            interval, symbol, market, tz, ending_format: moment.defaultFormat
         }, config.options())))
         .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
@@ -143,7 +143,8 @@ if (require.main === module) {
                 child = replyTo(config.fork(module.filename, program));
                 instance.process = child.process;
             }
-            const opts = options.tz ? options : Object.assign({tz}, options);
+            const opts = options.tz && options.ending_format ? options :
+                Object.assign({tz, ending_format: moment.defaultFormat}, options);
             return child.request('fetch', opts);
         };
         instance.close = function() {
@@ -170,7 +171,7 @@ function shell(desc, fetch, app) {
         const symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         const market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         fetch(_.defaults({
-            interval: 'lookup', symbol, market, tz
+            interval: 'lookup', symbol, market, tz, ending_format: moment.defaultFormat
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     // fundamental
@@ -179,7 +180,7 @@ function shell(desc, fetch, app) {
         const symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         const market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         fetch(_.defaults({
-            interval: 'fundamental', symbol, market, tz
+            interval: 'fundamental', symbol, market, tz, ending_format: moment.defaultFormat
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     // fetch
@@ -188,7 +189,7 @@ function shell(desc, fetch, app) {
         const symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
         const market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
         fetch(_.defaults({
-            interval: cmd.params.interval, symbol, market, tz
+            interval: cmd.params.interval, symbol, market, tz, ending_format: moment.defaultFormat
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
 // help

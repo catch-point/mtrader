@@ -63,6 +63,9 @@ function help() {
         },
         tz: {
             description: "Timezone of the market formatted using the identifier in the tz database"
+        },
+        ending_format: {
+            description: "Date and time format of the resulting ending field"
         }
     };
     const durationOptions = {
@@ -199,8 +202,8 @@ async function interday(markets, adjustments, client, options) {
         ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
         withoutAdjClase;
     const result = adjust(prices, adjusts, options);
-    const start = moment.tz(options.begin, options.tz).format();
-    const finish = moment.tz(options.end || options.now, options.tz).format();
+    const start = moment.tz(options.begin, options.tz).format(options.ending_format);
+    const finish = moment.tz(options.end || options.now, options.tz).format(options.ending_format);
     let first = _.sortedIndex(result, {ending: start}, 'ending');
     let last = _.sortedIndex(result, {ending: finish}, 'ending');
     if (result[last]) last++;
@@ -219,8 +222,8 @@ async function intraday(markets, adjustments, client, options) {
         ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
         withoutAdjClase;
     const result = adjust(prices, adjusts, options);
-    const start = moment.tz(options.begin, options.tz).format();
-    const finish = moment.tz(options.end || options.now, options.tz).format();
+    const start = moment.tz(options.begin, options.tz).format(options.ending_format);
+    const finish = moment.tz(options.end || options.now, options.tz).format(options.ending_format);
     let first = _.sortedIndex(result, {ending: start}, 'ending');
     let last = _.sortedIndex(result, {ending: finish}, 'ending');
     if (result[last]) last++;
@@ -432,7 +435,7 @@ function formatTime(time, options) {
     if (options.interval == 'day') return endOfDay(time, options);
     const period = periods(options);
     const starting = moment.tz(time, 'X', options.tz);
-    return period.floor(starting.add(period.millis, 'milliseconds')).format();
+    return period.floor(starting.add(period.millis, 'milliseconds')).format(options.ending_format);
 }
 
 function endOfDay(date, options) {
@@ -447,6 +450,6 @@ function endOfDay(date, options) {
         if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
         if (closes.isBefore(start)) ending = moment(start).add(++days, 'days').endOf('day');
     } while (closes.isBefore(start));
-    return closes.format();
+    return closes.format(options.ending_format);
 }
 
