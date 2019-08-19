@@ -40,26 +40,20 @@ const workerQueue = require('./worker-queue.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
 
-const tz = (moment.defaultZone||{}).name || moment.tz.guess();
-
 process.setMaxListeners(process.getMaxListeners()+1);
 
-const shared = module.exports = share(createInstance);
+module.exports = createInstance;
 
-process.on('SIGHUP', () => shared.instance && shared.instance.reload());
-process.on('SIGINT', () => shared.instance && shared.instance.close());
-process.on('SIGTERM', () => shared.instance && shared.instance.close());
-
-function createInstance() {
+function createInstance(settings = {}) {
     let check = interrupt(true);
-    const queue = workerQueue(createRemoteWorkers, (worker, cmd, options) => {
+    const queue = workerQueue(_.partial(createRemoteWorkers, settings), (worker, cmd, options) => {
         return worker.request(cmd, options).catch(async err => {
             if (await check() || queue.isClosed() || !err || !err.message) throw err;
             else if (options && options.remote_failed) throw err;
             const stillConnected = !!worker.connected && !~err.message.indexOf('Disconnecting');
             if (worker.connected) queue.stopWorker(worker);
-            const addresses = getRemoteWorkerAddresses();
-            if (!addresses.length || addresses.length < 2 && _.first(addresses) == worker.process.pid) {
+            const addresses = getRemoteWorkerSettings(settings);
+            if (!addresses.length || addresses.length < 2 && _.first(addresses).location == worker.process.pid) {
                 throw err;
             }
             await new Promise(cb => _.delay(cb, 1000));
@@ -81,7 +75,7 @@ function createInstance() {
             try {
                 return reload.apply(queue);
             } finally {
-                if (getRemoteWorkerAddresses().length > 1 && queue.getStoppedWorkers().length) {
+                if (getRemoteWorkerSettings(settings).length > 1 && queue.getStoppedWorkers().length) {
                     disconnectStoppedWorkers();
                 }
             }
@@ -104,9 +98,6 @@ function createInstance() {
         strategize(options) {
             return queue('strategize', options);
         },
-        tz() {
-            return queue('tz');
-        },
         async version() {
             const versions = await queue.all('version');
             const workers = queue.getWorkers();
@@ -115,11 +106,11 @@ function createInstance() {
     });
 }
 
-function createRemoteWorkers(check_queue) {
+function createRemoteWorkers(settings, check_queue) {
     const queue = this;
-    const remote_workers = getRemoteWorkerAddresses();
-    const remoteWorkers = remote_workers.map(address => {
-        return replyTo(remote(address)).on('connect', function() {
+    const remote_workers = getRemoteWorkerSettings(settings);
+    const remoteWorkers = remote_workers.map(remote_settings => {
+        return replyTo(remote(remote_settings)).on('connect', function() {
             if (!queue.getStoppedWorkers().find(w => w.connected && w.process.pid == this.process.pid))
                 logger.log("Worker", this.process.pid, "is connected");
             if (queue.isClosed()) this.disconnect();
@@ -130,7 +121,7 @@ function createRemoteWorkers(check_queue) {
                 logger.log("Worker", this.process.pid, "has disconnected");
         }).on('error', err => logger.warn(err.message || err));
     });
-    const nice = config('nice');
+    const nice = settings.nice;
     Promise.all(remoteWorkers.map(worker => worker.request('worker_count').catch(err => err)))
       .then(counts => {
         const errors = counts.filter((count, i) => {
@@ -142,13 +133,15 @@ function createRemoteWorkers(check_queue) {
     }).catch(err => logger.debug(err, err.stack)).then(() => {
         if (_.some(remoteWorkers, worker => worker.count > 1)) check_queue();
     }).then(() => Promise.all(remoteWorkers.map(async(worker) => {
-        const remote_tz = await worker.request('tz');
-        if (tz != remote_tz) logger.warn(`Worker ${worker.process.pid} has a different time zone of ${remote_tz}`);
+        const tz = (moment.defaultZone||{}).name || moment.tz.guess();
+        const format = moment.defaultFormat;
+        const [rtz, rformat] = await Promise.all([worker.request('tz'), worker.request('ending_format')]);
+        if (tz != rtz) logger.warn(`Worker ${worker.process.pid} has a different time zone of ${rtz}`);
+        if (format != rformat) logger.warn(`Worker ${worker.process.pid} has a different format of ${rformat}`);
     }))).catch(err => logger.debug(err, err.stack));
     return remoteWorkers;
 }
 
-function getRemoteWorkerAddresses() {
-    return _.flatten(_.compact(_.flatten([config('remote_workers')]))
-        .map(addr => addr.split(',')));
+function getRemoteWorkerSettings(settings) {
+    return _.flatten(_.compact(_.flatten([settings.remote]))).filter(settings => settings.enabled);
 }

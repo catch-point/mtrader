@@ -262,7 +262,7 @@ if [ -z "$TIMEZONE" -a ! -f "$PREFIX/etc/mtrader.json" ]; then
 fi
 
 if [ -f "$PREFIX/etc/mtrader.json" -a -z "$PORT" ]; then
-  PORT=$(node -pe "JSON.parse(require('fs').readFileSync('$PREFIX/etc/mtrader.json',{encoding:'utf-8'})).listen.replace(/.*:(\d+)([/]|$)/,'\$1').replace(/^wss:.*$|^https:.*$/,'443').replace(/^ws:.*$|^http:.*$/,'80')")
+  PORT=$(node -pe "((JSON.parse(require('fs').readFileSync('$PREFIX/etc/mtrader.json',{encoding:'utf-8'})).remote||{}).listen||'').replace(/.*:(\d+)([/]|$)/,'\$1').replace(/^wss:.*$|^https:.*$/,'443').replace(/^ws:.*$|^http:.*$/,'80')")
 elif [ -z "$PORT" ]; then
   if [ -z "$DEFAULT_PORT" -a "$(id -u)" = "0" ]; then
     DEFAULT_PORT=443
@@ -341,7 +341,7 @@ EOF
       openssl dhparam -outform PEM -out "$PREFIX/etc/mtrader-dh.pem" 2048
     fi
     chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/mtrader-privkey.pem" "$PREFIX/etc/mtrader-fullchain.pem" "$PREFIX/etc/mtrader-crt.pem" "$PREFIX/etc/mtrader-dh.pem"
-    echo "Add \"remote_workers\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"] to client's etc/mtrader.json"
+    echo "Add \"collect\":{\"remote\":{\"location\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"]}} to client's etc/mtrader.json"
     cat > "$PREFIX/etc/mtrader.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
@@ -349,8 +349,8 @@ EOF
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "lib_dir": "$LIB_DIR",
-  "listen": "wss://$USERINFO@$HOST:$PORT",
-  "tls": {
+  "remote": {
+    "listen": "wss://$USERINFO@$HOST:$PORT",
     "key_pem": "etc/mtrader-privkey.pem",
     "cert_pem": "etc/mtrader-fullchain.pem",
     "crt_pem": "etc/mtrader-crt.pem",
@@ -388,8 +388,8 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ] && [[ "$PORT" != *8* ]]; then
       openssl dhparam -outform PEM -out "$PREFIX/etc/mtrader-dh.pem" 2048
     fi
     chown "$DAEMON_USER:$DAEMON_GROUP" "$PREFIX/etc/mtrader-privkey.pem" "$PREFIX/etc/mtrader-cert.pem" "$PREFIX/etc/mtrader-ca.pem" "$PREFIX/etc/mtrader-crt.pem" "$PREFIX/etc/mtrader-dh.pem"
-    echo "Add \"remote_workers\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"] to client's etc/mtrader.json"
-    echo "Append etc/mtrader-cert.pem to client's etc/mtrader-ca.pem or set \"tls\": { \"rejectUnauthorized\": false } in client's etc/mtrader.json"
+    echo "Add \"collect\":{\"remote\":{\"location\":[\"wss://$USERINFO@$AUTHORITY:$PORT\"]}} to client's etc/mtrader.json"
+    echo "Append etc/mtrader-cert.pem to client's etc/mtrader-ca.pem or set \"remote\": { \"rejectUnauthorized\": false } in client's etc/mtrader.json"
     cat > "$PREFIX/etc/mtrader.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
@@ -397,8 +397,8 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ] && [[ "$PORT" != *8* ]]; then
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "lib_dir": "$LIB_DIR",
-  "listen": "wss://$USERINFO@$HOST:$PORT",
-  "tls": {
+  "remote": {
+    "listen": "wss://$USERINFO@$HOST:$PORT",
     "key_pem": "etc/mtrader-privkey.pem",
     "cert_pem": "etc/mtrader-cert.pem",
     "ca_pem": "etc/mtrader-ca.pem",
@@ -421,7 +421,7 @@ fi
 
 # Unencrypted socket
 if [ ! -f "$PREFIX/etc/mtrader.json" ]; then
-  echo "Add \"remote_workers\":[\"ws://$USERINFO@$AUTHORITY:$PORT\"] to client etc/mtrader.json file"
+  echo "Add \"collect\":{\"remote\":{\"location\":[\"ws://$USERINFO@$AUTHORITY:$PORT\"]}} to client etc/mtrader.json file"
   cat > "$PREFIX/etc/mtrader.json" << EOF
 {
   "description": "Configuration file for $NAME generated on $(date)",
@@ -429,7 +429,9 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ]; then
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "lib_dir": "$LIB_DIR",
-  "listen": "ws://$USERINFO@$HOST:$PORT"
+  "remote": {
+    "listen": "ws://$USERINFO@$HOST:$PORT"
+  }
 }
 EOF
 fi

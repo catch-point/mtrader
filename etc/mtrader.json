@@ -32,6 +32,13 @@
       "location": ""
     }
   },
+  "collect": {
+    "nice": 0,
+    "remote": [{
+      "enabled": false,
+      "location": ""
+    }]
+  },
   "broker": {
     "ib": {
       "enabled": false

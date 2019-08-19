@@ -33,6 +33,7 @@
 const fs = require('graceful-fs');
 const path = require('path');
 const url = require('url');
+const querystring = require('querystring');
 const ws = require('ws');
 const EventEmitter = require('events');
 const _ = require('underscore');
@@ -44,35 +45,39 @@ const version = require('./version.js');
 
 const EOM = '\r\n\r\n';
 
-const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
+const DEFAULT_PATH = `/mtrader/${version.minor_version}/remote`;
 
-const remote = module.exports = function(socket, options) {
-    if (!socket) throw Error("No remote location given");
-    if (typeof socket == 'string' || typeof socket == 'number')
-        return remote(new ws(parseLocation(socket, false).href, _.extend({
-            key: readFileSync(config('tls.key_pem')),
-            passphrase: readBase64FileSync(config('tls.passphrase_base64')),
-            cert: readFileSync(config('tls.cert_pem')),
-            ca: readFileSync(config('tls.ca_pem')),
-            crl: readFileSync(config('tls.crl_pem')),
-            ciphers: config('tls.ciphers'),
-            honorCipherOrder: config('tls.honorCipherOrder'),
-            ecdhCurve: config('tls.ecdhCurve'),
-            dhparam: readFileSync(config('tls.dhparam_pem')),
-            secureProtocol: config('tls.secureProtocol'),
-            secureOptions: config('tls.secureOptions'),
-            handshakeTimeout: config('tls.handshakeTimeout'),
-            requestCert: config('tls.requestCert'),
-            rejectUnauthorized: config('tls.rejectUnauthorized'),
-            NPNProtocols: config('tls.NPNProtocols'),
-            ALPNProtocols: config('tls.ALPNProtocols'),
-            perMessageDeflate: config('tls.perMessageDeflate')!=null ? config('tls.perMessageDeflate') : true,
+const remote = module.exports = function(settings = {}, socket = null) {
+    if (_.isEmpty(settings) && !socket) throw Error("No remote location given");
+    if (typeof settings == 'string' || typeof settings == 'number')
+        return remote({label: settings, location: settings}, socket);
+    if (!socket) return remote(
+        _.extend({label: settings.location}, settings),
+        new ws(getSocketUrl(settings), _.extend({
+            key: readFileSync(config('remote.key_pem')),
+            passphrase: readBase64FileSync(config('remote.passphrase_base64')),
+            cert: readFileSync(config('remote.cert_pem')),
+            ca: readFileSync(config('remote.ca_pem')),
+            crl: readFileSync(config('remote.crl_pem')),
+            ciphers: config('remote.ciphers'),
+            honorCipherOrder: config('remote.honorCipherOrder'),
+            ecdhCurve: config('remote.ecdhCurve'),
+            dhparam: readFileSync(config('remote.dhparam_pem')),
+            secureProtocol: config('remote.secureProtocol'),
+            secureOptions: config('remote.secureOptions'),
+            handshakeTimeout: config('remote.handshakeTimeout'),
+            requestCert: config('remote.requestCert'),
+            rejectUnauthorized: config('remote.rejectUnauthorized'),
+            NPNProtocols: config('remote.NPNProtocols'),
+            ALPNProtocols: config('remote.ALPNProtocols'),
+            perMessageDeflate: config('remote.perMessageDeflate')!=null ? config('remote.perMessageDeflate') : true,
             headers: {'User-Agent': 'mtrader/' + version},
             agent: false
-        }, options)), _.extend({label: socket}, options));
+        }, settings))
+    );
     let buf = '';
-    const label = options.label;
-    const timeout = config('tls.timeout');
+    const label = settings.label;
+    const timeout = config('remote.timeout');
     const emitter = new EventEmitter();
     socket.on('open', () => {
         if (timeout) {
@@ -148,6 +153,13 @@ function readFileSync(filename) {
     }
 }
 
+function getSocketUrl(settings) {
+    const base = parseLocation(settings.location, false).href;
+    const params = flattenObjectPaths(_.omit(settings, 'location', 'enabled'));
+    const qs = querystring.stringify(params);
+    return `${base}?${qs}`;
+}
+
 function parseLocation(location, secure) {
     const parsed = typeof location == 'number' || location.match(/^\d+$/) ? {port: +location} :
         ~location.indexOf('//') ? url.parse(location) :
@@ -170,4 +182,14 @@ function parseLocation(location, secure) {
         parsed.href = parsed.href + DEFAULT_PATH;
     }
     return parsed;
+}
+
+function flattenObjectPaths(settings) {
+    return _.reduce(settings, (params, value, name) => {
+        if (value == null) return params;
+        else if (!value || typeof value != 'object') return Object.assign(params, {[name]: `${value}`});
+        else return _.reduce(flattenObjectPaths(value), (params, value, suffix) => {
+            return Object.assign(params, {[`${name}.${suffix}`]: value});
+        }, params);
+    }, {});
 }

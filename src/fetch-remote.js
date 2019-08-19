@@ -82,7 +82,7 @@ module.exports = function() {
             if (closing) throw Error("Closing remote connection");
             const location = config('fetch.remote.location');
             logger.log(`Connecting ${location} from ${process.pid}`);
-            const connection = remote(location);
+            const connection = remote(config('fetch.remote'));
             return replyTo(connection)
                 .handle('stop', () => connection.disconnect());
         });

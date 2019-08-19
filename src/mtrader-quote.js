@@ -61,6 +61,7 @@ function usage(command) {
         .option('-q, --quiet', "Include less information about what the system is doing")
         .option('-x, --debug', "Include details about what the system is working on")
         .option('-X', "Hide details about what the system is working on")
+        .option('-i, --runInBand', "Runs in the same process rather than spawning processes")
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--config-dir <dirname>', "Directory where stored sessions are kept")
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
@@ -182,8 +183,8 @@ function createQueue(createWorkers) {
 
 function createWorkers(program, fetch) {
     const prime = [0,1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
-    const size = _.isFinite(config('quote_workers')) ? +config('quote_workers') :
-        _.isFinite(config('workers')) && config('workers') == 0 ? 0 :
+    const size = config('runInBand') ? 0 :
+        _.isFinite(config('quote.workers')) ? +config('quote.workers') :
         prime[_.sortedIndex(prime, WORKER_COUNT)] || WORKER_COUNT;
     if (size) logger.debug("Launching", size, "quote workers");
     return _.range(size).map(() => {

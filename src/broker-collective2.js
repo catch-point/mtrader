@@ -44,7 +44,7 @@ const expect = require('chai').expect;
  */
 module.exports = function(settings) {
     if (settings.help) return helpSettings();
-    settings = {...settings, offline: config('offline'), ...config('tls'), ...config('broker.collective2')};
+    settings = {...settings, offline: config('offline'), ...config('remote'), ...config('broker.collective2')};
     expect(settings).to.have.property('systemid').that.is.ok;
     const client = Collective2(settings);
     const fetch = new Fetch(settings);

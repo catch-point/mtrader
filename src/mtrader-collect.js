@@ -65,6 +65,7 @@ function usage(command) {
         .option('-q, --quiet', "Include less information about what the system is doing")
         .option('-x, --debug', "Include details about what the system is working on")
         .option('-X', "Hide details about what the system is working on")
+        .option('-i, --runInBand', "Runs in the same process rather than spawning processes")
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--config-dir <dirname>', "Directory where stored sessions are kept")
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
@@ -152,6 +153,7 @@ function createInstance(program) {
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = _.debounce(() => {
         local.reload();
+        remote.reload();
         inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
         try {
             cache && cache.close().catch(err => logger.warn("Could not reset collect cache", err));
@@ -165,14 +167,14 @@ function createInstance(program) {
               .catch(err => logger.warn("Could not reset collect", err));
         } finally {
             local = createQueue(localWorkers);
-            remote = Remote();
+            remote = new Remote(config('collect'));
             cache = createCache(direct, local, remote);
         }
     };
     const direct = Collect(quote, instance);
     const localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance);
     let local = createQueue(localWorkers);
-    let remote = Remote();
+    let remote = new Remote(config('collect'));
     let cache = createCache(direct, local, remote);
     return instance;
 }
@@ -230,7 +232,8 @@ function createQueue(createWorkers, onerror) {
 }
 
 function createLocalWorkers(program, fetch, quote, collect) {
-    const count = _.isFinite(config('workers')) ? config('workers') : WORKER_COUNT;
+    const count = config('runInBand') ? 0 :
+        _.isFinite(config('collect.workers')) ? config('collect.workers') : WORKER_COUNT;
     return _.range(count).map(() => {
         return replyTo(config.fork(module.filename, program))
           .handle('fetch', payload => fetch(payload))

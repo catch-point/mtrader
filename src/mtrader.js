@@ -45,7 +45,6 @@ const expect = require('chai').expect;
 const logger = require('./logger.js');
 const common = require('./common-functions.js');
 const Parser = require('../src/parser.js');
-const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
 const Remote = require('./remote-workers.js');
 const Config = require('./mtrader-config.js');
@@ -63,9 +62,6 @@ const Strategize = require('./mtrader-strategize.js');
 const Broker = require('./mtrader-broker.js');
 const Replicate = require('./mtrader-replicate.js');
 
-const DEFAULT_PATH = '/mtrader/' + version.minor_version + '/workers';
-const WORKER_COUNT = require('os').cpus().length;
-
 const program = require('commander')
     .description(version.description)
     .command('config <name> [value]', "View or change stored options")
@@ -78,6 +74,8 @@ const program = require('commander')
     .command('strategize [identifier]', "Modifies a strategy looking for improvements")
     .command('replicate [identifier]', "Changes workers orders to align with collected signal orders")
     .command('broker [action]', "Retrieve or execute orders in broker account")
+    .command('start', "Start a headless service on the listen interface")
+    .command('stop', "Stops a headless service using the listen interface")
     .option('-V, --version', "Output the version number(s)")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-q, --quiet', "Include less information about what the system is doing")
@@ -88,32 +86,14 @@ const program = require('commander')
     .option('--cache-dir <dirname>', "Directory where processed data is kept")
     .option('--load <filename>', "Read the given session settings")
     .option('-o, --offline', "Disable data updates")
-    .option('--set <name=value>', "Name=Value pairs to be used in session")
-    .option('--listen [address:port]', "Interface and TCP port to listen for jobs")
-    .option('--stop', "Signals all remote workers to stop and shutdown");
+    .option('--set <name=value>', "Name=Value pairs to be used in session");
 
-program.command('start').description("Start a headless service on the listen interface").action(() => {
-    if (!config('listen')) throw Error("Service listen address is required to start service");
-});
-program.command('stop').description("Stops a headless service using the listen interface").action(() => {
-    const address = config('listen');
-    if (!address) throw Error("Service listen address is required to stop service");
-    const worker = replyTo(remote(address, {checkServerIdentity: _.noop}))
-        .on('error', err => logger.debug(err, err.stack))
-        .on('error', () => worker.disconnect());
-    return new Promise((stopped, abort) => {
-        process.on('SIGINT', abort);
-        process.on('SIGTERM', abort);
-        worker.handle('stop', stopped).request('stop').catch(abort);
-    }).catch(err => err && err.stack && logger.debug(err, err.stack))
-      .then(() => worker.disconnect());
-});
 let program_args_version = false;
 program.on('option:version', async function() {
     program_args_version = true;
     process.stdout.write(version + '\n');
-    if (config('remote_workers')) {
-        const remote = new Remote();
+    if (config('collect.remote')) {
+        const remote = new Remote(config('collect'));
         const remote_version = await remote.version();
         _.forEach(remote_version, (worker_version, worker) => {
             process.stdout.write(`${worker_version} ${worker}` + '\n');
@@ -155,17 +135,6 @@ if (require.main === module) {
         process.on('SIGTERM', () => app.quit());
         app.on('quit', () => mtrader.close());
         app.on('exit', () => mtrader.close());
-        if (config('listen')) {
-            mtrader.listen(config('listen'));
-        }
-    } else if (!program_args_version && config('listen') &&
-            !~['stop','config','fetch','version'].indexOf(program.args[0]) &&
-            !~['stop','config','fetch','version'].indexOf(program.args[0].name && program.args[0].name())) {
-        const mtrader = createInstance(config.options());
-        const server = mtrader.listen(config('listen'));
-        process.on('SIGINT', () => mtrader.close());
-        process.on('SIGTERM', () => mtrader.close());
-        server.on('close', () => mtrader.close());
     }
     process.on('SIGTERM', () => {
         setTimeout(() => {
@@ -202,7 +171,6 @@ function createInstance(settings = {}) {
     const strategize = new Strategize(settings);
     const broker = new Broker(settings);
     const replicate = new Replicate(settings);
-    const servers = [];
     let closed;
     return Object.assign(new.target ? this : {}, {
         config: config,
@@ -231,22 +199,18 @@ function createInstance(settings = {}) {
         },
         close() {
             if (closed) return closed;
-            else return closed = Promise.all(servers.map(server => {
-                return new Promise(cb => server.close(cb));
-            })).then(() => {
-                return Promise.all([
-                    config.close(),
-                    date.close(),
-                    fetch.close(),
-                    quote.close(),
-                    collect.close(),
-                    optimize.close(),
-                    bestsignals.close(),
-                    strategize.close(),
-                    broker.close(),
-                    replicate.close()
-                ]).then(() => {});
-            });
+            else return closed = Promise.all([
+                config.close(),
+                date.close(),
+                fetch.close(),
+                quote.close(),
+                collect.close(),
+                optimize.close(),
+                bestsignals.close(),
+                strategize.close(),
+                broker.close(),
+                replicate.close()
+            ]).then(() => {});
         },
         async shell(app) {
             await Promise.all([
@@ -282,164 +246,6 @@ function createInstance(settings = {}) {
                     cb(err);
                 }
             });
-        },
-        listen(address) {
-            const server = listen(this, address);
-            server.once('close', () => {
-                const idx = servers.indexOf(server);
-                if (idx >= 0) {
-                    servers.splice(idx, 1);
-                }
-            });
-            servers.push(server);
-            return server;
         }
     });
-}
-
-function listen(mtrader, address) {
-    const timeout = config('tls.timeout');
-    const addr = parseLocation(address, false);
-    const auth = addr.auth ? 'Basic ' + new Buffer(addr.auth).toString('base64') : undefined;
-    const server = addr.protocol == 'https:' || addr.protocol == 'wss:' ? https.createServer({
-        key: readFileSync(config('tls.key_pem')),
-        passphrase: readBase64FileSync(config('tls.passphrase_base64')),
-        cert: readFileSync(config('tls.cert_pem')),
-        ca: readFileSync(config('tls.ca_pem')),
-        crl: readFileSync(config('tls.crl_pem')),
-        ciphers: config('tls.ciphers'),
-        honorCipherOrder: config('tls.honorCipherOrder'),
-        ecdhCurve: config('tls.ecdhCurve'),
-        dhparam: readFileSync(config('tls.dhparam_pem')),
-        secureProtocol: config('tls.secureProtocol'),
-        secureOptions: config('tls.secureOptions'),
-        handshakeTimeout: config('tls.handshakeTimeout'),
-        requestCert: config('tls.requestCert'),
-        rejectUnauthorized: config('tls.rejectUnauthorized'),
-        NPNProtocols: config('tls.NPNProtocols'),
-        ALPNProtocols: config('tls.ALPNProtocols')
-    }) : http.createServer();
-    server.on('upgrade', (request, socket, head) => {
-        if (wsserver.shouldHandle(request)) return;
-        else if (socket.writable) {
-            const msg = `Try using mtrader/${version}\r\n`;
-            socket.write(
-                `HTTP/1.1 400 ${http.STATUS_CODES[400]}\r\n` +
-                `Server: mtrader/${version}\r\n` +
-                'Connection: close\r\n' +
-                'Content-type: text/plain\r\n' +
-                `Content-Length: ${Buffer.byteLength(msg)}\r\n` +
-                '\r\n' +
-                msg
-            );
-            socket.destroy();
-        }
-    });
-    server.on('request', (request, response) => {
-        response.setHeader('Server', 'mtrader/' + version);
-        if (wsserver.shouldHandle(request)) return;
-        const msg = `Try using mtrader/${version}\r\n`;
-        response.statusCode = 404;
-        response.setHeader('Content-Type', 'text/plain');
-        response.setHeader('Content-Length', Buffer.byteLength(msg));
-        response.end(msg);
-    });
-    const wsserver = new ws.Server({
-        server: server, path: addr.path,
-        clientTracking: true,
-        perMessageDeflate: config('tls.perMessageDeflate')!=null ? config('tls.perMessageDeflate') : true,
-        verifyClient: auth ? info => {
-            return info.req.headers.authorization == auth;
-        } : undefined
-    });
-    wsserver.on('headers', (headers, request) => {
-        headers.push('Server: mtrader/' + version);
-    });
-    wsserver.on('connection', (ws, message) => {
-        const socket = message.socket;
-        if (timeout) {
-            socket.setTimeout(timeout);
-            socket.on('timeout', () => ws.ping());
-        }
-        const label = socket.remoteAddress + ':' + socket.remotePort
-        logger.log("Client", label, "connected");
-        const process = remote(ws, label).on('error', err => {
-            logger.error(err, err.stack);
-            ws.close();
-        }).on('disconnect', () => {
-            logger.log("Client", label, "disconnected");
-        });
-        replyTo(process)
-            .handle('lookup', mtrader.lookup)
-            .handle('fundamental', mtrader.fundamental)
-            .handle('fetch', mtrader.fetch)
-            .handle('quote', mtrader.quote)
-            .handle('collect', mtrader.collect)
-            .handle('optimize', mtrader.optimize)
-            .handle('bestsignals', mtrader.bestsignals)
-            .handle('strategize', mtrader.strategize)
-            .handle('broker', mtrader.broker)
-            .handle('replicate', mtrader.replicate)
-            .handle('tz', p => (moment.defaultZone||{}).name || moment.tz.guess())
-            .handle('version', () => version.toString())
-            .handle('worker_count', () => config('workers') != null ? config('workers') : WORKER_COUNT)
-            .handle('stop', () => {
-                try {
-                    const stop = JSON.stringify({cmd:'stop'}) + '\r\n\r\n';
-                    wsserver.clients.forEach(client => {
-                        if (client.readyState == 1) client.send(stop);
-                    });
-                } finally {
-                    server.close();
-                }
-            });
-    }).on('error', err => logger.error(err, err.stack))
-      .on('listening', () => logger.info(`Service ${version.patch_version} listening on port ${server.address().port}`));
-    server.once('close', () => logger.log("Service has closed", address));
-    const server_close = server.close;
-    server.close = () => {
-        server_close.call(server);
-        wsserver.clients.forEach(client => client.close());
-    };
-    if (addr.hostname) {
-        server.listen(addr.port, addr.hostname);
-    } else {
-        server.listen(addr.port);
-    }
-    return server;
-}
-
-function readBase64FileSync(filename) {
-    if (filename) return Buffer.from(readFileSync(filename), 'base64').toString();
-}
-
-function readFileSync(filename) {
-    if (filename) {
-        const file = path.resolve(config('prefix'), filename);
-        return fs.readFileSync(file, {encoding: 'utf-8'});
-    }
-}
-
-function parseLocation(location, secure) {
-    const parsed = typeof location == 'number' || location.match(/^\d+$/) ? {port: +location} :
-        ~location.indexOf('//') ? url.parse(location) :
-        secure ? url.parse('wss://' + location) :
-        url.parse('ws://' + location);
-    parsed.protocol = parsed.protocol || (secure ? 'wss:' : 'ws:');
-    parsed.port = parsed.port || (
-        parsed.protocol == 'ws:' || parsed.protocol == 'http:' ? 80 :
-        parsed.protocol == 'wss:' || parsed.protocol == 'https:' ? 443 :
-        secure ? 443 : 80
-    );
-    parsed.hostname = parsed.hostname || '';
-    parsed.host = parsed.host || (parsed.hostname + ':' + parsed.port);
-    parsed.href = parsed.href || (parsed.protocol + '//' + parsed.host);
-    if (parsed.path == '/' && !parsed.hash && location.charAt(location.length-1) != '/') {
-        parsed.path = DEFAULT_PATH;
-        parsed.href = parsed.href + DEFAULT_PATH.substring(1);
-    } else if (!parsed.path && !parsed.hash) {
-        parsed.path = DEFAULT_PATH;
-        parsed.href = parsed.href + DEFAULT_PATH;
-    }
-    return parsed;
 }
