@@ -54,7 +54,7 @@ describe("broker-collective2", function() {
     var submitSignal = path.resolve(dir, 'submitSignal.json');
     var cancelSignal = path.resolve(dir, 'cancelSignal.json');
     before(function() {
-        config('workers', 0);
+        config('runInBand', true);
         config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('collective2'));
         config('fetch.files.dirname', path.resolve(__dirname, 'data'));
@@ -83,6 +83,7 @@ describe("broker-collective2", function() {
         fs.writeFileSync(retrieveSignalsAll, JSON.stringify({ok:1,response:[]}));
     });
     after(function() {
+        config.unset('runInBand');
         config.unset('prefix');
         config.unset('fetch.files.dirname');
         return Promise.all([

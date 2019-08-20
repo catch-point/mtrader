@@ -32,6 +32,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const version = require('./version.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const blended = require('./fetch-blended.js');
@@ -49,9 +50,17 @@ module.exports = function() {
     const markets = config('markets');
     const self = function(options) {
         datasources = datasources || promiseDatasources();
-        return datasources.then(datasources => {
+        return datasources.then(async(datasources) => {
             if (options.info=='help' || options.interval == 'help')
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
+            if (options.info=='version') {
+                const sources = _.uniq(_.flatten(_.values(datasources).map(_.values)));
+                return _.flatten(await Promise.all(sources.map(ds => {
+                    return ds(options).catch(err => {
+                        return [{message:err.message}];
+                    });
+                })));
+            }
             const market = options.market;
             if (market && !markets[market]) {
                 const others = _.flatten(_.map(datasources, _.keys));
@@ -271,6 +280,7 @@ function fundamental(datasources, options) {
 }
 
 async function year(day, options) {
+    if (options.info) return day(options);
     const end = options.end && moment.tz(options.end, options.tz);
     const bars = await month(day, _.defaults({
         interval: 'month',
@@ -293,6 +303,7 @@ async function year(day, options) {
 }
 
 async function quarter(day, options) {
+    if (options.info) return day(options);
     const end = options.end && moment.tz(options.end, options.tz);
     const bars = await month(day, _.defaults({
         interval: 'month',
@@ -315,6 +326,7 @@ async function quarter(day, options) {
 }
 
 async function month(day, options) {
+    if (options.info) return day(options);
     const end = options.end && moment.tz(options.end, options.tz);
     const bars = await day(_.defaults({
         interval: 'day',
@@ -337,6 +349,7 @@ async function month(day, options) {
 }
 
 async function week(day, options) {
+    if (options.info) return day(options);
     const begin = moment.tz(options.begin, options.tz);
     const bars = await day(_.defaults({
         interval: 'day',

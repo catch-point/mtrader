@@ -113,14 +113,16 @@ if (require.main === module) {
     } else {
         program.help();
     }
-} else if (config('runInBand')) {
+} else if (config('runInBand') || ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand')) {
     const shared = module.exports = share(() => {
         let fetch, closed;
         const program = usage(new commander.Command());
         const instance = function(options) {
             if (closed) throw Error("Fetch is closed");
             if (!fetch) fetch = new Fetch();
-            return fetch(options);
+            const opts = options.tz && options.ending_format ? options :
+                Object.assign({tz, ending_format: moment.defaultFormat}, options);
+            return fetch(opts);
         };
         instance.close = function() {
             if (closed) return closed;

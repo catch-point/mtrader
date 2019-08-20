@@ -102,10 +102,13 @@ function writeData(transpose, reverse, gzip, filename, data) {
             }
             writer.end();
         } else {
-            const first_hdrs = _.keys(_.first(data));
-            const last_hdrs = _.keys(_.last(data));
-            const headers = last_hdrs.length >= first_hdrs.length && !_.difference(last_hdrs, first_hdrs).length ?
-                last_hdrs : _.union(first_hdrs, last_hdrs);
+            const headers = data.reduce((all_keys, datum) => {
+                const keys = _.keys(datum);
+                if (keys.length > all_keys.length && !_.difference(keys, all_keys).length)
+                    return keys;
+                else
+                    return _.union(all_keys, keys);
+            }, []);
             const writer = csv.createWriteStream({
                 headers,
                 rowDelimiter: '\r\n',

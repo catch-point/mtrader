@@ -35,6 +35,7 @@ const moment = require('moment-timezone');
 const statkit = require("statkit");
 const Alea = require('alea');
 const merge = require('./merge.js');
+const version = require('./version.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
@@ -50,6 +51,7 @@ module.exports = function(optimize) {
     return Object.assign(async function(options) {
         if (!promiseHelp) promiseHelp = help(optimize);
         if (options.info=='help') return promiseHelp;
+        else if (options.info=='version') return [{version:version.toString()}];
         const keys = _.keys(_.first(await promiseHelp).options);
         const opts = _.pick(options, keys);
         return bestsignals(optimize, opts);

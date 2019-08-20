@@ -63,12 +63,13 @@ describe("broker-ib", function() {
         if (ib) return ib.close();
     });
     before(function() {
-        config('workers', 0);
+        config('runInBand', true);
         config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('broker-ib'));
         config('fetch.files.dirname', path.resolve(__dirname, 'data'));
     });
     after(function() {
+        config.unset('runInBand');
         config.unset('prefix');
         config.unset('fetch.files.dirname');
     });

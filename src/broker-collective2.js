@@ -34,6 +34,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
 const logger = require('./logger.js');
+const version = require('./version.js').toString();
 const config = require('./config.js');
 const Fetch = require('./fetch.js');
 const Collective2 = require('./collective2-client.js');
@@ -44,6 +45,7 @@ const expect = require('chai').expect;
  */
 module.exports = function(settings) {
     if (settings.info=='help') return helpSettings();
+    if (settings.info=='version') return [{version}];
     settings = {...settings, offline: config('offline'), ...config('remote'), ...config('broker.collective2')};
     expect(settings).to.have.property('systemid').that.is.ok;
     const client = Collective2(settings);
@@ -54,8 +56,9 @@ module.exports = function(settings) {
         return Object.assign(_.omit(market, _.isObject), market.datasources.collective2);
     });
     const lookup_fn = _.memoize(lookup.bind(this, fetch, markets), signal => signal.symbol);
-    return _.extend(function(options) {
+    return _.extend(async function(options) {
         if (options && options.info=='help') return helpOptions();
+        if (options && options.info=='version') return [{version}];
         const c2_multipliers = settings.c2_multipliers || {};
         return collective2(c2_multipliers, client, fetch, markets, lookup_fn, options || {});
     }, {
@@ -72,7 +75,7 @@ module.exports = function(settings) {
  * Array of one Object with description of module, including supported options
  */
 function helpSettings() {
-    return Promise.resolve([{
+    return [{
         name: 'broker',
         usage: 'broker(settings)',
         description: "Information needed to identify the broker account",
@@ -86,7 +89,7 @@ function helpSettings() {
                 description: "A hash of collective2 symbols to their Value 1 Pt (if not 1)"
             }
         }
-    }]);
+    }];
 }
 
 /**

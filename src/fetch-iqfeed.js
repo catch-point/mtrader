@@ -35,6 +35,7 @@ const moment = require('moment-timezone');
 const Big = require('big.js');
 const d3 = require('d3-format');
 const logger = require('./logger.js');
+const version = require('./version.js').toString();
 const config = require('./config.js');
 const periods = require('./periods.js');
 const iqfeed = require('./iqfeed-client.js');
@@ -211,11 +212,17 @@ function createInstance() {
     const lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_markets) => {
         return symbol + ' ' + _.compact(_.flatten([listed_markets])).join(' ');
     }, 10);
-    return Object.assign(options => {
+    return Object.assign(async(options) => {
         if (options.open) {
             return iqclient.open();
         } else if (options.info=='help') {
-            return Promise.resolve(helpInfo);
+            return helpInfo;
+        } else if (options.info=='version') {
+            return iqclient.version().then(client_version => {
+                return [{version: client_version, name: 'IQFeed'}];
+            }, err => {
+                return [{version: null, name: 'IQFeed', message: err.message}];
+            });
         } else if (options.rollday) {
             expect(options).to.be.like({
                 interval: _.isString,

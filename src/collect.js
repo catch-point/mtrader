@@ -35,6 +35,7 @@ const Big = require('big.js');
 const moment = require('moment-timezone');
 const Parser = require('./parser.js');
 const interrupt = require('./interrupt.js');
+const version = require('./version.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
 const quoting = require('./quoting-functions.js');
@@ -52,6 +53,7 @@ module.exports = function(quote, collectFn) {
         if (!promiseHelp) promiseHelp = help(quote);
         expect(options).to.be.an('object');
         if (options.info=='help') return promiseHelp;
+        if (options.info=='version') return [{version:version.toString()}];
         const keys = _.keys(_.first(await promiseHelp).options);
         const fields = _.first(await promiseHelp).properties;
         const opts = _.defaults(_.pick(options, keys), {

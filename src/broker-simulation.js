@@ -36,6 +36,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
 const logger = require('./logger.js');
+const version = require('./version.js').toString();
 const config = require('./config.js');
 const storage = require('./storage.js');
 const Fetch = require('./mtrader-fetch.js');
@@ -52,6 +53,7 @@ function nextval() {
 
 module.exports = function(settings) {
     if (settings.info=='help') return helpSettings();
+    if (settings.info=='version') return [{version}];
     settings = {...settings, ...config('broker.simulation')};
     expect(settings).to.have.property('simulation').that.is.ok;
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
@@ -65,6 +67,7 @@ module.exports = function(settings) {
     let advance_lock = Promise.resolve();
     return _.extend(async(options) => {
         if (options.info=='help') return helpOptions();
+        if (options.info=='version') return [{version}];
         return store.open(settings.simulation, async(err, db) => {
             if (err) throw err;
             const barsFor_fn = barsFor.bind(this, markets, collect);
@@ -89,7 +92,7 @@ module.exports = function(settings) {
  * Array of one Object with description of module, including supported options
  */
 function helpSettings() {
-    return Promise.resolve([{
+    return [{
         name: 'broker',
         usage: 'broker(settings)',
         description: "Information needed to identify the broker account",
@@ -99,7 +102,7 @@ function helpSettings() {
                 description: "The stored simulation instance to use"
             }
         }
-    }]);
+    }];
 }
 
 /**

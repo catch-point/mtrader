@@ -40,7 +40,7 @@ const storage = require('./storage.js');
 const Yahoo = require('./yahoo-client.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
-const minor_version = require('./version.js').minor_version;
+const version = require('./version.js');
 
 function help() {
     return [{
@@ -83,8 +83,9 @@ module.exports = function(yahooClient) {
     const markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
     const symbol = yahoo_symbol.bind(this, markets);
     const yahoo = yahooClient || Yahoo();
-    return _.extend(options => {
-        if (options.info=='help') return Promise.resolve(helpInfo);
+    return _.extend(async(options) => {
+        if (options.info=='help') return helpInfo;
+        if (options.info=='version') return [{version:version.toString()}];
         else if (options.market && !markets[options.market]) return Promise.resolve([]);
         const market = options.market || '';
         const store = stores[market] = stores[market] || storage(path.resolve(dir, market || ''));
@@ -149,7 +150,7 @@ async function yahoo_adjustments(yahoo, db, symbol, options) {
         const data = _.sortBy(splits.concat(divs), 'Date');
         return writeAdjPrice(yahoo, symbol, col, since, data, options)
           .then(data => {
-            col.propertyOf(since, 'version', minor_version);
+            col.propertyOf(since, 'version', version.minor_version);
             col.propertyOf(since, 'asof', asof);
             return data;
         }).catch(err => {
@@ -185,7 +186,7 @@ async function writeAdjPrice(yahoo, symbol, col, since, data, options) {
 
 function compatible(collection, since) {
     if (!collection.exists(since)) return false;
-    return collection.propertyOf(since, 'version') == minor_version;
+    return collection.propertyOf(since, 'version') == version.minor_version;
 }
 
 async function adjustments(yahoo, db, symbol, options) {

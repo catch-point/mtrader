@@ -45,7 +45,7 @@ describe("broker-simulation", function() {
     this.timeout(60000);
     var fetch, quote, collect, broker;
     before(function() {
-        config('workers', 0);
+        config('runInBand', 1);
         config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('simulation'));
         config('fetch.files.dirname', path.resolve(__dirname, 'data'));
@@ -58,6 +58,7 @@ describe("broker-simulation", function() {
         await broker({action: 'reset'});
     });
     after(function() {
+        config.unset('runInBand');
         config.unset('prefix');
         config.unset('fetch.files.dirname');
         return Promise.all([

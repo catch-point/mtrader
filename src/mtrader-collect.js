@@ -130,6 +130,8 @@ function createInstance(program) {
         return promiseKeys.then(keys => trimOptions(keys, options))
           .then(options => {
             if (options.info=='help' || isSplitting(options)) return direct(options);
+            else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
+            else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
             else if (cache && inPast(options)) return cache(options);
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (!remote.hasWorkers()) return local(options);
@@ -194,6 +196,8 @@ function createCache(direct, local, remote) {
     return Cache(dir, function(options) {
         if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
         else if (options.info=='help' || isSplitting(options)) return direct(options);
+        else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
+        else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
         else if (!remote.hasWorkers()) return local(options);
         else if (options.reset_every || isLeaf(options)) return remote.collect(options);
         else if (!local.hasWorkers()) return remote.collect(options);
@@ -229,7 +233,7 @@ function createQueue(createWorkers, onerror) {
 }
 
 function createLocalWorkers(program, fetch, quote, collect) {
-    const count = config('runInBand') ? 0 :
+    const count = config('runInBand') || ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand') ? 0 :
         _.isFinite(config('collect.workers')) ? config('collect.workers') : WORKER_COUNT;
     return _.range(count).map(() => {
         return replyTo(config.fork(module.filename, program))

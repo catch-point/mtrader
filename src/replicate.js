@@ -39,12 +39,12 @@ const path = require('path');
 const Big = require('big.js');
 const moment = require('moment-timezone');
 const merge = require('./merge.js');
+const version = require('./version.js');
 const interrupt = require('./interrupt.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const formatDate = new require('./mtrader-date.js')();
 const expect = require('chai').expect;
-const version = require('../package.json').version;
 const Lookup = require('./lookup.js');
 
 /**
@@ -56,9 +56,10 @@ const Lookup = require('./lookup.js');
 module.exports = function(broker, fetch, collect) {
     let promiseHelp;
     const lookup = new Lookup(fetch);
-    return _.extend(function(options) {
+    return _.extend(async function(options) {
         if (!promiseHelp) promiseHelp = help(broker, collect);
         if (options.info=='help') return promiseHelp;
+        else if (options.info=='version') return [{version:version.toString()}];
         else return promiseHelp.then(help => {
             const opts = _.defaults({
                 now: moment(options.now).valueOf()

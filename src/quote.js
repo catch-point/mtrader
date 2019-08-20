@@ -33,7 +33,7 @@
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
-const minor_version = require('./version.js').minor_version;
+const version = require('./version.js');
 const storage = require('./storage.js');
 const Lookup = require('./lookup.js');
 const periods = require('./periods.js');
@@ -55,9 +55,10 @@ module.exports = function(fetch) {
     const lookup = Lookup(fetch);
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const stores = {};
-    return _.extend(function(options) {
+    return _.extend(async function(options) {
         if (!promiseHelp) promiseHelp = help(fetch);
         if (options.info=='help') return promiseHelp;
+        if (options.info=='version') return [{version: version.toString()}];
         const market = options.market || '';
         const store = stores[market] = stores[market] || storage(path.resolve(dir, market || ''));
         return promiseHelp.then(help => {
@@ -526,8 +527,8 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
     const latest = !stop.isBefore(now) || _.contains(blocks, _.last(getBlocks(interval, now, now, options)));
     if (options.offline) return Promise.resolve(blocks);
     else return collection.lockWith(blocks, blocks => {
-        const version = getStorageVersion(collection);
-        return fetchBlocks(fetch, fields, options, collection, version, stop.format(), blocks, latest);
+        const store_ver = getStorageVersion(collection);
+        return fetchBlocks(fetch, fields, options, collection, store_ver, stop.format(), blocks, latest);
     });
 }
 
@@ -673,10 +674,10 @@ function getStorageVersion(collection) {
     const blocks = collection.listNames();
     const versions = blocks
         .map(block => collection.propertyOf(block, 'version'))
-        .filter(version => version && version.indexOf(minor_version) === 0);
+        .filter(ver => ver && ver.indexOf(version.minor_version) === 0);
     const len = _.max(_.map(versions, 'length'));
-    const version = _.last(versions.filter(version => version.length==len).sort());
-    if (version) return version;
+    const store_ver = _.last(versions.filter(ver => ver.length==len).sort());
+    if (store_ver) return store_ver;
     else return createStorageVersion();
 }
 
@@ -684,24 +685,24 @@ function getStorageVersion(collection) {
  * Returns a new version that must match among compatible blocks
  */
 function createStorageVersion() {
-    return minor_version + '+' + new Date().valueOf().toString(36);
+    return version.minor_version + '+' + new Date().valueOf().toString(36);
 }
 
 /**
  * Checks if any of the blocks need to be updated
  */
-function fetchBlocks(fetch, fields, options, collection, version, stop, blocks, latest_blocks) {
+function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks, latest_blocks) {
     const cmsg = "Incomplete data try again without the read_only flag";
     const pmsg = "or without the read_only flag";
     const fetchComplete = options.read_only ? () => Promise.reject(Error(cmsg)) :
-        fetchCompleteBlock.bind(this, fetch, options, collection, version);
+        fetchCompleteBlock.bind(this, fetch, options, collection, store_ver);
     const fetchPartial = options.read_only ? () => Promise.reject(Error(pmsg)) :
         fetchPartialBlock.bind(this, fetch, fields, options, collection);
     return Promise.all(blocks.map((block, i, blocks) => {
         const latest = i == blocks.length -1 && latest_blocks;
         if (!collection.exists(block))
             return fetchComplete(block, latest);
-        if (collection.propertyOf(block, 'version') != version)
+        if (collection.propertyOf(block, 'version') != store_ver)
             return fetchComplete(block, latest);
         if (collection.propertyOf(block, 'tz') != options.tz)
             return fetchComplete(block, latest);
@@ -722,8 +723,8 @@ function fetchBlocks(fetch, fields, options, collection, version, stop, blocks, 
         }
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
-        const version = createStorageVersion();
-        return fetchBlocks(fetch, fields, options, collection, version, stop, blocks, latest_blocks);
+        const store_ver = createStorageVersion();
+        return fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks, latest_blocks);
     });
 }
 
@@ -756,11 +757,11 @@ function isBeforeStartOfWeek(asof, options) {
 /**
  * Attempts to load a complete block
  */
-async function fetchCompleteBlock(fetch, options, collection, version, block, latest) {
+async function fetchCompleteBlock(fetch, options, collection, store_ver, block, latest) {
     const records = await fetch(blockOptions(block, options));
     if (latest && _.isEmpty(records)) return records; // don't write incomplete empty blocks
     await collection.replaceWith(records, block);
-    await collection.propertyOf(block, 'version', version);
+    await collection.propertyOf(block, 'version', store_ver);
     await collection.propertyOf(block, 'tz', options.tz);
     await collection.propertyOf(block, 'ending_format', options.ending_format);
 }

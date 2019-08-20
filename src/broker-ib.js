@@ -36,6 +36,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
 const logger = require('./logger.js');
+const version = require('./version.js').toString();
 const config = require('./config.js');
 const IB = require('./ib-gateway.js');
 const Fetch = require('./fetch.js');
@@ -43,6 +44,7 @@ const expect = require('chai').expect;
 
 module.exports = function(settings = {}, mock_ib_client = null) {
     if (settings.info=='help') return helpSettings();
+    if (settings.info=='version') return [{version}];
     settings = {...settings, ...config('broker.ib')};
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
@@ -61,6 +63,7 @@ module.exports = function(settings = {}, mock_ib_client = null) {
     const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
     return _.extend(async function(options) {
         if (options.info=='help') return helpOptions();
+        if (options.info=='version') return [{version}];
         await ib.open();
         switch(options.action) {
             case 'balances': return listBalances(markets, ib, fetch, settings, options);
@@ -91,7 +94,7 @@ module.exports = function(settings = {}, mock_ib_client = null) {
  * Array of one Object with description of module, including supported options
  */
 function helpSettings() {
-    return Promise.resolve([{
+    return [{
         name: 'broker',
         usage: 'broker(settings)',
         description: "Information needed to identify the broker account",
@@ -109,7 +112,7 @@ function helpSettings() {
                 description: "An array of accounts that can be used with this broker"
             }
         }
-    }]);
+    }];
 }
 
 /**

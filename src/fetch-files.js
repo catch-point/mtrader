@@ -34,6 +34,7 @@ const fs = require('graceful-fs');
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const version = require('./version.js').toString();
 const config = require('./config.js');
 const yahoo = require('./fetch-yahoo.js');
 const iqfeed = require('./fetch-iqfeed.js');
@@ -53,7 +54,8 @@ module.exports = function() {
     const dirname = config('fetch.files.dirname') || dir;
     const store = storage(dirname);
     const open = (name, cb) => store.open(name, cb);
-    return Object.assign(options => {
+    return Object.assign(async(options) => {
+        if (options.info=='version') return [{version}];
         if (options.info=='help') return readOrWriteHelp(fallbacks, open, 'help', options);
         switch(options.interval) {
             case 'lookup': return readOrWriteResult(fallbacks, open, 'lookup', options);

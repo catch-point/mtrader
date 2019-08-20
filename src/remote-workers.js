@@ -80,28 +80,17 @@ function createInstance(settings = {}) {
                 }
             }
         }, 100),
-        fetch(options) {
-            return queue('fetch', options);
-        },
-        quote(options) {
-            return queue('quote', options);
-        },
         collect(options) {
             return queue('collect', options);
         },
-        optimize(options) {
-            return queue('optimize', options);
-        },
-        bestsignals(options) {
-            return queue('bestsignals', options);
-        },
-        strategize(options) {
-            return queue('strategize', options);
-        },
         async version() {
-            const versions = await queue.all('version');
             const workers = queue.getWorkers();
-            return _.object(workers.map(worker => worker.process.pid), versions);
+            const versions = await queue.all('collect', {info:'version'})
+              .catch(err => workers.map(worker => ({message:err.message})));
+            return versions.reduce((versions, version, i) => {
+                const location = workers[i].process.pid;
+                return versions.concat(version.map(ver => ({...ver, location, ...ver})));
+            }, []);
         }
     });
 }

@@ -36,6 +36,7 @@ const statkit = require("statkit");
 const Alea = require('alea');
 const merge = require('./merge.js');
 const interrupt = require('./interrupt.js');
+const version = require('./version.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
@@ -48,9 +49,10 @@ const expect = require('chai').expect;
 module.exports = function(bestsignals) {
     let promiseHelp;
     let prng = new Alea();
-    return _.extend(function(options) {
+    return _.extend(async function(options) {
         if (!promiseHelp) promiseHelp = help(bestsignals);
         if (options.info=='help') return promiseHelp;
+        else if (options.info=='version') return [{version:version.toString()}];
         else return promiseHelp.then(help => {
             const fields = _.first(help).properties;
             const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {

@@ -38,6 +38,7 @@ const moment = require('moment-timezone');
 const merge = require('./merge.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
+const version = require('./version.js').toString();
 const yahoo = require('./fetch-yahoo.js');
 const iqfeed = require('./fetch-iqfeed.js');
 const remote = require('./fetch-remote.js');
@@ -55,13 +56,15 @@ module.exports = function() {
         cfg.delegate == 'iqfeed' ? iqfeed() :
         cfg.delegate == 'files' ? files() : yahoo();
     const markets = _.uniq(cfg.assets.map(asset => asset.market));
-    return Object.assign(options => {
-        if (options.info=='help') return delegate({info:'help'}).then(_.flatten).then(info => info.map(interday => {
-            if (!interday.options || !interday.options.market) return info;
-            else return merge(interday, {options: {market: {
-                values: markets
-            }}});
-        }));
+    return Object.assign(async(options) => {
+        if (options.info=='version') return [{version}];
+        if (options.info=='help')
+            return delegate({info:'help'}).then(_.flatten).then(info => info.map(interday => {
+                if (!interday.options || !interday.options.market) return info;
+                else return merge(interday, {options: {market: {
+                    values: markets
+                }}});
+            }));
         const dayFn = day.bind(this, blendCall.bind(this, delegate, cfg, 'interday'));
         switch(options.interval) {
             case 'lookup': return lookup(delegate, cfg, 'lookup', options);

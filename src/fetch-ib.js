@@ -35,6 +35,7 @@ const Big = require('big.js');
 const moment = require('moment-timezone');
 const d3 = require('d3-format');
 const logger = require('./logger.js');
+const version = require('./version.js').toString();
 const config = require('./config.js');
 const periods = require('./periods.js');
 const Adjustments = require('./adjustments.js');
@@ -131,6 +132,13 @@ module.exports = function() {
     )), v => !v);
     const self = async(options) => {
         if (options.info=='help') return help();
+        if (options.info=='version') {
+            return client.open().then(client => client.version()).then(client_version => {
+                return [{version: client_version, name: 'TWS API'}];
+            }, err => {
+                return [{version: client_version, name: 'TWS API', message: err.message}];
+            });
+        }
         await client.open();
         const adj = isNotEquity(markets, options) ? null : adjustments;
         if (options.interval == 'lookup') return lookup(markets, client, options);

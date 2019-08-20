@@ -34,6 +34,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const statkit = require("statkit");
 const Alea = require('alea');
+const version = require('./version.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const lookback = require('./lookback-functions.js');
@@ -52,9 +53,10 @@ const MAX_POPULATION = 8;
 module.exports = function(collect) {
     let promiseHelp;
     let prng = new Alea();
-    return _.extend(function(options) {
+    return _.extend(async function(options) {
         if (!promiseHelp) promiseHelp = help(collect);
         if (options.info=='help') return promiseHelp;
+        else if (options.info=='version') return [{version:version.toString()}];
         else return promiseHelp.then(help => {
             const fields = _.first(help).properties;
             const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {

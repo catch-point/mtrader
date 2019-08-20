@@ -31,6 +31,7 @@
 'use strict';
 
 const _ = require('underscore');
+const version = require('./version.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
 const Collective2 = require('./broker-collective2.js');
@@ -46,12 +47,16 @@ module.exports = function(settings = {}) {
     ]));
     let promiseHelpWithSettings, promiseHelpWithOptions;
     if (settings.info=='help' && !promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
-    if (settings.info=='help') return promiseHelpWithSettings.then(help => [].concat(...Object.values(help)));
+    if (settings.info=='help')
+        return promiseHelpWithSettings.then(help => [].concat(...Object.values(help)));
+    if (settings.info=='version')
+        return Promise.all(Object.values(Brokers).map(Broker => Broker({info:'version'})));
     let broker_promise;
     return Object.assign(async function(options) {
         if (!promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
         broker_promise = broker_promise || createBroker(await promiseHelpWithSettings, Brokers, settings);
-        const broker = await broker_promise;
+        const broker = await broker_promise.catch(err => {if (!options.info) throw err;});
+        if (options.info && !broker) return [];
         if (!promiseHelpWithOptions) promiseHelpWithOptions = broker({info:'help'});
         if (options.info=='help') return promiseHelpWithOptions;
         const help = await promiseHelpWithOptions;

@@ -133,7 +133,7 @@ function createInstance(program) {
                 .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
         }
         return promiseKeys.then(keys => _.pick(options, keys)).then(options => {
-            if (options.info=='help' || _.isEmpty(queue.getWorkers()))
+            if (options.info || _.isEmpty(queue.getWorkers()))
                 return direct(options);
             else return queue(options);
         });
@@ -180,7 +180,7 @@ function createQueue(createWorkers) {
 
 function createWorkers(program, fetch) {
     const prime = [0,1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
-    const size = config('runInBand') ? 0 :
+    const size = config('runInBand') || ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand') ? 0 :
         _.isFinite(config('quote.workers')) ? +config('quote.workers') :
         prime[_.sortedIndex(prime, WORKER_COUNT)] || WORKER_COUNT;
     if (size) logger.debug("Launching", size, "quote workers");
@@ -191,8 +191,8 @@ function createWorkers(program, fetch) {
 };
 
 function getMasterWorker(workers, options) {
-    if (options.info!='help') expect(options).to.have.property('symbol');
-    const name = options.info=='help' ? 'help' : options.market ?
+    if (!options.info) expect(options).to.have.property('symbol');
+    const name = options.info ? options.info : options.market ?
         options.symbol + '.' + options.market : options.symbol;
     expect(workers).to.be.an('array').and.not.empty;
     const capacity = workers.length;

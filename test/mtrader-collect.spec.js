@@ -45,7 +45,7 @@ describe("mtrader-collect", function() {
         mtrader.config('fetch.iqfeed.enabled', false);
         mtrader.config('fetch.yahoo.enabled', true);
         mtrader.config('fetch.files.enabled', false);
-        mtrader.config('workers', 0);
+        mtrader.config('runInBand', true);
         process.emit('SIGHUP');
         mtrader.config.save('SPY', {
             portfolio: 'SPY.ARCA',
@@ -74,7 +74,7 @@ describe("mtrader-collect", function() {
         mtrader.config.unset('fetch.iqfeed.enabled');
         mtrader.config.unset('fetch.yahoo.enabled');
         mtrader.config.unset('fetch.files.enabled');
-        mtrader.config.unset('workers');
+        mtrader.config.unset('runInBand');
         return mtrader.close();
     });
     it("change", function() {

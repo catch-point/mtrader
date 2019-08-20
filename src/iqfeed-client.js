@@ -70,6 +70,21 @@ module.exports = function(command, env, productId, productVersion) {
                 level1('close')
             ]);
         },
+        version: _.memoize(() => {
+            return admin().then(socket => {
+                return new Promise((ready, fail) => {
+                    socket.on('close', fail);
+                    onreceive(socket, function(line) {
+                        if (line && line.indexOf('S,STATS,') === 0) {
+                            const stats = _.object(['S', 'STATS', 'ServerIP', 'ServerPort', 'MaxSymbols', 'NumberOfSymbols', 'ClientsConnected', 'SecondsSinceLastUpdate', 'Reconnections', 'AttemptedReconnections', 'StartTime', 'MarketTime', 'Status', 'IQFeedVersion', 'LoginID', 'TotalKBsRecv', 'KBsPerSecRecv', 'AvgKBsPerSecRecv', 'TotalKBsSent', 'KBsPerSecSent', 'AvgKBsPerSecSent'], line.split(','));
+                            ready(stats.IQFeedVersion);
+                            socket.removeListener('close', fail);
+                        }
+                        return false;
+                    });
+                });
+            });
+        }),
         lookup(symbol, listed_markets) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
             const listed_markets_ar = _.compact(_.flatten([listed_markets]));

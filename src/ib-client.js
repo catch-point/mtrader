@@ -132,6 +132,10 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
             ready();
         });
     });
+    const version_promise = new Promise((ready, fail) => {
+        ib.once('server', version => ready(version))
+          .once('disconnected', () => fail());
+    });
     let pulse_timeout, pulse_counter = 0, active = [];
     const self = new.target ? this : {};
     const store = lib_dir && storage(lib_dir);
@@ -183,6 +187,7 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
         connecting: false,
         connected: false,
         disconnected: false,
+        version: () => version_promise,
         async close() {
             let error;
             if (pulse_timeout) clearTimeout(pulse_timeout);

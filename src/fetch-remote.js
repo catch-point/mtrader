@@ -43,10 +43,7 @@ const expect = require('chai').use(like).expect;
 module.exports = function() {
     let promiseFetch, closing;
     if (!config('fetch.remote.location')) throw Error("No remote location configured");
-    return Object.assign(options => {
-        if (options.info=='help') return fetch({info:'help'});
-        else return fetch(options);
-    }, {
+    return Object.assign(options => fetch(options), {
         close() {
             if (closing) return closing;
             return closing = (promiseFetch || Promise.reject()).then(fetch => {
@@ -59,7 +56,15 @@ module.exports = function() {
         const check = interrupted || interrupt(true);
         const delay = (delayed || 500) *2;
         const client = await Fetch();
-        return client.request('fetch', options).catch(async err => {
+        return client.request('fetch', options).then(result => {
+            if (options.info!='version') return result;
+            const location = client.process.pid;
+            return result.map(version => ({...version, location, ...version}));
+        }, err => {
+            if (options.info!='version') throw err;
+            const location = client.process.pid;
+            return [{location, message: err.message}];
+        }).catch(async err => {
             if (closing || await check() || delay > 5000 || !isConnectionError(err))
                 throw err;
             // connection error wait and try again

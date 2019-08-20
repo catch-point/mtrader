@@ -38,6 +38,7 @@ const Big = require('big.js');
 const d3 = require('d3-format');
 const merge = require('./merge.js');
 const interrupt = require('./interrupt.js');
+const version = require('./version.js').toString();
 const config = require('./config.js');
 const logger = require('./logger.js');
 const periods = require('./periods.js');
@@ -122,8 +123,9 @@ module.exports = function() {
     const ib_cfg = config('fetch.ivolatility.ib');
     const ib = ib_cfg && new IB(ib_cfg);
     const ivolatility = Ivolatility(cacheDir, downloadDir, auth_file, downloadType);
-    return Object.assign(options => {
-        if (options.info=='help') return Promise.resolve(help());
+    return Object.assign(async(options) => {
+        if (options.info=='help') return help();
+        if (options.info=='version') return [{version}];
         switch(options.interval) {
             case 'lookup': return lookup(options);
             case 'day': return interday(ivolatility, ib, options);

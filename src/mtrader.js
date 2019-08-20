@@ -43,10 +43,10 @@ const ws = require('ws');
 const shell = require('shell');
 const expect = require('chai').expect;
 const logger = require('./logger.js');
+const tabular = require('./tabular.js');
 const common = require('./common-functions.js');
 const Parser = require('../src/parser.js');
 const replyTo = require('./promise-reply.js');
-const Remote = require('./remote-workers.js');
 const Config = require('./mtrader-config.js');
 const config = require('./config.js');
 const date = require('./mtrader-date.js');
@@ -92,15 +92,15 @@ const program = require('commander')
 let program_args_version = false;
 program.on('option:version', async function() {
     program_args_version = true;
-    process.stdout.write(version + '\n');
-    if (config('collect.remote')) {
-        const remote = new Remote(config('collect'));
-        const remote_version = await remote.version();
-        _.forEach(remote_version, (worker_version, worker) => {
-            process.stdout.write(`${worker_version} ${worker}` + '\n');
-        });
-        return remote.close();
-    }
+    const mtrader = createInstance(config.options());
+    return mtrader.version().then(versions => versions.map(version => {
+        if (!version.message) return version;
+        return {...version, message: version.message.replace(/^(Error:\s+)+/g, '').replace(/[\r\n][\S\s]*/,'')};
+    })).catch(err => {
+        logger.warn("While detecting mtrader version", err);
+        return [{version: version.toString()}];
+    }).then(versions => tabular(versions, config()))
+      .catch(logger.error).then(() => mtrader.close());
 });
 
 if (require.main === module) {
@@ -194,6 +194,21 @@ function createInstance(settings = {}) {
         strategize: strategize,
         broker: broker,
         replicate: replicate,
+        version() {
+            return Promise.all([
+                fetch({info:'version'}).catch(err => [{message:err.message}]),
+                quote({info:'version'}).catch(err => [{message:err.message}]),
+                collect({info:'version'}).catch(err => [{message:err.message}]),
+                optimize({info:'version'}).catch(err => [{message:err.message}]),
+                bestsignals({info:'version'}).catch(err => [{message:err.message}]),
+                strategize({info:'version'}).catch(err => [{message:err.message}]),
+                broker({info:'version'}).catch(err => [{message:err.message}]),
+                replicate({info:'version'}).catch(err => [{message:err.message}])
+            ]).then(versions => [].concat(...versions))
+              .then(versions => _.values(_.indexBy(versions, JSON.stringify.bind(JSON))))
+              .then(versions => versions.map(version => ({...version, name: 'mtrader', ...version})))
+              .then(versions => _.sortBy(_.sortBy(_.sortBy(versions, 'version'), 'location'), 'name'));
+        },
         seed(number) {
             optimize.seed(number);
             strategize.seed(number);

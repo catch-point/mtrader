@@ -33,6 +33,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
+const version = require('./version.js').toString();
 const config = require('./config.js');
 const yahooClient = require('./yahoo-client.js');
 const Adjustments = require('./adjustments.js');
@@ -111,8 +112,9 @@ module.exports = function() {
         });
     });
     const adjustments = new Adjustments(yahoo);
-    return Object.assign(options => {
-        if (options.info=='help') return Promise.resolve(helpInfo);
+    return Object.assign(async(options) => {
+        if (options.info=='help') return helpInfo;
+        if (options.info=='version') return [{version}];
         switch(options.interval) {
             case 'lookup': return lookup(markets, yahoo, options);
             case 'fundamental': throw Error("Yahoo! fundamental service has been discontinued");

@@ -50,7 +50,7 @@ describe("replicate-simulation", function() {
     this.timeout(60000);
     var fetch, quote, collect, broker, snapshot, replicate;
     before(function() {
-        config('workers', 0);
+        config('runInBand', true);
         config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('simulation'));
         config('fetch.files.dirname', path.resolve(__dirname, 'data'));
@@ -85,6 +85,7 @@ describe("replicate-simulation", function() {
     after(function() {
         config.unset('prefix');
         config.unset('fetch.files.dirname');
+        config.unset('runInBand');
         return Promise.all([
             broker.close(),
             collect.close(),

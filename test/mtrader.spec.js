@@ -31,6 +31,8 @@
 
 const path = require('path');
 const _ = require('underscore');
+const config = require('../src/config.js');
+config('runInBand', true);
 const Mtrader = require('../src/mtrader.js');
 const readCallSave = require('../src/read-call-save.js');
 const like = require('./should-be-like.js');
@@ -46,7 +48,6 @@ describe("mtrader", function() {
         mtrader.config('iqfeed.enabled', false);
         mtrader.config('yahoo.enabled', true);
         mtrader.config('files.enabled', false);
-        mtrader.config('workers', 0);
         process.emit('SIGHUP');
     });
     after(function() {
@@ -54,7 +55,6 @@ describe("mtrader", function() {
         mtrader.config.unset('iqfeed.enabled');
         mtrader.config.unset('yahoo.enabled');
         mtrader.config.unset('files.enabled');
-        mtrader.config.unset('workers');
         return mtrader.close();
     });
     it("lookup", function() {
