@@ -95,7 +95,7 @@ describe("replicate-simulation", function() {
     describe("Stocks", function() {
         it("Open and Close ENB", async() => {
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '111',
@@ -152,7 +152,7 @@ describe("replicate-simulation", function() {
                 security_type:       'STK'
             });
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '36',
@@ -184,7 +184,7 @@ describe("replicate-simulation", function() {
         });
         it("Reduce after BUY miss of CP", async() => {
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'CP',
                     market: 'TSE',
@@ -231,7 +231,7 @@ describe("replicate-simulation", function() {
                 security_type: 'STK'
             });
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'CP',
                     market: 'TSE',
@@ -287,7 +287,7 @@ describe("replicate-simulation", function() {
                 tif: 'DAY'
             });
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                      quant: '6',
@@ -330,7 +330,7 @@ describe("replicate-simulation", function() {
                 tif: 'DAY'
             });
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '281',
@@ -382,9 +382,9 @@ describe("replicate-simulation", function() {
         });
         it("Already filled XGB", async() => {
             return Replicate(async(options) => {
-                    switch (options.help ? 'help' : options.action) {
+                    switch (options.info || options.action) {
                         case 'help':
-                            return broker({help:true});
+                            return broker({info:'help'});
                         case 'balances':
                             return Promise.resolve([{ currency: 'USD' },
                                 { currency: 'CAD', net: '10033.84', rate: '1' }
@@ -417,7 +417,7 @@ describe("replicate-simulation", function() {
                             throw Error("Unexpected: " + util.inspect(options))
                     }
                 }, fetch, function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '324',
@@ -463,9 +463,9 @@ describe("replicate-simulation", function() {
         });
         it("Already filled XHB", async() => {
             return Replicate(async(options) => {
-                    switch (options.help ? 'help' : options.action) {
+                    switch (options.info || options.action) {
                         case 'help':
-                            return broker({help:true});
+                            return broker({info:'help'});
                         case 'balances':
                             return Promise.resolve([{ currency: 'USD' },
                                 { currency: 'CAD', net: '10033.84', rate: '1' }
@@ -546,7 +546,7 @@ describe("replicate-simulation", function() {
                             throw Error("Unexpected: " + util.inspect(options))
                     }
                 }, fetch, function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '1248',
@@ -603,9 +603,9 @@ describe("replicate-simulation", function() {
         });
         it("Reduce HYMB", async() => {
             return Replicate(async(options) => {
-                    switch (options.help ? 'help' : options.action) {
+                    switch (options.info || options.action) {
                         case 'help':
-                            return broker({help:true});
+                            return broker({info:'help'});
                         case 'balances':
                             return Promise.resolve([
                                 { currency: 'USD', net: '100000', rate: '1' }
@@ -688,7 +688,7 @@ describe("replicate-simulation", function() {
                             throw Error("Unexpected: " + util.inspect(options))
                     }
                 }, fetch, function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     traded_at: '2019-07-30T16:00:00-04:00',
@@ -743,9 +743,9 @@ describe("replicate-simulation", function() {
         });
         it("Thrown error", async() => {
             return Replicate(async(options) => {
-                    switch (options.help ? 'help' : options.action) {
+                    switch (options.info || options.action) {
                         case 'help':
-                            return broker({help:true});
+                            return broker({info:'help'});
                         case 'balances':
                             return Promise.resolve([{ currency: 'USD' },
                                 { currency: 'CAD', net: '10033.84', rate: '1' }
@@ -760,7 +760,7 @@ describe("replicate-simulation", function() {
                             throw Error("Unexpected: " + util.inspect(options))
                     }
                 }, fetch, function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '324',
@@ -783,7 +783,7 @@ describe("replicate-simulation", function() {
     describe("Options", function() {
         it("submit BUY combo order", async() => {
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
@@ -846,7 +846,7 @@ describe("replicate-simulation", function() {
         });
         it("submit SELL combo order", async() => {
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
@@ -962,7 +962,7 @@ describe("replicate-simulation", function() {
                 }]
             });
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
@@ -1087,7 +1087,7 @@ describe("replicate-simulation", function() {
                 }]
             });
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
@@ -1148,7 +1148,7 @@ describe("replicate-simulation", function() {
         });
         it("option position already closed", async() => {
             return Replicate(async(...args) => {
-                if (args[0].help) return broker({help:true});
+                if (args[0].info=='help') return broker({info:'help'});
                 switch (args[0].action) {
                     case 'balances':
                         return Promise.resolve([{ currency: 'USD', net: '9995.65', rate: '1', settled: '9995.65' },
@@ -1182,7 +1182,7 @@ describe("replicate-simulation", function() {
                         throw Error(`Unexpected call ${util.inspect(args)}`);
                 }
             }, fetch, function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '3',
@@ -1229,7 +1229,7 @@ describe("replicate-simulation", function() {
         });
         it("option minTick", async() => {
             return Replicate(async(...args) => {
-                if (args[0].help) return broker({help:true});
+                if (args[0].info=='help') return broker({info:'help'});
                 switch (args[0].action) {
                     case 'balances':
                         return Promise.resolve([{ currency: 'USD', net: '10000', rate: '1', settled: '10000' },
@@ -1267,7 +1267,7 @@ describe("replicate-simulation", function() {
                         throw Error(`Unexpected call ${util.inspect(args)}`);
                 }
             }, fetch, function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '2',
@@ -1304,7 +1304,7 @@ describe("replicate-simulation", function() {
     describe("Futures", function() {
         it("no position in ZNH19", async() => {
             const posted = await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1390,7 +1390,7 @@ describe("replicate-simulation", function() {
                   multiplier: 1000
             });
             const posted = await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1477,7 +1477,7 @@ describe("replicate-simulation", function() {
                   multiplier: 1000
             });
             return replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1583,7 +1583,7 @@ describe("replicate-simulation", function() {
                   multiplier: 1000
             });
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1707,7 +1707,7 @@ describe("replicate-simulation", function() {
                 multiplier: 1000
             });
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1837,7 +1837,7 @@ describe("replicate-simulation", function() {
                 multiplier: 1000
             });
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1943,7 +1943,7 @@ describe("replicate-simulation", function() {
     describe("parameters", function() {
         it("working_duration", async() => {
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     begin: '2019-01-03T17:00:00-05:00',
@@ -1959,7 +1959,7 @@ describe("replicate-simulation", function() {
         });
         it("allocation_pct", async() => {
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     parameters: { initial_deposit: 6000 }
@@ -1974,7 +1974,7 @@ describe("replicate-simulation", function() {
         });
         it("allocation_min", async() => {
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     parameters: { initial_deposit: 9000 }
@@ -1990,7 +1990,7 @@ describe("replicate-simulation", function() {
         });
         it("allocation_max", async() => {
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     parameters: { initial_deposit: 5000 }
@@ -2019,7 +2019,7 @@ describe("replicate-simulation", function() {
             });
             const balance = Math.floor(1000000+(122296875-121031250)/10-205)/100;
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     parameters: {
@@ -2059,7 +2059,7 @@ describe("replicate-simulation", function() {
             });
             const balance = 10000+(8500-8577)-1;
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 expect(options).to.be.like({
                     parameters: {
                         // initial_deposit is balance after begin
@@ -2104,7 +2104,7 @@ describe("replicate-simulation", function() {
             });
             const balance = 9000+(8500-8577)-1;
             await replicate(function(options) {
-                if (options.help) return collect(options);
+                if (options.info=='help') return collect(options);
                 expect(options).to.be.like({
                     parameters: {
                         // initial_deposit is balance after begin

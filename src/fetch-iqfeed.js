@@ -214,7 +214,7 @@ function createInstance() {
     return Object.assign(options => {
         if (options.open) {
             return iqclient.open();
-        } else if (options.help) {
+        } else if (options.info=='help') {
             return Promise.resolve(helpInfo);
         } else if (options.rollday) {
             expect(options).to.be.like({

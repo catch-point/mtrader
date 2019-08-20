@@ -57,7 +57,7 @@ module.exports = function(fetch) {
     const stores = {};
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(fetch);
-        if (options.help) return promiseHelp;
+        if (options.info=='help') return promiseHelp;
         const market = options.market || '';
         const store = stores[market] = stores[market] || storage(path.resolve(dir, market || ''));
         return promiseHelp.then(help => {
@@ -78,7 +78,7 @@ module.exports = function(fetch) {
  * Array of one Object with description of module, including supported options
  */
 function help(fetch) {
-    return fetch({help: true})
+    return fetch({info:'help'})
       .then(help => _.indexBy(help, 'name'))
       .then(help => _.pick(help, ['lookup', 'interday', 'intraday'])).then(help => {
         const downstream = _.reduce(help, (downstream, help) => _.extend(downstream, help.options), {});

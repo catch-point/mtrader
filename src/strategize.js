@@ -50,7 +50,7 @@ module.exports = function(bestsignals) {
     let prng = new Alea();
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(bestsignals);
-        if (options.help) return promiseHelp;
+        if (options.info=='help') return promiseHelp;
         else return promiseHelp.then(help => {
             const fields = _.first(help).properties;
             const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
@@ -77,7 +77,7 @@ module.exports = function(bestsignals) {
  * Array of one Object with description of module, including supported options
  */
 function help(bestsignals) {
-    return bestsignals({help: true}).then(_.first).then(help => {
+    return bestsignals({info:'help'}).then(_.first).then(help => {
         return [{
             name: 'strategize',
             usage: 'strategize(options)',

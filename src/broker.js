@@ -45,15 +45,15 @@ module.exports = function(settings = {}) {
         config('broker.simulation.enabled') && ['simulation', Simulation]
     ]));
     let promiseHelpWithSettings, promiseHelpWithOptions;
-    if (settings.help && !promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
-    if (settings.help) return promiseHelpWithSettings.then(help => [].concat(...Object.values(help)));
+    if (settings.info=='help' && !promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
+    if (settings.info=='help') return promiseHelpWithSettings.then(help => [].concat(...Object.values(help)));
     let broker_promise;
     return Object.assign(async function(options) {
         if (!promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
         broker_promise = broker_promise || createBroker(await promiseHelpWithSettings, Brokers, settings);
         const broker = await broker_promise;
-        if (!promiseHelpWithOptions) promiseHelpWithOptions = broker({help:true});
-        if (options.help) return promiseHelpWithOptions;
+        if (!promiseHelpWithOptions) promiseHelpWithOptions = broker({info:'help'});
+        if (options.info=='help') return promiseHelpWithOptions;
         const help = await promiseHelpWithOptions;
         const opts = _.pick(options, _.flatten(_.map(help, info => _.keys(info.options))));
         return broker(opts);
@@ -65,7 +65,7 @@ module.exports = function(settings = {}) {
 };
 
 async function helpWithSettings(Brokers) {
-    const values = await Promise.all(Object.values(Brokers).map(Broker => Broker({help:true})));
+    const values = await Promise.all(Object.values(Brokers).map(Broker => Broker({info:'help'})));
     return _.object(Object.keys(Brokers), values);
 }
 

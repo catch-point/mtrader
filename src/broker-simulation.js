@@ -51,7 +51,7 @@ function nextval() {
 }
 
 module.exports = function(settings) {
-    if (settings.help) return helpSettings();
+    if (settings.info=='help') return helpSettings();
     settings = {...settings, ...config('broker.simulation')};
     expect(settings).to.have.property('simulation').that.is.ok;
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
@@ -64,7 +64,7 @@ module.exports = function(settings) {
     const lookup = new Lookup(fetch);
     let advance_lock = Promise.resolve();
     return _.extend(async(options) => {
-        if (options.help) return helpOptions();
+        if (options.info=='help') return helpOptions();
         return store.open(settings.simulation, async(err, db) => {
             if (err) throw err;
             const barsFor_fn = barsFor.bind(this, markets, collect);

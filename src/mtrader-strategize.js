@@ -112,8 +112,8 @@ function createInstance(program) {
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
-            promiseKeys = strategize({help: true})
-                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseKeys = strategize({info:'help'})
+                .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
         }
         return promiseKeys.then(keys => _.pick(options, keys)).then(strategize);
     };
@@ -138,7 +138,7 @@ function shell(desc, strategize, app) {
           .then(() => sh.prompt(), cb);
     });
 // help
-return strategize({help: true}).then(_.first).then(info => {
+return strategize({info:'help'}).then(_.first).then(info => {
 help(app, 'strategize', `
   Usage: strategize :name
 

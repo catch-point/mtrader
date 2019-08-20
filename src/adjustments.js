@@ -84,7 +84,7 @@ module.exports = function(yahooClient) {
     const symbol = yahoo_symbol.bind(this, markets);
     const yahoo = yahooClient || Yahoo();
     return _.extend(options => {
-        if (options.help) return Promise.resolve(helpInfo);
+        if (options.info=='help') return Promise.resolve(helpInfo);
         else if (options.market && !markets[options.market]) return Promise.resolve([]);
         const market = options.market || '';
         const store = stores[market] = stores[market] || storage(path.resolve(dir, market || ''));

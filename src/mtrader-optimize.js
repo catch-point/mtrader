@@ -107,8 +107,8 @@ function createInstance(program) {
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
-            promiseKeys = optimize({help: true})
-                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseKeys = optimize({info:'help'})
+                .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
         }
         return promiseKeys.then(keys => _.pick(options, keys)).then(optimize);
     };
@@ -136,7 +136,7 @@ function shell(desc, optimize, app) {
           .then(() => sh.prompt(), cb);
     });
 // help
-return optimize({help: true}).then(_.first).then(info => {
+return optimize({info:'help'}).then(_.first).then(info => {
 help(app, 'optimize', `
   Usage: optimize :name
 

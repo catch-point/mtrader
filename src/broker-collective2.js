@@ -43,7 +43,7 @@ const expect = require('chai').expect;
  * Aligns the working signals on collective2 with the signal rows from the collect result
  */
 module.exports = function(settings) {
-    if (settings.help) return helpSettings();
+    if (settings.info=='help') return helpSettings();
     settings = {...settings, offline: config('offline'), ...config('remote'), ...config('broker.collective2')};
     expect(settings).to.have.property('systemid').that.is.ok;
     const client = Collective2(settings);
@@ -55,7 +55,7 @@ module.exports = function(settings) {
     });
     const lookup_fn = _.memoize(lookup.bind(this, fetch, markets), signal => signal.symbol);
     return _.extend(function(options) {
-        if (options && options.help) return helpOptions();
+        if (options && options.info=='help') return helpOptions();
         const c2_multipliers = settings.c2_multipliers || {};
         return collective2(c2_multipliers, client, fetch, markets, lookup_fn, options || {});
     }, {

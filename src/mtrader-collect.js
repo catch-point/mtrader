@@ -124,12 +124,12 @@ function createInstance(program) {
     const instance = function(options) {
         if (closed) throw Error("Collect is closed");
         if (!promiseKeys) {
-            promiseKeys = direct({help: true})
-                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseKeys = direct({info:'help'})
+                .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
         }
         return promiseKeys.then(keys => trimOptions(keys, options))
           .then(options => {
-            if (options.help || isSplitting(options)) return direct(options);
+            if (options.info=='help' || isSplitting(options)) return direct(options);
             else if (cache && inPast(options)) return cache(options);
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (!remote.hasWorkers()) return local(options);
@@ -193,7 +193,7 @@ function createCache(direct, local, remote) {
     const dir = path.resolve(cache_dir, 'collect');
     return Cache(dir, function(options) {
         if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
-        else if (options.help || isSplitting(options)) return direct(options);
+        else if (options.info=='help' || isSplitting(options)) return direct(options);
         else if (!remote.hasWorkers()) return local(options);
         else if (options.reset_every || isLeaf(options)) return remote.collect(options);
         else if (!local.hasWorkers()) return remote.collect(options);
@@ -292,7 +292,7 @@ function shell(desc, collect, app) {
         help(app, name, functionHelp(name, fn));
     });
 // help
-return collect({help: true}).then(_.first).then(info => {
+return collect({info:'help'}).then(_.first).then(info => {
 help(app, 'collect', `
   Usage: collect :name
 

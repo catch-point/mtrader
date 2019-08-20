@@ -109,8 +109,8 @@ function createInstance(program, settings = {}) {
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
-            promiseKeys = replicate({help: true})
-                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseKeys = replicate({info:'help'})
+                .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
         }
         return promiseKeys.then(keys => _.pick(options, keys)).then(replicate);
     };
@@ -130,7 +130,7 @@ function createInstance(program, settings = {}) {
 function shell(desc, replicate, app) {
     app.on('quit', () => replicate.close());
     app.on('exit', () => replicate.close());
-return replicate({help: true}).then(_.first).then(info => {
+return replicate({info:'help'}).then(_.first).then(info => {
     app.cmd('replicate', desc, (cmd, sh, cb) => {
         readCallSave(null, replicate, config('save'))
           .then(() => sh.prompt(), cb);

@@ -51,7 +51,7 @@ module.exports = function(quote, collectFn) {
     return self = Object.assign(async function(options) {
         if (!promiseHelp) promiseHelp = help(quote);
         expect(options).to.be.an('object');
-        if (options.help) return promiseHelp;
+        if (options.info=='help') return promiseHelp;
         const keys = _.keys(_.first(await promiseHelp).options);
         const fields = _.first(await promiseHelp).properties;
         const opts = _.defaults(_.pick(options, keys), {
@@ -72,7 +72,7 @@ module.exports = function(quote, collectFn) {
  * Array of one Object with description of module, including supported options
  */
 async function help(quote) {
-    const help = _.first(await quote({help: true}));
+    const help = _.first(await quote({info:'help'}));
     return [{
         name: 'collect',
         usage: 'collect(options)',

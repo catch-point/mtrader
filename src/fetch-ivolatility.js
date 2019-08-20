@@ -123,7 +123,7 @@ module.exports = function() {
     const ib = ib_cfg && new IB(ib_cfg);
     const ivolatility = Ivolatility(cacheDir, downloadDir, auth_file, downloadType);
     return Object.assign(options => {
-        if (options.help) return Promise.resolve(help());
+        if (options.info=='help') return Promise.resolve(help());
         switch(options.interval) {
             case 'lookup': return lookup(options);
             case 'day': return interday(ivolatility, ib, options);

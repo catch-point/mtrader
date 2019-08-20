@@ -54,7 +54,7 @@ module.exports = function(collect) {
     let prng = new Alea();
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(collect);
-        if (options.help) return promiseHelp;
+        if (options.info=='help') return promiseHelp;
         else return promiseHelp.then(help => {
             const fields = _.first(help).properties;
             const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
@@ -77,7 +77,7 @@ module.exports = function(collect) {
  * Array of one Object with description of module, including supported options
  */
 function help(collect) {
-    return collect({help: true}).then(_.first).then(help => {
+    return collect({info:'help'}).then(_.first).then(help => {
         return [{
             name: 'optimize',
             usage: 'optimize(options)',

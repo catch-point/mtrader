@@ -54,7 +54,7 @@ module.exports = function() {
     const store = storage(dirname);
     const open = (name, cb) => store.open(name, cb);
     return Object.assign(options => {
-        if (options.help) return readOrWriteHelp(fallbacks, open, 'help', options);
+        if (options.info=='help') return readOrWriteHelp(fallbacks, open, 'help', options);
         switch(options.interval) {
             case 'lookup': return readOrWriteResult(fallbacks, open, 'lookup', options);
             case 'fundamental': return readOrWriteResult(fallbacks, open, 'fundamental', options);
@@ -102,7 +102,7 @@ function readOrWriteHelp(fallbacks, open, name) {
 }
 
 async function help(datasources) {
-    const helps = await Promise.all(_.map(datasources, ds => ds({help:true})));
+    const helps = await Promise.all(_.map(datasources, ds => ds({info:'help'})));
     const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
     return groups.map(helps => helps.reduce((help, h) => {
         const options = _.extend({}, h.options, help.options);

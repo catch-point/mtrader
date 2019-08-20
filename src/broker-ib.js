@@ -42,7 +42,7 @@ const Fetch = require('./fetch.js');
 const expect = require('chai').expect;
 
 module.exports = function(settings = {}, mock_ib_client = null) {
-    if (settings.help) return helpSettings();
+    if (settings.info=='help') return helpSettings();
     settings = {...settings, ...config('broker.ib')};
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
@@ -60,7 +60,7 @@ module.exports = function(settings = {}, mock_ib_client = null) {
     const fetch = new Fetch(settings);
     const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
     return _.extend(async function(options) {
-        if (options.help) return helpOptions();
+        if (options.info=='help') return helpOptions();
         await ib.open();
         switch(options.action) {
             case 'balances': return listBalances(markets, ib, fetch, settings, options);

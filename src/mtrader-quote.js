@@ -129,11 +129,11 @@ function createInstance(program) {
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
-            promiseKeys = direct({help: true})
-                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseKeys = direct({info:'help'})
+                .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
         }
         return promiseKeys.then(keys => _.pick(options, keys)).then(options => {
-            if (options.help || _.isEmpty(queue.getWorkers()))
+            if (options.info=='help' || _.isEmpty(queue.getWorkers()))
                 return direct(options);
             else return queue(options);
         });
@@ -191,8 +191,8 @@ function createWorkers(program, fetch) {
 };
 
 function getMasterWorker(workers, options) {
-    if (!options.help) expect(options).to.have.property('symbol');
-    const name = options.help ? 'help' : options.market ?
+    if (options.info!='help') expect(options).to.have.property('symbol');
+    const name = options.info=='help' ? 'help' : options.market ?
         options.symbol + '.' + options.market : options.symbol;
     expect(workers).to.be.an('array').and.not.empty;
     const capacity = workers.length;
@@ -250,7 +250,7 @@ function shell(desc, quote, app) {
         help(app, name, functionHelp(name, fn));
     });
 // help
-return quote({help: true}).then(_.first).then(info => {
+return quote({info:'help'}).then(_.first).then(info => {
 help(app, 'quote', `
   Usage: quote :symbol.market
 

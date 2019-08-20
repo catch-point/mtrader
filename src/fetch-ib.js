@@ -130,7 +130,7 @@ module.exports = function() {
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
     const self = async(options) => {
-        if (options.help) return help();
+        if (options.info=='help') return help();
         await client.open();
         const adj = isNotEquity(markets, options) ? null : adjustments;
         if (options.interval == 'lookup') return lookup(markets, client, options);

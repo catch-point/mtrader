@@ -44,7 +44,7 @@ module.exports = function() {
     let promiseFetch, closing;
     if (!config('fetch.remote.location')) throw Error("No remote location configured");
     return Object.assign(options => {
-        if (options.help) return fetch({help: true});
+        if (options.info=='help') return fetch({info:'help'});
         else return fetch(options);
     }, {
         close() {

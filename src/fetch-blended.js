@@ -56,7 +56,7 @@ module.exports = function() {
         cfg.delegate == 'files' ? files() : yahoo();
     const markets = _.uniq(cfg.assets.map(asset => asset.market));
     return Object.assign(options => {
-        if (options.help) return delegate({help:true}).then(_.flatten).then(info => info.map(interday => {
+        if (options.info=='help') return delegate({info:'help'}).then(_.flatten).then(info => info.map(interday => {
             if (!interday.options || !interday.options.market) return info;
             else return merge(interday, {options: {market: {
                 values: markets

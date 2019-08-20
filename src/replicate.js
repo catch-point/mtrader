@@ -58,7 +58,7 @@ module.exports = function(broker, fetch, collect) {
     const lookup = new Lookup(fetch);
     return _.extend(function(options) {
         if (!promiseHelp) promiseHelp = help(broker, collect);
-        if (options.help) return promiseHelp;
+        if (options.info=='help') return promiseHelp;
         else return promiseHelp.then(help => {
             const opts = _.defaults({
                 now: moment(options.now).valueOf()
@@ -76,7 +76,7 @@ module.exports = function(broker, fetch, collect) {
  * Array of one Object with description of module, including supported options
  */
 function help(broker, collect) {
-    return Promise.all([collect({help: true}), broker({help: true})]).then(_.flatten)
+    return Promise.all([collect({info:'help'}), broker({info:'help'})]).then(_.flatten)
       .then(list => list.reduce((help, delegate) => {
         return _.extend(help, {options: _.extend({}, delegate.options, help.options)});
     }, {

@@ -108,8 +108,8 @@ function createInstance(program) {
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
-            promiseKeys = bestsignals({help: true})
-                .then(_.first).then(info => ['help'].concat(_.keys(info.options)));
+            promiseKeys = bestsignals({info:'help'})
+                .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
         }
         return promiseKeys.then(keys => _.pick(options, keys)).then(bestsignals);
     };
@@ -133,7 +133,7 @@ function shell(desc, bestsignals, app) {
           .then(() => sh.prompt(), cb);
     });
 // help
-return bestsignals({help: true}).then(_.first).then(info => {
+return bestsignals({info:'help'}).then(_.first).then(info => {
 help(app, 'bestsignals', `
   Usage: bestsignals :name
 

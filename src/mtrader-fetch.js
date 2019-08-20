@@ -190,7 +190,7 @@ function shell(desc, fetch, app) {
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
 // help
-return fetch({help: true}).then(info => _.indexBy(info, 'name')).then(info => {
+return fetch({info:'help'}).then(info => _.indexBy(info, 'name')).then(info => {
 help(app, 'lookup', `
   Usage: lookup :symbol
 

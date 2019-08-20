@@ -49,7 +49,7 @@ module.exports = function(optimize) {
     let promiseHelp;
     return Object.assign(async function(options) {
         if (!promiseHelp) promiseHelp = help(optimize);
-        if (options.help) return promiseHelp;
+        if (options.info=='help') return promiseHelp;
         const keys = _.keys(_.first(await promiseHelp).options);
         const opts = _.pick(options, keys);
         return bestsignals(optimize, opts);
@@ -64,7 +64,7 @@ module.exports = function(optimize) {
  * Array of one Object with description of module, including supported options
  */
 async function help(optimize) {
-    const help = _.first(await optimize({help: true}));
+    const help = _.first(await optimize({info: 'help'}));
     return [{
         name: 'bestsignals',
         usage: 'bestsignals(options)',

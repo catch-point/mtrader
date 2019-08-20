@@ -95,8 +95,8 @@ function createInstance(program, settings = {}) {
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
-            promiseKeys = broker({help: true})
-                .then(info => info.reduce((keys, info) => _.uniq(keys.concat(_.keys(info.options))), ['help']));
+            promiseKeys = broker({info:'help'})
+                .then(info => info.reduce((keys, info) => _.uniq(keys.concat(_.keys(info.options))), ['info']));
         }
         return promiseKeys.then(keys => _.pick(options, keys)).then(broker);
     };
@@ -111,7 +111,7 @@ function createInstance(program, settings = {}) {
 function shell(desc, broker, app) {
     app.on('quit', () => broker.close());
     app.on('exit', () => broker.close());
-return broker({help: true}).then(array => merge(...array)).then(info => {
+return broker({info:'help'}).then(array => merge(...array)).then(info => {
     app.cmd("broker :name([a-zA-Z0-9]+)", desc, (cmd, sh, cb) => {
         broker({...config.options(), action: cmd.params.name})
           .then(result => tabular(result, config())).then(() => sh.prompt(), cb);

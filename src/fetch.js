@@ -50,7 +50,7 @@ module.exports = function() {
     const self = function(options) {
         datasources = datasources || promiseDatasources();
         return datasources.then(datasources => {
-            if (options.help || options.interval == 'help')
+            if (options.info=='help' || options.interval == 'help')
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
             const market = options.market;
             if (market && !markets[market]) {
@@ -115,7 +115,7 @@ function promiseDatasources() {
     if (_.isEmpty(sources)) {
         sources.push(yahoo());
     }
-    return Promise.all(sources.map(source => source({help:true})))
+    return Promise.all(sources.map(source => source({info:'help'})))
       .then(result => result.reduce((datasources, help, i) => {
         return _.flatten(help).reduce((datasources, info) => {
             const intervals = ['options', 'interval', 'values'].reduce(_.result, info) || [];
@@ -152,7 +152,7 @@ function close(datasources) {
 function help(datasources) {
     const marketOptions = _.uniq(_.flatten(_.map(config('markets'), _.keys), true));
     return Promise.all(_.map(datasources, datasource => {
-        return datasource({help:true});
+        return datasource({info:'help'});
     })).then(helps => {
         const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
         return groups.map(helps => helps.reduce((help, h) => {

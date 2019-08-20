@@ -112,7 +112,7 @@ module.exports = function() {
     });
     const adjustments = new Adjustments(yahoo);
     return Object.assign(options => {
-        if (options.help) return Promise.resolve(helpInfo);
+        if (options.info=='help') return Promise.resolve(helpInfo);
         switch(options.interval) {
             case 'lookup': return lookup(markets, yahoo, options);
             case 'fundamental': throw Error("Yahoo! fundamental service has been discontinued");
