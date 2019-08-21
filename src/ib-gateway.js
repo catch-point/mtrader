@@ -242,8 +242,12 @@ async function spawn(ibc_command, overrideTwsApiPort, commandServerPort, setting
             ibc.kill();
             fail(Error("IBC login timed out"));
         }, (settings.login_timeout || 300) * 1000).unref();
+        let port_config = false
         const onlogin = data => {
-            if (data && ~data.indexOf('IBC: Login completed')) {
+            if (data && ~data.indexOf('Performing port configuration')) {
+                port_config = true;
+            }
+            if (port_config && data && ~data.indexOf('Configuration; event=Closed')) {
                 clearTimeout(timer);
                 pipe.removeListener('data', onlogin);
                 ready(ibc);
