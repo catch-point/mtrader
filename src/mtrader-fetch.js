@@ -113,7 +113,7 @@ if (require.main === module) {
     } else {
         program.help();
     }
-} else if (config('runInBand') || ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand')) {
+} else {
     const shared = module.exports = share(() => {
         let fetch, closed;
         const program = usage(new commander.Command());
@@ -130,30 +130,6 @@ if (require.main === module) {
                 return closed = fetch.close();
             } finally {
                 fetch = null;
-            } else return Promise.resolve();
-        };
-        instance.shell = shell.bind(this, program.description(), instance);
-        return instance;
-    });
-} else {
-    const shared = module.exports = share(() => {
-        const program = usage(new commander.Command());
-        let child, closed;
-        const instance = function(options) {
-            if (!child) {
-                child = replyTo(config.fork(module.filename, program));
-                instance.process = child.process;
-            }
-            const opts = options.tz && options.ending_format ? options :
-                Object.assign({tz, ending_format: moment.defaultFormat}, options);
-            return child.request('fetch', opts);
-        };
-        instance.close = function() {
-            if (closed) return closed;
-            if (child) try {
-                return closed = child.disconnect();
-            } finally {
-                child = null;
             } else return Promise.resolve();
         };
         instance.shell = shell.bind(this, program.description(), instance);

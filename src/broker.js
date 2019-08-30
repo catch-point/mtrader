@@ -37,13 +37,15 @@ const config = require('./config.js');
 const Collective2 = require('./broker-collective2.js');
 const IB = require('./broker-ib.js');
 const Simulation = require('./broker-simulation.js');
+const Remote = require('./broker-remote.js');
 const expect = require('chai').expect;
 
 module.exports = function(settings = {}) {
     const Brokers = _.object(_.compact([
         config('broker.ib.enabled') && ['ib', IB],
         config('broker.collective2.enabled') && ['collective2', Collective2],
-        config('broker.simulation.enabled') && ['simulation', Simulation]
+        config('broker.simulation.enabled') && ['simulation', Simulation],
+        config('broker.remote.enabled') && ['remote', Remote]
     ]));
     let promiseHelpWithSettings, promiseHelpWithOptions;
     if (settings.info=='help' && !promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
@@ -89,7 +91,7 @@ async function createBroker(promiseHelpWithSettings, Brokers, settings) {
     if (broker && error) logger.debug("Could not create broker", error);
     if (broker) return broker;
     else if (error) throw error;
-    else throw Error("Missing broker settings or no broker setup");
+    else throw Error(`Missing broker settings or no broker setup, with: ${Object.keys(settings).join(', ')}`);
 }
 
 function chooseBroker(help, settings) {

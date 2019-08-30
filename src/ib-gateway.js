@@ -68,7 +68,10 @@ function createClientInstance(settings) {
             const client = await assignClient(self, settings);
             return client.open();
         }),
-        async close() {
+        close(closedBy) {
+            return self.force_close(closedBy);
+        },
+        async force_close(closedBy) {
             // don't do anything unless instance is initialized
             return Promise.resolve();
         }
@@ -84,10 +87,8 @@ async function assignClient(self, settings) {
     });
     const locks = new ReadWriteLock();
     return Object.assign(self, _.mapObject(client, (fn, name) => {
-        if (name == 'close') return async function(closedBy) {
-            await client.close(closedBy);
-            await gateway.close(closedBy);
-        }; else if (name == 'open') return async function(openedBy) {
+        if (name == 'close') return self.close; // this was overriden by share.js already
+        else if (name == 'open') return async function(openedBy) {
             const current_client = client;
             return locks.readLock(async() => {
                 await gateway.open();
@@ -118,7 +119,12 @@ async function assignClient(self, settings) {
                 return client[name].apply(client, arguments);
             };
         }
-    }));
+    }), {
+        async force_close(closedBy) {
+            await client.close(closedBy);
+            await gateway.close(closedBy);
+        }
+    });
 }
 
 function getSharedGateway(settings) {
@@ -158,7 +164,10 @@ function createGatewayInstance(settings) {
             const gateway = await promiseInitializedInstance(self, settings);
             return gateway.open();
         }),
-        async close() {
+        close(closedBy) {
+            return self.force_close(closedBy);
+        },
+        async force_close(closedBy) {
             // don't do anything unless instance is initialized
             return Promise.resolve();
         }
@@ -182,6 +191,7 @@ async function promiseInstance(self, settings) {
     const commandServerPort = settings.CommandServerPort ||
         await findAvailablePort(settings.TradingMode == 'paper' ? 7462 : 7461);
     const ibc = await spawn(install.ibc_command, overrideTwsApiPort, commandServerPort, {...install, ...settings});
+    const ibc_exit = ibc.connected ? new Promise(exit => ibc.on('exit', exit)) : Promise.resolve();
     const timeout = (install.login_timeout || 300) * 1000;
     const host = settings.BindAddress || install.BindAddress || 'localhost';
     const ibc_socket = await createSocket(commandServerPort, host, Date.now() + timeout);
@@ -192,14 +202,19 @@ async function promiseInstance(self, settings) {
             if (!ibc_socket.destroyed) return self;
             else throw Error("IBC connection already destroyed");
         },
-        async close(closedBy) {
+        // close was overriden by share.js already
+        async force_close(closedBy) {
+            const force_quit = setTimeout(() => {
+                if (!ibc_socket.destroyed) ibc_socket.destroy();
+                if (!ibc.killed) ibc.kill();
+            }, timeout).unref();
             await new Promise(closed => {
-                if (ibc.connected) ibc.once('close', closed);
-                else closed();
-                if (!ibc_socket.destroyed) ibc_socket.write('STOP\n', 'utf8');
+                if (ibc_socket.destroyed) closed();
+                ibc_socket.once('close', closed);
+                ibc_socket.write('STOP\n', 'utf8');
             });
-            if (!ibc_socket.destroyed) ibc_socket.destroy();
-            if (!ibc.killed) ibc.kill();
+            await ibc_exit;
+            clearTimeout(force_quit);
         }
     });
 }
