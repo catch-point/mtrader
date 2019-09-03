@@ -490,7 +490,7 @@ describe("replicate-collective2", function() {
                 quant: 1,
                 symbol: 'IBM',
                 typeofsymbol: 'stock',
-                duration: 'GTC'
+                duration: 'DAY'
             }});
         });
         it("IBM cancel working signal", function() {
@@ -755,6 +755,7 @@ describe("replicate-collective2", function() {
                 }]);
             })({
                 systemid: 'test',
+                begin: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf(),
                 now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf()
             }).then(() => fs.readFileSync(submitSignal, 'utf8')).then(JSON.parse)
               .should.eventually.be.like({signal:{
@@ -812,6 +813,7 @@ describe("replicate-collective2", function() {
             })({
                 systemid: 'test',
                 quant_threshold: 5,
+                begin: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf(),
                 now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf()
             }).should.eventually.be.like([]);
         });
@@ -861,6 +863,7 @@ describe("replicate-collective2", function() {
             })({
                 systemid: 'test',
                 quant_threshold_percent: 5,
+                begin: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf(),
                 now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf()
             }).should.eventually.be.like([]);
         });
@@ -996,7 +999,7 @@ describe("replicate-collective2", function() {
                 symbol: 'IBM',
                 market: 1,
                 typeofsymbol: 'stock',
-                duration: 'GTC',
+                duration: 'DAY',
                 currency: 'USD',
                 status: 'working'
             }]}));
@@ -1008,7 +1011,7 @@ describe("replicate-collective2", function() {
                     symbol: 'IBM',
                     market: 'NYSE',
                     typeofsymbol: 'stock',
-                    duration: 'GTC',
+                    duration: 'DAY',
                     currency: 'USD',
                     parkUntilSecs: moment('2015-02-17T16:00:00-05:00').format('X')
                 }, {
@@ -1017,7 +1020,7 @@ describe("replicate-collective2", function() {
                     symbol: 'IBM',
                     market: 'NYSE',
                     typeofsymbol: 'stock',
-                    duration: 'GTC',
+                    duration: 'DAY',
                     currency: 'USD',
                     parkUntilSecs: moment('2015-06-16T16:00:00-04:00').format('X')
                 }, {
@@ -1026,7 +1029,7 @@ describe("replicate-collective2", function() {
                     symbol: 'IBM',
                     market: 'NYSE',
                     typeofsymbol: 'stock',
-                    duration: 'GTC',
+                    duration: 'DAY',
                     currency: 'USD',
                     parkUntilSecs: '1445025600'
                 }]);
@@ -1217,7 +1220,7 @@ describe("replicate-collective2", function() {
                 asof: '2016-10-13T15:59:59-04:00',
                 traded_at: '2016-10-13T16:00:00-04:00',
                 action: 'BUY',
-                quant: 2,
+                quant: '2',
                 order_type: 'MKT',
                 tif: 'GTC',
                 status: 'pending',
@@ -1229,7 +1232,7 @@ describe("replicate-collective2", function() {
             await util.promisify(fs.readFile)(submitSignal, 'utf8').then(JSON.parse)
               .should.eventually.be.like({signal:{
                 action: 'BTO',
-                quant: 2,
+                quant: '2',
                 symbol: 'GLD',
                 typeofsymbol: 'stock',
                 market: 1,
@@ -1272,6 +1275,7 @@ describe("replicate-collective2", function() {
                 }]);
             })({
                 systemid: 'test',
+                begin: moment.tz("2016-10-13T16:00:00", 'America/New_York').valueOf(),
                 now: moment.tz("2016-10-13T16:00:01", 'America/New_York').valueOf()
             }).then(() => fs.readFileSync(submitSignal, 'utf8')).then(JSON.parse)
               .should.eventually.be.like({signal:{
@@ -1486,8 +1490,7 @@ describe("replicate-collective2", function() {
             }).should.eventually.be.like([{
                 // cancelled and resubmitted bc collective2 splits reversal signals
                 status: 'cancelled',
-                order_ref: 'b'
-            }, {
+                order_ref: 'a',
                 action: 'SELL',
                 quant: 2,
                 order_type: 'MKT',
@@ -1497,6 +1500,7 @@ describe("replicate-collective2", function() {
                 currency: 'USD',
                 security_type: 'STK'
             }, {
+                attach_ref: 'b',
                 action: 'SELL',
                 quant: 2,
                 order_type: 'MKT',
@@ -1600,6 +1604,7 @@ describe("replicate-collective2", function() {
                 }]);
             })({
                 systemid: 'test',
+                begin: moment.tz("2016-10-24T16:00:00", 'America/New_York').valueOf(),
                 now: moment.tz("2016-10-24T16:00:01", 'America/New_York').valueOf()
             }).should.eventually.be.like([{
                 action: 'SELL',
@@ -2006,6 +2011,7 @@ describe("replicate-collective2", function() {
                     market: 'NYSE',
                     typeofsymbol: 'stock',
                     order_type: 'MKT',
+                    stoploss: 120,
                     duration: 'GTC',
                     currency: 'USD',
                     parkUntilSecs: moment('2015-06-16T16:00:00-04:00').format('X')
@@ -2202,6 +2208,7 @@ describe("replicate-collective2", function() {
                 systemid: 'test',
                 now: '2018-09-04T16:45:00'
             }).should.eventually.be.like([]);
+            // Working USD position has since been changed
         });
         it("triggered", function() {
             fs.writeFileSync(retrieveSignalsAll, JSON.stringify({ok:1,response:[{
@@ -2694,22 +2701,12 @@ describe("replicate-collective2", function() {
                 now: moment.tz("2016-10-24T15:59:59", 'America/New_York').valueOf()
             }).should.eventually.be.like([{
                 status: 'cancelled',
-                order_ref: '94974798'
+                order_ref: '94974799'
             }, {
                 action: 'SELL',
                 quant: 2,
                 order_type: 'STP',
                 stop: '130',
-                tif: 'GTC',
-                symbol: 'GLD',
-                market: 'ARCA',
-                currency: 'USD',
-                security_type: 'STK'
-            }, {
-                action: 'SELL',
-                quant: 2,
-                order_type: 'LMT',
-                limit: '120.56',
                 tif: 'GTC',
                 symbol: 'GLD',
                 market: 'ARCA',
@@ -3064,8 +3061,8 @@ describe("replicate-collective2", function() {
                 quant: 1,
                 symbol: 'IBM',
                 typeofsymbol: 'stock',
-                limit: 150.53,
-                duration: 'GTC'
+                market: 1,
+                duration: 'DAY'
             }});
         });
         it("IBM increase quant after filled", function() {
@@ -3113,6 +3110,7 @@ describe("replicate-collective2", function() {
                 }]);
             })({
                 systemid: 'test',
+                begin: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf(),
                 now: moment.tz("2015-02-17T16:00:01", 'America/New_York').valueOf()
             }).then(() => fs.readFileSync(submitSignal, 'utf8')).then(JSON.parse)
               .should.eventually.be.like({signal:{
@@ -3199,6 +3197,7 @@ describe("replicate-collective2", function() {
                 }]);
             })({
                 systemid: 'test',
+                begin: moment.tz("2016-10-13T16:00:00", 'America/New_York').valueOf(),
                 now: moment.tz("2016-10-13T16:00:01", 'America/New_York').valueOf()
             }).then(() => fs.readFileSync(submitSignal, 'utf8')).then(JSON.parse)
               .should.eventually.be.like({signal:{
@@ -3300,6 +3299,7 @@ describe("replicate-collective2", function() {
                 }]);
             })({
                 systemid: 'test',
+                begin: moment.tz("2016-10-24T16:00:00", 'America/New_York').valueOf(),
                 now: moment.tz("2016-10-24T16:00:01", 'America/New_York').valueOf()
             }).should.eventually.be.like([{
                 action: 'SELL',
@@ -3714,6 +3714,10 @@ describe("replicate-collective2", function() {
                 tz: 'America/New_York',
                 now: "2018-07-23T19:00:00"
             }).should.eventually.be.like([{
+                // buying more quant is not getting us closer to our desired position
+                status: 'cancelled',
+                order_ref: 'xxx'
+            }, {
                 // cancelled and resubmitted bc collective2 splits reversal signals
                 status: 'cancelled',
                 order_ref: '119080352'
@@ -3908,6 +3912,7 @@ describe("replicate-collective2", function() {
                     market: 'CME',
                     action: "STC",
                     quant: 1,
+                    currency: "USD",
                     duration: "GTC",
                     stop: 0.7383,
                     isStopOrder: 0.7383
@@ -3915,23 +3920,22 @@ describe("replicate-collective2", function() {
             })({
                 systemid: 'test',
                 tz: 'America/New_York',
-                now: "2019-03-05T09:30:00",
-                quant_threshold: 5
+                now: "2019-03-05T09:30:00"
             }).should.eventually.be.like([{
-                // cancelled and resubmitted bc collective2 splits reversal signals
+                status: 'cancelled',
+                order_ref: '122787034'
+            }, {
                 status: 'cancelled',
                 order_ref: '122787036'
             }, {
                 action: 'BUY',
                 quant: 1,
-                order_type: 'LMT',
-                limit: '0.74915',
+                order_type: 'MKT',
                 tif: 'DAY',
                 symbol: '6CH19',
                 market: 'CME',
                 currency: 'USD',
-                security_type: 'FUT',
-                attach_ref: '122787034'
+                security_type: 'FUT'
             }]);
         });
     });
