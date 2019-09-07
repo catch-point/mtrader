@@ -127,6 +127,11 @@ function help(broker, collect) {
                 usage: '<decimal>',
                 description: "The default minimun increment passed to broker"
             },
+            extended_hours: {
+                usage: 'true',
+                values: ['true'],
+                description: "If set, Allows orders to also trigger or fill outside of regular trading hours."
+            },
             working_duration: {
                 usage: '<duration>,..',
                 description: "Offset of now to begin by these comma separated durations or to values"
@@ -142,6 +147,10 @@ function help(broker, collect) {
             allocation_max: {
                 usage: '<number>',
                 description: "Maximum amount that should be allocated to this strategy"
+            },
+            dry_run: {
+                usage: 'true',
+                description: "If working orders should not be changed, only reported"
             }
         }
     })).then(help => [help]);
@@ -630,7 +639,6 @@ async function submitOrders(broker, broker_orders, orders, options) {
             ord.attach_ref, (ord.order_ref||'').replace(ref(ord.symbol), prefix)
         ].join(' ');
     });
-    // TODO check for order_legs inside of OCA orders
     const order_legs = _.values(grouped).filter(legs => legs.length > 1);
     const combo_orders = order_legs.map(legs => {
         const quant = greatestCommonFactor(_.uniq(legs.map(leg => Math.abs(leg.quant))));
@@ -663,7 +671,8 @@ async function submitOrders(broker, broker_orders, orders, options) {
     const grouped_orders = _.groupBy(pending_orders, ord => `${ord.symbol}.${ord.market}`);
     const all_orders = _.values(grouped_orders).concat(combo_orders.map(ord => [ord]));
     const submitted = await Promise.all(all_orders.map(async(orders) => {
-        return orders.reduce(async(promise, order) => {
+        if (options.dry_run) return {posted: orders, orders};
+        else return orders.reduce(async(promise, order) => {
             const submitted = await promise;
             logger.trace("replicate submit", order);
             const submit = await broker({...options, ...order});
@@ -674,12 +683,15 @@ async function submitOrders(broker, broker_orders, orders, options) {
             return {error, orders};
         });
     }));
-    const posted_orders = logOrders(logger.info, [].concat(..._.compact(submitted.map(item => item.posted))));
+    const posted = [].concat(..._.compact(submitted.map(item => item.posted)));
+    const posted_orders = logOrders(logger.info, posted);
     const errors = _.values(_.groupBy(submitted.filter(item => !item.posted), item => item.error.message));
     if (errors.length) {
         const message = errors.map(group => {
             const orders = [].concat(...group.map(item => item.orders));
-            let messages = [_.first(group).error.message];
+            const first_message = _.first(group).error.message;
+            const msg = first_message.replace(/^(Error:\s+)+/g, '').replace(/[\r\n][\S\s]*/,'');
+            const messages = [msg];
             logOrders((...args) => messages.push(`\t${args.join(' ')}`), orders);
             return messages.join('\n');
         }).join('\n\n');

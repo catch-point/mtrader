@@ -46,7 +46,7 @@ const logger = require('./logger.js');
 
 const private_settings = [
     'ibg_name', 'ibg_version', 'TradingMode', 'IbLoginId', 'IbPassword',
-    'auth_base64', 'auth_file', 'auth_sha256'
+    'auth_base64', 'auth_file', 'auth_nonce', 'auth_sha256'
 ];
 const client_settings = ['host', 'port', 'clientId'].concat(private_settings);
 const gateway_instances = {};
@@ -79,6 +79,14 @@ function createClientInstance(settings) {
 }
 
 async function assignClient(self, settings) {
+    if ('clientId' in settings) {
+        const {username} = await readAuthentication(settings);
+        const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
+        const default_dir = path.resolve(lib_dir, username || '.');
+        settings.lib_dir = path.resolve(default_dir, `${settings.TradingMode || 'live'}${settings.clientId}`);
+    } else {
+        delete settings.lib_dir;
+    }
     let gateway = await getSharedGateway(settings);
     let client = new ib({
         ..._.omit(settings, private_settings),
@@ -291,6 +299,23 @@ async function createIniFile(overrideTwsApiPort, commandServerPort, settings) {
 }
 
 async function setDefaultSettings(overrideTwsApiPort, commandServerPort, settings) {
+    const {username, password} = await readAuthentication(settings);
+    const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
+    const default_dir = path.resolve(lib_dir, settings.IbLoginId || username || '');
+    return {
+        ...settings,
+        IbLoginId: username || '',
+        IbPassword: password || '',
+        OverrideTwsApiPort: overrideTwsApiPort,
+        CommandServerPort: commandServerPort,
+        BindAddress: settings.BindAddress || '127.0.0.1',
+        IbDir: path.resolve(settings.IbDir || default_dir)
+    };
+}
+
+async function readAuthentication(settings) {
+    if (settings.IbLoginId && settings.IbPassword)
+        return {username: settings.IbLoginId, password: settings.IbPassword};
     const readFile = util.promisify(fs.readFile);
     const auth_file = settings.auth_file && path.resolve(config('prefix'), 'etc', settings.auth_file);
     const token = settings.auth_base64 ? settings.auth_base64 :
@@ -299,20 +324,11 @@ async function setDefaultSettings(overrideTwsApiPort, commandServerPort, setting
     if (auth_file && username) {
         const string = `${username}:${settings.auth_nonce||''}:${password}`;
         const hash = crypto.createHash('sha256').update(string).digest('hex');
-        if (hash != settings.auth_sha256)
-            throw Error("auth_sha256 of username:auth_nonce:password is required when using auth_file");
+        if (hash == settings.auth_sha256) return {username, password};
+        else throw Error("auth_sha256 of username:auth_nonce:password is required when using auth_file");
+    } else {
+        return {username: settings.IbLoginId};
     }
-    const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
-    const default_dir = path.resolve(lib_dir, settings.IbLoginId || username || '');
-    return {
-        ...settings,
-        IbLoginId: settings.IbLoginId || username || '',
-        IbPassword: settings.IbPassword || password || '',
-        OverrideTwsApiPort: overrideTwsApiPort,
-        CommandServerPort: commandServerPort,
-        BindAddress: settings.BindAddress || '127.0.0.1',
-        IbDir: path.resolve(settings.IbDir || default_dir)
-    };
 }
 
 async function createSocket(port, timeout) {

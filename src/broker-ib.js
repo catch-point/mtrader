@@ -49,13 +49,6 @@ module.exports = function(settings = {}, mock_ib_client = null) {
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
-    const lib_dir = config('broker.ib.lib_dir') || config('lib_dir') ||
-        path.resolve(config('prefix'), config('default_lib_dir'));
-    if ('clientId' in settings) {
-        settings.lib_dir = path.resolve(lib_dir, `ib${settings.clientId}`);
-    } else {
-        delete settings.lib_dir;
-    }
     expect(settings).to.have.property('account').that.is.ok;
     if (settings.local_accounts) expect(settings.account).to.be.oneOf(settings.local_accounts);
     const ib = mock_ib_client || new IB(settings);
@@ -181,7 +174,8 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "List a summary of open orders",
         properties: [
-            'posted_at', 'asof', 'traded_at', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'traded_price', 'tif', 'status',
+            'posted_at', 'asof', 'traded_at', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset',
+            'traded_price', 'tif', 'extended_hours', 'status',
             'order_ref', 'attach_ref', 'acctNumber', 'symbol', 'market', 'currency', 'security_type', 'multiplier'
         ],
         options: {
@@ -209,7 +203,8 @@ function helpOptions() {
         usage: 'broker(options)',
         description: "Transmit order for trading",
         properties: [
-            'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'tif', 'status',
+            'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset',
+            'tif', 'extended_hours', 'status',
             'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
         ],
         options: {
@@ -240,6 +235,11 @@ function helpOptions() {
             tif: {
                 usage: '<time-in-forced>',
                 values: ['GTC', 'DAY', 'IOC']
+            },
+            extended_hours: {
+                usage: 'true',
+                values: ['true'],
+                description: "If set, Allows orders to also trigger or fill outside of regular trading hours."
             },
             order_ref: {
                 usage: '<string>',
@@ -382,6 +382,7 @@ async function listOrders(markets, ib, settings, options) {
                 stop: null,
                 offset: null,
                 tif: null,
+                extended_hours: null,
                 order_ref: null,
                 attach_ref: ord.order_ref,
                 account: ord.account,
@@ -479,7 +480,7 @@ async function orderToIbOrder(markets, ib, settings, contract, order, options) {
     expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
     expect(order).to.have.property('quant').that.is.ok;
     expect(order).to.have.property('order_type').that.is.ok;
-    expect(order).to.have.property('tif').that.is.oneOf(['DAY', 'GTC', 'IOC', 'GTD', 'OPG', 'FOK', 'DTC']);
+    expect(order).to.have.property('tif').that.is.oneOf(['DAY', 'GTC', 'IOC', 'OPG', 'FOK', 'DTC']);
     const ibalgo = order.order_type.indexOf(' (IBALGO)');
     if (~ibalgo) {
         const algoParams = order.order_type.substring(ibalgo + ' (IBALGO)'.length).split(';')
@@ -493,6 +494,7 @@ async function orderToIbOrder(markets, ib, settings, contract, order, options) {
             lmtPrice: order.limit,
             auxPrice: order.stop || order.offset,
             tif: order.tif,
+            outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
             transmit: settings.transmit || false,
             ...await ibAccountOrderProperties(ib, settings)
@@ -504,6 +506,7 @@ async function orderToIbOrder(markets, ib, settings, contract, order, options) {
             orderType: 'LMT',
             lmtPrice: await snapStockLimit(markets, ib, contract, order),
             tif: order.tif,
+            outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
             transmit: settings.transmit || false,
             ...await ibAccountOrderProperties(ib, settings)
@@ -516,6 +519,7 @@ async function orderToIbOrder(markets, ib, settings, contract, order, options) {
             lmtPrice: order.limit,
             auxPrice: order.stop || order.offset,
             tif: order.tif,
+            outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
             transmit: settings.transmit || false,
             ...await ibAccountOrderProperties(ib, settings)
@@ -666,6 +670,7 @@ async function ibToOrder(markets, ib, settings, order, options) {
         offset: order.auxPrice == Number.MAX_VALUE || order.orderType == 'STP' ||
             order.orderType == 'STP LMT' ? null : order.auxPrice,
         tif: order.tif,
+        extended_hours: order.outsideRth,
         status: status,
         traded_price: +order.avgFillPrice ? order.avgFillPrice : null,
         order_ref: order.orderRef || order.permId || order.orderId,

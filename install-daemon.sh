@@ -478,7 +478,6 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
       var default_ibgateway = existing.ibc_command ? existing : previous.ibc_command ? previous : {
         ibg_name,
         ibg_version,
-        auth_nonce: '$RANDOM',
         StoreSettingsOnServer: '',
         MinimizeMainWindow: 'no',
         ExistingSessionDetectedAction: 'manual',

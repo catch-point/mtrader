@@ -136,7 +136,7 @@ module.exports = function() {
             return client.open().then(client => client.version()).then(client_version => {
                 return [{version: client_version, name: 'TWS API'}];
             }, err => {
-                return [{version: client_version, name: 'TWS API', message: err.message}];
+                return [{version: null, name: 'TWS API', message: err.message}];
             });
         }
         await client.open();
