@@ -494,14 +494,14 @@ function updateActual(desired, actual, options) {
     const desired_adjustment = desired.position - actual.position > options.quant_threshold ? {
         action: 'BUY',
         quant: (desired.position - actual.position).toString(),
-        ...((desired.adjustment||{}).action == 'BUY' ? desired.adjustment : {
+        ...(((desired.adjustment||{}).action||'BUY') == 'BUY' ? {...desired.adjustment, action: 'BUY'} : {
             order_type: options.default_order_type || 'MKT', tif: 'DAY',
             ..._.pick(desired, 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick')
         })
     } : actual.position - desired.position > options.quant_threshold ? {
         action: 'SELL',
         quant: (actual.position - desired.position).toString(),
-        ...((desired.adjustment||{}).action == 'SELL' ? desired.adjustment : {
+        ...(((desired.adjustment||{}).action||'SELL') == 'SELL' ? {...desired.adjustment, action: 'SELL'} : {
             order_type: options.default_order_type || 'MKT', tif: 'DAY',
             ..._.pick(desired, 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick')
         })
