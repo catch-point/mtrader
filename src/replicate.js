@@ -187,7 +187,7 @@ async function replicate(broker, collect, lookup, options) {
         if (!desired[contract] && +w.position && !~portfolio.indexOf(contract) &&
                 (!options.markets || ~options.markets.indexOf(w.market)) &&
                 (w.currency == options.currency || margin_acct)) {
-            logger.warn("Unknown position", w.position, w.symbol, w.market);
+            logger.warn("Unknown position", options.label || '', w.position, w.symbol, w.market);
         }
     });
     const orders = portfolio.reduce((orders, contract) => {
@@ -211,7 +211,7 @@ async function replicate(broker, collect, lookup, options) {
         return orders.concat(update);
     }, []);
     await check();
-    logger.trace("replicate submit orders", ...orders);
+    logger.trace("replicate", options.label || '', "submit orders", ...orders);
     return submitOrders(broker, broker_orders, orders, options);
 }
 
@@ -220,7 +220,7 @@ async function replicate(broker, collect, lookup, options) {
  */
 async function getDesiredPositions(broker, collect, lookup, begin, options) {
     const parameters = await getDesiredParameters(broker, begin, options);
-    logger.debug("replicate", begin, "parameters", parameters);
+    logger.debug("replicate", options.label || '', begin, "parameters", parameters);
     const orders = await collect(merge(options, {begin, parameters}));
     const normalized_orders = await Promise.all(orders.map(row => normalize(lookup, row, options)));
     const grouped = _.groupBy(normalized_orders, ord => `${ord.symbol}.${ord.market}`);
@@ -532,7 +532,7 @@ function updateActual(desired, actual, options) {
     }, transition_stoploss) : [];
     if (!actual.adjustment && moment(desired.asof).isBefore(actual.asof)) {
         // working position has since been closed (stoploss?) since the last desired signal was produced
-        logger.warn(`Working ${desired.attach_ref} position has since been changed`);
+        logger.warn(`Working ${desired.attach_ref} position has since been changed`, options.label || '');
         return cancelled;
     } else if (adjustment_order && (desired.realized.stoploss || !_.isEmpty(desired.realized.working))) {
         // keep existing transition orders (i.e. stoploss), and don't submit new working orders

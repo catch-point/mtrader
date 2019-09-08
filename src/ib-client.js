@@ -91,7 +91,7 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
         } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
             logger.debug("ib-client", clientId, err.message);
         } else if (info && info.code >= 2000 && info.code < 3000) {
-            logger.info("ib-client", clientId, err.message);
+            logger.info("ib-client", clientId, info || '', err.message);
         } else {
             logger.warn("ib-client", clientId, info || '', err.message);
         }
@@ -509,7 +509,11 @@ function openOrders(ib, store, ib_tz, clientId) {
     }, 10*60*1000); // 10m
     ib.on('error', function (err, info) {
         if (info && info.id && placing_orders[info.id]) {
-            if (info.code != 481) { // Order size was reduced warning
+            if (info.code == 481) { // Order size was reduced warning
+                logger.debug('placeOrder', placing_orders[info.id].contract, placing_orders[info.id].order, err.message);
+            } else if (info && info.code >= 2000 && info.code < 3000) { // warning
+                logger.debug('placeOrder', placing_orders[info.id].contract, placing_orders[info.id].order, err.message);
+            } else {
                 placing_orders[info.id].fail(err);
                 delete placing_orders[info.id];
             }
@@ -538,6 +542,8 @@ function openOrders(ib, store, ib_tz, clientId) {
                     }
                 }
             }
+        } else if (info && info.code >= 2000 && info.code < 3000) {
+            // warning
         } else if (!isNormal(info)) {
             Object.entries(placing_orders).forEach(([orderId, req]) => {
                 req.fail(err);
@@ -661,7 +667,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 });
             }
             else return new Promise((ready, fail) => {
-                placing_orders[orderId] = {ready, fail};
+                placing_orders[orderId] = {ready, fail, orderId, contract, order};
             }).catch(err => logger.warn('placeOrder', orderId, contract, order, err.message) || Promise.reject(err));
         },
         async cancelOrder(orderId) {

@@ -400,6 +400,7 @@ async function listOrders(markets, ib, settings, options) {
 async function cancelOrder(markets, ib, settings, options) {
     expect(options).to.have.property('order_ref').that.is.ok;
     const ib_order = await orderByRef(ib, options.order_ref);
+    if (!ib_order) throw Error(`Unknown order_ref ${options.order_ref}`);
     const cancelled_order = await ib.cancelOrder(ib_order.orderId);
     const order = ibToOrder(markets, ib, settings, {...ib_order, ...cancelled_order}, options);
     return [order];
@@ -472,8 +473,7 @@ async function orderByRef(ib, order_ref) {
         return ord.orderRef == order_ref || ord.permId == order_ref || ord.orderId == order_ref;
     });
     if (ib_order) return ib_order;
-    else if (open_ib_orders.some(ord => ord.ocaGroup == order_ref)) return null;
-    else throw Error(`Order ${order_ref} is not open, either filled, cancelled, or not yet transmitted`);
+    else return null;
 }
 
 async function orderToIbOrder(markets, ib, settings, contract, order, options) {
