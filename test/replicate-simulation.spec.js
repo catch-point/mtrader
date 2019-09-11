@@ -1441,7 +1441,7 @@ describe("replicate-simulation", function() {
                   security_type: 'FUT',
                   currency: 'USD',
                   multiplier: 1000,
-                  order_ref: 'stp_STP.ZNH19.CBOT.test'
+                  order_ref: 'stp_STP.ZNH19.test'
             });
             return replicate(function(options) {
                 if (options.info=='help') return collect(options);
@@ -1535,7 +1535,7 @@ describe("replicate-simulation", function() {
                   security_type: 'FUT',
                   currency: 'USD',
                   multiplier: 1000,
-                  order_ref: 'stp_STP.ZNH19.CBOT.test'
+                  order_ref: 'stp_STP.ZNH19.test'
             });
             await replicate(function(options) {
                 if (options.info=='help') return collect(options);
@@ -1647,7 +1647,7 @@ describe("replicate-simulation", function() {
                 security_type: 'FUT',
                 currency: 'USD',
                 multiplier: 1000,
-                order_ref: 'stp_STP.ZNH19.CBOT.test'
+                order_ref: 'stp_STP.ZNH19.test'
             });
             await replicate(function(options) {
                 if (options.info=='help') return collect(options);
@@ -1754,7 +1754,7 @@ describe("replicate-simulation", function() {
                 security_type: 'FUT',
                 currency: 'USD',
                 multiplier: 1000,
-                order_ref: 'stp_STP.ZNH19.CBOT.test'
+                order_ref: 'stp_STP.ZNH19.test'
             });
             await broker({
                 asof: '2019-01-04',

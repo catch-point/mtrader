@@ -94,6 +94,22 @@ describe("ib-client", function() {
             contractMonth: '202112'
         })));
     });
+    it("index NDX lookup", function() {
+        return client.reqContractDetails({
+            localSymbol:'NDX',
+            currency:'USD',
+            secType:'IND'
+        }).should.eventually.be.like([{
+            summary: {
+                symbol: 'NDX',
+                secType: 'IND',
+                currency: 'USD',
+                localSymbol: 'NDX'
+            },
+            minTick: 0.01,
+            longName: 'NASDAQ 100 Stock Index'
+        }]);
+    });
     it.skip("options ES options lookup", function() {
         return client.reqContractDetails({
             localSymbol:'ESM9 P2625',

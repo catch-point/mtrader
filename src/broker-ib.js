@@ -966,17 +966,32 @@ function toCashSymbol(market, symbol) {
 }
 
 async function asMarket(markets, ib, contract) {
-    const market = [contract.primaryExchange, contract.exchange].concat(Object.keys(markets)).find(name => {
+    const market = [contract.primaryExchange, contract.exchange]
+      .filter(market => market && market != 'SMART')
+      .concat(Object.keys(markets))
+      .find(name => {
         if (!markets[name]) return false;
         const currency = markets[name].currency;
         if (currency && currency != contract.currency) return false;
+        // secType filter
         const secType = markets[name].secType;
         if (secType && secType != contract.secType) return false;
+        const secTypes = markets[name].secTypes;
+        if (secTypes && !~secTypes.indexOf(contract.secType)) return false;
+        // primaryExch filter
         const primaryExch = markets[name].primaryExch;
-        if (primaryExch && primaryExch != contract.primaryExch && primaryExch != contract.exchange) return false;
+        if (primaryExch && primaryExch != contract.primaryExch &&
+            primaryExch != contract.exchange) return false;
+        const primaryExchs = markets[name].primaryExchs;
+        if (primaryExchs && !~primaryExchs.indexOf(contract.primaryExch) &&
+            !~primaryExchs.indexOf(contract.exchange)) return false;
+        // exchange filter
         const exchange = markets[name].exchange;
-        if (!exchange || exchange == 'SMART' || exchange == 'IDEALPRO') return true;
-        if (exchange != contract.exchange && primaryExch != contract.exchange) return false;
+        if (exchange && contract.exchange != 'SMART' && contract.exchange != 'IDEALPRO' &&
+            exchange != contract.exchange && primaryExch != contract.exchange) return false;
+        const exchanges = markets[name].exchanges;
+        if (exchanges && contract.exchange != 'SMART' && contract.exchange != 'IDEALPRO' &&
+            !exchanges.indexOf(contract.exchange) && !primaryExchs.indexOf(contract.exchange)) return false;
         return true;
     });
     if (market) return market;

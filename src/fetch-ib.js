@@ -34,6 +34,7 @@ const _ = require('underscore');
 const Big = require('big.js');
 const moment = require('moment-timezone');
 const d3 = require('d3-format');
+const cache = require('./memoize-cache.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
@@ -130,6 +131,9 @@ module.exports = function() {
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
+    const lookupContract_fn = lookupContract.bind(this, markets, client);
+    const lookupContract_cache = cache(lookupContract_fn, o => `${o.symbol}.${o.market}`, 10);
+    const findContract_fn = findContract.bind(this, lookupContract_cache, markets, client);
     const self = async(options) => {
         if (options.info=='help') return help();
         if (options.info=='version') {
@@ -142,8 +146,8 @@ module.exports = function() {
         await client.open();
         const adj = isNotEquity(markets, options) ? null : adjustments;
         if (options.interval == 'lookup') return lookup(markets, client, options);
-        else if (options.interval == 'day') return interday(markets, adj, client, options);
-        else if (options.interval.charAt(0) == 'm') return intraday(markets, adj, client, options);
+        else if (options.interval == 'day') return interday(findContract_fn, markets, adj, client, options);
+        else if (options.interval.charAt(0) == 'm') return intraday(findContract_fn, markets, adj, client, options);
         else throw Error(`Unknown interval: ${options.interval}`);
     };
     self.open = () => client.open();
@@ -156,17 +160,91 @@ module.exports = function() {
 
 function isNotEquity(markets, options) {
     const secType = (markets[options.market]||{}).secType;
-    return secType && secType != 'STK';
+    const secTypes = (markets[options.market]||{}).secTypes;
+    return secType && secType != 'STK' || secTypes && !~secTypes.indexOf('STK');
 }
 
 async function lookup(markets, client, options) {
+    const details = await listContractDetails(markets, client, options);
+    const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
+    return conIds.map(details => flattenContractDetails(details)).map(detail => _.omit({
+        symbol: toSymbol(markets[options.market] || markets[detail.primaryExch], detail),
+        market: options.market || markets[detail.primaryExch] && detail.primaryExch,
+        security_type: detail.secType,
+        name: detail.longName,
+        currency: detail.currency,
+        conId: detail.conId
+    }, v => !v));
+}
+
+async function interday(findContract, markets, adjustments, client, options) {
+    expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
+    expect(options).to.have.property('tz').that.is.ok;
+    const adjusts = adjustments && await adjustments(options);
+    const market = markets[options.market];
+    const contract = await findContract(options);
+    const whatToShow = market.whatToShow || 'MIDPOINT';
+    const prices = await reqHistoricalData(client, contract, whatToShow, 1, 1, options);
+    const adjust =
+        market.whatToShow == 'ADJUSTED_LAST' || market.whatToShow == 'TRADES' ? fromTrades :
+        ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
+        withoutAdjClase;
+    const result = adjust(prices, adjusts, options);
+    const start = moment.tz(options.begin, options.tz).format(options.ending_format);
+    const finish = moment.tz(options.end || options.now, options.tz).format(options.ending_format);
+    let first = _.sortedIndex(result, {ending: start}, 'ending');
+    let last = _.sortedIndex(result, {ending: finish}, 'ending');
+    if (result[last]) last++;
+    if (first <= 0 && last >= result.length) return result;
+    else return result.slice(first, last);
+}
+
+async function intraday(findContract, markets, adjustments, client, options) {
+    expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
+    expect(options).to.have.property('tz').that.is.ok;
+    const adjusts = adjustments && await adjustments(options);
+    const market = markets[options.market];
+    const contract = await findContract(options);
+    const whatToShow = market.whatToShow || 'MIDPOINT';
+    const prices = await reqHistoricalData(client, contract, whatToShow, 0, 2, options);
+    const adjust =
+        market.whatToShow == 'ADJUSTED_LAST' || market.whatToShow == 'TRADES' ? fromTrades :
+        ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
+        withoutAdjClase;
+    const result = adjust(prices, adjusts, options);
+    const start = moment.tz(options.begin, options.tz).format(options.ending_format);
+    const finish = moment.tz(options.end || options.now, options.tz).format(options.ending_format);
+    let first = _.sortedIndex(result, {ending: start}, 'ending');
+    let last = _.sortedIndex(result, {ending: finish}, 'ending');
+    if (result[last]) last++;
+    if (first <= 0 && last >= result.length) return result;
+    else return result.slice(first, last);
+}
+
+async function findContract(lookupContract, markets, client, options) {
+    const market = markets[options.market];
+    const contract = toContract(market, options);
+    if (contract.localSymbol && contract.secType && contract.currency &&
+        (contract.primaryExch || contract.exchange)) return contract;
+    return lookupContract(options);
+}
+
+async function lookupContract(markets, client, options) {
+    const market = markets[options.market];
+    const contract = toContract(market, options);
+    const details = await listContractDetails(markets, client, options);
+    const found = details.map(detail => detail.summary).find(_.matcher(contract));
+    return found || contract;
+}
+
+async function listContractDetails(markets, client, options) {
     const market_set = (options.market ? [markets[options.market]] :
         _.values(markets)).reduce((market_set, market) => {
         if (market.secType) return market_set.concat(market);
         else if (!market.secTypes) return market_set;
         else return market_set.concat(market.secTypes.map(secType => Object.assign({}, market, {secType})));
     }, []);
-    const combined = _.flatten(await Promise.all(_.map(_.groupBy(market_set, market => {
+    return _.flatten(await Promise.all(_.map(_.groupBy(market_set, market => {
         return `${market.secType}.${market.currency}`;
     }), async(market_set) => {
         const primaryExchs = _.every(market_set, 'primaryExch') && market_set.map(market => market.primaryExch);
@@ -188,63 +266,12 @@ async function lookup(markets, client, options) {
             else return true;
         });
     })));
-    const conIds = _.values(_.groupBy(combined, detail => detail.summary.conId));
-    return conIds.map(details => flattenContractDetails(details)).map(detail => _.omit({
-        symbol: toSymbol(markets[options.market] || markets[detail.primaryExch], detail),
-        market: options.market || markets[detail.primaryExch] && detail.primaryExch,
-        security_type: detail.secType,
-        name: detail.longName,
-        currency: detail.currency,
-        conId: detail.conId
-    }, v => !v));
 }
 
-async function interday(markets, adjustments, client, options) {
-    expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
-    expect(options).to.have.property('tz').that.is.ok;
-    const adjusts = adjustments && await adjustments(options);
-    const market = markets[options.market];
-    const prices = await reqHistoricalData(client, market, 1, 1, options);
-    const adjust =
-        market.whatToShow == 'ADJUSTED_LAST' || market.whatToShow == 'TRADES' ? fromTrades :
-        ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
-        withoutAdjClase;
-    const result = adjust(prices, adjusts, options);
-    const start = moment.tz(options.begin, options.tz).format(options.ending_format);
-    const finish = moment.tz(options.end || options.now, options.tz).format(options.ending_format);
-    let first = _.sortedIndex(result, {ending: start}, 'ending');
-    let last = _.sortedIndex(result, {ending: finish}, 'ending');
-    if (result[last]) last++;
-    if (first <= 0 && last >= result.length) return result;
-    else return result.slice(first, last);
-}
-
-async function intraday(markets, adjustments, client, options) {
-    expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
-    expect(options).to.have.property('tz').that.is.ok;
-    const adjusts = adjustments && await adjustments(options);
-    const market = markets[options.market];
-    const prices = await reqHistoricalData(client, market, 0, 2, options);
-    const adjust =
-        market.whatToShow == 'ADJUSTED_LAST' || market.whatToShow == 'TRADES' ? fromTrades :
-        ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
-        withoutAdjClase;
-    const result = adjust(prices, adjusts, options);
-    const start = moment.tz(options.begin, options.tz).format(options.ending_format);
-    const finish = moment.tz(options.end || options.now, options.tz).format(options.ending_format);
-    let first = _.sortedIndex(result, {ending: start}, 'ending');
-    let last = _.sortedIndex(result, {ending: finish}, 'ending');
-    if (result[last]) last++;
-    if (first <= 0 && last >= result.length) return result;
-    else return result.slice(first, last);
-}
-
-async function reqHistoricalData(client, market, useRTH, format, options) {
-    const contract = toContract(market, options);
+async function reqHistoricalData(client, contract, whatToShow, useRTH, format, options) {
     const end = periods(options).ceil(options.end || options.now);
     const now = moment().tz(options.tz);
     const end_past = end && now.diff(end, 'days') > 0;
-    const whatToShow = market.whatToShow || 'MIDPOINT';
     const endDateTime = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
     const duration = toDurationString(endDateTime ? end : now, options);
     const barSize = toBarSizeSetting(options.interval);
@@ -370,17 +397,23 @@ function toContract(market, options) {
         primaryExch: market.primaryExch,
         exchange: market.exchange,
         currency: market.currency,
-        includeExpired: market.secType == 'FUT'
+        includeExpired: market.secType == 'FUT' || ~(market.secTypes||[]).indexOf('FUT')
     }, v => !v);
 }
 
 function toLocalSymbol(market, symbol) {
-    if (market.secType == 'FUT') return toFutSymbol(market, symbol);
-    else if (market.secType == 'CASH') return toCashSymbol(market, symbol);
-    else if (market.secType == 'OPT') return symbol;
-    else if (market.secType) return symbol;
-    else if (symbol.match(/^(.*)([A-Z])(\d)(\d)$/)) return toFutSymbol(market, symbol);
-    else return symbol;
+    if (market.secType == 'FUT' || ~(market.secTypes||[]).indexOf('FUT'))
+        return toFutSymbol(market, symbol);
+    else if (market.secType == 'CASH' || ~(market.secTypes||[]).indexOf('CASH'))
+        return toCashSymbol(market, symbol);
+    else if (market.secType == 'OPT' || ~(market.secTypes||[]).indexOf('OPT'))
+        return symbol;
+    else if (market.secType || (market.secTypes||[]).length)
+        return symbol;
+    else if (symbol.match(/^(.*)([A-Z])(\d)(\d)$/))
+        return toFutSymbol(market, symbol);
+    else
+        return symbol;
 }
 
 function toSymbol(market, detail) {
