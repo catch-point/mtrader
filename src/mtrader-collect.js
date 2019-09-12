@@ -65,7 +65,7 @@ function usage(command) {
         .option('-q, --quiet', "Include less information about what the system is doing")
         .option('-x, --debug', "Include details about what the system is working on")
         .option('-X', "Hide details about what the system is working on")
-        .option('-i, --runInBand', "Runs in the same process rather than spawning processes")
+        .option('-i, --runInBand', "Runs in the same process rather than spawning or using remote workers")
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--config-dir <dirname>', "Directory where stored sessions are kept")
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
@@ -97,7 +97,8 @@ function usage(command) {
 if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length || !process.send) {
-        const collect = createInstance(program);
+        const runInBand = ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand');
+        const collect = createInstance(program, runInBand);
         process.on('SIGHUP', () => collect.reload());
         process.on('SIGINT', () => collect.close());
         process.on('SIGTERM', () => collect.close());
@@ -116,7 +117,7 @@ if (require.main === module) {
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
 }
 
-function createInstance(program) {
+function createInstance(program, runInBand) {
     let promiseKeys, closed;
     const fetch = new Fetch();
     const quote = new Quote();
@@ -133,6 +134,7 @@ function createInstance(program) {
             else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
             else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
             else if (cache && inPast(options)) return cache(options);
+            else if (config('runInBand') || runInBand) return direct(options);
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (!remote.hasWorkers()) return local(options);
             else if (options.reset_every || isLeaf(options)) return remote.collect(options);

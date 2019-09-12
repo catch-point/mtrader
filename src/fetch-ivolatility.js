@@ -85,7 +85,7 @@ function help() {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol",
-        properties: ['symbol', 'market', 'name', 'security_type', 'strike_price', 'expiration_date', 'currency'],
+        properties: ['symbol', 'market', 'name', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -160,8 +160,6 @@ async function lookup(options) {
         market: 'OPRA',
         security_type: 'OPT',
         name: `${underlying.trim()} ${expiry.format('MMM Y')} ${right} ${strike}`,
-        strike_price: strike,
-        expiration_date: exdate,
         currency: 'USD'
     }];
 }

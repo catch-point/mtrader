@@ -252,9 +252,7 @@ function lookupOptions(symbol) {
         symbol: symbol,
         listed_market: 'OPRA',
         security_type: 'IEOPTION',
-        name: `${underlying} ${month} 20${year} ${pc} ${strike}`,
-        strike_price: strike,
-        expiration_date: `20${year}-${mo}-${day}`
+        name: `${underlying} ${month} 20${year} ${pc} ${strike}`
     };
 }
 
