@@ -313,7 +313,9 @@ function iqfeed_symbol(markets, options) {
         const map = source.dtnPrefixMap || {};
         const three = options.symbol.substring(0, 3);
         const two = options.symbol.substring(0, 2);
-        if (map[three])
+        if (map[options.symbol])
+            return map[options.symbol];
+        else if (map[three])
             return map[three] + options.symbol.substring(3);
         else if (map[two])
             return map[two] + options.symbol.substring(2);
@@ -450,6 +452,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
     const three = symbol.substring(0, 3);
     const two = symbol.substring(0, 2);
     const mapped_symbol = isWeekOfYearExpiration(symbol) ? weekOfYearToWeekOfMonth(symbol) :
+        map[symbol] ? map[symbol] :
         map[three] ? map[three] + symbol.substring(3) :
         map[two] ? map[two] + symbol.substring(2) : symbol;
     return iqclient.lookup(mapped_symbol, listed_markets).then(rows => rows.map(row => {
@@ -461,7 +464,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
             const map = _.invert(ds && ds.dtnPrefixMap || {});
             const three = sym.substring(0, 3);
             const two = sym.substring(0, 2);
-            if (map[three] || map[two]) return true;
+            if (map[sym] || map[three] || map[two]) return true;
             const startsWith = !prefix || sym.indexOf(prefix) === 0;
             const endsWith = !suffix || sym.indexOf(suffix) == sym.length - suffix.length;
             return startsWith && endsWith;
@@ -478,6 +481,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
             row.security_type == 'EIOPTION' ? occ_symbol(row.symbol) :
             ds && ds.week_of_month && row.security_type == 'FUTURE' && isWeekOfMonthExpiration(row.symbol) ?
                 weekOfMonthToWeekOfYear(row.symbol) :
+            map[sym] ? map[sym] :
             map[four] ? map[four] + sym.substring(4) :
             map[three] ? map[three] + sym.substring(3) :
             startsWith && endsWith ?
