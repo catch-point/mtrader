@@ -67,24 +67,30 @@ const functions = module.exports.functions = {
             }
         }).parse(expr)[2];
         if (!arg) throw Error("Unrecongized call to MAXCORREL: " + expr);
-        const filtered = dataset.filter(data => !_.isEmpty(data));
-        if (filtered.length < 2) return positions => 0;
+        const indexed = Object.values(dataset.reduce((indexed, data) => data.reduce((indexed, datum) => {
+            const entry = indexed[datum[options.indexCol]];
+            indexed[datum[options.indexCol]] = {
+                ...datum,
+                begin: entry ? entry.begin : datum[options.temporalCol],
+                end: datum[options.temporalCol]
+            };
+            return indexed;
+        }, indexed), {}));
+        if (_.size(indexed) < 2) return positions => 0;
         const condition = parseCriteria(arg, criteria, options);
-        const optionset = filtered.map(data => {
-            const first = _.first(data);
-            const last = _.last(data);
+        const optionset = indexed.map(entry => {
             return _.defaults({
-                index: first[options.indexCol],
-                symbol: first[options.symbolCol],
-                market: first[options.marketCol],
+                index: entry[options.indexCol],
+                symbol: entry[options.symbolCol],
+                market: entry[options.marketCol],
                 variables: {},
                 columns: {
                     [options.temporalCol]: 'DATETIME(ending)',
                     [arg]: arg
                 },
                 pad_begin: n,
-                begin: first[options.temporalCol],
-                end: last[options.temporalCol],
+                begin: entry.begin,
+                end: entry.end,
                 pad_end: 0,
                 criteria: null
             }, options);
@@ -100,7 +106,7 @@ const functions = module.exports.functions = {
             const matrix = _.keys(_.pick(positions, _.isObject)).map((symbol, i, keys) => {
                 if (i < keys.length -1 && !condition(positions[symbol])) return null;
                 const data = qdataset[symbol];
-                if (!data) throw Error("Could not find dataset: " + symbol);
+                if (!data) throw Error(`Could not find dataset ${symbol} in ${Object.keys(qdataset).join(', ')}`);
                 let end = _.sortedIndex(data, positions, options.temporalCol);
                 if (data[end] && data[end][options.temporalCol] == positions[options.temporalCol]) end++;
                 return _.pluck(data.slice(Math.max(end - n, 0), end), arg);

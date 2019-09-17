@@ -472,6 +472,38 @@ describe("collect", function() {
             {symbol:"XLY",date:"2016-11-30",shares:-108,position:212,price:81.83,basis:80.08,profit:368.24}
         ]);
     });
+    it("max correl nested portfolio", function() {
+        return collect({
+          portfolio: {portfolio:['XLE.ARCA','XLF.ARCA','XLI.ARCA','XLK.ARCA','XLY.ARCA']},
+          pad_leading: 12,
+          begin: "2016-11-30",
+          end: "2016-12-01",
+          variables: {
+              cor: 'MAXCORREL(60,day.adj_close)',
+              risk: 'CVAR(5, 60, day.adj_close)',
+              weight: 'IF(cor<0.75 AND SUMPREC("weight")<=95, MIN(0.5/risk,100-SUMPREC("weight")), 0)',
+              target: 'FLOOR(100000*(weight + SUMPREV("weight",2))/300/day.close)',
+              proceeds: '-shares * price',
+              commission: 'IF(shares=0,0, MAX(shares * 0.005, 1.00))'
+          },
+          columns: {
+              symbol: 'symbol',
+              date: 'DATE(ending)',
+              shares: 'IF(ABS(target-PREV("position"))<50,0,target-PREV("position"))',
+              position: 'PREV("position") + shares',
+              price: 'day.close + 0.02 * IF(shares>0,1,-1)', // includes slippage
+              basis: 'ROUND(IF(position=0,PREV("basis"),(PREV("basis")*PREV("position")+price*shares)/position),2)',
+              profit: 'PREV("profit") + (price - PREV("price")) * PREV("position") - commission'
+          },
+          precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
+          criteria: 'position OR shares'
+        }).should.eventually.be.like([
+            {symbol:"XLF",date:"2016-11-30",shares:0,position:1233,price:22.49,basis:22.23,profit:320.385},
+            {symbol:"XLK",date:"2016-11-30",shares:0,position:571,price:47.48,basis:46.61,profit:493.78},
+            {symbol:"XLE",date:"2016-11-30",shares:0,position:240,price:74.41,basis:71.01,profit:813.87},
+            {symbol:"XLY",date:"2016-11-30",shares:-108,position:212,price:81.83,basis:80.08,profit:368.24}
+        ]);
+    });
     it("external instrument", function() {
         return collect({
           portfolio: 'USD.CAD,SPY.ARCA,XIC.TSE',
