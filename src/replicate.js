@@ -285,7 +285,7 @@ function getDesiredPosition(lookup, position, order, options) {
             ...working_order,
             ...common
         };
-    }), ord => ord.order_ref);
+    }).filter(ord => +ord.quant && ~['BUY', 'SELL'].indexOf(ord.action)), ord => ord.order_ref);
     return {
         position,
         attach_ref,
