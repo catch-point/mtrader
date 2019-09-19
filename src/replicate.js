@@ -251,23 +251,25 @@ function getPositionSize(orders, options) {
 function getDesiredPosition(lookup, position, order, options) {
     const common = _.pick(order, 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick');
     const attach_ref = ref(`${order.symbol}.${options.label}`);
+    const order_prefix = `${order.order_type || options.default_order_type || (order.limit ? 'LMT' : 'MKT')}.`;
     const adjustment = {
         ..._.pick(order, 'action', 'order_type', 'limit', 'offset', 'stop', 'tif', 'order_ref', 'attach_ref', 'traded_at', 'traded_price'),
-        order_ref: order.order_ref || ref(`${order.order_type}.${attach_ref}`),
+        order_ref: order.order_ref || ref(`${order_prefix}${attach_ref}`),
         ...common
     };
     const stoploss = order.stoploss ? {
         action: +position < 0 ? 'BUY' : 'SELL',
         quant: Math.abs(position).toString(),
-        tif: 'GTC',
         order_type: 'STP',
         stop: order.stoploss.toString(),
         order_ref: `stoploss.${attach_ref}`,
+        tif: 'GTC',
         ...common
     } : undefined;
     const prefixes = Object.keys(order)
         .filter(col => col.indexOf('action') > 0 && col.indexOf('action') == col.length - 'action'.length)
-        .map(col => col.replace('action', ''));
+        .map(col => col.replace('action', ''))
+        .filter(prefix => prefix != 'stoploss.' && prefix != order_prefix);
     const order_attributes = ['action', 'quant', 'order_type', 'limit', 'offset', 'stop', 'tif', 'order_ref', 'attach_ref'];
     const working = _.indexBy(prefixes.map(prefix => {
         const working_order = _.omit(_.object(
@@ -275,7 +277,11 @@ function getDesiredPosition(lookup, position, order, options) {
             order_attributes.map(attr => `${prefix}${attr}`).map(attr => order[attr])
         ), _.isUndefined);
         return {
-            order_ref: ref(`${prefix}${working_order.order_type}.${attach_ref}`),
+            ...working_order,
+            order_type: working_order.order_type || options.default_order_type ||
+                (+working_order.limit ? 'LMT' : +working_order.stop ? 'STP' : 'MKT'),
+            order_ref: ref(`${prefix}${attach_ref}`),
+            tif: working_order.tif || 'DAY',
             ...working_order,
             ...common
         };
