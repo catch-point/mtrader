@@ -422,7 +422,10 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const attach_order = options.attach_ref ? await orderByRef(ib, options.attach_ref) : null;
     const oca_group = ocaGroup || (options.attach_ref && !attach_order ? options.attach_ref : null);
     const replacing_id = (await orderByRef(ib, options.order_ref)||{}).orderId;
-    const reqId = replacing_id ? async(fn) => fn(replacing_id) : ib.reqId;
+    const reqId = replacing_id ? async(fn) => fn(replacing_id).catch(err => {
+        logger.warn(err);
+        return ib.reqId(fn);
+    }) : ib.reqId;
     const contract = await toContract(markets, ib, options);
     const ib_order = await orderToIbOrder(markets, ib, settings, contract, options, options);
     const posted_order = await reqId(async(order_id) => {
