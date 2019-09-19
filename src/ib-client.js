@@ -445,7 +445,6 @@ function openOrders(ib, store, ib_tz, clientId) {
     const self = this;
     const F = 'YYYYMMDD HH:mm:ss';
     let last_order_id = 0;
-    const valid_id_queue = [];
     const next_valid_id_queue = [];
     const placing_orders = {};
     const cancelling_orders = {};
@@ -570,7 +569,6 @@ function openOrders(ib, store, ib_tz, clientId) {
         const next_id = last_order_id < order_id ? order_id : ++last_order_id;
         const next = next_valid_id_queue.shift();
         if (next) next(next_id);
-        else valid_id_queue.push(next_id);
     }).on('managedAccounts', accountsList => {
         _.compact(accountsList.split(',')).forEach(account => {
             if (!~managed_accounts.indexOf(account))
@@ -633,12 +631,7 @@ function openOrders(ib, store, ib_tz, clientId) {
         async reqId(cb) {
             // IB requires orderIds to be used in sequence
             return order_id_lock = order_id_lock.catch(err => {}).then(() => {
-                ib.reqIds(1);
-                const order_id = valid_id_queue.shift();
-                if (order_id) return last_order_id = order_id;
                 return new Promise(ready => {
-                    if (valid_id_queue.length)
-                        return ready(last_order_id = valid_id_queue.shift());
                     next_valid_id_queue.push(ready);
                     ib.reqIds(1);
                 });
