@@ -892,8 +892,8 @@ async function toContract(markets, ib, options) {
             conId: options.conId,
             localSymbol: toLocalSymbol(market, options.symbol),
             secType: options.security_type || market.secType,
-            primaryExch: market.primaryExch,
-            exchange: market.exchange,
+            primaryExch: market.primaryExch || _.first(market.primaryExchs),
+            exchange: market.exchange || _.first(market.exchanges),
             currency: market.currency,
             includeExpired: market.secType == 'FUT',
             multiplier: options.multiplier
@@ -990,15 +990,17 @@ async function asMarket(markets, ib, contract) {
             !~primaryExchs.indexOf(contract.exchange)) return false;
         // exchange filter
         const exchange = markets[name].exchange;
-        if (exchange && contract.exchange != 'SMART' && contract.exchange != 'IDEALPRO' &&
-            exchange != contract.exchange && primaryExch != contract.exchange) return false;
+        if (exchange && exchange != 'SMART' && exchange != 'IDEALPRO' &&
+            contract.exchange != 'SMART' && contract.exchange != 'IDEALPRO' &&
+            exchange != contract.exchange && exchange != contract.primaryExch) return false;
         const exchanges = markets[name].exchanges;
         if (exchanges && contract.exchange != 'SMART' && contract.exchange != 'IDEALPRO' &&
-            !exchanges.indexOf(contract.exchange) && !primaryExchs.indexOf(contract.exchange)) return false;
+            !exchanges.indexOf(contract.exchange) && !exchanges.indexOf(contract.primaryExch)) return false;
         return true;
     });
     if (market) return market;
-    const details = ib ? await ib.reqContractDetails(contract.conId ? {conId: contract.conId} : contract): [];
+    const details = ib ? await ib.reqContractDetails(contract.conId ? {conId: contract.conId} : contract)
+      .catch(err => []): [];
     return details.reduce(async(promise, detail) => {
         const prior = await promise.catch(err => err);
         if (!(prior instanceof Error)) return prior;
