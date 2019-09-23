@@ -225,7 +225,7 @@ async function getDesiredPositions(broker, collect, lookup, begin, options) {
     const normalized_orders = await Promise.all(orders.map(row => normalize(lookup, row, options)));
     const grouped = _.groupBy(normalized_orders, ord => `${ord.symbol}.${ord.market}`);
     return _.object(Object.keys(grouped), await Promise.all(Object.values(grouped).map(async(orders) => {
-        const last_row = _.last(orders.filter(ord => ord.status != 'pending' || +ord.quant));
+        const last_row = _.last(orders.filter(ord => ord.status != 'pending' || +ord.quant)) || _.last(orders);
         const realized_orders = orders.filter(ord => ord.status != 'pending');
         const realized_row = _.last(realized_orders) || last_row;
         const pending = getDesiredPosition(lookup, getPositionSize(orders), last_row, options);
