@@ -423,7 +423,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const oca_group = ocaGroup || (options.attach_ref && !attach_order ? options.attach_ref : null);
     const replacing_id = (await orderByRef(ib, options.order_ref)||{}).orderId;
     const reqId = replacing_id ? async(fn) => fn(replacing_id).catch(err => {
-        logger.warn(err);
+        logger.warn("Could not replace order: ", err);
         return ib.reqId(fn);
     }) : ib.reqId;
     const contract = await toContract(markets, ib, options);
@@ -466,9 +466,9 @@ function orderRef(root_ref, order_id, options) {
 async function orderByRef(ib, order_ref) {
     if (!order_ref) return null;
     const recent_ib_orders = await ib.reqRecentOrders();
-    const recent_ib_order = recent_ib_orders.find(ord => {
+    const recent_ib_order = recent_ib_orders.filter(ord => {
         return ord.orderRef == order_ref || ord.permId == order_ref || ord.orderId == order_ref;
-    });
+    }).reduce((latest, order) => latest && latest.order_id >= order.order_id ? latest : order, null);
     if (recent_ib_order) return recent_ib_order;
     else if (recent_ib_orders.some(ord => ord.ocaGroup == order_ref)) return null;
     const open_ib_orders = await ib.reqOpenOrders();

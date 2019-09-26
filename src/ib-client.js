@@ -541,6 +541,10 @@ function openOrders(ib, store, ib_tz, clientId) {
                     }
                 }
             }
+        } else if (info && info.id && info.code == 103 && orders[info.id]) {
+            // An order was placed with an order ID that is less than or
+            // equal to the order ID of a previous order from this client
+            orders[info.id].status = 'Duplicate';
         } else if (info && info.code >= 2000 && info.code < 3000) {
             // warning
         } else if (!isNormal(info)) {
@@ -620,7 +624,8 @@ function openOrders(ib, store, ib_tz, clientId) {
     }).on('openOrderEnd', function() {
         flusher.flush().then(() => _.values(orders).filter(order => {
             const status = order.status;
-            return status != 'Filled' && status != 'Cancelled' && status != 'Inactive';
+            return status != 'Filled' && status != 'Cancelled' &&
+                status != 'Inactive' && status != 'Duplicate';
         })).then(orders => {
             if (orders.every(ord => ord.conId)) return orders;
             // give the system 1s for orderStatus, otherwise continue without those orders
@@ -673,7 +678,8 @@ function openOrders(ib, store, ib_tz, clientId) {
         async reqRecentOrders() {
             return _.values(orders).filter(order => {
                 const status = order.status;
-                return status != 'Filled' && status != 'Cancelled' && status != 'Inactive';
+                return status != 'Filled' && status != 'Cancelled' &&
+                    status != 'Inactive' && status != 'Duplicate';
             });
         },
         reqOpenOrders() {
