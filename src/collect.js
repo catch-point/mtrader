@@ -377,6 +377,7 @@ function getPortfolio(portfolio, options) {
         common('WORKDAY', [_.constant(options.begin), _.constant(-options.pad_leading)], options)();
     const mbegin = moment(begin);
     const mend = moment(options.end || options.now);
+    if (options.pad_leading) logger.debug(`pad_leading ${options.pad_leading} from ${begin}`);
     return _.compact(array.map(symbolExchange => {
         if (_.isObject(symbolExchange)) return symbolExchange;
         else if (!symbolExchange) return null;

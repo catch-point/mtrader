@@ -702,7 +702,7 @@ async function submitOrders(broker, broker_orders, orders, options) {
         const message = errors.map(group => {
             const orders = [].concat(...group.map(item => item.orders));
             const first_message = _.first(group).error.message;
-            const msg = first_message.replace(/^(Error:\s+)+/g, '').replace(/[\r\n][\S\s]*/,'');
+            const msg = first_message.replace(/^(Error:\s+)+/g, '').replace(/[\r\n]+\s[\S\s]*/,'');
             const messages = [msg];
             logOrders((...args) => messages.push(`\t${args.join(' ')}`), orders);
             return messages.join('\n');
