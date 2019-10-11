@@ -52,16 +52,6 @@ describe("fetch-ib", function() {
         if (client) return client.close();
     });
     describe("lookup", function() {
-        it("should find AABA", function() {
-            return client({interval:'lookup',symbol:'AABA'})
-              .should.eventually.be.like(results => _.some(results, like({
-                name: 'ALTABA INC',
-                symbol: 'AABA',
-                security_type: 'STK',
-                currency: 'USD',
-                market: 'NASDAQ'
-            })));
-        });
         it("should find IBM", function() {
             return client({interval:'lookup',symbol:'IBM', market:"NYSE"})
               .should.eventually.be.like([{
@@ -258,70 +248,6 @@ describe("fetch-ib", function() {
         });
     });
     describe("interday", function() {
-        it("should return daily", function() {
-            return client({
-                interval: 'day',
-                symbol: 'AABA',
-                market: 'NASDAQ',
-                begin: '2014-01-01',
-                end: '2014-02-01',
-                marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-            }).should.eventually.be.like([
-                {ending:'2014-01-02T16:00:00-05:00',close:39.59},
-                {ending:'2014-01-03T16:00:00-05:00',close:40.12},
-                {ending:'2014-01-06T16:00:00-05:00',close:39.93},
-                {ending:'2014-01-07T16:00:00-05:00',close:40.92},
-                {ending:'2014-01-08T16:00:00-05:00',close:41.02},
-                {ending:'2014-01-09T16:00:00-05:00',close:40.92},
-                {ending:'2014-01-10T16:00:00-05:00',close:41.23},
-                {ending:'2014-01-13T16:00:00-05:00',close:39.99},
-                {ending:'2014-01-14T16:00:00-05:00',close:41.14},
-                {ending:'2014-01-15T16:00:00-05:00',close:41.07},
-                {ending:'2014-01-16T16:00:00-05:00',close:40.34},
-                {ending:'2014-01-17T16:00:00-05:00',close:40.01},
-                {ending:'2014-01-21T16:00:00-05:00',close:39.52},
-                {ending:'2014-01-22T16:00:00-05:00',close:40.18},
-                {ending:'2014-01-23T16:00:00-05:00',close:39.39},
-                {ending:'2014-01-24T16:00:00-05:00',close:37.91},
-                {ending:'2014-01-27T16:00:00-05:00',close:36.65},
-                {ending:'2014-01-28T16:00:00-05:00',close:38.22},
-                {ending:'2014-01-29T16:00:00-05:00',close:34.89},
-                {ending:'2014-01-30T16:00:00-05:00',close:35.31},
-                {ending:'2014-01-31T16:00:00-05:00',close:36.01}
-            ]);
-        });
-        it("should return daily in Chicago", function() {
-            return client({
-                interval: 'day',
-                symbol: 'AABA',
-                market: 'NASDAQ',
-                begin: '2014-01-01',
-                end: '2014-02-01',
-                marketOpensAt: '08:30:00', marketClosesAt: "15:00:00", tz: 'America/Chicago'
-            }).should.eventually.be.like([
-                {ending:'2014-01-02T15:00:00-06:00',close:39.59},
-                {ending:'2014-01-03T15:00:00-06:00',close:40.12},
-                {ending:'2014-01-06T15:00:00-06:00',close:39.93},
-                {ending:'2014-01-07T15:00:00-06:00',close:40.92},
-                {ending:'2014-01-08T15:00:00-06:00',close:41.02},
-                {ending:'2014-01-09T15:00:00-06:00',close:40.92},
-                {ending:'2014-01-10T15:00:00-06:00',close:41.23},
-                {ending:'2014-01-13T15:00:00-06:00',close:39.99},
-                {ending:'2014-01-14T15:00:00-06:00',close:41.14},
-                {ending:'2014-01-15T15:00:00-06:00',close:41.07},
-                {ending:'2014-01-16T15:00:00-06:00',close:40.34},
-                {ending:'2014-01-17T15:00:00-06:00',close:40.01},
-                {ending:'2014-01-21T15:00:00-06:00',close:39.52},
-                {ending:'2014-01-22T15:00:00-06:00',close:40.18},
-                {ending:'2014-01-23T15:00:00-06:00',close:39.39},
-                {ending:'2014-01-24T15:00:00-06:00',close:37.91},
-                {ending:'2014-01-27T15:00:00-06:00',close:36.65},
-                {ending:'2014-01-28T15:00:00-06:00',close:38.22},
-                {ending:'2014-01-29T15:00:00-06:00',close:34.89},
-                {ending:'2014-01-30T15:00:00-06:00',close:35.31},
-                {ending:'2014-01-31T15:00:00-06:00',close:36.01}
-            ]);
-        });
         it("should adjust first dividend", function() {
             return client({
                 interval: 'day',

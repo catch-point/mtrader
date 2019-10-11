@@ -58,64 +58,6 @@ describe("collect", function() {
             fetch.close()
         ]);
     });
-    it("count", function() {
-        return collect({
-          portfolio: 'AABA.NASDAQ,IBM.NYSE',
-          begin: "2016-12-29",
-          end: "2017-01-14",
-          columns: {
-              symbol: 'symbol',
-              date: 'DATE(ending)',
-              close: 'day.close',
-              change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
-          },
-          criteria: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC()<1',
-          precedence: 'DESC(PF(120,day.adj_close))'
-        }).should.eventually.be.like([
-            {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
-            {symbol:'AABA',date:"2016-12-30",close:38.67,change:0.08},
-            {symbol:'IBM',date:"2017-01-03",close:167.19,change:0.72},
-            {symbol:'IBM',date:"2017-01-04",close:169.26,change:1.24},
-            {symbol:'AABA',date:"2017-01-05",close:41.34,change:3.20},
-            {symbol:'IBM',date:"2017-01-06",close:169.53,change:0.49},
-            {symbol:'AABA',date:"2017-01-09",close:41.34,change:0.27},
-            {symbol:'AABA',date:"2017-01-10",close:42.3,change:2.32},
-            {symbol:'IBM',date:"2017-01-11",close:167.75,change:1.35},
-            {symbol:'IBM',date:"2017-01-12",close:167.95,change:0.12},
-            {symbol:'AABA',date:"2017-01-13",close:42.27,change:0.38}
-        ]);
-    });
-    it("should handle literal column values that override variables", function() {
-        return collect({
-          portfolio: 'AABA.NASDAQ,IBM.NYSE',
-          begin: "2016-12-29",
-          end: "2017-01-14",
-          columns: {
-              symbol: 'symbol',
-              date: 'DATE(ending)',
-              close: 'day.close',
-              id: '200', // numeric keys can change the order of the object keys
-              change: 'CHANGE(day.adj_close, OFFSET(1, day.adj_close))'
-          },
-          variables: {
-            id: '300+1'
-          },
-          criteria: 'day.adj_close > OFFSET(1, day.adj_close) AND COUNTPREC()<1',
-          precedence: 'DESC(PF(120,day.adj_close))'
-        }).should.eventually.be.like([
-            {symbol:'IBM',date:"2016-12-29",close:166.6,change:0.25},
-            {symbol:'AABA',date:"2016-12-30",close:38.67,change:0.08},
-            {symbol:'IBM',date:"2017-01-03",close:167.19,change:0.72},
-            {symbol:'IBM',date:"2017-01-04",close:169.26,change:1.24},
-            {symbol:'AABA',date:"2017-01-05",close:41.34,change:3.20},
-            {symbol:'IBM',date:"2017-01-06",close:169.53,change:0.49},
-            {symbol:'AABA',date:"2017-01-09",close:41.34,change:0.27},
-            {symbol:'AABA',date:"2017-01-10",close:42.3,change:2.32},
-            {symbol:'IBM',date:"2017-01-11",close:167.75,change:1.35},
-            {symbol:'IBM',date:"2017-01-12",close:167.95,change:0.12},
-            {symbol:'AABA',date:"2017-01-13",close:42.27,change:0.38}
-        ]);
-    });
     it("range", function() {
         return collect({
           portfolio: 'IBM.NYSE',

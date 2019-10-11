@@ -56,13 +56,6 @@ describe("fetch", function() {
         config.unset('fetch.files.enabled');
         return fetch.close();
     });
-    it("should find AABA", function() {
-        return fetch({interval: 'lookup', symbol:'AABA', tz}).then(_.first).should.eventually.be.like({
-            symbol: 'AABA', market: 'NASDAQ',
-            yahoo_symbol: 'AABA',
-            name: /Altaba/
-        });
-    });
     it("should find IBM", function() {
         return fetch({
             interval: 'lookup',
@@ -80,77 +73,6 @@ describe("fetch", function() {
         }).should.eventually.be.like([{
             symbol: 'USD'
         }]);
-    });
-    it("should return daily", function() {
-        return fetch({
-            interval: 'day',
-            symbol: 'AABA', market: 'NASDAQ',
-            begin: '2014-01-01', end: '2014-02-01', tz
-        }).should.eventually.be.like([
-            {ending:'2014-01-02T16:00:00-05:00'},
-            {ending:'2014-01-03T16:00:00-05:00'},
-            {ending:'2014-01-06T16:00:00-05:00'},
-            {ending:'2014-01-07T16:00:00-05:00'},
-            {ending:'2014-01-08T16:00:00-05:00'},
-            {ending:'2014-01-09T16:00:00-05:00'},
-            {ending:'2014-01-10T16:00:00-05:00'},
-            {ending:'2014-01-13T16:00:00-05:00'},
-            {ending:'2014-01-14T16:00:00-05:00'},
-            {ending:'2014-01-15T16:00:00-05:00'},
-            {ending:'2014-01-16T16:00:00-05:00'},
-            {ending:'2014-01-17T16:00:00-05:00'},
-            {ending:'2014-01-21T16:00:00-05:00'},
-            {ending:'2014-01-22T16:00:00-05:00'},
-            {ending:'2014-01-23T16:00:00-05:00'},
-            {ending:'2014-01-24T16:00:00-05:00'},
-            {ending:'2014-01-27T16:00:00-05:00'},
-            {ending:'2014-01-28T16:00:00-05:00'},
-            {ending:'2014-01-29T16:00:00-05:00'},
-            {ending:'2014-01-30T16:00:00-05:00'},
-            {ending:'2014-01-31T16:00:00-05:00'}
-        ]);
-    });
-    it("should return weekly", function() {
-        return fetch({
-            interval: 'week',
-            symbol: 'AABA', market: 'NASDAQ',
-            begin: '2014-01-06', end: '2014-02-01', tz
-        }).should.eventually.be.like([
-            {ending:'2014-01-10T16:00:00-05:00'},
-            {ending:'2014-01-17T16:00:00-05:00'},
-            {ending:'2014-01-24T16:00:00-05:00'},
-            {ending:'2014-01-31T16:00:00-05:00'}
-        ]);
-    });
-    it("should return monthly", function() {
-        return fetch({
-            interval: 'month',
-            symbol: 'AABA', market: 'NASDAQ',
-            begin: '2013-10-01', end: '2014-02-01', tz
-        }).should.eventually.be.like([
-            {ending:'2013-10-31T16:00:00-04:00'},
-            {ending:'2013-11-29T16:00:00-05:00'},
-            {ending:'2013-12-31T16:00:00-05:00'},
-            {ending:'2014-01-31T16:00:00-05:00'}
-        ]);
-    });
-    it("should return quarter", function() {
-        return fetch({
-            interval: 'quarter',
-            symbol: 'AABA', market: 'NASDAQ',
-            begin: '2013-10-01', end: '2013-12-01', tz
-        }).should.eventually.be.like([
-            {ending:'2013-12-31T16:00:00-05:00',open:33.36,high:41.05,low:31.7,close:40.44}
-        ]);
-    });
-    it("should return year", function() {
-        return fetch({
-            interval: 'year',
-            symbol: 'AABA', market: 'NASDAQ',
-            begin: '2013-10-01', end: '2013-12-01', tz
-        }).should.eventually.be.like([
-            {ending:'2013-12-31T16:00:00-05:00',open:20.2,high:41.05,low:18.89,close:40.44}
-        ]);
     });
     it("should find BRK.A symbol", function() {
         return fetch({
@@ -238,48 +160,6 @@ describe("fetch", function() {
             {ending:'2014-03-03T10:28:00-05:00',high:1.10859,low:1.10843,open:1.10843,close:1.10857},
             {ending:'2014-03-03T10:29:00-05:00',high:1.10860,low:1.10815,open:1.10859,close:1.10815},
             {ending:'2014-03-03T10:30:00-05:00',high:1.10825,low:1.10805,open:1.10819,close:1.10819}
-        ]);
-    });
-    it("should return weekly", function() {
-        return fetch({
-            interval: 'week',
-            symbol: 'AABA', market: 'NASDAQ',
-            begin: '2014-01-06', end: '2014-02-01', tz
-        }).should.eventually.be.like([
-            {ending:'2014-01-10T16:00:00-05:00',open:40.05,high:41.72,low:39.75,close:41.23},
-            {ending:'2014-01-17T16:00:00-05:00',open:41.16,high:41.31,low:39.47,close:40.01},
-            {ending:'2014-01-24T16:00:00-05:00',open:39.98,high:40.40,low:37.62,close:37.91},
-            {ending:'2014-01-31T16:00:00-05:00',open:37.60,high:38.32,low:34.45,close:36.01}
-        ]);
-    });
-    it("should return monthly", function() {
-        return fetch({
-            interval: 'month',
-            symbol: 'AABA', market: 'NASDAQ',
-            begin: '2013-10-01', end: '2014-01-31', tz
-        }).should.eventually.be.like([
-            {ending:'2013-10-31T16:00:00-04:00',open:33.36,high:35.06,low:31.70,close:32.94},
-            {ending:'2013-11-29T16:00:00-05:00',open:33.15,high:37.35,low:32.06,close:36.98},
-            {ending:'2013-12-31T16:00:00-05:00',open:37.04,high:41.05,low:36.25,close:40.44},
-            {ending:'2014-01-31T16:00:00-05:00',open:40.37,high:41.72,low:34.45,close:36.01}
-        ]);
-    });
-    it("should return quarter", function() {
-        return fetch({
-            interval: 'quarter',
-            symbol: 'AABA', market: 'NASDAQ',
-            begin: '2013-10-01', end: '2013-12-01', tz
-        }).should.eventually.be.like([
-            {ending:'2013-12-31T16:00:00-05:00',open:33.36,high:41.05,low:31.7,close:40.44}
-        ]);
-    });
-    it("should return year", function() {
-        return fetch({
-            interval: 'year',
-            symbol: 'AABA', market: 'NASDAQ',
-            begin: '2013-10-01', end: '2013-12-01', tz
-        }).should.eventually.be.like([
-            {ending:'2013-12-31T16:00:00-05:00',open:20.2,high:41.05,low:18.89,close:40.44}
         ]);
     });
     it("should adjust monthly dividend", function() {

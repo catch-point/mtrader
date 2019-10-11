@@ -51,26 +51,6 @@ describe("fetch-iqfeed", function() {
         if (client) return client.close();
     });
     describe("lookup", function() {
-        it("should find AABA", function() {
-            return client({interval:'lookup',symbol:'AABA'})
-              .should.eventually.be.like(results => _.some(results, like({
-                symbol: 'AABA',
-                market: 'NASDAQ',
-                iqfeed_symbol: 'AABA',
-                name: "ALTABA INC"
-            })));
-        });
-        it("should find AABA details", function() {
-            return client({
-                interval:'fundamental',
-                symbol:'AABA',
-                market: 'NASDAQ',
-                marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-            }).should.eventually.be.like([{
-                symbol: 'AABA',
-                company_name: "ALTABA INC"
-            }]);
-        });
         it("should find IBM", function() {
             return client({interval:'lookup',symbol:'IBM', listed_market:"NYSE"})
               .should.eventually.be.like(results => _.some(results, like({
@@ -286,38 +266,6 @@ describe("fetch-iqfeed", function() {
                 {symbol: 'RUT', name: /Russell 2000/i}
             ]);
         });
-    });
-    it("should return daily", function() {
-        return client({
-            interval: 'day',
-            symbol: 'AABA',
-            market: 'NASDAQ',
-            begin: '2014-01-01',
-            end: '2014-02-01',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
-        }).should.eventually.be.like([
-            {ending:'2014-01-02T16:00:00-05:00',open:40.37,high:40.49,low:39.31,close:39.59},
-            {ending:'2014-01-03T16:00:00-05:00',open:40.16,high:40.44,low:39.82,close:40.12},
-            {ending:'2014-01-06T16:00:00-05:00',open:40.05,high:40.32,low:39.75,close:39.93},
-            {ending:'2014-01-07T16:00:00-05:00',open:40.08,high:41.20,low:40.08,close:40.92},
-            {ending:'2014-01-08T16:00:00-05:00',open:41.29,high:41.72,low:41.02,close:41.02},
-            {ending:'2014-01-09T16:00:00-05:00',open:41.33,high:41.35,low:40.61,close:40.92},
-            {ending:'2014-01-10T16:00:00-05:00',open:40.95,high:41.35,low:40.82,close:41.23},
-            {ending:'2014-01-13T16:00:00-05:00',open:41.16,high:41.22,low:39.80,close:39.99},
-            {ending:'2014-01-14T16:00:00-05:00',open:40.21,high:41.14,low:40.04,close:41.14},
-            {ending:'2014-01-15T16:00:00-05:00',open:41.06,high:41.31,low:40.76,close:41.07},
-            {ending:'2014-01-16T16:00:00-05:00',open:40.43,high:40.75,low:40.11,close:40.34},
-            {ending:'2014-01-17T16:00:00-05:00',open:40.12,high:40.44,low:39.47,close:40.01},
-            {ending:'2014-01-21T16:00:00-05:00',open:39.98,high:40.05,low:38.86,close:39.52},
-            {ending:'2014-01-22T16:00:00-05:00',open:39.66,high:40.40,low:39.32,close:40.18},
-            {ending:'2014-01-23T16:00:00-05:00',open:39.31,high:39.77,low:39.14,close:39.39},
-            {ending:'2014-01-24T16:00:00-05:00',open:38.67,high:38.98,low:37.62,close:37.91},
-            {ending:'2014-01-27T16:00:00-05:00',open:37.60,high:37.94,low:36.62,close:36.65},
-            {ending:'2014-01-28T16:00:00-05:00',open:36.83,high:38.32,low:36.52,close:38.22},
-            {ending:'2014-01-29T16:00:00-05:00',open:35.77,high:36.31,low:34.82,close:34.89},
-            {ending:'2014-01-30T16:00:00-05:00',open:34.89,high:35.81,low:34.45,close:35.31},
-            {ending:'2014-01-31T16:00:00-05:00',open:34.69,high:36.33,low:34.55,close:36.01}
-        ]);
     });
     it("should adjust first dividend", function() {
         return client({

@@ -49,9 +49,6 @@ describe("fetch-blended", function() {
         config('fetch.yahoo.enabled', false);
         config('fetch.files.enabled', false);
         config('fetch.blended', {enabled: true, delegate: 'files', assets:[{
-            symbol: 'YHOO', market: 'NASDAQ',
-            underlying: {symbol: 'AABA', market: 'NASDAQ'}
-        }, {
             symbol: 'XLC', market: 'ARCA',
             underlying: {symbol: 'XLC', market: 'ARCA'},
             blend: [{
@@ -90,15 +87,6 @@ describe("fetch-blended", function() {
             fetch.close()
         ]);
     });
-    it("should find YHOO", function() {
-        return fetch({
-            interval: 'lookup',
-            symbol:'YHOO', market: 'NASDAQ'
-        }).then(_.first).should.eventually.be.like({
-            symbol: 'YHOO', market: 'NASDAQ',
-            name: /Altaba/i
-        });
-    });
     it("should blend XLC on June 18 (before inception)", function() {
         return fetch({
             interval: 'day',
@@ -136,35 +124,6 @@ describe("fetch-blended", function() {
             {ending:'2018-06-20T16:00:00-04:00',adj_close:50.58},
             {ending:'2018-06-21T16:00:00-04:00',adj_close:50.27},
             {ending:'2018-06-22T16:00:00-04:00',adj_close:50.49}
-        ]);
-    });
-    it("should return daily", function() {
-        return fetch({
-            interval: 'day',
-            symbol: 'YHOO', market: 'NASDAQ',
-            begin: '2014-01-01', end: '2014-02-01', tz
-        }).should.eventually.be.like([
-            {ending:'2014-01-02T16:00:00-05:00'},
-            {ending:'2014-01-03T16:00:00-05:00'},
-            {ending:'2014-01-06T16:00:00-05:00'},
-            {ending:'2014-01-07T16:00:00-05:00'},
-            {ending:'2014-01-08T16:00:00-05:00'},
-            {ending:'2014-01-09T16:00:00-05:00'},
-            {ending:'2014-01-10T16:00:00-05:00'},
-            {ending:'2014-01-13T16:00:00-05:00'},
-            {ending:'2014-01-14T16:00:00-05:00'},
-            {ending:'2014-01-15T16:00:00-05:00'},
-            {ending:'2014-01-16T16:00:00-05:00'},
-            {ending:'2014-01-17T16:00:00-05:00'},
-            {ending:'2014-01-21T16:00:00-05:00'},
-            {ending:'2014-01-22T16:00:00-05:00'},
-            {ending:'2014-01-23T16:00:00-05:00'},
-            {ending:'2014-01-24T16:00:00-05:00'},
-            {ending:'2014-01-27T16:00:00-05:00'},
-            {ending:'2014-01-28T16:00:00-05:00'},
-            {ending:'2014-01-29T16:00:00-05:00'},
-            {ending:'2014-01-30T16:00:00-05:00'},
-            {ending:'2014-01-31T16:00:00-05:00'}
         ]);
     });
 });
