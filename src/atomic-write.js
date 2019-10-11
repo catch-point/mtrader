@@ -60,7 +60,7 @@ module.exports = Object.assign(async function(fn, filename) {
         return filename;
     },
     async writeFile(filename, data) {
-        const dir = await mkdirp(path.dirname(filename))
+        const dir = await mkdirp(path.dirname(filename));
         const part = await new Promise((cb, fail) => {
             const part = partFor(filename);
             fs.writeFile(part, data, 'utf-8', (err, data) => err ? fail(err) : cb(part));

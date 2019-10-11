@@ -58,9 +58,10 @@ module.exports.has = function(name) {
 
 const functions = module.exports.functions = {
     NOW: _.extend((opts, tz) => {
-        const now = moment(opts.now).format();
+        const now = moment(opts.now);
+        const date = now.format();
         return context => {
-            if (!tz || tz == now.tz()) return now;
+            if (!tz || tz == now.tz()) return date;
             else return moment.tz(now, tz(context)).format();
         };
     }, {
@@ -69,9 +70,10 @@ const functions = module.exports.functions = {
         sideEffect: true
     }),
     BEGIN: _.extend((opts, tz) => {
-        const begin = moment(opts.begin).format();
+        const begin = moment(opts.begin);
+        const date = begin.format();
         return context => {
-            if (!tz || tz == begin.tz()) return begin;
+            if (!tz || tz == begin.tz()) return date;
             else return moment.tz(begin, tz(context)).format();
         };
     }, {
@@ -80,9 +82,11 @@ const functions = module.exports.functions = {
         sideEffect: true
     }),
     END: _.extend((opts, tz) => {
-        const end = moment(opts.end || opts.now).format();
+        const now = moment(opts.now);
+        const end = now.isAfter(opts.end || now) ? moment(opts.end) : now;
+        const date = end.format();
         return context => {
-            if (!tz || tz == end.tz()) return end;
+            if (!tz || tz == end.tz()) return date;
             else return moment.tz(end, tz(context)).format();
         };
     }, {

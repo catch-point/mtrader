@@ -592,7 +592,7 @@ async function snapStockLimit(markets, ib, contract, order) {
             })
         ]);
         if (bars.some(bar => !bar.bid || !bar.ask))
-            throw Error("Can only submit SNAP STK orders while market is open");
+            throw Error("Can only submit SNAP STK orders while market is active");
         const net_mid_price = netPrice(order.attached, bars.map(bar => +Big(bar.bid).add(bar.ask).div(2)));
         const net_offset = order.action == 'BUY' && right == 'C' && +net_mid_price >= 0 ||
             order.action == 'SELL' && right == 'P' && +net_mid_price >= 0 ?
@@ -618,7 +618,7 @@ async function snapStockPrice(ib, contract, bar, under_bar, net_offset) {
     const undPrice = bar.ask_option.undPrice != Number.MAX_VALUE && bar.ask_option.undPrice || null;
     const asset_price = undPrice || under_bar.last || +Big(under_bar.bid).add(under_bar.ask).div(2);
     if (!+asset_price)
-        throw Error(`Can only submit SNAP STK orders while market is open ${util.inspect(under_bar)}`);
+        throw Error(`Can only submit SNAP STK orders while market is active ${util.inspect(under_bar)}`);
     const asset_offset = +Big(asset_price).add(net_offset);
     const iv = +Big(bar.ask_option.iv).add(bar.bid_option.iv).div(2);
     if (!iv || bar.ask_option.iv == Number.MAX_VALUE || bar.bid_option.iv == Number.MAX_VALUE)
