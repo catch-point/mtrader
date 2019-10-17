@@ -117,7 +117,8 @@ if (require.main === module) {
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
 }
 
-function createInstance(program, runInBand) {
+function createInstance(program, runInBand = false) {
+    const settings = config('collect');
     let promiseKeys, closed;
     const fetch = new Fetch();
     const quote = new Quote();
@@ -159,7 +160,7 @@ function createInstance(program, runInBand) {
         try {
             cache && cache.close().catch(err => logger.warn("Could not reset collect cache", err));
         } finally {
-            cache = createCache(direct, local, remote);
+            cache = createCache(direct, local, remote, settings);
         }
     }, 100);
     instance.reset = () => {
@@ -168,15 +169,15 @@ function createInstance(program, runInBand) {
               .catch(err => logger.warn("Could not reset collect", err));
         } finally {
             local = createQueue(localWorkers);
-            remote = new Remote(config('collect'));
-            cache = createCache(direct, local, remote);
+            remote = new Remote(settings);
+            cache = createCache(direct, local, remote, settings);
         }
     };
     const direct = Collect(quote, instance);
-    const localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance);
+    const localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance, settings);
     let local = createQueue(localWorkers);
-    let remote = new Remote(config('collect'));
-    let cache = createCache(direct, local, remote);
+    let remote = new Remote(settings);
+    let cache = createCache(direct, local, remote, settings);
     return instance;
 }
 
@@ -190,9 +191,9 @@ function trimOptions(keys, options) {
     });
 }
 
-function createCache(direct, local, remote) {
-    const collect_cache_size = config('collect_cache_size');
-    if (!_.isFinite(config('collect_cache_size'))) return null;
+function createCache(direct, local, remote, settings) {
+    const collect_cache_size = settings.cache_size;
+    if (!_.isFinite(settings.cache_size)) return null;
     const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const dir = path.resolve(cache_dir, 'collect');
     return Cache(dir, function(options) {
@@ -234,9 +235,9 @@ function createQueue(createWorkers, onerror) {
     });
 }
 
-function createLocalWorkers(program, fetch, quote, collect) {
+function createLocalWorkers(program, fetch, quote, collect, settings) {
     const count = config('runInBand') || ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand') ? 0 :
-        _.isFinite(config('collect.workers')) ? config('collect.workers') : WORKER_COUNT;
+        _.isFinite(settings.workers) ? settings.workers : WORKER_COUNT;
     return _.range(count).map(() => {
         return replyTo(config.fork(module.filename, program))
           .handle('fetch', payload => fetch(payload))

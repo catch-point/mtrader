@@ -44,7 +44,6 @@ const expect = require('chai').use(like).expect;
 module.exports = function(settings) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
-    settings = {...settings, ...config('broker.remote')};
     let promiseBroker, closing;
     if (!settings.location) throw Error("No remote location configured");
     return Object.assign(options => broker(options), {

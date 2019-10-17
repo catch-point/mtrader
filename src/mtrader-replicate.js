@@ -104,7 +104,7 @@ if (require.main === module) {
 
 function createInstance(program, settings = {}) {
     const fetch = new Fetch();
-    const collect = new Collect();
+    const collect = new Collect(settings);
     const broker = new Broker(settings);
     const replicate = new Replicate(broker, fetch, collect);
     let promiseKeys, closed;

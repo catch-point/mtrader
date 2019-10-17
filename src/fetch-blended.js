@@ -39,22 +39,15 @@ const merge = require('./merge.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
-const yahoo = require('./fetch-yahoo.js');
-const iqfeed = require('./fetch-iqfeed.js');
-const remote = require('./fetch-remote.js');
-const files = require('./fetch-files.js');
+const Fetch = require('./fetch.js');
 const storage = require('./storage.js');
 const expect = require('chai').expect;
 
-module.exports = function() {
-    const cfg = config('fetch.blended.config') ?
-        readConfig(config('fetch.blended.config')) : config('fetch.blended');
+module.exports = function(settings = {}) {
+    const cfg = settings.config ? readConfig(settings.config, settings) : settings;
     if (_.isEmpty(cfg)) throw Error("Missing fetch blended config");
-    expect(cfg).to.have.property('delegate').that.is.oneOf(['remote', 'iqfeed', 'yahoo', 'files']);
     expect(cfg).to.have.property('assets').that.is.an('array');
-    const delegate = cfg.delegate == 'remote' ? remote() :
-        cfg.delegate == 'iqfeed' ? iqfeed() :
-        cfg.delegate == 'files' ? files() : yahoo();
+    const delegate = new Fetch(merge(_.omit(config('fetch'), 'blended'), settings.fetch));
     const markets = _.uniq(cfg.assets.map(asset => asset.market));
     return Object.assign(async(options) => {
         if (options.info=='version') return [{version}];
@@ -79,12 +72,10 @@ module.exports = function() {
     });
 };
 
-function readConfig(name) {
+function readConfig(name, settings = {}) {
     const filename = config.resolve(name);
     const base = path.dirname(filename);
-    const cfg = _.extend({base}, config.read(filename), config('fetch.blended'));
-    const dname = cfg.delegate;
-    if (!dname) throw Error("Missing fetch.blended.delegate");
+    const cfg = _.extend({base}, config.read(filename), settings);
     return cfg;
 }
 

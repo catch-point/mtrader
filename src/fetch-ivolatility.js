@@ -47,14 +47,14 @@ const IB = require('./ib-gateway.js');
 const Ivolatility = require('./ivolatility-client.js');
 const expect = require('chai').expect;
 
-function help() {
+function help(settings = {}) {
     const commonOptions = {
         symbol: {
             description: "Ticker symbol used by the market"
         },
         market: {
             description: "Exchange market acronym",
-            values: config('fetch.ivolatility.markets')
+            values: settings.markets
         },
         iv_symbol: {
             description: "Symbol used by ivolatility.com"
@@ -101,7 +101,7 @@ function help() {
             interval: {
                 usage: "year|quarter|month|week|day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["day"], config('fetch.ivolatility.intervals'))
+                values: _.intersection(["day"], settings.intervals)
             },
         })
     };
@@ -111,20 +111,20 @@ function help() {
     ]);
 }
 
-module.exports = function() {
+module.exports = function(settings = {}) {
     const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    const cacheDir = config('fetch.ivolatility.cache') || path.resolve(cache_dir, 'ivolatility');
+    const cacheDir = settings.cache || path.resolve(cache_dir, 'ivolatility');
     const libDir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
-    const downloadDir = config('fetch.ivolatility.downloads') || path.resolve(libDir, 'ivolatility');
-    const auth_file = config('fetch.ivolatility.auth_file') &&
-        path.resolve(config('prefix'), 'etc', config('fetch.ivolatility.auth_file'));
-    const downloadType = config('fetch.ivolatility.downloadType');
+    const downloadDir = settings.downloads || path.resolve(libDir, 'ivolatility');
+    const auth_file = settings.auth_file &&
+        path.resolve(config('prefix'), 'etc', settings.auth_file);
+    const downloadType = settings.downloadType;
     if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
-    const ib_cfg = config('fetch.ivolatility.ib');
+    const ib_cfg = settings.ib;
     const ib = ib_cfg && new IB(ib_cfg);
     const ivolatility = Ivolatility(cacheDir, downloadDir, auth_file, downloadType);
     return Object.assign(async(options) => {
-        if (options.info=='help') return help();
+        if (options.info=='help') return help(settings);
         if (options.info=='version') return [{version}];
         switch(options.interval) {
             case 'lookup': return lookup(options);

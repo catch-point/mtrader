@@ -41,14 +41,14 @@ const cache = require('./memoize-cache.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
-function help() {
+function help(settings = {}) {
     const commonOptions = {
         symbol: {
             description: "Ticker symbol used by the market"
         },
         market: {
             description: "Exchange market acronym",
-            values: config('fetch.yahoo.markets')
+            values: settings.markets
         },
         yahoo_symbol: {
             description: "Symbol for security as used by The Yahoo! Network"
@@ -98,12 +98,12 @@ function help() {
             }
         })
     };
-    return ~config('fetch.yahoo.intervals').indexOf('lookup') ? [lookup, interday] : [interday];
+    return ~(settings.intervals||[]).indexOf('lookup') ? [lookup, interday] : [interday];
 }
 
-module.exports = function() {
-    const helpInfo = help();
-    const markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
+module.exports = function(settings = {}) {
+    const helpInfo = help(settings);
+    const markets = _.pick(config('markets'), settings.markets);
     const symbol = yahoo_symbol.bind(this, markets);
     const yahoo = _.mapObject(yahooClient(), (fn, name) => {
         if (!_.isFunction(fn) || name == 'close') return fn;

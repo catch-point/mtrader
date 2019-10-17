@@ -41,6 +41,7 @@ const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
 const Broker = require('./broker.js');
+const Quote = require('./mtrader-quote.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 
@@ -91,7 +92,8 @@ if (require.main === module) {
 }
 
 function createInstance(program, settings = {}) {
-    const broker = new Broker(settings.broker);
+    const quote = new Quote(settings);
+    const broker = new Broker(merge(settings.broker, config('broker')), quote);
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
@@ -102,7 +104,7 @@ function createInstance(program, settings = {}) {
     };
     instance.close = function() {
         if (closed) return closed;
-        else return closed = broker.close();
+        else return closed = Promise.all([broker.close, quote.close]);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;

@@ -35,12 +35,12 @@ const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
+const merge = require('./merge.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
 const storage = require('./storage.js');
-const Fetch = require('./mtrader-fetch.js');
-const Collect = require('./mtrader-collect.js');
+const Fetch = require('./fetch.js');
 const Lookup = require('./lookup.js');
 const expect = require('chai').expect;
 
@@ -51,18 +51,16 @@ function nextval() {
     return (++sequence_counter).toString(16);
 }
 
-module.exports = function(settings) {
+module.exports = function(settings, quote) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
-    settings = {...settings, ...config('broker.simulation')};
     expect(settings).to.have.property('simulation').that.is.ok;
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).simulation
     )), v => !v);
     const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     const store = storage(lib_dir);
-    const collect = new Collect(settings);
-    const fetch = new Fetch(settings);
+    const fetch = new Fetch(merge(config('fetch'), settings.fetch));
     const lookup = new Lookup(fetch);
     let advance_lock = Promise.resolve();
     return _.extend(async(options) => {
@@ -70,7 +68,7 @@ module.exports = function(settings) {
         if (options.info=='version') return [{version}];
         return store.open(settings.simulation, async(err, db) => {
             if (err) throw err;
-            const barsFor_fn = barsFor.bind(this, markets, collect);
+            const barsFor_fn = barsFor.bind(this, markets, quote);
             if (options.action != 'reset') advance_lock = advance_lock
                 .then(() => advance(barsFor_fn, settings.commissions, db, options));
             await advance_lock;
@@ -80,7 +78,6 @@ module.exports = function(settings) {
         close() {
             return Promise.all([
                 lookup.close(),
-                collect.close(),
                 fetch.close(),
                 store.close()
             ]);
@@ -666,9 +663,10 @@ async function rateOf(barsFor, base, quote, options) {
     else return b < q ? bar.close : Big(1).div(bar.close).toString();
 }
 
-async function barsFor(markets, collect, symbol, market, since, options) {
-    const result = await collect({...options,
-        portfolio: `${symbol}.${market}`,
+async function barsFor(markets, quote, symbol, market, since, options) {
+    const result = await quote({
+        ...options,
+        symbol, market,
         columns: {
             asof: 'ending',
             open: 'day.open',

@@ -1,9 +1,0 @@
-{
-  "description": "Configuration test file for mtrader",
-  "fetch": {
-    "files": {
-      "enabled": true,
-      "fallback": ["iqfeed", "yahoo"]
-    }
-  }
-}

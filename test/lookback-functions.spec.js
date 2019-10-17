@@ -31,6 +31,7 @@
 
 const path = require('path');
 const _ = require('underscore');
+const merge = require('../src/merge.js');
 const common = require('../src/common-functions.js');
 const lookback = require('../src/lookback-functions.js');
 const Parser = require('../src/parser.js');
@@ -66,10 +67,13 @@ describe("lookback-functions", function(){
     });
     var fetch, quote;
     before(function() {
-        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('quotes'));
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        fetch = Fetch();
+        fetch = Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
         quote = Quote(fetch);
     });
     after(function() {

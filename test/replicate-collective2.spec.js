@@ -34,6 +34,7 @@ const path = require('path');
 const util = require('util');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const merge = require('../src/merge.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
@@ -56,23 +57,32 @@ describe("replicate-collective2", function() {
     var submitSignal = path.resolve(dir, 'submitSignal.json');
     var cancelSignal = path.resolve(dir, 'cancelSignal.json');
     before(function() {
-        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('collective2'));
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        config('broker.collective2.requestMarginEquity', 'file://' + requestMarginEquity);
-        config('broker.collective2.retrieveSystemEquity', 'file://' + retrieveSystemEquity);
-        config('broker.collective2.requestTrades', 'file://' + requestTrades);
-        config('broker.collective2.retrieveSignalsWorking', 'file://' + retrieveSignalsWorking);
-        config('broker.collective2.submitSignal', 'file://' + submitSignal);
-        config('broker.collective2.cancelSignal', 'file://' + cancelSignal);
-        config('broker.collective2.requestTradesOpen', 'file://' + requestTradesOpen);
-        config('broker.collective2.retrieveSignalsAll', 'file://' + retrieveSignalsAll);
-        fetch = new Fetch();
+        fetch = Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
         quote = new Quote(fetch);
         collect = new Collect(quote);
         broker = new Broker({
             systemid: 'test',
-            apikey: 'test'
+            apikey: 'test',
+            requestMarginEquity: `file://${requestMarginEquity}`,
+            retrieveSystemEquity: `file://${retrieveSystemEquity}`,
+            requestTrades: `file://${requestTrades}`,
+            retrieveSignalsWorking: `file://${retrieveSignalsWorking}`,
+            submitSignal: `file://${submitSignal}`,
+            cancelSignal: `file://${cancelSignal}`,
+            requestTradesOpen: `file://${requestTradesOpen}`,
+            retrieveSignalsAll: `file://${retrieveSignalsAll}`,
+            fetch: {
+                files: {
+                    enabled: true,
+                    dirname: path.resolve(__dirname, 'data')
+                }
+            }
         });
         replicate = new Replicate(broker, fetch, collect);
     });
@@ -86,7 +96,6 @@ describe("replicate-collective2", function() {
     });
     after(function() {
         config.unset('prefix');
-        config.unset('fetch.files.dirname');
         return Promise.all([
             replicate.close(),
             broker.close(),

@@ -33,6 +33,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
+const merge = require('./merge.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
@@ -46,10 +47,9 @@ const expect = require('chai').expect;
 module.exports = function(settings) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
-    settings = {...settings, offline: config('offline'), ...config('remote'), ...config('broker.collective2')};
     expect(settings).to.have.property('systemid').that.is.ok;
     const client = Collective2(settings);
-    const fetch = new Fetch(settings);
+    const fetch = new Fetch(merge(config('fetch'), settings.fetch));
     const markets = _.mapObject(_.pick(config('markets'), market => {
         return (market.datasources||{}).collective2;
     }), market => {

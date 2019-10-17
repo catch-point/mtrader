@@ -32,6 +32,7 @@
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const merge = require('../src/merge.js');
 const like = require('./should-be-like.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
@@ -42,18 +43,20 @@ describe("fetch", function() {
     var fetch;
     before(function() {
         config('prefix', __dirname);
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        config.load(path.resolve(__dirname, 'testdata.json'));
-        config('fetch.iqfeed.enabled', false);
-        config('fetch.yahoo.enabled', true);
-        config('fetch.files.enabled', true);
-        fetch = Fetch();
+        fetch = Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            },
+            yahoo: {
+                enabled: true
+            },
+            iqfeed: {
+                enabled: false
+            }
+        }));
     });
     after(function() {
-        config.unset('fetch.files.dirname');
-        config.unset('fetch.iqfeed.enabled');
-        config.unset('fetch.yahoo.enabled');
-        config.unset('fetch.files.enabled');
         return fetch.close();
     });
     it("should find IBM", function() {

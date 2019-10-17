@@ -44,14 +44,14 @@ const cache = require('./memoize-cache.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
-function help() {
+function help(settings = {}) {
     const commonOptions = {
         symbol: {
             description: "Ticker symbol used by the market"
         },
         market: {
             description: "Exchange market acronym",
-            values: config('fetch.iqfeed.markets')
+            values: settings.markets
         },
         iqfeed_symbol: {
             description: "Symbol used in the DTN network"
@@ -112,7 +112,7 @@ function help() {
             interval: {
                 usage: "day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["day"],config('fetch.iqfeed.intervals'))
+                values: _.intersection(["day"],settings.intervals)
             },
         })
     };
@@ -125,23 +125,23 @@ function help() {
             interval: {
                 usage: "m<minutes>",
                 description: "Number of minutes in a single bar length, prefixed by the letter 'm'",
-                values: (config('fetch.iqfeed.intervals')||[])
+                values: (settings.intervals||[])
                     .filter(interval => /^m\d+$/.test(interval))
             }
         })
     };
     return _.compact([
-        ~(config('fetch.iqfeed.intervals')||[]).indexOf('lookup') && lookup,
-        ~(config('fetch.iqfeed.intervals')||[]).indexOf('fundamental') && fundamental,
+        ~(settings.intervals||[]).indexOf('lookup') && lookup,
+        ~(settings.intervals||[]).indexOf('fundamental') && fundamental,
         interday.options.interval.values.length && interday,
         intraday.options.interval.values.length && intraday
     ]);
 }
 
-module.exports = function() {
+module.exports = function(settings = {}) {
     const self = options => {
         if (self.closed) throw Error("IQFeed has closed");
-        else return sharedInstance(options);
+        else return sharedInstance(options, settings);
     };
     self.open = () => sharedInstance({open:true});
     self.close = () => unregister(self);
@@ -172,17 +172,17 @@ function unregister(self) {
 }
 
 /** Use the shared instance, creating a new one if needed */
-function sharedInstance(options) {
+function sharedInstance(options, settings) {
     last_used = elapsed_time;
     if (shared_instance) return shared_instance(options);
     else return instance_lock = instance_lock.catch(_.noop).then(() => {
         if (shared_instance) return shared_instance(options);
-        shared_instance = createInstance();
+        shared_instance = createInstance(settings);
         instance_timer = setInterval(() => {
             if (last_used < elapsed_time++) {
                 releaseInstance().catch(logger.error);
             }
-        }, config('fetch.iqfeed.timeout') || 600000).unref();
+        }, settings.timeout || 600000).unref();
         return shared_instance(options);
     });
 }
@@ -197,15 +197,15 @@ function releaseInstance() {
 }
 
 /** Create a new instance */
-function createInstance() {
-    const helpInfo = help();
-    const markets = _.pick(config('markets'), config('fetch.iqfeed.markets'));
+function createInstance(settings = {}) {
+    const helpInfo = help(settings);
+    const markets = _.pick(config('markets'), settings.markets);
     const symbol = iqfeed_symbol.bind(this, markets);
-    const launch = config('fetch.iqfeed.command');
+    const launch = settings.command;
     const iqclient = iqfeed(
         _.isArray(launch) ? launch : launch && launch.split(' '),
-        config('fetch.iqfeed.env'),
-        config('fetch.iqfeed.productId'),
+        settings.env,
+        settings.productId,
         config('version')
     );
     const adjustments = Adjustments();

@@ -32,6 +32,7 @@
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const merge = require('../src/merge.js');
 const like = require('./should-be-like.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
@@ -43,45 +44,49 @@ describe("fetch-blended", function() {
     var fetch, quote;
     before(function() {
         config('prefix', __dirname);
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        config.load(path.resolve(__dirname, 'testdata.json'));
-        config('fetch.iqfeed.enabled', false);
-        config('fetch.yahoo.enabled', false);
-        config('fetch.files.enabled', false);
-        config('fetch.blended', {enabled: true, delegate: 'files', assets:[{
-            symbol: 'XLC', market: 'ARCA',
-            underlying: {symbol: 'XLC', market: 'ARCA'},
-            blend: [{
-                data: [
-                    {ending:'2018-06-18T16:00:00-04:00', open:49.72, high:50.52, low:49.31, close:50.18, volume:131094, adj_close:50.09},
-                    {ending:'2018-06-19T16:00:00-04:00', open:49.65, high:50.39, low:49.27, close:50.11, volume: 152086, adj_close:50.02}
-                ]
-            }]
-        }, {
-            symbol: 'XLC', market: 'ARCA2018',
-            afterHoursClosesAt: "20:00:00",
-            marketClosesAt: "16:00:00",
-            marketOpensAt: "09:30:00",
-            premarketOpensAt: "04:00:00",
-            currency: "USD",
-            tz,
-            underlying: {symbol: 'XLC', market: 'ARCA'},
-            blend: [{
-                data: [
-                    {ending:'2018-06-18T16:00:00-04:00', open:49.72, high:50.52, low:49.31, close:50.18, volume:131094, adj_close:50.09},
-                    {ending:'2018-06-19T16:00:00-04:00', open:49.65, high:50.39, low:49.27, close:50.11, volume: 152086, adj_close:50.02}
-                ]
-            }]
-        }]});
-        fetch = Fetch();
+        fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            },
+            blended: {
+                enabled: true,
+                fetch: {
+                    files: {
+                        enabled: true,
+                        dirname: path.resolve(__dirname, 'data')
+                    }
+                },
+                assets:[{
+                    symbol: 'XLC', market: 'ARCA',
+                    underlying: {symbol: 'XLC', market: 'ARCA'},
+                    blend: [{
+                        data: [
+                            {ending:'2018-06-18T16:00:00-04:00', open:49.72, high:50.52, low:49.31, close:50.18, volume:131094, adj_close:50.09},
+                            {ending:'2018-06-19T16:00:00-04:00', open:49.65, high:50.39, low:49.27, close:50.11, volume: 152086, adj_close:50.02}
+                        ]
+                    }]
+                }, {
+                    symbol: 'XLC', market: 'ARCA2018',
+                    afterHoursClosesAt: "20:00:00",
+                    marketClosesAt: "16:00:00",
+                    marketOpensAt: "09:30:00",
+                    premarketOpensAt: "04:00:00",
+                    currency: "USD",
+                    tz,
+                    underlying: {symbol: 'XLC', market: 'ARCA'},
+                    blend: [{
+                        data: [
+                            {ending:'2018-06-18T16:00:00-04:00', open:49.72, high:50.52, low:49.31, close:50.18, volume:131094, adj_close:50.09},
+                            {ending:'2018-06-19T16:00:00-04:00', open:49.65, high:50.39, low:49.27, close:50.11, volume: 152086, adj_close:50.02}
+                        ]
+                    }]
+                }]
+            }
+        }));
         quote = Quote(fetch);
     });
     after(function() {
-        config.unset('fetch.files.dirname');
-        config.unset('fetch.iqfeed.enabled');
-        config.unset('fetch.yahoo.enabled');
-        config.unset('fetch.files.enabled');
-        config.unset('fetch.blended');
         return Promise.all([
             quote.close(),
             fetch.close()

@@ -40,12 +40,12 @@ const Simulation = require('./broker-simulation.js');
 const Remote = require('./broker-remote.js');
 const expect = require('chai').expect;
 
-module.exports = function(settings = {}) {
+module.exports = function(settings, quote) {
     const Brokers = _.object(_.compact([
-        config('broker.ib.enabled') && ['ib', IB],
-        config('broker.collective2.enabled') && ['collective2', Collective2],
-        config('broker.simulation.enabled') && ['simulation', Simulation],
-        config('broker.remote.enabled') && ['remote', Remote]
+        (settings.ib||{}).enabled && ['ib', IB],
+        (settings.collective2||{}).enabled && ['collective2', Collective2],
+        (settings.simulation||{}).enabled && ['simulation', Simulation],
+        (settings.remote||{}).enabled && ['remote', Remote]
     ]));
     let promiseHelpWithSettings, promiseHelpWithOptions;
     if (settings.info=='help' && !promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
@@ -56,7 +56,7 @@ module.exports = function(settings = {}) {
     let broker_promise;
     return Object.assign(async function(options) {
         if (!promiseHelpWithSettings) promiseHelpWithSettings = helpWithSettings(Brokers);
-        broker_promise = broker_promise || createBroker(await promiseHelpWithSettings, Brokers, settings);
+        broker_promise = broker_promise || createBroker(await promiseHelpWithSettings, Brokers, settings, quote);
         const broker = await broker_promise.catch(err => {if (!options.info) throw err;});
         if (options.info && !broker) return [];
         if (!promiseHelpWithOptions) promiseHelpWithOptions = broker({info:'help'});
@@ -76,13 +76,13 @@ async function helpWithSettings(Brokers) {
     return _.object(Object.keys(Brokers), values);
 }
 
-async function createBroker(promiseHelpWithSettings, Brokers, settings) {
+async function createBroker(promiseHelpWithSettings, Brokers, settings, quote) {
     const help = await promiseHelpWithSettings;
     let error;
     const broker = chooseBroker(help, settings).reduce((broker, key) => {
         if (broker) return broker; // already found one
         try {
-            return new Brokers[key](settings[key]);
+            return new Brokers[key](settings[key], quote);
         } catch (err) {
             if (error) logger.debug("Could not created broker", error);
             error = err;

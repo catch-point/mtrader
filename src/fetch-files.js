@@ -34,48 +34,40 @@ const fs = require('graceful-fs');
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const merge = require('./merge.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
-const yahoo = require('./fetch-yahoo.js');
-const iqfeed = require('./fetch-iqfeed.js');
 const storage = require('./storage.js');
+const Fetch = require('./fetch.js');
 
-module.exports = function() {
-    const fallbacks = _.mapObject(_.object(
-            config('fetch.files.fallback') || _.compact([
-                (config('fetch.yahoo.enabled') || !config('fetch.iqfeed.enabled')) && 'yahoo',
-                config('fetch.iqfeed.enabled') && 'iqfeed'
-            ]), []), (nil, fallback) => {
-        return 'yahoo' == fallback ? yahoo() :
-            'iqfeed' == fallback ? iqfeed() :
-            null;
-    });
+module.exports = function(settings = {}) {
+    const fetch = new Fetch(merge(_.omit(config('fetch'), 'files'), settings.fetch));
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    const dirname = config('fetch.files.dirname') || dir;
+    const dirname = settings.dirname || dir;
     const store = storage(dirname);
     const open = (name, cb) => store.open(name, cb);
     return Object.assign(async(options) => {
         if (options.info=='version') return [{version}];
-        if (options.info=='help') return readOrWriteHelp(fallbacks, open, 'help', options);
+        if (options.info=='help') return readOrWriteHelp(fetch, open, 'help', options);
         switch(options.interval) {
-            case 'lookup': return readOrWriteResult(fallbacks, open, 'lookup', options);
-            case 'fundamental': return readOrWriteResult(fallbacks, open, 'fundamental', options);
+            case 'lookup': return readOrWriteResult(fetch, open, 'lookup', options);
+            case 'fundamental': return readOrWriteResult(fetch, open, 'fundamental', options);
             case 'year':
             case 'quarter':
             case 'month':
             case 'week':
-            case 'day': return readOrWriteResult(fallbacks, open, 'interday', options);
-            default: return readOrWriteResult(fallbacks, open, 'intraday', options);
+            case 'day': return readOrWriteResult(fetch, open, 'interday', options);
+            default: return readOrWriteResult(fetch, open, 'intraday', options);
         }
     }, {
         async close() {
-            await Promise.all(_.map(fallbacks, fb => fb.close()))
+            await fetch.close();
             return store.close();
         }
     });
 };
 
-function readOrWriteHelp(fallbacks, open, name) {
+function readOrWriteHelp(fetch, open, name) {
     return open(name, async(err, db) => {
         if (err) throw err;
         const coll = await db.collection(name);
@@ -90,9 +82,9 @@ function readOrWriteHelp(fallbacks, open, name) {
             }, help))).catch(err => {});
             if (result)
                 return result;
-            else if (_.isEmpty(fallbacks))
+            else if (!_.values(fetch).some(cfg => cfg.enabled))
                 throw Error("Data file not found " + coll.filenameOf(name));
-            else return help(_.values(fallbacks)).then(async(result) => {
+            else return fetch({info:'help'}).then(async(result) => {
                 await coll.writeTo(result.map(datum => _.extend({}, datum, {
                     options: JSON.stringify(datum.options),
                     properties: JSON.stringify(datum.properties)
@@ -103,52 +95,22 @@ function readOrWriteHelp(fallbacks, open, name) {
     });
 }
 
-async function help(datasources) {
-    const helps = await Promise.all(_.map(datasources, ds => ds({info:'help'})));
-    const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
-    return groups.map(helps => helps.reduce((help, h) => {
-        const options = _.extend({}, h.options, help.options);
-        return {
-            name: help.name || h.name,
-            usage: help.usage || h.usage,
-            description: help.description || h.description,
-            properties: _.union(help.properties, h.properties),
-            options: _.mapObject(options, (option, name) => {
-                if (option.values && h.options[name] && h.options[name].values) return _.defaults({
-                    values: _.compact(_.flatten([options.values, h.options[name].values], true))
-                }, option);
-                else if (option.values || h.options[name] && h.options[name].values) return _.defaults({
-                    values: options.values || h.options[name] && h.options[name].values
-                }, option);
-                else return option;
-            })
-        };
-    }, {}));
-}
-
-function readOrWriteResult(fallbacks, open, cmd, options) {
+function readOrWriteResult(fetch, open, cmd, options) {
     const args = _.compact(_.pick(options, 'interval', 'begin', 'end'));
     const name = options.market ? options.symbol + '.' + options.market : options.symbol;
     return open(name, async(err, db) => {
         if (err) throw err;
         const coll = await db.collection(cmd);
-        return coll.lockWith([name], names => {
+        return coll.lockWith([name], async(names) => {
             const name = _.map(args, arg => safe(arg)).join('.') || 'result';
             if (coll.exists(name)) return coll.readFrom(name);
-            else if (_.isEmpty(fallbacks))
+            else if (!_.values(fetch).some(cfg => cfg.enabled))
                 throw Error("Data file not found " + coll.filenameOf(name));
-            else return _.reduce(fallbacks, (promise, fb, source) => promise.catch(async(err) => {
-                const intervals = config(['fetch', source, 'intervals']);
-                const markets = config(['fetch', source, 'markets']);
-                if (!_.contains(intervals, options.interval))
-                    throw (err || Error("No fallback available for " + options.interval));
-                if (!_.contains(markets, options.market))
-                    throw (err || Error("No fallback available for " + options.market));
-                const opt = _.defaults({}, options);
-                const result = await fb(opt);
+            else {
+                const result = await fetch(options);
                 await coll.writeTo(result, name)
                 return result;
-            }), Promise.reject());
+            }
         });
     });
 }

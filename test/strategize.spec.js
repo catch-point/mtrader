@@ -31,6 +31,7 @@
 
 const path = require('path');
 const _ = require('underscore');
+const merge = require('../src/merge.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
@@ -45,10 +46,13 @@ describe("strategize", function() {
     this.timeout(240000);
     var fetch, quote, collect, optimize, bestsignals, strategize;
     before(function() {
-        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', path.resolve(__dirname, '../tmp/strategize'));
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        fetch = Fetch();
+        fetch = Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
         quote = Quote(fetch);
         collect = Collect(quote);
         optimize = Optimize(collect);
@@ -61,7 +65,6 @@ describe("strategize", function() {
     });
     after(function() {
         config.unset('prefix');
-        config.unset('fetch.files.dirname');
         return Promise.all([
             strategize.close(),
             bestsignals.close(),

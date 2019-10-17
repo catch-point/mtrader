@@ -43,14 +43,14 @@ const Adjustments = require('./adjustments.js');
 const IB = require('./ib-gateway.js');
 const expect = require('chai').expect;
 
-function help() {
+function help(settings) {
     const commonOptions = {
         symbol: {
             description: "Ticker symbol used by the market"
         },
         market: {
             description: "Exchange market acronym",
-            values: config('fetch.ib.markets')
+            values: settings.markets
         },
         conId: {
             description: "IB contract ID"
@@ -100,7 +100,7 @@ function help() {
             interval: {
                 usage: "day",
                 description: "The bar timeframe for the results",
-                values: _.intersection(["day"],config('fetch.ib.intervals'))
+                values: _.intersection(["day"],settings.intervals)
             },
         })
     };
@@ -113,20 +113,20 @@ function help() {
             interval: {
                 usage: "m<minutes>",
                 description: "Number of minutes in a single bar length, prefixed by the letter 'm'",
-                values: config('fetch.ib.intervals')
+                values: settings.intervals
                     .filter(interval => /^m\d+$/.test(interval))
             }
         })
     };
     return _.compact([
-        ~config('fetch.ib.intervals').indexOf('lookup') && lookup,
+        ~settings.intervals.indexOf('lookup') && lookup,
         interday.options.interval.values.length && interday,
         intraday.options.interval.values.length && intraday
     ]);
 }
 
-module.exports = function() {
-    const client = new IB(config('fetch.ib'));
+module.exports = function(settings = {}) {
+    const client = new IB(settings);
     const adjustments = Adjustments();
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
@@ -135,7 +135,7 @@ module.exports = function() {
     const lookupContract_cache = cache(lookupContract_fn, o => `${o.symbol}.${o.market}`, 10);
     const findContract_fn = findContract.bind(this, lookupContract_cache, markets, client);
     const self = async(options) => {
-        if (options.info=='help') return help();
+        if (options.info=='help') return help(settings);
         if (options.info=='version') {
             return client.open().then(client => client.version()).then(client_version => {
                 return [{version: client_version, name: 'TWS API'}];

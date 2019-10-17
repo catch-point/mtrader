@@ -79,7 +79,7 @@ if (require.main === module) {
             market = symbol.substring(symbol.lastIndexOf('.')+1);
             symbol = symbol.substring(0, symbol.lastIndexOf('.'));
         }
-        const fetch = new Fetch();
+        const fetch = new Fetch(config('fetch'));
         process.on('SIGINT', () => fetch.close());
         process.on('SIGTERM', () => fetch.close());
         Promise.resolve().then(() => fetch(_.defaults({
@@ -98,7 +98,7 @@ if (require.main === module) {
         replyTo(process).handle('fetch', payload => {
             return fetch()(payload);
         });
-        let fetch = _.once(() => new Fetch());
+        let fetch = _.once(() => new Fetch(config('fetch')));
         process.on('disconnect', () => fetch().close());
         process.on('disconnect', () => {
             setTimeout(() => {
@@ -108,7 +108,7 @@ if (require.main === module) {
         });
         process.on('SIGHUP', () => {
             fetch().close();
-            fetch = _.once(() => Fetch());
+            fetch = _.once(() => Fetch(config('fetch')));
         });
     } else {
         program.help();
@@ -119,7 +119,7 @@ if (require.main === module) {
         const program = usage(new commander.Command());
         const instance = function(options) {
             if (closed) throw Error("Fetch is closed");
-            if (!fetch) fetch = new Fetch();
+            if (!fetch) fetch = new Fetch(config('fetch'));
             const opts = options.tz && options.ending_format ? options :
                 Object.assign({tz, ending_format: moment.defaultFormat}, options);
             return fetch(opts);

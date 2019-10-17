@@ -35,6 +35,7 @@ const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
+const merge = require('./merge.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
@@ -45,14 +46,13 @@ const expect = require('chai').expect;
 module.exports = function(settings = {}, mock_ib_client = null) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
-    settings = {...settings, ...config('broker.ib')};
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
     expect(settings).to.have.property('account').that.is.ok;
     if (settings.local_accounts) expect(settings.account).to.be.oneOf(settings.local_accounts);
     const ib = mock_ib_client || new IB(settings);
-    const fetch = new Fetch(settings);
+    const fetch = new Fetch(merge(config('fetch'), settings.fetch));
     const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
     return _.extend(async function(options) {
         if (options.info=='help') return helpOptions();
@@ -412,7 +412,7 @@ async function oneCancelsAllOrders(root_ref, markets, ib, settings, options) {
     return await options.attached.reduce(async(promise, order, i, orders) => {
         const posted_orders = await submitOrder(root_ref, markets, ib, {
             ...settings,
-            transmit: i == orders.length -1 && settings.transmit || false
+            transmit: settings.transmit || false
         }, order, null, order_ref);
         return (await promise).concat(posted_orders.map(ord => ({...ord, attach_ref: order_ref})));
     }, []);

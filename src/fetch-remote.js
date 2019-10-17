@@ -40,9 +40,9 @@ const replyTo = require('./promise-reply.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
-module.exports = function() {
+module.exports = function(settings = {}) {
     let promiseFetch, closing;
-    if (!config('fetch.remote.location')) throw Error("No remote location configured");
+    if (!settings.location) throw Error("No remote location configured");
     return Object.assign(options => fetch(options), {
         close() {
             if (closing) return closing;
@@ -85,9 +85,9 @@ module.exports = function() {
             if (fetch.connectionError) fetch.disconnect();
             else if (fetch.process.connected || fetch.process.connecting) return fetch;
             if (closing) throw Error("Closing remote connection");
-            const location = config('fetch.remote.location');
+            const location = settings.location;
             logger.log(`Connecting ${location} from ${process.pid}`);
-            const connection = remote(config('fetch.remote'));
+            const connection = remote(settings);
             return replyTo(connection)
                 .handle('stop', () => connection.disconnect());
         });

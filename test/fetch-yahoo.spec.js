@@ -32,12 +32,13 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const like = require('./should-be-like.js');
+const config = require('../src/config.js');
 const yahoo = require('../src/fetch-yahoo.js');
 
 describe("fetch-yahoo", function() {
     this.timeout(10000);
     var tz = 'America/New_York';
-    var client = yahoo();
+    var client = yahoo(config('fetch.yahoo'));
     after(function() {
         return client.close();
     });

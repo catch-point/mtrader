@@ -33,26 +33,37 @@ const fs = require('fs');
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const merge = require('../src/merge.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
-const Collect = require('../src/collect.js');
 const Broker = require('../src/broker-simulation.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
 describe("broker-simulation", function() {
     this.timeout(60000);
-    var fetch, quote, collect, broker;
+    var fetch, quote, broker;
     before(function() {
         config('runInBand', 1);
-        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('simulation'));
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        fetch = new Fetch();
+        fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
         quote = new Quote(fetch);
-        collect = new Collect(quote);
-        broker = new Broker({simulation: 'test', ...config()});
+        broker = new Broker({
+            simulation: 'test',
+            ...config('broker.simulation'),
+            fetch: {
+                files: {
+                    enabled: true,
+                    dirname: path.resolve(__dirname, 'data')
+                }
+            }
+        }, quote);
     });
     beforeEach(async() => {
         await broker({action: 'reset'});
@@ -60,10 +71,8 @@ describe("broker-simulation", function() {
     after(function() {
         config.unset('runInBand');
         config.unset('prefix');
-        config.unset('fetch.files.dirname');
         return Promise.all([
             broker.close(),
-            collect.close(),
             quote.close(),
             fetch.close()
         ]);

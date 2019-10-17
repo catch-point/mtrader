@@ -34,10 +34,10 @@ const path = require('path');
 const util = require('util');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const merge = require('../src/merge.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
-const Collect = require('../src/collect.js');
 const Replicate = require('../src/replicate.js');
 const Broker = require('../src/broker-simulation.js');
 const beautify = require('js-beautify');
@@ -48,16 +48,27 @@ const expect = require('chai').use(like).expect;
 
 describe("replicate-simulation", function() {
     this.timeout(60000);
-    var fetch, quote, collect, broker, snapshot, replicate;
+    var fetch, quote, broker, snapshot, replicate;
     before(function() {
         config('runInBand', true);
-        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('simulation'));
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        fetch = new Fetch();
+        fetch = Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
         quote = new Quote(fetch);
-        collect = new Collect(quote);
-        broker = new Broker({...config(), simulation: 'test'});
+        broker = new Broker({
+            simulation: 'test',
+            ...config('broker.simulation'),
+            fetch: {
+                files: {
+                    enabled: true,
+                    dirname: path.resolve(__dirname, 'data')
+                }
+            }
+        }, quote);
         replicate = Replicate.bind({}, broker, fetch);
     });
     beforeEach(async() => {
@@ -84,11 +95,9 @@ describe("replicate-simulation", function() {
     });
     after(function() {
         config.unset('prefix');
-        config.unset('fetch.files.dirname');
         config.unset('runInBand');
         return Promise.all([
             broker.close(),
-            collect.close(),
             quote.close(),
             fetch.close()
         ]);
@@ -96,7 +105,7 @@ describe("replicate-simulation", function() {
     describe("Stocks", function() {
         it("Open and Close ENB", async() => {
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '111',
@@ -153,7 +162,7 @@ describe("replicate-simulation", function() {
                 security_type:       'STK'
             });
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '36',
@@ -185,7 +194,7 @@ describe("replicate-simulation", function() {
         });
         it("Reduce after BUY miss of CP", async() => {
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'CP',
                     market: 'TSE',
@@ -232,7 +241,7 @@ describe("replicate-simulation", function() {
                 security_type: 'STK'
             });
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'CP',
                     market: 'TSE',
@@ -288,7 +297,7 @@ describe("replicate-simulation", function() {
                 tif: 'DAY'
             });
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                      quant: '6',
@@ -331,7 +340,7 @@ describe("replicate-simulation", function() {
                 tif: 'DAY'
             });
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '281',
@@ -418,7 +427,7 @@ describe("replicate-simulation", function() {
                             throw Error("Unexpected: " + util.inspect(options))
                     }
                 }, fetch, function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '324',
@@ -544,7 +553,7 @@ describe("replicate-simulation", function() {
                             throw Error("Unexpected: " + util.inspect(options))
                     }
                 }, fetch, function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '1248',
@@ -683,7 +692,7 @@ describe("replicate-simulation", function() {
                             throw Error("Unexpected: " + util.inspect(options))
                     }
                 }, fetch, function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     traded_at: '2019-07-30T16:00:00-04:00',
@@ -755,7 +764,7 @@ describe("replicate-simulation", function() {
                             throw Error("Unexpected: " + util.inspect(options))
                     }
                 }, fetch, function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '324',
@@ -779,7 +788,7 @@ describe("replicate-simulation", function() {
     describe("Options", function() {
         it("submit BUY combo order", async() => {
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
@@ -842,7 +851,7 @@ describe("replicate-simulation", function() {
         });
         it("submit SELL combo order", async() => {
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
@@ -958,7 +967,7 @@ describe("replicate-simulation", function() {
                 }]
             });
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
@@ -1083,7 +1092,7 @@ describe("replicate-simulation", function() {
                 }]
             });
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'SPX   190621C03075000',
                     market: 'OPRA',
@@ -1178,7 +1187,7 @@ describe("replicate-simulation", function() {
                         throw Error(`Unexpected call ${util.inspect(args)}`);
                 }
             }, fetch, function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '3',
@@ -1263,7 +1272,7 @@ describe("replicate-simulation", function() {
                         throw Error(`Unexpected call ${util.inspect(args)}`);
                 }
             }, fetch, function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '2',
@@ -1300,7 +1309,7 @@ describe("replicate-simulation", function() {
     describe("Futures", function() {
         it("no position in ZNH19", async() => {
             const posted = await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1371,7 +1380,7 @@ describe("replicate-simulation", function() {
                   multiplier: 1000
             });
             const posted = await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1444,7 +1453,7 @@ describe("replicate-simulation", function() {
                   order_ref: 'stp_ZNH19.test'
             });
             return replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1538,7 +1547,7 @@ describe("replicate-simulation", function() {
                   order_ref: 'stp_ZNH19.test'
             });
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1650,7 +1659,7 @@ describe("replicate-simulation", function() {
                 order_ref: 'stp_ZNH19.test'
             });
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1769,7 +1778,7 @@ describe("replicate-simulation", function() {
                 multiplier: 1000
             });
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'ZNH19',
                     market: 'CBOT',
@@ -1862,7 +1871,7 @@ describe("replicate-simulation", function() {
     describe("parameters", function() {
         it("working_duration", async() => {
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     begin: '2019-01-03T17:00:00-05:00',
@@ -1878,7 +1887,7 @@ describe("replicate-simulation", function() {
         });
         it("allocation_pct", async() => {
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     parameters: { initial_deposit: 6000 }
@@ -1893,7 +1902,7 @@ describe("replicate-simulation", function() {
         });
         it("allocation_min", async() => {
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     parameters: { initial_deposit: 9000 }
@@ -1909,7 +1918,7 @@ describe("replicate-simulation", function() {
         });
         it("allocation_max", async() => {
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     parameters: { initial_deposit: 5000 }
@@ -1938,7 +1947,7 @@ describe("replicate-simulation", function() {
             });
             const balance = Math.floor(1000000+(122296875-121031250)/10-205)/100;
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 expect(options).to.be.like({
                     now: 1546639200000,
                     parameters: {
@@ -1978,7 +1987,7 @@ describe("replicate-simulation", function() {
             });
             const balance = 10000+(8500-8577)-1;
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 expect(options).to.be.like({
                     parameters: {
                         // initial_deposit is balance after begin
@@ -2023,7 +2032,7 @@ describe("replicate-simulation", function() {
             });
             const balance = 9000+(8500-8577)-1;
             await replicate(function(options) {
-                if (options.info=='help') return collect(options);
+                if (options.info=='help') return quote(options);
                 expect(options).to.be.like({
                     parameters: {
                         // initial_deposit is balance after begin

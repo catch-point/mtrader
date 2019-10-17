@@ -35,21 +35,14 @@ const moment = require('moment-timezone');
 const version = require('./version.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
-const blended = require('./fetch-blended.js');
-const yahoo = require('./fetch-yahoo.js');
-const iqfeed = require('./fetch-iqfeed.js');
-const IB = require('./fetch-ib.js');
-const files = require('./fetch-files.js');
-const ivolatility = require('./fetch-ivolatility.js');
-const remote = require('./fetch-remote.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
-module.exports = function() {
+module.exports = function(settings = {}) {
     let datasources;
     const markets = config('markets');
     const self = function(options) {
-        datasources = datasources || promiseDatasources();
+        datasources = datasources || promiseDatasources(settings||{});
         return datasources.then(async(datasources) => {
             if (options.info=='help' || options.interval == 'help')
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
@@ -111,15 +104,22 @@ function convertTime(market, tz) {
 /**
  * hash of intervals -> market -> source
  */
-function promiseDatasources() {
+function promiseDatasources(settings = {}) {
+    const blended = require('./fetch-blended.js');
+    const yahoo = require('./fetch-yahoo.js');
+    const iqfeed = require('./fetch-iqfeed.js');
+    const IB = require('./fetch-ib.js');
+    const files = require('./fetch-files.js');
+    const ivolatility = require('./fetch-ivolatility.js');
+    const remote = require('./fetch-remote.js');
     const sources = _.compact([
-        config('fetch.files.enabled') && files(),
-        config('fetch.blended.enabled') && blended(),
-        config('fetch.ivolatility.enabled') && ivolatility(),
-        config('fetch.iqfeed.enabled') && iqfeed(),
-        config('fetch.ib.enabled') && new IB(),
-        config('fetch.yahoo.enabled') && yahoo(),
-        config('fetch.remote.enabled') && remote()
+        (settings.files||{}).enabled && files(settings.files),
+        (settings.blended||{}).enabled && blended(settings.blended),
+        (settings.ivolatility||{}).enabled && ivolatility(settings.ivolatility),
+        (settings.iqfeed||{}).enabled && iqfeed(settings.iqfeed),
+        (settings.ib||{}).enabled && new IB(settings.ib),
+        (settings.yahoo||{}).enabled && yahoo(settings.yahoo),
+        (settings.remote||{}).enabled && remote(settings.remote)
     ]);
     if (_.isEmpty(sources)) {
         sources.push(yahoo());
@@ -129,7 +129,7 @@ function promiseDatasources() {
         return _.flatten(help).reduce((datasources, info) => {
             const intervals = ['options', 'interval', 'values'].reduce(_.result, info) || [];
             const markets = ['options', 'market', 'values'].reduce(_.result, info) || [];
-            if (!markets.length) throw Error("Missing market values");
+            if (!markets.length) throw Error("Missing market values: " + JSON.stringify(info, null, ' '));
             if (~intervals.indexOf('day')) {
                 // add synthetic intervals
                 _.forEach({year, quarter, month, week}, (fn, interval) => {

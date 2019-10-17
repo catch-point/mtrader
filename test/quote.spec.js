@@ -32,6 +32,7 @@
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const merge = require('../src/merge.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 const config = require('../src/config.js');
@@ -43,12 +44,15 @@ describe("quote", function() {
     var tz = 'America/New_York';
     var fetch, quote;
     before(function() {
-        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('quotes'));
     });
     beforeEach(function() {
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        fetch = Fetch();
+        fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
         quote = Quote(fetch);
     });
     afterEach(function() {
@@ -56,7 +60,6 @@ describe("quote", function() {
             quote.close(),
             fetch.close()
         ]);
-        config.unset('fetch.files.dirname');
     });
     after(function() {
         config.unset('prefix');
@@ -146,10 +149,14 @@ describe("quote", function() {
         ]);
     });
     it("should update partial blocks with PRIOR", function() {
-        config('fetch.files.dirname', path.resolve(__dirname, 'partial'));
         fetch.close();
         quote.close();
-        fetch = Fetch();
+        fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'partial')
+            }
+        }));
         quote = Quote(fetch);
         return quote({
             columns: {
@@ -166,10 +173,14 @@ describe("quote", function() {
             _.first(partial).should.have.property('incomplete').that.is.not.ok;
             _.last(partial).should.have.property('incomplete').that.is.ok;
         }).then(() => {
-            config('fetch.files.dirname', path.resolve(__dirname, 'data'));
             fetch.close();
             quote.close();
-            fetch = Fetch();
+            fetch = new Fetch(merge(config('fetch'), {
+                files: {
+                    enabled: true,
+                    dirname: path.resolve(__dirname, 'data')
+                }
+            }));
             quote = Quote(fetch);
             return quote({
                 columns: {
@@ -247,10 +258,14 @@ describe("quote", function() {
         ]);
     });
     it("should fix incompatible partial blocks", function() {
-        config('fetch.files.dirname', path.resolve(__dirname, 'partial'));
         fetch.close();
         quote.close();
-        fetch = Fetch();
+        fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'partial')
+            }
+        }));
         quote = Quote(fetch);
         return quote({
             columns: {
@@ -267,10 +282,14 @@ describe("quote", function() {
                 {Date:"2016-12-08",Close:103.38,Change:1.36}
             );
         }).then(() => {
-            config('fetch.files.dirname', path.resolve(__dirname, 'data'));
             fetch.close();
             quote.close();
-            fetch = Fetch();
+            fetch = new Fetch(merge(config('fetch'), {
+                files: {
+                    enabled: true,
+                    dirname: path.resolve(__dirname, 'data')
+                }
+            }));
             quote = Quote(fetch);
             return quote({
                 columns: {
@@ -699,10 +718,14 @@ describe("quote", function() {
         ]);
     });
     it("should lookback to multiple partial blocks", function() {
-        config('fetch.files.dirname', path.resolve(__dirname, 'partial'));
         fetch.close();
         quote.close();
-        fetch = Fetch();
+        fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'partial')
+            }
+        }));
         quote = Quote(fetch);
         return quote({ // loads partial month and evals
             columns: {
@@ -721,10 +744,14 @@ describe("quote", function() {
             _.first(partial).should.have.property('incomplete').that.is.not.ok;
             _.last(partial).should.have.property('incomplete').that.is.ok;
         }).then(partial => {
-            config('fetch.files.dirname', path.resolve(__dirname, 'data'));
             fetch.close();
             quote.close();
-            fetch = Fetch();
+            fetch = new Fetch(merge(config('fetch'), {
+                files: {
+                    enabled: true,
+                    dirname: path.resolve(__dirname, 'data')
+                }
+            }));
             quote = Quote(fetch);
             return quote({ // loads rest of the month and computes prior expressions
                 columns: {

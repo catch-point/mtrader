@@ -31,6 +31,7 @@
 
 const path = require('path');
 const _ = require('underscore');
+const merge = require('../src/merge.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
@@ -43,10 +44,13 @@ describe("optimize", function() {
     this.timeout(60000);
     var fetch, quote, collect, optimize;
     before(function() {
-        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('optimize'));
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        fetch = Fetch();
+        fetch = Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
         quote = Quote(fetch);
         collect = Collect(quote);
         optimize = Optimize(collect);
@@ -56,7 +60,6 @@ describe("optimize", function() {
     });
     after(function() {
         config.unset('prefix');
-        config.unset('fetch.files.dirname');
         return Promise.all([
             optimize.close(),
             collect.close(),

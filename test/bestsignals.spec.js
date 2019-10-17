@@ -31,6 +31,7 @@
 
 const path = require('path');
 const _ = require('underscore');
+const merge = require('../src/merge.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
@@ -44,10 +45,13 @@ describe("bestsignals", function() {
     this.timeout(60000);
     var fetch, quote, collect, optimize, bestsignals;
     before(function() {
-        config.load(path.resolve(__dirname, 'testdata.json'));
         config('prefix', createTempDir('bestsignals'));
-        config('fetch.files.dirname', path.resolve(__dirname, 'data'));
-        fetch = Fetch();
+        fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
         quote = Quote(fetch);
         collect = Collect(quote);
         optimize = Optimize(collect);
@@ -58,7 +62,6 @@ describe("bestsignals", function() {
     });
     after(function() {
         config.unset('prefix');
-        config.unset('fetch.files.dirname');
         return Promise.all([
             bestsignals.close(),
             optimize.close(),
