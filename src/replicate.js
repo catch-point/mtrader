@@ -312,7 +312,9 @@ async function getDesiredParameters(broker, begin, options) {
     const net_allocation = getAllocation(current_balances, options);
     const net_deposit = getNetDeposit(current_balances, past_positions, options);
     const settled_cash = getSettledCash(current_balances, options);
-    return { initial_deposit, net_deposit, net_allocation, settled_cash, strategy_raw: initial_deposit };
+    const accrued_cash = getAccruedCash(current_balances, options);
+    const total_cash = getTotalCash(current_balances, options);
+    return { initial_deposit, net_deposit, net_allocation, settled_cash, accrued_cash, total_cash };
 }
 
 /**
@@ -384,9 +386,9 @@ function getAllocation(balances, options) {
         bal => bal.currency == options.currency : bal => +bal.rate == 1
     );
     const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
-    const local_balance_rate = local_balances.length ? local_balances[0].rate : 1;
+    const local_rate = local_balances.length ? local_balances[0].rate : 1;
     const initial_balance = cash_acct ? Big(local_balance_net) : balances.map(bal => {
-        return Big(bal.net).times(bal.rate).div(local_balance_rate);
+        return Big(bal.net).times(bal.rate).div(local_rate);
     }).reduce((a,b) => a.add(b), Big(0));
     return Math.min(Math.max(
         initial_balance.times(options.allocation_pct || 100).div(100),
@@ -413,6 +415,28 @@ function getSettledCash(current_balances, options) {
         bal => bal.currency == options.currency : bal => +bal.rate == 1
     );
     return +local_balances.map(bal => Big(bal.settled||0)).reduce((a,b) => a.add(b), Big(0));
+}
+
+function getAccruedCash(current_balances, options) {
+    const local_balances = current_balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    return +local_balances.map(bal => Big(bal.accrued||0)).reduce((a,b) => a.add(b), Big(0));
+}
+
+function getTotalCash(balances, options) {
+    const cash_acct = balances.every(bal => bal.margin == null);
+    const local_balances = balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    const local_cash = local_balances.reduce((total, bal) => {
+        return total.add(bal.settled||0).add(bal.accrued||0);
+    }, Big(0));
+    const local_rate = local_balances.length ? local_balances[0].rate : 1;
+    const total_cash = cash_acct ? Big(local_cash) : balances.map(bal => {
+        return Big(bal.settled||0).add(bal.accrued||0).times(bal.rate).div(local_rate);
+    }).reduce((a,b) => a.add(b), Big(0));
+    return total_cash.toString();
 }
 
 /**

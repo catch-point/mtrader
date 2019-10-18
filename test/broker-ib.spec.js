@@ -113,7 +113,7 @@ describe("broker-ib", function() {
             currency: 'USD',
             rate: '1.3516001',
             net: '26159.30',
-            settled: '1777.70',
+            settled: '1777.7',
             accrued: '0',
             realized: '0.00',
             unrealized: '-223.15',

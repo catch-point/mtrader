@@ -104,7 +104,7 @@ function createInstance(program, settings = {}) {
     };
     instance.close = function() {
         if (closed) return closed;
-        else return closed = Promise.all([broker.close, quote.close]);
+        else return closed = Promise.all([broker.close(), quote.close()]);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     return instance;
