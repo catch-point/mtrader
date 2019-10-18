@@ -485,19 +485,19 @@ function symbolPrefix(order, options) {
  * Converts quant_threshold_percent into quant_threshold relative to open position size
  */
 function getQuantThreshold(actual, options) {
-    if (!options.quant_threshold_percent) return options.quant_threshold || 0;
+    if (!options.quant_threshold_percent) return options.quant_threshold || 1;
     const opened = actual.position;
-    const threshold = Math.floor(opened * options.quant_threshold_percent /100);
-    if (!threshold) return options.quant_threshold || 0;
-    else if (!options.quant_threshold) return threshold;
-    else return Math.min(threshold, options.quant_threshold);
+    const threshold = opened * options.quant_threshold_percent /100;
+    if (!Math.floor(threshold)) return options.quant_threshold || 1;
+    else if (!options.quant_threshold) return Math.ceil(threshold);
+    else return Math.ceil(Math.min(threshold, options.quant_threshold, 1));
 }
 
 /**
  * Array of orders to update the working positions to the desired positions
  */
 function updateActual(desired, actual, options) {
-    const desired_adjustment = desired.position - actual.position > options.quant_threshold ? {
+    const desired_adjustment = desired.position - actual.position >= options.quant_threshold ? {
         action: 'BUY',
         quant: (desired.position - actual.position).toString(),
         ...(((desired.adjustment||{action:'n/a'}).action||'BUY') == 'BUY' ? {
@@ -507,7 +507,7 @@ function updateActual(desired, actual, options) {
             order_type: options.default_order_type || 'MKT', tif: 'DAY',
             ..._.pick(desired, 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick')
         })
-    } : actual.position - desired.position > options.quant_threshold ? {
+    } : actual.position - desired.position >= options.quant_threshold ? {
         action: 'SELL',
         quant: (actual.position - desired.position).toString(),
         ...(((desired.adjustment||{action:'n/a'}).action||'SELL') == 'SELL' ? {

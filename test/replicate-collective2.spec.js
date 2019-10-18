@@ -933,7 +933,7 @@ describe("replicate-collective2", function() {
                 }]);
             })({
                 systemid: 'test',
-                quant_threshold_percent: 2,
+                quant_threshold_percent: 3,
                 now: moment.tz("2015-02-17T16:00:00", 'America/New_York').valueOf()
             }).should.eventually.be.like([]);
         });
