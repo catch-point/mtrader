@@ -42,6 +42,7 @@ const moment = require('moment-timezone');
 const ws = require('ws');
 const shell = require('shell');
 const expect = require('chai').expect;
+const merge = require('./merge.js');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const common = require('./common-functions.js');
@@ -163,6 +164,7 @@ function parseKnownOptions(program, argv) {
 
 function createInstance(settings = {}) {
     const config = new Config(settings);
+    settings = merge(config(), settings);
     const date = new Dater(settings);
     const fetch = new Fetch(settings);
     const quote = new Quote(settings);

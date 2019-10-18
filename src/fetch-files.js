@@ -41,7 +41,7 @@ const storage = require('./storage.js');
 const Fetch = require('./fetch.js');
 
 module.exports = function(settings = {}) {
-    const fetch = new Fetch(merge(_.omit(config('fetch'), 'files'), settings.fetch));
+    const fetch = new Fetch(merge(config('fetch'), {files:{enabled:false}}, settings.fetch));
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const dirname = settings.dirname || dir;
     const store = storage(dirname);

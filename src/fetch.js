@@ -122,7 +122,7 @@ function promiseDatasources(settings = {}) {
         (settings.remote||{}).enabled && remote(settings.remote)
     ]);
     if (_.isEmpty(sources)) {
-        sources.push(yahoo());
+        sources.push(yahoo(settings.yahoo));
     }
     return Promise.all(sources.map(source => source({info:'help'})))
       .then(result => result.reduce((datasources, help, i) => {

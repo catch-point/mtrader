@@ -42,19 +42,11 @@ describe("mtrader", function() {
     this.timeout(60000);
     var mtrader;
     before(function() {
+        Mtrader.config('prefix', createTempDir('mtrader'));
         mtrader = new Mtrader();
-        mtrader.config.load(path.resolve(__dirname, '../etc/mtrader.json'));
-        mtrader.config('prefix', createTempDir('mtrader'));
-        mtrader.config('iqfeed.enabled', false);
-        mtrader.config('yahoo.enabled', true);
-        mtrader.config('files.enabled', false);
-        process.emit('SIGHUP');
     });
     after(function() {
-        mtrader.config.unset('prefix');
-        mtrader.config.unset('iqfeed.enabled');
-        mtrader.config.unset('yahoo.enabled');
-        mtrader.config.unset('files.enabled');
+        Mtrader.config.unset('prefix');
         return mtrader.close();
     });
     it("optimize SMA", function() {
@@ -163,6 +155,7 @@ describe("mtrader", function() {
             },
             signalset: ['TREND', 'MEANREVERSION', 'RELATIVESTRENGTH']
         });
+        process.emit('SIGHUP');
         return readCallSave('BEST', mtrader.bestsignals).should.eventually.be.like([{
             variables: {
                 signal: /bollinger_signal|STO_signal/

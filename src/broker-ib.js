@@ -51,7 +51,7 @@ module.exports = function(settings = {}, mock_ib_client = null) {
     )), v => !v);
     expect(settings).to.have.property('account').that.is.ok;
     if (settings.local_accounts) expect(settings.account).to.be.oneOf(settings.local_accounts);
-    const ib = mock_ib_client && mock_ib_client.open || new IB(settings);
+    const ib = mock_ib_client && mock_ib_client.open ? mock_ib_client : new IB(settings);
     const fetch = new Fetch(merge(config('fetch'), settings.fetch));
     const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
     return _.extend(async function(options) {

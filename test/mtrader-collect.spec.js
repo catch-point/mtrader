@@ -40,13 +40,9 @@ describe("mtrader-collect", function() {
     this.timeout(1200000);
     var mtrader;
     before(function() {
+        Mtrader.config('prefix', createTempDir('mtrader'));
+        Mtrader.config('runInBand', true);
         mtrader = new Mtrader();
-        mtrader.config('prefix', createTempDir('mtrader'));
-        mtrader.config('fetch.iqfeed.enabled', false);
-        mtrader.config('fetch.yahoo.enabled', true);
-        mtrader.config('fetch.files.enabled', false);
-        mtrader.config('runInBand', true);
-        process.emit('SIGHUP');
         mtrader.config.save('SPY', {
             portfolio: 'SPY.ARCA',
             columns: {
@@ -68,13 +64,11 @@ describe("mtrader-collect", function() {
                 'day.close': 'ROUND(1/day.close,5)'
             }
         });
+        process.emit('SIGHUP');
     });
     after(function() {
-        mtrader.config.unset('prefix');
-        mtrader.config.unset('fetch.iqfeed.enabled');
-        mtrader.config.unset('fetch.yahoo.enabled');
-        mtrader.config.unset('fetch.files.enabled');
-        mtrader.config.unset('runInBand');
+        Mtrader.config.unset('prefix');
+        Mtrader.config.unset('runInBand');
         return mtrader.close();
     });
     it("by week should be the same as by month", function() {

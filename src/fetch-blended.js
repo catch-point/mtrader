@@ -47,7 +47,7 @@ module.exports = function(settings = {}) {
     const cfg = settings.config ? readConfig(settings.config, settings) : settings;
     if (_.isEmpty(cfg)) throw Error("Missing fetch blended config");
     expect(cfg).to.have.property('assets').that.is.an('array');
-    const delegate = new Fetch(merge(_.omit(config('fetch'), 'blended'), settings.fetch));
+    const delegate = new Fetch(merge(config('fetch'), {blended:{enabled:false}}, settings.fetch));
     const markets = _.uniq(cfg.assets.map(asset => asset.market));
     return Object.assign(async(options) => {
         if (options.info=='version') return [{version}];
