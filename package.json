@@ -1,6 +1,6 @@
 {
   "name": "mtrader",
-  "version": "8.2.7",
+  "version": "8.3.0",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
   "dependencies": {

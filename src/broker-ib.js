@@ -852,7 +852,7 @@ function convertTime(market, tz) {
     return {
         afterHoursClosesAt: mtz2tz(market.trading_hours.substring(market.trading_hours.length - 8)),
         marketClosesAt: mtz2tz(market.liquid_hours.substring(market.liquid_hours.length - 8)),
-        marketOpensAt: mtz2tz(market.liquid_hours.substring(0, 8)),
+        marketOpensAt: mtz2tz(market.open_time || market.liquid_hours.substring(0, 8)),
         premarketOpensAt: mtz2tz(market.trading_hours.substring(0, 8))
     };
 }

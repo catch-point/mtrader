@@ -561,6 +561,8 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     const opensAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketOpensAt, tz);
     const closesAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, tz);
     if (!opensAt.isBefore(closesAt)) opensAt.subtract(1, 'day');
+    if (now.isAfter(closesAt)) opensAt.add(1, 'day');
+    if (now.isAfter(closesAt)) closesAt.add(1, 'day');
     if (now.isBefore(opensAt)) return bars;
     if (!closesAt.isAfter(_.last(bars).ending)) return bars;
     const end = moment.tz(options.end || now, options.tz);
