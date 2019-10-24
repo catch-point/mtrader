@@ -42,6 +42,7 @@ const version = require('./version.js').toString();
 const config = require('./config.js');
 const logger = require('./logger.js');
 const periods = require('./periods.js');
+const share = require('./share.js');
 const iqfeed = require('./fetch-iqfeed.js');
 const IB = require('./ib-gateway.js');
 const Ivolatility = require('./ivolatility-client.js');
@@ -111,6 +112,8 @@ function help(settings = {}) {
     ]);
 }
 
+const shared_clients = {};
+
 module.exports = function(settings = {}) {
     const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const cacheDir = settings.cache || path.resolve(cache_dir, 'ivolatility');
@@ -122,7 +125,10 @@ module.exports = function(settings = {}) {
     if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
     const ib_cfg = settings.ib;
     const ib = ib_cfg && new IB(ib_cfg);
-    const ivolatility = Ivolatility(cacheDir, downloadDir, auth_file, downloadType);
+    const shared = shared_clients[cacheDir] = shared_clients[cacheDir] || share(Ivolatility, () => {
+        delete shared_clients[cacheDir];
+    });
+    const ivolatility = shared(cacheDir, downloadDir, auth_file, downloadType);
     return Object.assign(async(options) => {
         if (options.info=='help') return help(settings);
         if (options.info=='version') return [{version}];

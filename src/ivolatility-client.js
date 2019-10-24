@@ -60,7 +60,7 @@ module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
         return processing = checkForUpdatesFn().then(result => {
             store.flush();
             checkTormorrow = setTimeout(() => {
-                processing.then(processEveryDay);
+                processing = processing.then(processEveryDay);
             }, result ? another_21_hours : another_six_hours);
             checkTormorrow.unref();
         });
