@@ -145,11 +145,12 @@ async function yahoo_adjustments(yahoo, db, symbol, options) {
         else if (fresh(col, since, options))
             return col.readFrom(since);
         const asof = moment().tz(options.tz);
-        const splits = await yahoo.split(symbol, since, options.tz);
-        const divs = await yahoo.dividend(symbol, since, options.tz);
-        const data = _.sortBy(splits.concat(divs), 'Date');
-        return writeAdjPrice(yahoo, symbol, col, since, data, options)
-          .then(data => {
+        return Promise.resolve().then(async() => {
+            const splits = await yahoo.split(symbol, since, options.tz);
+            const divs = await yahoo.dividend(symbol, since, options.tz);
+            const data = _.sortBy(splits.concat(divs), 'Date');
+            return writeAdjPrice(yahoo, symbol, col, since, data, options);
+        }).then(data => {
             col.propertyOf(since, 'version', version.minor_version);
             col.propertyOf(since, 'asof', asof);
             return data;
