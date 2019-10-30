@@ -170,12 +170,6 @@ async function lookup(options) {
     }];
 }
 
-const months = {
-    A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
-    G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
-    M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
-    S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
-};
 function isOptionActive(symbol, begin, end) {
     if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);
     const underlying = symbol.substring(0, 6);

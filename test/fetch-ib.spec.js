@@ -32,13 +32,15 @@
 const _ = require('underscore');
 const Big = require('big.js');
 const moment = require('moment-timezone');
+const config = require('../src/config.js');
 const like = require('./should-be-like.js');
 const IB = require('../src/fetch-ib.js');
+const version = require('../src/version.js').toString();
 
 describe("fetch-ib", function() {
     this.timeout(100000);
     var tz = 'America/New_York';
-    var client = new IB();
+    var client = new IB(config('fetch.ib'));
     before(function() {
         return client.open().catch(err => {
             client = null;
@@ -50,6 +52,59 @@ describe("fetch-ib", function() {
     });
     after(function() {
         if (client) return client.close();
+    });
+    describe("info", function() {
+        it("help", function() {
+            return client({info:'help'})
+              .should.eventually.be.like([{
+                "name": "lookup",
+                "options": {
+                  "interval": {
+                    "values": [
+                      "lookup"
+                    ]
+                  }
+                }
+            }, {
+                "name": "interday",
+                "options": {
+                  "interval": {
+                    "values": [
+                      "day"
+                    ]
+                  }
+                }
+            }, {
+                "name": "intraday",
+                "options": {
+                  "interval": {
+                    "values": [
+                      "m240",
+                      "m120",
+                      "m60",
+                      "m30",
+                      "m15",
+                      "m10",
+                      "m5",
+                      "m2",
+                      "m1"
+                    ]
+                  }
+                }
+            }]);
+        });
+        it("version", function() {
+            return client({info:'version'})
+              .then(d=>d.forEach(d=>console.log(d))||d)
+              .then(data => data.filter((datum,i,data) => {
+                const string = JSON.stringify(datum);
+                return i == data.findIndex(d => JSON.stringify(d) == string);
+             })).should.eventually.be.like([{
+                version
+            }, {
+                name: "TWS API"
+            }]);
+        });
     });
     describe("lookup", function() {
         it("should find IBM", function() {
@@ -247,6 +302,27 @@ describe("fetch-ib", function() {
             ]);
         });
     });
+    describe("fundamental", function() {
+        it("should show IBM", function() {
+            return client({interval:'fundamental',symbol:'IBM', market:"NYSE"})
+              .should.eventually.be.like([{
+                symbol: 'IBM',
+                name: "INTL BUSINESS MACHINES CORP",
+                industry: 'Technology',
+                category: 'Computers',
+                subcategory: 'Computer Services',
+                minTick: 0.01
+            }]);
+        });
+        it("should show ITA", function() {
+            return client({interval:'fundamental',symbol:'ITA', market:"BATS"})
+              .should.eventually.be.like([{
+                symbol: 'ITA',
+                name: "ISHARES U.S. AEROSPACE & DEF",
+                minTick: 0.01
+            }]);
+        });
+    });
     describe("interday", function() {
         it("should adjust first dividend", function() {
             return client({
@@ -314,10 +390,10 @@ describe("fetch-ib", function() {
                 var scale = _.last(data).close / _.last(data).adj_close;
                 return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
             }).should.eventually.be.like([
-                {ending:'2016-09-14T16:00:00-04:00',open:23.87,close:23.81,adj_close:19.2},
+                {ending:'2016-09-14T16:00:00-04:00',open:23.9,close:23.8,adj_close:19.2},
                 {ending:'2016-09-15T16:00:00-04:00',open:23.76,close:23.95,adj_close:19.3},
-                {ending:'2016-09-16T16:00:00-04:00',open:23.74,close:23.61,adj_close:19.17},
-                {ending:'2016-09-19T16:00:00-04:00',open:19.35,close:19.31,adj_close:19.31},
+                {ending:'2016-09-16T16:00:00-04:00',open:23.74,close:23.6,adj_close:19.17},
+                {ending:'2016-09-19T16:00:00-04:00',close:19.31,adj_close:19.31},
                 {ending:'2016-09-20T16:00:00-04:00',open:19.45,close:19.32,adj_close:19.32},
                 {ending:'2016-09-21T16:00:00-04:00',open:19.41,close:19.44,adj_close:19.44}
             ]);

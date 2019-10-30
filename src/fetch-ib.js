@@ -34,6 +34,7 @@ const _ = require('underscore');
 const Big = require('big.js');
 const moment = require('moment-timezone');
 const d3 = require('d3-format');
+const merge = require('./merge.js');
 const cache = require('./memoize-cache.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
@@ -41,6 +42,7 @@ const config = require('./config.js');
 const periods = require('./periods.js');
 const Adjustments = require('./adjustments.js');
 const IB = require('./ib-gateway.js');
+const Fetch = require('./fetch.js');
 const expect = require('chai').expect;
 
 function help(settings) {
@@ -83,7 +85,7 @@ function help(settings) {
     const lookup = {
         name: "lookup",
         usage: "lookup(options)",
-        description: "Looks up existing symbol/market using the given symbol prefix using the local IQFeed client",
+        description: "Looks up existing symbol/market using the given symbol prefix using the local IB client",
         properties: ['symbol', 'conId', 'market', 'name', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
@@ -91,11 +93,28 @@ function help(settings) {
             },
         })
     };
+    const fundamental = {
+        name: "fundamental",
+        usage: "fundamental(options)",
+        description: "Details of the given symbol/market contract",
+        properties: [
+            'symbol', 'market', 'security_type', 'name', 'secType', 'exchange', 'currency',
+            'localSymbol', 'tradingClass', 'conId', 'primaryExch', 'marketName', 'longName',
+            'minTick', 'orderTypes', 'validExchanges', 'priceMagnifier',
+            'industry', 'category', 'subcategory',
+            'timeZoneId', 'tradingHours', 'liquidHours'
+        ],
+        options: _.extend({}, commonOptions, {
+            interval: {
+                values: ["fundamental"]
+            },
+        })
+    };
     const interday = {
         name: "interday",
         usage: "interday(options)",
         description: "Historic interday data for a security on the local TWS client",
-        properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'wap', 'count', 'adj_close'],
+        properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
         options: _.extend({}, commonOptions, durationOptions, tzOptions, {
             interval: {
                 usage: "day",
@@ -108,7 +127,7 @@ function help(settings) {
         name: "intraday",
         usage: "intraday(options)",
         description: "Historic intraday data for a security on the local TWS client",
-        properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'wap', 'count', 'adj_close'],
+        properties: ['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'],
         options: _.extend({}, commonOptions, durationOptions, tzOptions, {
             interval: {
                 usage: "m<minutes>",
@@ -120,12 +139,165 @@ function help(settings) {
     };
     return _.compact([
         ~settings.intervals.indexOf('lookup') && lookup,
+        ~settings.intervals.indexOf('fundamental') && fundamental,
         interday.options.interval.values.length && interday,
         intraday.options.interval.values.length && intraday
     ]);
 }
 
 module.exports = function(settings = {}) {
+    const fetch = new Fetch(merge(config('fetch'), {ib:{enabled:false}}, settings.fetch));
+    const fetch_ib = createInstance(settings);
+    const client = fetch_ib.client;
+    const markets = fetch_ib.markets;
+    const findContract = fetch_ib.findContract;
+    const self = async(options) => {
+        if (!fetch) {
+            return ib(options);
+        } else if (options.info=='help') {
+            return fetch_ib(options);
+        } else if (options.info=='version') {
+            return fetch_ib(options);
+        } else if (options.interval=='lookup') {
+            if (isContractExpired(markets, client, options)) return fetch(options);
+            else return fetch_ib(options);
+        } else if (options.interval=='fundamental') {
+            if (isContractExpired(markets, client, options)) return fetch(options);
+            else return fetch_ib(options);
+        } else if (isContractExpired(markets, client, options) || isHistorical(options)) {
+            return fetch(options).catch(err => {
+                return fetch_ib(options).catch(err2 => {
+                    logger.debug(err2);
+                    throw err;
+                });
+            });
+        } else if (isTimeFrameAvailable(markets, client, options)) {
+            return fetch_ib(options).catch(err => {
+                return fetch(options).catch(err2 => {
+                    logger.debug(err2);
+                    throw err;
+                });
+            });
+        } else {
+            const next_open = marketOpensAt(options);
+            if (next_open && (next_open.isAfter(options.now) || options.end && next_open.isAfter(options.end))) {
+                return fetch(options).catch(err => {
+                    return fetch_ib(options).catch(err2 => {
+                        logger.debug(err2);
+                        throw err;
+                    });
+                });
+            } else {
+                const market = markets[options.market];
+                const secTypes = [].concat(market.secTypes || [], market.secType || []);
+                const opt = _.intersection(secTypes, ['OPT', 'FOP']).length;
+                return combineHistoricalLiveFeeds(markets, fetch({
+                    ...options,
+                    end: next_open.format()
+                }), fetch_ib({
+                    ...options,
+                    begin: next_open.format(),
+                    interval: opt && options.interval.charAt(0) != 'm' ? 'm30' : options.interval
+                }).catch(err => {
+                    logger.warn(`Could not fetch ${options.symbol} snapshot IB data ${err.message}`);
+                    return [];
+                }), options);
+            }
+        }
+    };
+    self.open = () => fetch_ib.open();
+    self.close = () => Promise.all([
+        fetch_ib.close(),
+        fetch && fetch.close()
+    ]);
+    return self;
+};
+
+const fmonth = {F:'01', G:'02', H:'03', J:'04', K:'05', M:'06', N:'07', Q:'08', U:'09', V:'10', X:'11', Z:'12'};
+function isContractExpired(markets, client, options) {
+    expect(options).to.have.property('symbol');
+    const market = markets[options.market] || {};
+    const secType = market.secType;
+    const secTypes = market.secTypes || [];
+    if (secType && !~['FUT', 'OPT', 'FOP'].indexOf(secType)) return false;
+    if (secTypes.length && !_.intersection(secTypes, ['FUT', 'OPT', 'FOP']).length) return false;
+    const opt = options.symbol.length == 21 &&
+        options.symbol.match(/^(\w+)\s*([0-9]{6})([CP])([0-9]{5})([0-9]{3})$/);
+    if (opt) return moment(`20${opt[2]}`).isBefore(options.now);
+    const fut = options.symbol.match(/^(.+)([FGHJKMNQUVXZ])(\d\d)$/);
+    if (fut) return moment(options.now).diff(`20${fut[3]}${fmonth[fut[2]]}22`, 'days') > 365*2;
+    const fop = options.symbol.match(/^(.+)([FGHJKMNQUVXZ])(\d\d) [CP](\d+)$/);
+    if (fop) return moment(`20${fop[3]}${fmonth[fop[2]]}22`).isBefore(options.now);
+    if (secType || secTypes.length) logger.warn(`Unexpected contract symbol format ${options.symbol}`);
+}
+
+function isHistorical(options) {
+    expect(options).to.have.property('begin');
+    return moment(options.now).diff(options.begin, 'days') > 365;
+}
+
+function isTimeFrameAvailable(markets, client, options) {
+    expect(options).to.have.property('begin');
+    expect(options).to.have.property('interval');
+    expect(options).to.have.property('market');
+    const market = markets[options.market];
+    const now = moment(options.now);
+    const begin = moment(options.begin);
+    const m = options.interval.charAt(0) == 'm' && +options.interval.substring(1);
+    if (m <= 1 && now.diff(begin, 'days') > 1) return false;
+    if (m <= 2 && now.diff(begin, 'days') > 2) return false;
+    if (m <= 3 && now.diff(begin, 'days') > 5) return false;
+    if (m <= 30 && now.diff(begin, 'days') > 31) return false;
+    if (m <= 24*60 && now.diff(begin, 'days') > 365) return false;
+    if (!m && market && ~['OPT', 'FOP'].indexOf(market.secType)) return false;
+    return now.diff(begin, 'days') <= 365;
+}
+
+function marketOpensAt(options) {
+    expect(options).to.have.property('tz');
+    expect(options).to.have.property('premarketOpensAt');
+    expect(options).to.have.property('afterHoursClosesAt');
+    const now = moment(options.now);
+    const weekday = moment(now);
+    const end = moment(options.end || now);
+    if (weekday.days() === 0) weekday.add(1, 'days');
+    if (weekday.days() === 6) weekday.add(2, 'days');
+    const tz = options.tz;
+    const opensAt = moment.tz(weekday.format('YYYY-MM-DD') + ' ' + options.premarketOpensAt, tz);
+    const closesAt = moment.tz(weekday.format('YYYY-MM-DD') + ' ' + options.afterHoursClosesAt, tz);
+    if (!opensAt.isBefore(closesAt)) opensAt.subtract(1, 'day');
+    if (now.isAfter(closesAt)) opensAt.add(1, 'day');
+    if (opensAt.isValid()) return opensAt;
+}
+
+async function combineHistoricalLiveFeeds(historical_promise, live_promise, options) {
+    const [historical_bars, live_intraday] = await Promise.all([historical_promise, live_promise]);
+    const live_bars = live_intraday.map(bar => ({
+        ending: formatTime(moment(bar.time, 'X'), options),
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
+        volume: bar.volume,
+        adj_close: bar.close
+    })).reduce((reduced, bar) => {
+        const merge = reduced.length && _.last(reduced).ending == bar.ending;
+        const merge_with = merge ? reduced.pop() : {};
+        reduced.push({
+            ending: bar.ending,
+            open: merge_with.open || bar.open,
+            high: Math.max(merge_with.high||bar.high, bar.high),
+            low: Math.min(merge_with.low||bar.low, bar.low),
+            close: bar.close,
+            volume: merge_with.volume + bar.volume,
+            adj_close: bar.adj_close
+        });
+        return reduced;
+    }, []);
+    return historical_bars.concat(live_bars);
+}
+
+function createInstance(settings = {}) {
     const client = new IB(settings);
     const adjustments = Adjustments();
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
@@ -146,10 +318,14 @@ module.exports = function(settings = {}) {
         await client.open();
         const adj = isNotEquity(markets, options) ? null : adjustments;
         if (options.interval == 'lookup') return lookup(markets, client, options);
+        else if (options.interval == 'fundamental') return fundamental(markets, client, options);
         else if (options.interval == 'day') return interday(findContract_fn, markets, adj, client, options);
         else if (options.interval.charAt(0) == 'm') return intraday(findContract_fn, markets, adj, client, options);
         else throw Error(`Unknown interval: ${options.interval}`);
     };
+    self.client = client;
+    self.markets = markets;
+    self.findContract = findContract_fn;
     self.open = () => client.open();
     self.close = () => Promise.all([
         client.close(),
@@ -167,13 +343,25 @@ function isNotEquity(markets, options) {
 async function lookup(markets, client, options) {
     const details = await listContractDetails(markets, client, options);
     const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
-    return conIds.map(details => flattenContractDetails(details)).map(detail => _.omit({
-        symbol: toSymbol(markets[options.market] || markets[detail.primaryExch], detail),
-        market: options.market || markets[detail.primaryExch] && detail.primaryExch,
-        security_type: detail.secType,
-        name: detail.longName,
-        currency: detail.currency,
-        conId: detail.conId
+    return conIds.map(details => flattenContractDetails(details)).map(contract => _.omit({
+        symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
+        market: options.market || markets[contract.primaryExch] && contract.primaryExch,
+        security_type: contract.secType,
+        name: contract.longName,
+        currency: contract.currency,
+        conId: contract.conId
+    }, v => !v));
+}
+
+async function fundamental(markets, client, options) {
+    const details = await listContractDetails(markets, client, options);
+    const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
+    return conIds.map(details => flattenContractDetails(details)).map(contract => _.omit({
+        symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
+        market: options.market || markets[contract.primaryExch] && contract.primaryExch,
+        security_type: contract.secType,
+        name: contract.longName,
+        ..._.omit(contract, 'conId', 'underConId', 'priceMagnifier')
     }, v => !v));
 }
 
@@ -297,8 +485,6 @@ function fromTrades(prices, adjusts, options) {
         low: +Big(datum.low).div(adj_split_only),
         close: +Big(datum.close).div(adj_split_only),
         volume: datum.volume,
-        wap: datum.wap,
-        count: datum.count,
         adj_close: datum.adj_close || +Big(datum.close).div(adj_split_only).times(adj)
     }));
 }
@@ -365,10 +551,8 @@ function toBarSizeSetting(interval) {
 }
 
 function flattenContractDetails(details) {
-    const omit = [];
-    const picking = ['longName', 'industry', 'category', 'subcategory'];
     const picked = details
-      .map(detail => Object.assign(_.pick(detail, picking), detail.summary));
+      .map(detail => Object.assign({}, detail.summary, _.omit(detail, ['summary', 'secIdList'])));
     return joinCommon(picked);
 }
 

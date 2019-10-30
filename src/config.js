@@ -135,7 +135,7 @@ function createInstance(session) {
             // Pass all current node process arguments to the child process,
             // except the debug-related arguments
             execArgv: process.execArgv.slice(0).filter(function(param) {
-                return !param.match(/(--debug|--inspect)(-brk=[0-9]+)?/);
+                return !param.match(/^(--debug|--inspect)(-brk|-port)?(=(.*:)?[1-9]+[0-9]*)?$/);
             })
         });
         const fn = (name, value, loadFile) => child.connected && child.send({

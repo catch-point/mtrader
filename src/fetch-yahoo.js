@@ -219,7 +219,7 @@ async function interday(yahoo, adjustments, symbol, options) {
     })).filter(bar => bar.volume);
     if (_.last(result) && !_.last(result).close) result.pop();
     if (!options.end) return result;
-    const final = endOf('day', options.end, options);
+    const final = moment.tz(options.end || options.now, options.tz).format(options.ending_format);
     if (moment(final).isAfter()) return result;
     let last = _.sortedIndex(result, {ending: final}, 'ending');
     if (result[last] && result[last].ending == final) last++;

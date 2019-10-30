@@ -151,8 +151,8 @@ describe("fetch-yahoo", function() {
             interval: 'day',
             symbol: 'SPY',
             yahoo_symbol: 'SPY',
-            begin: moment.tz('2017-03-15', tz),
-            end: moment.tz('2017-03-21', tz),
+            begin: '2017-03-15',
+            end: '2017-03-22',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
@@ -205,8 +205,8 @@ describe("fetch-yahoo", function() {
             interval: 'day',
             symbol: 'XLF',
             yahoo_symbol: 'XLF',
-            begin: moment.tz('2016-09-14', tz),
-            end: moment.tz('2016-09-21', tz),
+            begin: '2016-09-14',
+            end: '2016-09-22',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
@@ -226,7 +226,7 @@ describe("fetch-yahoo", function() {
             symbol: 'REM',
             market: 'BATS',
             begin: '2016-11-01',
-            end: '2016-11-30',
+            end: '2016-12-01',
             marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;

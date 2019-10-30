@@ -115,9 +115,9 @@ function promiseDatasources(settings = {}) {
     const sources = _.compact([
         (settings.files||{}).enabled && files(settings.files),
         (settings.blended||{}).enabled && blended(settings.blended),
+        (settings.ib||{}).enabled && new IB(settings.ib),
         (settings.ivolatility||{}).enabled && ivolatility(settings.ivolatility),
         (settings.iqfeed||{}).enabled && iqfeed(settings.iqfeed),
-        (settings.ib||{}).enabled && new IB(settings.ib),
         (settings.yahoo||{}).enabled && yahoo(settings.yahoo),
         (settings.remote||{}).enabled && remote(settings.remote)
     ]);
