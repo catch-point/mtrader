@@ -391,9 +391,6 @@ function interday(datasources, options) {
     const now = moment().tz(options.tz);
     const begin = options.begin ? moment.tz(options.begin, options.tz) :
         moment(now).startOf('month').subtract(1, 'month');
-    const early = begin.year() < now.year() - 5 ?
-        moment(now).subtract(5,'years').format(options.ending_format) : // results okay if >5yrs
-        moment(begin).add(1,'weeks').format(options.ending_format); // or starts within a week
     const opts = _.defaults({
         begin: begin.format()
     }, options);
@@ -402,8 +399,8 @@ function interday(datasources, options) {
             if (err && !_.isArray(err)) logger.debug("Fetch", opts.interval, "failed", err.stack);
             if (_.isArray(err) && err.length >= result.length)
                 return err;
-            if (_.isEmpty(result) || _.first(result).ending >= early)
-                return Promise.reject(result); // not within a week of begin or >5yrs
+            if (_.isEmpty(result))
+                return Promise.reject(result); // empty result error is an array
             return result;
         }, err2 => {
             if (!err) throw err2;
