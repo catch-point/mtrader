@@ -445,7 +445,8 @@ function parseNeededColumns(fields, options) {
             return true;
         },
         expression(expr, name, args) {
-            return args.find(_.identity) || false;
+            if (rolling.has(name) && rolling.getVariables(expr, options).length) return true;
+            else return args.find(_.identity) || false;
         }
     }).parse;
     const neededFilterOrder = filterOrder.filter(expr => {
