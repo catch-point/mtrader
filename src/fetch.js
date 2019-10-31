@@ -124,12 +124,14 @@ async function promiseDatasources(settings = {}) {
     const factories = enabled_factories.length ? enabled_factories : [{name:'yahoo', fn: yahoo}];
     const sources = factories.map(factory => {
         const name = factory.name;
-        const source = factory.fn(merge(settings[name], {[name]: {fetch: disabled}}, settings[name]));
+        const settings_loop_disabled = factory.name == 'remote' ? settings[name] :
+            merge(settings[name], {[name]: {fetch: disabled}}, settings[name]);
+        const source = factory.fn(settings_loop_disabled);
         return Object.assign(opts => {
             logger.trace("Fetch", name, opts.info || opts.interval,
                 opts.symbol || '', opts.market || '', opts.begin || '');
             return source(opts);
-        }, {close: source.close.bind(source)})
+        }, {close: source.close.bind(source)});
     });
     const result = await Promise.all(sources.map(source => source({info:'help'})));
     return result.reduce((datasources, help, i) => {
