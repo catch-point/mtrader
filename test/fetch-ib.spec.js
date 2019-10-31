@@ -66,6 +66,15 @@ describe("fetch-ib", function() {
                   }
                 }
             }, {
+                "name": "fundamental",
+                "options": {
+                  "interval": {
+                    "values": [
+                      "fundamental"
+                    ]
+                  }
+                }
+            }, {
                 "name": "interday",
                 "options": {
                   "interval": {
@@ -100,8 +109,6 @@ describe("fetch-ib", function() {
                 const string = JSON.stringify(datum);
                 return i == data.findIndex(d => JSON.stringify(d) == string);
              })).should.eventually.be.like([{
-                version
-            }, {
                 name: "TWS API"
             }]);
         });

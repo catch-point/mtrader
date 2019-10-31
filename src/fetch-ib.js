@@ -191,7 +191,7 @@ module.exports = function(settings = {}) {
                 const market = markets[options.market];
                 const secTypes = [].concat(market.secTypes || [], market.secType || []);
                 const opt = _.intersection(secTypes, ['OPT', 'FOP']).length;
-                return combineHistoricalLiveFeeds(markets, fetch({
+                return combineHistoricalLiveFeeds(fetch({
                     ...options,
                     end: next_open.format()
                 }), fetch_ib({
@@ -273,7 +273,7 @@ function marketOpensAt(options) {
 async function combineHistoricalLiveFeeds(historical_promise, live_promise, options) {
     const [historical_bars, live_intraday] = await Promise.all([historical_promise, live_promise]);
     const live_bars = live_intraday.map(bar => ({
-        ending: formatTime(moment(bar.time, 'X'), options),
+        ending: formatTime(bar.ending, options),
         open: bar.open,
         high: bar.high,
         low: bar.low,

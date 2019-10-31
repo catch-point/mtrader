@@ -32,6 +32,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const merge = require('./merge.js');
 const version = require('./version.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
@@ -104,28 +105,34 @@ function convertTime(market, tz) {
 /**
  * hash of intervals -> market -> source
  */
-function promiseDatasources(settings = {}) {
-    const blended = require('./fetch-blended.js');
+async function promiseDatasources(settings = {}) {
     const yahoo = require('./fetch-yahoo.js');
-    const iqfeed = require('./fetch-iqfeed.js');
-    const IB = require('./fetch-ib.js');
-    const files = require('./fetch-files.js');
-    const ivolatility = require('./fetch-ivolatility.js');
-    const remote = require('./fetch-remote.js');
-    const sources = _.compact([
-        (settings.files||{}).enabled && files(settings.files),
-        (settings.blended||{}).enabled && blended(settings.blended),
-        (settings.ib||{}).enabled && new IB(settings.ib),
-        (settings.ivolatility||{}).enabled && ivolatility(settings.ivolatility),
-        (settings.iqfeed||{}).enabled && iqfeed(settings.iqfeed),
-        (settings.yahoo||{}).enabled && yahoo(settings.yahoo),
-        (settings.remote||{}).enabled && remote(settings.remote)
-    ]);
-    if (_.isEmpty(sources)) {
-        sources.push(yahoo(settings.yahoo));
-    }
-    return Promise.all(sources.map(source => source({info:'help'})))
-      .then(result => result.reduce((datasources, help, i) => {
+    const all_factories = [
+        {name: 'files', fn: require('./fetch-files.js')},
+        {name: 'blended', fn: require('./fetch-blended.js')},
+        {name: 'ib', fn: require('./fetch-ib.js')},
+        {name: 'ivolatility', fn: require('./fetch-ivolatility.js')},
+        {name: 'iqfeed', fn: require('./fetch-iqfeed.js')},
+        {name: 'yahoo', fn: yahoo},
+        {name: 'remote', fn: require('./fetch-remote.js')}
+    ];
+    const disabled = all_factories.reduce((disabled, factory) => {
+        if (!settings[factory.name] || settings[factory.name].enabled) return disabled;
+        else return Object.assign(disabled, {[factory.name]: {enabled: false}});
+    }, {});
+    const enabled_factories = all_factories.filter(factory => (settings[factory.name]||{}).enabled);
+    const factories = enabled_factories.length ? enabled_factories : [{name:'yahoo', fn: yahoo}];
+    const sources = factories.map(factory => {
+        const name = factory.name;
+        const source = factory.fn(merge(settings[name], {[name]: {fetch: disabled}}, settings[name]));
+        return Object.assign(opts => {
+            logger.trace("Fetch", name, opts.info || opts.interval,
+                opts.symbol || '', opts.market || '', opts.begin || '');
+            return source(opts);
+        }, {close: source.close.bind(source)})
+    });
+    const result = await Promise.all(sources.map(source => source({info:'help'})));
+    return result.reduce((datasources, help, i) => {
         return _.flatten(help).reduce((datasources, info) => {
             const intervals = ['options', 'interval', 'values'].reduce(_.result, info) || [];
             const markets = ['options', 'market', 'values'].reduce(_.result, info) || [];
@@ -142,7 +149,7 @@ function promiseDatasources(settings = {}) {
                 return addSource(datasources, interval, markets, sources[i]);
             }, datasources);
         }, datasources);
-    }, {}));
+    }, {});
 }
 
 function addSource(datasources, interval, markets, source) {

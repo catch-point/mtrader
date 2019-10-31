@@ -199,8 +199,8 @@ describe("fetch", function() {
         }).should.eventually.be.like([
             {ending:'2014-01-31T16:00:00-05:00',open:555.7,close:500.60,adj_close:70.34},
             {ending:'2014-02-28T16:00:00-05:00',open:502.61-3,close:526.2,adj_close:74.39},
-            {ending:'2014-03-31T16:00:00-04:00',open:523.4,close:536.75,adj_close:75.87},
-            {ending:'2014-04-30T16:00:00-04:00',open:537.75,close:590.09,adj_close:83.41},
+            {ending:'2014-03-31T16:00:00-04:00',open:523.4,close:536.7,adj_close:75.87},
+            {ending:'2014-04-30T16:00:00-04:00',open:537.8,close:590.09,adj_close:83.41},
             {ending:'2014-05-30T16:00:00-04:00',open:592.00-3.29,close:633.00,adj_close:89.98},
             {ending:'2014-06-30T16:00:00-04:00',open:Math.round(633.96/7*100)/100,close:92.93,adj_close:92.47},
             {ending:'2014-07-31T16:00:00-04:00',open:93.52,close:95.60,adj_close:95.13},
