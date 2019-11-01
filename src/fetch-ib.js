@@ -164,39 +164,69 @@ module.exports = function(settings = {}) {
         } else if (options.interval=='fundamental') {
             if (isContractExpired(markets, client, options)) return fetch(options);
             else return fetch_ib(options);
-        } else if (isContractExpired(markets, client, options) || isHistorical(options)) {
-            return fetch(options).catch(err => {
-                return fetch_ib(options).catch(err2 => {
-                    logger.debug(err2);
-                    throw err;
-                });
-            });
-        } else if (isTimeFrameAvailable(markets, client, options)) {
-            return fetch_ib(options).catch(err => {
-                return fetch(options).catch(err2 => {
-                    logger.debug(err2);
-                    throw err;
-                });
-            });
         } else {
-            const next_open = marketOpensAt(options);
-            if (next_open && (next_open.isAfter(options.now) || options.end && next_open.isAfter(options.end))) {
+            const now = moment(options.now);
+            const next_open = marketOpensAt(now, options);
+            if (isContractExpired(markets, client, now, options) || isHistorical(next_open, now, options)) {
                 return fetch(options).catch(err => {
                     return fetch_ib(options).catch(err2 => {
                         logger.debug(err2);
                         throw err;
                     });
                 });
-            } else {
+            } else if (isTimeFrameAvailable(markets, client, now, options)) {
+                return fetch_ib(options).catch(err => {
+                    return fetch(options).catch(err2 => {
+                        logger.debug(err2);
+                        throw err;
+                    });
+                });
+            } else if (next_open.isBefore(now)) {
+                // market is open
                 const market = markets[options.market];
                 const secTypes = [].concat(market.secTypes || [], market.secType || []);
                 const opt = _.intersection(secTypes, ['OPT', 'FOP']).length;
-                return combineHistoricalLiveFeeds(fetch({
+                const historical_promise = fetch({
                     ...options,
                     end: next_open.format()
-                }), fetch_ib({
+                });
+                const live_promise = findContract(options).then(client.reqMktData).then(async(bar) => {
+                    if (bar && bar.bid && bar.ask) return [{
+                        ending: endOfDay(undefined, options),
+                        open: bar.open,
+                        high: bar.high,
+                        low: bar.low,
+                        close: +Big(bar.bid).add(bar.ask).div(2),
+                        volume: bar.volume,
+                        adj_close: Big(bar.bid).add(bar.ask).div(2)
+                    }];
+                    // else market is not active
+                    const historical = await historical_promise;
+                    const earlier = (_.last(historical)||{}).ending || options.begin;
+                    const yesterday = moment(next_open).subtract(next_open.diff(earlier, 'days'), 'days');
+                    if (yesterday.isAfter(now)) return [];
+                    else return fetch_ib({
+                        ...options,
+                        begin: yesterday.format(),
+                        interval: opt && options.interval.charAt(0) != 'm' ? 'm30' : options.interval
+                    });
+                }).catch(err => {
+                    logger.warn(`Could not fetch ${options.symbol} market IB data ${err.message}`);
+                    return [];
+                });
+                return combineHistoricalLiveFeeds(historical_promise, live_promise, options);
+            } else {
+                // market is closed
+                const market = markets[options.market];
+                const secTypes = [].concat(market.secTypes || [], market.secType || []);
+                const opt = _.intersection(secTypes, ['OPT', 'FOP']).length;
+                const historical = await fetch(options);
+                const earlier = (_.last(historical)||{}).ending || options.begin;
+                const yesterday = moment(next_open).subtract(next_open.diff(earlier, 'days'), 'days');
+                if (yesterday.isAfter(now)) return historical;
+                return combineHistoricalLiveFeeds(historical, fetch_ib({
                     ...options,
-                    begin: next_open.format(),
+                    begin: yesterday.format(),
                     interval: opt && options.interval.charAt(0) != 'm' ? 'm30' : options.interval
                 }).catch(err => {
                     logger.warn(`Could not fetch ${options.symbol} snapshot IB data ${err.message}`);
@@ -214,7 +244,7 @@ module.exports = function(settings = {}) {
 };
 
 const fmonth = {F:'01', G:'02', H:'03', J:'04', K:'05', M:'06', N:'07', Q:'08', U:'09', V:'10', X:'11', Z:'12'};
-function isContractExpired(markets, client, options) {
+function isContractExpired(markets, client, now, options) {
     expect(options).to.have.property('symbol');
     const market = markets[options.market] || {};
     const secType = market.secType;
@@ -223,25 +253,26 @@ function isContractExpired(markets, client, options) {
     if (secTypes.length && !_.intersection(secTypes, ['FUT', 'OPT', 'FOP']).length) return false;
     const opt = options.symbol.length == 21 &&
         options.symbol.match(/^(\w+)\s*([0-9]{6})([CP])([0-9]{5})([0-9]{3})$/);
-    if (opt) return moment(`20${opt[2]}`).isBefore(options.now);
+    if (opt) return moment(`20${opt[2]}`).isBefore(now);
     const fut = options.symbol.match(/^(.+)([FGHJKMNQUVXZ])(\d\d)$/);
-    if (fut) return moment(options.now).diff(`20${fut[3]}${fmonth[fut[2]]}22`, 'days') > 365*2;
+    if (fut) return now.diff(`20${fut[3]}${fmonth[fut[2]]}22`, 'days') > 365*2;
     const fop = options.symbol.match(/^(.+)([FGHJKMNQUVXZ])(\d\d) [CP](\d+)$/);
-    if (fop) return moment(`20${fop[3]}${fmonth[fop[2]]}22`).isBefore(options.now);
+    if (fop) return moment(`20${fop[3]}${fmonth[fop[2]]}22`).isBefore(now);
     if (secType || secTypes.length) logger.warn(`Unexpected contract symbol format ${options.symbol}`);
 }
 
-function isHistorical(options) {
+function isHistorical(next_open, now, options) {
     expect(options).to.have.property('begin');
-    return moment(options.now).diff(options.begin, 'days') > 365;
+    if (now.diff(options.begin, 'days') < 365) return false;
+    const end = moment(options.end || now);
+    return end.isBefore(next_open);
 }
 
-function isTimeFrameAvailable(markets, client, options) {
+function isTimeFrameAvailable(markets, client, now, options) {
     expect(options).to.have.property('begin');
     expect(options).to.have.property('interval');
     expect(options).to.have.property('market');
     const market = markets[options.market];
-    const now = moment(options.now);
     const begin = moment(options.begin);
     const m = options.interval.charAt(0) == 'm' && +options.interval.substring(1);
     if (m <= 1 && now.diff(begin, 'days') > 1) return false;
@@ -253,11 +284,10 @@ function isTimeFrameAvailable(markets, client, options) {
     return now.diff(begin, 'days') <= 365;
 }
 
-function marketOpensAt(options) {
+function marketOpensAt(now, options) {
     expect(options).to.have.property('tz');
     expect(options).to.have.property('premarketOpensAt');
     expect(options).to.have.property('afterHoursClosesAt');
-    const now = moment(options.now);
     const weekday = moment(now);
     const end = moment(options.end || now);
     if (weekday.days() === 0) weekday.add(1, 'days');
@@ -268,6 +298,7 @@ function marketOpensAt(options) {
     if (!opensAt.isBefore(closesAt)) opensAt.subtract(1, 'day');
     if (now.isAfter(closesAt)) opensAt.add(1, 'day');
     if (opensAt.isValid()) return opensAt;
+    else throw Error(`Invalid premarketOpensAt ${options.premarketOpensAt}`);
 }
 
 async function combineHistoricalLiveFeeds(historical_promise, live_promise, options) {
