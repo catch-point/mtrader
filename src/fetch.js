@@ -388,9 +388,8 @@ function interday(datasources, options) {
         market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });
-    const now = moment().tz(options.tz);
     const begin = options.begin ? moment.tz(options.begin, options.tz) :
-        moment(now).startOf('month').subtract(1, 'month');
+        moment().tz(options.tz).startOf('month').subtract(1, 'month');
     const opts = _.defaults({
         begin: begin.format()
     }, options);
@@ -411,15 +410,6 @@ function interday(datasources, options) {
     }), Promise.reject()).catch(err => {
         if (_.isArray(err)) return err;
         else throw err;
-    }).then(results => {
-        const aWeek = 5 * 24 * 60 * 60 * 1000;
-        const latest = _.last(results);
-        if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {
-            // latest line might yet be incomplete (or not yet finalized/adjusted)
-            latest.asof = now.format(options.ending_format);
-            latest.incomplete = true;
-        }
-        return results;
     });
 }
 
@@ -429,9 +419,8 @@ function intraday(datasources, options) {
         market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
         tz: _.isString
     });
-    const now = moment().tz(options.tz);
     const opts = options.begin ? options : _.defaults({
-        begin: moment(now).startOf('day').format()
+        begin: moment().tz(options.tz).startOf('day').format()
     }, options);
     return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
         return datasource(opts).then(result => {
@@ -442,16 +431,7 @@ function intraday(datasources, options) {
             logger.debug("Fetch intraday failed", err2);
             throw err;
         });
-    }), Promise.reject()).then(results => {
-        const aWeek = 5 * 24 * 60 * 60 * 1000;
-        const latest = _.last(results);
-        if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {
-            // first line might yet be incomplete (or not yet finalized/adjusted)
-            latest.asof = now.format(options.ending_format);
-            latest.incomplete = true;
-        }
-        return results;
-    });
+    }), Promise.reject());
 }
 
 function adjustment(base, bar) {

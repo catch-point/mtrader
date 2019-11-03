@@ -204,6 +204,7 @@ async function interday(yahoo, adjustments, symbol, options) {
         marketClosesAt: _.isString,
         tz: _.isString
     });
+    const now = moment().tz(options.tz);
     const [prices, adjusts] = await Promise.all([
         yahoo.day(symbol, options.begin, options.tz),
         adjustments(options)
@@ -223,8 +224,15 @@ async function interday(yahoo, adjustments, symbol, options) {
     if (moment(final).isAfter()) return result;
     let last = _.sortedIndex(result, {ending: final}, 'ending');
     if (result[last] && result[last].ending == final) last++;
-    if (last == result.length) return result;
-    else return result.slice(0, last);
+    const results = last == result.length ? result : result.slice(0, last);
+    const aWeek = 5 * 24 * 60 * 60 * 1000;
+    const latest = _.last(results);
+    if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {
+        // latest bar might yet be incomplete (or not yet finalized/adjusted)
+        latest.asof = now.format(options.ending_format);
+        latest.incomplete = true;
+    }
+    return results;
 }
 
 function adjustment(base, bar) {

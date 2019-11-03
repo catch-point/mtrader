@@ -776,7 +776,11 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin) {
         if (_.isEmpty(records)) return; // nothing newer
         return collection.readFrom(block).then(partial => {
             partial.pop(); // incomplete
-            if (!_.isMatch(_.last(partial), records.shift())) return 'incompatible';
+            const first = records.shift(); // overlap
+            if (!_.isMatch(_.last(partial), first)) {
+                logger.debug("Quote blocks incompatible", options.symbol, _.last(partial), first);
+                return 'incompatible';
+            }
             const warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
                 const exprs = _.object(warmUps, warmUps.map(expr => createParser(fields, {}, options).parse(expr)));

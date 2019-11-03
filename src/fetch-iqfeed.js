@@ -500,6 +500,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
 }
 
 async function interday(iqclient, adjustments, symbol, options) {
+    const now = moment().tz(options.tz);
     const [prices, adjusts] = await Promise.all([
         iqclient.day(symbol, options.begin, options.end, options.tz),
         adjustments && adjustments(options)
@@ -523,12 +524,22 @@ async function interday(iqclient, adjustments, symbol, options) {
         if (result[last] && result[last].ending == final) last++;
         if (last == result.length) return result;
         else return result.slice(0, last);
-    }).then(bars => includeIntraday(iqclient, adjustments, bars, symbol, options));
+    }).then(bars => includeIntraday(iqclient, adjustments, bars, symbol, options))
+      .then(results => {
+        const latest = _.last(results);
+        if (results.length && !latest.incomplete && now.diff(latest.ending, 'hours') < 1) {
+            // today's session might not be over yet or data might be delayed
+            latest.asof = now.format(options.ending_format);
+            latest.incomplete = true;
+        }
+        return results;
+    });
 }
 
 async function intraday(iqclient, adjustments, symbol, options) {
     const minutes = +options.interval.substring(1);
     expect(minutes).to.be.finite;
+    const now = moment().tz(options.tz);
     const [prices, adjusts] = await Promise.all([
         iqclient.minute(minutes, symbol, options.begin, options.end, options.tz),
         adjustments && adjustments(options)
@@ -550,8 +561,14 @@ async function intraday(iqclient, adjustments, symbol, options) {
     const final = end.format(options.ending_format);
     let last = _.sortedIndex(result, {ending: final}, 'ending');
     if (result[last] && result[last].ending == final) last++;
-    if (last == result.length) return result;
-    else return result.slice(0, last);
+    const results = last == result.length ? result : result.slice(0, last);
+    const latest = _.last(results);
+    if (results.length && now.diff(latest.ending, 'hours') < 1) {
+        // latest bar might yet be incomplete (or not yet finalized/adjusted)
+        latest.asof = now.format(options.ending_format);
+        latest.incomplete = true;
+    }
+    return results;
 }
 
 async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
