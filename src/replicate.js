@@ -151,6 +151,10 @@ function help(broker, collect) {
             dry_run: {
                 usage: 'true',
                 description: "If working orders should not be changed, only reported"
+            },
+            force: {
+                usage: 'true',
+                description: "If live positions, that have been changed more recently, should also be adjusted"
             }
         }
     })).then(help => [help]);
@@ -566,7 +570,7 @@ function updateActual(desired, actual, options) {
         const drw = (desired.realized.working||{})[ref];
         return orders.concat(orderReplacements(actual.working[ref], drw, realized_offset, options));
     }, transition_stoploss) : [];
-    if (!actual.adjustment && moment(desired.asof).isBefore(actual.asof)) {
+    if (!options.force && !actual.adjustment && moment(desired.asof).isBefore(actual.asof)) {
         // working position has since been closed (stoploss?) since the last desired signal was produced
         logger.warn(`Working ${desired.attach_ref} position has since been changed`, options.label || '');
         return cancelled;

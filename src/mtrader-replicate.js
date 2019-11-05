@@ -69,6 +69,7 @@ function usage(command) {
         .option('--filter <expression>', "Expression that must evaluate to non-zero to be included in result")
         .option('-o, --offline', "Disable data updates")
         .option('-n, --dry-run', "Disable order submission")
+        .option('-f, --force', "Change live position even if it was changed more recently then model")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
