@@ -715,7 +715,7 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks
             return fetchComplete(block, latest);
         if (i < blocks.length -1 || _.last(tail).ending <= stop || _.last(tail).asof <= stop) {
             if (isWeekend(_.last(tail), options)) return;
-            return fetchPartial(block, _.first(tail).ending).catch(error => {
+            return fetchPartial(block, _.first(tail).ending, latest).catch(error => {
                 if (stop) logger.debug("Need to fetch", _.last(tail).ending);
                 logger.debug("Fetch failed", error);
                 throw Error("Fetch failed try using the offline flag " + error.message);
@@ -760,6 +760,7 @@ function isBeforeStartOfWeek(asof, options) {
 async function fetchCompleteBlock(fetch, options, collection, store_ver, block, latest) {
     const records = await fetch(blockOptions(block, options));
     if (latest && _.isEmpty(records)) return records; // don't write incomplete empty blocks
+    if (latest) _.last(records).incomplete = true;
     await collection.replaceWith(records, block);
     await collection.propertyOf(block, 'version', store_ver);
     await collection.propertyOf(block, 'tz', options.tz);
@@ -769,7 +770,7 @@ async function fetchCompleteBlock(fetch, options, collection, store_ver, block, 
 /**
  * Attempts to add additional bars to a block
  */
-function fetchPartialBlock(fetch, fields, options, collection, block, begin) {
+function fetchPartialBlock(fetch, fields, options, collection, block, begin, latest) {
     return fetch(_.defaults({
         begin: begin
     }, blockOptions(block, options))).then(records => {
@@ -781,6 +782,7 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin) {
                 logger.debug("Quote blocks incompatible", options.symbol, _.last(partial), first);
                 return 'incompatible';
             }
+            if (latest && records.length) _.last(records).incomplete = true;
             const warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
                 const exprs = _.object(warmUps, warmUps.map(expr => createParser(fields, {}, options).parse(expr)));
