@@ -78,6 +78,7 @@ function help() {
 
 module.exports = function(yahooClient) {
     const helpInfo = help();
+    const salt = config('salt') || '';
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const stores = {};
     const markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
@@ -91,7 +92,7 @@ module.exports = function(yahooClient) {
         const store = stores[market] = stores[market] || storage(path.resolve(dir, market || ''));
         return store.open(options.symbol, async(err, db) => {
             if (err) throw err;
-            const data = await adjustments(yahoo, db, symbol(options), options);
+            const data = await adjustments(yahoo, db, salt, symbol(options), options);
             return filterAdj(data, options);
         });
     }, {
@@ -130,7 +131,7 @@ function yahoo_symbol(markets, options) {
     }
 }
 
-async function yahoo_adjustments(yahoo, db, symbol, options) {
+async function yahoo_adjustments(yahoo, db, salt, symbol, options) {
     expect(options).to.have.property('begin');
     expect(options).to.have.property('tz');
     const mbegin = moment.tz(options.begin, options.tz);
@@ -142,16 +143,17 @@ async function yahoo_adjustments(yahoo, db, symbol, options) {
             return col.readFrom(since);
         else if (options.offline)
             throw Error(`Could not read adjustments, try again without the offline flag ${err.message}`);
-        else if (fresh(col, since, options))
+        else if (fresh(col, salt, since, options))
             return col.readFrom(since);
         const asof = moment().tz(options.tz);
         return Promise.resolve().then(async() => {
             const splits = await yahoo.split(symbol, since, options.tz);
             const divs = await yahoo.dividend(symbol, since, options.tz);
             const data = _.sortBy(splits.concat(divs), 'Date');
-            return writeAdjPrice(yahoo, symbol, col, since, data, options);
+            return writeAdjPrice(yahoo, salt, symbol, col, since, data, options);
         }).then(data => {
             col.propertyOf(since, 'version', version.minor_version);
+            col.propertyOf(since, 'salt', salt);
             col.propertyOf(since, 'asof', asof);
             return data;
         }).catch(err => {
@@ -164,15 +166,15 @@ async function yahoo_adjustments(yahoo, db, symbol, options) {
     });
 }
 
-function fresh(collection, since, options) {
-    if (!compatible(collection, since)) return false;
+function fresh(collection, salt, since, options) {
+    if (!compatible(collection, salt, since)) return false;
     const mend = moment.tz(options.end || options.now, options.tz);
     const asof = moment.tz(collection.propertyOf(since, 'asof'), options.tz);
     return mend.diff(asof, 'hours') < 4;
 }
 
-async function writeAdjPrice(yahoo, symbol, col, since, data, options) {
-    if (compatible(col, since) && col.sizeOf(since) == data.length) return col.readFrom(since);
+async function writeAdjPrice(yahoo, salt, symbol, col, since, data, options) {
+    if (compatible(col, salt, since) && col.sizeOf(since) == data.length) return col.readFrom(since);
     const prices = await yahoo.day(symbol, since, options.tz);
     const mapped = data.map(datum => {
         const prior = prices[_.sortedIndex(prices, datum, 'Date')-1];
@@ -185,13 +187,14 @@ async function writeAdjPrice(yahoo, symbol, col, since, data, options) {
     return col.writeTo(mapped, since);
 }
 
-function compatible(collection, since) {
+function compatible(collection, salt, since) {
     if (!collection.exists(since)) return false;
+    if (salt != collection.propertyOf(since, 'salt')) return false;
     return collection.propertyOf(since, 'version') == version.minor_version;
 }
 
-async function adjustments(yahoo, db, symbol, options) {
-    const data = await yahoo_adjustments(yahoo, db, symbol, options);
+async function adjustments(yahoo, db, salt, symbol, options) {
+    const data = await yahoo_adjustments(yahoo, db, salt, symbol, options);
     let adj = Big(1), adj_dividend_only = Big(1), adj_split_only = Big(1);
     let adj_yahoo_divs = Big(1);
     return data.reduceRight((adjustments, datum) => {

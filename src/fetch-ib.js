@@ -430,7 +430,6 @@ async function interday(findContract, markets, adjustments, client, options) {
     if (results.length && now.diff(latest.ending, 'minutes') < 15) {
         // today's session might not be over yet or data might be delayed
         latest.asof = now.format(options.ending_format);
-        latest.incomplete = true;
     }
     return results;
 }
@@ -459,7 +458,6 @@ async function intraday(findContract, markets, adjustments, client, options) {
     if (results.length && now.diff(latest.ending, 'minutes') < 15) {
         // latest bar might yet be incomplete (or not yet finalized/adjusted)
         latest.asof = now.format(options.ending_format);
-        latest.incomplete = true;
     }
     return results;
 }

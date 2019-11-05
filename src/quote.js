@@ -50,7 +50,7 @@ const expect = require('chai').use(like).expect;
 /**
  * @returns a function that returns array of row objects based on given options
  */
-module.exports = function(fetch) {
+module.exports = function(fetch, settings = {}) {
     let promiseHelp;
     const lookup = Lookup(fetch);
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
@@ -65,7 +65,7 @@ module.exports = function(fetch) {
             const fields = _.first(help).properties;
             const opts = _.pick(options, _.keys(_.first(help).options));
             return lookup(opts).then(opts =>  {
-                return quote(fetch, store, fields, opts);
+                return quote(fetch, store, fields, {...opts, salt: settings.salt || config('salt') || ''});
             });
         });
     }, {
@@ -702,18 +702,17 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks
         const latest = i == blocks.length -1 && latest_blocks;
         if (!collection.exists(block))
             return fetchComplete(block, latest);
-        if (collection.propertyOf(block, 'version') != store_ver)
-            return fetchComplete(block, latest);
-        if (collection.propertyOf(block, 'tz') != options.tz)
-            return fetchComplete(block, latest);
-        if (collection.propertyOf(block, 'ending_format') != options.ending_format)
+        if (collection.propertyOf(block, 'ending_format') != options.ending_format ||
+                collection.propertyOf(block, 'version') != store_ver ||
+                collection.propertyOf(block, 'salt') != options.salt ||
+                collection.propertyOf(block, 'tz') != options.tz)
             return fetchComplete(block, latest);
         const tail = collection.tailOf(block);
         if (_.isEmpty(tail) || !_.last(tail).incomplete)
             return; // empty blocks are complete
         if (_.first(tail).incomplete)
             return fetchComplete(block, latest);
-        if (i < blocks.length -1 || _.last(tail).ending <= stop || _.last(tail).asof <= stop) {
+        if (i < blocks.length -1 || (_.last(tail).asof || _.last(tail).ending) <= stop) {
             if (isWeekend(_.last(tail), options)) return;
             return fetchPartial(block, _.first(tail).ending, latest).catch(error => {
                 if (stop) logger.debug("Need to fetch", _.last(tail).ending);
@@ -729,9 +728,9 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks
 }
 
 function isWeekend(bar, options) {
-    if (!(bar.asof >= bar.ending)) return false; // more upto date bar available
+    if (bar.asof && !(bar.asof >= bar.ending)) return false; // more upto date bar available
     if (!isEndOfWeek(bar.ending, options)) return false;
-    return isBeforeStartOfWeek(bar.asof, options);
+    return isBeforeStartOfWeek(bar.asof || bar.ending, options);
 }
 
 function isEndOfWeek(ending, options) {
@@ -764,6 +763,7 @@ async function fetchCompleteBlock(fetch, options, collection, store_ver, block, 
     await collection.replaceWith(records, block);
     await collection.propertyOf(block, 'version', store_ver);
     await collection.propertyOf(block, 'tz', options.tz);
+    await collection.propertyOf(block, 'salt', options.salt);
     await collection.propertyOf(block, 'ending_format', options.ending_format);
 }
 

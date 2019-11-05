@@ -349,6 +349,7 @@ EOF
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "lib_dir": "$LIB_DIR",
+  "salt": "$RANDOM",
   "remote": {
     "listen": "wss://$USERINFO@$HOST:$PORT",
     "key_pem": "etc/mtrader-privkey.pem",
@@ -397,6 +398,7 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ] && [[ "$PORT" != *8* ]]; then
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "lib_dir": "$LIB_DIR",
+  "salt": "$RANDOM",
   "remote": {
     "listen": "wss://$USERINFO@$HOST:$PORT",
     "key_pem": "etc/mtrader-privkey.pem",
@@ -429,6 +431,7 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ]; then
   "config_dir": "$CONFIG_DIR",
   "cache_dir": "$CACHE_DIR",
   "lib_dir": "$LIB_DIR",
+  "salt": "$RANDOM",
   "remote": {
     "listen": "ws://$USERINFO@$HOST:$PORT"
   }

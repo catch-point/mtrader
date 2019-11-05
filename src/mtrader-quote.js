@@ -88,7 +88,7 @@ if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length) {
         const fetch = new Fetch();
-        const quote = new Quote(fetch);
+        const quote = new Quote(fetch, config('quote'));
         process.on('SIGINT', () => quote.close().then(() => fetch.close()));
         process.on('SIGTERM', () => quote.close().then(() => fetch.close()));
         let symbol = program.args[0];
@@ -111,7 +111,7 @@ if (require.main === module) {
         });
         const quote = _.once(() => new Quote(function(options) {
             return parent.request('fetch', options);
-        }));
+        }, config('quote')));
         process.on('disconnect', () => quote().close());
         process.on('SIGINT', () => quote().close());
         process.on('SIGTERM', () => quote().close());
@@ -153,7 +153,7 @@ function createInstance(program) {
             queue = createQueue(createWorkers.bind(this, program, fetch));
         }
     };
-    const direct = new Quote(fetch);
+    const direct = new Quote(fetch, config('quote'));
     let queue = createQueue(createWorkers.bind(this, program, fetch));
     return instance;
 }

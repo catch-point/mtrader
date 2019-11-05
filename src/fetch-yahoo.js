@@ -230,7 +230,6 @@ async function interday(yahoo, adjustments, symbol, options) {
     if (results.length && moment(latest.ending).valueOf() > now.valueOf() - aWeek) {
         // latest bar might yet be incomplete (or not yet finalized/adjusted)
         latest.asof = now.format(options.ending_format);
-        latest.incomplete = true;
     }
     return results;
 }

@@ -530,7 +530,6 @@ async function interday(iqclient, adjustments, symbol, options) {
         if (results.length && !latest.incomplete && now.diff(latest.ending, 'hours') < 1) {
             // today's session might not be over yet or data might be delayed
             latest.asof = now.format(options.ending_format);
-            latest.incomplete = true;
         }
         return results;
     });
@@ -566,7 +565,6 @@ async function intraday(iqclient, adjustments, symbol, options) {
     if (results.length && now.diff(latest.ending, 'hours') < 1) {
         // latest bar might yet be incomplete (or not yet finalized/adjusted)
         latest.asof = now.format(options.ending_format);
-        latest.incomplete = true;
     }
     return results;
 }
@@ -623,8 +621,7 @@ async function mostRecentTrade(iqclient, adjustments, symbol, options) {
             low: today.low && today.low < bar.low ? today.low : bar.low,
             close: today.close,
             volume: today.total_volume || bar.total_volume,
-            asof: today.asof,
-            incomplete: true
+            asof: today.asof
         }));
     }
 }
@@ -646,8 +643,7 @@ async function rollday(iqclient, adjustments, interval, symbol, options) {
             low: today.low && today.low < bar.low ? today.low : bar.low,
             close: bar.close,
             volume: bar.total_volume,
-            asof: asof,
-            incomplete: true
+            asof: asof
         });
         return days;
     }, []);
@@ -675,8 +671,7 @@ async function summarize(iqclient, symbol, options) {
         low: +summary.low,
         close: close,
         volume: +summary.total_volume,
-        asof: asof,
-        incomplete: true
+        asof: asof
     }];
 }
 

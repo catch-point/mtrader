@@ -46,7 +46,7 @@ const logger = require('./logger.js');
 
 const private_settings = [
     'ibg_name', 'ibg_version', 'TradingMode', 'IbLoginId', 'IbPassword',
-    'auth_base64', 'auth_file', 'auth_nonce', 'auth_sha256'
+    'auth_base64', 'auth_file', 'auth_salt', 'auth_sha256'
 ];
 const client_settings = ['host', 'port', 'clientId'].concat(private_settings);
 const gateway_instances = {};
@@ -322,10 +322,10 @@ async function readAuthentication(settings) {
         auth_file ? (await readFile(auth_file, 'utf8')||'').trim() : '';
     const [username, password] = new Buffer.from(token, 'base64').toString().split(/:/, 2);
     if (auth_file && username) {
-        const string = `${username}:${settings.auth_nonce||''}:${password}`;
+        const string = `${username}:${settings.auth_salt||''}:${password}`;
         const hash = crypto.createHash('sha256').update(string).digest('hex');
         if (hash == settings.auth_sha256) return {username, password};
-        else throw Error("auth_sha256 of username:auth_nonce:password is required when using auth_file");
+        else throw Error("auth_sha256 of username:auth_salt:password is required when using auth_file");
     } else {
         return {username: settings.IbLoginId};
     }

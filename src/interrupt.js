@@ -46,10 +46,10 @@ process.on('SIGINT', () => {
 module.exports = function(returnValue) {
     const base = interrupted;
     if (arguments.length) return async() => {
-        await new Promise(cb => cb());
+        await new Promise(cb => setTimeout(cb, 1));
         if (base != interrupted) return returnValue;
     }; else return async() => {
-        await new Promise(cb => cb());
+        await new Promise(cb => setTimeout(cb, 1));
         if (base != interrupted) throw Error(signal);
     };
 }
