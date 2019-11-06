@@ -516,9 +516,14 @@ function openOrders(ib, store, ib_tz, clientId) {
                 placing_orders[info.id].fail(err);
                 delete placing_orders[info.id];
             }
-        } else if (info && info.id && cancelling_orders[info.id]) {
-            cancelling_orders[info.id].fail(err);
-            delete cancelling_orders[info.id];
+        } else if (info && info.id && (info.code == 202 || cancelling_orders[info.id])) {
+            if (info.code == 202 && cancelling_orders[info.id]) {
+                cancelling_orders[info.id].ready({...orders[info.id], status: 'ApiCancelled'});
+                delete cancelling_orders[info.id];
+            } else if (cancelling_orders[info.id]) {
+                cancelling_orders[info.id].fail(err);
+                delete cancelling_orders[info.id];
+            }
         } else if (info && info.id && info.code == 201) {
             // Order rejected
             const order = orders[info.id];
@@ -618,6 +623,7 @@ function openOrders(ib, store, ib_tz, clientId) {
         }));
         if (cancelling_orders[orderId]) {
             cancelling_orders[orderId].ready(orders[orderId]);
+            delete cancelling_orders[orderId];
         }
         if (flushed) flusher.flush();
         else flusher();
