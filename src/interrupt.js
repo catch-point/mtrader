@@ -30,10 +30,27 @@
  */
 'use strict';
 
-process.setMaxListeners(process.getMaxListeners()+1);
+/**
+ * If SIGINT or SIGTERM was triggered, betwen callings this function and calling
+ * its returned function, will return a promise of returnValue or reject an error.
+ * Every 100k calls to any of the returned functions will await to check if a
+ * SIGINT/SIGTERM was called.
+ */
+module.exports = function(returnValue) {
+    const base = interrupted;
+    if (arguments.length) return async() => {
+        await delay();
+        if (base != interrupted) return returnValue;
+    }; else return async() => {
+        await delay();
+        if (base != interrupted) throw Error(signal);
+    };
+}
 
 let signal;
 let interrupted = 0;
+
+process.setMaxListeners(process.getMaxListeners()+1);
 
 process.on('SIGINT', () => {
     signal = 'SIGINT';
@@ -43,14 +60,18 @@ process.on('SIGINT', () => {
     interrupted++;
 });
 
-module.exports = function(returnValue) {
-    const base = interrupted;
-    if (arguments.length) return async() => {
-        await new Promise(cb => setTimeout(cb, 1));
-        if (base != interrupted) return returnValue;
-    }; else return async() => {
-        await new Promise(cb => setTimeout(cb, 1));
-        if (base != interrupted) throw Error(signal);
+const delay = debounce(() => {
+    return new Promise(cb => setTimeout(cb, 1));
+}, 100000, Promise.resolve());
+
+function debounce(fn, ticks, initial) {
+    let clock = 0;
+    let result = initial;
+    let until = ticks + clock;
+    return function() {
+        const now = clock++;
+        if (now < until) return result;
+        until = ticks + now;
+        return result = fn.apply(this, arguments);
     };
 }
-
