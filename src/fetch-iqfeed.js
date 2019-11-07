@@ -666,9 +666,9 @@ async function summarize(iqclient, symbol, options) {
     if (!close || !ending.isValid() || ending.isAfter(now)) return [];
     else return [{
         ending: endOf('day', ending, options),
-        open: +summary.open,
-        high: +summary.high,
-        low: +summary.low,
+        open: +summary.open || close,
+        high: Math.max(summary.high, close),
+        low: +summary.low || close,
         close: close,
         volume: +summary.total_volume,
         asof: asof
