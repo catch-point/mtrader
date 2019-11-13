@@ -419,7 +419,13 @@ const functions = module.exports.functions = {
             if (!change.length) return 0;
             const avg = change.reduce((a, b) => a + b) / change.length;
             const stdev = statkit.std(change);
-            return -(statkit.norminv(pct) * stdev + avg);
+            const cumulative = statkit.norminv(pct);
+            const risk = cumulative * stdev + avg;
+            if (cumulative <= 0) {
+                return -risk;
+            } else {
+                return risk;
+            }
         }, {
             warmUpLength: n + calc.warmUpLength
         });
@@ -435,10 +441,17 @@ const functions = module.exports.functions = {
             if (!change.length) return 0;
             const avg = change.reduce((a, b) => a + b) / change.length;
             const stdev = statkit.std(change);
-            const risk = statkit.norminv(pct) * stdev + avg;
-            const shortfall = change.filter(chg => chg < risk);
-            if (!shortfall.length) return -risk;
-            else return -shortfall.reduce((a, b) => a + b) / shortfall.length;
+            const cumulative = statkit.norminv(pct);
+            const risk = cumulative * stdev + avg;
+            if (cumulative <= 0) {
+                const shortfall = change.filter(chg => chg < risk);
+                if (!shortfall.length) return -risk;
+                else return -shortfall.reduce((a, b) => a + b) / shortfall.length;
+            } else {
+                const overshot = change.filter(chg => chg > risk);
+                if (!overshot.length) return risk;
+                else return overshot.reduce((a, b) => a + b) / overshot.length;
+            }
         }, {
             warmUpLength: n + calc.warmUpLength
         });

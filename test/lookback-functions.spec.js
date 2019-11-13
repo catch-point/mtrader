@@ -991,6 +991,40 @@ describe("lookback-functions", function(){
             {Date:"2016-01-29",Close:193.72,Change:1.68,VaR:0.0167}
         ]);
     });
+    it("Upside Risk", function() {
+        return quote({
+            columns: {
+                Date: 'DATE(day.ending)',
+                Close: 'day.close',
+                Change: 'CHANGE(day.adj_close, OFFSET(5, day.adj_close))',
+                Upside: 'VAR(95, 260, day.adj_close)'
+            },
+            symbol: 'SPY',
+            market: 'ARCA',
+            begin: moment('2016-01-01'),
+            end: moment('2016-02-01')
+        }).should.eventually.be.like([
+            { Date: '2016-01-04', Close: 201.02, Change: -2.27, Upside: 0.0159 },
+            { Date: '2016-01-05', Close: 201.36, Change: -1.88, Upside: 0.0159 },
+            { Date: '2016-01-06', Close: 198.82, Change: -4.14, Upside: 0.0159 },
+            { Date: '2016-01-07', Close: 194.05, Change: -5.77, Upside: 0.0160 },
+            { Date: '2016-01-08', Close: 191.92, Change: -5.86, Upside: 0.0159 },
+            { Date: '2016-01-11', Close: 192.11, Change: -4.43, Upside: 0.0159 },
+            { Date: '2016-01-12', Close: 193.66, Change: -3.82, Upside: 0.0160 },
+            { Date: '2016-01-13', Close: 188.83, Change: -5.02, Upside: 0.0161 },
+            { Date: '2016-01-14', Close: 191.93, Change: -1.09, Upside: 0.0163 },
+            { Date: '2016-01-15', Close: 187.81, Change: -2.14, Upside: 0.0163 },
+            { Date: '2016-01-19', Close: 188.06, Change: -2.11, Upside: 0.0163 },
+            { Date: '2016-01-20', Close: 185.65, Change: -4.14, Upside: 0.0162 },
+            { Date: '2016-01-21', Close: 186.69, Change: -1.13, Upside: 0.0161 },
+            { Date: '2016-01-22', Close: 190.52, Change: -0.73, Upside: 0.0163 },
+            { Date: '2016-01-25', Close: 187.64, Change: -0.09, Upside: 0.0163 },
+            { Date: '2016-01-26', Close: 190.20, Change:  1.14, Upside: 0.0164 },
+            { Date: '2016-01-27', Close: 188.13, Change:  1.34, Upside: 0.0164 },
+            { Date: '2016-01-28', Close: 189.11, Change:  1.30, Upside: 0.0165 },
+            { Date: '2016-01-29', Close: 193.72, Change:  1.68, Upside: 0.0167 }
+        ]);
+    });
     it("CVAR", function() {
         return quote({
             columns: {
@@ -1023,6 +1057,40 @@ describe("lookback-functions", function(){
             {Date:"2016-01-27",Close:188.13,Change:1.34,Shortfall:0.0244},
             {Date:"2016-01-28",Close:189.11,Change:1.30,Shortfall:0.0244},
             {Date:"2016-01-29",Close:193.72,Change:1.68,Shortfall:0.0244}
+        ]);
+    });
+    it("Expected Upside Risk", function() {
+        return quote({
+            columns: {
+                Date: 'DATE(day.ending)',
+                Close: 'day.close',
+                Change: 'CHANGE(day.adj_close, OFFSET(5, day.adj_close))',
+                Upside: 'CVAR(95, 260, day.adj_close)'
+            },
+            symbol: 'SPY',
+            market: 'ARCA',
+            begin: moment('2016-01-01'),
+            end: moment('2016-02-01')
+        }).should.eventually.be.like([
+            { Date: '2016-01-04', Close: 201.02, Change: -2.27, Upside: 0.0220 },
+            { Date: '2016-01-05', Close: 201.36, Change: -1.88, Upside: 0.0214 },
+            { Date: '2016-01-06', Close: 198.82, Change: -4.14, Upside: 0.0214 },
+            { Date: '2016-01-07', Close: 194.05, Change: -5.77, Upside: 0.0220 },
+            { Date: '2016-01-08', Close: 191.92, Change: -5.86, Upside: 0.0220 },
+            { Date: '2016-01-11', Close: 192.11, Change: -4.43, Upside: 0.0220 },
+            { Date: '2016-01-12', Close: 193.66, Change: -3.82, Upside: 0.0220 },
+            { Date: '2016-01-13', Close: 188.83, Change: -5.02, Upside: 0.0220 },
+            { Date: '2016-01-14', Close: 191.93, Change: -1.09, Upside: 0.0214 },
+            { Date: '2016-01-15', Close: 187.81, Change: -2.14, Upside: 0.0214 },
+            { Date: '2016-01-19', Close: 188.06, Change: -2.11, Upside: 0.0214 },
+            { Date: '2016-01-20', Close: 185.65, Change: -4.14, Upside: 0.0214 },
+            { Date: '2016-01-21', Close: 186.69, Change: -1.13, Upside: 0.0218 },
+            { Date: '2016-01-22', Close: 190.52, Change: -0.73, Upside: 0.0217 },
+            { Date: '2016-01-25', Close: 187.64, Change: -0.09, Upside: 0.0217 },
+            { Date: '2016-01-26', Close: 190.20, Change:  1.14, Upside: 0.0223 },
+            { Date: '2016-01-27', Close: 188.13, Change:  1.34, Upside: 0.0223 },
+            { Date: '2016-01-28', Close: 189.11, Change:  1.30, Upside: 0.0223 },
+            { Date: '2016-01-29', Close: 193.72, Change:  1.68, Upside: 0.0225 }
         ]);
     });
     it("quote TOD SMA", function() {
