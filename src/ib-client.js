@@ -216,7 +216,7 @@ function reqPositions(ib) {
     let positions_end, positions_fail;
     let promise_positions = Promise.resolve();
     ib.on('error', function (err, info) {
-        if (!isNormal(info)) {
+        if (isGeneralError(info)) {
             if (positions_fail) positions_fail(err);
         }
     }).on('disconnected', () => {
@@ -247,7 +247,7 @@ function reqPositions(ib) {
 function currentTime(ib) {
     let received, fail, promise = Promise.resolve();
     ib.on('error', function (err, info) {
-        if (!isNormal(info)) {
+        if (isGeneralError(info)) {
             if (fail) fail(err);
         }
     }).on('disconnected', () => {
@@ -270,7 +270,7 @@ function currentTime(ib) {
 function requestFA(ib) {
     let received, fail, promise = Promise.resolve();
     ib.on('error', function (err, info) {
-        if (!isNormal(info)) {
+        if (isGeneralError(info)) {
             // Error validating request: FA data operations ignored for non FA customers.
             if (info && info.code == 321 && received) received([]);
             else if (fail) fail(err);
@@ -351,7 +351,7 @@ function accountUpdates(ib, store, ib_tz) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].fail(err);
-        } else if (info && info.id < 0 && !isNormal(info)) {
+        } else if (isGeneralError(info)) {
             Object.keys(req_queue).forEach(id => req_queue[id].fail(err));
         }
     }).on('disconnected', () => {
@@ -552,7 +552,7 @@ function openOrders(ib, store, ib_tz, clientId) {
             orders[info.id].status = 'Duplicate';
         } else if (info && info.code >= 2000 && info.code < 3000) {
             // warning
-        } else if (!isNormal(info)) {
+        } else if (isGeneralError(info)) {
             Object.entries(placing_orders).forEach(([orderId, req]) => {
                 req.fail(err);
                 delete placing_orders[orderId];
@@ -822,7 +822,7 @@ function execDetails(ib, store, ib_tz) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].reject(err);
-        } else if (!isNormal(info) && info && info.id < 0) {
+        } else if (isGeneralError(info)) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
     }).on('disconnected', () => {
@@ -956,7 +956,7 @@ function reqContract(ib) {
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             req_queue[info.id].reject(err);
-        } else if (!isNormal(info) && info && info.id < 0) {
+        } else if (isGeneralError(info)) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
     }).on('disconnected', () => {
@@ -988,11 +988,15 @@ function reqContract(ib) {
     return {reqContract: reqCachedContract};
 }
 
-function isNormal(info) {
+function isGeneralError(info) {
     if (!info) return false;
     else if (info.id && info.id > 0) return false;
-    const code = (info||{}).code;
-    return code == 1101 || ~[2104, 2106, 2107, 2108].indexOf(code) ||  code >= 2000 && code < 3000;
+    else if (!info.code) return true;
+    const code = info.code;
+    if (code == 1101) return false; // Connectivity restored
+    else if (code == 202) return false; // Order Canceled
+    else if (code >= 2000 && code < 3000) return false; // Warnings
+    else return true;
 }
 
 function requestWithId(ib) {
@@ -1041,7 +1045,7 @@ function requestWithId(ib) {
                 const fn = info.code == 10197 && req.retry || req.reject || _.noop;
                 return fn(err);
             }, info.code == 10197 ? 10000 : 0);
-        } else if (info && info.id < 0 && !isNormal(info)) {
+        } else if (isGeneralError(info)) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
     }).on('disconnected', () => {
