@@ -444,7 +444,8 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const order_id = posted_order.orderId;
     const order_ref = orderRef(root_ref, order_id, options);
     const parent_order = await ibToOrder(markets, ib, settings, posted_order, options);
-    return (options.attached||[]).reduce(async(promise, attach, i, attached) => {
+    const attached = flattenOCA(options.attached);
+    return attached.reduce(async(promise, attach, i, attached) => {
         const child_orders = attach.order_type == 'LEG' ? [{
             ..._.omit(parent_order, 'limit', 'stop', 'offset', 'traded_price', 'order_ref'),
             ..._.pick(attach, 'symbol', 'market', 'currency', 'multiplier', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset'),
@@ -455,6 +456,14 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
         }, attach, order_id);
         return (await promise).concat(child_orders.map(ord => ({...ord, attach_ref: order_ref})));
     }, [parent_order]);
+}
+
+function flattenOCA(orders) {
+    if (!orders) return [];
+    else return orders.reduce((list, order) => {
+        if (order.order_type != 'OCA') return list.concat(order);
+        else return list.concat(flattenOCA(order.attached));
+    }, []);
 }
 
 function orderRef(root_ref, order_id, options) {
