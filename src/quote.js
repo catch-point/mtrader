@@ -716,7 +716,7 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks
             if (isWeekend(_.last(tail), options)) return;
             return fetchPartial(block, _.first(tail).ending, latest).catch(error => {
                 if (stop) logger.debug("Need to fetch", _.last(tail).ending);
-                logger.debug("Fetch failed", error);
+                logger.trace("Fetch failed", error);
                 throw Error("Fetch failed try using the offline flag " + error.message);
             });
         }

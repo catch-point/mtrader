@@ -550,6 +550,9 @@ function openOrders(ib, store, ib_tz, clientId) {
             // An order was placed with an order ID that is less than or
             // equal to the order ID of a previous order from this client
             orders[info.id].status = 'Duplicate';
+        } else if (info && info.id && info.code == 104 && orders[info.id]) {
+            // An attempt was made to modify an order which has already been filled by the system.
+            orders[info.id].status = 'Filled';
         } else if (info && info.code >= 2000 && info.code < 3000) {
             // warning
         } else if (isGeneralError(info)) {
