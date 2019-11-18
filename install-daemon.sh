@@ -488,6 +488,7 @@ if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY
         ReadOnlyLogin: 'no',
         ReadOnlyApi: '',
         AcceptNonBrokerageAccountWarning: 'yes',
+        IbAutoClosedown: 'yes',
         AllowBlindTrading: 'no',
         DismissPasswordExpiryWarning: 'no',
         DismissNSEComplianceNotice: 'yes',
