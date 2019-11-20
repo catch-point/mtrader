@@ -461,7 +461,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
 function flattenOCA(orders) {
     if (!orders) return [];
     else return orders.reduce((list, order) => {
-        if (order.order_type != 'OCA') return list.concat(order);
+        if (order.action != 'OCA') return list.concat(order);
         else return list.concat(flattenOCA(order.attached));
     }, []);
 }

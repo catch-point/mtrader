@@ -622,6 +622,157 @@ describe("broker-ib", function() {
             multiplier: undefined } ]);
         await broker.close();
     });
+    it("should submit nested OCA order", async() => {
+        const broker = new Broker(settings, {
+            open: () => Promise.resolve({}),
+            reqRecentOrders: () => Promise.resolve([]),
+            reqOpenOrders: () => Promise.resolve([]),
+            reqId: (...args) => {
+                return Promise.resolve({
+                    orderId: 1,
+                    status: 'ApiPending',
+                    action: 'BUY',
+                    totalQuantity: 284,
+                    orderRef: 'MOC.KL.mktsxorders',
+                    orderType: 'MOC',
+                    tif: 'GTC',
+                    outsideRth: false,
+                    account: 'U1878120',
+                    secType: 'STK',
+                    localSymbol: 'KL',
+                    currency: 'CAD'
+                });
+            },
+            reqManagedAccts: () => Promise.resolve(['test']),
+            placeOrder: (...args) => {
+                expect(args).to.be.like([1,
+                {
+                    localSymbol: 'KL',
+                    secType: 'STK',
+                    primaryExch: 'TSE',
+                    exchange: 'SMART',
+                    currency: 'CAD'
+                },
+                {
+                    action: 'BUY',
+                    totalQuantity: 284,
+                    orderType: 'MOC',
+                    lmtPrice: undefined,
+                    auxPrice: undefined,
+                    tif: 'GTC',
+                    outsideRth: false,
+                    orderRef: 'MOC.KL.mktsxorders',
+                    transmit: false,
+                    account: 'U1878120',
+                    orderId: 1,
+                    parentId: null,
+                    ocaGroup: null,
+                    ocaType: 0,
+                    smartComboRoutingParams: []
+                }]);
+                return Promise.resolve({
+                    orderId: 1,
+                    status: 'ApiPending',
+                    action: 'BUY',
+                    totalQuantity: 284,
+                    orderRef: 'MOC.KL.mktsxorders',
+                    orderType: 'MOC',
+                    tif: 'GTC',
+                    outsideRth: false,
+                    account: 'U1878120',
+                    secType: 'STK',
+                    localSymbol: 'KL',
+                    currency: 'CAD'
+                });
+            },
+            close: () => Promise.resolve()
+        });
+        var orders = await broker({
+            action: 'BUY',
+            quant: 284,
+            tif: 'GTC',
+            order_type: 'MOC',
+            order_ref: 'MOC.KL.mktsxorders',
+            symbol: 'KL',
+            market: 'TSE',
+            currency: 'CAD',
+            security_type: 'STK',
+            traded_at: '2019-11-19T16:00:00-05:00',
+            attached: [
+              {
+                action: "OCA",
+                attached: [
+                  {
+                    action: "BUY",
+                    quant: "483",
+                    limit: 61.65,
+                    tif: "GTC",
+                    order_type: "MOC",
+                    order_ref: "bto_KL.mktsxorders",
+                    symbol: "KL",
+                    market: "TSE",
+                    currency: "CAD",
+                    security_type: "STK"
+                  },
+                  {
+                    action: "SELL",
+                    quant: "284",
+                    limit: 67.61,
+                    tif: "GTC",
+                    order_type: "MOC",
+                    order_ref: "stc_KL.mktsxorders",
+                    symbol: "KL",
+                    market: "TSE",
+                    currency: "CAD",
+                    security_type: "STK"
+                  }
+                ],
+                symbol: "KL",
+                market: "TSE",
+                currency: "CAD",
+                security_type: "STK"
+              }
+            ]
+        }).should.eventually.be.like([
+            {
+              action: "BUY",
+              currency: "CAD",
+              market: "TSE",
+              order_ref: "MOC.KL.mktsxorders",
+              order_type: "MOC",
+              quant: 284,
+              security_type: "STK",
+              status: "pending",
+              symbol: "KL",
+              tif: "GTC"
+            },
+            {
+              action: "BUY",
+              attach_ref: "MOC.KL.mktsxorders",
+              currency: "CAD",
+              market: "TSE",
+              order_type: "MOC",
+              quant: 284,
+              security_type: "STK",
+              status: "pending",
+              symbol: "KL",
+              tif: "GTC"
+            },
+            {
+              action: "BUY",
+              attach_ref: "MOC.KL.mktsxorders",
+              currency: "CAD",
+              market: "TSE",
+              order_type: "MOC",
+              quant: 284,
+              security_type: "STK",
+              status: "pending",
+              symbol: "KL",
+              tif: "GTC"
+            }
+        ]);
+        await broker.close();
+    });
     it("should submit SELL combo order", async() => {
         const broker = new Broker(settings, {
           async open() { return this; },
