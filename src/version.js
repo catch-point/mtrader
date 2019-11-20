@@ -58,9 +58,9 @@ module.exports = _.omit({
     minor: pkg.version.replace(/^\d+\.(\d+).*$/,'$1'),
     patch: pkg.version.replace(/^\d+\.\d+\.(\d+).*$/,'$1'),
     pre_release: pkg.version.replace(/^\d+\.\d+\.\d+/,'').replace(/\+.*$/,''),
-    build: gitHead || pkg.version.replace(/^.*\+?/,''),
+    build: gitHead || pkg.version.replace(/^[^\+]*\+?/,''),
     toString() {
-        if (gitHead) return pkg.version + '+' + gitHead;
+        if (gitHead) return pkg.version + '+' + gitHead.substring(0, 7);
         else return pkg.version;
     }
 }, value => value == null);
