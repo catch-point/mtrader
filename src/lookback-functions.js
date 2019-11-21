@@ -417,7 +417,7 @@ const functions = module.exports.functions = {
                 return (price - prices[i]) / prices[i];
             });
             if (!change.length) return 0;
-            const avg = change.reduce((a, b) => a + b) / change.length;
+            const avg = sum(change) / change.length;
             const stdev = statkit.std(change);
             const cumulative = statkit.norminv(pct);
             const risk = cumulative * stdev + avg;
@@ -439,18 +439,18 @@ const functions = module.exports.functions = {
                 return (price - prices[i]) / prices[i];
             });
             if (!change.length) return 0;
-            const avg = change.reduce((a, b) => a + b) / change.length;
+            const avg = sum(change) / change.length;
             const stdev = statkit.std(change);
             const cumulative = statkit.norminv(pct);
             const risk = cumulative * stdev + avg;
             if (cumulative <= 0) {
                 const shortfall = change.filter(chg => chg < risk);
                 if (!shortfall.length) return -risk;
-                else return -shortfall.reduce((a, b) => a + b) / shortfall.length;
+                else return -sum(shortfall) / shortfall.length;
             } else {
                 const overshot = change.filter(chg => chg > risk);
                 if (!overshot.length) return risk;
-                else return overshot.reduce((a, b) => a + b) / overshot.length;
+                else return sum(overshot) / overshot.length;
             }
         }, {
             warmUpLength: n + calc.warmUpLength
@@ -496,13 +496,13 @@ function getValues(size, calc, bars) {
     const values = new Array(m);
     const start = bars.length - m;
     for (let i=start; i<bars.length; i++) {
-        values[i - start] = calc(bars.slice(Math.max(i - n + 1, 0), i + 1));
+        values[i - start] = +calc(bars.slice(Math.max(i - n + 1, 0), i + 1));
     }
     return values;
 }
 
 function sum(values) {
     return _.reduce(values, function(memo, value){
-        return memo + (value || 0);
+        return memo + (+value || 0);
     }, 0);
 }
