@@ -268,9 +268,14 @@ function currentTime(ib) {
 }
 
 function requestFA(ib) {
+    let fa_disabled;
     let received, fail, promise = Promise.resolve();
     ib.on('error', function (err, info) {
-        if (isGeneralError(info)) {
+        if (info && info.code == 321) {
+            // Server error when validating an API client request.
+            fa_disabled = err;
+            if (fail) fail(err);
+        } else if (isGeneralError(info)) {
             // Error validating request: FA data operations ignored for non FA customers.
             if (info && info.code == 321 && received) received([]);
             else if (fail) fail(err);
@@ -288,6 +293,7 @@ function requestFA(ib) {
     });
     return {
         requestGroups() {
+            if (fa_disabled) throw fa_disabled;
             return promise = promise.catch(err => {})
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
@@ -296,6 +302,7 @@ function requestFA(ib) {
             })).catch(err => logger.warn('requestFA', err.message) || Promise.reject(err));
         },
         requestProfiles() {
+            if (fa_disabled) throw fa_disabled;
             return promise = promise.catch(err => {})
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
@@ -304,6 +311,7 @@ function requestFA(ib) {
             })).catch(err => logger.warn('requestFA', err.message) || Promise.reject(err));
         },
         requestAliases() {
+            if (fa_disabled) throw fa_disabled;
             return promise = promise.catch(err => {})
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;

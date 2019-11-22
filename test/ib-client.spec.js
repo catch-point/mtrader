@@ -390,13 +390,13 @@ describe("ib-client", function() {
         }, 'ReportsFinSummary').should.eventually.have.property('FinancialSummary');
         //.then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
     });
-    it("should requestFA Groups", function() {
+    it.skip("should requestFA Groups", function() {
         return client.requestGroups().should.eventually.be.an('array');
     });
-    it("should requestFA Profiles", function() {
+    it.skip("should requestFA Profiles", function() {
         return client.requestProfiles().should.eventually.be.an('array');
     });
-    it("should requestFA Aliases", function() {
+    it.skip("should requestFA Aliases", function() {
         return client.requestAliases().should.eventually.be.an('array');
     });
     it.skip("should reqOpenOrders", function() {
