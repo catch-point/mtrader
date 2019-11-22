@@ -106,7 +106,7 @@ describe("strategize", function() {
             }
         }).should.eventually.be.like({
             variables: {
-                strategy: '-sma_crossA'
+                strategy: /sma_crossA/
             },
             parameters: {
                 fast_lenA: 25,

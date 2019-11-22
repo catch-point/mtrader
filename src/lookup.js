@@ -63,22 +63,24 @@ module.exports = function(fetch) {
  */
 function fetchOptionsFactory(fetch, offline, read_only) {
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const markets = config('markets');
     const memoizeFirstLookup = _.memoize((symbol, market) => {
         return readInfo(dir, symbol, market, offline).catch(async(err) => {
-            if (offline) throw err;
-            const matches = await fetch({
+            if (offline) return guessSecurityOptions(markets, symbol, market, err);
+            else return fetch({
                 interval: 'lookup',
                 symbol: symbol,
-                market: market,
-                tz
+                market: market
+            }).then(matches => _.first(matches))
+              .then(security => {
+                if (!security) throw Error("Unknown symbol: " + (market ? symbol + '.' + market : market));
+                else if (security.symbol == symbol && read_only) return security;
+                else if (security.symbol == symbol) return saveInfo(dir, symbol, market, security);
+                else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
+            }).catch(e => {
+                memoizeFirstLookup.cache = {};
+                return guessSecurityOptions(markets, symbol, market, e);
             });
-            const security = _.first(matches);
-            if (_.isEmpty(security))
-                throw Error("Unknown symbol: " + (market ? symbol + '.' + market:market));
-            else if (security.symbol != symbol)
-                throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
-            else if (read_only) return security;
-            else return saveInfo(dir, symbol, market, security);
         });
     }, (symbol, market) => {
         return market ? symbol + ' ' + market : symbol;
@@ -87,40 +89,34 @@ function fetchOptionsFactory(fetch, offline, read_only) {
         expect(options).to.have.property('symbol');
         const symbol = options.symbol.toUpperCase();
         const market = options.market;
-        const markets = config('markets');
         return memoizeFirstLookup(symbol, market).then(security => {
             return _.defaults({},
                 security,
                 options,
-                markets[security.market] && convertTime(markets[security.market]),
-                markets[security.market] && {
-                    currency: markets[security.market].currency,
-                    security_type: markets[security.market].default_security_type
-                }
-            );
-        }, err => {
-            memoizeFirstLookup.cache = {};
-            if (!market) throw err;
-            logger.debug("Fetch lookup failed on ", symbol + '.' + market, err);
-            return _.defaults({},
-                options,
-                markets[market] && convertTime(markets[market]),
-                markets[market] && {
-                    currency: markets[market].currency,
-                    security_type: markets[market].default_security_type
-                }
+                convertTime(security, options.tz || tz)
             );
         });
     };
 }
 
-function convertTime(market) {
-    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.market_tz).tz(tz).format('HH:mm:ss');
+function guessSecurityOptions(markets, symbol, market, e) {
+    if (!market || !markets[market]) throw e; // missing or unknown market
+    logger.debug("Fetch lookup failed on ", symbol + '.' + market, e);
     return {
-        afterHoursClosesAt: mtz2tz(market.trading_hours.substring(market.trading_hours.length - 8)),
-        marketClosesAt: mtz2tz(market.liquid_hours.substring(market.liquid_hours.length - 8)),
-        marketOpensAt: mtz2tz(market.open_time || market.liquid_hours.substring(0, 8)),
-        premarketOpensAt: mtz2tz(market.trading_hours.substring(0, 8)),
+        symbol, market, name: symbol,
+        currency: markets[market].currency,
+        security_type: markets[market].default_security_type,
+        ..._.pick(markets[market], 'security_tz', 'liquid_hours', 'open_time', 'trading_hours')
+    };
+}
+
+function convertTime(security, tz) {
+    const mtz2tz = time => moment.tz('2010-03-01T' + time, security.security_tz).tz(tz).format('HH:mm:ss');
+    return {
+        afterHoursClosesAt: mtz2tz(security.trading_hours.substring(security.trading_hours.length - 8)),
+        marketClosesAt: mtz2tz(security.liquid_hours.substring(security.liquid_hours.length - 8)),
+        marketOpensAt: mtz2tz(security.open_time || security.liquid_hours.substring(0, 8)),
+        premarketOpensAt: mtz2tz(security.trading_hours.substring(0, 8)),
         tz
     };
 }
@@ -129,7 +125,7 @@ async function readInfo(dir, symbol, market, offline) {
     const yesterday = offline ? 0 : Date.now() - 24 *60 * 60 *1000;
     const file = getInfoFileName(dir, symbol, market);
     const stats = await util.promisify(fs.stat)(file);
-    if (stats.mtime.valueOf() <= yesterday)
+    if (!offline && stats.mtime.valueOf() <= yesterday)
         throw Object.assign(Error("too old"), {file: file, mtime: stats.mtime});
     const data = await util.promisify(fs.readFile)(file, 'utf-8');
     return JSON.parse(data);

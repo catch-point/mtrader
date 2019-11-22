@@ -67,7 +67,7 @@ module.exports = function(settings = {}) {
                 options
             );
             const interval = options.interval;
-            if (interval == 'lookup') return lookup(datasources.lookup, opt);
+            if (interval == 'lookup') return lookup(markets, datasources.lookup, opt);
             if (interval == 'fundamental') return fundamental(datasources.fundamental, opt);
             expect(options).to.have.property('tz').that.is.a('string');
             if (options.end) expect(options).to.have.property('begin');
@@ -93,7 +93,7 @@ module.exports = function(settings = {}) {
 };
 
 function convertTime(market, tz) {
-    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.market_tz).tz(tz).format('HH:mm:ss');
+    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.security_tz).tz(tz).format('HH:mm:ss');
     return {
         afterHoursClosesAt: mtz2tz(market.trading_hours.substring(market.trading_hours.length - 8)),
         marketClosesAt: mtz2tz(market.liquid_hours.substring(market.liquid_hours.length - 8)),
@@ -108,8 +108,8 @@ function convertTime(market, tz) {
 async function promiseDatasources(settings = {}) {
     const yahoo = require('./fetch-yahoo.js');
     const all_factories = [
-        {name: 'files', fn: require('./fetch-files.js')},
         {name: 'blended', fn: require('./fetch-blended.js')},
+        {name: 'files', fn: require('./fetch-files.js')},
         {name: 'ib', fn: require('./fetch-ib.js')},
         {name: 'ivolatility', fn: require('./fetch-ivolatility.js')},
         {name: 'iqfeed', fn: require('./fetch-iqfeed.js')},
@@ -168,16 +168,21 @@ function close(datasources) {
 }
 
 function help(datasources) {
-    const marketOptions = _.uniq(_.flatten(_.map(config('markets'), _.keys), true));
+    const markets = config('markets');
+    const marketOptions = [
+        'currency', 'security_type', 'security_tz',
+        'liquid_hours', 'open_time', 'trading_hours'
+    ];
     return Promise.all(_.map(datasources, datasource => {
         return datasource({info:'help'});
     })).then(helps => {
         const groups = _.values(_.groupBy(_.flatten(helps), 'name'));
         return groups.map(helps => helps.reduce((help, h) => {
-            const lookupProperties = h.name == 'lookup' ? marketOptions : [];
             const options = _.extend({
                 interval: {values: h.name == 'lookup' || h.name == 'fundamental' ? [h.name] : []}
             }, _.omit(h.options, marketOptions), help.options);
+            const known_markets = _.union((options.market||{}).values||[], _.keys(markets));
+            const lookupProperties = h.name == 'lookup' && known_markets.length ? marketOptions : [];
             return {
                 name: help.name || h.name,
                 usage: help.usage,
@@ -207,7 +212,7 @@ function help(datasources) {
     });
 }
 
-function lookup(datasources, options) {
+function lookup(markets, datasources, options) {
     expect(options).to.be.like({
         symbol: /^\S(\S| )*$/
     });
@@ -245,18 +250,29 @@ function lookup(datasources, options) {
     }).then(rows => _.map(
         _.groupBy(rows, row => row.symbol + ':' + row.market),
         group => _.defaults.apply(_, group)
-    )).then(rows => {
-        const keys = rows.reduce((keys, row) => _.union(keys, _.keys(row)), []);
-        const nil = _.object(keys, keys.map(key => null));
-        return rows.map(row => _.defaults(row, nil));
-    }).then(rows => _.sortBy(rows, row => {
+    )).then(rows => _.sortBy(rows, row => {
         let score = 0;
         if (row.symbol != symbol) score++;
         if (!row.symbol.match(almost)) score+= 2;
         if (market && row.market != market) score+= 3;
         if (row.symbol.indexOf(symbol) !== 0) score+= 3;
         return score + row.symbol;
-    }));
+    })).then(rows => rows.length > 12 ? rows.slice(0, 12) : rows)
+      .then(rows => rows.map(row => {
+        const market = row.market;
+        return _.defaults({},
+            row,
+            markets[market] && {
+                currency: markets[market].currency,
+                security_type: markets[market].default_security_type,
+                ..._.pick(markets[market], 'security_tz', 'liquid_hours', 'trading_hours', 'open_time')
+            }
+        );
+    })).then(rows => {
+        const keys = rows.reduce((keys, row) => _.union(keys, _.keys(row)), []);
+        const nil = _.object(keys, keys.map(key => null));
+        return rows.map(row => _.defaults(row, nil));
+    });
 }
 
 function fundamental(datasources, options) {

@@ -36,6 +36,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const merge = require('./merge.js');
 const version = require('./version.js').toString();
+const logger = require('./logger.js');
 const config = require('./config.js');
 const storage = require('./storage.js');
 const Fetch = require('./fetch.js');
@@ -82,9 +83,8 @@ function readOrWriteHelp(fetch, open, name) {
             }, help))).catch(err => {});
             if (result)
                 return result;
-            else if (!_.values(fetch).some(cfg => cfg.enabled))
-                throw Error("Data file not found " + coll.filenameOf(name));
             else return fetch({info:'help'}).then(async(result) => {
+                logger.debug("fetch-files", coll.filenameOf(name));
                 await coll.writeTo(result.map(datum => _.extend({}, datum, {
                     options: JSON.stringify(datum.options),
                     properties: JSON.stringify(datum.properties)
@@ -104,10 +104,9 @@ function readOrWriteResult(fetch, open, cmd, options) {
         return coll.lockWith([name], async(names) => {
             const name = _.map(args, arg => safe(arg)).join('.') || 'result';
             if (coll.exists(name)) return coll.readFrom(name);
-            else if (!_.values(fetch).some(cfg => cfg.enabled))
-                throw Error("Data file not found " + coll.filenameOf(name));
             else {
                 const result = await fetch(options);
+                logger.debug("fetch-files", coll.filenameOf(name));
                 await coll.writeTo(result, name)
                 return result;
             }

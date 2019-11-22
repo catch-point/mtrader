@@ -857,7 +857,7 @@ async function loadHistoricalData(fetch, symbol, market, begin, options) {
 }
 
 function convertTime(market, tz) {
-    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.market_tz).tz(tz).format('HH:mm:ss');
+    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.security_tz).tz(tz).format('HH:mm:ss');
     return {
         afterHoursClosesAt: mtz2tz(market.trading_hours.substring(market.trading_hours.length - 8)),
         marketClosesAt: mtz2tz(market.liquid_hours.substring(market.liquid_hours.length - 8)),
