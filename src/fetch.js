@@ -57,13 +57,12 @@ module.exports = function(settings = {}) {
             }
             const market = options.market;
             if (market && !markets[market]) {
-                const others = _.flatten(_.map(datasources, _.keys));
+                const others = _.uniq(_.flatten(_.map(datasources, _.keys)));
                 expect(market).to.be.oneOf(_.uniq(_.union(_.keys(markets), others)));
             }
             const opt = _.extend(
                 {ending_format: moment.defaultFormat},
                 market && _.omit(markets[market], 'datasources', 'label', 'description'),
-                market && markets[market] && options.tz && convertTime(markets[market], options.tz),
                 options
             );
             const interval = options.interval;
@@ -71,7 +70,7 @@ module.exports = function(settings = {}) {
             if (interval == 'fundamental') return fundamental(datasources.fundamental, opt);
             expect(options).to.have.property('tz').that.is.a('string');
             if (options.end) expect(options).to.have.property('begin');
-            if (options.end) expect(options.begin).to.be.below(options.end);
+            if (options.end) expect(options.begin).not.to.be.above(options.end);
             switch(interval) {
                 case 'year':
                 case 'quarter':
@@ -91,16 +90,6 @@ module.exports = function(settings = {}) {
     });
     return self;
 };
-
-function convertTime(market, tz) {
-    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.security_tz).tz(tz).format('HH:mm:ss');
-    return {
-        afterHoursClosesAt: mtz2tz(market.trading_hours.substring(market.trading_hours.length - 8)),
-        marketClosesAt: mtz2tz(market.liquid_hours.substring(market.liquid_hours.length - 8)),
-        marketOpensAt: mtz2tz(market.open_time || market.liquid_hours.substring(0, 8)),
-        premarketOpensAt: mtz2tz(market.trading_hours.substring(0, 8))
-    };
-}
 
 /**
  * hash of intervals -> market -> source
@@ -309,8 +298,9 @@ async function year(day, options) {
     const end = options.end && moment.tz(options.end, options.tz);
     const bars = await month(day, _.defaults({
         interval: 'month',
-        begin: moment.tz(options.begin, options.tz).startOf('year'),
-        end: end && (end.isAfter(moment(end).startOf('year')) ? end.endOf('year') : end)
+        begin: moment.tz(options.begin, options.tz).startOf('year').format(options.ending_format),
+        end: end && (end.isAfter(moment(end).startOf('year')) ?
+            end.endOf('year') : end).format(options.ending_format)
     }, options));
     const years = _.groupBy(bars, bar => moment(bar.ending).year());
     return _.map(years, bars => bars.reduce((year, month) => {
@@ -332,8 +322,9 @@ async function quarter(day, options) {
     const end = options.end && moment.tz(options.end, options.tz);
     const bars = await month(day, _.defaults({
         interval: 'month',
-        begin: moment.tz(options.begin, options.tz).startOf('quarter'),
-        end: end && (end.isAfter(moment(end).startOf('quarter')) ? end.endOf('quarter') : end)
+        begin: moment.tz(options.begin, options.tz).startOf('quarter').format(options.ending_format),
+        end: end && (end.isAfter(moment(end).startOf('quarter')) ?
+            end.endOf('quarter') : end).format(options.ending_format)
     }, options));
     const quarters = _.groupBy(bars, bar => moment.tz(bar.ending, options.tz).format('Y-Q'));
     return _.map(quarters, bars => bars.reduce((quarter, month) => {
@@ -355,8 +346,9 @@ async function month(day, options) {
     const end = options.end && moment.tz(options.end, options.tz);
     const bars = await day(_.defaults({
         interval: 'day',
-        begin: moment.tz(options.begin, options.tz).startOf('month'),
-        end: end && (end.isAfter(moment(end).startOf('month')) ? end.endOf('month') : end)
+        begin: moment.tz(options.begin, options.tz).startOf('month').format(options.ending_format),
+        end: end && (end.isAfter(moment(end).startOf('month')) ?
+            end.endOf('month') : end).format(options.ending_format)
     }, options));
     const months = _.groupBy(bars, bar => moment.tz(bar.ending, options.tz).format('Y-MM'));
     return _.map(months, bars => bars.reduce((month, day) => {
@@ -378,9 +370,9 @@ async function week(day, options) {
     const begin = moment.tz(options.begin, options.tz);
     const bars = await day(_.defaults({
         interval: 'day',
-        begin: begin.day() === 0 || begin.day() == 6 ? begin.startOf('day') :
-            begin.startOf('isoWeek').subtract(1, 'days'),
-        end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days')
+        begin: begin.day() === 0 || begin.day() == 6 ? begin.startOf('day').format(options.ending_format) :
+            begin.startOf('isoWeek').subtract(1, 'days').format(options.ending_format),
+        end: options.end && moment.tz(options.end, options.tz).endOf('isoWeek').subtract(2, 'days').format(options.ending_format)
     }, options));
     const weeks = _.groupBy(bars, bar => moment.tz(bar.ending, options.tz).format('gggg-WW'));
     return _.map(weeks, bars => bars.reduce((week, day) => {
@@ -407,7 +399,7 @@ function interday(datasources, options) {
     const begin = options.begin ? moment.tz(options.begin, options.tz) :
         moment().tz(options.tz).startOf('month').subtract(1, 'month');
     const opts = _.defaults({
-        begin: begin.format()
+        begin: begin.format(options.ending_format)
     }, options);
     return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
         return datasource(opts).then(result => {
@@ -436,7 +428,7 @@ function intraday(datasources, options) {
         tz: _.isString
     });
     const opts = options.begin ? options : _.defaults({
-        begin: moment().tz(options.tz).startOf('day').format()
+        begin: moment().tz(options.tz).startOf('day').format(options.ending_format)
     }, options);
     return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
         return datasource(opts).then(result => {

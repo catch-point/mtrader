@@ -38,6 +38,13 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 module.exports = function(name, args, options) {
+    expect(options).to.be.like({
+        open_time: /\d\d:\d\d(:00)?/,
+        liquid_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
+        trading_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
+        security_tz: tz => moment.tz.zone(tz),
+        tz: tz => moment.tz.zone(tz)
+    });
     if (!functions[name]) return;
     const intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
     if (intervals.length > 1)
@@ -274,8 +281,9 @@ const functions = module.exports.functions = {
             const day = periods(_.defaults({interval:'day'}, opts));
             const ending = day.dec(_.last(bars).ending, d);
             if (!ending.isValid()) return null;
-            const closes = ending.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt;
-            const prior = moment.tz(closes, opts.tz).format();
+            const end_time = opts.liquid_hours.substring(opts.liquid_hours.indexOf(' - ') + 3);
+            const date = moment(ending).tz(opts.security_tz).format('YYYY-MM-DD');
+            const prior = moment.tz(`${date}T${end_time}`, opts.security_tz).tz(opts.tz).format(opts.ending_format);
             let end = _.sortedIndex(bars, {ending: prior}, 'ending');
             if (bars[end] && bars[end].ending == prior) end++;
             const start = Math.max(end - field.warmUpLength -1, 0);
@@ -296,7 +304,7 @@ const functions = module.exports.functions = {
             if (_.isEmpty(bars)) return calc(bars);
             const ending = moment.tz(_.last(bars).ending, opts.tz);
             const day = periods(_.defaults({interval:'day'}, opts));
-            const since = day.dec(ending, d-1).format();
+            const since = day.floor(day.dec(ending, d)).format(opts.ending_format);
             let start = _.sortedIndex(bars, {ending: since}, 'ending');
             if (bars[start] && bars[start].ending == since) start++;
             if (start >= bars.length) return calc([]);
@@ -317,10 +325,8 @@ const functions = module.exports.functions = {
         return _.extend(bars => {
             if (_.isEmpty(bars)) return calc(bars);
             const ending = moment.tz(_.last(bars).ending, opts.tz);
-            const day = periods(_.defaults({interval:'day'}, opts));
-            const diff = ending.diff(day.dec(ending, d), 'days');
-            const days = ending.isoWeekday() == 7 ? diff + 1 : diff;
-            const since = ending.subtract(days, 'days').format();
+            const days = ending.day() <= 1 ? d + 2 : d;
+            const since = ending.subtract(days, 'days').format(opts.ending_format);
             let start = _.sortedIndex(bars, {ending: since}, 'ending');
             if (bars[start] && bars[start].ending == since) start++;
             if (start >= bars.length) return calc([]);
@@ -341,18 +347,19 @@ const functions = module.exports.functions = {
             if (_.isEmpty(bars))
                 return calc(bars);
             const start = "2000-01-01T".length;
-            const first = moment.tz(_.first(bars).ending, opts.tz);
-            const last = moment.tz(_.last(bars).ending, opts.tz);
-            const opens = moment.tz(first.format('YYYY-MM-DD') + 'T' + opts.marketOpensAt, opts.tz);
-            const closes = moment.tz(last.format('YYYY-MM-DD') + 'T' + opts.marketClosesAt, opts.tz);
+            const end_time = opts.liquid_hours.substring(opts.liquid_hours.indexOf(' - ') + 3);
+            const first = moment.tz(_.first(bars).ending, opts.security_tz).format('YYYY-MM-DD');
+            const last = moment.tz(_.last(bars).ending, opts.security_tz).format('YYYY-MM-DD');
+            const opens = moment.tz(`${first}T${opts.open_time}`, opts.security_tz).tz(opts.tz);
+            const closes = moment.tz(`${last}T${end_time}`, opts.security_tz).tz(opts.tz);
             const ohms = opens.hour() *60 *60 + opens.minute() *60 + opens.seconds();
             const chms = closes.hour() *60 *60 + closes.minute() *60 + closes.seconds();
             if (ohms == chms)
                 return calc(bars); // 24 hour market
             if (opens.isDST() == closes.isDST() && closes.diff(opens, 'months') < 2) {
                 // Use string comparison for faster filter
-                const after = opens.format().substring(start);
-                const before = closes.format().substring(start);
+                const after = opens.format(opts.ending_format).substring(start);
+                const before = closes.format(opts.ending_format).substring(start);
                 return calc(bars.filter(after < before ? function(bar) {
                     const time = bar.ending.substring(start);
                     return after < time && time <= before;
@@ -392,7 +399,7 @@ const functions = module.exports.functions = {
                     const iter = moment.tz(bars[last].ending, opts.tz);
                     do {
                         iter.subtract(1, 'day');
-                        formatted = iter.format();
+                        formatted = iter.format(opts.ending_format);
                         idx = _.sortedIndex(bars, {ending: formatted}, 'ending');
                     } while (bars[idx].ending != formatted && formatted > bars[0].ending);
                     if (bars[idx].ending != formatted) break;
@@ -471,21 +478,17 @@ function asPositiveInteger(calc, msg) {
 }
 
 function getDayLength(opts) {
-    expect(opts).to.be.like({
-        interval: _.isString,
-        premarketOpensAt: /^\d\d:\d\d(:00)?$/,
-        afterHoursClosesAt: /^\d\d:\d\d(:00)?$/,
-        tz: /^\S+\/\S+$/
-    });
-    if (opts.premarketOpensAt == opts.afterHoursClosesAt)
+    const open_time = opts.trading_hours.substring(0, opts.trading_hours.indexOf(' - '));
+    const end_time = opts.trading_hours.substring(opts.trading_hours.indexOf(' - ') + 3);
+    if (open_time == end_time)
         return 24 * 60 * 60 * 1000 / periods(opts).millis;
-    const opens = moment.tz('2010-03-01T' + opts.premarketOpensAt, opts.tz);
-    const closes = moment.tz('2010-03-01T' + opts.afterHoursClosesAt, opts.tz);
-    if (!opens.isValid())
-        throw Error("Invalid premarketOpensAt: " + opts.premarketOpensAt);
-    if (!closes.isValid())
-        throw Error("Invalid afterHoursClosesAt: " + opts.afterHoursClosesAt);
+    const opens = moment.tz(`2010-03-01T${open_time}`, opts.security_tz);
+    const closes = moment.tz(`2010-03-01T${end_time}`, opts.security_tz);
+    if (!opens.isValid() || !closes.isValid())
+        throw Error("Invalid trading_hours: " + opts.trading_hours);
     if (closes.isBefore(opens)) closes.add(1, 'days');
+    if (closes.diff(opens) == 24 * 60 * 60 * 1000)
+        return 24 * 60 * 60 * 1000 / periods(opts).millis;
     return Math.max(periods(opts).diff(closes, opens) * 2, 1); // extra for after hours activity
 }
 

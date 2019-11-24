@@ -48,10 +48,10 @@ describe("lookback-functions", function(){
     var closeTo = expected => actual => actual.should.be.closeTo(expected, about);
     var options = {
         tz: 'America/New_York',
-        marketOpensAt: '09:30:00',
-        marketClosesAt: '16:00:00',
-        premarketOpensAt: '00:00:00',
-        afterHoursClosesAt: '24:00:00'
+        security_tz: "America/New_York",
+        trading_hours: "00:00:00 - 24:00:00",
+        liquid_hours: "09:30:00 - 16:00:00",
+        open_time: "09:30:00"
     };
     var parser = Parser({
         constant(value) {
@@ -216,10 +216,10 @@ describe("lookback-functions", function(){
         }];
         var options = {
             tz: 'America/New_York',
-            marketOpensAt: '09:30:00',
-            marketClosesAt: '16:00:00',
-            premarketOpensAt: '00:00:00',
-            afterHoursClosesAt: '24:00:00'
+            security_tz: "America/New_York",
+            trading_hours: "00:00:00 - 24:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00"
         };
         var parser = Parser({
             constant(value) {
@@ -565,24 +565,24 @@ describe("lookback-functions", function(){
         };
         var normal = createParser({
             tz: 'America/New_York',
-            marketOpensAt: '09:30:00',
-            marketClosesAt: '16:00:00',
-            premarketOpensAt: "09:30:00",
-            afterHoursClosesAt: "16:00:00"
+            security_tz: "America/New_York",
+            trading_hours: "09:30:00 - 16:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00"
         });
         var allday = createParser({
             tz: 'America/New_York',
-            marketOpensAt: '00:00:00',
-            marketClosesAt: '24:00:00',
-            premarketOpensAt: "00:00:00",
-            afterHoursClosesAt: "24:00:00"
+            trading_hours: "17:00:00 - 17:00:00",
+            liquid_hours: "17:00:00 - 17:00:00",
+            open_time: "17:00:00",
+            security_tz: "America/New_York"
         });
         var extended = createParser({
             tz: 'America/New_York',
-            marketOpensAt: '04:00:00',
-            marketClosesAt: '20:00:00',
-            premarketOpensAt: "04:00:00",
-            afterHoursClosesAt: "20:00:00"
+            security_tz: "America/New_York",
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "04:00:00 - 20:00:00",
+            open_time: "04:00:00"
         });
         it("empty", function(){
             var open = normal.parse('SESSION(SINCE(1,open))');

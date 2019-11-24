@@ -513,7 +513,7 @@
     },
     "GBP": {
       "description": "Forex Capital Markets trading using GBP as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -534,7 +534,7 @@
     },
     "AUD": {
       "description": "Forex Capital Markets trading using AUD as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -555,7 +555,7 @@
     },
     "NZD": {
       "description": "Forex Capital Markets trading using NZD as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -576,7 +576,7 @@
     },
     "USD": {
       "description": "Forex Capital Markets trading using USD as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -597,7 +597,7 @@
     },
     "CAD": {
       "description": "Forex Capital Markets trading using CAD as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -618,7 +618,7 @@
     },
     "CHF": {
       "description": "Forex Capital Markets trading using CHF as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -639,7 +639,7 @@
     },
     "NOK": {
       "description": "Forex Capital Markets trading using NOK as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -655,7 +655,7 @@
     },
     "SEK": {
       "description": "Forex Capital Markets trading using SEK as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -671,7 +671,7 @@
     },
     "CNH": {
       "description": "Forex Capital Markets trading using CNH as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -687,7 +687,7 @@
     },
     "JPY": {
       "description": "Forex Capital Markets trading using JPY as the quote currency.",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "17:00:00 - 17:00:00",
       "open_time": "17:00:00",
       "security_tz": "America/New_York",
@@ -834,7 +834,7 @@
     },
     "NYMEX": {
       "description": "New York Mercantile Exchange",
-      "trading_hours": "00:00:00 - 24:00:00",
+      "trading_hours": "17:00:00 - 17:00:00",
       "liquid_hours": "18:00:00 - 17:00:00",
       "open_time": "18:00:00",
       "security_tz": "America/New_York",

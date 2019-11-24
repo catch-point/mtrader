@@ -105,8 +105,8 @@ function readOrWriteResult(fetch, open, cmd, options) {
             const name = _.map(args, arg => safe(arg)).join('.') || 'result';
             if (coll.exists(name)) return coll.readFrom(name);
             else {
+                logger.debug("fetch-files for", coll.filenameOf(name));
                 const result = await fetch(options);
-                logger.debug("fetch-files", coll.filenameOf(name));
                 await coll.writeTo(result, name)
                 return result;
             }

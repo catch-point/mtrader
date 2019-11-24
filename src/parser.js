@@ -31,6 +31,7 @@
 'use strict';
 
 const _ = require('underscore');
+const logger = require('./logger.js');
 const expect = require('chai').expect;
 
 /**
@@ -145,6 +146,7 @@ function parseExpression(str, substitutions, handlers) {
         if (handlers) return invokeHandler(_.first(list), handlers);
         else return _.first(list);
     } catch (e) {
+        logger.debug(e);
         throw Error(e.message + " in " + str, e);
     }
 }

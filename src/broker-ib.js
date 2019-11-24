@@ -859,16 +859,6 @@ async function loadHistoricalData(fetch, symbol, market, begin, options) {
     return bars.filter(bar => bar.ending <= asof);
 }
 
-function convertTime(market, tz) {
-    const mtz2tz = time => moment.tz('2010-03-01T' + time, market.security_tz).tz(tz).format('HH:mm:ss');
-    return {
-        afterHoursClosesAt: mtz2tz(market.trading_hours.substring(market.trading_hours.length - 8)),
-        marketClosesAt: mtz2tz(market.liquid_hours.substring(market.liquid_hours.length - 8)),
-        marketOpensAt: mtz2tz(market.open_time || market.liquid_hours.substring(0, 8)),
-        premarketOpensAt: mtz2tz(market.trading_hours.substring(0, 8))
-    };
-}
-
 function asSymbol(contract) {
     if (contract.secType == 'FUT' || contract.secType == 'FOP') return fromFutSymbol(contract.localSymbol);
     else if (contract.secType == 'CASH') return contract.symbol;

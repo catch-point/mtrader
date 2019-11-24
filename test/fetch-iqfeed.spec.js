@@ -31,13 +31,14 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const config = require('../src/config.js');
 const like = require('./should-be-like.js');
 const iqfeed = require('../src/fetch-iqfeed.js');
 
 describe("fetch-iqfeed", function() {
     this.timeout(10000);
     var tz = 'America/New_York';
-    var client = iqfeed();
+    var client = iqfeed(config('fetch.iqfeed'));
     before(function() {
         return client.open().catch(err => {
             client = null;
@@ -274,7 +275,10 @@ describe("fetch-iqfeed", function() {
             market: 'ARCA',
             begin: '2017-03-15',
             end: '2017-03-22',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.defaults({adj_close: datum.adj_close * scale}, datum));
@@ -293,7 +297,10 @@ describe("fetch-iqfeed", function() {
             market: 'ARCA',
             begin: '2016-12-01',
             end: '2016-12-31',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.defaults({adj_close: datum.adj_close * scale}, datum));
@@ -328,7 +335,10 @@ describe("fetch-iqfeed", function() {
             market: 'ARCA',
             begin: '2016-09-14',
             end: '2016-09-22',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -349,7 +359,10 @@ describe("fetch-iqfeed", function() {
             market: 'NASDAQ',
             begin: '2014-06-06T09:30:00-04:00',
             end: '2014-06-09T16:00:00-04:00',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -409,7 +422,10 @@ describe("fetch-iqfeed", function() {
             market: 'BATS',
             begin: '2016-11-01',
             end: '2016-12-01',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -437,23 +453,29 @@ describe("fetch-iqfeed", function() {
             {ending:'2016-11-30T16:00:00-05:00',close:42.63,adj_close:42.63}
         ]);
     });
-    it("should find USD/CAD details", function() {
+    it.skip("should find USD/CAD details", function() {
         return client({
             interval:'fundamental',
             symbol:'USDCAD.FXCM', 
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+            trading_hours: "00:00:00 - 24:00:00",
+            liquid_hours: "17:00:00 - 17:00:00",
+            open_time: "17:00:00",
+            security_tz: "America/New_York", tz: tz
         }).should.eventually.be.like([{
             symbol: 'USDCAD.FXCM',
             listed_market: "FXCM",
             company_name: /FXCM USD CAD/
         }]);
     });
-    it("should return daily FX", function() {
+    it.skip("should return daily FX", function() {
         return client({
             interval: 'day',
             symbol: 'USDCAD.FXCM',
             begin: '2014-01-01', end: '2014-02-01',
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+            trading_hours: "00:00:00 - 24:00:00",
+            liquid_hours: "17:00:00 - 17:00:00",
+            open_time: "17:00:00",
+            security_tz: "America/New_York", tz: tz
         }).should.eventually.be.like([
         {ending:'2014-01-02T17:00:00-05:00',high:1.06770,low:1.05874,open:1.06321,close:1.06680,adj_close:1.06680},
         {ending:'2014-01-03T17:00:00-05:00',high:1.06709,low:1.06013,open:1.06676,close:1.06312,adj_close:1.06312},
@@ -479,14 +501,17 @@ describe("fetch-iqfeed", function() {
         {ending:'2014-01-31T17:00:00-05:00',high:1.12234,low:1.10867,open:1.11578,close:1.11251,adj_close:1.11251}
         ]);
     });
-    it("should return minutes", function() {
+    it.skip("should return minutes", function() {
         return client({
             interval: 'm1',
             minutes: 1,
             symbol: 'USDCAD.FXCM',
             begin: '2014-03-03T10:01:00-0500',
             end: '2014-03-03T10:30:00-0500',
-            tz: tz
+            trading_hours: "00:00:00 - 24:00:00",
+            liquid_hours: "17:00:00 - 17:00:00",
+            open_time: "17:00:00",
+            security_tz: "America/New_York", tz: tz
         }).should.eventually.be.like([
             {ending:'2014-03-03T10:01:00-05:00',high:1.10981,low:1.10923,open:1.10923,close:1.10981},
             {ending:'2014-03-03T10:02:00-05:00',high:1.10993,low:1.10941,open:1.10981,close:1.10955},
@@ -520,14 +545,17 @@ describe("fetch-iqfeed", function() {
             {ending:'2014-03-03T10:30:00-05:00',high:1.10825,low:1.10805,open:1.10819,close:1.10819}
         ]);
     });
-    it("should return 10 minute intervals", function() {
+    it.skip("should return 10 minute intervals", function() {
         return client({
             interval: 'm10',
             minutes: 10,
             symbol: 'USDCAD.FXCM',
             begin: '2014-03-03T10:10:00-0500',
             end: '2014-03-03T11:00:00-0500',
-            tz: tz
+            trading_hours: "00:00:00 - 24:00:00",
+            liquid_hours: "17:00:00 - 17:00:00",
+            open_time: "17:00:00",
+            security_tz: "America/New_York", tz: tz
         }).should.eventually.be.like([
             {ending:'2014-03-03T10:10:00-05:00',high:1.10993,low:1.10876,open:1.10923,close:1.10905},
             {ending:'2014-03-03T10:20:00-05:00',high:1.10944,low:1.10879,open:1.10905,close:1.10880},
@@ -537,14 +565,17 @@ describe("fetch-iqfeed", function() {
             {ending:'2014-03-03T11:00:00-05:00',high:1.10798,low:1.10694,open:1.10793,close:1.10789}
         ]);
     });
-    it("should estimate daily", function() {
+    it.skip("should estimate daily", function() {
         return client({
             rollday: true,
             minutes: 30,
             interval: 'day',
             symbol: 'USDCAD.FXCM',
             begin: '2014-01-01', end: '2014-02-01',
-            marketOpensAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+            trading_hours: "00:00:00 - 24:00:00",
+            liquid_hours: "17:00:00 - 17:00:00",
+            open_time: "17:00:00",
+            security_tz: "America/New_York", tz: tz
         }).should.eventually.be.like([
             {ending:'2014-01-02T17:00:00-05:00',high:1.06770,low:1.05874,open:1.06321,close:1.06680},
             {ending:'2014-01-03T17:00:00-05:00',high:1.06709,low:1.06013,open:1.06676,close:1.06312},
@@ -607,7 +638,10 @@ describe("fetch-iqfeed", function() {
             symbol: 'SPX   190418C02675000',
             market: 'OPRA',
             begin: '2019-03-01',
-            marketOpensAt: '02:00:00', marketClosesAt: '16:15:00', tz: tz
+            trading_hours: "02:00:00 - 15:15:00",
+            liquid_hours: "08:30:00 - 15:15:00",
+            open_time: "08:30:00",
+            security_tz: "America/Chicago", tz: tz
         }).then(d=>d.forEach(d=>console.log(d))||d);
     });
     it.skip("should return daily ATD.B", function() {
@@ -615,7 +649,10 @@ describe("fetch-iqfeed", function() {
             interval: 'day',
             symbol: 'ATD.B', market: 'TSE',
             begin: '2012-07-01', end: '2012-10-01',
-            marketOpensAt: '09:30:00', marketClosesAt: '16:00:00', tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         })
          .then(d=>d.forEach(d=>console.log(JSON.stringify(d).replace(/"(\w+)":/g,'$1:')))||d)
          .should.eventually.be.like([
@@ -626,7 +663,10 @@ describe("fetch-iqfeed", function() {
             interval: 'day',
             symbol: 'TRI', market: 'TSE',
             begin: '2018-11-01', end: '2018-12-01',
-            marketOpensAt: '09:30:00', marketClosesAt: '16:00:00', tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         })
          .then(d=>d.forEach(d=>console.log(JSON.stringify(d).replace(/"(\w+)":/g,'$1:')))||d)
          .should.eventually.be.like([
@@ -637,7 +677,10 @@ describe("fetch-iqfeed", function() {
             interval: 'day',
             symbol: 'CLX', market: 'NYSE',
             begin: '2019-04-18', end: '2019-04-24',
-            marketOpensAt: '09:30:00', marketClosesAt: '16:00:00', tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         })
          .then(d=>d.forEach(d=>console.log(require('util').inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
          .should.eventually.be.like([

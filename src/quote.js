@@ -36,7 +36,7 @@ const moment = require('moment-timezone');
 const version = require('./version.js');
 const storage = require('./storage.js');
 const Lookup = require('./lookup.js');
-const periods = require('./periods.js');
+const Periods = require('./periods.js');
 const interrupt = require('./interrupt.js');
 const Parser = require('./parser.js');
 const common = require('../src/common-functions.js');
@@ -55,6 +55,7 @@ module.exports = function(fetch, settings = {}) {
     const lookup = Lookup(fetch);
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const stores = {};
+    const tz = (moment.defaultZone||{}).name || moment.tz.guess();
     return _.extend(async function(options) {
         if (!promiseHelp) promiseHelp = help(fetch);
         if (options.info=='help') return promiseHelp;
@@ -64,8 +65,14 @@ module.exports = function(fetch, settings = {}) {
         return promiseHelp.then(help => {
             const fields = _.first(help).properties;
             const opts = _.pick(options, _.keys(_.first(help).options));
-            return lookup(opts).then(opts =>  {
-                return quote(fetch, store, fields, {...opts, salt: settings.salt || config('salt') || ''});
+            return lookup(opts).then(security =>  {
+                return quote(fetch, store, fields, {
+                    ...opts,
+                    ...security,
+                    tz, // quote must save/work in local time-zone
+                    ending_format: moment.defaultFormat,
+                    salt: settings.salt || config('salt') || ''
+                });
             });
         });
     }, {
@@ -83,7 +90,7 @@ function help(fetch) {
       .then(help => _.indexBy(help, 'name'))
       .then(help => _.pick(help, ['lookup', 'interday', 'intraday'])).then(help => {
         const downstream = _.reduce(help, (downstream, help) => _.extend(downstream, help.options), {});
-        const variables = periods.values.reduce((variables, interval) => {
+        const variables = Periods.values.reduce((variables, interval) => {
             const fields = interval.charAt(0) != 'm' ? help.interday.properties :
                 help.intraday ? help.intraday.properties : [];
             return variables.concat(fields.map(field => interval + '.' + field));
@@ -167,11 +174,11 @@ function quote(fetch, store, fields, options) {
         if (options.parameters) expect(options.parameters).not.to.have.property('length'); // not array like
         const exprMap = parseWarmUpMap(fields, options);
         const cached = _.mapObject(exprMap, _.keys);
-        const intervals = periods.sort(_.keys(exprMap));
+        const intervals = Periods.sort(_.keys(exprMap));
         if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
         const criteria = parseCriteriaMap(options.criteria, fields, cached, intervals, options);
         const interval = intervals[0];
-        intervals.forEach(interval => expect(interval).to.be.oneOf(periods.values));
+        intervals.forEach(interval => expect(interval).to.be.oneOf(Periods.values));
         return store.open(options.symbol, (err, db) => {
             if (err) throw err;
             const quoteBars = fetchBars.bind(this, fetch, db, fields);
@@ -180,6 +187,7 @@ function quote(fetch, store, fields, options) {
               .then(options => mergeBars(quoteBars, exprMap, criteria, options));
         }).then(signals => formatColumns(fields, signals, options));
     } catch (e) {
+        logger.debug(e);
         throw Error((e.message || e) + " for " + options.symbol);
     }
 }
@@ -207,7 +215,7 @@ function parseWarmUpMap(fields, options) {
         expression(expr, name, args) {
             const fn = p.parse(expr);
             const args_inters = _.without(_.flatten(args.map(_.keys), true), 'warmUpLength');
-            const inters = periods.sort(_.uniq(args_inters.concat(fn.intervals || [])));
+            const inters = Periods.sort(_.uniq(args_inters.concat(fn.intervals || [])));
             const map = _.object(inters, inters.map(interval => {
                 return _.extend.apply(_, _.compact(_.pluck(args, interval)));
             }));
@@ -220,7 +228,7 @@ function parseWarmUpMap(fields, options) {
         }
     });
     const values = parser.parse(exprs).map(o => _.omit(o, 'warmUpLength'));
-    const intervals = periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
+    const intervals = Periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
     return _.object(intervals, intervals.map(interval => {
         return _.extend.apply(_, _.compact(_.pluck(values, interval)));
     }));
@@ -266,7 +274,7 @@ function createParser(fields, cached, options) {
             else if (!~name.indexOf('.'))
                 throw Error("Unknown field: " + name);
             const interval = name.substring(0, name.indexOf('.'));
-            expect(interval).to.be.oneOf(periods.values);
+            expect(interval).to.be.oneOf(Periods.values);
             const lname = name.substring(name.indexOf('.')+1);
             return _.extend(ctx => {
                 if (!ctx.length) return undefined;
@@ -339,10 +347,10 @@ function inlinePadBegin(quoteBars, interval, opts) {
  * Formats begin and end options.
  */
 function formatBeginEnd(options) {
-    const tz = (moment.defaultZone||{}).name || moment.tz.guess();
-    const eod = moment.tz(options.now, options.tz || tz).endOf('day').tz(tz);
-    const begin = options.begin ? moment.tz(options.begin, options.tz || tz).tz(tz) : eod;
-    const oend = options.end && moment.tz(options.end, options.tz || tz).tz(tz);
+    const tz = options.tz;
+    const eod = moment.tz(options.now, tz).endOf('day');
+    const begin = options.begin ? moment.tz(options.begin, tz) : eod;
+    const oend = options.end && moment.tz(options.end, tz);
     const end = !oend || eod.isBefore(oend) ? eod : oend; // limit end to end of today
     const pad_begin = options.pad_begin ? options.pad_begin :
             options.begin ? 0 : 100;
@@ -352,12 +360,10 @@ function formatBeginEnd(options) {
     if (end && !end.isValid())
         throw Error("End date is not valid " + options.end);
     return _.defaults({
-        begin: begin.format(),
+        begin: begin.format(options.ending_format),
         pad_begin: pad_begin,
-        end: end && end.format(),
-        pad_end: pad_end,
-        ending_format: moment.defaultFormat,
-        tz
+        end: end && end.format(options.ending_format),
+        pad_end: pad_end
     }, options);
 }
 
@@ -515,13 +521,13 @@ function getCollectionName(options) {
  * Determines the blocks that will be needed for this begin/end range.
  */
 function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
-    const period = periods(options);
+    const period = new Periods(options);
     const begin = options.begin;
     const pad_begin = options.pad_begin + warmUpLength;
-    const start = pad_begin ? period.dec(begin, pad_begin) : period.floor(begin);
+    const start = period.floor(pad_begin ? period.dec(begin, pad_begin) : begin);
     const now = moment().tz(options.tz);
     const end = options.end || moment.tz(options.now || now, options.tz);
-    const stop = options.pad_end ? period.inc(end, options.pad_end) : moment.tz(end, options.tz);
+    const stop = options.pad_end ? period.inc(end, options.pad_end) : period.ceil(end);
     const interval = options.interval;
     const blocks = getBlocks(interval, start, stop, options);
     const latest = !stop.isBefore(now) || _.contains(blocks, _.last(getBlocks(interval, now, now, options)));
@@ -735,21 +741,23 @@ function isWeekend(bar, options) {
 
 function isEndOfWeek(ending, options) {
     expect(options).to.have.property('tz');
-    expect(options).to.have.property('marketClosesAt');
-    if (ending.substring(11,19) != options.marketClosesAt) return false; // not on market close
-    const end = moment.tz(ending, options.tz);
-    return end.day() == 5; // Friday on market close
+    expect(options).to.have.property('security_tz');
+    expect(options).to.have.property('liquid_hours');
+    const end_time = options.liquid_hours.substring(options.liquid_hours.indexOf(' - ') + 3);
+    const end = moment.tz(ending, options.security_tz);
+    const close = moment.tz(`${end.format('Y-MM-DD')}T${end_time}`, options.security_tz);
+    return end.day() == 5 && !end.isBefore(close); // Friday on market close
 }
 
 function isBeforeStartOfWeek(asof, options) {
-    expect(options).to.have.property('tz');
-    expect(options).to.have.property('marketOpensAt');
-    expect(options).to.have.property('marketClosesAt');
-    const marketOpensAt = options.marketOpensAt;
-    const week_day_opens = marketOpensAt < options.marketClosesAt ? 1 : 0;
-    const masof = moment.tz(asof, options.tz);
-    const now = moment.tz(options.now, options.tz);
-    const opens = moment.tz(`${masof.format('YYYY-MM-DD')} ${marketOpensAt}`, options.tz).day(week_day_opens);
+    expect(options).to.have.property('security_tz');
+    expect(options).to.have.property('liquid_hours');
+    const open_time = options.liquid_hours.substring(0, options.liquid_hours.indexOf(' - '));
+    const end_time = options.liquid_hours.substring(options.liquid_hours.indexOf(' - ') + 3);
+    const week_day_opens = open_time < end_time ? 1 : 0;
+    const masof = moment.tz(asof, options.security_tz);
+    const now = moment.tz(options.now, options.security_tz);
+    const opens = moment.tz(`${masof.format('YYYY-MM-DD')} ${open_time}`, options.security_tz).day(week_day_opens);
     return !opens.isBefore(now); // now is Before market opens on Sunday or Monday
 }
 
@@ -848,7 +856,7 @@ function getBlocks(interval, begin, end, options) {
     }
     // m1 is separated daily
     const blocks = [];
-    const start = periods(_.defaults({interval:'day'}, options)).dec(begin, 1);
+    const start = Periods(_.defaults({interval:'day'}, options)).dec(begin, 1);
     const d = moment.tz(start.format('Y-MM-DD'), start.tz());
     const until = end.valueOf();
     while (d.valueOf() <= until) {

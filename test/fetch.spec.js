@@ -36,13 +36,14 @@ const merge = require('../src/merge.js');
 const like = require('./should-be-like.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
+const createTempDir = require('./create-temp-dir.js');
 
 describe("fetch", function() {
     this.timeout(10000);
     var tz = 'America/New_York';
     var fetch;
     before(function() {
-        config('prefix', __dirname);
+        config('prefix', createTempDir('fetch'));
         fetch = Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,

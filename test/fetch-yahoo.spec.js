@@ -153,7 +153,10 @@ describe("fetch-yahoo", function() {
             yahoo_symbol: 'SPY',
             begin: '2017-03-15',
             end: '2017-03-22',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.defaults({adj_close: datum.adj_close * scale}, datum));
@@ -170,9 +173,12 @@ describe("fetch-yahoo", function() {
             interval: 'day',
             symbol: 'SPY',
             yahoo_symbol: 'SPY',
-            begin: moment.tz('2016-12-01', tz),
-            end: moment.tz('2016-12-31', tz),
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            begin: '2016-12-01',
+            end: '2016-12-31',
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.defaults({adj_close: datum.adj_close * scale}, datum));
@@ -207,7 +213,10 @@ describe("fetch-yahoo", function() {
             yahoo_symbol: 'XLF',
             begin: '2016-09-14',
             end: '2016-09-22',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -227,7 +236,10 @@ describe("fetch-yahoo", function() {
             market: 'BATS',
             begin: '2016-11-01',
             end: '2016-12-01',
-            marketOpensAt: '09:30:00', marketClosesAt: "16:00:00", tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
             return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -260,7 +272,10 @@ describe("fetch-yahoo", function() {
             interval: 'day',
             symbol: 'CLX', market: 'NYSE',
             begin: '2019-04-18', end: '2019-04-24',
-            marketOpensAt: '09:30:00', marketClosesAt: '16:00:00', tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         })
          .then(d=>d.forEach(d=>console.log(require('util').inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
          .should.eventually.be.like([

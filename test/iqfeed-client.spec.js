@@ -102,7 +102,7 @@ describe("iqfeed-client", function() {
             name: "INTERNATIONAL BUSINESS MACHINE"
         })));
     });
-    it("should find USD/CAD details", function() {
+    it.skip("should find USD/CAD details", function() {
         return client.fundamental('USDCAD.FXCM', "FXCM").should.eventually.be.like({
             symbol: 'USDCAD.FXCM',
             listed_market: "FXCM",
@@ -110,7 +110,7 @@ describe("iqfeed-client", function() {
             company_name: /FXCM USD CAD/
         });
     });
-    it("should return daily", function() {
+    it.skip("should return daily", function() {
         return client.day(
             'USDCAD.FXCM',
             moment.tz('2014-01-01', tz), moment.tz('2014-02-01', tz), tz
@@ -139,7 +139,7 @@ describe("iqfeed-client", function() {
             {Date_Stamp:'2014-01-31',High:'1.12234',Low:'1.10867',Open:'1.11578',Close:'1.11251'}
         ]);
     });
-    it("should return weekly", function() {
+    it.skip("should return weekly", function() {
         return client.week(
             'USDCAD.FXCM',
             moment.tz('2014-01-06', tz), null, tz
@@ -150,7 +150,7 @@ describe("iqfeed-client", function() {
             {Date_Stamp:'2014-01-31',High:'1.12234',Low:'1.10308',Open:'1.10600',Close:'1.11251'}
         ]));
     });
-    it("should return monthly", function() {
+    it.skip("should return monthly", function() {
         return client.month(
             'USDCAD.FXCM',
             moment.tz('2014-01-01', tz), null, tz
@@ -174,7 +174,7 @@ describe("iqfeed-client", function() {
             {symbol: /^BRK.A/, name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
         )));
     });
-    it("should return 30 minute intervals", function() {
+    it.skip("should return 30 minute intervals", function() {
         return client.minute(30, 'USDCAD.FXCM',
             moment('2014-03-03T08:30:00-0500'), moment('2014-03-03T17:00:00-0500'), tz
         ).should.eventually.be.like([
@@ -198,7 +198,7 @@ describe("iqfeed-client", function() {
             {Time_Stamp:'2014-03-03 17:00:00',Open:'1.10761',High:'1.10792',Low:'1.10729',Close:'1.10749'}
         ]);
     });
-    it("should return 10 minute intervals", function() {
+    it.skip("should return 10 minute intervals", function() {
         return client.minute(10, 'USDCAD.FXCM',
             moment('2014-03-03T10:10:00-0500'), moment('2014-03-03T11:00:00-0500'), tz
         ).should.eventually.be.like([
@@ -210,7 +210,7 @@ describe("iqfeed-client", function() {
             {Time_Stamp:'2014-03-03 11:00:00',High:'1.10798',Low:'1.10694',Open:'1.10793',Close:'1.10789'}
         ]);
     });
-    it("should return minutes", function() {
+    it.skip("should return minutes", function() {
         return client.minute(1, 'USDCAD.FXCM',
             moment('2014-03-03T10:01:00-0500'), moment('2014-03-03T10:30:00-0500'), tz
         ).should.eventually.be.like([

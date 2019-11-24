@@ -38,7 +38,6 @@ const version = require('./version.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const lookback = require('./lookback-functions.js');
-const rolling = require('./rolling-functions.js');
 const logger = require('./logger.js');
 const interrupt = require('./interrupt.js');
 const expect = require('chai').expect;

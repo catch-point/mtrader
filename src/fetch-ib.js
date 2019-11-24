@@ -39,7 +39,7 @@ const cache = require('./memoize-cache.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
-const periods = require('./periods.js');
+const Periods = require('./periods.js');
 const Adjustments = require('./adjustments.js');
 const IB = require('./ib-gateway.js');
 const Fetch = require('./fetch.js');
@@ -59,14 +59,20 @@ function help(settings) {
         }
     };
     const tzOptions = {
-        marketOpensAt: {
-            description: "Time of day that the market options"
+        open_time: {
+            description: "The time of day that the open value of the daily bar in recorded"
         },
-        marketClosesAt: {
-            description: "Time of day that the market closes"
+        liquid_hours: {
+            description: "Regular trading hours in the format 'hh:mm:00 - hh:mm:00'"
+        },
+        trading_hours: {
+            description: "Trading hours in the format 'hh:mm:00 - hh:mm:00'"
+        },
+        security_tz: {
+            description: "Timezone of liquid_hours using the identifier in the tz database"
         },
         tz: {
-            description: "Timezone of the market formatted using the identifier in the tz database"
+            description: "Timezone used to format the ending field, using the identifier in the tz database"
         },
         ending_format: {
             description: "Date and time format of the resulting ending field"
@@ -297,19 +303,21 @@ function isTimeFrameAvailable(markets, client, now, options) {
 
 function marketOpensAt(now, options) {
     expect(options).to.have.property('tz');
-    expect(options).to.have.property('premarketOpensAt');
-    expect(options).to.have.property('afterHoursClosesAt');
-    const weekday = moment(now);
-    const end = moment(options.end || now);
+    expect(options).to.have.property('security_tz');
+    expect(options).to.have.property('open_time');
+    expect(options).to.have.property('liquid_hours');
+    const tz = options.security_tz;
+    const weekday = moment.tz(now, options.tz).tz(tz);
+    const end = options.end ? moment.tz(options.end, options.tz).tz(tz) : moment(weekday);
     if (weekday.days() === 0) weekday.add(1, 'days');
     if (weekday.days() === 6) weekday.add(2, 'days');
-    const tz = options.tz;
-    const opensAt = moment.tz(weekday.format('YYYY-MM-DD') + ' ' + options.premarketOpensAt, tz);
-    const closesAt = moment.tz(weekday.format('YYYY-MM-DD') + ' ' + options.afterHoursClosesAt, tz);
+    const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
+    const opensAt = moment.tz(`${weekday.format('YYYY-MM-DD')}T${options.open_time}`, tz);
+    const closesAt = moment.tz(`${weekday.format('YYYY-MM-DD')}T${close_time}`, tz);
     if (!opensAt.isBefore(closesAt)) opensAt.subtract(1, 'day');
     if (now.isAfter(closesAt)) opensAt.add(1, 'day');
-    if (opensAt.isValid()) return opensAt;
-    else throw Error(`Invalid premarketOpensAt ${options.premarketOpensAt}`);
+    if (opensAt.isValid()) return opensAt.tz(options.tz);
+    else throw Error(`Invalid open_time ${options.open_time}`);
 }
 
 async function combineHistoricalLiveFeeds(historical_promise, live_promise, options) {
@@ -513,12 +521,12 @@ async function listContractDetails(markets, client, options) {
 }
 
 async function reqHistoricalData(client, contract, whatToShow, useRTH, format, options) {
-    const end = periods(options).ceil(options.end || options.now);
+    const end = new Periods(options).ceil(options.end || options.now);
     const now = moment().tz(options.tz);
     const end_past = end && now.diff(end, 'days') > 0;
-    const endDateTime = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
-    const duration = toDurationString(endDateTime ? end : now, options);
+    const duration = toDurationString(end_past ? end : now, options);
     const barSize = toBarSizeSetting(options.interval);
+    const endDateTime = end_past ? end.utc().format('YYYYMMDD HH:mm:ss z') : '';
     const reqHistoricalData = client.reqHistoricalData.bind(client, contract);
     if (whatToShow != 'ADJUSTED_LAST')
         return reqHistoricalData(endDateTime, duration, barSize, whatToShow, useRTH, format);
@@ -568,13 +576,18 @@ function withoutAdjClose(prices, adjusts, options) {
 
 function toDurationString(end, options) {
     expect(options).to.have.property('begin').that.is.ok;
-    const begin = periods(options).ceil(options.begin).subtract(periods(options).millis, 'milliseconds');
+    const periods = new Periods(options);
+    const ending = periods.ceil(options.begin);
+    const start_of_day = moment(ending).startOf('day');
+    const offset = ending.diff(start_of_day, 'milliseconds') % periods.millis;
+    const begin = ending.subtract(offset || periods.millis, 'milliseconds');
     const years = end.diff(begin,'years', true);
-    if (years > 1) return Math.ceil(years) + ' Y';
-    const days = end.diff(begin,'days', true);
-    if (days > 1 || options.interval == 'day') return Math.ceil(days) + ' D';
-    const minutes = end.diff(begin,'minutes', true);
-    return (Math.ceil(minutes + 1) * 60) + ' S';
+    if (years > 1) return `${Math.ceil(years)} Y`;
+    const day = new Periods({...options, interval: 'day'});
+    if (periods.millis >= 24 * 60 * 60 * 1000) return `${day.diff(end, begin)} D`;
+    if (end.diff(begin,'days', true) > 1) return `${day.diff(end, begin)} D`;
+    const minutes = new Periods({...options, interval: 'm1'});
+    return `${minutes.diff(end, begin) * 60} S`;
 }
 
 function toBarSizeSetting(interval) {
@@ -714,23 +727,23 @@ function adjRight(bars, adjustments, options, cb) {
 
 function formatTime(time, options) {
     if (options.interval == 'day') return endOfDay(time, options);
-    const period = periods(options);
-    const starting = moment.tz(time, 'X', options.tz);
-    return period.floor(starting.add(period.millis, 'milliseconds')).format(options.ending_format);
+    const period = new Periods(options);
+    return period.inc(moment(time, 'X'), 1).format(options.ending_format);
 }
 
 function endOfDay(date, options) {
-    const start = moment.tz(date, options.tz);
+    const start = moment.tz(date, options.security_tz);
     if (!start.isValid()) throw Error("Invalid date " + date);
+    const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
     let ending = moment(start).endOf('day');
     let closes, days = 0;
     do {
         if (ending.days() === 0) ending.subtract(2, 'days');
         else if (ending.days() == 6) ending.subtract(1, 'days');
-        closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
-        if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
+        closes = moment.tz(`${ending.format('YYYY-MM-DD')}T${close_time}`, options.security_tz);
+        if (!closes.isValid()) throw Error("Invalid liquid_hours " + options.liquid_hours);
         if (closes.isBefore(start)) ending = moment(start).add(++days, 'days').endOf('day');
     } while (closes.isBefore(start));
-    return closes.format(options.ending_format);
+    return closes.tz(options.tz).format(options.ending_format);
 }
 

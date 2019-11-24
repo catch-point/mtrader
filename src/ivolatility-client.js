@@ -422,6 +422,7 @@ function listAvailableDownloads(username, cookies, downloadType, mtime) {
     const order_uid = '&order_uid=';
     const host = url.parse('https://www.ivolatility.com/dd-server/history');
     const userIdCookie = cookies.find(cookie => cookie.startsWith("IV%5FUID="));
+    if (!userIdCookie) throw Error("Missing ivolatility.com IV_UID cookie");
     const userId = userIdCookie.substring(userIdCookie.indexOf('=')+1);
     const payload = querystring.stringify({
         pageSize: 10,
@@ -478,6 +479,7 @@ function retrieveCookies(username, password) {
             res.on('data', _.noop);
             res.on('error', error).on('end', () => {
                 const cookies = res.headers['set-cookie'];
+                if (cookies) logger.trace("ivolatility cookies", cookies);
                 if (cookies)
                     ready(cookies.map(cookie => cookie.substring(0, cookie.indexOf(';'))));
                 else

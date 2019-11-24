@@ -34,42 +34,40 @@ const expect = require('chai').expect;
 const periods = require('../src/periods.js');
 
 describe("periods", function(){
-    var stocks = {
-        tz: "America/New_York",
-        marketOpensAt: "09:30:00",
-        marketClosesAt: "16:00:00",
-        premarketOpensAt: "04:00:00",
-        afterHoursClosesAt: "20:00:00"
-    };
     describe("stocks", function() {
-        testMarket(stocks);
-        testMinuteIntervals(stocks);
+        testMarket({
+            tz: "America/New_York",
+            security_tz: "America/New_York",
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00"
+        });
     });
     describe("fx", function() {
         testMarket({
             tz: "America/New_York",
-            marketOpensAt: "17:00:00",
-            marketClosesAt: "17:00:00",
-            premarketOpensAt: "17:00:00",
-            afterHoursClosesAt: "17:00:00"
+            security_tz: "America/New_York",
+            trading_hours: "17:00:00 - 17:00:00",
+            liquid_hours: "17:00:00 - 17:00:00",
+            open_time: "17:00:00"
         });
     });
-    describe("index", function() {
+    describe("futures", function() {
         testMarket({
             tz: "America/New_York",
-            marketOpensAt: "18:00:00",
-            marketClosesAt: "18:00:00",
-            premarketOpensAt: "17:00:00",
-            afterHoursClosesAt: "17:00:00"
+            trading_hours: "17:00:00 - 16:00:00",
+            liquid_hours: "08:30:00 - 16:00:00",
+            open_time: "17:00:00",
+            security_tz: "America/Chicago",
         });
     });
-    describe("24hours", function() {
-        testMinuteIntervals({
+    describe("mercantile", function() {
+        testMarket({
             tz: "America/New_York",
-            marketOpensAt: "16:00:00",
-            marketClosesAt: "16:00:00",
-            premarketOpensAt: "16:00:00",
-            afterHoursClosesAt: "16:00:00"
+            trading_hours: "17:00:00 - 17:00:00",
+            liquid_hours: "18:00:00 - 17:00:00",
+            open_time: "18:00:00",
+            security_tz: "America/New_York",
         });
     });
 });
@@ -78,401 +76,207 @@ function testMarket(ex) {
     var intervals = _.object(periods.values, periods.values.map(value => periods(_.extend({
         interval: value
     }, ex))));
-    describe("spot check", function(){
-        describe('year', function(){
-            describe('inc', function(){
-                it("Fri Jan 31 2014 00:00:00 GMT-0500 (EST) by 1", function() {
-                    var amount = 1;
-                    var date = new Date("Fri Jan 31 2014 00:00:00 GMT-0500 (EST)");
-                    var inc = intervals.year.inc(date, amount);
-                    expect(moment(inc).year()).to.eql(2015);
-                    expect(intervals.year.diff(inc, date)).to.eql(amount);
-                    expect(intervals.year.diff(date, inc)).to.eql(-amount);
-                });
-            });
-        });
-        describe("m1", function() {
-            var size = 1;
-            var amount = 420;
-            var date = moment("2012-01-13T09:30:00.000-05:00");
-            it(date.toString() + ' by ' + amount, function(){
-                var dec = intervals['m' + size].dec(date, amount);
-                expect(date.valueOf()).to.be.a('number');
-                expect(dec.valueOf()).to.be.a('number');
-                expect(dec.valueOf() % size *60 *1000).to.eql(0);
-                expect(date.valueOf() - dec.valueOf() > 0).to.be.true;
-                if (size < 60) expect((date.valueOf() - dec.valueOf()) /1000 /60).not.to.be.below(size * amount);
-                expect((date.valueOf() - dec.valueOf()) /1000 /60).to.be.below(Math.ceil(size * amount /60 /6.5 /5) *7 * 24 *60 +2 *24 *60);
-                if (ex.premarketOpensAt != ex.afterHoursClosesAt) {
-                    var opens = moment.tz(dec.format('YYYY-MM-DD') + 'T' + ex.premarketOpensAt, ex.tz);
-                    var closes = moment.tz(dec.format('YYYY-MM-DD') + 'T' + ex.afterHoursClosesAt, ex.tz);
-                    expect(dec.format(), "dec " + amount + " of " + moment.tz(date, ex.tz).format()).not.to.be.below(opens.format());
-                    expect(dec.valueOf() >= opens.valueOf()).to.be.true;
-                    expect(dec.format(), "dec " + amount + " of " + moment.tz(date, ex.tz).format()).not.to.be.above(closes.format());
-                    expect(dec.valueOf() <= closes.valueOf()).to.be.true;
-                }
-            });
-        });
-        describe("m2", function() {
-            var interval = intervals['m2'];
-            var date = moment("2013-02-04T07:41:58-05:00");
-            var amount = 233;
-            it(date.toString() + ' by ' + amount, function(){
-                var dec = interval.dec(date, amount);
-                expect(interval.diff(dec, date), "Between " + dec.format() + " and " + date.format()).to.eql(-amount);
-                expect(interval.diff(date, dec)).to.eql(amount);
-            });
-            var date = moment(new Date("Fri Sep 02 2011 16:10:46 GMT-0400"));
-            var amount = 34;
-            it(date.toString() + ' by ' + amount, function(){
-                var inc = interval.inc(date, amount);
-                var dec = interval.dec(date, amount);
-                expect(interval.diff(inc, date)).to.eql(amount);
-                expect(interval.diff(dec, date), "Between " + dec.format() + " and " + date.format()).to.eql(-amount);
-                expect(interval.diff(date, inc)).to.eql(-amount);
-                expect(interval.diff(date, dec)).to.eql(amount);
-            });
-            var date = moment("2012-02-12T19:22:38-05:00");
-            var amount = 144;
-            it(date.toString() + ' by ' + amount, function(){
-                var inc = interval.inc(date, amount);
-                var dec = interval.dec(date, amount);
-                expect(interval.diff(inc, date)).to.eql(amount);
-                expect(interval.diff(dec, date), "Between " + dec.format() + " and " + date.format()).to.eql(-amount);
-                expect(interval.diff(date, inc)).to.eql(-amount);
-                expect(interval.diff(date, dec)).to.eql(amount);
-            });
-        });
-        describe('m60', function(){
-            describe('inc', function(){
-                it("Fri Jan 31 2014 16:00:00 GMT-0500 (EST) by 1", function(){
-                    var amount = 1;
-                    var date = new Date("Fri Jan 31 2014 16:00:00 GMT-0500 (EST)");
-                    var inc = intervals.m60.inc(date, amount);
-                    expect(moment(inc).minute()).to.eql(0);
-                    expect(intervals.m60.diff(inc, date)).to.eql(amount);
-                    expect(intervals.m60.diff(date, inc)).to.eql(-amount);
-                });
-            });
-            var interval = intervals['m60'];
-            var date = moment("2010-01-01T01:27:00-05:00");
-            var amount = 34;
-            it(date.toString() + ' by ' + amount, function(){
-                var dec = interval.dec(date, amount);
-                expect(interval.diff(dec, date), "Between " + dec.format() + " and " + date.format()).to.eql(-amount);
-                expect(interval.diff(date, dec)).to.eql(amount);
-            });
-            var date = moment(new Date("Fri Jan 01 2010 10:08:00 GMT-0500"));
-            var amount = 233;
-            it(date.toString() + ' by ' + amount, function(){
-                var inc = interval.inc(date, amount);
-                var dec = interval.dec(date, amount);
-                expect(interval.diff(inc, date)).to.eql(amount);
-                expect(interval.diff(dec, date), "Between " + dec.format() + " and " + date.format()).to.eql(-amount);
-                expect(interval.diff(date, inc)).to.eql(-amount);
-                expect(interval.diff(date, dec)).to.eql(amount);
-            });
-        });
-        describe('m120', function(){
-            describe('inc', function(){
-                it("Fri Jan 31 2014 16:00:00 GMT-0500 (EST) by 1", function(){
-                    var amount = 1;
-                    var date = new Date("Fri Jan 31 2014 16:00:00 GMT-0500 (EST)");
-                    var inc = intervals.m120.inc(date, amount);
-                    expect(moment(inc).minute()).to.eql(0);
-                    expect(intervals.m120.diff(inc, date)).to.eql(amount);
-                    expect(intervals.m120.diff(date, inc)).to.eql(-amount);
-                });
-            });
-            var interval = intervals['m120'];
-            var date = moment(new Date("Thu Mar 29 2012 10:42:00 GMT-0400"));
-            var amount = 21;
-            it(date.toString() + ' by ' + amount, function(){
-                var inc = interval.inc(date, amount);
-                var dec = interval.dec(date, amount);
-                expect(interval.diff(inc, date)).to.eql(amount);
-                expect(interval.diff(dec, date), "Between " + dec.format() + " and " + date.format()).to.eql(-amount);
-                expect(interval.diff(date, inc)).to.eql(-amount);
-                expect(interval.diff(date, dec)).to.eql(amount);
-            });
-        });
+    describe('interday', function() {
         describe('day', function(){
-            describe("inc", function() {
-                it("Mon Oct 13 2014 16:00:00 GMT-0400 (EDT) by 1", function(){
-                    var amount = 1;
-                    var date = new Date("Mon Oct 13 2014 16:00:00 GMT-0400 (EDT)");
-                    var inc = intervals.day.inc(date, amount);
-                    expect(moment(inc).subtract(1,'minute').format('dddd')).to.eql(moment(date).add(1,'day').format('dddd'));
-                    expect(intervals.day.diff(inc, date)).to.eql(amount);
-                    expect(intervals.day.diff(date, inc)).to.eql(-amount);
-                });
-                it("Wed Oct 15 2014 16:00:00 GMT-0400 (EDT) by 1", function(){
-                    var amount = 1;
-                    var date = new Date("Wed Oct 15 2014 16:00:00 GMT-0400 (EDT)");
-                    var inc = intervals.day.inc(date, amount);
-                    expect(moment(inc).subtract(1,'minute').format('dddd')).to.eql(moment(date).add(1,'day').format('dddd'));
-                    expect(intervals.day.diff(inc, date)).to.eql(amount);
-                    expect(intervals.day.diff(date, inc)).to.eql(-amount);
-                });
-            });
-            describe("dec", function() {
-                it("Wed Oct 15 2014 16:00:00 GMT-0400 (EDT) by 1", function(){
-                    var amount = 1;
-                    var date = new Date("Wed Oct 15 2014 16:00:00 GMT-0400 (EDT)");
-                    var dec = intervals.day.dec(date, amount);
-                    expect(moment(dec).format('dddd')).to.eql(moment(date).subtract(1,'day').format('dddd'));
-                    expect(intervals.day.diff(dec, date)).to.eql(-amount);
-                    expect(intervals.day.diff(date, dec)).to.eql(amount);
-                });
-                it("Fri Oct 17 2014 16:00:00 GMT-0400 (EDT) by 1", function(){
-                    var amount = 1;
-                    var date = new Date("Fri Oct 17 2014 16:00:00 GMT-0400 (EDT)");
-                    var dec = intervals.day.dec(date, amount);
-                    expect(moment(dec).format('dddd')).to.eql(moment(date).subtract(1,'day').format('dddd'));
-                    expect(intervals.day.diff(dec, date)).to.eql(-amount);
-                    expect(intervals.day.diff(date, dec)).to.eql(amount);
-                });
-            });
-            describe("diff", function() {
-                it("Wed Oct 15 2014 16:00:00 GMT-0400 (EDT)", function(){
-                    var date = new Date("Wed Oct 15 2014 16:00:00 GMT-0400 (EDT)");
-                    expect(intervals.day.diff(date, date)).to.eql(0);
-                    expect(intervals.day.diff(date, moment(date).subtract(1,'days'))).to.eql(1);
-                });
-                it("Fri Oct 17 2014 16:00:00 GMT-0400 (EDT) by 1", function(){
-                    var date = new Date("Fri Oct 17 2014 16:00:00 GMT-0400 (EDT)");
-                    expect(intervals.day.diff(moment(date).add(1,'days'), date)).to.eql(1);
-                });
-            });
-        });
-    });
-    describe('day', function(){
-        describe("ceil", function() {
-            datesBetween(new Date(2010,0,1), new Date(2015,0,1), 60 *60 *1000).forEach(function(date){
-                it(date.toString(), function(){
-                    var ceil = intervals.day.ceil(date);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(ceil.valueOf()).to.be.a('number');
-                    expect(ceil.valueOf() - date.valueOf() >= 0).to.be.true;
-                    expect(ceil.valueOf() - date.valueOf() < 3 *24 *60 *60 *1000).to.be.true;
-                });
-            });
-        });
-        describe("floor", function() {
-            datesBetween(new Date(2010,0,1), new Date(2015,0,1), 60 *60 *1000).forEach(function(date){
-                it(date.toString(), function(){
-                    var floor = intervals.day.floor(date);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(floor.valueOf()).to.be.a('number');
-                    expect(date.valueOf() - floor.valueOf() >= 0).to.be.true;
-                    expect(date.valueOf() - floor.valueOf() < 3 *24 *60 *60 *1000).to.be.true;
-                });
-            });
-        });
-        describe("inc", function() {
             var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), 60 *60 *1000);
             var numbers = numbersBetween(0, 500, dates.length);
             dates.forEach(function(date,i,dates){
-                var amount = numbers[i];
-                it(date.toString() + ' by ' + amount, function(){
-                    var inc = intervals.day.inc(date, amount);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(inc.valueOf()).to.be.a('number');
-                    expect(inc.valueOf() - date.valueOf() > 0).to.be.true;
-                    expect((inc.valueOf() - date.valueOf()) /1000 /60 /60 /24).not.to.be.below(amount);
-                    expect((inc.valueOf() - date.valueOf()) /1000 /60 /60 /24).to.be.below(Math.ceil(amount /5) *7 +3);
-                    expect(intervals.day.diff(inc, date)).to.eql(amount);
-                    expect(intervals.day.diff(date, inc)).to.eql(-amount);
-                });
+                shouldBeConsistent(it, ex,intervals.day, date, numbers[i]);
             });
         });
-        describe("dec", function() {
-            var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), 60 *60 *1000);
-            var numbers = numbersBetween(0, 500, dates.length);
-            dates.forEach(function(date,i,dates){
-                var amount = numbers[i];
-                it(date.toString() + ' by ' + amount, function(){
-                    var dec = intervals.day.dec(date, amount);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(dec.valueOf()).to.be.a('number');
-                    expect(dec.valueOf() % 60 *1000).to.eql(0);
-                    expect(date.valueOf() - dec.valueOf() > 0).to.be.true;
-                    expect((date.valueOf() - dec.valueOf()) /1000 /60 /60 /24).not.to.be.below(amount);
-                    expect((date.valueOf() - dec.valueOf()) /1000 /60 /60 /24).to.be.below(Math.ceil(amount /5) *7 +3);
-                    expect(intervals.day.diff(dec, date)).to.eql(-amount);
-                    expect(intervals.day.diff(date, dec)).to.eql(amount);
-                });
-            });
-        });
-    });
-    describe('week', function(){
-        describe("ceil", function() {
-            datesBetween(new Date(2010,0,1), new Date(2015,0,1), 5 *60 *60 *1000).forEach(function(date){
-                it(date.toString(), function(){
-                    var ceil = intervals.week.ceil(date);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(ceil.valueOf()).to.be.a('number');
-                    expect(ceil.valueOf() - date.valueOf() >= 0).to.be.true;
-                    expect(ceil.valueOf() - date.valueOf() < 7 *24 *60 *60 *1000).to.be.true;
-                });
-            });
-        });
-        describe("floor", function() {
-            datesBetween(new Date(2010,0,1), new Date(2015,0,1), 5 *60 *60 *1000).forEach(function(date){
-                it(date.toString(), function(){
-                    var floor = intervals.week.floor(date);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(floor.valueOf()).to.be.a('number');
-                    expect(date.valueOf() - floor.valueOf() >= 0).to.be.true;
-                    expect(date.valueOf() - floor.valueOf() < 7 *24 *60 *60 *1000).to.be.true;
-                });
-            });
-        });
-        describe("inc", function() {
+        describe('week', function(){
             var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), 5 *60 *60 *1000);
             var numbers = numbersBetween(0, 500, dates.length);
             dates.forEach(function(date,i,dates){
-                var amount = numbers[i];
-                it(date.toString() + ' by ' + amount, function(){
-                    var inc = intervals.week.inc(date, amount);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(inc.valueOf()).to.be.a('number');
-                    expect(inc.valueOf() - date.valueOf() > 0).to.be.true;
-                    expect((inc.valueOf() - date.valueOf()) /1000 /60 /60 /24).not.to.be.below(5 * amount);
-                    expect((inc.valueOf() - date.valueOf()) /1000 /60 /60 /24).to.be.below(amount *7 +7);
-                    expect(intervals.week.diff(inc, date)).to.eql(amount);
-                    expect(intervals.week.diff(date, inc)).to.eql(-amount);
-                });
+                shouldBeConsistent(it, ex,intervals.week, date, numbers[i]);
             });
         });
-        describe("dec", function() {
-            var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), 5 *60 *60 *1000);
+        describe('month', function(){
+            var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), 30 *60 *60 *1000);
             var numbers = numbersBetween(0, 500, dates.length);
             dates.forEach(function(date,i,dates){
-                var amount = numbers[i];
-                it(date.toString() + ' by ' + amount, function(){
-                    var dec = intervals.week.dec(date, amount);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(dec.valueOf()).to.be.a('number');
-                    expect(dec.valueOf() % 5 *60 *1000).to.eql(0);
-                    expect(date.valueOf() - dec.valueOf() > 0).to.be.true;
-                    expect((date.valueOf() - dec.valueOf()) /1000 /60 /60 /24).not.to.be.below(5 * amount);
-                    expect((date.valueOf() - dec.valueOf()) /1000 /60 /60 /24).to.be.below(amount *7 +7);
-                    expect(intervals.week.diff(dec, date)).to.eql(-amount);
-                    expect(intervals.week.diff(date, dec)).to.eql(amount);
-                });
+                shouldBeConsistent(it, ex,intervals.month, date, numbers[i]);
+            });
+        });
+        describe('quarter', function(){
+            var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), 90 *60 *60 *1000);
+            var numbers = numbersBetween(0, 500, dates.length);
+            dates.forEach(function(date,i,dates){
+                shouldBeConsistent(it, ex,intervals.quarter, date, numbers[i]);
+            });
+        });
+        describe('year', function(){
+            var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), 250 *60 *60 *1000);
+            var numbers = numbersBetween(0, 500, dates.length);
+            dates.forEach(function(date,i,dates){
+                shouldBeConsistent(it, ex,intervals.year, date, numbers[i]);
             });
         });
     });
-}
-
-function testMinuteIntervals(ex) {
-    testMinuteInterval(ex, 1);
-    testMinuteInterval(ex, 2);
-    testMinuteInterval(ex, 5);
-    testMinuteInterval(ex, 10);
-    testMinuteInterval(ex, 15);
-    testMinuteInterval(ex, 20);
-    testMinuteInterval(ex, 30);
-    testMinuteInterval(ex, 60);
-    testMinuteInterval(ex, 120);
-    testMinuteInterval(ex, 240);
+    describe('intraday', function() {
+        describe('m1', testMinuteInterval(ex, 1));
+        describe('m2', testMinuteInterval(ex, 2));
+        describe('m5', testMinuteInterval(ex, 5));
+        describe('m10', testMinuteInterval(ex, 10));
+        describe('m15', testMinuteInterval(ex, 15));
+        describe('m20', testMinuteInterval(ex, 20));
+        describe('m30', testMinuteInterval(ex, 30));
+        describe('m60', testMinuteInterval(ex, 60));
+        describe('m120', testMinuteInterval(ex, 120));
+        describe('m240', testMinuteInterval(ex, 240));
+    });
 }
 
 function testMinuteInterval(ex, size) {
     var intervals = _.object(periods.values, periods.values.map(value => periods(_.extend({
         interval: value
     }, ex))));
-    describe('m' + size, function(){
-        describe("ceil", function() {
-            datesBetween(new Date(2010,0,1), new Date(2015,0,1), size * 1000).forEach(function(date){
-                it(date.toString(), function(){
-                    var ceil = intervals['m' + size].ceil(date);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(ceil.valueOf()).to.be.a('number');
-                    expect(ceil.valueOf() % size *60 *1000).to.eql(0);
-                    expect(ceil.valueOf() - date.valueOf() >= 0).to.be.true;
-                    expect(ceil.valueOf() - date.valueOf() < size * 60000).to.be.true;
-                    if (size < 60) expect(ceil.valueOf() == date.valueOf()).to.equal(date.valueOf() % (size * 60*1000) === 0);
-                });
-            });
+    return function(){
+        var interval = intervals['m' + size];
+        var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), size * 1000);
+        var numbers = numbersBetween(0, 500, dates.length);
+        dates.forEach(function(date,i,dates){
+            shouldBeConsistent(it, ex,interval, date, numbers[i]);
         });
-        describe("floor", function() {
-            datesBetween(new Date(2010,0,1), new Date(2015,0,1), size * 1000).forEach(function(date){
-                it(date.toString(), function(){
-                    var floor = intervals['m' + size].floor(date);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(floor.valueOf()).to.be.a('number');
-                    expect(floor.valueOf() % size *60 *1000).to.eql(0);
-                    expect(date.valueOf() - floor.valueOf() >= 0).to.be.true;
-                    expect(date.valueOf() - floor.valueOf() < size * 60000).to.be.true;
-                    if (size < 60) expect(date.valueOf() == floor.valueOf()).to.equal(date.valueOf() % (size * 60*1000) === 0);
-                });
-            });
-        });
-        describe("inc", function() {
-            var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), size * 1000);
-            var numbers = numbersBetween(0, 500, dates.length);
-            dates.forEach(function(date,i,dates){
-                var amount = numbers[i];
-                it(date.toString() + ' by ' + amount, function(){
-                    var inc = intervals['m' + size].inc(date, amount);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(inc.valueOf()).to.be.a('number');
-                    expect(inc.valueOf() % size *60 *1000).to.eql(0);
-                    expect(inc.valueOf() - date.valueOf() > 0).to.be.true;
-                    expect((inc.valueOf() - date.valueOf()) /1000 /60).not.to.be.below(size * amount);
-                    expect((inc.valueOf() - date.valueOf()) /1000 /60).to.be.below(Math.ceil(size * amount /60 /6.5 /5) *7 *24 *60 +2 *24 *60);
-                    if (ex.premarketOpensAt != ex.afterHoursClosesAt) {
-                        var opens = moment.tz(inc.format('YYYY-MM-DD') + 'T' + ex.premarketOpensAt, ex.tz);
-                        var closes = moment.tz(inc.format('YYYY-MM-DD') + 'T' + ex.afterHoursClosesAt, ex.tz);
-                        expect(inc.valueOf() >= opens.valueOf()).to.be.true;
-                        expect(inc.valueOf() <= closes.valueOf()).to.be.true;
-                    }
-                });
-            });
-        });
-        describe("dec", function() {
-            var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), size * 1000);
-            var numbers = numbersBetween(0, 500, dates.length);
-            dates.forEach(function(date,i,dates){
-                var amount = numbers[i];
-                it(date.toString() + ' by ' + amount, function(){
-                    var dec = intervals['m' + size].dec(date, amount);
-                    expect(date.valueOf()).to.be.a('number');
-                    expect(dec.valueOf()).to.be.a('number');
-                    expect(dec.valueOf() % size *60 *1000).to.eql(0);
-                    expect(date.valueOf() - dec.valueOf() > 0).to.be.true;
-                    if (size < 60) expect((date.valueOf() - dec.valueOf()) /1000 /60).not.to.be.below(size * amount);
-                    expect((date.valueOf() - dec.valueOf()) /1000 /60).to.be.below(Math.ceil(size * amount /60 /6.5 /5) *7 * 24 *60 +2 *24 *60);
-                    if (ex.premarketOpensAt != ex.afterHoursClosesAt) {
-                        var opens = moment.tz(dec.format('YYYY-MM-DD') + 'T' + ex.premarketOpensAt, ex.tz);
-                        var closes = moment.tz(dec.format('YYYY-MM-DD') + 'T' + ex.afterHoursClosesAt, ex.tz);
-                        expect(dec.format(), "dec " + amount + " of " + moment.tz(date, ex.tz).format()).not.to.be.below(opens.format());
-                        expect(dec.valueOf() >= opens.valueOf()).to.be.true;
-                        expect(dec.format(), "dec " + amount + " of " + moment.tz(date, ex.tz).format()).not.to.be.above(closes.format());
-                        expect(dec.valueOf() <= closes.valueOf()).to.be.true;
-                    }
-                });
-            });
-        });
-        describe("diff", function() {
-            var interval = intervals['m' + size];
-            var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), size * 1000);
-            var numbers = numbersBetween(0, 500, dates.length);
-            dates.forEach(function(date,i,dates){
-                var amount = numbers[i];
-                it(date.toString() + ' by ' + amount, function(){
-                    var inc = interval.inc(date, amount);
-                    var dec = interval.dec(date, amount);
-                    expect(interval.diff(inc, date)).to.eql(amount);
-                    expect(interval.diff(dec, date), "Between " + dec.format() + " and " + date.format()).to.eql(-amount);
-                    expect(interval.diff(date, inc)).to.eql(-amount);
-                    expect(interval.diff(date, dec)).to.eql(amount);
-                });
-            });
-        });
+    };
+}
+
+function shouldBeConsistent(it, ex, interval, date, amount) {
+    it(`shouldBeConsistent(it.o${'nly'}, ex, intervals['${interval.value}'], moment('${date.format()}'), ${amount})`, () => {
+        const dec = interval.dec(date, amount);
+        const inc = interval.inc(date, amount);
+        expectCloseOrNotOpen(ex, interval, dec);
+        expectCloseOrNotOpen(ex, interval, inc);
+        expect(dec.format()).to.eql(interval.inc(date, -amount).format());
+        expect(inc.format()).to.eql(interval.dec(date, -amount).format());
+        expectPeriodDiffConsistency(ex, interval, date, dec, amount);
+        expectPeriodDiffConsistency(ex, interval, inc, date, amount);
+        expect(interval.dec(interval.inc(date, amount *2), amount).format()).to.eql(inc.format());
+        expect(interval.inc(interval.dec(date, amount *2), amount).format()).to.eql(dec.format());
     });
+}
+
+function expectOpenOrNotClose(ex, interval, date) {
+    const rth = interval.value.charAt(0) != 'm' || interval.value == 'month';
+    const open_time = rth ? ex.open_time || ex.liquid_hours.substring(0, 8) : ex.trading_hours.substring(0, 8);
+    const end_time = rth ? ex.liquid_hours.substring(11) : ex.trading_hours.substring(11);
+    const time = moment(date).tz(ex.security_tz).format('HH:mm:ss');
+    if (open_time < end_time && open_time <= time) {
+        expect(time <= end_time).to.be.true;
+    }
+    if (open_time < end_time && time <= end_time) {
+        expect(open_time <= time).to.be.true;
+    }
+    if (end_time < open_time && time < open_time) {
+        expect(time <= end_time).to.be.true;
+    }
+    if (end_time < open_time && end_time < time) {
+        expect(open_time <= time).to.be.true;
+    }
+    if (time != open_time && time != '16:00:00' && time != '18:00:00') { // unless 24hr market
+        expect(time).not.to.equal(end_time);
+    }
+}
+
+function expectCloseOrNotOpen(ex, interval, date) {
+    const rth = interval.value.charAt(0) != 'm' || interval.value == 'month';
+    const open_time = rth ? ex.open_time || ex.liquid_hours.substring(0, 8) : ex.trading_hours.substring(0, 8);
+    const end_time = rth ? ex.liquid_hours.substring(11) : ex.trading_hours.substring(11);
+    const time = moment(date).tz(ex.security_tz).format('HH:mm:ss');
+    if (open_time < end_time && open_time <= time) {
+        expect(time <= end_time).to.be.true;
+    }
+    if (open_time < end_time && time <= end_time) {
+        expect(open_time <= time).to.be.true;
+    }
+    if (end_time < open_time && time < open_time) {
+        expect(time <= end_time).to.be.true;
+    }
+    if (end_time < open_time && end_time < time) {
+        expect(open_time <= time).to.be.true;
+    }
+    if (time != end_time && time != '16:00:00' && time != '18:00:00') { // unless 24hr market
+        expect(time).not.to.equal(open_time);
+    }
+}
+
+function expectPeriodDiffConsistency(ex, interval, to, from, amount) {
+    expectPeriodDiffSelfConsistency(ex, interval, to);
+    expectPeriodDiffSelfConsistency(ex, interval, from);
+    expectPeriodDiffAmountConsistency(interval, to, from, amount);
+}
+
+function expectPeriodDiffSelfConsistency(ex, interval, date) {
+    expect(interval.diff(date, date)).to.equal(0);
+    expectOpenOrNotClose(ex, interval, interval.floor(date));
+    expectCloseOrNotOpen(ex, interval, interval.ceil(date));
+    expect(interval.floor(interval.floor(date)).format()).to.eql(interval.floor(date).format());
+    expect(interval.floor(interval.ceil(interval.floor(date))).format()).to.eql(interval.floor(date).format());
+    expect(interval.ceil(interval.ceil(date)).format()).to.eql(interval.ceil(date).format());
+    expect(interval.ceil(interval.floor(interval.ceil(date))).format()).to.eql(interval.ceil(date).format());
+    if (interval.floor(date).isBefore(date)) {
+        expect(interval.diff(date, interval.floor(date))).to.equal(1);
+        expect(interval.diff(interval.floor(date), date)).to.equal(-1);
+        expect(interval.dec(date, 1).format()).to.eql(interval.ceil(interval.floor(date)).format());
+        expect(interval.inc(date, -1).format()).to.eql(interval.ceil(interval.floor(date)).format());
+    } else {
+        expect(interval.diff(date, interval.floor(date))).to.equal(0);
+        expect(interval.diff(interval.floor(date), date)).to.equal(0);
+        expect(interval.inc(date, 1).format()).to.eql(interval.inc(interval.floor(date),1).format());
+        expect(interval.dec(date, -1).format()).to.eql(interval.inc(interval.floor(date),1).format());
+    }
+    if (interval.ceil(date).isAfter(date)) {
+        expect(interval.diff(date, interval.ceil(date))).to.equal(-1);
+        expect(interval.diff(interval.ceil(date), date)).to.equal(1);
+        expect(interval.inc(date, 1).format()).to.eql(interval.ceil(date).format());
+        expect(interval.dec(date, -1).format()).to.eql(interval.ceil(date).format());
+        expect(interval.inc(date, 0).format()).to.eql(date.format());
+        expect(interval.dec(date, 0).format()).to.eql(date.format());
+    } else {
+        expect(interval.diff(date, interval.ceil(date))).to.equal(0);
+        expect(interval.diff(interval.ceil(date), date)).to.equal(0);
+        expect(interval.dec(date, 1).format()).to.eql(interval.dec(interval.ceil(date),1).format());
+        expect(interval.inc(date, -1).format()).to.eql(interval.dec(interval.ceil(date),1).format());
+        expect(interval.inc(date, 0).format()).to.eql(interval.ceil(date).format());
+        expect(interval.dec(date, 0).format()).to.eql(interval.ceil(date).format());
+    }
+    if (interval.floor(date).isBefore(date) || interval.ceil(date).isAfter(date)) {
+        expect(interval.diff(interval.floor(date), interval.ceil(date))).to.equal(-1);
+        expect(interval.diff(interval.ceil(date), interval.floor(date))).to.equal(1);
+    } else {
+        expect(interval.diff(interval.floor(date), interval.ceil(date))).to.equal(0);
+        expect(interval.diff(interval.ceil(date), interval.floor(date))).to.equal(0);
+    }
+}
+
+function expectPeriodDiffAmountConsistency(interval, to, from, amount) {
+    expect(amount).to.be.at.least(0);
+    expect(interval.diff(to, from)).to.equal(amount);
+    expect(interval.diff(from, to)).to.equal(-amount);
+    expect(interval.diff(to, interval.floor(from))).to.equal(amount);
+    expect(interval.diff(interval.ceil(to), from)).to.equal(amount);
+    expect(interval.diff(interval.ceil(to), interval.floor(from))).to.equal(amount);
+    if (interval.floor(to).isBefore(to) && moment(from).isBetween(interval.floor(to),to)) {
+        expect(interval.diff(interval.floor(to), from)).to.equal(amount-2);
+    } else if (interval.floor(to).isBefore(to)) {
+        expect(interval.diff(interval.floor(to), from)).to.equal(amount-1);
+    } else {
+        expect(interval.diff(interval.floor(to), from)).to.equal(amount);
+    }
+    if (interval.ceil(from).isAfter(from) && moment(to).isBetween(from,interval.ceil(from))) {
+        expect(interval.diff(to, interval.ceil(from))).to.equal(amount-2);
+    } else if (interval.ceil(from).isAfter(from)) {
+        expect(interval.diff(to, interval.ceil(from))).to.equal(amount-1);
+    } else {
+        expect(interval.diff(to, interval.ceil(from))).to.equal(amount);
+    }
+    if (interval.floor(to).isBefore(to) && interval.ceil(from).isAfter(from)) {
+        expect(interval.diff(interval.floor(to), interval.ceil(from))).to.equal(amount-2);
+    } else if (interval.floor(to).isBefore(to) || interval.ceil(from).isAfter(from)) {
+        expect(interval.diff(interval.floor(to), interval.ceil(from))).to.equal(amount-1);
+    } else if (!interval.floor(to).isSame(interval.ceil(from))) {
+        expect(interval.diff(interval.floor(to), interval.ceil(from))).to.equal(amount);
+    }
 }
 
 function datesBetween(start, stop, step) {

@@ -41,8 +41,6 @@ const logger = require('./logger.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
-const tz = (moment.defaultZone||{}).name || moment.tz.guess();
-
 /**
  * @returns a function that returns an object about the security in the given options
  */
@@ -89,13 +87,7 @@ function fetchOptionsFactory(fetch, offline, read_only) {
         expect(options).to.have.property('symbol');
         const symbol = options.symbol.toUpperCase();
         const market = options.market;
-        return memoizeFirstLookup(symbol, market).then(security => {
-            return _.defaults({},
-                security,
-                options,
-                convertTime(security, options.tz || tz)
-            );
-        });
+        return memoizeFirstLookup(symbol, market);
     };
 }
 
@@ -107,17 +99,6 @@ function guessSecurityOptions(markets, symbol, market, e) {
         currency: markets[market].currency,
         security_type: markets[market].default_security_type,
         ..._.pick(markets[market], 'security_tz', 'liquid_hours', 'open_time', 'trading_hours')
-    };
-}
-
-function convertTime(security, tz) {
-    const mtz2tz = time => moment.tz('2010-03-01T' + time, security.security_tz).tz(tz).format('HH:mm:ss');
-    return {
-        afterHoursClosesAt: mtz2tz(security.trading_hours.substring(security.trading_hours.length - 8)),
-        marketClosesAt: mtz2tz(security.liquid_hours.substring(security.liquid_hours.length - 8)),
-        marketOpensAt: mtz2tz(security.open_time || security.liquid_hours.substring(0, 8)),
-        premarketOpensAt: mtz2tz(security.trading_hours.substring(0, 8)),
-        tz
     };
 }
 

@@ -84,14 +84,20 @@ function help(settings = {}) {
                 example: "YYYY-MM-DD HH:MM:SS",
                 description: "Sets the latest dateTime to retrieve"
             },
-            marketOpensAt: {
-                description: "Time of day that the market options"
+            open_time: {
+                description: "The time of day that the open value of the daily bar in recorded"
             },
-            marketClosesAt: {
-                description: "Time of day that the market closes"
+            liquid_hours: {
+                description: "Regular trading hours in the format 'hh:mm:00 - hh:mm:00'"
+            },
+            trading_hours: {
+                description: "Trading hours in the format 'hh:mm:00 - hh:mm:00'"
+            },
+            security_tz: {
+                description: "Timezone of liquid_hours using the identifier in the tz database"
             },
             tz: {
-                description: "Timezone of the market formatted using the identifier in the tz database"
+                description: "Timezone used to format the ending field, using the identifier in the tz database"
             },
             ending_format: {
                 description: "Date and time format of the resulting ending field"
@@ -201,8 +207,9 @@ async function interday(yahoo, adjustments, symbol, options) {
         interval: _.isString,
         symbol: /^\S+$/,
         begin: Boolean,
-        marketClosesAt: _.isString,
-        tz: _.isString
+        liquid_hours: /^\d\d:\d\d:00 - \d\d:\d\d:00$/,
+        security_tz: /^\S+\/\S+$/,
+        tz: /^\S+\/\S+$/
     });
     const now = moment().tz(options.tz);
     const [prices, adjusts] = await Promise.all([
@@ -265,12 +272,13 @@ function adjRight(bars, adjustments, options, cb) {
 }
 
 function endOf(unit, begin, options) {
-    const ending = moment.tz(begin, options.tz).endOf(unit);
+    const ending = moment.tz(begin, options.security_tz).endOf(unit);
     if (!ending.isValid()) throw Error("Invalid date " + begin);
     if (ending.days() === 0) ending.subtract(2, 'days');
     else if (ending.days() == 6) ending.subtract(1, 'days');
-    const closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
-    if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
-    return closes.format(options.ending_format);
+    const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
+    const closes = moment.tz(`${ending.format('YYYY-MM-DD')}T${close_time}`, options.security_tz);
+    if (!closes.isValid()) throw Error("Invalid liquid_hours " + options.liquid_hours);
+    return closes.tz(options.tz).format(options.ending_format);
 }
 

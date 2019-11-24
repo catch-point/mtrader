@@ -338,8 +338,10 @@ describe("fetch-ib", function() {
                 market: 'ARCA',
                 begin: '2017-03-15',
                 end: '2017-03-22',
-                premarketOpensAt: '09:30:00', marketOpensAt: '09:30:00',
-                afterHoursClosesAt: '16:00:00', marketClosesAt: "16:00:00", tz: tz
+                trading_hours: "04:00:00 - 20:00:00",
+                liquid_hours: "09:30:00 - 16:00:00",
+                open_time: "09:30:00",
+                security_tz: "America/New_York", tz: tz
             }).then(data => {
                 var scale = Big(_.last(data).close).div(_.last(data).adj_close);
                 return data.map(datum => _.defaults({adj_close: +Big(datum.adj_close).times(scale)}, datum));
@@ -358,8 +360,10 @@ describe("fetch-ib", function() {
                 market: 'ARCA',
                 begin: '2016-12-01',
                 end: '2016-12-31',
-                premarketOpensAt: '09:30:00', marketOpensAt: '09:30:00',
-                afterHoursClosesAt: '16:00:00', marketClosesAt: "16:00:00", tz: tz
+                trading_hours: "04:00:00 - 20:00:00",
+                liquid_hours: "09:30:00 - 16:00:00",
+                open_time: "09:30:00",
+                security_tz: "America/New_York", tz: tz
             }).then(data => {
                 var scale = _.last(data).close / _.last(data).adj_close;
                 return data.map(datum => _.defaults({adj_close: datum.adj_close * scale}, datum));
@@ -394,8 +398,10 @@ describe("fetch-ib", function() {
                 market: 'ARCA',
                 begin: '2016-09-14',
                 end: '2016-09-22',
-                premarketOpensAt: '09:30:00', marketOpensAt: '09:30:00',
-                afterHoursClosesAt: '16:00:00', marketClosesAt: "16:00:00", tz: tz
+                trading_hours: "04:00:00 - 20:00:00",
+                liquid_hours: "09:30:00 - 16:00:00",
+                open_time: "09:30:00",
+                security_tz: "America/New_York", tz: tz
             }).then(data => {
                 var scale = _.last(data).close / _.last(data).adj_close;
                 return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -415,8 +421,10 @@ describe("fetch-ib", function() {
                 market: 'BATS',
                 begin: '2016-11-01',
                 end: '2016-12-01',
-                premarketOpensAt: '09:30:00', marketOpensAt: '09:30:00',
-                afterHoursClosesAt: '16:00:00', marketClosesAt: "16:00:00", tz: tz
+                trading_hours: "04:00:00 - 20:00:00",
+                liquid_hours: "09:30:00 - 16:00:00",
+                open_time: "09:30:00",
+                security_tz: "America/New_York", tz: tz
             }).then(data => {
                 var scale = _.last(data).close / _.last(data).adj_close;
                 return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -448,9 +456,11 @@ describe("fetch-ib", function() {
             return client({
                 interval: 'day',
                 symbol: 'USD', market: 'CAD',
-                begin: '2014-01-01', end: '2014-02-01',
-                premarketOpensAt: '17:00:00', marketOpensAt: '17:00:00',
-                afterHoursClosesAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+                begin: '2014-01-01', end: '2014-01-31',
+                trading_hours: "00:00:00 - 24:00:00",
+                liquid_hours: "17:00:00 - 17:00:00",
+                open_time: "17:00:00",
+                security_tz: "America/New_York", tz: tz
             }).should.eventually.be.like([
                 {ending:'2014-01-02T17:00:00-05:00',close:1.067},
                 {ending:'2014-01-03T17:00:00-05:00',close:1.063},
@@ -483,8 +493,10 @@ describe("fetch-ib", function() {
                 market: 'CBOE',
                 begin: '2016-11-01',
                 end: '2016-12-01',
-                premarketOpensAt: '09:30:00', marketOpensAt: '09:30:00',
-                afterHoursClosesAt: '16:00:00', marketClosesAt: "16:00:00", tz: tz
+                trading_hours: "04:00:00 - 20:00:00",
+                liquid_hours: "09:30:00 - 16:00:00",
+                open_time: "09:30:00",
+                security_tz: "America/New_York", tz: tz
             }).should.eventually.be.like([
         {ending:"2016-11-01T16:00:00-04:00",open:2128.68,high:2131.45,low:2097.85,close:2111.72,adj_close:2111.72},
         {ending:"2016-11-02T16:00:00-04:00",open:2109.43,high:2111.76,low:2094,close:2097.94,adj_close:2097.94},
@@ -518,8 +530,10 @@ describe("fetch-ib", function() {
                 market: 'NASDAQ',
                 begin: '2014-06-06T09:30:00-04:00',
                 end: '2014-06-09T16:00:00-04:00',
-                premarketOpensAt: '09:30:00', marketOpensAt: '09:30:00',
-                afterHoursClosesAt: '16:00:00', marketClosesAt: "16:00:00", tz: tz
+                trading_hours: "04:00:00 - 20:00:00",
+                liquid_hours: "09:30:00 - 16:00:00",
+                open_time: "09:30:00",
+                security_tz: "America/New_York", tz: tz
             }).then(data => {
                 var scale = _.last(data).close / _.last(data).adj_close;
                 return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -579,8 +593,10 @@ describe("fetch-ib", function() {
                 market: 'CBOE',
                 begin: '2014-06-06T09:30:00-04:00',
                 end: '2014-06-09T16:00:00-04:00',
-                premarketOpensAt: '09:30:00', marketOpensAt: '09:30:00',
-                afterHoursClosesAt: '16:00:00', marketClosesAt: '16:00:00', tz: tz
+                trading_hours: "04:00:00 - 20:00:00",
+                liquid_hours: "09:30:00 - 16:00:00",
+                open_time: "09:30:00",
+                security_tz: "America/New_York", tz: tz
             }).then(data => {
                 var scale = _.last(data).close / _.last(data).adj_close;
                 return data.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}));
@@ -607,8 +623,10 @@ describe("fetch-ib", function() {
                 symbol: 'USD', market: 'CAD',
                 begin: '2014-03-03T10:01:00-0500',
                 end: '2014-03-03T10:30:00-0500',
-                premarketOpensAt: '17:00:00', marketOpensAt: '17:00:00',
-                afterHoursClosesAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+                trading_hours: "00:00:00 - 24:00:00",
+                liquid_hours: "17:00:00 - 17:00:00",
+                open_time: "17:00:00",
+                security_tz: "America/New_York", tz: tz
             }).should.eventually.be.like([
                 {ending:"2014-03-03T10:01:00-05:00",high:1.1099,low:1.1094,open:1.1094,close:1.1099},
                 {ending:"2014-03-03T10:02:00-05:00",high:1.1100,low:1.1095,open:1.1099,close:1.1096},
@@ -648,8 +666,10 @@ describe("fetch-ib", function() {
                 symbol: 'USD', market: 'CAD',
                 begin: '2014-03-03T10:10:00-0500',
                 end: '2014-03-03T11:00:00-0500',
-                premarketOpensAt: '17:00:00', marketOpensAt: '17:00:00',
-                afterHoursClosesAt: '17:00:00', marketClosesAt: '17:00:00', tz: tz
+                trading_hours: "00:00:00 - 24:00:00",
+                liquid_hours: "17:00:00 - 17:00:00",
+                open_time: "17:00:00",
+                security_tz: "America/New_York", tz: tz
             }).should.eventually.be.like([
                 {ending:"2014-03-03T10:10:00-05:00",high:1.1100,low:1.1088,open:1.1094,close:1.1091},
                 {ending:"2014-03-03T10:20:00-05:00",high:1.1095,low:1.1088,open:1.1091,close:1.1089},
@@ -667,7 +687,10 @@ describe("fetch-ib", function() {
             symbol: 'SPX   190418C02900000',
             market: 'OPRA',
             begin: '2019-03-22T09:30:00-04:00',
-            marketOpensAt: '02:00:00', marketClosesAt: '16:15:00', tz: tz
+            trading_hours: "02:00:00 - 15:15:00",
+            liquid_hours: "08:30:00 - 15:15:00",
+            open_time: "08:30:00",
+            security_tz: "America/Chicago", tz: tz
         }).then(d=>d.forEach(d=>console.log(JSON.stringify(d).replace(/"(\w+)":/g,'$1:')))||d);
     });
     it.skip("should return daily CLX", function() {
@@ -675,7 +698,10 @@ describe("fetch-ib", function() {
             interval: 'day',
             symbol: 'CLX', market: 'NYSE',
             begin: '2019-04-18', end: '2019-04-24',
-            marketOpensAt: '09:30:00', marketClosesAt: '16:00:00', tz: tz
+            trading_hours: "04:00:00 - 20:00:00",
+            liquid_hours: "09:30:00 - 16:00:00",
+            open_time: "09:30:00",
+            security_tz: "America/New_York", tz: tz
         })
          .then(d=>d.forEach(d=>console.log(require('util').inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
          .should.eventually.be.like([

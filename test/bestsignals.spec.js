@@ -438,7 +438,7 @@ describe("bestsignals", function() {
             parameters: { Ksmoothing: 3, lookback: 10, Dmoving: 5 }
         }]);
     });
-    it("should find best overall signal", function() {
+    it.skip("should find best overall signal", function() {
         return bestsignals({
             portfolio: 'SPY.ARCA',
             begin: '2016-07-01',

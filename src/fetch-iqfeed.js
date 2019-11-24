@@ -37,7 +37,7 @@ const d3 = require('d3-format');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
-const periods = require('./periods.js');
+const Periods = require('./periods.js');
 const iqfeed = require('./iqfeed-client.js');
 const Adjustments = require('./adjustments.js');
 const cache = require('./memoize-cache.js');
@@ -58,14 +58,20 @@ function help(settings = {}) {
         }
     };
     const tzOptions = {
-        marketOpensAt: {
-            description: "Time of day that the market options"
+        open_time: {
+            description: "The time of day that the open value of the daily bar in recorded"
         },
-        marketClosesAt: {
-            description: "Time of day that the market closes"
+        liquid_hours: {
+            description: "Regular trading hours in the format 'hh:mm:00 - hh:mm:00'"
+        },
+        trading_hours: {
+            description: "Trading hours in the format 'hh:mm:00 - hh:mm:00'"
+        },
+        security_tz: {
+            description: "Timezone of liquid_hours using the identifier in the tz database"
         },
         tz: {
-            description: "Timezone of the market formatted using the identifier in the tz database"
+            description: "Timezone used to format the ending field, using the identifier in the tz database"
         },
         ending_format: {
             description: "Date and time format of the resulting ending field"
@@ -143,7 +149,7 @@ module.exports = function(settings = {}) {
         if (self.closed) throw Error("IQFeed has closed");
         else return sharedInstance(options, settings);
     };
-    self.open = () => sharedInstance({open:true});
+    self.open = () => sharedInstance({open:true}, settings);
     self.close = () => unregister(self);
     return register(self);
 };
@@ -246,11 +252,15 @@ function createInstance(settings = {}) {
         } else if (options.interval == 'fundamental') {
             expect(options).to.be.like({
                 symbol: /^(\S| )+$/,
-                marketClosesAt: _.isString,
-                tz: _.isString
+                open_time: /^\d\d:\d\d:00$/,
+                liquid_hours: /^\d\d:\d\d:00 - \d\d:\d\d:00$/,
+                trading_hours: /^\d\d:\d\d:00 - \d\d:\d\d:00$/,
+                security_tz: /^\S+\/\S+$/,
+                tz: /^\S+\/\S+$/
             });
+            const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
             return iqclient.fundamental(symbol(options),
-                options.marketClosesAt, options.tz
+                close_time, options.tz
             ).then(fundamental => [{
                 ...fundamental,
                 name: fundamental.company_name,
@@ -261,8 +271,10 @@ function createInstance(settings = {}) {
                 interval: _.isString,
                 symbol: /^(\S| )+$/,
                 begin: Boolean,
-                marketOpensAt: /^\d\d:\d\d(:00)?$/,
-                marketClosesAt: /^\d\d:\d\d(:00)?$/,
+                open_time: /^\d\d:\d\d:00$/,
+                liquid_hours: /^\d\d:\d\d:00 - \d\d:\d\d:00$/,
+                trading_hours: /^\d\d:\d\d:00 - \d\d:\d\d:00$/,
+                security_tz: /^\S+\/\S+$/,
                 tz: /^\S+\/\S+$/
             });
             expect(options.interval).to.be.oneOf(['day']);
@@ -536,6 +548,7 @@ async function interday(iqclient, adjustments, symbol, options) {
 }
 
 async function intraday(iqclient, adjustments, symbol, options) {
+    const periods = new Periods(options);
     const minutes = +options.interval.substring(1);
     expect(minutes).to.be.finite;
     const now = moment().tz(options.tz);
@@ -544,7 +557,7 @@ async function intraday(iqclient, adjustments, symbol, options) {
         adjustments && adjustments(options)
     ]);
     const result = adjRight(prices, adjusts, options, (datum, adj, adj_split_only) => ({
-        ending: moment.tz(datum.Time_Stamp, 'America/New_York').tz(options.tz).format(options.ending_format),
+        ending: periods.ceil(moment.tz(datum.Time_Stamp, 'America/New_York')).format(options.ending_format),
         open: parseFloat(datum.Open),
         high: parseFloat(datum.High),
         low: parseFloat(datum.Low),
@@ -570,11 +583,12 @@ async function intraday(iqclient, adjustments, symbol, options) {
 }
 
 async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
-    const now = moment.tz(options.now, options.tz);
+    const tz = options.security_tz;
+    const now = moment.tz(options.now, tz);
     if (now.days() === 6 || !bars.length) return bars;
-    const tz = options.tz;
-    const opensAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketOpensAt, tz);
-    const closesAt = moment.tz(now.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, tz);
+    const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
+    const opensAt = moment.tz(`${now.format('YYYY-MM-DD')}T${options.open_time}`, tz);
+    const closesAt = moment.tz(`${now.format('YYYY-MM-DD')}T${close_time}`, tz);
     if (!opensAt.isBefore(closesAt)) opensAt.subtract(1, 'day');
     if (now.isAfter(closesAt)) opensAt.add(1, 'day');
     if (now.isAfter(closesAt)) closesAt.add(1, 'day');
@@ -586,8 +600,7 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     const test_size = bars.length;
     const intraday = await mostRecentTrade(iqclient, adjustments, symbol, _.defaults({
         begin: _.last(bars).ending,
-        end: end.format(),
-        tz: tz
+        end: end.format(options.ending_format)
     }, options));
     return intraday.reduce((bars, bar) => {
         if (_.last(bars).incomplete) bars.pop(); // remove incomplete (holi)days
@@ -632,9 +645,15 @@ async function rollday(iqclient, adjustments, interval, symbol, options) {
     const bars = await intraday(iqclient, adjustments, symbol, _.defaults({
         interval: 'm' + options.minutes
     }, options));
+    const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
+    const date = moment.tz((_.first(bars)||{}).ending, options.security_tz);
+    const opens = moment.tz(`${date.format('Y-MM-DD')}T${options.open_time}`, options.security_tz);
+    const closes = moment.tz(`${date.format('Y-MM-DD')}T${close_time}`, options.security_tz);
+    const marketOpensAt = opens.tz(options.tz).format(options.ending_format).substring(11, 19);
+    const marketClosesAt = closes.tz(options.tz).format(options.ending_format).substring(11, 19);
     return bars.reduce((days, bar) => {
         const merging = days.length && _.last(days).ending >= bar.ending;
-        if (!merging && isBeforeOpen(bar.ending, options)) return days;
+        if (!merging && isBeforeOpen(bar.ending.substring(11, 19), marketOpensAt, marketClosesAt)) return days;
         const today = merging ? days.pop() : {};
         days.push({
             ending: today.ending || endOf(interval, bar.ending, options),
@@ -696,26 +715,26 @@ function adjRight(bars, adjustments, options, cb) {
 }
 
 function endOf(unit, date, options) {
-    const start = moment.tz(date, options.tz);
+    const start = moment.tz(date, options.security_tz);
     if (!start.isValid()) throw Error("Invalid date " + date);
+    const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
     let ending = moment(start).endOf(unit);
     let closes, days = 0;
     do {
         if (ending.days() === 0) ending.subtract(2, 'days');
         else if (ending.days() == 6) ending.subtract(1, 'days');
-        closes = moment.tz(ending.format('YYYY-MM-DD') + ' ' + options.marketClosesAt, options.tz);
+        closes = moment.tz(`${ending.format('YYYY-MM-DD')}T${close_time}`, options.security_tz);
         if (!closes.isValid()) throw Error("Invalid marketClosesAt " + options.marketClosesAt);
         if (closes.isBefore(start)) ending = moment(start).add(++days, 'days').endOf(unit);
     } while (closes.isBefore(start));
-    return closes.format(options.ending_format);
+    return closes.tz(options.tz).format(options.ending_format);
 }
 
-function isBeforeOpen(ending, options) {
-    const time = ending.substring(11, 19);
-    if (options.marketOpensAt < options.marketClosesAt) {
-        return time > options.marketClosesAt || time < options.marketOpensAt;
-    } else if (options.marketClosesAt < options.marketOpensAt) {
-        return time > options.marketClosesAt && time < options.marketOpensAt;
+function isBeforeOpen(time, marketOpensAt, marketClosesAt) {
+    if (marketOpensAt < marketClosesAt) {
+        return time > marketClosesAt || time < marketOpensAt;
+    } else if (marketClosesAt < marketOpensAt) {
+        return time > marketClosesAt && time < marketOpensAt;
     } else {
         return false; // 24 hour market
     }

@@ -198,7 +198,7 @@ function createInstance(session) {
 
     config.resolve = function(name) {
         const args = _.toArray(arguments);
-        const filename = _.last(args) + '.json';
+        const filename = _.last(args).replace(/\.json$/, '') + '.json';
         const loc = path.resolve(config.configDirname(), filename);
         try {
             fs.accessSync(loc, fs.R_OK);

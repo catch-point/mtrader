@@ -37,704 +37,467 @@ const expect = require('chai').use(like).expect;
 
 module.exports = function(options) {
     expect(options).to.be.like({
-        interval: int => expect(int).to.be.oneOf(_.keys(intervals)),
-        marketOpensAt: /\d\d:\d\d(:00)?/,
-        marketClosesAt: /\d\d:\d\d(:00)?/,
+        interval: int => expect(int).to.be.oneOf(module.exports.values),
+        open_time: /\d\d:\d\d(:00)?/,
+        liquid_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
+        trading_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
+        security_tz: tz => moment.tz.zone(tz),
         tz: tz => moment.tz.zone(tz)
         
     });
-    const period = intervals[options.interval];
+    const period = createPeriods(options);
     return {
         value: period.value,
         millis: period.millis,
-        floor: period.floor.bind(period, options),
-        ceil: period.ceil.bind(period, options),
-        inc: period.inc.bind(period, options),
-        dec: period.dec.bind(period, options),
-        diff: period.diff.bind(period, options),
+        floor(dateTime) {
+            const point = moment.tz(dateTime, options.tz).tz(options.security_tz);
+            if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+            return period.floor(point).tz(options.tz);
+        },
+        ceil(dateTime) {
+            const point = moment.tz(dateTime, options.tz).tz(options.security_tz);
+            if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+            return period.ceil(point).tz(options.tz);
+        },
+        inc(dateTime, amount) {
+            const point = moment.tz(dateTime, options.tz).tz(options.security_tz);
+            if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+            return period.inc(point, amount).tz(options.tz);
+        },
+        dec(dateTime, amount) {
+            const point = moment.tz(dateTime, options.tz).tz(options.security_tz);
+            if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
+            return period.dec(point, amount).tz(options.tz);
+        },
+        diff(to, from) {
+            const m_to = moment.tz(to, options.tz).tz(options.security_tz);
+            const m_from = moment.tz(from, options.tz).tz(options.security_tz);
+            if (!m_to.isValid()) throw Error(`Invalid dateTime: ${to}`);
+            if (!m_from.isValid()) throw Error(`Invalid dateTime: ${from}`);
+            return period.diff(m_to, m_from);
+        }
     };
 };
 
 module.exports.sort = periods => _.sortBy(periods, period => {
-    if (_.isString(period) && !intervals[period])
-        throw Error("Unknown interval: " + period + " must be one of " + _.keys(intervals).join(', '));
-    return _.isString(period) ? intervals[period].millis : period.millis;
+    if (_.isString(period) && !~module.exports.values.indexOf(period))
+        throw Error("Unknown interval: " + period + " must be one of " + module.exports.values.join(', '));
+    return _.isString(period) ? createPeriods({
+        interval: period,
+        trading_hours: "04:00:00 - 20:00:00",
+        liquid_hours: "09:30:00 - 16:00:00",
+        open_time: "09:30:00",
+        security_tz: "America/New_York"
+    }).millis : period.millis;
 });
 
-const m1 = {
-    value: 'm1',
-    millis: 60 * 1000,
-    floor: function(ex, dateTime, amount) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return point.startOf('minute');
-    },
-    ceil: function(ex, dateTime) {
-        const start = m1.floor(ex, dateTime);
-        if (start.valueOf() < moment(dateTime).valueOf())
-            return start.add(1, 'minutes');
-        return start;
-    },
-    inc: function(ex, dateTime, amount) {
-        if (amount < 0) throw Error("Amount must be >= 0");
-        const start = m1.ceil(ex, dateTime);
-        const hours = marketHours(ex, start);
-        if (start.isBefore(hours.opens))
-            return m1.inc(ex, hours.opens, amount);
-        if (start.isAfter(hours.closes))
-            return m1.inc(ex, hours.opens.add(1, 'days'), amount);
-        const weeks = Math.floor(amount /5 /hours.minInDay);
-        if (weeks)
-            return m1.inc(ex, start.add(weeks, 'weeks'), Math.round(amount - weeks *5 *hours.minInDay));
-        const untilClose = hours.closes.diff(start, 'minutes');
-        if (untilClose < amount)
-            return m1.inc(ex, hours.opens.add(1, 'days'), amount - untilClose);
-        return start.add(amount, 'minutes');
-    },
-    dec: function(ex, dateTime, amount) {
-        if (amount < 0) throw Error("Amount must be >= 0");
-        const start = m1.floor(ex, dateTime);
-        const hours = marketHours(ex, start, true);
-        if (start.isBefore(hours.opens))
-            return m1.dec(ex, hours.closes.subtract(1, 'days'), amount);
-        if (start.isAfter(hours.closes))
-            return m1.dec(ex, hours.closes, amount);
-        const weeks = Math.floor(amount /5 /hours.minInDay);
-        if (weeks)
-            return m1.dec(ex, start.subtract(weeks, 'weeks'), Math.round(amount - weeks *5 *hours.minInDay));
-        const sinceOpen = start.diff(hours.opens, 'minutes');
-        if (sinceOpen < amount)
-            return m1.dec(ex, hours.closes.subtract(1, 'days'), amount - sinceOpen);
-        return start.subtract(amount, 'minutes');
-    },
-    diff: function(ex, to, from) {
-        const start = m1.inc(ex, from, 0);
-        const end = m1.dec(ex, to, 0);
-        if (end.isBefore(start) && moment(to).isBefore(from))
-            return -1 * m1.diff(ex, from, to);
-        else if (end.isBefore(start))
-            return 0;
-        const hours = marketHours(ex, start);
-        const weeks = end.diff(start, 'weeks');
-        if (weeks)
-            return weeks * 5 * hours.minInDay + m1.diff(ex, end, start.add(weeks, 'weeks'));
-        const days = end.diff(start, 'days');
-        if (days && start.day() < end.day())
-            return days * hours.minInDay + m1.diff(ex, end, start.add(days, 'days'));
-        else if (end.isAfter(hours.closes))
-            return hours.closes.diff(start, 'minutes') + m1.diff(ex, end, hours.opens.add(1, 'days'));
-        else return end.diff(start, 'minutes');
-    }
-};
-const m2 = {
-    value: 'm2',
-    millis: 2 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.floor(point.valueOf() /2 /60 /1000) *2 *60 *1000, ex.tz);
-    },
-    ceil: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.ceil(point.valueOf() /2 /60 /1000) *2 *60 *1000, ex.tz);
-    },
-    inc: function(ex, dateTime, amount) {
-        return m1.inc(ex, m2.ceil(ex, dateTime), amount * 2);
-    },
-    dec: function(ex, dateTime, amount) {
-        return m1.dec(ex, m2.floor(ex, dateTime), amount * 2);
-    },
-    diff: function(ex, to, from) {
-        const minutes = m1.diff(ex, to, from);
-        if (minutes < 0)
-            return Math.ceil(minutes /2);
-        return Math.floor(minutes /2);
-    }
-};
-const m5 = {
-    value: 'm5',
-    millis: 5 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.floor(point.valueOf() /5 /60 /1000) *5 *60 *1000, ex.tz);
-    },
-    ceil: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.ceil(point.valueOf() /5 /60 /1000) *5 *60 *1000, ex.tz);
-    },
-    inc: function(ex, dateTime, amount) {
-        return m1.inc(ex, m5.ceil(ex, dateTime), amount * 5);
-    },
-    dec: function(ex, dateTime, amount) {
-        return m1.dec(ex, m5.floor(ex, dateTime), amount * 5);
-    },
-    diff: function(ex, to, from) {
-        const minutes = m1.diff(ex, to, from);
-        if (minutes < 0)
-            return Math.ceil(minutes /5);
-        return Math.floor(minutes /5);
-    }
-};
-const m10 = {
-    value: 'm10',
-    millis: 10 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.floor(point.valueOf() /10 /60 /1000) *10 *60 *1000, ex.tz);
-    },
-    ceil: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.ceil(point.valueOf() /10 /60 /1000) *10 *60 *1000, ex.tz);
-    },
-    inc: function(ex, dateTime, amount) {
-        return m1.inc(ex, m10.ceil(ex, dateTime), amount * 10);
-    },
-    dec: function(ex, dateTime, amount) {
-        return m1.dec(ex, m10.floor(ex, dateTime), amount * 10);
-    },
-    diff: function(ex, to, from) {
-        const minutes = m1.diff(ex, to, from);
-        if (minutes < 0)
-            return Math.ceil(minutes /10);
-        return Math.floor(minutes /10);
-    }
-};
-const m15 = {
-    value: 'm15',
-    millis: 15 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.floor(point.valueOf() /15 /60 /1000) *15 *60 *1000, ex.tz);
-    },
-    ceil: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.ceil(point.valueOf() /15 /60 /1000) *15 *60 *1000, ex.tz);
-    },
-    inc: function(ex, dateTime, amount) {
-        return m1.inc(ex, m15.ceil(ex, dateTime), amount * 15);
-    },
-    dec: function(ex, dateTime, amount) {
-        return m1.dec(ex, m15.floor(ex, dateTime), amount * 15);
-    },
-    diff: function(ex, to, from) {
-        const minutes = m1.diff(ex, to, from);
-        if (minutes < 0)
-            return Math.ceil(minutes /15);
-        return Math.floor(minutes /15);
-    }
-};
-const m20 = {
-    value: 'm20',
-    millis: 20 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.floor(point.valueOf() /20 /60 /1000) *20 *60 *1000, ex.tz);
-    },
-    ceil: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.ceil(point.valueOf() /20 /60 /1000) *20 *60 *1000, ex.tz);
-    },
-    inc: function(ex, dateTime, amount) {
-        return m1.inc(ex, m20.ceil(ex, dateTime), amount * 20);
-    },
-    dec: function(ex, dateTime, amount) {
-        return m1.dec(ex, m20.floor(ex, dateTime), amount * 20);
-    },
-    diff: function(ex, to, from) {
-        const minutes = m1.diff(ex, to, from);
-        if (minutes < 0)
-            return Math.ceil(minutes /20);
-        return Math.floor(minutes /20);
-    }
-};
-const m30 = {
-    value: 'm30',
-    millis: 30 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.floor(point.valueOf() /30 /60 /1000) *30 *60 *1000, ex.tz);
-    },
-    ceil: function(ex, dateTime) {
-        const point = moment(dateTime);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return moment.tz(Math.ceil(point.valueOf() /30 /60 /1000) *30 *60 *1000, ex.tz);
-    },
-    inc: function(ex, dateTime, amount) {
-        return m1.inc(ex, m30.ceil(ex, dateTime), amount * 30);
-    },
-    dec: function(ex, dateTime, amount) {
-        return m1.dec(ex, m30.floor(ex, dateTime), amount * 30);
-    },
-    diff: function(ex, to, from) {
-        const minutes = m1.diff(ex, to, from);
-        if (minutes < 0)
-            return Math.ceil(minutes /30);
-        return Math.floor(minutes /30);
-    }
-};
-const m60 = {
-    value: 'm60',
-    millis: 60 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return point.startOf('hour');
-    },
-    ceil: function(ex, dateTime) {
-        const start = m60.floor(ex, dateTime);
-        if (start.valueOf() < moment(dateTime).valueOf())
-            return start.add(1, 'hours');
-        return start;
-    },
-    inc: function(ex, dateTime, amount) {
-        if (amount < 0) throw Error("Amount must be >= 0");
-        const date = moment.tz(dateTime, ex.tz);
-        const opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
-        const start = opens.valueOf() == date.valueOf() ? date.startOf('hour') : m60.ceil(ex, dateTime);
-        const hours = marketHours(ex, start);
-        if (hours.opens.diff(start, 'hours') > 0)
-            return m60.inc(ex, hours.opens, amount);
-        if (start.diff(hours.closes, 'hours') > 0)
-            return m60.inc(ex, hours.opens.add(1, 'days'), amount);
-        const weeks = Math.floor(amount /5 /hours.hoursInDay);
-        if (weeks)
-            return m60.inc(ex, start.add(weeks, 'weeks'), Math.round(amount - weeks *5 *hours.hoursInDay));
-        const untilClose = Math.ceil(hours.closes.diff(start, 'hours', true));
-        if (untilClose < amount)
-            return m60.inc(ex, hours.opens.add(1, 'days'), amount - untilClose);
-        if (amount === 0 && hours.opens.hour() == start.hour())
-            return start.minute(hours.opens.minute());
-        return start.add(amount, 'hours');
-    },
-    dec: function(ex, dateTime, amount) {
-        if (amount < 0) throw Error("Amount must be >= 0");
-        const start = m60.floor(ex, dateTime);
-        const hours = marketHours(ex, start, true);
-        if (hours.opens.diff(start, 'hours') > 0)
-            return m60.dec(ex, hours.closes.subtract(1, 'days'), amount);
-        if (start.diff(hours.closes, 'hours') > 0)
-            return m60.dec(ex, hours.closes, amount);
-        const weeks = Math.floor(amount /5 /hours.hoursInDay);
-        if (weeks)
-            return m60.dec(ex, start.subtract(weeks, 'weeks'), Math.round(amount - weeks *5 *hours.hoursInDay));
-        const sinceOpen = Math.ceil(start.diff(hours.opens, 'hours', true));
-        if (sinceOpen < amount)
-            return m60.dec(ex, hours.closes.subtract(1, 'days'), amount - sinceOpen);
-        const result = start.subtract(amount, 'hours');
-        if (hours.opens.hour() == result.hour()) return result.minute(hours.opens.minute());
-        else return result;
-    },
-    diff: function(ex, to, from) {
-        const start = m60.inc(ex, from, 0);
-        const end = m60.dec(ex, to, 0);
-        if (end.isBefore(start) && moment(to).isBefore(from))
-            return -1 * m60.diff(ex, from, to);
-        else if (end.isBefore(start))
-            return 0;
-        const hours = marketHours(ex, start);
-        const weeks = end.diff(start, 'weeks');
-        if (weeks)
-            return weeks * 5 * hours.hoursInDay + m60.diff(ex, end, start.add(weeks, 'weeks'));
-        const days = end.diff(start, 'days');
-        if (days && start.day() < end.day())
-            return days * hours.hoursInDay + m60.diff(ex, end, start.add(days, 'days'));
-        else if (end.isAfter(hours.closes))
-            return Math.ceil(hours.closes.diff(start, 'hours', true))
-                + m60.diff(ex, end, hours.opens.add(1, 'days'));
-        else return Math.ceil(end.diff(start, 'hours', true));
-    }
-};
-const m120 = {
-    value: 'm120',
-    millis: 120 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const start = m60.floor(ex, dateTime);
-        if (start.hour() % 2) return start.subtract(1, 'hours');
-        return start;
-    },
-    ceil: function(ex, dateTime) {
-        const start = m60.ceil(ex, dateTime);
-        if (start.hour() % 2) return start.add(1, 'hours');
-        return start;
-    },
-    inc: function(ex, dateTime, amount) {
-        if (amount < 0) throw Error("Amount must be >= 0");
-        const date = moment.tz(dateTime, ex.tz);
-        const opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
-        const start = opens.valueOf() == date.valueOf() ? m120.floor(ex, opens) : m120.ceil(ex, dateTime);
-        const hours = marketHours(ex, start);
-        const floorOpens = m120.floor(ex, hours.opens);
-        const ceilCloses = m120.ceil(ex, hours.closes);
-        if (start.valueOf() < floorOpens.valueOf())
-            return m120.inc(ex, hours.opens, amount);
-        if (start.valueOf() > ceilCloses.valueOf())
-            return m120.inc(ex, hours.opens.add(1, 'days'), amount);
-        const hoursInDay = Math.ceil(hours.hoursInDay /2);
-        const weeks = Math.floor(amount /5 /hoursInDay);
-        if (weeks)
-            return m120.inc(ex, start.add(weeks, 'weeks'), Math.round(amount - weeks *5 *hoursInDay));
-        const untilClose = Math.ceil(ceilCloses.diff(start, 'hours', true) /2);
-        if (untilClose < amount)
-            return m120.inc(ex, ceilCloses, amount - untilClose);
-        if (amount === 0 && floorOpens.valueOf() == start.valueOf())
-            return hours.opens;
-        return start.add(amount*2, 'hours');
-    },
-    dec: function(ex, dateTime, amount) {
-        if (amount < 0) throw Error("Amount must be >= 0");
-        const start = m120.floor(ex, dateTime);
-        const hours = marketHours(ex, start, true);
-        const floorOpens = m120.floor(ex, hours.opens);
-        const ceilCloses = m120.ceil(ex, hours.closes);
-        if (start.valueOf() < floorOpens.valueOf())
-            return m120.dec(ex, hours.closes.subtract(1, 'days'), amount);
-        if (start.valueOf() > ceilCloses.valueOf())
-            return m120.dec(ex, hours.closes, amount);
-        const hoursInDay = Math.ceil(hours.hoursInDay /2);
-        const weeks = Math.floor(amount /5 /hoursInDay);
-        if (weeks)
-            return m120.dec(ex,start.subtract(weeks,'weeks'),Math.round(amount - weeks *5 *hoursInDay));
-        const sinceOpen = Math.ceil(start.diff(floorOpens, 'hours', true) /2);
-        if (sinceOpen < amount)
-            return m120.dec(ex, floorOpens, amount - sinceOpen);
-        const result = start.subtract(amount*2, 'hours');
-        if (floorOpens.valueOf() == result.valueOf()) return hours.opens;
-        else return result;
-    },
-    diff: function(ex, to, from) {
-        const start = m120.inc(ex, from, 0);
-        const end = m120.dec(ex, to, 0);
-        if (end.isBefore(start) && moment(to).isBefore(from))
-            return -1 * m120.diff(ex, from, to);
-        else if (end.isBefore(start))
-            return 0;
-        const hours = marketHours(ex, start);
-        const ceilCloses = m120.ceil(ex, hours.closes);
-        const hoursInDay = Math.ceil(hours.hoursInDay /2);
-        const weeks = end.diff(start, 'weeks');
-        if (weeks)
-            return weeks * 5 * hoursInDay + m120.diff(ex, end, start.add(weeks, 'weeks'));
-        const days = end.diff(start, 'days');
-        if (days && start.day() < end.day())
-            return days * hoursInDay + m120.diff(ex, end, start.add(days, 'days'));
-        else if (end.isAfter(ceilCloses))
-            return Math.ceil(ceilCloses.diff(start, 'hours', true) /2) + m120.diff(ex, end, ceilCloses);
-        else return Math.ceil(end.diff(start, 'hours', true) /2);
-    }
-};
-const m240 = {
-    value: 'm240',
-    millis: 240 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const start = m120.floor(ex, dateTime);
-        if (start.hour() % 4) return start.subtract(2, 'hours');
-        return start;
-    },
-    ceil: function(ex, dateTime) {
-        const start = m120.ceil(ex, dateTime);
-        if (start.hour() % 4) return start.add(2, 'hours');
-        return start;
-    },
-    inc: function(ex, dateTime, amount) {
-        if (amount < 0) throw Error("Amount must be >= 0");
-        const date = moment.tz(dateTime, ex.tz);
-        const opens = moment.tz(date.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
-        const start = opens.valueOf() == date.valueOf() ? m240.floor(ex, opens) : m240.ceil(ex, dateTime);
-        const hours = marketHours(ex, start);
-        const floorOpens = m120.floor(ex, hours.opens);
-        const ceilCloses = m240.ceil(ex, hours.closes);
-        if (date.valueOf() < floorOpens.valueOf() && dateTime.isSame(hours.opens))
-            throw Error("cycle");
-        if (date.valueOf() < floorOpens.valueOf())
-            return m240.inc(ex, hours.opens, amount);
-        if (start.valueOf() > ceilCloses.valueOf())
-            return m240.inc(ex, hours.opens.add(1, 'days'), amount);
-        const hoursInDay = Math.ceil(hours.hoursInDay /4);
-        const weeks = Math.floor(amount /5 /hoursInDay);
-        if (weeks)
-            return m240.inc(ex, start.add(weeks, 'weeks'), Math.round(amount - weeks *5 *hoursInDay));
-        const untilClose = Math.ceil(ceilCloses.diff(start, 'hours', true) /4);
-        if (untilClose < amount)
-            return m240.inc(ex, ceilCloses, amount - untilClose);
-        if (amount === 0 && floorOpens.valueOf() == start.valueOf())
-            return hours.opens;
-        return start.add(amount*4, 'hours');
-    },
-    dec: function(ex, dateTime, amount) {
-        if (amount < 0) throw Error("Amount must be >= 0");
-        const start = m240.floor(ex, dateTime);
-        const hours = marketHours(ex, start, true);
-        const floorOpens = m240.floor(ex, hours.opens);
-        const ceilCloses = m240.ceil(ex, hours.closes);
-        if (start.valueOf() < floorOpens.valueOf())
-            return m240.dec(ex, hours.closes.subtract(1, 'days'), amount);
-        if (start.valueOf() > ceilCloses.valueOf())
-            return m240.dec(ex, hours.closes, amount);
-        const hoursInDay = Math.ceil(hours.hoursInDay /4);
-        const weeks = Math.floor(amount /5 /hoursInDay);
-        if (weeks)
-            return m240.dec(ex,start.subtract(weeks,'weeks'),Math.round(amount - weeks *5 *hoursInDay));
-        const sinceOpen = Math.ceil(start.diff(floorOpens, 'hours', true) /4);
-        if (sinceOpen < amount)
-            return m240.dec(ex, floorOpens, amount - sinceOpen);
-        const result = start.subtract(amount*4, 'hours');
-        if (floorOpens.valueOf() == result.valueOf()) return hours.opens;
-        else return result;
-    },
-    diff: function(ex, to, from) {
-        const start = m240.inc(ex, from, 0);
-        const end = m240.dec(ex, to, 0);
-        if (end.isBefore(start) && moment(to).isBefore(from))
-            return -1 * m240.diff(ex, from, to);
-        else if (end.isBefore(start))
-            return 0;
-        const hours = marketHours(ex, start);
-        const ceilCloses = m240.ceil(ex, hours.closes);
-        const hoursInDay = Math.ceil(hours.hoursInDay /4);
-        const weeks = end.diff(start, 'weeks');
-        if (weeks)
-            return weeks * 5 * hoursInDay + m240.diff(ex, end, start.add(weeks, 'weeks'));
-        const days = end.diff(start, 'days');
-        if (days && start.day() < end.day())
-            return days * hoursInDay + m240.diff(ex, end, start.add(days, 'days'));
-        else if (end.isAfter(ceilCloses))
-            return Math.ceil(ceilCloses.diff(start, 'hours', true) /4) + m240.diff(ex, end, ceilCloses);
-        else return Math.ceil(end.diff(start, 'hours', true) /4);
-    }
-};
-const day = {
-    value: 'day',
-    millis: 24 * 60 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return point.startOf('day');
-    },
-    ceil: function(ex, dateTime) {
-        const start = day.floor(ex, dateTime);
-        if (start.valueOf() < moment(dateTime).valueOf())
-            return start.add(1, 'days');
-        return start;
-    },
-    inc: function(ex, dateTime, amount) {
-        const start = day.ceil(ex, dateTime);
-        const wd = start.isoWeekday();
-        if (wd > 5)
-            return day.inc(ex, start.add(8 - wd, 'days'), amount);
-        const w = Math.floor((wd -1 + amount) / 5);
-        const days = amount - w *5;
-        if (wd + days < 6)
-            return start.isoWeek(start.isoWeek() + w).isoWeekday(wd + days);
-        else return start.isoWeek(start.isoWeek() + w).isoWeekday(wd +2 + days);
-    },
-    dec: function(ex, dateTime, amount) {
-        const start = day.floor(ex, dateTime);
-        const wd = start.isoWeekday();
-        if (wd == 1)
-            return day.dec(ex, start.subtract(2, 'days'), amount)
-        else if (wd == 7)
-            return day.dec(ex, start.subtract(1, 'days'), amount);
-        const w = Math.floor(amount / 5);
-        const days = amount - w*5;
-        if (wd > days)
-            return start.isoWeek(start.isoWeek() - w).isoWeekday(wd - days);
-        else return start.isoWeek(start.isoWeek() - w).isoWeekday(wd -2 - days);
-    },
-    diff: function(ex, to, from) {
-        const start = moment.tz(from, ex.tz);
-        const end = moment.tz(to, ex.tz);
-        if (end.isBefore(start))
-            return -1 * day.diff(ex, from, to);
-        const weeks = end.diff(start, 'weeks');
-        if (weeks)
-            return weeks * 5 + day.diff(ex, end, start.add(weeks, 'weeks'));
-        else if (start.isoWeekday() > 5)
-            return day.diff(ex, end, start.startOf('day').add(1, 'weeks').isoWeekday(1));
-        else if (end.isoWeekday() > 6)
-            return day.diff(ex, end.startOf('day').isoWeekday(6), start);
-        else if (start.isoWeekday() < end.isoWeekday())
-            return end.diff(start, 'days');
-        else
-            return Math.max(end.diff(start, 'days') -2, 0);
-    }
-};
-const week = {
-    value: 'week',
-    millis: 7 * 24 * 60 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return point.startOf('isoweek');
-    },
-    ceil: function(ex, dateTime) {
-        const start = moment.tz(dateTime, ex.tz).startOf('isoweek');
-        if (start.valueOf() < moment(dateTime).valueOf())
-            return start.isoWeek(start.isoWeek() + 1);
-        return start;
-    },
-    inc: function(ex, dateTime, amount) {
-        const start = week.ceil(ex, dateTime);
-        return start.isoWeek(start.isoWeek() + amount);
-    },
-    dec: function(ex, dateTime, amount) {
-        const start = week.floor(ex, dateTime);
-        return start.isoWeek(start.isoWeek() + -amount);
-    },
-    diff: function(ex, to, from) {
-        const start = moment.tz(from, ex.tz);
-        const end = moment.tz(to, ex.tz);
-        return end.diff(start, 'weeks');
-    }
-};
-const month = {
-    value: 'month',
-    millis: 31 * 24 * 60 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return point.startOf('month');
-    },
-    ceil: function(ex, dateTime) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        const start = point.startOf('month');
-        if (start.valueOf() < moment(dateTime).valueOf())
-            return start.month(start.month() + 1);
-        return start;
-    },
-    inc: function(ex, dateTime, amount) {
-        const start = month.ceil(ex, dateTime);
-        return start.month(start.month() + amount);
-    },
-    dec: function(ex, dateTime, amount) {
-        const start = month.floor(ex, dateTime);
-        return start.month(start.month() + -amount);
-    },
-    diff: function(ex, to, from) {
-        const start = moment.tz(from, ex.tz);
-        const end = moment.tz(to, ex.tz);
-        return end.diff(start, 'months');
-    }
-};
-const quarter = {
-    value: 'quarter',
-    millis: 3 * 31 * 24 * 60 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return point.startOf('quarter');
-    },
-    ceil: function(ex, dateTime) {
-        const start = quarter.floor(ex, dateTime);
-        if (start.valueOf() < moment(dateTime).valueOf())
-            return start.add(3, 'months');
-        return start;
-    },
-    inc: function(ex, dateTime, amount) {
-        const start = quarter.ceil(ex, dateTime);
-        return start.add(3 * amount, 'months');
-    },
-    dec: function(ex, dateTime, amount) {
-        const start = quarter.floor(ex, dateTime);
-        return start.subtract(3 * amount, 'months');
-    },
-    diff: function(ex, to, from) {
-        const start = quarter.ceil(ex, from);
-        const end = quarter.floor(ex, to);
-        const months = end.diff(start, 'months');
-        if (months < 0)
-            return Math.ceil(months /3);
-        return Math.floor(months /3);
-    }
-};
-const year = {
-    value: 'year',
-    millis: 365 * 24 * 60 * 60 * 1000,
-    floor: function(ex, dateTime) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return point.startOf('year');
-    },
-    ceil: function(ex, dateTime) {
-        const start = year.floor(ex, dateTime);
-        if (start.valueOf() < moment(dateTime).valueOf())
-            return start.add(1, 'years');
-        return start;
-    },
-    inc: function(ex, dateTime, amount) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return point.add(amount, 'years');
-    },
-    dec: function(ex, dateTime, amount) {
-        const point = moment.tz(dateTime, ex.tz);
-        if (!point.isValid()) throw Error(`Invalid dateTime: ${dateTime}`);
-        return point.subtract(amount, 'years');
-    },
-    diff: function(ex, to, from) {
-        const start = moment.tz(from, ex.tz);
-        const end = moment.tz(to, ex.tz);
-        return end.diff(start, 'years');
-    }
-};
-const intervals = {
-    m1: m1,
-    m2: m2,
-    m5: m5,
-    m10: m10,
-    m15: m15,
-    m20: m20,
-    m30: m30,
-    m60: m60,
-    m120: m120,
-    m240: m240,
-    day: day,
-    week: week,
-    month: month,
-    quarter: quarter,
-    year: year
-};
+module.exports.values = [
+    'm1', 'm2', 'm5', 'm10', 'm15', 'm20', 'm30',
+    'm60', 'm120', 'm240',
+    'day', 'week',
+    'month', 'quarter', 'year'
+];
 
-module.exports.values = _.keys(intervals);
+function createPeriods(options) {
+    switch(options.interval) {
+    case 'm1': return intervalInMinutes(1, options);
+    case 'm2': return intervalInMinutes(2, options);
+    case 'm5': return intervalInMinutes(5, options);
+    case 'm10': return intervalInMinutes(10, options);
+    case 'm15': return intervalInMinutes(15, options);
+    case 'm20': return intervalInMinutes(20, options);
+    case 'm30': return intervalInMinutes(30, options);
+    case 'm60': return intervalInHours(1, options);
+    case 'm120': return intervalInHours(2, options);
+    case 'm240': return intervalInHours(4, options);
+    case 'day': return intervalInDays('day', options);
+    case 'week': return intervalInWeeks('week', options);
+    case 'month': return intervalInMonths('month', options);
+    case 'quarter': return intervalInMonths('quarter', options);
+    case 'year': return intervalInMonths('year', options);
+    default:
+        throw Error(`Unknown interval: ${options.interval} must be one of ${module.exports.values.join(', ')}`);
+    }
+}
 
-function marketHours(ex, start, before) {
-    const h24 = ex.marketOpensAt == ex.marketClosesAt;
-    const opens = moment.tz(start.format('YYYY-MM-DD') + 'T' + ex.marketOpensAt, ex.tz);
-    const closes = h24 ? moment(opens) : moment.tz(start.format('YYYY-MM-DD') + 'T' + ex.marketClosesAt, ex.tz);
-    if (!opens.isBefore(closes) && opens.isBefore(start))
-        closes.add(1, 'days');
-    else if (!closes.isAfter(opens) && closes.isAfter(start))
+function intervalInMinutes(m, ex) {
+    const sample_hours = marketHours(ex, moment.tz('2010-03-01T12:00:00', ex.security_tz));
+    return {
+        value: `m${m}`,
+        millis: m * 60 * 1000,
+        session_length: Math.ceil(sample_hours.minInDay/m),
+        floor(dateTime) {
+            const hours = marketHours(ex, dateTime);
+            const minInDay = Math.ceil(hours.minInDay/m)*m;
+            if (!dateTime.isBefore(hours.ends) && (minInDay < 24*60 || hours.ends.day() == 5))
+                return marketHours(ex, moment(dateTime).add(1,'days')).opens;
+            const millis = (dateTime.minute() *60 + dateTime.second()) *1000 + dateTime.millisecond();
+            const point = moment(dateTime).add(Math.floor(millis /m /60 /1000) *m *60 *1000 - millis, 'ms');
+            if (hours.opens.isBefore(point) || minInDay == 24*60 && hours.ends.day() > 1) return point;
+            else return hours.opens;
+        },
+        ceil(dateTime) {
+            const hours = marketHours(ex, dateTime, true);
+            const minInDay = Math.ceil(hours.minInDay/m)*m;
+            if (!hours.opens.isBefore(dateTime) && (minInDay < 24*60 || hours.ends.day() == 1))
+                return marketHours(ex, moment(dateTime).subtract(1,'days'), true).ends;
+            const millis = (dateTime.minute() *60 + dateTime.second()) *1000 + dateTime.millisecond();
+            const point = moment(dateTime).add(Math.ceil(millis /m /60 /1000) *m *60 *1000 - millis, 'ms');
+            if (point.isBefore(hours.ends) || minInDay == 24*60 && hours.ends.day() < 5) return point;
+            else return hours.ends;
+        },
+        inc(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 1) return this.dec(dateTime, -amount);
+            const start = this.floor(dateTime).startOf('minute');
+            start.subtract(start.minute() % m, 'minutes');
+            const hours = marketHours(ex, start);
+            const friday = moment(hours.ends).day(5);
+            const minInDay = Math.ceil(hours.minInDay/m)*m;
+            const untilClose = Math.ceil(Math.max(hours.ends.diff(start, 'minutes', true)/m,0));
+            const daysUntilFriday = Math.max(5 - hours.ends.day(),0);
+            const minUntilFriday = Math.ceil(Math.max(friday.diff(start, 'minutes', true)/m,0));
+            if (untilClose + daysUntilFriday*minInDay/m < amount && minInDay < 24*60) // over weekend
+                return this.inc(friday, amount - untilClose - daysUntilFriday*minInDay/m);
+            else if (untilClose && untilClose < amount && minInDay < 24*60)
+                return this.inc(hours.ends, amount - untilClose);
+            else if (minUntilFriday < amount) // market open 24hr over weekend
+                return this.inc(friday, amount - minUntilFriday);
+            else
+                return this.ceil(this.floor(start.add(amount*m, 'minutes')));
+        },
+        dec(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 1) return this.inc(dateTime, -amount);
+            const start = this.ceil(dateTime);
+            start.add((m - start.minute() %m) %m, 'minutes');
+            const hours = marketHours(ex, start, true);
+            const sunday = moment(hours.opens).subtract(hours.ends.day()-1, 'days');
+            const minInDay = Math.ceil(hours.minInDay/m)*m;
+            const sinceOpen = Math.max(Math.ceil(start.diff(hours.opens, 'minutes', true)/m),0);
+            const daysSinceSunday = Math.max(hours.ends.day() -1,0);
+            const minSinceSunday = Math.ceil(Math.max(start.diff(sunday, 'minutes', true)/m,0));
+            if (sinceOpen + daysSinceSunday*minInDay/m < amount && minInDay < 24*60)
+                return this.dec(sunday, amount - sinceOpen - daysSinceSunday*minInDay/m);
+            else if (sinceOpen && sinceOpen < amount && minInDay < 24*60)
+                return this.dec(hours.ends.subtract(1, 'days'), amount - sinceOpen);
+            else if (minSinceSunday < amount) // market open 24hr over weekend
+                return this.dec(sunday, amount - minSinceSunday);
+            else
+                return this.ceil(start.subtract(amount*m, 'minutes'));
+        },
+        diff(to, from) {
+            if (to.isBefore(from)) return -1 * this.diff(from, to);
+            else if (to.isSame(from)) return 0;
+            const start = this.floor(from);
+            start.subtract(start.minute() % m, 'minutes');
+            const end = this.ceil(to);
+            end.add((m - end.minute() %m) %m, 'minutes');
+            const hours = marketHours(ex, start);
+            const friday = moment(hours.ends).day(5);
+            const minInDay = Math.ceil(hours.minInDay/m)*m;
+            const untilClose = Math.ceil(Math.max(hours.ends.diff(start, 'minutes', true)/m,0));
+            const daysUntilFriday = Math.max(5 - hours.ends.day(),0);
+            const minUntilFriday = Math.ceil(Math.max(friday.diff(start, 'minutes', true)/m,0));
+            if (!end.isBefore(friday) && minInDay < 24*60)
+                return untilClose + daysUntilFriday*minInDay/m + this.diff(end, friday);
+            else if (!end.isBefore(hours.ends) && minInDay < 24*60)
+                return untilClose + this.diff(end, hours.opens.add(1, 'days'));
+            else if (!end.isBefore(friday)) // market open 24hr over weekend
+                return minUntilFriday + this.diff(end, friday);
+            else if (hours.opens.isBefore(end))
+                return Math.max(Math.ceil(end.diff(start, 'minutes', true)/m),0);
+            else
+                return 0;
+        }
+    };
+}
+
+function intervalInHours(h, ex) {
+    const sample_hours = marketHours(ex, moment.tz('2010-03-01T12:00:00', ex.security_tz));
+    return {
+        value: `m${h * 60}`,
+        millis: h * 60 * 60 * 1000,
+        session_length: Math.ceil(sample_hours.hoursInDay/h),
+        floor(dateTime) {
+            const hours = marketHours(ex, dateTime);
+            const hoursInDay = Math.ceil(hours.hoursInDay/h)*h;
+            if (!dateTime.isBefore(hours.ends) && (hoursInDay < 24 || hours.ends.day() == 5))
+                return marketHours(ex, moment(dateTime).add(1,'days')).opens;
+            const millis = (((dateTime.hour() *60) + dateTime.minute()) *60 + dateTime.second()) *1000 + dateTime.millisecond();
+            const point = moment(dateTime).add(Math.floor(millis /h /60 /60 /1000) *h *60 *60 *1000 - millis, 'ms');
+            if (hours.opens.isBefore(point) || hoursInDay == 24 && hours.ends.day() > 1) return point;
+            else return hours.opens;
+        },
+        ceil(dateTime) {
+            const hours = marketHours(ex, dateTime, true);
+            const hoursInDay = Math.ceil(hours.hoursInDay/h)*h;
+            if (!hours.opens.isBefore(dateTime) && (hoursInDay < 24 || hours.ends.day() == 1))
+                return marketHours(ex, moment(dateTime).subtract(1,'days'), true).ends;
+            const millis = (((dateTime.hour() *60) + dateTime.minute()) *60 + dateTime.second()) *1000 + dateTime.millisecond();
+            const point = moment(dateTime).add(Math.ceil(millis /h /60 /60 /1000) *h *60 *60 *1000 - millis, 'ms');
+            if (point.isBefore(hours.ends) || hoursInDay == 24 && hours.ends.day() < 5) return point;
+            else return hours.ends;
+        },
+        inc(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 1) return this.dec(dateTime, -amount);
+            const start = this.floor(dateTime).startOf('hour');
+            start.subtract(start.hour() % h, 'hours');
+            const hours = marketHours(ex, start);
+            const friday = moment(hours.ends).day(5);
+            const hoursInDay = Math.ceil(hours.hoursInDay/h)*h;
+            const untilClose = Math.ceil(Math.max(hours.ends.diff(start, 'hours', true)/h,0));
+            const daysUntilFriday = Math.max(5 - hours.ends.day(),0);
+            const hoursUntilFriday = Math.ceil(Math.max(friday.diff(start, 'hours', true)/h,0));
+            if (untilClose + daysUntilFriday*hoursInDay/h < amount && hoursInDay < 24) // over weekend
+                return this.inc(friday, amount - untilClose - daysUntilFriday*hoursInDay/h);
+            else if (untilClose && untilClose < amount && hoursInDay < 24)
+                return this.inc(hours.ends, amount - untilClose);
+            else if (hoursUntilFriday < amount) // market open 24hr over weekend
+                return this.inc(friday, amount - hoursUntilFriday);
+            else
+                return this.ceil(this.floor(start.add(amount*h, 'hours')));
+        },
+        dec(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 1) return this.inc(dateTime, -amount);
+            const start = this.ceil(dateTime);
+            start.add((h - start.hour() %h) %h, 'hours');
+            const hours = marketHours(ex, start, true);
+            const sunday = moment(hours.opens).subtract(hours.ends.day()-1, 'days');
+            const hoursInDay = Math.ceil(hours.hoursInDay/h)*h;
+            const sinceOpen = Math.max(Math.ceil(start.diff(hours.opens, 'hours', true)/h),0);
+            const daysSinceSunday = Math.max(hours.ends.day() -1,0);
+            const hoursSinceSunday = Math.ceil(Math.max(start.diff(sunday, 'hours', true)/h,0));
+            if (sinceOpen + daysSinceSunday*hoursInDay/h < amount && hoursInDay < 24)
+                return this.dec(sunday, amount - sinceOpen - daysSinceSunday*hoursInDay/h);
+            else if (sinceOpen && sinceOpen < amount && hoursInDay < 24)
+                return this.dec(hours.ends.subtract(1, 'days'), amount - sinceOpen);
+            else if (hoursSinceSunday < amount) // market open 24hr over weekend
+                return this.dec(sunday, amount - hoursSinceSunday);
+            else
+                return this.ceil(start.subtract(amount*h, 'hours'));
+        },
+        diff(to, from) {
+            if (to.isBefore(from)) return -1 * this.diff(from, to);
+            else if (to.isSame(from)) return 0;
+            const start = this.floor(from);
+            start.subtract(start.hour() % h, 'hours');
+            const end = this.ceil(to);
+            end.add((h - end.hour() %h) %h, 'hours');
+            const hours = marketHours(ex, start);
+            const friday = moment(hours.ends).day(5);
+            const hoursInDay = Math.ceil(hours.hoursInDay/h)*h;
+            const untilClose = Math.ceil(Math.max(hours.ends.diff(start, 'hours', true)/h,0));
+            const daysUntilFriday = Math.max(5 - hours.ends.day(),0);
+            const hoursUntilFriday = Math.ceil(Math.max(friday.diff(start, 'hours', true)/h,0));
+            if (!end.isBefore(friday) && hoursInDay < 24)
+                return untilClose + daysUntilFriday*hoursInDay/h + this.diff(end, friday);
+            else if (!end.isBefore(hours.ends) && hoursInDay < 24)
+                return untilClose + this.diff(end, hours.opens.add(1, 'days'));
+            else if (!end.isBefore(friday)) // market open 24hr over weekend
+                return hoursUntilFriday + this.diff(end, friday);
+            else if (hours.opens.isBefore(end))
+                return Math.max(Math.ceil(end.diff(start, 'hours', true)/h),0);
+            else
+                return 0;
+        }
+    };
+}
+
+function intervalInDays(measurement, ex) {
+    const sample_hours = marketHours(ex, moment.tz('2010-03-01T12:00:00', ex.security_tz));
+    return {
+        value: 'day',
+        millis: sample_hours.minInDay * 60 * 1000,
+        session_length: 1,
+        floor(dateTime) {
+            const hours = marketHours(ex, dateTime);
+            if (dateTime.isBefore(hours.ends)) return hours.opens;
+            else return marketHours(ex, moment(dateTime).add(1,'days')).opens;
+        },
+        ceil(dateTime) {
+            const hours = marketHours(ex, dateTime, true);
+            if (hours.opens.isBefore(dateTime)) return hours.ends;
+            else return marketHours(ex, moment(dateTime).subtract(1,'days'), true).ends;
+        },
+        inc(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 1) return this.dec(dateTime, -amount);
+            const start = this.floor(dateTime);
+            const hours = marketHours(ex, start);
+            const wd = hours.ends.isoWeekday();
+            const w = Math.floor((wd -1 + amount -1) / 5);
+            const days = amount -1 - w *5;
+            const wday = wd + days < 6 ? wd + days : wd +2 + days;
+            return moment(hours.ends).isoWeek(hours.ends.isoWeek() + w).isoWeekday(wday);
+        },
+        dec(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 1) return this.inc(dateTime, -amount);
+            const start = this.ceil(dateTime);
+            const wd = start.isoWeekday();
+            if (amount >= 1 && wd == 1)
+                return this.dec(start.subtract(3, 'days'), amount -1)
+            else if (wd == 7)
+                return this.dec(start.subtract(1, 'days'), amount);
+            const w = Math.floor(amount / 5);
+            const days = amount - w*5;
+            const wday = wd > days ? wd - days : wd -2 - days;
+            const date = start.isoWeek(start.isoWeek() - w).isoWeekday(wday);
+            return this.ceil(date);
+        },
+        diff(to, from) {
+            if (to.isBefore(from)) return -1 * this.diff(from, to);
+            else if (to.isSame(from)) return 0;
+            const hours = marketHours(ex, from);
+            if (!to.isAfter(hours.opens)) return 0;
+            if (to.isBefore(hours.ends)) return 1;
+            if (from.isBefore(hours.ends)) return 1 + this.diff(to, hours.ends);
+            const start = hours.ends;
+            const end = this.ceil(to);
+            const weeks = end.diff(start, 'weeks');
+            if (weeks)
+                return weeks * 5 + this.diff(end, start.add(weeks, 'weeks'));
+            else if (start.isoWeekday() > 5)
+                return this.diff(end, start.startOf('day').add(1, 'weeks').isoWeekday(1));
+            else if (end.isoWeekday() > 6)
+                return this.diff(end.startOf('day').isoWeekday(6), start);
+            else if (start.isoWeekday() < end.isoWeekday())
+                return end.diff(start, 'days');
+            else
+                return Math.max(end.diff(start, 'days') -2, 0);
+        }
+    };
+}
+
+function intervalInWeeks(measurement, ex) {
+    const day = intervalInDays('day', ex);
+    return {
+        value: 'week',
+        millis: 5 * 24 * 60 * 60 * 1000,
+        session_length: 1/5,
+        floor(dateTime) {
+            if (dateTime.day() >= 5) {
+                const hours = marketHours(ex, dateTime);
+                if (!dateTime.isBefore(hours.ends))
+                    return marketHours(ex, moment(dateTime).day(6)).opens; // start of next
+                if (hours.opens.day() != 5 && dateTime.isBefore(hours.opens))
+                    return hours.opens; // start of next
+            }
+            return day.floor(moment(dateTime).day(1).startOf('day')); // start of week
+        },
+        ceil(dateTime) {
+            if (dateTime.day() <= 1) {
+                const hours = marketHours(ex, dateTime);
+                if (hours.opens.day() <= 1 && !hours.opens.isBefore(dateTime))
+                    return this.ceil(moment(dateTime).subtract(2, 'days')); // prior week
+            }
+            return day.ceil(moment(dateTime).day(5).endOf('day')); // end of week
+        },
+        inc(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 0) return this.dec(dateTime, -amount);
+            const start = this.floor(dateTime);
+            return this.ceil(start.isoWeek(start.isoWeek() + amount).subtract(2, 'days'));
+        },
+        dec(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 0) return this.inc(dateTime, -amount);
+            const start = this.ceil(dateTime);
+            return start.isoWeek(start.isoWeek() - amount);
+        },
+        diff(to, from) {
+            if (to.isBefore(from)) return -1 * this.diff(from, to);
+            else if (to.isSame(from)) return 0;
+            const days = day.diff(this.ceil(to), this.floor(from));
+            return Math.ceil(days/5);
+        }
+    };
+}
+
+function intervalInMonths(measurement, ex) {
+    const jan1 = moment('2010-01-01');
+    const days_in_measurement = moment(jan1).add(1,measurement).diff(jan1, 'days')/7*5;
+    const day = intervalInDays('day', ex);
+    return {
+        value: measurement,
+        millis: days_in_measurement * 24 * 60 * 60 * 1000,
+        session_length: 1/days_in_measurement,
+        floor(dateTime) {
+            const end_of = marketHours(ex, moment(dateTime).endOf(measurement).hour(12), true).ends;
+            if (!dateTime.isBefore(end_of))
+                return marketHours(ex, moment(dateTime).endOf(measurement)).opens; // start of next
+            return marketHours(ex, moment(dateTime).startOf(measurement)).opens; // start of month
+        },
+        ceil(dateTime) {
+            const first = moment(dateTime).startOf(measurement);
+            const floor = day.floor(first);
+            if (!floor.isBefore(dateTime))
+                return day.ceil(first.subtract(12, 'hours')); // prior month
+            return day.ceil(moment(dateTime).endOf(measurement).hour(12));
+        },
+        inc(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 0) return this.dec(dateTime, -amount);
+            const start = this.floor(dateTime);
+            return this.ceil(start.add(amount, measurement).subtract(1,'weeks'));
+        },
+        dec(dateTime, amount) {
+            if (!amount) return moment.min(dateTime, this.ceil(dateTime));
+            else if (amount < 0) return this.inc(dateTime, -amount);
+            const start = this.ceil(dateTime);
+            return this.ceil(start.subtract(amount, measurement));
+        },
+        diff(to, from) {
+            if (to.isBefore(from)) return -1 * this.diff(from, to);
+            else if (to.isSame(from)) return 0;
+            const start = this.floor(from);
+            const end = this.ceil(to);
+            return Math.ceil(end.diff(start, measurement, true));
+        }
+    };
+}
+
+function marketHours(ex, point, priorIfOutsideTrading) {
+    const rth = ex.interval.charAt(0) != 'm' || ex.interval == 'month';
+    const open_time = rth ? ex.open_time || ex.liquid_hours.substring(0, 8) : ex.trading_hours.substring(0, 8);
+    const end_time = rth ? ex.liquid_hours.substring(11) : ex.trading_hours.substring(11);
+    const opens = parseTime(point, open_time);
+    const ends = open_time == end_time ? moment(opens) : parseTime(point, end_time);
+    if (!opens.isBefore(ends) && !opens.isAfter(point) && ends.day() < 5) {
+        ends.add(1, 'days');
+    } else if (!opens.isBefore(ends) && !point.isAfter(ends) && opens.day() > 0) {
         opens.subtract(1, 'days');
-    else if (before && !closes.isAfter(opens))
+    } else if (!opens.isBefore(ends) && priorIfOutsideTrading) {
         opens.subtract(1, 'days');
-    else if (!opens.isBefore(closes))
-        closes.add(1, 'days');
-    if (before && !opens.isBefore(start)) {
+    } else if (!opens.isBefore(ends) && !priorIfOutsideTrading) {
+        ends.add(1, 'days');
+    }
+    if (priorIfOutsideTrading && point.isBefore(opens)) {
         opens.subtract(1, 'days');
-        closes.subtract(1, 'days');
-    } else if (!before && !closes.isAfter(start)) {
+        ends.subtract(1, 'days');
+    } else if (!priorIfOutsideTrading && ends.isBefore(point)) {
         opens.add(1, 'days');
-        closes.add(1, 'days');
+        ends.add(1, 'days');
     }
-    const wd = closes.isoWeekday();
-    if (wd > 5 && before) {
+    const wd = ends.isoWeekday() > 5 ? moment(ends).subtract(1,'ms').isoWeekday() : ends.isoWeekday();
+    if (wd > 5 && priorIfOutsideTrading) {
         opens.subtract(wd - 5, 'days');
-        closes.subtract(wd - 5, 'days');
+        ends.subtract(wd - 5, 'days');
     } else if (wd > 5) {
         opens.add(8 - wd, 'days');
-        closes.add(8 - wd, 'days');
+        ends.add(8 - wd, 'days');
     }
-    const minInDay = h24 ? 24*60 : closes.diff(opens, 'minutes');
-    const hoursInDay = h24 ? 24 : Math.ceil(closes.diff(opens, 'hours', true));
-    return {opens, closes, minInDay, hoursInDay};
+    const minInDay = ends.diff(opens, 'minutes');
+    const hoursInDay = Math.ceil(ends.diff(opens, 'hours', true));
+    return {opens, ends, minInDay, hoursInDay};
+}
+
+function parseTime(date, time) {
+    const hour = +time.substring(0, 2);
+    const minute = +time.substring(3, 5);
+    const second = +time.substring(6, 8);
+    return moment(date).hour(hour).minute(minute).second(second).millisecond(0);
 }
