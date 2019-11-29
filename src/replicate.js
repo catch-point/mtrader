@@ -570,9 +570,11 @@ function updateActual(desired, actual, options) {
         const drw = (desired.realized.working||{})[ref];
         return orders.concat(orderReplacements(actual.working[ref], drw, realized_offset, options));
     }, transition_stoploss) : [];
-    if (!options.force && !actual.adjustment && moment(desired.asof).isBefore(actual.asof)) {
-        // working position has since been closed (stoploss?) since the last desired signal was produced
-        logger.warn(`Working ${desired.attach_ref} position has since been changed`, options.label || '');
+    if (!options.force && !actual.adjustment && actual.traded_at &&
+            moment(desired.asof).isBefore(actual.traded_at)) {
+        // working position has since been traded (stoploss?) since the last desired signal was produced
+        logger.warn(`Working ${desired.attach_ref} position has since been changed ${actual.asof}`, options.label || '');
+        logger.debug("replicate", "actual", actual);
         return cancelled;
     } else if (adjustment_order && (desired.realized.stoploss || !_.isEmpty(desired.realized.working))) {
         // keep existing transition orders (i.e. stoploss), and don't submit new working orders
