@@ -138,7 +138,7 @@ function help(broker, collect) {
             },
             allocation_pct: {
                 usage: '<number>',
-                description: "Positive number 0-100 of the balance that should be allocated to this strategy"
+                description: "Percentage 0-100 of the balance that should be allocated to this strategy"
             },
             allocation_min: {
                 usage: '<number>',
