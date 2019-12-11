@@ -625,16 +625,19 @@ async function snapStockPrice(ib, contract, bar, under_bar, net_offset) {
     if (!+net_offset) return +Big(bar.bid).add(bar.ask).div(2);
     else if (!bar.ask_option && contract.secType != 'OPT' && contract.secType != 'FOP')
         return +Big(bar.bid).add(bar.ask).div(2).add(net_offset);
-    const undPrice = bar.ask_option.undPrice != Number.MAX_VALUE && bar.ask_option.undPrice || null;
+    if (!bar.model_option)
+        throw Error(`No model for option ${contract.localSymbol} ${util.inspect(bar)}`);
+    const undPrice = bar.model_option.undPrice != Number.MAX_VALUE && bar.model_option.undPrice || null;
     const asset_price = undPrice || under_bar.last || +Big(under_bar.bid).add(under_bar.ask).div(2);
     if (!+asset_price)
         throw Error(`Can only submit SNAP STK orders while market is active ${util.inspect(under_bar)}`);
     const asset_offset = +Big(asset_price).add(net_offset);
-    const iv = +Big(bar.ask_option.iv).add(bar.bid_option.iv).div(2);
-    if (!iv || bar.ask_option.iv == Number.MAX_VALUE || bar.bid_option.iv == Number.MAX_VALUE)
-        throw Error(`No implied volatility for option ${contract.localSymbol} ${util.inspect(bar.ask_option)}`);
+    const iv = bar.model_option.iv || +Big(bar.ask_option.iv).add(bar.bid_option.iv).div(2);
+    if (!iv || iv == Number.MAX_VALUE || iv == Number.MAX_VALUE/2)
+        throw Error(`No implied volatility for option ${contract.localSymbol} ${util.inspect(bar.model_option)}`);
     const option = await ib.calculateOptionPrice(contract, iv, asset_offset);
-    return option.optPrice;
+    logger.debug("calculated option price model", option.optPrice, '+', +net_offset, bar.model_option);
+    return +Big(option.optPrice).minus(bar.model_option.optPrice).add(Big(bar.bid).add(bar.ask).div(2));
 }
 
 function netPrice(legs, leg_prices) {

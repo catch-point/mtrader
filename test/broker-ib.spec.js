@@ -1280,8 +1280,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 16.25,
                                 ask: 17,
-                                ask_option: { undPrice: 1.7976931348623157e+308, iv: 0.16213014306307402 },
-                                bid_option: { iv: 0.15833603297735782 }
+                                model_option: {
+                                    optPrice: 16.625,
+                                    undPrice: 1.7976931348623157e+308,
+                                    iv: 0.1602330880202159
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
@@ -1401,8 +1404,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 16.25,
                                 ask: 17,
-                                ask_option: { undPrice: 1.7976931348623157e+308, iv: 0.1615067075126954 },
-                                bid_option: { iv: 0.15771293087405644 }
+                                model_option: {
+                                    optPrice: 16.625,
+                                    undPrice: 1.7976931348623157e+308,
+                                    iv: 0.1596098191933759
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
@@ -1521,8 +1527,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 13.5,
                                 ask: 14.25,
-                                ask_option: { undPrice: 1.7976931348623157e+308, iv: 0.21510238654276234 },
-                                bid_option: { iv: 0.2105016705605929 }
+                                model_option: {
+                                    optPrice: (13.5+14.25)/2,
+                                    undPrice: 1.7976931348623157e+308,
+                                    iv: (0.21510238654276234+0.2105016705605929)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
@@ -1641,8 +1650,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 13.5,
                                 ask: 14.25,
-                                ask_option: { undPrice: 1.7976931348623157e+308, iv: 0.21510238654276234 },
-                                bid_option: { iv: 0.2105016705605929 }
+                                model_option: {
+                                    optPrice: (13.5+14.25)/2,
+                                    undPrice: 1.7976931348623157e+308,
+                                    iv: (0.21510238654276234+0.2105016705605929)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
@@ -2015,8 +2027,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 0.65,
                                 ask: 0.8,
-                                ask_option: { undPrice: 2740.9700000000003, iv: 0.13006607892009805 },
-                                bid_option: { iv: 0.1262915111028727 }
+                                model_option: {
+                                    optPrice: (0.65+0.8)/2,
+                                    undPrice: 2740.9700000000003,
+                                    iv: (0.13006607892009805+0.1262915111028727)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{
@@ -2036,8 +2051,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 0.25,
                                 ask: 0.4,
-                                ask_option: { undPrice: 2740.9700000000003, iv: 0.13551392396412848 },
-                                bid_option: { iv: 0.12820479340292215 }
+                                model_option: {
+                                    optPrice: (0.25+0.4)/2,
+                                    undPrice: 2740.9700000000003,
+                                    iv: (0.13551392396412848+0.12820479340292215)/2
+                                }
                             })
                         case 2:
                             expect(args).to.be.like([{
@@ -2292,8 +2310,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 0.65,
                                 ask: 0.8,
-                                ask_option: { undPrice: 2741.89, iv: 0.13006607892009805 },
-                                bid_option: { iv: 0.1262915111028727 }
+                                model_option: {
+                                    optPrice: (0.65+0.8)/2,
+                                    undPrice: 2741.89,
+                                    iv: (0.13006607892009805+0.1262915111028727)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{
@@ -2313,8 +2334,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 0.25,
                                 ask: 0.4,
-                                ask_option: { undPrice: 2741.89, iv: 0.13551392396412848 },
-                                bid_option: { iv: 0.12820479340292215 }
+                                model_option: {
+                                    optPrice: (0.25+0.4)/2,
+                                    undPrice: 2741.89,
+                                    iv: (0.13551392396412848+0.12820479340292215)/2
+                                }
                             })
                         case 2:
                             expect(args).to.be.like([{
@@ -2791,8 +2815,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 8.6,
                                 ask: 9,
-                                ask_option: { undPrice: 2742.8, iv: 0.2389572882162499 },
-                                bid_option: { iv: 0.2369029900679141 }
+                                model_option: {
+                                    optPrice: 8.8,
+                                    undPrice: 2742.8,
+                                    iv: (0.2389572882162499+0.2369029900679141)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{
@@ -2812,8 +2839,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 6.1,
                                 ask: 6.3,
-                                ask_option: { undPrice: 2742.8, iv: 0.2506591242473686 },
-                                bid_option: { iv: 0.24800008651105912 }
+                                model_option: {
+                                    optPrice: 6.2,
+                                    undPrice: 2742.8,
+                                    iv: (0.2506591242473686+0.24800008651105912)/2
+                                }
                             })
                         case 2:
                             expect(args).to.be.like([{
@@ -2866,7 +2896,7 @@ describe("broker-ib", function() {
                                     multiplier: '100',
                                     primaryExch: ''
                                 },
-                                0.24932960537921386,
+                                0.2493296053792138,
                                 2762.8
                             ]);
                             return Promise.resolve({ optPrice: 5.412282738263329 })
@@ -3069,8 +3099,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 8.7,
                                 ask: 9,
-                                ask_option: { undPrice: 2742.4500000000003, iv: 0.2389572882162499 },
-                                bid_option: { iv: 0.2369029900679141 }
+                                model_option: {
+                                    optPrice: 8.85,
+                                    undPrice: 2742.4500000000003,
+                                    iv: (0.2389572882162499+0.2369029900679141)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{
@@ -3090,8 +3123,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 6.1,
                                 ask: 6.4,
-                                ask_option: { undPrice: 2742.4500000000003, iv: 0.2506591242473686 },
-                                bid_option: { iv: 0.24800008651105912 }
+                                model_option: {
+                                    optPrice: 6.25,
+                                    undPrice: 2742.4500000000003,
+                                    iv: (0.2506591242473686+0.24800008651105912)/2
+                                }
                             })
                         case 2:
                             expect(args).to.be.like([{
@@ -3144,7 +3180,7 @@ describe("broker-ib", function() {
                                     multiplier: '100',
                                     primaryExch: ''
                                 },
-                                0.24932960537921386,
+                                0.2493296053792138,
                                 2722.4500000000003
                             ]);
                             return Promise.resolve({ optPrice: 7.85420228206661 })
@@ -3349,8 +3385,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 0.65,
                                 ask: 0.8,
-                                ask_option: { undPrice: 2742.82, iv: 0.12955905702544818 },
-                                bid_option: { iv: 0.12579601226956683 }
+                                model_option: {
+                                    optPrice: (0.65+0.8)/2,
+                                    undPrice: 2742.82,
+                                    iv: (0.12955905702544818+0.12579601226956683)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{
@@ -3370,8 +3409,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 0.25,
                                 ask: 0.4,
-                                ask_option: { undPrice: 2742.82, iv: 0.13505035428115236 },
-                                bid_option: { iv: 0.12776162661981025 }
+                                model_option: {
+                                    optPrice: (0.25+0.4)/2,
+                                    undPrice: 2742.82,
+                                    iv: (0.13505035428115236+0.12776162661981025)/2
+                                }
                             })
                         case 2:
                             expect(args).to.be.like([{
@@ -3627,8 +3669,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 0.65,
                                 ask: 0.8,
-                                ask_option: { undPrice: 2743.09, iv: 0.12955905702544818 },
-                                bid_option: { iv: 0.12579601226956683 }
+                                model_option: {
+                                    optPrice: (0.65+0.8)/2,
+                                    undPrice: 2743.09,
+                                    iv: (0.12955905702544818+0.12579601226956683)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{
@@ -3648,8 +3693,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 0.25,
                                 ask: 0.4,
-                                ask_option: { undPrice: 2743.09, iv: 0.13505035428115236 },
-                                bid_option: { iv: 0.12776162661981025 }
+                                model_option: {
+                                    optPrice: (0.25+0.4)/2,
+                                    undPrice: 2743.09,
+                                    iv: (0.13505035428115236+0.12776162661981025)/2
+                                }
                             })
                         case 2:
                             expect(args).to.be.like([{
@@ -3905,8 +3953,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 8.7,
                                 ask: 9,
-                                ask_option: { undPrice: 2743.08, iv: 0.2389572882162499 },
-                                bid_option: { iv: 0.2369029900679141 }
+                                model_option: {
+                                    optPrice: 8.85,
+                                    undPrice: 2743.08,
+                                    iv: (0.2389572882162499+0.2369029900679141)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{
@@ -3926,8 +3977,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 6.1,
                                 ask: 6.4,
-                                ask_option: { undPrice: 2743.08, iv: 0.2506591242473686 },
-                                bid_option: { iv: 0.24800008651105912 }
+                                model_option: {
+                                    optPrice: 6.25,
+                                    undPrice: 2743.08,
+                                    iv: (0.2506591242473686+0.24800008651105912)/2
+                                }
                             })
                         case 2:
                             expect(args).to.be.like([{
@@ -3980,7 +4034,7 @@ describe("broker-ib", function() {
                                     multiplier: '100',
                                     primaryExch: ''
                                 },
-                                0.24932960537921386,
+                                0.2493296053792138,
                                 2763.08
                             ]);
                             return Promise.resolve({ optPrice: 5.397829871426259 })
@@ -4188,8 +4242,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 8.7,
                                 ask: 9,
-                                ask_option: { undPrice: 2742.76, iv: 0.2389572882162499 },
-                                bid_option: { iv: 0.2369029900679141 }
+                                model_option: {
+                                    optPrice: 8.85,
+                                    undPrice: 2742.76,
+                                    iv: (0.2389572882162499+0.2369029900679141)/2
+                                }
                             })
                         case 1:
                             expect(args).to.be.like([{
@@ -4209,8 +4266,11 @@ describe("broker-ib", function() {
                             return Promise.resolve({
                                 bid: 6.1,
                                 ask: 6.4,
-                                ask_option: { undPrice: 2742.76, iv: 0.2506591242473686 },
-                                bid_option: { iv: 0.24800008651105912 }
+                                model_option: {
+                                    optPrice: 6.25,
+                                    undPrice: 2742.76,
+                                    iv: (0.2506591242473686+0.24800008651105912)/2
+                                }
                             })
                         case 2:
                             expect(args).to.be.like([{
@@ -4263,7 +4323,7 @@ describe("broker-ib", function() {
                                     multiplier: '100',
                                     primaryExch: ''
                                 },
-                                0.24932960537921386,
+                                0.2493296053792138,
                                 2762.76
                             ]);
                             return Promise.resolve({ optPrice: 5.414138139395032 })
