@@ -344,8 +344,8 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
                 asof: (time ? moment(time, 'X') : moment(options.now)).format(),
                 posted_at: signal.posted_time_unix || signal.postedwhen ?
                     moment(signal.posted_time_unix || signal.postedwhen, 'X').format() : null,
-                traded_at: signal.traded_time_unix || signal.tradedwhen || signal.parkUntilSecs ?
-                    moment(signal.traded_time_unix || signal.tradedwhen || signal.parkUntilSecs, 'X').format() : null,
+                traded_at: signal.traded_time_unix || signal.tradedwhen ?
+                    moment(signal.traded_time_unix || signal.tradedwhen, 'X').format() : null,
                 action: signal.action.charAt(0) == 'B' ? 'BUY' :
                     signal.action.charAt(0) == 'S' ? 'SELL' : sign.action,
                 quant: signal.quant,
@@ -390,8 +390,8 @@ async function cancelOrder(c2_multipliers, collective2, markets, lookup, options
         asof: time ? moment(time, 'X').format() : moment(options.now).format(),
         posted_at: resp.posted_time_unix || resp.postedwhen ?
             moment(resp.posted_time_unix || resp.postedwhen, 'X').format() : null,
-        traded_at: resp.traded_time_unix || resp.tradedwhen || resp.parkUntilSecs ?
-            moment(resp.traded_time_unix || resp.tradedwhen || resp.parkUntilSecs, 'X').format() : null,
+        traded_at: resp.traded_time_unix || resp.tradedwhen ?
+            moment(resp.traded_time_unix || resp.tradedwhen, 'X').format() : null,
         action: resp.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
         quant: resp.quant,
         order_type: +signal.market || +signal.isMarketOrder ? 'MKT' :
@@ -511,8 +511,8 @@ function signalToOrder(working, signal, options) {
         asof: time ? moment(time, 'X').format() : moment(options.now).format(),
         posted_at: signal.posted_time_unix || signal.postedwhen ?
             moment(signal.posted_time_unix || signal.postedwhen, 'X').format() : null,
-        traded_at: signal.traded_time_unix || signal.tradedwhen || signal.parkUntilSecs ?
-            moment(signal.traded_time_unix || signal.tradedwhen || signal.parkUntilSecs, 'X').format() : null,
+        traded_at: signal.traded_time_unix || signal.tradedwhen ?
+            moment(signal.traded_time_unix || signal.tradedwhen, 'X').format() : null,
         action: signal.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
         quant: signal.quant,
         order_type: +signal.market ? 'MKT' : +signal.limit ? 'LMT' : 'STP',

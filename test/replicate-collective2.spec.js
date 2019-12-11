@@ -1227,7 +1227,6 @@ describe("replicate-collective2", function() {
                 now: moment.tz("2016-10-13T15:59:59", 'America/New_York').valueOf()
             }).should.eventually.be.like([{
                 asof: '2016-10-13T15:59:59-04:00',
-                traded_at: '2016-10-13T16:00:00-04:00',
                 action: 'BUY',
                 quant: '2',
                 order_type: 'MKT',

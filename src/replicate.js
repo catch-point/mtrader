@@ -476,12 +476,15 @@ function getActualPositions(broker_positions, broker_orders, working_refs, begin
         const stoploss = _.first(other.filter(ord => ord.order_type == 'STP'));
         const asof = _.last(_.sortBy((working_orders[asset]||[])
             .map(ord => ord.traded_at || ord.posted_at))) || begin;
+        const traded_at = _.last(_.sortBy((working_orders[asset]||[]).concat(positions[asset]||[])
+            .map(ord => ord.traded_at)));
         const working = (working_orders[asset]||[]).filter(ord => ord != adjustment && ord != stoploss);
         const attach_ref = _.first(_.difference((working_orders[asset]||[]).map(ord => ord.attach_ref), (working_orders[asset]||[]).map(ord => ord.order_ref)));
         return {
             position,
             attach_ref,
             asof,
+            traded_at,
             adjustment,
             stoploss,
             working: _.indexBy(working, ord => ord.order_ref),
@@ -573,7 +576,7 @@ function updateActual(desired, actual, options) {
     if (!options.force && !actual.adjustment && actual.traded_at &&
             moment(desired.asof).isBefore(actual.traded_at)) {
         // working position has since been traded (stoploss?) since the last desired signal was produced
-        logger.warn(`Working ${desired.attach_ref} position has since been changed ${actual.asof}`, options.label || '');
+        logger.warn(`Working ${desired.attach_ref} position has since been changed ${actual.traded_at}`, options.label || '');
         logger.debug("replicate", "actual", actual);
         return cancelled;
     } else if (adjustment_order && (desired.realized.stoploss || !_.isEmpty(desired.realized.working))) {
