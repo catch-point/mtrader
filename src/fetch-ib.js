@@ -181,7 +181,7 @@ module.exports = function(settings = {}) {
                         throw err;
                     });
                 });
-            } else if (next_open.isBefore(now)) {
+            } else if (next_open.isBefore(now) && (!options.end || !next_open.isAfter(options.end))) {
                 // market is open
                 const market = markets[options.market];
                 const secTypes = [].concat(market.secTypes || [], market.secType || []);
@@ -230,8 +230,9 @@ module.exports = function(settings = {}) {
                 const historical = await fetch(options).catch(err => []);
                 const earlier = (_.last(historical)||{}).ending;
                 const yesterday = !earlier ? moment.tz(options.begin, options.tz) :
-                    moment(next_open).subtract(next_open.diff(earlier, 'days'), 'days');
+                    moment(next_open).subtract(Math.min(next_open.diff(earlier, 'days'),4), 'days');
                 if (yesterday.isAfter(now)) return historical;
+                else if (options.end && yesterday.isAfter(options.end)) return historical;
                 return combineHistoricalLiveFeeds(historical, fetch_ib({
                     ...options,
                     begin: yesterday.format(),
