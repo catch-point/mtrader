@@ -97,7 +97,7 @@ module.exports = function(settings = {}) {
 async function promiseDatasources(settings = {}) {
     const yahoo = require('./fetch-yahoo.js');
     const all_factories = [
-        {name: 'blended', fn: require('./fetch-blended.js')},
+        {name: 'model', fn: require('./fetch-model.js')},
         {name: 'files', fn: require('./fetch-files.js')},
         {name: 'ib', fn: require('./fetch-ib.js')},
         {name: 'ivolatility', fn: require('./fetch-ivolatility.js')},
