@@ -285,11 +285,13 @@ function isTimeFrameAvailable(markets, client, now, options) {
     const begin = moment(options.begin);
     const m = options.interval.charAt(0) == 'm' && +options.interval.substring(1);
     if (!m && market && ~['OPT', 'FOP'].indexOf(market.secType)) return false;
-    if (m && m <= 1 && now.diff(begin, 'days') > 1) return false;
-    if (m && m <= 2 && now.diff(begin, 'days') > 2) return false;
-    if (m && m <= 3 && now.diff(begin, 'days') > 5) return false;
-    if (m && m <= 30 && now.diff(begin, 'days') > 31) return false;
-    return now.diff(begin, 'days') <= 365;
+    const days = m && now.diff(begin, 'days', true);
+    if (m && m <= 1 && days > 1) return false;
+    if (m && m <= 2 && days > 2) return false;
+    if (m && m <= 3 && days > 7) return false;
+    if (m && market.whatToShow == 'MIDPOINT' && days > 7) return false;
+    if (m && m <= 30 && days > 31) return false;
+    return days <= 370;
 }
 
 function marketOpensAt(now, options) {
