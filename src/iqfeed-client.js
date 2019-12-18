@@ -142,7 +142,7 @@ module.exports = function(command, env, productId, productVersion) {
         },
         month(symbol, begin, end, tz) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            if (end) expect(begin).to.be.below(end);
+            if (end) expect(begin).not.to.be.above(end);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
             const now = moment().tz(tz);
             const earliest = moment.tz(begin, tz);
@@ -159,7 +159,7 @@ module.exports = function(command, env, productId, productVersion) {
         },
         week(symbol, begin, end, tz) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            if (end) expect(begin).to.be.below(end);
+            if (end) expect(begin).not.to.be.above(end);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
             const now = moment().tz(tz);
             const earliest = moment.tz(begin, tz);
@@ -176,7 +176,7 @@ module.exports = function(command, env, productId, productVersion) {
         },
         day(symbol, begin, end, tz) {
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            if (end) expect(begin).to.be.below(end);
+            if (end) expect(begin).not.to.be.above(end);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
             const b = moment.tz(begin, tz);
             const e = end && moment.tz(end, tz);
@@ -194,7 +194,7 @@ module.exports = function(command, env, productId, productVersion) {
         minute(minutes, symbol, begin, end, tz) {
             expect(minutes).to.be.like(_.isFinite);
             expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            if (end) expect(begin).to.be.below(end);
+            if (end) expect(begin).not.to.be.above(end);
             expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
             const now = moment().tz('America/New_York');
             const b = moment.tz(begin, 'America/New_York');
