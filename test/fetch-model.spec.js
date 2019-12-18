@@ -920,35 +920,35 @@ describe("fetch-model", function() {
                     }
                 },
                 assets:[{
-                    root: 'SPY', market: 'OPRA', security_type: 'OPT',
-                    symbol_pattern: '^(SPY   )(......)([CP])(........)$',
+                    symbol_pattern: '^(SPY|EEM)(   )(......)([CP])(........)$',
+                    market: 'OPRA', security_type: 'OPT',
                     intervals: ['day', 'm240', 'm120', 'm60', 'm30'],
                     models: [{
                         input: {
-                            call: {symbol_replacement: '$1$2C$4'},
-                            put: {symbol_replacement: '$1$2P$4'},
-                            spy: {symbol: 'SPY', market: 'ARCA' },
+                            call: {symbol_replacement: '$1$2$3C$5'},
+                            put: {symbol_replacement: '$1$2$3P$5'},
+                            etf: {symbol_replacement: '$1', market: 'ARCA' },
                             irx: {symbol: 'IRX', market: 'CBOE', interval: 'day' }
                         },
                         pad_begin: 80,
                         interval: 'm30',
                         variables: {
-                            open: "ROUND(BS(spy.open, strike, dte, iv, rate, right),2)",
-                            high: "MAX(IF(call_live,call.high, put_live,put.high), FLOOR(BS(spy.high, strike, dte, iv, rate, right),0.01))",
-                            low: "MIN(IF(call_live,call.low, put_live,put.low, spy.high), CEILING(BS(spy.low, strike, dte, iv, rate, right),0.01))",
-                            close: "live_close OR ROUND(BS(spy.close, strike, dte, iv, rate, right),2)",
+                            open: "ROUND(BS(etf.open, strike, dte, iv, rate, right),2)",
+                            high: "MAX(IF(call_live,call.high, put_live,put.high), FLOOR(BS(etf.high, strike, dte, iv, rate, right),0.01))",
+                            low: "MIN(IF(call_live,call.low, put_live,put.low, etf.high), CEILING(BS(etf.low, strike, dte, iv, rate, right),0.01))",
+                            close: "live_close OR ROUND(BS(etf.close, strike, dte, iv, rate, right),2)",
                             volume: "IF(call_live,call.volume, put_live,put.volume, 0)",
                             iv: "IF(live_close,live_iv, alt_iv)",
                             live_close: "IF(call_live,call.close, put_live,put.close)",
-                            live_iv: "BSIV(live_close, spy.close, strike, dte, rate, right)",
+                            live_iv: "BSIV(live_close, etf.close, strike, dte, rate, right)",
                             alt_iv: "IF(right='C',put_iv/skew, call_iv*skew)",
-                            skew: "IF(call.ending!=put.ending OR call.ending!=spy.ending,PREV('skew')) OR put_i/call_iv",
-                            call_iv: "IF(call.ending<spy.ending,PREV('call_iv')) OR live_call_iv",
-                            put_iv: "IF(put.ending<spy.ending,PREV('put_iv')) OR live_put_iv",
-                            live_call_iv: "BSIV(call.close, spy.close, strike, dte, rate, 'C')",
-                            live_put_iv: "BSIV(put.close, spy.close, strike, dte, rate, 'P')",
-                            call_live: "right='C' AND call.ending>=spy.ending",
-                            put_live: "right='P' AND put.ending>=spy.ending",
+                            skew: "IF(call.ending!=put.ending OR call.ending!=etf.ending,PREV('skew')) OR put_iv/call_iv",
+                            call_iv: "IF(call.ending!=etf.ending,PREV('call_iv')) OR live_call_iv",
+                            put_iv: "IF(put.ending!=etf.ending,PREV('put_iv')) OR live_put_iv",
+                            live_call_iv: "BSIV(call.close, etf.close, strike, dte, rate, 'C')",
+                            live_put_iv: "BSIV(put.close, etf.close, strike, dte, rate, 'P')",
+                            call_live: "right='C' AND call.ending=etf.ending",
+                            put_live: "right='P' AND put.ending=etf.ending",
                             strike: "NUMBERVALUE(RIGHT(symbol,8))/1000",
                             expiry: "`20{LEFT(RIGHT(symbol,15),6)}`",
                             dte: "DAYS(expiry, MAX(call.ending,put.ending))",
@@ -956,7 +956,7 @@ describe("fetch-model", function() {
                             right: "LEFT(RIGHT(symbol,9),1)"
                         },
                         output: {
-                            ending: 'spy.ending',
+                            ending: 'etf.ending',
                             open: 'open',
                             high: 'high',
                             low: 'low',
@@ -972,7 +972,28 @@ describe("fetch-model", function() {
                 interval: 'day',
                 symbol: 'SPY   200221C00280000', market: 'OPRA',
                 begin: '2019-11-01', end: '2019-12-01', tz
-            }).then(printEach);
+            }).should.eventually.be.like([
+        { ending: '2019-11-01T16:15:00-04:00', open: 28.48, high: 29.54, low: 28.34, close: 29.53, volume: 2 },
+        { ending: '2019-11-04T16:15:00-05:00', open: 31.06, high: 31.19, low: 30.17, close: 30.51, volume: 4 },
+        { ending: '2019-11-05T16:15:00-05:00', open: 30.69, high: 31.44, low: 29.98, close: 30.24, volume: 4 },
+        { ending: '2019-11-06T16:15:00-05:00', open: 30.23, high: 30.54, low: 29.4, close: 30.28, volume: 13 },
+        { ending: '2019-11-07T16:15:00-05:00', open: 31.46, high: 32.4, low: 30.66, close: 31.15, volume: 1 },
+        { ending: '2019-11-08T16:15:00-05:00', open: 30.74, high: 31.74, low: 29.64, close: 31.74, volume: 9 },
+        { ending: '2019-11-11T16:15:00-05:00', open: 30.27, high: 31.44, low: 30.14, close: 31.03, volume: 23 },
+        { ending: '2019-11-12T16:15:00-05:00', open: 31.12, high: 32.6, low: 30.9, close: 31.61, volume: 6 },
+        { ending: '2019-11-13T16:15:00-05:00', open: 30.53, high: 31.98, low: 30.32, close: 31.57, volume: 1 },
+        { ending: '2019-11-14T16:15:00-05:00', open: 31.28, high: 32.19, low: 30.83, close: 32.1, volume: 7 },
+        { ending: '2019-11-15T16:15:00-05:00', open: 33.39, high: 33.82, low: 32.72, close: 33.59, volume: 66 },
+        { ending: '2019-11-18T16:15:00-05:00', open: 33.6, high: 34.38, low: 33.05, close: 33.88, volume: 15 },
+        { ending: '2019-11-19T16:15:00-05:00', open: 35.01, high: 35.02, low: 33.77, close: 34.37, volume: 8 },
+        { ending: '2019-11-20T16:15:00-05:00', open: 33.78, high: 34.29, low: 31.81, close: 33.14, volume: 10 },
+        { ending: '2019-11-21T16:15:00-05:00', open: 33.19, high: 33.3, low: 32.03, close: 32.53, volume: 4 },
+        { ending: '2019-11-22T16:15:00-05:00', open: 33.23, high: 33.36, low: 32.11, close: 32.82, volume: 22 },
+        { ending: '2019-11-25T16:15:00-05:00', open: 33.66, high: 34.96, low: 33.67, close: 34.95, volume: 0 },
+        { ending: '2019-11-26T16:15:00-05:00', open: 34.98, high: 35.65, low: 34.66, close: 35.22, volume: 9 },
+        { ending: '2019-11-27T16:15:00-05:00', open: 35.78, high: 36.69, low: 35.55, close: 36.66, volume: 21 },
+        { ending: '2019-11-29T16:15:00-05:00', open: 36.06, high: 36.32, low: 35.28, close: 35.69, volume: 0 }
+            ]);
         } finally {
             await fetch.close();
         }

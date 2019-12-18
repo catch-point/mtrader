@@ -91,7 +91,7 @@ function help(assets, settings = {}) {
             },
         })
     };
-    const interday = {
+    const interday = ~intervals.indexOf('day') ? {
         name: "interday",
         usage: "interday(options)",
         properties: _.uniq(['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'].concat(variables)),
@@ -122,8 +122,40 @@ function help(assets, settings = {}) {
                 description: "Date and time format of the resulting ending field"
             }
         })
-    };
-    return [lookup, fundamental, interday];
+    } : null;
+    const intraday = intervals.find(p => p.charAt(0) == 'm' && p != 'month') ? {
+        name: "intraday",
+        usage: "intraday(options)",
+        properties: _.uniq(['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'].concat(variables)),
+        options: _.extend(commonOptions, {
+            interval: {
+                usage: "mX",
+                description: "The bar timeframe for the results",
+                values: intervals
+            },
+            begin: {
+                example: "YYYY-MM-DD",
+                description: "Sets the earliest date (or dateTime) to retrieve"
+            },
+            end: {
+                example: "YYYY-MM-DD HH:MM:SS",
+                description: "Sets the latest dateTime to retrieve"
+            },
+            liquid_hours: {
+                description: "Trading hours in the format 'hh:mm:00 - hh:mm:00'"
+            },
+            security_tz: {
+                description: "Timezone of liquid_hours using the identifier in the tz database"
+            },
+            tz: {
+                description: "Timezone of the ending formatted using the identifier in the tz database"
+            },
+            ending_format: {
+                description: "Date and time format of the resulting ending field"
+            }
+        })
+    } : null;
+    return _.compact([lookup, fundamental, interday ,intraday]);
 }
 
 module.exports = function(settings = {}) {
@@ -143,8 +175,7 @@ module.exports = function(settings = {}) {
         switch(options.interval) {
             case 'lookup': return lookup(markets, assets, options);
             case 'fundamental': return lookup(markets, assets, options).then(_.first);
-            case 'day': return trim(await blend_fn(options), options);
-            default: throw Error(`fetch-model does not support intraday in version ${version}`);
+            default: return trim(await blend_fn(options), options);
         }
     }, {
         close() {
@@ -214,8 +245,7 @@ function findAsset(assets, options) {
     return assets.find(asset => {
         if (asset.market != options.market) return false;
         else if (asset.intervals && !~asset.intervals.indexOf(options.interval)) return false;
-        else if (asset.symbol && asset.symbol != options.symbol) return true;
-        else if (asset.root && options.symbol.indexOf(asset.root) !== 0) return false;
+        else if (asset.symbol && asset.symbol != options.symbol) return false;
         else if (asset.symbol_pattern && !options.symbol.match(new RegExp(asset.symbol_pattern))) return false;
         else return true;
     });
@@ -269,59 +299,27 @@ async function fetchModel(markets, fetch, asset, model, options) {
         ...market_opts,
         begin, end
     };
-    const bars = await fetchModelBars(markets, fetch, asset, model, opts);
+    const bars = await fetchModelBars(fetchInputData.bind(this, markets, fetch, asset), model, opts);
     if (!model.interval || model.interval == options.interval) return bars;
     else return rollBars(bars, options);
 }
 
-async function fetchModelBars(markets, fetch, asset, model, options) {
+async function fetchModelBars(fetchInputData, model, options) {
     const check = interrupt();
-    const input_data = await Promise.all(Object.values(model.input).map(async(term) => {
-        if (term.bars) return term.bars;
-        else if (term.file_csv_gz) return (await readModel(asset, term, options)).bars;
-        else if (term.output) return fetchModel(markets, fetch, asset, term, options);
-        else return fetch(_.defaults(
-            term.symbol_replacement ? {
-                symbol: options.symbol.replace(new RegExp(asset.symbol_pattern), term.symbol_replacement)
-            } : {},
-            _.pick(term, 'symbol', 'market', 'interval'),
-            _.omit(options, [
-                'name',
-                'currency', 'security_type', 'security_tz',
-                'liquid_hours', 'open_time', 'trading_hours'
-            ])
-        ));
-    }));
-    const security_variables = _.pick(options, [
-        'symbol', 'market', 'name',
-        'currency', 'security_type', 'security_tz',
-        'liquid_hours', 'open_time', 'trading_hours'
-    ]);
+    const input_data = await fetchInputData(model, options);
     const input = _.object(Object.keys(model.input), input_data);
     const points = [];
+    const eval_input = parseInputVariables(model, options);
     const eval_variables = parseVariablesUsedInRolling(model, options);
     const eval_coefficients = parseCoefficientVariables(model, options);
     const eval_output = parseOutputExpressions(model, options);
-    const iterators = _.mapObject(input, array => createIterator(array));
-    if (_.some(iterators, iter => !iter.hasNext())) return [];
-    const earliest = _.last(_.map(iterators, iter => iter.peek().ending).sort());
-    _.forEach(iterators, iter => {
-        while (iter.hasNext() && iter.peek().ending < earliest) iter.next();
-    });
+    const iterators = createAndAlignIterators(input, options);
     const result = [];
     while (_.some(iterators, iter => iter.hasNext())) {
         await check();
         const ending = nextBarEnding(Object.values(iterators), options);
         const input_bars = _.mapObject(iterators, iter => iter.review());
-        const input_variables = merge.apply(null, _.map(input_bars, (bar, left) => {
-            const term = {..._.pick(options, 'symbol', 'market', 'interval'), ...model.input[left]};
-            const keys = Object.keys(bar)
-                .concat('symbol', 'market', 'interval')
-                .map(name => `${left}.${name}`);
-            const values = Object.values(bar)
-                .concat(term.symbol, term.market, term.interval);
-            return _.object(keys, values);
-        }).concat(security_variables));
+        const input_variables = eval_input(input_bars);
         points.push({variables: input_variables});
         const variables = {...input_variables, ...eval_coefficients(points), ...eval_variables(points)};
         points[points.length-1] = {variables};
@@ -352,6 +350,44 @@ async function rollBars(bars, options) {
         });
         return rolled;
     }, []);
+}
+
+async function fetchInputData(markets, fetch, asset, model, options) {
+    return Promise.all(Object.values(model.input).map(async(term) => {
+        if (term.bars) return term.bars;
+        else if (term.file_csv_gz) return (await readModel(asset, term, options)).bars;
+        else if (term.output) return fetchModel(markets, fetch, asset, term, options);
+        else return fetch(_.defaults(
+            term.symbol_replacement ? {
+                symbol: options.symbol.replace(new RegExp(asset.symbol_pattern), term.symbol_replacement)
+            } : {},
+            _.pick(term, 'symbol', 'market', 'interval'),
+            _.omit(options, [
+                'name',
+                'currency', 'security_type', 'security_tz',
+                'liquid_hours', 'open_time', 'trading_hours'
+            ])
+        ));
+    }));
+}
+
+function parseInputVariables(model, options) {
+    const security_variables = _.pick(options, [
+        'symbol', 'market', 'name', 'tz',
+        'currency', 'security_type', 'security_tz',
+        'liquid_hours', 'open_time', 'trading_hours'
+    ]);
+    return input_bars => {
+        return merge.apply(null, _.map(input_bars, (bar, left) => {
+            const term = {..._.pick(options, 'symbol', 'market', 'interval'), ...model.input[left]};
+            const keys = Object.keys(bar)
+                .concat('symbol', 'market', 'interval')
+                .map(name => `${left}.${name}`);
+            const values = Object.values(bar)
+                .concat(term.symbol, term.market, term.interval);
+            return _.object(keys, values);
+        }).concat(security_variables));
+    };
 }
 
 function parseVariablesUsedInRolling(model, options) {
@@ -391,12 +427,20 @@ function parseVariablesUsedInRolling(model, options) {
 }
 
 function parseOutputExpressions(model, options) {
+    var key_variables = [
+        'symbol', 'market', 'name', 'interval', 'tz',
+        'currency', 'security_type', 'security_tz',
+        'liquid_hours', 'open_time', 'trading_hours'
+    ];
     var parser = Parser({
         constant(value) {
             return () => value;
         },
         variable(name) {
-            if ((model.variables||{})[name]) return parser.parse(model.variables[name]);
+            if ((model.variables||{})[name])
+                return parser.parse(model.variables[name]);
+            else if (!~key_variables.indexOf(name) && !~name.indexOf('.'))
+                throw Error(`Unknown variable ${name}`);
             else return points => {
                 const key = _.last(_.keys(_.last(points)));
                 return _.last(points)[key][name];
@@ -419,7 +463,8 @@ function parseCoefficientVariables(model) {
             return () => value;
         },
         variable(name) {
-            if ((model.variables||{})[name]) return parser.parse(model.variables[name]);
+            if ((model.variables||{})[name])
+                return parser.parse(model.variables[name]);
             else return points => {
                 const key = _.last(_.keys(_.last(points)));
                 return _.last(points)[key][name];
@@ -444,6 +489,29 @@ function parseCoefficientVariables(model) {
         const coefficient_values = calculateCoefficients(regression_data);
         return _.object(coefficient_variables, coefficient_values);
     }
+}
+
+function createAndAlignIterators(input, options) {
+    const iterators = _.mapObject(input, array => createIterator(array));
+    if (_.some(iterators, iter => !iter.hasNext())) {
+        const count = _.filter(iterators, iter => !iter.hasNext()).length;
+        _.forEach(iterators, (iter, i) => {
+            if (!iter.hasNext())
+                logger.warn(`fetch-model no input ${i} in ${options.symbol}.${options.market} as of`, options.end);
+        });
+        return [];
+    }
+    const earliest = _.last(_.map(iterators, iter => iter.peek().ending).sort());
+    if (options.begin < earliest && moment(earliest).subtract(1,'weeks').isAfter(options.begin)) {
+        _.forEach(iterators, (iter, i) => {
+            if (options.begin < iter.peek().ending)
+                logger.warn(`fetch-model input ${i} in ${options.symbol}.${options.market} not available until`, iter.peek().ending);
+        });
+    }
+    _.forEach(iterators, iter => {
+        while (iter.hasNext() && iter.peek().ending < earliest) iter.next();
+    });
+    return iterators;
 }
 
 function createIterator(array) {
