@@ -223,7 +223,10 @@ function findAsset(assets, options) {
 
 function sliceModelsAfter(models, begin) {
     const idx = models.reduceRight((idx, model, i) => {
-        return idx || !model.end || begin.isAfter(model.end) ? idx : i;
+        if (idx) return idx;
+        else if (model.begin && !begin.isBefore(model.begin)) return i;
+        else if (model.end && begin.isAfter(model.end)) return i+1;
+        else return 0;
     }, 0);
     return models.slice(idx);
 }
