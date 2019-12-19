@@ -114,7 +114,7 @@ async function promiseDatasources(settings = {}) {
     const sources = factories.map(factory => {
         const name = factory.name;
         const settings_loop_disabled = factory.name == 'remote' ? settings[name] :
-            merge(settings[name], {[name]: {fetch: disabled}}, settings[name]);
+            merge(settings[name], {fetch: disabled}, settings[name]);
         const source = factory.fn(settings_loop_disabled);
         return Object.assign(opts => {
             logger.trace("Fetch", name, opts.info || opts.interval,
