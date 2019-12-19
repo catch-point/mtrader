@@ -636,7 +636,7 @@ async function snapStockPrice(ib, contract, bar, under_bar, net_offset) {
     if (!iv || iv == Number.MAX_VALUE || iv == Number.MAX_VALUE/2)
         throw Error(`No implied volatility for option ${contract.localSymbol} ${util.inspect(bar.model_option)}`);
     const option = await ib.calculateOptionPrice(contract, iv, asset_offset);
-    logger.debug("calculated option price model", option.optPrice, '+', +net_offset, bar.model_option);
+    logger.log("calculated option price model", option.optPrice, '+', +net_offset, bar.model_option);
     return +Big(option.optPrice).minus(bar.model_option.optPrice).add(Big(bar.bid).add(bar.ask).div(2));
 }
 
