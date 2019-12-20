@@ -43,6 +43,7 @@ const interrupt = require('./interrupt.js');
 const Parser = require('../src/parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
+const Adjustements = require('./adjustment-functions.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
@@ -161,6 +162,7 @@ function help(assets, settings = {}) {
 module.exports = function(settings = {}) {
     expect(settings).to.have.property('assets').that.is.an('array');
     const fetch = new Fetch(merge(config('fetch'), {model:{enabled:false}}, settings.fetch));
+    const adjustments = new Adjustements(settings);
     const assets = settings.assets.map(asset => typeof asset == 'string' ? readConfig(asset, settings) : asset);
     const market_values = _.uniq(assets.map(asset => asset.market));
     const markets = _.mapObject(
@@ -171,7 +173,7 @@ module.exports = function(settings = {}) {
     return Object.assign(async(options) => {
         if (options.info=='version') return [{version}];
         if (options.info=='help') return helpInfo;
-        const blend_fn = blendCall.bind(this, markets, fetch, assets);
+        const blend_fn = blendCall.bind(this, markets, fetch, adjustments, assets);
         switch(options.interval) {
             case 'lookup': return lookup(markets, assets, options);
             case 'fundamental': return lookup(markets, assets, options).then(_.first);
@@ -208,7 +210,7 @@ async function lookup(markets, assets, options) {
     });
 }
 
-async function blendCall(markets, fetch, assets, options) {
+async function blendCall(markets, fetch, adjustments, assets, options) {
     const asset = findAsset(assets, options);
     if (!asset || !asset.models) throw Error(`No model configured for ${options.symbol}.${options.market}`);
     const end = options.end && moment.tz(options.end, options.tz).format(options.ending_format);
@@ -224,7 +226,7 @@ async function blendCall(markets, fetch, assets, options) {
             (i == models.length-1 && options.end ? maxDate(options.end, max_begin) : undefined);
         const end = !model.end && i <models.length-1 ? periods.inc(max_end, 1).format(options.ending_format) : max_end;
         const part = model.bars ? model.bars :
-            await fetchModel(markets, fetch, asset, model, { ...options, begin, end });
+            await fetchModel(markets, fetch, adjustments, asset, model, { ...options, begin, end });
         const result = await promise;
         if (_.isEmpty(result)) return part;
         else if (_.isEmpty(part)) return result;
@@ -276,7 +278,7 @@ async function readModel(asset, model, options) {
     }
 }
 
-async function fetchModel(markets, fetch, asset, model, options) {
+async function fetchModel(markets, fetch, adjustments, asset, model, options) {
     const marketOptions = [
         'symbol', 'market', 'name',
         'currency', 'security_type', 'security_tz',
@@ -299,18 +301,18 @@ async function fetchModel(markets, fetch, asset, model, options) {
         ...market_opts,
         begin, end
     };
-    const fetchInputData_fn = fetchInputData.bind(this, markets, fetch, asset);
-    const bars = await fetchModelBars(fetchInputData_fn, model, opts);
+    const fetchInputData_fn = fetchInputData.bind(this, markets, fetch, adjustments, asset);
+    const bars = await fetchModelBars(fetchInputData_fn, adjustments, model, opts);
     if (!model.interval || model.interval == options.interval) return bars;
     else return rollBars(bars, options);
 }
 
-async function fetchModelBars(fetchInputData, model, options) {
+async function fetchModelBars(fetchInputData, adjustments, model, options) {
     const check = interrupt();
     const input_data = await fetchInputData(model, options);
     const input = _.object(Object.keys(model.input), input_data);
     const points = [];
-    const parser = createParser(model, options);
+    const parser = createParser(adjustments, model, options);
     const eval_input = await parseInputVariables(parser, model, options);
     const eval_variables = await parseVariablesUsedInRolling(parser, model, options);
     const eval_coefficients = await parseCoefficientVariables(parser, model, options);
@@ -354,11 +356,11 @@ async function rollBars(bars, options) {
     }, []);
 }
 
-async function fetchInputData(markets, fetch, asset, model, options) {
+async function fetchInputData(markets, fetch, adjustments, asset, model, options) {
     return Promise.all(Object.values(model.input).map(async(term) => {
         if (term.bars) return term.bars;
         else if (term.file_csv_gz) return (await readModel(asset, term, options)).bars;
-        else if (term.output) return fetchModel(markets, fetch, asset, term, options);
+        else if (term.output) return fetchModel(markets, fetch, adjustments, asset, term, options);
         else return fetch(_.defaults(
             term.symbol_replacement ? {
                 symbol: options.symbol.replace(new RegExp(asset.symbol_pattern), term.symbol_replacement)
@@ -373,7 +375,7 @@ async function fetchInputData(markets, fetch, asset, model, options) {
     }));
 }
 
-function createParser(model, options) {
+function createParser(adjustments, model, options) {
     var options_variables = [
         'symbol', 'market', 'name', 'interval', 'tz',
         'currency', 'security_type', 'security_tz',
@@ -398,6 +400,7 @@ function createParser(model, options) {
         expression(expr, name, args) {
             return common(name, args, options) ||
             rolling(expr, name, args, options) ||
+            adjustments(expr, name, args, options) ||
             (() => {
                 throw Error("Only common and rolling functions can be used in models: " + expr);
             });
@@ -433,7 +436,8 @@ async function parseVariablesUsedInRolling(parser, model, options) {
             return rolling.getVariables(expr, options).filter(name => model.variables[name]);
         }
     });
-    const names = _.flatten(await Promise.all(_.map(model.variables, expr => var_parser.parse(expr))));
+    const all = Object.values(model.variables||{}).concat(Object.values(model.output));
+    const names = _.flatten(await Promise.all(all.map(expr => var_parser.parse(expr))));
     const expr_promises = names.map(name => parser.parse(model.variables[name]));
     const expressions = _.object(names, await Promise.all(expr_promises));
     return points => _.mapObject(expressions, expr => expr(points));

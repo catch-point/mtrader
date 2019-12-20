@@ -867,7 +867,6 @@ describe("fetch-model", function() {
                             high: 'psa.high - offset - csav.high*csav_co',
                             low: 'psa.low - offset - csav.low*csav_co',
                             close: 'psa.close - offset - csav.close*csav_co',
-
                             volume: 'psa.volume - csav.volume',
                             adj_close: 'psa.adj_close - offset - csav.adj_close*csav_co',
                             csav_coefficient: 'csav_co'
@@ -909,6 +908,105 @@ describe("fetch-model", function() {
             await fetch.close();
         }
     });
+    it("should support DIVIDEND and SPLIT functions", async() => {
+        const fetch = new Fetch(merge(config('fetch'), {
+            model: {
+                enabled: true,
+                fetch: {
+                    files: {
+                        enabled: true,
+                        dirname: path.resolve(__dirname, 'data'),
+                        fetch: {
+                            yahoo: {
+                                enabled: true
+                            }
+                        }
+                    }
+                },
+                assets:[{
+                    symbol: 'AAPL', market: 'dividends', security_type: 'STK',
+                    name: 'AAPL with dividends',
+                    trading_hours: "04:00:00 - 20:00:00",
+                    liquid_hours: "09:30:00 - 16:00:00",
+                    open_time: "09:30:00",
+                    security_tz: "America/New_York",
+                    currency: "USD",
+                    intervals: ['day'],
+                    models: [{
+                        input: {
+                            aapl: {symbol:'AAPL', market:'NASDAQ'}
+                        },
+                        variables: {
+                            adj_price: 'aapl.close/split-dividend',
+                            dividend: "DIVIDEND(symbol, 'NASDAQ', aapl.ending, 1, '2014-09-01')",
+                            split: "SPLIT(symbol, 'NASDAQ', aapl.ending, '2015-01-01')"
+                        },
+                        output: {
+                            ending: 'aapl.ending',
+                            open: 'aapl.open',
+                            high: 'aapl.high',
+                            low: 'aapl.low',
+                            close: 'aapl.close',
+                            volume: 'aapl.volume',
+                            adj_close: 'ROUND(adj_price,2)',
+                            change: "CHANGE(adj_price,PREV('adj_price'))"
+                        }
+                    }]
+                }]
+            }
+        }));
+        try {
+            await fetch({
+                symbol: 'AAPL', market: 'dividends', interval: 'day',
+                begin: '2014-05-01', end: '2014-07-01', tz
+            }).should.eventually.be.like([
+                { ending: '2014-05-01T16:00:00-04:00', close: 591.480029, adj_close: 83.67, change: 0.24 },
+                { ending: '2014-05-02T16:00:00-04:00', close: 592.580023, adj_close: 83.83, change: 0.19 },
+                { ending: '2014-05-05T16:00:00-04:00', close: 600.959975, adj_close: 85.02, change: 1.42 },
+                { ending: '2014-05-06T16:00:00-04:00', close: 594.410026, adj_close: 84.08, change: -1.1 },
+                { ending: '2014-05-07T16:00:00-04:00', close: 592.329976, adj_close: 83.78, change: -0.36 },
+                { ending: '2014-05-08T16:00:00-04:00', close: 587.990011, adj_close: 83.63, change: -0.18 },
+                { ending: '2014-05-09T16:00:00-04:00', close: 585.540025, adj_close: 83.28, change: -0.42 },
+                { ending: '2014-05-12T16:00:00-04:00', close: 592.830014, adj_close: 84.32, change: 1.25 },
+                { ending: '2014-05-13T16:00:00-04:00', close: 593.760027, adj_close: 84.45, change: 0.16 },
+                { ending: '2014-05-14T16:00:00-04:00', close: 593.86999, adj_close: 84.47, change: 0.02 },
+                { ending: '2014-05-15T16:00:00-04:00', close: 588.819994, adj_close: 83.74, change: -0.86 },
+                { ending: '2014-05-16T16:00:00-04:00', close: 597.510018, adj_close: 84.98, change: 1.48 },
+                { ending: '2014-05-19T16:00:00-04:00', close: 604.590021, adj_close: 85.99, change: 1.19 },
+                { ending: '2014-05-20T16:00:00-04:00', close: 604.710022, adj_close: 86.01, change: 0.02 },
+                { ending: '2014-05-21T16:00:00-04:00', close: 606.310005, adj_close: 86.24, change: 0.26 },
+                { ending: '2014-05-22T16:00:00-04:00', close: 607.269971, adj_close: 86.37, change: 0.16 },
+                { ending: '2014-05-23T16:00:00-04:00', close: 614.129999, adj_close: 87.35, change: 1.13 },
+                { ending: '2014-05-27T16:00:00-04:00', close: 625.630019, adj_close: 88.99, change: 1.88 },
+                { ending: '2014-05-28T16:00:00-04:00', close: 624.010009, adj_close: 88.76, change: -0.26 },
+                { ending: '2014-05-29T16:00:00-04:00', close: 635.37999, adj_close: 90.38, change: 1.83 },
+                { ending: '2014-05-30T16:00:00-04:00', close: 633.000018, adj_close: 90.04, change: -0.38 },
+                { ending: '2014-06-02T16:00:00-04:00', close: 628.650008, adj_close: 89.41, change: -0.69 },
+                { ending: '2014-06-03T16:00:00-04:00', close: 637.539987, adj_close: 90.68, change: 1.42 },
+                { ending: '2014-06-04T16:00:00-04:00', close: 644.819994, adj_close: 91.72, change: 1.15 },
+                { ending: '2014-06-05T16:00:00-04:00', close: 647.349983, adj_close: 92.08, change: 0.39 },
+                { ending: '2014-06-06T16:00:00-04:00', close: 645.570023, adj_close: 91.83, change: -0.28 },
+                { ending: '2014-06-09T16:00:00-04:00', close: 93.699997, adj_close: 93.3, change: 1.6 },
+                { ending: '2014-06-10T16:00:00-04:00', close: 94.25, adj_close: 93.85, change: 0.59 },
+                { ending: '2014-06-11T16:00:00-04:00', close: 93.860001, adj_close: 93.46, change: -0.42 },
+                { ending: '2014-06-12T16:00:00-04:00', close: 92.290001, adj_close: 91.89, change: -1.68 },
+                { ending: '2014-06-13T16:00:00-04:00', close: 91.279999, adj_close: 90.87, change: -1.1 },
+                { ending: '2014-06-16T16:00:00-04:00', close: 92.199997, adj_close: 91.79, change: 1.01 },
+                { ending: '2014-06-17T16:00:00-04:00', close: 92.080002, adj_close: 91.67, change: -0.13 },
+                { ending: '2014-06-18T16:00:00-04:00', close: 92.18, adj_close: 91.77, change: 0.11 },
+                { ending: '2014-06-19T16:00:00-04:00', close: 91.860001, adj_close: 91.45, change: -0.35 },
+                { ending: '2014-06-20T16:00:00-04:00', close: 90.910004, adj_close: 90.5, change: -1.04 },
+                { ending: '2014-06-23T16:00:00-04:00', close: 90.830002, adj_close: 90.41, change: -0.09 },
+                { ending: '2014-06-24T16:00:00-04:00', close: 90.279999, adj_close: 89.86, change: -0.61 },
+                { ending: '2014-06-25T16:00:00-04:00', close: 90.360001, adj_close: 89.94, change: 0.09 },
+                { ending: '2014-06-26T16:00:00-04:00', close: 90.900002, adj_close: 90.48, change: 0.6 },
+                { ending: '2014-06-27T16:00:00-04:00', close: 91.980003, adj_close: 91.56, change: 1.19 },
+                { ending: '2014-06-30T16:00:00-04:00', close: 92.93, adj_close: 92.51, change: 1.03 }
+            ]);
+        } finally {
+            await fetch.close();
+        }
+    });
     it("use previous implied volatility to estimate options prices based on underlying", async() => {
         const fetch = new Fetch(merge(config('fetch'), {
             model: {
@@ -933,22 +1031,26 @@ describe("fetch-model", function() {
                         pad_begin: 80,
                         interval: 'm30',
                         variables: {
-                            open: "ROUND(BS(etf.open, strike, dte, iv, rate, right),2)",
-                            high: "MAX(IF(call_live,call.high, put_live,put.high), FLOOR(BS(etf.high, strike, dte, iv, rate, right),0.01))",
-                            low: "MIN(IF(call_live,call.low, put_live,put.low, etf.high), CEILING(BS(etf.low, strike, dte, iv, rate, right),0.01))",
-                            close: "live_close OR ROUND(BS(etf.close, strike, dte, iv, rate, right),2)",
+                            open: "ROUND(BS(etf.open/split-dividend, strike, dte, iv, rate, right),2)",
+                            high: "MAX(IF(call_live,call.high, put_live,put.high), FLOOR(BS(etf.high/split-dividend, strike, dte, iv, rate, right),0.01))",
+                            low: "MIN(IF(call_live,call.low, put_live,put.low, etf.high/split), CEILING(BS(etf.low/split-dividend, strike, dte, iv, rate, right),0.01))",
+                            close: "live_close OR ROUND(BS(asset_price, strike, dte, iv, rate, right),2)",
                             volume: "IF(call_live,call.volume, put_live,put.volume, 0)",
                             iv: "IF(live_close,live_iv, alt_iv)",
                             live_close: "IF(call_live,call.close, put_live,put.close)",
-                            live_iv: "BSIV(live_close, etf.close, strike, dte, rate, right)",
+                            live_iv: "BSIV(live_close, asset_price, strike, dte, rate, right)",
                             alt_iv: "IF(right='C',put_iv/skew, call_iv*skew)",
                             skew: "IF(call.ending!=put.ending OR call.ending!=etf.ending,PREV('skew')) OR put_iv/call_iv",
                             call_iv: "IF(call.ending!=etf.ending,PREV('call_iv')) OR live_call_iv",
                             put_iv: "IF(put.ending!=etf.ending,PREV('put_iv')) OR live_put_iv",
-                            live_call_iv: "BSIV(call.close, etf.close, strike, dte, rate, 'C')",
-                            live_put_iv: "BSIV(put.close, etf.close, strike, dte, rate, 'P')",
+                            live_call_iv: "BSIV(call.close, asset_price, strike, dte, rate, 'C')",
+                            live_put_iv: "BSIV(put.close, asset_price, strike, dte, rate, 'P')",
                             call_live: "right='C' AND call.ending=etf.ending",
                             put_live: "right='P' AND put.ending=etf.ending",
+                            asset_price: "etf.close/split-dividend",
+                            dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, symbol, market)",
+                            split: "SPLIT(asset, 'ARCA', etf.ending, symbol, market)",
+                            asset: "LEFT(symbol,3)",
                             strike: "NUMBERVALUE(RIGHT(symbol,8))/1000",
                             expiry: "`20{LEFT(RIGHT(symbol,15),6)}`",
                             dte: "DAYS(expiry, MAX(call.ending,put.ending))",
