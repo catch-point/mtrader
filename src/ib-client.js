@@ -1030,7 +1030,9 @@ function requestWithId(ib) {
                     });
                 },
                 reject(err) {
-                    logger.warn(cmd, ...args, err.message);
+                    logger.warn(cmd, err.message, ...args.map(arg => {
+                        return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip) || arg;
+                    }));
                     fail(err);
                     setImmediate(() => {
                         delete req_queue[reqId];
@@ -1038,12 +1040,14 @@ function requestWithId(ib) {
                 },
                 retry(err) {
                     req.retry = req.reject;
-                    logger.log(cmd, ...args, err.message);
+                    logger.log(cmd, err.message, ...args.map(arg => {
+                        return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip) || arg;
+                    }));
                     ib[cmd].call(ib, reqId, ...args);
                 }
             };
             logger.log(cmd, ...args.map(arg => {
-                return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip || arg.conId) || arg;
+                return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip) || arg;
             }));
             ib[cmd].call(ib, reqId, ...args);
         });
