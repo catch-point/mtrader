@@ -34,6 +34,7 @@ const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
+const share = require('./share.js');
 const logger = require('./logger.js');
 const config = require('./config.js');
 const storage = require('./storage.js');
@@ -76,7 +77,7 @@ function help() {
     }];
 }
 
-module.exports = function(yahooClient) {
+module.exports = share(function(yahooClient) {
     const helpInfo = help();
     const salt = config('salt') || '';
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
@@ -100,7 +101,7 @@ module.exports = function(yahooClient) {
             return Promise.all([!yahooClient && yahoo.close()].concat(_.keys(stores).map(market => stores[market].close())));
         }
     });
-};
+});
 
 function yahoo_symbol(markets, options) {
     if (options.yahoo_symbol) {
@@ -154,6 +155,7 @@ async function yahoo_adjustments(yahoo, db, salt, symbol, options) {
         }).then(data => {
             col.propertyOf(since, 'version', version.minor_version);
             col.propertyOf(since, 'salt', salt);
+            col.propertyOf(since, 'tz', options.tz);
             col.propertyOf(since, 'asof', asof);
             return data;
         }).catch(err => {
@@ -167,14 +169,14 @@ async function yahoo_adjustments(yahoo, db, salt, symbol, options) {
 }
 
 function fresh(collection, salt, since, options) {
-    if (!compatible(collection, salt, since)) return false;
+    if (!compatible(collection, salt, since, options)) return false;
     const mend = moment.tz(options.end || options.now, options.tz);
     const asof = moment.tz(collection.propertyOf(since, 'asof'), options.tz);
     return mend.diff(asof, 'hours') < 4;
 }
 
 async function writeAdjPrice(yahoo, salt, symbol, col, since, data, options) {
-    if (compatible(col, salt, since) && col.sizeOf(since) == data.length) return col.readFrom(since);
+    if (compatible(col, salt, since, options) && col.sizeOf(since) == data.length) return col.readFrom(since);
     const prices = await yahoo.day(symbol, since, options.tz);
     const mapped = data.map(datum => {
         const prior = prices[_.sortedIndex(prices, datum, 'Date')-1];
@@ -187,9 +189,10 @@ async function writeAdjPrice(yahoo, salt, symbol, col, since, data, options) {
     return col.writeTo(mapped, since);
 }
 
-function compatible(collection, salt, since) {
+function compatible(collection, salt, since, options) {
     if (!collection.exists(since)) return false;
     if (salt != collection.propertyOf(since, 'salt')) return false;
+    if (options.tz != collection.propertyOf(since, 'tz')) return false;
     return collection.propertyOf(since, 'version') == version.minor_version;
 }
 
