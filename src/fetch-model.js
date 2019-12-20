@@ -179,7 +179,7 @@ module.exports = function(settings = {}) {
         }
     }, {
         close() {
-            return Promise.resolve(fetch && fetch.close());
+            return Promise.all([fetch && fetch.close()]);
         }
     });
 };
@@ -299,7 +299,8 @@ async function fetchModel(markets, fetch, asset, model, options) {
         ...market_opts,
         begin, end
     };
-    const bars = await fetchModelBars(fetchInputData.bind(this, markets, fetch, asset), model, opts);
+    const fetchInputData_fn = fetchInputData.bind(this, markets, fetch, asset);
+    const bars = await fetchModelBars(fetchInputData_fn, model, opts);
     if (!model.interval || model.interval == options.interval) return bars;
     else return rollBars(bars, options);
 }
@@ -309,10 +310,11 @@ async function fetchModelBars(fetchInputData, model, options) {
     const input_data = await fetchInputData(model, options);
     const input = _.object(Object.keys(model.input), input_data);
     const points = [];
-    const eval_input = parseInputVariables(model, options);
-    const eval_variables = parseVariablesUsedInRolling(model, options);
-    const eval_coefficients = parseCoefficientVariables(model, options);
-    const eval_output = parseOutputExpressions(model, options);
+    const parser = createParser(model, options);
+    const eval_input = await parseInputVariables(parser, model, options);
+    const eval_variables = await parseVariablesUsedInRolling(parser, model, options);
+    const eval_coefficients = await parseCoefficientVariables(parser, model, options);
+    const eval_output = await parseOutputExpressions(parser, model, options);
     const iterators = createAndAlignIterators(input, options);
     const result = [];
     while (_.some(iterators, iter => iter.hasNext())) {
@@ -343,10 +345,10 @@ async function rollBars(bars, options) {
             ...bar,
             ending: today.ending || periods.ceil(bar.ending).format(options.ending_format),
             open: today.open || bar.open,
-            high: Math.max(today.high || 0, bar.high),
+            high: Math.max(today.high || 0, bar.high) || bar.high,
             low: today.low && today.low < bar.low ? today.low : bar.low,
             close: bar.close,
-            volume: (+today.volume||0) + +bar.volume
+            volume: (+today.volume||0) + +bar.volume || bar.volume
         });
         return rolled;
     }, []);
@@ -371,12 +373,40 @@ async function fetchInputData(markets, fetch, asset, model, options) {
     }));
 }
 
-function parseInputVariables(model, options) {
-    const security_variables = _.pick(options, [
-        'symbol', 'market', 'name', 'tz',
+function createParser(model, options) {
+    var options_variables = [
+        'symbol', 'market', 'name', 'interval', 'tz',
         'currency', 'security_type', 'security_tz',
         'liquid_hours', 'open_time', 'trading_hours'
-    ]);
+    ];
+    const parser = new Parser({
+        constant(value) {
+            return () => value;
+        },
+        variable(name) {
+            if ((model.variables||{})[name])
+                return parser.parse(model.variables[name]);
+            else if (~options_variables.indexOf(name))
+                return _.constant(options[name]);
+            else if (!~name.indexOf('.') || !model.input[name.substring(0, name.indexOf('.'))])
+                throw Error(`Unknown variable ${name}`);
+            else return points => {
+                const key = _.last(_.keys(_.last(points)));
+                return _.last(points)[key][name];
+            };
+        },
+        expression(expr, name, args) {
+            return common(name, args, options) ||
+            rolling(expr, name, args, options) ||
+            (() => {
+                throw Error("Only common and rolling functions can be used in models: " + expr);
+            });
+        }
+    });
+    return parser;
+}
+
+async function parseInputVariables(parser, model, options) {
     return input_bars => {
         return merge.apply(null, _.map(input_bars, (bar, left) => {
             const term = {..._.pick(options, 'symbol', 'market', 'interval'), ...model.input[left]};
@@ -386,12 +416,12 @@ function parseInputVariables(model, options) {
             const values = Object.values(bar)
                 .concat(term.symbol, term.market, term.interval);
             return _.object(keys, values);
-        }).concat(security_variables));
+        }));
     };
 }
 
-function parseVariablesUsedInRolling(model, options) {
-    var var_parser = Parser({
+async function parseVariablesUsedInRolling(parser, model, options) {
+    var var_parser = new Parser({
         constant(value) {
             return [];
         },
@@ -403,83 +433,20 @@ function parseVariablesUsedInRolling(model, options) {
             return rolling.getVariables(expr, options).filter(name => model.variables[name]);
         }
     });
-    const names = _.flatten(_.map(model.variables, expr => var_parser.parse(expr)));
-    var parser = Parser({
-        constant(value) {
-            return () => value;
-        },
-        variable(name) {
-            if ((model.variables||{})[name] && !~names.indexOf(name))
-                return parser.parse(model.variables[name]);
-            else return points => {
-                const key = _.last(_.keys(_.last(points)));
-                return _.last(points)[key][name];
-            };
-        },
-        expression(expr, name, args) {
-            return common(name, args, options) || rolling(expr, name, args, options) || (() => {
-                throw Error("Only common and rolling functions can be used in models: " + expr);
-            });
-        }
-    });
-    const expressions = _.object(names, names.map(name => parser.parse(model.variables[name])));
+    const names = _.flatten(await Promise.all(_.map(model.variables, expr => var_parser.parse(expr))));
+    const expr_promises = names.map(name => parser.parse(model.variables[name]));
+    const expressions = _.object(names, await Promise.all(expr_promises));
     return points => _.mapObject(expressions, expr => expr(points));
 }
 
-function parseOutputExpressions(model, options) {
-    var key_variables = [
-        'symbol', 'market', 'name', 'interval', 'tz',
-        'currency', 'security_type', 'security_tz',
-        'liquid_hours', 'open_time', 'trading_hours'
-    ];
-    var parser = Parser({
-        constant(value) {
-            return () => value;
-        },
-        variable(name) {
-            if ((model.variables||{})[name])
-                return parser.parse(model.variables[name]);
-            else if (!~key_variables.indexOf(name) && !~name.indexOf('.'))
-                throw Error(`Unknown variable ${name}`);
-            else return points => {
-                const key = _.last(_.keys(_.last(points)));
-                return _.last(points)[key][name];
-            };
-        },
-        expression(expr, name, args) {
-            return common(name, args, options) || rolling(expr, name, args, options) || (() => {
-                throw Error("Only common and rolling functions can be used in models: " + expr);
-            });
-        }
-    });
-    const output_expressions = _.mapObject(model.output, expr => parser.parse(expr));
-    return points => _.mapObject(output_expressions, expr => expr(points));
-}
-
-function parseCoefficientVariables(model) {
+async function parseCoefficientVariables(parser, model, options) {
     if (!model.independents) return input => {};
-    var parser = Parser({
-        constant(value) {
-            return () => value;
-        },
-        variable(name) {
-            if ((model.variables||{})[name])
-                return parser.parse(model.variables[name]);
-            else return points => {
-                const key = _.last(_.keys(_.last(points)));
-                return _.last(points)[key][name];
-            };
-        },
-        expression(expr, name, args) {
-            return common(name, args, options) || rolling(expr, name, args, options) || (() => {
-                throw Error("Only common and rolling functions can be used in models: " + expr);
-            });
-        }
-    });
     const regression_size = +model.regression_length;
-    const dependent_expression = parser.parse(model.dependent);
+    const dependent_expression = await parser.parse(model.dependent);
     const coefficient_variables = Object.keys(model.independents||{});
-    const coefficient_expressions = Object.values(model.independents||{}).map(expr => parser.parse(expr));
+    const independents = Object.values(model.independents||{});
+    const coefficient_promises = independents.map(expr => parser.parse(expr));
+    const coefficient_expressions = await Promise.all(coefficient_promises);
     const regression_data = [];
     return input => {
         const dependent = dependent_expression(input);
@@ -489,6 +456,13 @@ function parseCoefficientVariables(model) {
         const coefficient_values = calculateCoefficients(regression_data);
         return _.object(coefficient_variables, coefficient_values);
     }
+}
+
+async function parseOutputExpressions(parser, model, options) {
+    const output_values = Object.values(model.output);
+    const output_promises = output_values.map(expr => parser.parse(expr));
+    const output_expressions = _.object(Object.keys(model.output), await Promise.all(output_promises));
+    return points => _.mapObject(output_expressions, expr => expr(points));
 }
 
 function createAndAlignIterators(input, options) {

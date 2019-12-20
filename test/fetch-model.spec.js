@@ -973,26 +973,26 @@ describe("fetch-model", function() {
                 symbol: 'SPY   200221C00280000', market: 'OPRA',
                 begin: '2019-11-01', end: '2019-12-01', tz
             }).should.eventually.be.like([
-        { ending: '2019-11-01T16:15:00-04:00', open: 28.48, high: 29.54, low: 28.34, close: 29.53, volume: 2 },
+        { ending: '2019-11-01T16:15:00-04:00', open: 28.78, high: 29.6, low: 28.56, close: 29.58, volume: 2 },
         { ending: '2019-11-04T16:15:00-05:00', open: 31.06, high: 31.19, low: 30.17, close: 30.51, volume: 4 },
-        { ending: '2019-11-05T16:15:00-05:00', open: 30.69, high: 31.44, low: 29.98, close: 30.24, volume: 4 },
-        { ending: '2019-11-06T16:15:00-05:00', open: 30.23, high: 30.54, low: 29.4, close: 30.28, volume: 13 },
-        { ending: '2019-11-07T16:15:00-05:00', open: 31.46, high: 32.4, low: 30.66, close: 31.15, volume: 1 },
-        { ending: '2019-11-08T16:15:00-05:00', open: 30.74, high: 31.74, low: 29.64, close: 31.74, volume: 9 },
-        { ending: '2019-11-11T16:15:00-05:00', open: 30.27, high: 31.44, low: 30.14, close: 31.03, volume: 23 },
-        { ending: '2019-11-12T16:15:00-05:00', open: 31.12, high: 32.6, low: 30.9, close: 31.61, volume: 6 },
-        { ending: '2019-11-13T16:15:00-05:00', open: 30.53, high: 31.98, low: 30.32, close: 31.57, volume: 1 },
-        { ending: '2019-11-14T16:15:00-05:00', open: 31.28, high: 32.19, low: 30.83, close: 32.1, volume: 7 },
-        { ending: '2019-11-15T16:15:00-05:00', open: 33.39, high: 33.82, low: 32.72, close: 33.59, volume: 66 },
+        { ending: '2019-11-05T16:15:00-05:00', open: 30.74, high: 31.44, low: 29.98, close: 30.25, volume: 4 },
+        { ending: '2019-11-06T16:15:00-05:00', open: 30.33, high: 30.64, low: 29.5, close: 30.39, volume: 13 },
+        { ending: '2019-11-07T16:15:00-05:00', open: 31.46, high: 32.38, low: 30.69, close: 31.18, volume: 1 },
+        { ending: '2019-11-08T16:15:00-05:00', open: 30.67, high: 31.79, low: 29.64, close: 31.79, volume: 9 },
+        { ending: '2019-11-11T16:15:00-05:00', open: 30.35, high: 31.44, low: 30.23, close: 31.03, volume: 23 },
+        { ending: '2019-11-12T16:15:00-05:00', open: 31.12, high: 32.6, low: 30.9, close: 31.62, volume: 6 },
+        { ending: '2019-11-13T16:15:00-05:00', open: 30.53, high: 31.94, low: 30.32, close: 31.57, volume: 1 },
+        { ending: '2019-11-14T16:15:00-05:00', open: 31.31, high: 32.19, low: 30.83, close: 32.1, volume: 7 },
+        { ending: '2019-11-15T16:15:00-05:00', open: 33.34, high: 33.8, low: 32.67, close: 33.59, volume: 66 },
         { ending: '2019-11-18T16:15:00-05:00', open: 33.6, high: 34.38, low: 33.05, close: 33.88, volume: 15 },
-        { ending: '2019-11-19T16:15:00-05:00', open: 35.01, high: 35.02, low: 33.77, close: 34.37, volume: 8 },
-        { ending: '2019-11-20T16:15:00-05:00', open: 33.78, high: 34.29, low: 31.81, close: 33.14, volume: 10 },
-        { ending: '2019-11-21T16:15:00-05:00', open: 33.19, high: 33.3, low: 32.03, close: 32.53, volume: 4 },
-        { ending: '2019-11-22T16:15:00-05:00', open: 33.23, high: 33.36, low: 32.11, close: 32.82, volume: 22 },
-        { ending: '2019-11-25T16:15:00-05:00', open: 33.66, high: 34.96, low: 33.67, close: 34.95, volume: 0 },
+        { ending: '2019-11-19T16:15:00-05:00', open: 35.01, high: 35.02, low: 33.77, close: 34.38, volume: 8 },
+        { ending: '2019-11-20T16:15:00-05:00', open: 33.83, high: 34.32, low: 31.92, close: 33.14, volume: 10 },
+        { ending: '2019-11-21T16:15:00-05:00', open: 33.23, high: 33.44, low: 32.03, close: 32.94, volume: 4 },
+        { ending: '2019-11-22T16:15:00-05:00', open: 33.61, high: 33.72, low: 32.44, close: 32.82, volume: 22 },
+        { ending: '2019-11-25T16:15:00-05:00', open: 33.65, high: 34.95, low: 33.65, close: 34.94, volume: 0 },
         { ending: '2019-11-26T16:15:00-05:00', open: 34.98, high: 35.65, low: 34.66, close: 35.22, volume: 9 },
-        { ending: '2019-11-27T16:15:00-05:00', open: 35.78, high: 36.69, low: 35.55, close: 36.66, volume: 21 },
-        { ending: '2019-11-29T16:15:00-05:00', open: 36.06, high: 36.32, low: 35.28, close: 35.69, volume: 0 }
+        { ending: '2019-11-27T16:15:00-05:00', open: 35.79, high: 36.69, low: 35.56, close: 36.66, volume: 21 },
+        { ending: '2019-11-29T16:15:00-05:00', open: 36.08, high: 36.34, low: 35.31, close: 35.71, volume: 0 }
             ]);
         } finally {
             await fetch.close();
