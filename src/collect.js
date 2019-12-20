@@ -173,7 +173,7 @@ async function collect(quote, callCollect, fields, options) {
 /**
  * Computes column values given expressions and variables in options for a duration
  */
-function collectDuration(quote, callCollect, fields, options) {
+async function collectDuration(quote, callCollect, fields, options) {
     expect(options).to.have.property('portfolio');
     expect(options).to.have.property('begin');
     expect(options).to.have.property('columns').that.is.an('object');
@@ -183,19 +183,19 @@ function collectDuration(quote, callCollect, fields, options) {
     const optional = _.difference(_.uniq(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true)), fields);
     const defaults = _.object(optional, optional.map(v => null));
     const avail = _.union(fields, optional);
-    checkCircularVariableReference(fields, options);
-    const zipColumns = parseNeededColumns(avail, options);
+    await checkCircularVariableReference(fields, options);
+    const zipColumns = await parseNeededColumns(avail, options);
     const columns = _.object(zipColumns);
     const columnNames = _.object(_.keys(options.columns), zipColumns.map(_.first));
-    const simpleColumns = getSimpleColumns(columns, options);
-    const criteria = getSimpleCriteria(columns, options);
-    return Promise.all(portfolio.map(opts => {
+    const simpleColumns = await getSimpleColumns(columns, options);
+    const criteria = await getSimpleCriteria(columns, options);
+    return Promise.all(portfolio.map(async(opts) => {
         if (opts.id == null) throw Error(`Missing portfolio ID ${opts.label}`);
         const index = '#' + opts.id.toString() + (options.columns[options.indexCol] ?
             '.' + JSON.parse(options.columns[options.indexCol]).substring(1) : '');
         if (opts.portfolio) {
             if (~_.flatten([opts.portfolio]).indexOf(null)) throw Error(`Portfolio cannot contain null in ${opts.id} ${opts.portfolio}`);
-            const parser = Parser({
+            const parser = new Parser({
                 variable(name){
                     return opts.columns && opts.columns[name] || name;
                 },
@@ -203,8 +203,8 @@ function collectDuration(quote, callCollect, fields, options) {
                     return name + '(' + args.join(',') + ')';
                 }
             });
-            const columns = parser.parse(simpleColumns);
-            const filter = [opts.filter, parser.parse(criteria)];
+            const columns = await parser.parse(simpleColumns);
+            const filter = [opts.filter, await parser.parse(criteria)];
             const nestedColumns = _.flatten(_.flatten([opts.portfolio]).map(p => _.keys(p.columns)));
             const existing_vars = _.union(_.keys(opts.columns), _.keys(opts.variables), nestedColumns);
             const params = _.omit(defaults, existing_vars);
@@ -240,14 +240,15 @@ function collectDuration(quote, callCollect, fields, options) {
         const start = _.sortedIndex(collection, {[options.temporalCol]: begin}, options.temporalCol);
         if (start <= 0) return collection;
         else return collection.slice(start);
-    }).then(collection => collection.reduce((result, points) => {
-        const filter = getOrderBy(options.filter, columns, options);
+    }).then(collection => collection.reduce(async(promise, points) => {
+        const filter = await getOrderBy(options.filter, columns, options);
         const objects = _.values(points).filter(_.isObject)
             .filter(point => !filter.find(criteria => criteria.by && !criteria.by(point)));
+        const result = await promise;
         if (!_.isEmpty(objects)) result.push.apply(result, objects);
         return result;
-    }, [])).then(result => {
-        const order = getOrderBy(options.order, columns, options);
+    }, [])).then(async(result) => {
+        const order = await getOrderBy(options.order, columns, options);
         return sortBy(result, order);
     }).then(result => {
         if (options.head && options.tail)
@@ -265,9 +266,9 @@ function collectDuration(quote, callCollect, fields, options) {
 /**
  * Looks for column/variable circular reference and if found throws an Error
  */
-function checkCircularVariableReference(fields, options) {
+async function checkCircularVariableReference(fields, options) {
     const variables = _.extend({}, getColumnVariables(fields, options), options.variables);
-    const references = getReferences(variables);
+    const references = await getReferences(variables);
     _.each(references, (reference, name) => {
         if (_.contains(reference, name)) {
             const path = _.sortBy(_.keys(references).filter(n => _.contains(references[n], n) && _.contains(references[n], name)));
@@ -291,8 +292,8 @@ function getColumnVariables(fields, options) {
 /**
  * Hash of variable names to array of variable names it depends on
  */
-function getReferences(variables, includeRolling) {
-    const references = Parser({
+async function getReferences(variables, includeRolling) {
+    const references = await new Parser({
         constant(value) {
             return [];
         },
@@ -404,10 +405,11 @@ function getPortfolio(portfolio, options) {
  * Changes column names to avoid variable name conflicts,
  * and add variables that are not substituted, with filter and order expressions
  */
-function parseNeededColumns(fields, options) {
-    const varnames = getVariables(fields, options);
+async function parseNeededColumns(fields, options) {
+    const varnames = await getVariables(fields, options);
     const normalizer = createNormalizeParser(varnames, options);
-    const columns = _.mapObject(options.columns, expr => normalizer.parse(expr || 'NULL()'));
+    const columns_values = Object.values(options.columns).map(expr => normalizer.parse(expr || 'NULL()'));
+    const columns = _.object(Object.keys(options.columns), await Promise.all(columns_values));
     const conflicts = _.intersection(_.keys(_.omit(columns, (v, k) => v==k)),
         _.union(fields, _.keys(options.variables))
     );
@@ -424,9 +426,10 @@ function parseNeededColumns(fields, options) {
         result.push([masked[key] || key, value]);
         return needed;
     }, {});
-    const variables = varnames.reduce((variables, name) => {
+    const variables = await varnames.reduce(async(promise, name) => {
+        const variables = await promise;
         if (_.has(options.variables, name)) {
-            variables[name] = normalizer.parse(options.variables[name]);
+            variables[name] = await normalizer.parse(options.variables[name]);
             result.push([name, variables[name]]);
         } else if (!_.has(needed, name) && !_.has(variables, name) && ~fields.indexOf(name)) {
             variables[name] = name; // pass through fields used in rolling functions
@@ -434,10 +437,10 @@ function parseNeededColumns(fields, options) {
         }
         return variables;
     }, {});
-    const filterOrder = normalizer.parseCriteriaList(_.flatten(_.compact([
+    const filterOrder = await normalizer.parseCriteriaList(_.flatten(_.compact([
         options.filter, options.order
     ]), true));
-    const isVariablePresent = Parser({
+    const isVariablePresent = new Parser({
         constant(value) {
             return false;
         },
@@ -449,10 +452,11 @@ function parseNeededColumns(fields, options) {
             else return args.find(_.identity) || false;
         }
     }).parse;
-    const neededFilterOrder = filterOrder.filter(expr => {
+    const filterOrder_isVariablePresent = await Promise.all(filterOrder.map(async(expr) => {
         if (needed[expr] || variables[expr]) return false;
         else return isVariablePresent(expr);
-    });
+    }));
+    const neededFilterOrder = filterOrder.filter((expr, i) => filterOrder_isVariablePresent[i]);
     return result.concat(_.zip(neededFilterOrder, neededFilterOrder));
 }
 
@@ -461,7 +465,7 @@ function parseNeededColumns(fields, options) {
  * This includes unique columns/variables/fields used in rolling functions,
  * and variables used multiple times in a single expression
  */
-function getVariables(fields, options) {
+async function getVariables(fields, options) {
     const parser = Parser({
         constant(value) {
             return _.isString(value) ? value : null;
@@ -487,14 +491,14 @@ function getVariables(fields, options) {
             }, {});
         }
     });
-    let exprs = parser.parseCriteriaList(_.flatten(_.compact([
+    let exprs = await parser.parseCriteriaList(_.flatten(_.compact([
         _.compact(_.values(options.columns)),
         options.criteria, options.filter, options.precedence
     ]), true));
     let more_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
     while (more_vars.length) {
         const old_vars = _.uniq(_.flatten(exprs.map(_.keys), true));
-        const additional = parser.parseCriteriaList(_.compact(_.values(_.pick(options.variables, more_vars))));
+        const additional = await parser.parseCriteriaList(_.compact(_.values(_.pick(options.variables, more_vars))));
         exprs = exprs.concat(additional);
         const new_vars = _.uniq(_.flatten(additional.map(_.keys), true));
         more_vars = _.difference(new_vars, old_vars);
@@ -507,7 +511,7 @@ function getVariables(fields, options) {
  * Normalizes the expressions and substitutes other variables that aren't given
  */
 function createNormalizeParser(variables, options) {
-    return Parser({
+    return new Parser({
         substitutions: getSubstitutions(variables, options),
         expression(expr, name, args) {
             if (name == 'DESC' || name == 'ASC') return _.first(args);
@@ -542,10 +546,11 @@ function stringify(value) {
  * Removing the expressions with rolling functions and variables. However,
  * variables are inlined in the arguments for expressions that used in lookback functions.
  */
-function getSimpleColumns(columns, options) {
+async function getSimpleColumns(columns, options) {
     const colParser = createColumnParser(columns, options);
-    const formatColumns = _.map(columns, expr => colParser.parse(expr).columns).reduce((a,b)=>_.extend(a,b), {});
-    const criteriaColumns = _.pluck(colParser.parseCriteriaList(_.flatten(_.compact([
+    const formatColumns_promise = _.map(columns, async(expr) => (await colParser.parse(expr)).columns);
+    const formatColumns = (await Promise.all(formatColumns_promise)).reduce((a,b)=>_.extend(a,b), {});
+    const criteriaColumns = _.pluck(await colParser.parseCriteriaList(_.flatten(_.compact([
         options.criteria, options.filter, options.precedence, options.order
     ]), true)), 'columns').reduce((a,b)=>_.extend(a,b), {});
     return _.defaults(formatColumns, criteriaColumns);
@@ -559,20 +564,20 @@ function getSimpleColumns(columns, options) {
 function createColumnParser(columns, options) {
     const inline = createInlineParser(columns, options);
     const parsedColumns = {};
-    const parser = Parser({
+    const parser = new Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
             return {complex: false, columns: {}};
         },
-        variable(name) {
+        async variable(name) {
             if (!columns[name] || columns[name]==name)
                 return {complex: false, columns: {[name]: name}};
-            parsedColumns[name] = parsedColumns[name] || parser.parse(columns[name]);
+            parsedColumns[name] = parsedColumns[name] || await parser.parse(columns[name]);
             if (parsedColumns[name].complex)
                 return {complex: true, columns: {}}; // can't include complex variables
             else return {complex: false, columns: {}}; // parse column later
         },
-        expression(expr, name, args) {
+        async expression(expr, name, args) {
             const order = name == 'DESC' || name == 'ASC';
             const complex = _.some(args, arg => arg.complex);
             const nested = {
@@ -581,7 +586,7 @@ function createColumnParser(columns, options) {
             };
             if (quoting.has(name)) return {complex: true, columns: {}};
             else if (order || rolling.has(name) || complex) return nested;
-            const inlined = inline(expr);
+            const inlined = await inline(expr);
             if (common.has(name) && inlined.length > 512) return nested;
             else return {complex: false, columns: {[expr]: inlined}}; // lookback
         }
@@ -594,17 +599,17 @@ function createColumnParser(columns, options) {
  * Removing the expressions with rolling functions and inlining variables.
  * This differrs from #getSimpleColumns as it does not return parts of complex expressions
  */
-function getSimpleCriteria(columns, options) {
+async function getSimpleCriteria(columns, options) {
     if (_.isEmpty(options.criteria)) return [];
     const inline = createInlineParser(columns, options);
     const parsedColumns = {};
-    const parser = Parser({
+    const parser = new Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
-        variable(name) {
+        async variable(name) {
             if (!columns[name] || columns[name]==name) return name;
-            else return parsedColumns[name] = parsedColumns[name] || parser.parse(columns[name]);
+            else return parsedColumns[name] = parsedColumns[name] || await parser.parse(columns[name]);
         },
-        expression(expr, name, args) {
+        async expression(expr, name, args) {
             const order = name == 'DESC' || name == 'ASC';
             const complex = _.some(args, _.isNull);
             if (quoting.has(name)) return null;
@@ -612,7 +617,7 @@ function getSimpleCriteria(columns, options) {
             else return inline(expr);
         }
     });
-    return _.compact(parser.parseCriteriaList(options.criteria));
+    return _.compact(await parser.parseCriteriaList(options.criteria));
 }
 
 /**
@@ -620,14 +625,14 @@ function getSimpleCriteria(columns, options) {
  */
 function createInlineParser(columns, options) {
     const incols = {};
-    const inline = Parser({
+    const inline = new Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
             return _.constant(value);
         },
-        variable(name) {
+        async variable(name) {
             if (!columns[name] || columns[name]==name) return name;
-            else return incols[name] = incols[name] || inline.parse(columns[name]);
+            else return incols[name] = incols[name] || await inline.parse(columns[name]);
         },
         expression(expr, name, args) {
             if (common.has(name) && args.every(_.isFunction))
@@ -636,9 +641,9 @@ function createInlineParser(columns, options) {
             return name + '(' + values.join(',') + ')';
         }
     });
-    const formatter = Parser();
-    return function(expr) {
-        const parsed = inline.parse(expr);
+    const formatter = new Parser();
+    return async function(expr) {
+        const parsed = await inline.parse(expr);
         return formatter.parse(_.isFunction(parsed) ? stringify(parsed()) : parsed);
     };
 }
@@ -651,21 +656,21 @@ function createParser(quote, dataset, columns, cached, options) {
         return quoting(expr, name, args, quote, dataset, options);
     });
     const pCols = {};
-    const parser = Parser({
+    const parser = new Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
             return positions => value;
         },
-        variable(name) {
+        async variable(name) {
             if (columns[name] && name!=columns[name])
-                return pCols[name] = pCols[name] || parser.parse(columns[name]);
+                return pCols[name] = pCols[name] || await parser.parse(columns[name]);
             // [{"USD.CAD": {"close": 1.00}}]
             else return ctx => _.last(_.values(_.last(ctx)))[name];
         },
         expression(expr, name, args) {
             if (_.contains(cached, expr))
                 return ctx => _.last(_.values(_.last(ctx)))[expr];
-            else return Promise.all(args).then(args => {
+            else {
                 const fn = common(name, args, options) ||
                     rolling(expr, name, args, options) ||
                     external(expr, name, args);
@@ -673,7 +678,7 @@ function createParser(quote, dataset, columns, cached, options) {
                 else return () => {
                     throw Error("Only common and rolling functions can be used here: " + expr);
                 };
-            });
+            }
         }
     });
     return parser;
@@ -682,10 +687,10 @@ function createParser(quote, dataset, columns, cached, options) {
 /**
  * Combines the quote.js results into a single array containing retained securities.
  */
-function collectDataset(dataset, parser, columns, options) {
+async function collectDataset(dataset, parser, columns, options) {
     const pcolumns = promiseColumns(parser, columns, options);
     const pcriteria = promiseFilter(parser, options.criteria);
-    const precedence = getOrderBy(options.precedence, columns, options);
+    const precedence = await getOrderBy(options.precedence, columns, options);
     return pcolumns.then(fcolumns => pcriteria.then(async(criteria) => {
         return await reduceInterval(dataset, options.temporalCol, (result, points) => {
             const positions = sortBy(points, precedence);
@@ -710,8 +715,8 @@ function collectDataset(dataset, parser, columns, options) {
 /**
  * @returns a map of functions that can compute the column values for a given row.
  */
-function promiseColumns(parser, columns, options) {
-    const map = parser.parse(columns);
+async function promiseColumns(parser, columns, options) {
+    const map = await parser.parse(columns);
     return Promise.all(_.values(map))
       .then(values => _.object(_.keys(map), values))
       .then(columns => {
@@ -732,17 +737,17 @@ function promiseColumns(parser, columns, options) {
 /**
  * Returns a function that can determine if the security should be retained
  */
-function promiseFilter(parser, expr) {
-    if (_.isEmpty(expr)) return Promise.resolve(null);
-    return Promise.resolve(parser.parse(_.flatten([expr],true).join(' AND ')));
+async function promiseFilter(parser, expr) {
+    if (_.isEmpty(expr)) return null;
+    return parser.parse(_.flatten([expr],true).join(' AND '));
 }
 
 /**
  * Create a function and direction that securities should be sorted with.
  */
-function getOrderBy(expr, columns, options) {
+async function getOrderBy(expr, columns, options) {
     if (_.isEmpty(expr)) return [];
-    return Parser({
+    return new Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
         constant(value) {
             return {by: _.constant(value)};

@@ -62,24 +62,38 @@ module.exports = function(handlers) {
          * @returns function of expr
          */
         parse(expr) {
+            const handler = invokeHandler.bind(this, _handlers);
             if (_.isNumber(expr))
                 return _handlers.constant(expr);
             else if (_.isString(expr))
-                return parseExpression(expr, subs, _handlers);
+                return parseExpression(expr, subs, handler);
             else if (_.isNumber(expr))
-                return parseExpression(expr.toString(), subs, _handlers);
-            else if (_.isArray(expr))
-                return expr.map(value => parseExpression(value, subs, _handlers));
-            else if (_.isObject(expr) && !_.isFunction(expr) && _.allKeys(expr).every(k=>_.has(expr,k)))
-                return _.mapObject(expr, (value, name) => {
+                return parseExpression(expr.toString(), subs, handler);
+            else if (_.isArray(expr)) {
+                const array = expr.map(value => parseExpression(value, subs, handler));
+                if (!array.some(isPromise)) return array;
+                else return Promise.all(array);
+            } else if (_.isObject(expr) && !_.isFunction(expr) && _.allKeys(expr).every(k=>_.has(expr,k))) {
+                const values = Object.values(expr).map((value, name) => {
                     try {
-                        return parseExpression(value, subs, _handlers);
+                        const ret = parseExpression(value, subs, handler);
+                        if (!isPromise(ret)) return ret;
+                        else return ret.catch(e => {
+                            logger.debug("Could not parse property", name, e);
+                            throw Error("Could not parse property " + name + ". " + e.message);
+                        });
                     } catch(e) {
+                        logger.debug("Could not parse property", name, e);
                         throw Error("Could not parse property " + name + ". " + e.message);
                     }
                 });
-            else
+                if (values.some(isPromise))
+                    return Promise.all(values).then(values =>_.object(Object.keys(expr), values));
+                else
+                    return _.object(Object.keys(expr), values);
+            } else {
                 expect(expr).to.be.ok.and.a('string');
+            }
         },
         /**
          * Produces Array of functions that must each resolve to truthy for the
@@ -97,9 +111,11 @@ module.exports = function(handlers) {
                 if (_.first(expr) != 'AND') i++;
                 else list.splice(i, 1, expr[1], expr[2]);
             }
-            return list.map(expr => {
-                return invokeHandler(expr, _handlers);
+            const parsed = list.map(expr => {
+                return invokeHandler(_handlers, expr);
             });
+            if (parsed.some(isPromise)) return Promise.all(parsed);
+            else return parsed;
         }
     };
 };
@@ -123,7 +139,7 @@ function parseVariables(exprs) {
         }
     };
     const references = _.mapObject(variables, (expr, name) => {
-        const reference = invokeHandler(expr, handlers);
+        const reference = invokeHandler(handlers, expr);
         if (!_.contains(reference, name)) return reference;
         else throw Error("Expression cannot reference itself: " + name);
     });
@@ -138,17 +154,52 @@ function parseVariables(exprs) {
     return variables;
 }
 
-function parseExpression(str, substitutions, handlers) {
+function parseExpression(str, substitutions, handler) {
     const list = parseExpressions(str, substitutions);
     if (!list.length) throw Error("No input: " + str);
     if (list.length > 1) throw Error("Did not expect multiple expressions: " + str);
     try {
-        if (handlers) return invokeHandler(_.first(list), handlers);
+        if (handler) return handler(_.first(list));
         else return _.first(list);
     } catch (e) {
         logger.debug(e);
         throw Error(e.message + " in " + str, e);
     }
+}
+
+function invokeHandler(handlers, expr) {
+    if (_.isArray(expr)) {
+        const args = _.rest(expr).map(expr => invokeHandler(handlers, expr));
+        if (args.some(isPromise)) {
+            return Promise.all(args).then(args => {
+                return handlers.expression(serialize(expr), _.first(expr), args);
+            }).then(fn => {
+                if (!_.isUndefined(fn)) return fn;
+                else throw Error("Unknown function: " + _.first(expr));
+            });
+        } else {
+            const fn = handlers.expression(serialize(expr), _.first(expr), args);
+            if (isPromise(fn)) {
+                return fn.then(fn => {
+                    if (!_.isUndefined(fn)) return fn;
+                    else throw Error("Unknown function: " + _.first(expr));
+                });
+            } else {
+                if (!_.isUndefined(fn)) return fn;
+                else throw Error("Unknown function: " + _.first(expr));
+            }
+        }
+    } else if (_.isString(expr) && expr.charAt(0) == '"') {
+        return handlers.constant(JSON.parse(expr));
+    } else if (_.isNumber(expr) && _.isFinite(expr)) {
+        return handlers.constant(+expr);
+    } else {
+        return handlers.variable(expr);
+    }
+}
+
+function isPromise(object) {
+    return !!object && !!object.then;
 }
 
 function parseExpressions(str, substitutions) {
@@ -164,21 +215,6 @@ function inline(expr, substitutions) {
         return substitutions[expr];
     } else {
         return expr;
-    }
-}
-
-function invokeHandler(expr, handlers) {
-    if (_.isArray(expr)) {
-        const args = _.rest(expr).map(expr => invokeHandler(expr, handlers));
-        const fn = handlers.expression(serialize(expr), _.first(expr), args);
-        if (!_.isUndefined(fn)) return fn;
-        else throw Error("Unknown function: " + _.first(expr));
-    } else if (_.isString(expr) && expr.charAt(0) == '"') {
-        return handlers.constant(JSON.parse(expr));
-    } else if (_.isNumber(expr) && _.isFinite(expr)) {
-        return handlers.constant(+expr);
-    } else {
-        return handlers.variable(expr);
     }
 }
 
