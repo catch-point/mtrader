@@ -167,16 +167,16 @@ function help(fetch) {
  * Given begin/end range, columns, and criteria returns an array of row objects
  * that each pass the given criteria and are within the begin/end range.
  */
-function quote(fetch, store, fields, options) {
+async function quote(fetch, store, fields, options) {
     try {
         if (options.columns) expect(options.columns).not.to.have.property('length'); // not array like
         if (options.variables) expect(options.variables).not.to.have.property('length'); // not array like
         if (options.parameters) expect(options.parameters).not.to.have.property('length'); // not array like
-        const exprMap = parseWarmUpMap(fields, options);
+        const exprMap = await parseWarmUpMap(fields, options);
         const cached = _.mapObject(exprMap, _.keys);
         const intervals = Periods.sort(_.keys(exprMap));
         if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
-        const criteria = parseCriteriaMap(options.criteria, fields, cached, intervals, options);
+        const criteria = await parseCriteriaMap(options.criteria, fields, cached, intervals, options);
         const interval = intervals[0];
         intervals.forEach(interval => expect(interval).to.be.oneOf(Periods.values));
         return store.open(options.symbol, (err, db) => {
@@ -196,14 +196,14 @@ function quote(fetch, store, fields, options) {
  * Finds out what intervals are used in columns and criteria and put together a
  * list of what expressions should be computed and stored for further reference.
  */
-function parseWarmUpMap(fields, options) {
+async function parseWarmUpMap(fields, options) {
     const exprs = _.compact(_.flatten([
         _.compact(_.values(options.columns)), options.criteria
     ]));
     if (!exprs.length && !options.interval) return {day:{}};
     else if (!exprs.length) return {[options.interval]:{}};
     const p = createParser(fields, {}, options);
-    const parser = Parser({
+    const parser = new Parser({
         substitutions: getVariables(fields, options),
         constant(value) {
             return {warmUpLength: 0};
@@ -212,8 +212,8 @@ function parseWarmUpMap(fields, options) {
             if (!~name.indexOf('.')) return {warmUpLength: 0};
             else return {[name.substring(0, name.indexOf('.'))]: {}, warmUpLength: 0};
         },
-        expression(expr, name, args) {
-            const fn = p.parse(expr);
+        async expression(expr, name, args) {
+            const fn = await p.parse(expr);
             const args_inters = _.without(_.flatten(args.map(_.keys), true), 'warmUpLength');
             const inters = Periods.sort(_.uniq(args_inters.concat(fn.intervals || [])));
             const map = _.object(inters, inters.map(interval => {
@@ -227,7 +227,7 @@ function parseWarmUpMap(fields, options) {
             return {[_.first(fn.intervals)]: {[expr]: fn}, warmUpLength: fn.warmUpLength};
         }
     });
-    const values = parser.parse(exprs).map(o => _.omit(o, 'warmUpLength'));
+    const values = (await parser.parse(exprs)).map(o => _.omit(o, 'warmUpLength'));
     const intervals = Periods.sort(_.uniq(_.flatten(values.map(_.keys), true)));
     return _.object(intervals, intervals.map(interval => {
         return _.extend.apply(_, _.compact(_.pluck(values, interval)));
@@ -237,8 +237,8 @@ function parseWarmUpMap(fields, options) {
 /**
  * Create a function for each interval that should be evaluated to include in result.
  */
-function parseCriteriaMap(criteria, fields, cached, intervals, options) {
-    const list = createParser(fields, cached, options).parseCriteriaList(criteria);
+async function parseCriteriaMap(criteria, fields, cached, intervals, options) {
+    const list = await createParser(fields, cached, options).parseCriteriaList(criteria);
     const group = list.reduce((m, fn) => {
         const interval = _.first(fn.intervals);
         if (m[interval]) {
@@ -261,7 +261,7 @@ function parseCriteriaMap(criteria, fields, cached, intervals, options) {
  * Creates a parser that can parse expressions into functions
  */
 function createParser(fields, cached, options) {
-    return Parser({
+    return new Parser({
         substitutions: getVariables(fields, options),
         constant(value) {
             return () => value;
@@ -656,7 +656,7 @@ function trimTables(tables, options) {
 /**
  * Converts list of points into array of rows keyed by column names
  */
-function formatColumns(fields, points, options) {
+async function formatColumns(fields, points, options) {
     if (!points.length) return [];
     const props = _.mapObject(_.pick(_.first(points), _.isObject), _.keys);
     const fieldCols = _.mapObject(props, (props, interval) => {
@@ -669,7 +669,7 @@ function formatColumns(fields, points, options) {
         _.reduce(fieldCols, (map, fieldCols) => {
             return _.defaults(map, _.object(_.values(fieldCols), _.values(fieldCols)));
         }, {});
-    const map = createParser(fields, props, options).parse(_.mapObject(columns, valOrNull));
+    const map = await createParser(fields, props, options).parse(_.mapObject(columns, valOrNull));
     return points.map(point => _.mapObject(map, expr => expr([point])));
 }
 
@@ -783,7 +783,7 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin, lat
         begin: begin
     }, blockOptions(block, options))).then(records => {
         if (_.isEmpty(records)) return; // nothing newer
-        return collection.readFrom(block).then(partial => {
+        return collection.readFrom(block).then(async(partial) => {
             partial.pop(); // incomplete
             const first = records.shift(); // overlap
             if (!_.isMatch(_.last(partial), first)) {
@@ -793,7 +793,8 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin, lat
             if (latest && records.length) _.last(records).incomplete = true;
             const warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
-                const exprs = _.object(warmUps, warmUps.map(expr => createParser(fields, {}, options).parse(expr)));
+                const warmUps_promises = warmUps.map(expr => createParser(fields, {}, options).parse(expr));
+                const exprs = _.object(warmUps, await Promise.all(warmUps_promises));
                 const warmUpBlocks = collection.propertyOf(block, 'warmUpBlocks') || [];
                 return Promise.all(warmUpBlocks.map(block => collection.readFrom(block)))
                   .then(results => _.flatten(results, true))

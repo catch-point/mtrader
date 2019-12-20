@@ -55,7 +55,7 @@ module.exports.has = function(name) {
 const functions = module.exports.functions = {
     MAXCORREL: Object.assign(async (quote, dataset, options, expr, duration, expression, criteria) => {
         const n = asPositiveInteger(duration, "MAXCORREL");
-        const arg = Parser({
+        const arg = (await new Parser({
             constant(value) {
                 return [value];
             },
@@ -65,7 +65,7 @@ const functions = module.exports.functions = {
             expression(expr, name, args) {
                 return [expr].concat(args.map(_.first));
             }
-        }).parse(expr)[2];
+        }).parse(expr))[2];
         if (!arg) throw Error("Unrecongized call to MAXCORREL: " + expr);
         const indexed = Object.values(dataset.reduce((indexed, data) => data.reduce((indexed, datum) => {
             const entry = indexed[datum[options.indexCol]];
@@ -77,7 +77,7 @@ const functions = module.exports.functions = {
             return indexed;
         }, indexed), {}));
         if (_.size(indexed) < 2) return positions => 0;
-        const condition = parseCriteria(arg, criteria, options);
+        const condition = await parseCriteria(arg, criteria, options);
         const optionset = indexed.map(entry => {
             return _.defaults({
                 index: entry[options.indexCol],
@@ -134,7 +134,7 @@ function asPositiveInteger(calc, msg) {
     throw Error("Expected a literal positive interger in " + msg + " not " + n);
 }
 
-function parseCriteria(columnName, criteria, options) {
+async function parseCriteria(columnName, criteria, options) {
     if (!criteria)
         return _.constant(true);
     if (_.isFunction(criteria))
@@ -145,7 +145,7 @@ function parseCriteria(columnName, criteria, options) {
         return parseCriteria(columnName, columnName + criteria, options);
     try {
         let expression = false;
-        const parsed = Parser({
+        const parsed = await new Parser({
             constant(value) {
                 return _.constant(value);
             },

@@ -243,10 +243,10 @@ function createInstance(settings = {}) {
                 broker.shell(app),
                 replicate.shell(app)
             ]).catch(err => console.error("Could not complete shell setup", err));
-            app.cmd('exec :expression([\\s\\S]+)', "Evaluate common expressions using the values in this session", (cmd, sh, cb) => {
+            app.cmd('exec :expression([\\s\\S]+)', "Evaluate common expressions using the values in this session", async(cmd, sh, cb) => {
                 try {
                     logger.debug("exec", cmd.params);
-                    var parser = Parser({
+                    var parser = new Parser({
                         constant(value) {
                             return () => value;
                         },
@@ -258,7 +258,7 @@ function createInstance(settings = {}) {
                         }
                     });
                     const expr = cmd.params.expression;
-                    sh.white(parser.parse(expr)({})).ln();
+                    sh.white(await parser.parse(expr)({})).ln();
                     sh.prompt();
                 } catch(err) {
                     cb(err);

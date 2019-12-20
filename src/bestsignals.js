@@ -111,7 +111,7 @@ async function bestsignals(optimize, options) {
     const count = options.solution_count || 1;
     const solutions = _.sortBy(signals, 'score').slice(-count).reverse();
     if (options.solution_count)
-        return solutions.map(solution => formatSignal(solution, options));
+        return Promise.all(solutions.map(solution => formatSignal(solution, options)));
     else return formatSignal(_.first(solutions), options);
 }
 
@@ -137,7 +137,7 @@ function getSignalSets(options) {
  * Optimizes signal parameter values to determine the ones with the best scores
  */
 async function bestsignal(optimize, signal, options) {
-    const pnames = getParameterNames(signal, options);
+    const pnames = await getParameterNames(signal, options);
     const pvalues = pnames.map(name => options.parameter_values[name]);
     const signal_variable = options.signal_variable || 'signal';
     const signal_vars = signal_variable != signal ? {[signal_variable]: signal} : {};
@@ -159,9 +159,9 @@ async function bestsignal(optimize, signal, options) {
 /**
  * Determines the parameter names that this signal depends on
  */
-function getParameterNames(signal, options) {
+async function getParameterNames(signal, options) {
     if (!options.variables[signal]) return _.keys(options.parameter_values);
-    const varnames = Parser({
+    const varnames = await new Parser({
         substitutions: options.variables,
         constant(value) {
             return [];
@@ -179,10 +179,10 @@ function getParameterNames(signal, options) {
 /**
  * Identifies and returns only relevant signal variables in result
  */
-function formatSignal(signalset, options) {
+async function formatSignal(signalset, options) {
     const signal = signalset.signal_variable;
     const vars = _.extend({}, signalset.variables, signalset.parameters);
-    const references = getReferences(vars, options);
+    const references = await getReferences(vars, options);
     const local = [signal].concat(references[signal]);
     return _.omit({
         score: signalset.score,
@@ -196,8 +196,8 @@ function formatSignal(signalset, options) {
 /**
  * Hash of variable names to array of variable names it depends on
  */
-function getReferences(variables, options) {
-    const references = Parser({
+async function getReferences(variables, options) {
+    const references = await new Parser({
         constant(value) {
             return [];
         },

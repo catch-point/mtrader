@@ -53,13 +53,13 @@ module.exports = function(bestsignals) {
         if (!promiseHelp) promiseHelp = help(bestsignals);
         if (options.info=='help') return promiseHelp;
         else if (options.info=='version') return [{version:version.toString()}];
-        else return promiseHelp.then(help => {
+        else return promiseHelp.then(async(help) => {
             const fields = _.first(help).properties;
             const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {
                 variables: {},
                 strategy_variable: 'strategy',
-                leg_variable: chooseVariable('leg', options),
-                signal_variable: chooseVariable('signal', options),
+                leg_variable: await chooseVariable('leg', options),
+                signal_variable: await chooseVariable('signal', options),
                 conjunction_cost: 0,
                 disjunction_cost: 0
             });
@@ -152,12 +152,12 @@ function strategize(bestsignals, prng, options) {
 /**
  * Tries to find an similar, but better strategy
  */
-function strategizeLegs(bestsignals, prng, parser, termAt, started, options, signals) {
+async function strategizeLegs(bestsignals, prng, parser, termAt, started, options, signals) {
     const scores = {};
     const strategy_var = options.strategy_variable;
     const latest = signals[strategy_var];
     const latest_expr = latest.variables[strategy_var];
-    const strategy = parser(isBlankStrategy(latest_expr, options) ? '' : latest_expr);
+    const strategy = await parser(isBlankStrategy(latest_expr, options) ? '' : latest_expr);
     const from_scratch = options.from_scratch || !strategy.legs.length;
     const incremental = strategy.legs.length;
     const searchFn = searchLeg.bind(this, bestsignals, prng, parser, termAt);
@@ -192,12 +192,12 @@ function isBlankStrategy(expr, options) {
 /**
  * Tries to find an similar, but possibly a slightly better strategy
  */
-function strategizeSome(bestsignals, prng, searchLeg, parser, termAt, started, options, scores, signals) {
+async function strategizeSome(bestsignals, prng, searchLeg, parser, termAt, started, options, scores, signals) {
     const check = interrupt(true);
     const strategy_var = options.strategy_variable;
     const latest = signals[strategy_var];
     const latest_expr = latest.variables[strategy_var];
-    const strategy = parser(isBlankStrategy(latest_expr, options) ? '' : latest_expr);
+    const strategy = await parser(isBlankStrategy(latest_expr, options) ? '' : latest_expr);
     if (!strategy.legs.length)
         return strategizeAll(bestsignals, searchLeg, parser, started, options, scores, {signals});
     const isolations = strategy.legs.length > 1 && strategy.legs.map((leg, i) => {
@@ -237,12 +237,12 @@ function strategizeSome(bestsignals, prng, searchLeg, parser, termAt, started, o
 /**
  * Recursively tries to find the best strategy, until no more improvements can be made
  */
-function strategizeAll(bestsignals, searchLeg, parser, started, options, scores, state) {
+async function strategizeAll(bestsignals, searchLeg, parser, started, options, scores, state) {
     _.defaults(state, {exhausted: [false], scores: []});
     const strategy_var = options.strategy_variable;
     const latest = state.signals[strategy_var];
     const latest_expr = latest.variables[strategy_var];
-    const strategy = parser(isBlankStrategy(latest_expr, options) ? '' : latest_expr);
+    const strategy = await parser(isBlankStrategy(latest_expr, options) ? '' : latest_expr);
     const isolations = strategy.legs.length > 1 && strategy.legs.map((leg, i) => {
         return spliceExpr(strategy.legs, i, 1).join(' OR ');
     });
@@ -253,10 +253,10 @@ function strategizeAll(bestsignals, searchLeg, parser, started, options, scores,
         return Promise.resolve(!strategy.legs.length ? 0 : strategy.legs.length == 1 ? latest.score :
             evaluate(bestsignals, scores, isolations[idx], latest).then(score => latest.score - score))
           .then(contrib => strategizeContribs(searchLegFn, state.signals, strategy, contrib, idx, options))
-          .then(signals => {
+          .then(async(signals) => {
             const same = _.isEqual(signals, state.signals);
             const new_expr = same ? latest_expr : signals[strategy_var].variables[strategy_var];
-            const new_strategy = same ? strategy : parser(new_expr);
+            const new_strategy = same ? strategy : await parser(new_expr);
             const next_exhausted = same ? state.exhausted.slice(0) : new Array(new_strategy.legs.length+1);
             const next_scores = [];
             if (new_strategy.legs.length >= strategy.legs.length) {
@@ -323,13 +323,13 @@ function strategizeContribs(searchLeg, signals, strategy, contrib, idx, options)
 /**
  * Isolates the strategy leg as a strategy to search for a better solution
  */
-function strategizeLeg(searchLeg, signals, strategy, idx, options) {
+async function strategizeLeg(searchLeg, signals, strategy, idx, options) {
     const leg_var = options.leg_variable; // move leg into temporary variable
     const strategy_var = options.strategy_variable;
     const latest = signals[strategy_var];
     const empty = !strategy.legs.length;
     const scratch = idx >= strategy.legs.length;
-    const used = empty ? [] : getReferences(latest.variables[strategy_var], options);
+    const used = empty ? [] : await getReferences(latest.variables[strategy_var], options);
     const operands = idx < strategy.legs.length ? countOperands(strategy.legs[idx].expr) : 0;
     const other_operands = empty ? 0 : countOperands(strategy.expr) - operands;
     const opts = merge(latest, {
@@ -402,7 +402,7 @@ function search(bestsignal, moreStrategies, signals, options, cb) {
     return moreStrategies(latest)
       .then(strategies => Promise.all(strategies.map(st => bestsignal(st, latest))))
       .then(solutions => _.last(_.sortBy(solutions, sol => sol.score - sol.cost)))
-      .then(solution => {
+      .then(async(solution) => {
         if (!solution || solution.revisited) {
             return cb(signals);
         } else if (latest.variables[strategy_var] && _.has(latest, 'score') &&
@@ -411,7 +411,7 @@ function search(bestsignal, moreStrategies, signals, options, cb) {
             logger.debug("Strategize", options.label || '\b', "leg", strategy, solution.score);
             return cb(signals);
         } else {
-            const formatted = formatSolution(solution, latest, '_');
+            const formatted = await formatSolution(solution, latest, '_');
             const improved = merge(latest, formatted);
             const next_signals = _.defaults({
                 [formatted.solution_variable]: solution,
@@ -495,9 +495,9 @@ function evaluate(bestsignals, scores, strategy, latest) {
 /**
  * Randomly modifies the strategy adding or substituting signals
  */
-function moreStrategies(prng, evaluate, parser, max_operands, latest) {
+async function moreStrategies(prng, evaluate, parser, max_operands, latest) {
     const strategy_var = latest.strategy_variable;
-    const strategy = parser(latest.variables[strategy_var]);
+    const strategy = await parser(latest.variables[strategy_var]);
     const signal_var = latest.signal_variable;
     if (!strategy.legs.length || signal_var == strategy.expr) { // initial signal
         if (latest.follow_signals_only) return Promise.resolve([signal_var]);
@@ -556,7 +556,7 @@ function moreStrategies(prng, evaluate, parser, max_operands, latest) {
  */
 function createParser() {
     const comparators = _.uniq(_.pluck(listComparators(), 'operator').sort(), true);
-    const parser = Parser({
+    const parser = new Parser({
         expression(expr, operator, args) {
             if (operator == 'AND') {
                 const members = args.reduce((args, arg) => {
@@ -596,8 +596,8 @@ function createParser() {
             }
         }
     });
-    return strategy => {
-        const parsed = strategy ? parser.parse(strategy) : '';
+    return async(strategy) => {
+        const parsed = strategy ? await parser.parse(strategy) : '';
         const legs = strategy ? parsed.legs ? parsed.legs : [
             parsed.signal ? parsed : {
                 expr: parsed.expr || parsed,
@@ -693,23 +693,24 @@ function invert(variable) {
  * Renames signals variables, that are used in the given strategy, to use unique
  * variable names starting from suffix 'A'
  */
-function combine(signals, options) {
+async function combine(signals, options) {
     const strategy_var = options.strategy_variable;
     const best = signals[strategy_var];
     if (!best.variables[strategy_var]) return null;
-    const variables = getReferences(best.variables, options)[strategy_var];
+    const variables = (await getReferences(best.variables, options))[strategy_var];
     const used = _.intersection(variables, _.keys(signals));
     const replacement = {};
-    const result = used.reduce((combined, variable) => {
+    const result = await used.reduce(async(promise, variable) => {
+        const combined = await promise;
         const solution = signals[variable];
         if (!solution || strategy_var == variable)
             return combined; // not created here or leg variable
-        const formatted = formatSolution(solution, merge(options, combined));
+        const formatted = await formatSolution(solution, merge(options, combined));
         delete formatted.variables[formatted.strategy_variable];
         replacement[variable] = formatted.solution_variable;
         return merge(combined, _.omit(formatted, 'solution_variable', 'signal_variable'));
     }, {});
-    const combined_strategy = Parser({substitutions:replacement}).parse(best.variables[strategy_var]);
+    const combined_strategy = await new Parser({substitutions:replacement}).parse(best.variables[strategy_var]);
     return merge(result, {
         score: best.score,
         cost: best.cost,
@@ -723,15 +724,16 @@ function combine(signals, options) {
 /**
  * Renames solution results to avoid variables already in options
  */
-function formatSolution(solution, options, suffix) {
+async function formatSolution(solution, options, suffix) {
     const parser = createReplacer({});
     const signal = solution.variables[solution.signal_variable];
     const existing = _.keys(options.variables)
         .filter(name => name.indexOf(signal) === 0)
         .map(name => name.substring(signal.length));
-    const formatted = existing.reduce((already, id) => {
+    const formatted = await existing.reduce(async(promise, id) => {
+        const already = await promise;
         if (already) return already;
-        const formatted = formatSolutionWithId(solution, options, id);
+        const formatted = await formatSolutionWithId(solution, options, id);
         if (signalConflicts(parser, formatted, options)) return null;
         else return formatted;
     }, null);
@@ -739,7 +741,7 @@ function formatSolution(solution, options, suffix) {
     for (let id_num=10; id_num < 100; id_num++) {
         const id = (suffix || '') + id_num.toString(36).toUpperCase();
         if (!~existing.indexOf(id)) {
-            const formatted = formatSolutionWithId(solution, options, id);
+            const formatted = await formatSolutionWithId(solution, options, id);
             if (!signalConflicts(parser, formatted, options)) return formatted;
         }
     }
@@ -761,7 +763,7 @@ function signalConflicts(parser, s1, s2) {
 /**
  * Renames solution result variables to has the given id as a suffix
  */
-function formatSolutionWithId(solution, options, id) {
+async function formatSolutionWithId(solution, options, id) {
     const signal = solution.signal_variable;
     const fixed = _.extend({}, options.parameters, options.variables);
     const values = _.extend({}, solution.variables, solution.parameters);
@@ -770,17 +772,17 @@ function formatSolutionWithId(solution, options, id) {
             conflicts.push(name);
         return conflicts;
     }, _.keys(solution.parameters));
-    const references = getReferences(values, options);
+    const references = await getReferences(values, options);
     const local = [signal].concat(references[signal]);
     const overlap = references[signal].filter(name => ~conflicts.indexOf(name) ||
         _.intersection(conflicts, references[name]).length);
     const replacement = _.object(overlap, overlap.map(name => name + id));
     const replacer = createReplacer(replacement);
     const rename = (object, value, name) => _.extend(object, {[replacement[name] || name]: value});
-    const parser = Parser({substitutions:{
+    const parser = new Parser({substitutions:{
         [signal]: solution.variables[signal]
     }});
-    const strategy = parser.parse(solution.variables[solution.strategy_variable]);
+    const strategy = await parser.parse(solution.variables[solution.strategy_variable]);
     const eval_validity = replacer(_.compact(_.flatten([solution.eval_validity])));
     const variables = _.omit(_.pick(solution.variables, local), signal, options.leg_variable)
     return _.omit({
@@ -803,8 +805,8 @@ function formatSolutionWithId(solution, options, id) {
  * Hash of variable names to array of variable names it depends on
  * @param variables a string expression or map of names to string expressions
  */
-function getReferences(variables, options) {
-    const references = Parser({
+async function getReferences(variables, options) {
+    const references = await new Parser({
         constant(value) {
             return [];
         },
@@ -838,9 +840,9 @@ function getReferences(variables, options) {
  * Returns a function that takes an expression and rewrites replacing variables in replacement hash
  */
 function createReplacer(replacement) {
-    const parser = Parser();
+    const parser = new Parser();
     const map = name => replacement[name] || name;
-    const replacer = Parser({
+    const replacer = new Parser({
         variable(name) {
             return map(name);
         },
@@ -863,8 +865,8 @@ function createReplacer(replacement) {
 /**
  * Chooses a variable name based on prefix that is not already used
  */
-function chooseVariable(prefix, options) {
-    const references = getReferences(merge(options.columns, options.variables), options);
+async function chooseVariable(prefix, options) {
+    const references = await getReferences(merge(options.columns, options.variables), options);
     const portfolioCols = _.flatten(_.flatten([options.portfolio]).map(portfolio => _.keys(portfolio.columns)));
     const variables = _.uniq(_.keys(references).concat(_.flatten(_.values(references)), portfolioCols));
     if (!~variables.indexOf(prefix)) return prefix;

@@ -42,7 +42,7 @@ const logger = require('./logger.js');
  */
 module.exports = function(expr, name, args, options) {
     if (functions[name]) {
-        const columnName = Parser({
+        const columnName = new Parser({
             constant(value) {
                 return value;
             },
@@ -63,7 +63,7 @@ module.exports.has = function(name) {
 
 module.exports.getVariables = function(expr, options) {
     const variables = [];
-    const parser = Parser({
+    const parser = new Parser({
         constant(value) {
             return _.constant(value);
         },
@@ -374,7 +374,7 @@ function parseCriteria(columnName, criteria, positions, options) {
         return parseCriteria(columnName, columnName + criteria, positions, options);
     try {
         let expression = false;
-        const parsed = Parser({
+        const parsed = new Parser({
             constant(value) {
                 return _.constant(value);
             },

@@ -143,14 +143,14 @@ function help(collect) {
 /**
  * Searches possible parameter values to determine a higher score for a date range
  */
-function optimize(collect, prng, options) {
+async function optimize(collect, prng, options) {
     expect(options).to.have.property('parameter_values');
     expect(options).to.have.property('eval_score');
     const started = Date.now();
     const count = options.solution_count || 1;
     const pnames = _.keys(options.parameter_values);
     const pvalues = pnames.map(name => options.parameter_values[name]);
-    const space = createSearchSpace(pnames, options);
+    const space = await createSearchSpace(pnames, options);
     return searchParameters(collect, prng, pnames, count, space, options).then(solutions => {
         if (_.isEmpty(solutions))
             throw Error("Could not create population for " + options.label);
@@ -184,12 +184,12 @@ function searchParameters(collect, prng, pnames, count, space, options) {
     const createPopulation = options.sample_duration || options.sample_count ?
         sampleSolutions(collect, prng, pnames, space, size, options) :
         initialPopulation(prng, pnames, space, size, options);
-    return Promise.resolve(createPopulation).then(population => {
+    return Promise.resolve(createPopulation).then(async(population) => {
         if (population.length === 0)
             return [];
         if (population.length > 1)
             logger.debug("Initial population of", population.length, options.label || '\b');
-        const fitnessFn = fitness(collect, options, pnames);
+        const fitnessFn = await fitness(collect, options, pnames);
         const mutationFn = mutation.bind(this, prng, pvalues, space);
         return adapt(fitnessFn, mutationFn, pnames, terminateAt, options, population, size);
     }).then(solutions => {
@@ -200,10 +200,10 @@ function searchParameters(collect, prng, pnames, count, space, options) {
 /**
  * Simple in-memory cache of candidates to avoid re-evaluating them again
  */
-function createSearchSpace(pnames, options) {
+async function createSearchSpace(pnames, options) {
     const hash = {};
     const pvalues = pnames.map(name => options.parameter_values[name]);
-    const parser = Parser({
+    const parser = new Parser({
         constant(value) {
             return _.constant(value);
         },
@@ -219,7 +219,7 @@ function createSearchSpace(pnames, options) {
             else throw Error("Cannot use " + name + " in eval_validity");
         }
     });
-    const validity = parser.parseCriteriaList(options.eval_validity);
+    const validity = await parser.parseCriteriaList(options.eval_validity);
     const invalid = ctx => !!validity.find(fn => !fn(ctx));
     return candidate => {
         const key = candidate.pindex.join(',');
@@ -265,8 +265,8 @@ function sampleSolutions(collect, prng, pnames, space, size, options) {
         }, _.omit(options, ['sample_duration', 'sample_count']));
     });
     const space_factory = period_units ? createSearchSpace : _.constant(space);
-    return Promise.all(optionset.map(opts => {
-        const sample_space = space_factory(pnames, options);
+    return Promise.all(optionset.map(async(opts) => {
+        const sample_space = await space_factory(pnames, options);
         return searchParameters(collect, prng, pnames, opts.population_size, sample_space, opts);
     })).then(results => {
         const parameters = _.pick(options.parameters, pnames);
@@ -317,11 +317,11 @@ function initialPopulation(prng, pnames, space, size, options) {
 /**
  * Creates the fitness function for a set of parameter values
  */
-function fitness(collect, options, pnames) {
+async function fitness(collect, options, pnames) {
     const pvalues = pnames.map(name => options.parameter_values[name]);
     const score_column = getScoreColumn(options);
     const transient = _.isBoolean(options.transient) ? options.transient :
-        isLookbackParameter(pnames, options);
+        await isLookbackParameter(pnames, options);
     return function(candidate) {
         const params = _.object(pnames, candidate.pindex.map((idx, p) => pvalues[p][idx]));
         const parameters = _.defaults(params, options.parameters);
@@ -490,8 +490,8 @@ function getScoreColumn(options) {
  * Checks if any of the parameters are used in lookback functions.
  * Lookback functions are aggressively cached by quote.js unless transient flag is set.
  */
-function isLookbackParameter(pnames, options) {
-    const parser = Parser({
+async function isLookbackParameter(pnames, options) {
+    const parser = new Parser({
         constant(value) {
             return {};
         },
@@ -510,10 +510,11 @@ function isLookbackParameter(pnames, options) {
             }, {});
         }
     });
-    const lookbackParams = _.uniq(_.flatten(_.compact(parser.parse(_.flatten(_.compact([
+    const parsed = await parser.parse(_.flatten(_.compact([
         _.values(options.columns), _.values(options.variables),
         options.criteria, options.filter, options.precedence, options.order
-    ]))).map(item => item.lookbackParams))));
+    ])));
+    const lookbackParams = _.uniq(_.flatten(_.compact(parsed.map(item => item.lookbackParams))));
     if (lookbackParams.length) return true; // don't persist parameter values
     else return false;
 }

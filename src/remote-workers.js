@@ -32,7 +32,6 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
-const share = require('./share.js');
 const interrupt = require('./interrupt.js');
 const replyTo = require('./promise-reply.js');
 const remote = require('./remote-process.js');
