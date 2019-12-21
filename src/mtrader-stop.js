@@ -55,6 +55,8 @@ function usage(command) {
     .option('--set <name=value>', "Name=Value pairs to be used in session");
 }
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 module.exports = function(settings = {}) {
     settings = {...settings, ...config('remote')};
     const address = settings.listen;

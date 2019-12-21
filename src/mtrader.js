@@ -104,6 +104,8 @@ program.on('option:version', async function() {
       .catch(logger.error).then(() => mtrader.close());
 });
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 if (require.main === module) {
     if (process.argv.length > 2) {
         // don't call an executable if no command given

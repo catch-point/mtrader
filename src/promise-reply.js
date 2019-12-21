@@ -189,6 +189,8 @@ module.exports = function(process) {
 let monitor;
 let instances = [];
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 process.on('SIGINT', () => {
     const error = Error('SIGINT');
     instances.forEach(queue => {

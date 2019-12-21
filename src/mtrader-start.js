@@ -73,6 +73,8 @@ function usage(command) {
     .option('--set <name=value>', "Name=Value pairs to be used in session");
 }
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 if (require.main === module) {
     if (!config('remote.listen'))
         throw Error("Service listen address is required to start service");

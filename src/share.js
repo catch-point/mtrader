@@ -30,6 +30,8 @@
  */
 'use strict';
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 /**
  * Creates a version of the factory function such that repeated calls will
  * have no effect, returning the value from the original call, until the close

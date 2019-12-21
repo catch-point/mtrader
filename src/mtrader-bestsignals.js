@@ -82,6 +82,8 @@ function usage(command) {
         .option('--save <file>', "JSON file to write the result into");
 }
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length) {

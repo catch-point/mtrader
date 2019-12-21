@@ -84,6 +84,8 @@ function usage(command) {
         .option('--transpose', "Swap the columns and rows");
 }
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length) {
