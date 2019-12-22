@@ -214,7 +214,7 @@ async function blendCall(markets, fetch, adjustments, assets, options) {
     const asset = findAsset(assets, options);
     if (!asset || !asset.models) throw Error(`No model configured for ${options.symbol}.${options.market}`);
     const end = options.end && moment.tz(options.end, options.tz).format(options.ending_format);
-    const begin = moment(options.begin);
+    const begin = moment.tz(options.begin, options.tz);
     const models = sliceModelsAfter(await Promise.all(sliceModelsAfter(asset.models, begin)
         .map(async(model) => readModel(asset, model, options))), begin);
     return models.reduceRight(async(promise, model_p, i, models) => {
@@ -273,6 +273,24 @@ async function readModel(asset, model, options) {
         const begin = maxDate(model.begin, _.first(bars).ending);
         const end = minDate(model.end, _.last(bars).ending);
         return {...model, bars, begin, end};
+    } else if (model.begin_expression || model.end_expression) {
+        const parser = new Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return () => options[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, options) ||
+                (() => {
+                    throw Error("Only common functions can be used in begin/end_expression: " + expr);
+                });
+            }
+        });
+        const begin = model.begin_expression ? parser.parse(model.begin_expression)(options) : model.begin;
+        const end = model.end_expression ? parser.parse(model.end_expression)(options) : model.end;
+        return {...model, ...(begin ? {begin} : {}), ...(end ? {end} : {})};
     } else {
         return model;
     }
@@ -322,7 +340,7 @@ async function fetchModelBars(fetchInputData, adjustments, model, options) {
     while (_.some(iterators, iter => iter.hasNext())) {
         await check();
         const ending = nextBarEnding(Object.values(iterators), options);
-        const input_bars = _.mapObject(iterators, iter => iter.review());
+        const input_bars = _.mapObject(iterators, iter => iter.review() || {});
         const input_variables = eval_input(input_bars);
         points.push({variables: input_variables});
         const variables = {...input_variables, ...eval_coefficients(points), ...eval_variables(points)};
@@ -471,23 +489,22 @@ async function parseOutputExpressions(parser, model, options) {
 
 function createAndAlignIterators(input, options) {
     const iterators = _.mapObject(input, array => createIterator(array));
-    if (_.some(iterators, iter => !iter.hasNext())) {
-        const count = _.filter(iterators, iter => !iter.hasNext()).length;
+    _.forEach(iterators, (iter, i) => {
+        if (!iter.hasNext())
+            logger.warn(`fetch-model no ${i} input in ${options.symbol}.${options.market} as of`, options.end);
+    });
+    const peeks = Object.values(iterators).filter(iter => iter.hasNext()).map(iter => iter.peek().ending);
+    const earliest = _.last(peeks.sort());
+    if (earliest && options.begin < earliest && moment(earliest).subtract(1,'weeks').isAfter(options.begin)) {
         _.forEach(iterators, (iter, i) => {
-            if (!iter.hasNext())
-                logger.warn(`fetch-model no input ${i} in ${options.symbol}.${options.market} as of`, options.end);
-        });
-        return [];
-    }
-    const earliest = _.last(_.map(iterators, iter => iter.peek().ending).sort());
-    if (options.begin < earliest && moment(earliest).subtract(1,'weeks').isAfter(options.begin)) {
-        _.forEach(iterators, (iter, i) => {
-            if (options.begin < iter.peek().ending)
-                logger.warn(`fetch-model input ${i} in ${options.symbol}.${options.market} not available until`, iter.peek().ending);
+            if (iter.hasNext() && options.begin < iter.peek().ending)
+                logger.warn(`fetch-model ${i} input in ${options.symbol}.${options.market} not available until`, iter.peek().ending);
         });
     }
     _.forEach(iterators, iter => {
-        while (iter.hasNext() && iter.peek().ending < earliest) iter.next();
+        while (iter.hasNext() && (iter.peek().ending < earliest && iter.peek().ending < options.begin)) {
+            iter.next();
+        }
     });
     return iterators;
 }

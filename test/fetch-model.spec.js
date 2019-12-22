@@ -850,7 +850,7 @@ describe("fetch-model", function() {
                             psa: {symbol:'PSA', market:'TSE'},
                             csav: {symbol:'CSAV', market:'TSE'}
                         },
-                        pad_begin: 1,
+                        pad_begin: 2,
                         regression_length: 50,
                         dependent: 'psa.adj_close',
                         independents: {
@@ -884,9 +884,9 @@ describe("fetch-model", function() {
                 { ending: '2019-10-01T16:00:00-04:00', csav_coefficient: 0.98 },
                 { ending: '2019-10-02T16:00:00-04:00', csav_coefficient: 0.98 },
                 { ending: '2019-10-03T16:00:00-04:00', csav_coefficient: 0.99 },
-                { ending: '2019-10-04T16:00:00-04:00', csav_coefficient: 1.00 },
+                { ending: '2019-10-04T16:00:00-04:00', csav_coefficient: 0.99 },
                 { ending: '2019-10-07T16:00:00-04:00', csav_coefficient: 1.01 },
-                { ending: '2019-10-08T16:00:00-04:00', csav_coefficient: 1.03 },
+                { ending: '2019-10-08T16:00:00-04:00', csav_coefficient: 1.02 },
                 { ending: '2019-10-09T16:00:00-04:00', csav_coefficient: 1.03 },
                 { ending: '2019-10-10T16:00:00-04:00', csav_coefficient: 1.03 },
                 { ending: '2019-10-11T16:00:00-04:00', csav_coefficient: 1.03 },
@@ -897,7 +897,7 @@ describe("fetch-model", function() {
                 { ending: '2019-10-21T16:00:00-04:00', csav_coefficient: 1.04 },
                 { ending: '2019-10-22T16:00:00-04:00', csav_coefficient: 1.04 },
                 { ending: '2019-10-23T16:00:00-04:00', csav_coefficient: 1.04 },
-                { ending: '2019-10-24T16:00:00-04:00', csav_coefficient: 1.04 },
+                { ending: '2019-10-24T16:00:00-04:00', csav_coefficient: 1.03 },
                 { ending: '2019-10-25T16:00:00-04:00', csav_coefficient: 1.03 },
                 { ending: '2019-10-28T16:00:00-04:00', csav_coefficient: 1.04 },
                 { ending: '2019-10-29T16:00:00-04:00', csav_coefficient: 1.03 },
@@ -908,7 +908,62 @@ describe("fetch-model", function() {
             await fetch.close();
         }
     });
-    it("should support DIVIDEND and SPLIT functions", async() => {
+    it("DIVIDEND and SPLIT functions", async() => {
+        const fetch = new Fetch(merge(config('fetch'), {
+            model: {
+                enabled: true,
+                fetch: {
+                    files: {
+                        enabled: true,
+                        dirname: path.resolve(__dirname, 'data'),
+                        fetch: {
+                            yahoo: {
+                                enabled: true
+                            }
+                        }
+                    }
+                },
+                assets:[{
+                    symbol: 'AAPL', market: 'dividends', security_type: 'STK',
+                    name: 'AAPL with dividends',
+                    trading_hours: "04:00:00 - 20:00:00",
+                    liquid_hours: "09:30:00 - 16:00:00",
+                    open_time: "09:30:00",
+                    security_tz: "America/New_York",
+                    currency: "USD",
+                    intervals: ['day'],
+                    models: [{
+                        input: {
+                            aapl: {symbol:'AAPL', market:'NASDAQ'}
+                        },
+                        output: {
+                            ending: 'aapl.ending',
+                            open: 'aapl.open',
+                            high: 'aapl.high',
+                            low: 'aapl.low',
+                            close: 'aapl.close',
+                            volume: 'aapl.volume',
+                            dividend: "DIVIDEND(symbol, 'NASDAQ', aapl.ending)",
+                            split: "SPLIT(symbol, 'NASDAQ', aapl.ending)"
+                        }
+                    }]
+                }]
+            }
+        }));
+        try {
+            await fetch({
+                symbol: 'AAPL', market: 'dividends', interval: 'day',
+                begin: '2014-05-01', end: '2014-07-01', tz
+            }).then(data => data.filter(datum => datum.dividend || datum.split!=1))
+              .should.eventually.be.like([
+                { ending: '2014-05-08T16:00:00-04:00', close: 587.990011, dividend: 3.29, split: 1 },
+                { ending: '2014-06-09T16:00:00-04:00', close: 93.699997, dividend: 0, split: 7 }
+            ]);
+        } finally {
+            await fetch.close();
+        }
+    });
+    it("DIVIDEND and SPLIT adjustments", async() => {
         const fetch = new Fetch(merge(config('fetch'), {
             model: {
                 enabled: true,
@@ -939,7 +994,7 @@ describe("fetch-model", function() {
                         variables: {
                             adj_price: 'aapl.close/split-dividend',
                             dividend: "DIVIDEND(symbol, 'NASDAQ', aapl.ending, 1, '2014-09-01')",
-                            split: "SPLIT(symbol, 'NASDAQ', aapl.ending, '2015-01-01')"
+                            split: "SPLIT(symbol, 'NASDAQ', aapl.ending, '2014-09-01')"
                         },
                         output: {
                             ending: 'aapl.ending',
@@ -1007,6 +1062,105 @@ describe("fetch-model", function() {
             await fetch.close();
         }
     });
+    it("DIVIDEND and SPLIT reverse adjustments", async() => {
+        const fetch = new Fetch(merge(config('fetch'), {
+            model: {
+                enabled: true,
+                fetch: {
+                    files: {
+                        enabled: true,
+                        dirname: path.resolve(__dirname, 'data'),
+                        fetch: {
+                            yahoo: {
+                                enabled: true
+                            }
+                        }
+                    }
+                },
+                assets:[{
+                    symbol: 'AAPL', market: 'dividends', security_type: 'STK',
+                    name: 'AAPL with dividends',
+                    trading_hours: "04:00:00 - 20:00:00",
+                    liquid_hours: "09:30:00 - 16:00:00",
+                    open_time: "09:30:00",
+                    security_tz: "America/New_York",
+                    currency: "USD",
+                    intervals: ['day'],
+                    models: [{
+                        input: {
+                            aapl: {symbol:'AAPL', market:'NASDAQ'}
+                        },
+                        variables: {
+                            adj_price: 'aapl.close/split-dividend',
+                            dividend: "DIVIDEND(symbol, 'NASDAQ', aapl.ending, 1, '2014-05-01')",
+                            split: "SPLIT(symbol, 'NASDAQ', aapl.ending, '2014-05-01')"
+                        },
+                        output: {
+                            ending: 'aapl.ending',
+                            open: 'aapl.open',
+                            high: 'aapl.high',
+                            low: 'aapl.low',
+                            close: 'aapl.close',
+                            volume: 'aapl.volume',
+                            adj_close: 'ROUND(adj_price,2)',
+                            change: "CHANGE(adj_price,PREV('adj_price'))"
+                        }
+                    }]
+                }]
+            }
+        }));
+        try {
+            await fetch({
+                symbol: 'AAPL', market: 'dividends', interval: 'day',
+                begin: '2014-05-01', end: '2014-07-01', tz
+            }).should.eventually.be.like([
+                { ending: '2014-05-01T16:00:00-04:00', close: 591.480029, adj_close: 591.48, change: 0.24 },
+                { ending: '2014-05-02T16:00:00-04:00', close: 592.580023, adj_close: 592.58, change: 0.19 },
+                { ending: '2014-05-05T16:00:00-04:00', close: 600.959975, adj_close: 600.96, change: 1.41 },
+                { ending: '2014-05-06T16:00:00-04:00', close: 594.410026, adj_close: 594.41, change: -1.09 },
+                { ending: '2014-05-07T16:00:00-04:00', close: 592.329976, adj_close: 592.33, change: -0.35 },
+                { ending: '2014-05-08T16:00:00-04:00', close: 587.990011, adj_close: 591.28, change: -0.18 },
+                { ending: '2014-05-09T16:00:00-04:00', close: 585.540025, adj_close: 588.84, change: -0.41 },
+                { ending: '2014-05-12T16:00:00-04:00', close: 592.830014, adj_close: 596.16, change: 1.24 },
+                { ending: '2014-05-13T16:00:00-04:00', close: 593.760027, adj_close: 597.1, change: 0.16 },
+                { ending: '2014-05-14T16:00:00-04:00', close: 593.86999, adj_close: 597.21, change: 0.02 },
+                { ending: '2014-05-15T16:00:00-04:00', close: 588.819994, adj_close: 592.17, change: -0.84 },
+                { ending: '2014-05-16T16:00:00-04:00', close: 597.510018, adj_close: 600.87, change: 1.47 },
+                { ending: '2014-05-19T16:00:00-04:00', close: 604.590021, adj_close: 607.98, change: 1.18 },
+                { ending: '2014-05-20T16:00:00-04:00', close: 604.710022, adj_close: 608.11, change: 0.02 },
+                { ending: '2014-05-21T16:00:00-04:00', close: 606.310005, adj_close: 609.72, change: 0.26 },
+                { ending: '2014-05-22T16:00:00-04:00', close: 607.269971, adj_close: 610.69, change: 0.16 },
+                { ending: '2014-05-23T16:00:00-04:00', close: 614.129999, adj_close: 617.56, change: 1.12 },
+                { ending: '2014-05-27T16:00:00-04:00', close: 625.630019, adj_close: 629.1, change: 1.87 },
+                { ending: '2014-05-28T16:00:00-04:00', close: 624.010009, adj_close: 627.49, change: -0.26 },
+                { ending: '2014-05-29T16:00:00-04:00', close: 635.37999, adj_close: 638.86, change: 1.81 },
+                { ending: '2014-05-30T16:00:00-04:00', close: 633.000018, adj_close: 636.49, change: -0.37 },
+                { ending: '2014-06-02T16:00:00-04:00', close: 628.650008, adj_close: 632.17, change: -0.68 },
+                { ending: '2014-06-03T16:00:00-04:00', close: 637.539987, adj_close: 641.07, change: 1.41 },
+                { ending: '2014-06-04T16:00:00-04:00', close: 644.819994, adj_close: 648.36, change: 1.14 },
+                { ending: '2014-06-05T16:00:00-04:00', close: 647.349983, adj_close: 650.9, change: 0.39 },
+                { ending: '2014-06-06T16:00:00-04:00', close: 645.570023, adj_close: 649.13, change: -0.27 },
+                { ending: '2014-06-09T16:00:00-04:00', close: 93.699997, adj_close: 659.49, change: 1.6 },
+                { ending: '2014-06-10T16:00:00-04:00', close: 94.25, adj_close: 663.35, change: 0.59 },
+                { ending: '2014-06-11T16:00:00-04:00', close: 93.860001, adj_close: 660.63, change: -0.41 },
+                { ending: '2014-06-12T16:00:00-04:00', close: 92.290001, adj_close: 649.65, change: -1.66 },
+                { ending: '2014-06-13T16:00:00-04:00', close: 91.279999, adj_close: 642.59, change: -1.09 },
+                { ending: '2014-06-16T16:00:00-04:00', close: 92.199997, adj_close: 649.06, change: 1.01 },
+                { ending: '2014-06-17T16:00:00-04:00', close: 92.080002, adj_close: 648.23, change: -0.13 },
+                { ending: '2014-06-18T16:00:00-04:00', close: 92.18, adj_close: 648.94, change: 0.11 },
+                { ending: '2014-06-19T16:00:00-04:00', close: 91.860001, adj_close: 646.71, change: -0.34 },
+                { ending: '2014-06-20T16:00:00-04:00', close: 90.910004, adj_close: 640.07, change: -1.03 },
+                { ending: '2014-06-23T16:00:00-04:00', close: 90.830002, adj_close: 639.54, change: -0.08 },
+                { ending: '2014-06-24T16:00:00-04:00', close: 90.279999, adj_close: 635.7, change: -0.6 },
+                { ending: '2014-06-25T16:00:00-04:00', close: 90.360001, adj_close: 636.27, change: 0.09 },
+                { ending: '2014-06-26T16:00:00-04:00', close: 90.900002, adj_close: 640.06, change: 0.6 },
+                { ending: '2014-06-27T16:00:00-04:00', close: 91.980003, adj_close: 647.63, change: 1.18 },
+                { ending: '2014-06-30T16:00:00-04:00', close: 92.93, adj_close: 654.31, change: 1.03 }
+            ]);
+        } finally {
+            await fetch.close();
+        }
+    });
     it("use previous implied volatility to estimate options prices based on underlying", async() => {
         const fetch = new Fetch(merge(config('fetch'), {
             model: {
@@ -1022,24 +1176,25 @@ describe("fetch-model", function() {
                     market: 'OPRA', security_type: 'OPT',
                     intervals: ['day', 'm240', 'm120', 'm60', 'm30'],
                     models: [{
+                        interval: 'm30',
+                        pad_begin: 108,
                         input: {
                             call: {symbol_replacement: '$1$2$3C$5'},
                             put: {symbol_replacement: '$1$2$3P$5'},
                             etf: {symbol_replacement: '$1', market: 'ARCA' },
                             irx: {symbol: 'IRX', market: 'CBOE', interval: 'day' }
                         },
-                        pad_begin: 80,
-                        interval: 'm30',
                         variables: {
                             open: "ROUND(BS(etf.open/split-dividend, strike, dte, iv, rate, right),2)",
                             high: "MAX(IF(call_live,call.high, put_live,put.high), FLOOR(BS(etf.high/split-dividend, strike, dte, iv, rate, right),0.01))",
                             low: "MIN(IF(call_live,call.low, put_live,put.low, etf.high/split), CEILING(BS(etf.low/split-dividend, strike, dte, iv, rate, right),0.01))",
                             close: "live_close OR ROUND(BS(asset_price, strike, dte, iv, rate, right),2)",
                             volume: "IF(call_live,call.volume, put_live,put.volume, 0)",
-                            iv: "IF(live_close,live_iv, alt_iv)",
+                            iv: "IF(live_close,live_iv, right='C',alt_call_iv, alt_put_iv)",
                             live_close: "IF(call_live,call.close, put_live,put.close)",
                             live_iv: "BSIV(live_close, asset_price, strike, dte, rate, right)",
-                            alt_iv: "IF(right='C',put_iv/skew, call_iv*skew)",
+                            alt_put_iv: "IF(strike<asset_price,put_iv) OR call_iv*skew OR put_iv",
+                            alt_call_iv: "IF(asset_price<strike,call_iv) OR put_iv/skew OR call_iv",
                             skew: "IF(call.ending!=put.ending OR call.ending!=etf.ending,PREV('skew')) OR put_iv/call_iv",
                             call_iv: "IF(call.ending!=etf.ending,PREV('call_iv')) OR live_call_iv",
                             put_iv: "IF(put.ending!=etf.ending,PREV('put_iv')) OR live_put_iv",
@@ -1075,26 +1230,26 @@ describe("fetch-model", function() {
                 symbol: 'SPY   200221C00280000', market: 'OPRA',
                 begin: '2019-11-01', end: '2019-12-01', tz
             }).should.eventually.be.like([
-        { ending: '2019-11-01T16:15:00-04:00', open: 28.78, high: 29.6, low: 28.56, close: 29.58, volume: 2 },
-        { ending: '2019-11-04T16:15:00-05:00', open: 31.06, high: 31.19, low: 30.17, close: 30.51, volume: 4 },
-        { ending: '2019-11-05T16:15:00-05:00', open: 30.74, high: 31.44, low: 29.98, close: 30.25, volume: 4 },
-        { ending: '2019-11-06T16:15:00-05:00', open: 30.33, high: 30.64, low: 29.5, close: 30.39, volume: 13 },
-        { ending: '2019-11-07T16:15:00-05:00', open: 31.46, high: 32.38, low: 30.69, close: 31.18, volume: 1 },
-        { ending: '2019-11-08T16:15:00-05:00', open: 30.67, high: 31.79, low: 29.64, close: 31.79, volume: 9 },
-        { ending: '2019-11-11T16:15:00-05:00', open: 30.35, high: 31.44, low: 30.23, close: 31.03, volume: 23 },
-        { ending: '2019-11-12T16:15:00-05:00', open: 31.12, high: 32.6, low: 30.9, close: 31.62, volume: 6 },
-        { ending: '2019-11-13T16:15:00-05:00', open: 30.53, high: 31.94, low: 30.32, close: 31.57, volume: 1 },
-        { ending: '2019-11-14T16:15:00-05:00', open: 31.31, high: 32.19, low: 30.83, close: 32.1, volume: 7 },
-        { ending: '2019-11-15T16:15:00-05:00', open: 33.34, high: 33.8, low: 32.67, close: 33.59, volume: 66 },
-        { ending: '2019-11-18T16:15:00-05:00', open: 33.6, high: 34.38, low: 33.05, close: 33.88, volume: 15 },
-        { ending: '2019-11-19T16:15:00-05:00', open: 35.01, high: 35.02, low: 33.77, close: 34.38, volume: 8 },
-        { ending: '2019-11-20T16:15:00-05:00', open: 33.83, high: 34.32, low: 31.92, close: 33.14, volume: 10 },
-        { ending: '2019-11-21T16:15:00-05:00', open: 33.23, high: 33.44, low: 32.03, close: 32.94, volume: 4 },
-        { ending: '2019-11-22T16:15:00-05:00', open: 33.61, high: 33.72, low: 32.44, close: 32.82, volume: 22 },
-        { ending: '2019-11-25T16:15:00-05:00', open: 33.65, high: 34.95, low: 33.65, close: 34.94, volume: 0 },
-        { ending: '2019-11-26T16:15:00-05:00', open: 34.98, high: 35.65, low: 34.66, close: 35.22, volume: 9 },
-        { ending: '2019-11-27T16:15:00-05:00', open: 35.79, high: 36.69, low: 35.56, close: 36.66, volume: 21 },
-        { ending: '2019-11-29T16:15:00-05:00', open: 36.08, high: 36.34, low: 35.31, close: 35.71, volume: 0 }
+        { ending: '2019-11-01T16:15:00-04:00', open: 28.66, high: 29.57, low: 28.53, close: 29.56, volume: 2 },
+        { ending: '2019-11-04T16:15:00-05:00', open: 31.06, high: 31.17, low: 30.2, close: 30.52, volume: 4 },
+        { ending: '2019-11-05T16:15:00-05:00', open: 30.76, high: 31.44, low: 30, close: 30.26, volume: 4 },
+        { ending: '2019-11-06T16:15:00-05:00', open: 30.37, high: 30.65, low: 29.57, close: 30.42, volume: 13 },
+        { ending: '2019-11-07T16:15:00-05:00', open: 31.49, high: 32.35, low: 30.76, close: 31.23, volume: 1 },
+        { ending: '2019-11-08T16:15:00-05:00', open: 30.66, high: 31.78, low: 29.69, close: 31.79, volume: 9 },
+        { ending: '2019-11-11T16:15:00-05:00', open: 30.39, high: 31.41, low: 30.27, close: 31.03, volume: 23 },
+        { ending: '2019-11-12T16:15:00-05:00', open: 31.17, high: 32.59, low: 30.96, close: 31.66, volume: 6 },
+        { ending: '2019-11-13T16:15:00-05:00', open: 30.56, high: 31.86, low: 30.36, close: 31.54, volume: 1 },
+        { ending: '2019-11-14T16:15:00-05:00', open: 31.29, high: 32.13, low: 30.84, close: 32.05, volume: 7 },
+        { ending: '2019-11-15T16:15:00-05:00', open: 33.17, high: 33.76, low: 32.53, close: 33.59, volume: 66 },
+        { ending: '2019-11-18T16:15:00-05:00', open: 33.6, high: 34.37, low: 33.08, close: 33.88, volume: 15 },
+        { ending: '2019-11-19T16:15:00-05:00', open: 34.97, high: 34.99, low: 33.78, close: 34.37, volume: 8 },
+        { ending: '2019-11-20T16:15:00-05:00', open: 33.84, high: 34.29, low: 32.07, close: 33.11, volume: 10 },
+        { ending: '2019-11-21T16:15:00-05:00', open: 33.22, high: 33.38, low: 32.04, close: 32.89, volume: 4 },
+        { ending: '2019-11-22T16:15:00-05:00', open: 33.5, high: 33.61, low: 32.47, close: 32.83, volume: 22 },
+        { ending: '2019-11-25T16:15:00-05:00', open: 33.5, high: 34.73, low: 33.5, close: 34.71, volume: 0 },
+        { ending: '2019-11-26T16:15:00-05:00', open: 34.74, high: 35.64, low: 34.44, close: 35.22, volume: 11 },
+        { ending: '2019-11-27T16:15:00-05:00', open: 35.75, high: 36.68, low: 35.54, close: 36.66, volume: 21 },
+        { ending: '2019-11-29T16:15:00-05:00', open: 36.14, high: 36.38, low: 35.45, close: 35.78, volume: 0 }
             ]);
         } finally {
             await fetch.close();

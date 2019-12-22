@@ -84,7 +84,11 @@ const functions = module.exports.functions = {
             let end = _.sortedIndex(data, {exdate: exdate.format("Y-MM-DD")}, 'exdate');
             if (data[start] && data[start].exdate == ref.format("Y-MM-DD")) start++;
             if (data[end] && data[end].exdate == exdate.format("Y-MM-DD")) end++;
-            return +data.slice(start, end).reduce((split, datum) => split.times(datum.split), Big(1));
+            if (start <= end) {
+                return +data.slice(start, end).reduce((split, datum) => split.times(datum.split), Big(1));
+            } else {
+                return +data.slice(end, start).reduce((split, datum) => split.div(datum.split), Big(1));
+            }
         };
     }, {
         args: "symbol, market, [reference-date,] (exdate | option_symbol, option_market)",
@@ -104,11 +108,19 @@ const functions = module.exports.functions = {
             let end = _.sortedIndex(data, {exdate: exdate.format("Y-MM-DD")}, 'exdate');
             if (data[start] && data[start].exdate == ref.format("Y-MM-DD")) start++;
             if (data[end] && data[end].exdate == exdate.format("Y-MM-DD")) end++;
-            return +data.slice(start, end).reduce((dividend, datum) => {
-                const days_to_dividend = datum.dividend ? -ref.diff(datum.exdate, 'days') : 0;
-                const value = Big(datum.dividend).times(Math.exp(-rate*days_to_dividend/365));
-                return dividend.add(value).div(datum.split);
-            }, Big(0)).add(pvDividend);
+            if (start <= end) {
+                return +data.slice(start, end).reduce((dividend, datum) => {
+                    const days_to_dividend = datum.dividend ? -ref.diff(datum.exdate, 'days') : 0;
+                    const value = Big(datum.dividend).times(Math.exp(-rate*days_to_dividend/365));
+                    return dividend.add(value).div(datum.split);
+                }, Big(0)).add(pvDividend);
+            } else {
+                return +data.slice(end, start).reduceRight((dividend, datum) => {
+                    const days_to_dividend = datum.dividend ? -ref.diff(datum.exdate, 'days') : 0;
+                    const value = Big(datum.dividend).times(Math.exp(-rate*days_to_dividend/365));
+                    return dividend.minus(value).times(datum.split);
+                }, Big(0)).minus(pvDividend);
+            }
         };
     }, {
         args: "symbol, market, [reference-date, risk-free-rate,] (exdate | option_symbol, option_market)",

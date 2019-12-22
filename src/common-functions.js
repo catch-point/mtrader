@@ -58,11 +58,11 @@ module.exports.has = function(name) {
 
 const functions = module.exports.functions = {
     NOW: _.extend((opts, tz) => {
-        const now = moment(opts.now);
+        const now = moment.tz(opts.now, opts.tz);
         const date = now.format();
         return context => {
             if (!tz || tz == now.tz()) return date;
-            else return moment.tz(now, tz(context)).format();
+            else return moment.tz(now, tz(context)).format(opts.ending_format);
         };
     }, {
         description: "The local date and time at the point the function was executed",
@@ -70,11 +70,11 @@ const functions = module.exports.functions = {
         sideEffect: true
     }),
     BEGIN: _.extend((opts, tz) => {
-        const begin = moment(opts.begin);
-        const date = begin.format();
+        const begin = moment.tz(opts.begin, opts.tz);
+        const date = begin.format(opts.ending_format);
         return context => {
             if (!tz || tz == begin.tz()) return date;
-            else return moment.tz(begin, tz(context)).format();
+            else return moment.tz(begin, tz(context)).format(opts.ending_format);
         };
     }, {
         description: "The local date and time collecting began",
@@ -82,12 +82,12 @@ const functions = module.exports.functions = {
         sideEffect: true
     }),
     END: _.extend((opts, tz) => {
-        const now = moment(opts.now);
+        const now = moment.tz(opts.now, opts.tz);
         const end = now.isAfter(opts.end || now) ? moment(opts.end) : now;
-        const date = end.format();
+        const date = end.format(opts.ending_format);
         return context => {
             if (!tz || tz == end.tz()) return date;
-            else return moment.tz(end, tz(context)).format();
+            else return moment.tz(end, tz(context)).format(opts.ending_format);
         };
     }, {
         description: "The local date and time collecting will end",
@@ -102,7 +102,7 @@ const functions = module.exports.functions = {
             const d = Math.min(start.isoWeekday()-1,4) + days(context);
             const wk = Math.floor(d /5);
             const wd = d - wk *5 +1;
-            return start.add(wk, 'weeks').isoWeekday(wd).format();
+            return start.add(wk, 'weeks').isoWeekday(wd).format(opts.ending_format);
         };
     }, {
         description: "The date before or after a specified number of workdays (Mon-Fri)"
@@ -112,7 +112,7 @@ const functions = module.exports.functions = {
             const date = tz ? moment.tz(start_date(context), tz(context)) : moment(start_date(context));
             const dur = duration(context);
             const d = _.isFinite(dur) ? moment.duration(+dur, 'months') : moment.duration(dur);
-            return date.add(d).format();
+            return date.add(d).format(opts.ending_format);
         };
     }, {
         description: "Returns a date that is the indicated duration or number of months before or after a specified date (the start_date)"
