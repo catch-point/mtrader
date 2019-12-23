@@ -53,7 +53,8 @@ const expect = require('chai').use(like).expect;
 module.exports = function(fetch, settings = {}) {
     let promiseHelp;
     const lookup = Lookup(fetch);
-    const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const dir = path.resolve(config('prefix'), settings.cache_dir || cache_dir);
     const stores = {};
     const tz = (moment.defaultZone||{}).name || moment.tz.guess();
     return _.extend(async function(options) {
@@ -496,8 +497,7 @@ function fetchBars(fetch, db, fields, expressions, options) {
     const warmUpLength = _.max(_.pluck(_.values(expressions), 'warmUpLength').concat([0]));
     const name = getCollectionName(options);
     return db.collection(name).then(collection => {
-        return fetchNeededBlocks(fetch, fields, collection, warmUpLength, options)
-          .then(blocks => readBlocks(collection, warmUpLength, blocks, expressions, options))
+        return readBlocks(fetch, fields, collection, warmUpLength, expressions, options)
           .then(tables => trimTables(tables, options));
     }).catch(err => {
         if (!options.offline && !options.read_only) throw err;
@@ -517,21 +517,69 @@ function getCollectionName(options) {
     else return 'daily';
 }
 
-/**
- * Determines the blocks that will be needed for this begin/end range.
- */
-function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
+async function readBlocks(fetch, fields, collection, warmUpLength, expressions, options) {
     const period = new Periods(options);
+    const start = parseBegin(period, warmUpLength, options);
+    const now = moment().tz(options.tz);
+    const stop = parseEnd(period, now, options);
+    const loaded_blocks = await fetchNeededBlocks(fetch, fields, collection, start, stop, now, options);
+    if (options.transient) {
+        const blocks = getBlocks(options.interval, start, stop, false, options);
+        return readComputedBlocks({
+            async readFrom(block) {
+                if (collection.exists(block)) return collection.readFrom(block);
+                const block_opts = blockOptions(block, options);
+                const start_format = start.format(options.ending_format);
+                const stop_format = stop.format(options.ending_format);
+                if (block_opts.end < start_format) return [];
+                const begin = start_format < block_opts.begin ? block_opts.begin : start_format;
+                const end = stop_format < block_opts.end ? stop_format : block_opts.end;
+                return fetch({...options, begin, end});
+            },
+            lockWith(blocks, fn) {
+                return fn(blocks);
+            },
+            tailOf(block) {
+                return [{ending: moment.tz(blockOptions(block, options).end, options.tz).subtract(1,'ms')}];
+            },
+            columnsOf(block) {
+                if (!collection.exists(block)) return [];
+                else return collection.columnsOf(block);
+            },
+            writeTo(bars, block) {
+                return Promise.resolve();
+            },
+            propertyOf(block, name, value) {
+                return value;
+            }
+        }, warmUpLength, blocks, expressions, options);
+    } else {
+        return readComputedBlocks(collection, warmUpLength, loaded_blocks, expressions, options);
+    }
+}
+
+function parseBegin(period, warmUpLength, options) {
     const begin = options.begin;
     const pad_begin = options.pad_begin + warmUpLength;
-    const start = period.floor(pad_begin ? period.dec(begin, pad_begin) : begin);
-    const now = moment().tz(options.tz);
+    if (!pad_begin) return moment.tz(begin, options.tz);
+    else return period.floor(pad_begin ? period.dec(begin, pad_begin) : begin);
+}
+
+function parseEnd(period, now, options) {
     const end = options.end || moment.tz(options.now || now, options.tz);
-    const stop = options.pad_end ? period.inc(end, options.pad_end) : period.ceil(end);
-    const interval = options.interval;
-    const blocks = getBlocks(interval, start, stop, options);
-    const latest = !stop.isBefore(now) || _.contains(blocks, _.last(getBlocks(interval, now, now, options)));
-    if (options.offline) return Promise.resolve(blocks);
+    if (!options.pad_end) return moment.tz(end, options.tz);
+    else return options.pad_end ? period.inc(end, options.pad_end) : period.ceil(end);
+}
+
+/**
+ * Determines the blocks that will be needed for this date range.
+ */
+function fetchNeededBlocks(fetch, fields, collection, start, stop, now, options) {
+    const blocks = getBlocks(options.interval, start, stop, options.transient, options);
+    const future = !stop.isBefore(now);
+    const current = future || _.last(getBlocks(options.interval, now, now, false, options));
+    const latest = future || _.contains(blocks, current);
+    if (options.offline || !blocks.length) return Promise.resolve(blocks);
     else return collection.lockWith(blocks, blocks => {
         const store_ver = getStorageVersion(collection);
         return fetchBlocks(fetch, fields, options, collection, store_ver, stop.format(), blocks, latest);
@@ -541,7 +589,7 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, options) {
 /**
  * Read the blocks into memory and ensure that expressions have already been computed
  */
-function readBlocks(collection, warmUpLength, blocks, expressions, options) {
+function readComputedBlocks(collection, warmUpLength, blocks, expressions, options) {
     if (_.isEmpty(expressions))
         return Promise.all(blocks.map(block => collection.readFrom(block)));
     const dataPoints = _.object(blocks, []);
@@ -583,8 +631,7 @@ function readBlocks(collection, warmUpLength, blocks, expressions, options) {
                     })));
                 });
                 dataBlocks[block] = bars;
-                if (options.transient) return dataBlocks;
-                else return collection.writeTo(bars, block).then(() => {
+                return collection.writeTo(bars, block).then(() => {
                     const value = collection.propertyOf(block, 'warmUpBlocks') || [];
                     const blocks = _.union(value, warmUpBlocks).sort();
                     return collection.propertyOf(block, 'warmUpBlocks', blocks);
@@ -819,7 +866,8 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin, lat
 /**
  * Includes an extra block at the front for warmUp
  */
-function getBlocks(interval, begin, end, options) {
+function getBlocks(interval, begin, end, within, options) {
+    // FIXME begin does not consider market closures, so pad a little extra
     expect(interval).to.be.ok.and.a('string');
     const m = interval.match(/^m(\d+)$/);
     if (!m && interval != 'day') {
@@ -829,27 +877,31 @@ function getBlocks(interval, begin, end, options) {
     } else if (!end || !end.isValid()) {
         throw Error("End date is not valid " + end);
     } else if (!m) { // day is separated every half decade
-        const start = begin.year() - 5;
-        return _.range(
-            Math.floor(start /5) *5,
-            Math.floor(end.year() /5) *5 +5,
-            5
-        );
+        const start = within ? Math.floor(begin.year() /5) *5 +5 : Math.floor((begin.year()-1) /5) *5;
+        const stop = within ? Math.floor(end.year() /5) *5 -5 : Math.floor(end.year() /5) *5;
+        if (start > stop) return [];
+        return _.range(start, stop +5, 5);
     } else if (+m[1] >= 30) { // m30 is separated monthly
-        const start = moment(begin).subtract(1, 'months');
-        return _.range(start.year(), end.year()+1).reduce((blocks, year) => {
+        const start = within ? moment(begin).add(1, 'months') : moment(begin).subtract(1, 'weeks');
+        const stop = within ? moment(end).subtract(1, 'months') : end;
+        if (start.year() > stop.year()) return [];
+        return _.range(start.year(), stop.year()+1).reduce((blocks, year) => {
             const starting = start.year() == year ? start.month() : 0;
-            const ending = end.year() == year ? end.month() : 11;
+            const ending = stop.year() == year ? stop.month() : 11;
+            if (starting > ending) return blocks;
             return blocks.concat(_.range(starting +1, ending +2).map(month => {
                 return month < 10 ? year + '-0' + month : year + '-' + month;
             }));
         }, []);
     } else if (+m[1] >= 5) { // m5 is separated weekly
-        const start = moment(begin).subtract(1, 'weeks');
-        return _.range(begin.weekYear(), end.weekYear()+1).reduce((blocks, year) => {
+        const start = within ? moment(begin).add(1, 'weeks') : moment(begin).subtract(1, 'weeks');
+        const stop = within ? moment(end).subtract(1, 'weeks') : end;
+        if (start.weekYear() > stop.weekYear()) return [];
+        return _.range(begin.weekYear(), stop.weekYear()+1).reduce((blocks, year) => {
             const starting = begin.weekYear() == year ? begin.week() : 1;
-            const ending = end.weekYear() == year ? end.week() :
+            const ending = stop.weekYear() == year ? stop.week() :
                 moment.tz(year + '-02-01', begin.tz()).weeksInYear();
+            if (starting > ending) return blocks;
             return blocks.concat(_.range(starting, ending +1).map(week => {
                 return week < 10 ? year + '-0' + week : year + '-' + week;
             }));
@@ -857,10 +909,9 @@ function getBlocks(interval, begin, end, options) {
     }
     // m1 is separated daily
     const blocks = [];
-    const start = Periods(_.defaults({interval:'day'}, options)).dec(begin, 1);
-    const d = moment.tz(start.format('Y-MM-DD'), start.tz());
-    const until = end.valueOf();
-    while (d.valueOf() <= until) {
+    const d = within ? moment(begin).add(1, 'days') : moment(begin);
+    const stop = within ? moment(end).subtract(1, 'days') : end;
+    while (!d.isAfter(stop)) {
         blocks.push(d.format('Y-MM-DD'));
         d.add(1, 'days');
     }
@@ -875,22 +926,22 @@ function blockOptions(block, options) {
     if (block == options.interval) {
         const begin = moment.tz('1990-01-01', options.tz);
         return _.defaults({
-            begin: begin.format(),
+            begin: begin.format(options.ending_format),
             end: null
         }, options);
     } else if ('day' == options.interval) {
         const begin = moment.tz(block + '-01-01', options.tz);
         const end = moment.tz((5+block) + '-01-01', options.tz);
         return _.defaults({
-            begin: begin.format(),
-            end: end.format()
+            begin: begin.format(options.ending_format),
+            end: end.format(options.ending_format)
         }, options);
     } else if (+m[1] >= 30) {
         const begin = moment.tz(block + '-01', options.tz);
         const end = moment(begin).add(1, 'months');
         return _.defaults({
-            begin: begin.format(),
-            end: end.format()
+            begin: begin.format(options.ending_format),
+            end: end.format(options.ending_format)
         }, options);
     } else if (+m[1] >= 5) {
         const split = block.split('-');
@@ -899,15 +950,15 @@ function blockOptions(block, options) {
         const begin = moment.tz(year + '-01-01', options.tz).week(week).startOf('week');
         const end = moment(begin).add(1, 'week');
         return _.defaults({
-            begin: begin.format(),
-            end: end.format()
+            begin: begin.format(options.ending_format),
+            end: end.format(options.ending_format)
         }, options);
     } else {
         const begin = moment.tz(block, options.tz);
         const end = moment(begin).add(1, 'day');
         return _.defaults({
-            begin: begin.format(),
-            end: end.format()
+            begin: begin.format(options.ending_format),
+            end: end.format(options.ending_format)
         }, options);
     }
 }

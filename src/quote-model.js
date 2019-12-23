@@ -52,55 +52,23 @@ const Fetch = require('./fetch.js');
 const storage = require('./storage.js');
 const expect = require('chai').expect;
 
-function help(assets, settings = {}) {
-    const intervals = _.uniq(_.flatten(assets.map(asset => asset.intervals)));
-    const market_values = _.uniq(assets.map(asset => asset.market));
-    const marketOptions = _.intersection(_.uniq(_.flatten(assets.map(_.keys))), [
-        'symbol', 'market', 'name',
-        'currency', 'security_type', 'security_tz',
-        'liquid_hours', 'open_time', 'trading_hours'
-    ]);
-    const variables = _.uniq(_.flatten(assets.map(asset => {
-        return (asset.models||[]).map(model => Object.keys(_.last(model.bars)||model.output||{}));
-    })));
-    const commonOptions = {
-        symbol: {
-            description: "Ticker symbol used by the market"
-        },
-        market: {
-            description: "Exchange market acronym",
-            values: market_values
-        }
-    };
-    const lookup = {
-        name: "lookup",
-        usage: "lookup(options)",
-        properties: marketOptions,
-        options: _.extend({}, commonOptions, {
-            interval: {
-                values: ["lookup"]
+function help(assets, help, settings = {}) {
+    const all_intervals = _.uniq(_.flatten(assets.map(asset => asset.intervals)));
+    const included_intervals = _.uniq(_.flatten(help.map(info => (((info||{}).options||{}).interval||{}).values||[])));
+    const missing_intervals = _.difference(all_intervals, included_intervals);
+    const missing_info = missing_intervals.map(interval => ({
+        options: {
+            symbol: {
+                description: "Ticker symbol used by the market"
             },
-        })
-    };
-    const fundamental = {
-        name: "fundamental",
-        usage: "fundamental(options)",
-        properties: _.difference(marketOptions, ['baskets']),
-        options: _.extend({}, commonOptions, {
-            interval: {
-                values: ["fundamental"]
+            market: {
+                description: "Exchange market acronym",
+                values: []
             },
-        })
-    };
-    const interday = ~intervals.indexOf('day') ? {
-        name: "interday",
-        usage: "interday(options)",
-        properties: _.uniq(['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'].concat(variables)),
-        options: _.extend(commonOptions, {
             interval: {
                 usage: "day",
                 description: "The bar timeframe for the results",
-                values: ["day"]
+                values: [interval]
             },
             begin: {
                 example: "YYYY-MM-DD",
@@ -122,66 +90,65 @@ function help(assets, settings = {}) {
             ending_format: {
                 description: "Date and time format of the resulting ending field"
             }
-        })
-    } : null;
-    const intraday = intervals.find(p => p.charAt(0) == 'm' && p != 'month') ? {
-        name: "intraday",
-        usage: "intraday(options)",
-        properties: _.uniq(['ending', 'open', 'high', 'low', 'close', 'volume', 'adj_close'].concat(variables)),
-        options: _.extend(commonOptions, {
-            interval: {
-                usage: "mX",
-                description: "The bar timeframe for the results",
-                values: intervals
-            },
-            begin: {
-                example: "YYYY-MM-DD",
-                description: "Sets the earliest date (or dateTime) to retrieve"
-            },
-            end: {
-                example: "YYYY-MM-DD HH:MM:SS",
-                description: "Sets the latest dateTime to retrieve"
-            },
-            liquid_hours: {
-                description: "Trading hours in the format 'hh:mm:00 - hh:mm:00'"
-            },
-            security_tz: {
-                description: "Timezone of liquid_hours using the identifier in the tz database"
-            },
-            tz: {
-                description: "Timezone of the ending formatted using the identifier in the tz database"
-            },
-            ending_format: {
-                description: "Date and time format of the resulting ending field"
-            }
-        })
-    } : null;
-    return _.compact([lookup, fundamental, interday ,intraday]);
+        }
+    }));
+    return help.concat(missing_info).map(info => {
+        if (!info.options) return info;
+        const info_intervals = (info.options.interval||[]).values||[];
+        const match_assets = assets.filter(asset => _.intersection(asset.intervals, info_intervals).length);
+        const market_assets = ~info_intervals.indexOf('lookup') || ~info_intervals.indexOf('fundamental') ?
+            assets : match_assets;
+        const markets = _.uniq(market_assets.map(asset => asset.market));
+        const variables = _.uniq(_.flatten(match_assets.map(asset => {
+            return (asset.models||[]).map(model => Object.keys(_.last(model.bars)||model.output||{}));
+        })));
+        return {
+            ...info,
+            properties: _.uniq((info.properties||[]).concat(variables)),
+            options: _.mapObject(info.options, (prop, key) => {
+                if (key == 'market') return {...prop, values: _.uniq((prop.values||[]).concat(markets))};
+                else return prop;
+            })
+        };
+    });
 }
 
-module.exports = function(settings = {}) {
-    expect(settings).to.have.property('assets').that.is.an('array');
-    const fetch = new Fetch(merge(config('fetch'), {model:{enabled:false}}, settings.fetch));
+module.exports = function(fetch, settings = {}) {
     const adjustments = new Adjustements(settings);
-    const assets = settings.assets.map(asset => typeof asset == 'string' ? readConfig(asset, settings) : asset);
+    const assets = (settings.assets||[]).map(asset => typeof asset == 'string' ? readConfig(asset, settings) : asset);
     const market_values = _.uniq(assets.map(asset => asset.market));
     const markets = _.mapObject(
         _.pick(config('markets'), market_values),
         m => _.omit(m, 'datasources', 'label', 'description')
     );
-    const helpInfo = help(assets, settings);
+    let helpInfo;
     return Object.assign(async(options) => {
-        if (options.info=='version') return [{version}];
-        if (options.info=='help') return helpInfo;
-        const blend_fn = blendCall.bind(this, markets, fetch, adjustments, assets);
+        if (options.info=='version') return fetch(options);
+        if (options.info=='help') return helpInfo = helpInfo || help(assets, await fetch({info:'help'}), settings);
         switch(options.interval) {
-            case 'lookup': return lookup(markets, assets, options);
-            case 'fundamental': return lookup(markets, assets, options).then(_.first);
-            default: return trim(await blend_fn(options), options);
+            case 'lookup': return fetch(options).then(contracts => {
+                return lookup(markets, assets, options).concat(contracts);
+            }, err => {
+                const contracts = lookup(markets, assets, options);
+                if (contracts.length) return contracts;
+                else throw err;
+            });
+            case 'fundamental': return fetch(options).then(contracts => contracts.map(contract => {
+                return merge(_.frist(lookup(markets, assets, options)), contract);
+            }), err => {
+                const contracts = lookup(markets, assets, options);
+                if (contracts.length) return contracts[0];
+                else throw err;
+            });
+            default:
+            const asset = findAsset(assets, options);
+            if (!asset || !asset.models) return fetch(options);
+            const blend_fn = blendCall.bind(this, markets, fetch, adjustments, asset);
+            return trim(await blend_fn(options), options);
         }
     }, {
         close() {
-            return Promise.all([fetch && fetch.close()]);
+            return Promise.all([adjustments.close()]);
         }
     });
 };
@@ -192,9 +159,11 @@ function readConfig(name, settings = {}) {
     return _.extend({base}, config.read(filename), settings);
 }
 
-async function lookup(markets, assets, options) {
+function lookup(markets, assets, options) {
     return assets.filter(asset => {
-        return asset.symbol == options.symbol && (asset.market == options.market || !options.market);
+        if (asset.symbol && asset.symbol != options.symbol) return false;
+        else if (asset.symbol_pattern && !options.symbol.match(new RegExp(asset.symbol_pattern))) return false;
+        return asset.market == options.market || !options.market;
     }).map(asset => {
         if (markets[asset.market]) return _.defaults(_.pick(asset, [
             'symbol', 'market', 'name', 'currency', 'security_type', 'security_tz',
@@ -207,12 +176,20 @@ async function lookup(markets, assets, options) {
             'symbol', 'market', 'name', 'currency', 'security_type', 'security_tz',
             'liquid_hours', 'trading_hours', 'open_time'
         ]);
+    }).map(asset => ({symbol: options.symbol, ...asset}));
+}
+
+function findAsset(assets, options) {
+    return assets.find(asset => {
+        if (asset.market != options.market) return false;
+        else if (asset.intervals && !~asset.intervals.indexOf(options.interval)) return false;
+        else if (asset.symbol && asset.symbol != options.symbol) return false;
+        else if (asset.symbol_pattern && !options.symbol.match(new RegExp(asset.symbol_pattern))) return false;
+        else return true;
     });
 }
 
-async function blendCall(markets, fetch, adjustments, assets, options) {
-    const asset = findAsset(assets, options);
-    if (!asset || !asset.models) throw Error(`No model configured for ${options.symbol}.${options.market}`);
+async function blendCall(markets, fetch, adjustments, asset, options) {
     const end = options.end && moment.tz(options.end, options.tz).format(options.ending_format);
     const begin = moment.tz(options.begin, options.tz);
     const models = sliceModelsAfter(await Promise.all(sliceModelsAfter(asset.models, begin)
@@ -241,16 +218,6 @@ async function blendCall(markets, fetch, adjustments, assets, options) {
         return part.map(datum => _.extend({}, datum, {adj_close: datum.adj_close * scale}))
             .concat(result.slice(overlap+1));
     }, Promise.resolve([]));
-}
-
-function findAsset(assets, options) {
-    return assets.find(asset => {
-        if (asset.market != options.market) return false;
-        else if (asset.intervals && !~asset.intervals.indexOf(options.interval)) return false;
-        else if (asset.symbol && asset.symbol != options.symbol) return false;
-        else if (asset.symbol_pattern && !options.symbol.match(new RegExp(asset.symbol_pattern))) return false;
-        else return true;
-    });
 }
 
 function sliceModelsAfter(models, begin) {
@@ -290,6 +257,8 @@ async function readModel(asset, model, options) {
         });
         const begin = model.begin_expression ? parser.parse(model.begin_expression)(options) : model.begin;
         const end = model.end_expression ? parser.parse(model.end_expression)(options) : model.end;
+        if (!moment(begin).isValid()) throw Error(`Invalid begin ${begin}`);
+        if (!moment(end).isValid()) throw Error(`Invalid begin ${end}`);
         return {...model, ...(begin ? {begin} : {}), ...(end ? {end} : {})};
     } else {
         return model;
@@ -497,8 +466,9 @@ function createAndAlignIterators(input, options) {
     const earliest = _.last(peeks.sort());
     if (earliest && options.begin < earliest && moment(earliest).subtract(1,'weeks').isAfter(options.begin)) {
         _.forEach(iterators, (iter, i) => {
-            if (iter.hasNext() && options.begin < iter.peek().ending)
-                logger.warn(`fetch-model ${i} input in ${options.symbol}.${options.market} not available until`, iter.peek().ending);
+            if (iter.hasNext() && options.begin < iter.peek().ending) {
+                logger.warn(`fetch-model ${i} input in ${options.symbol}.${options.market} not available until ${iter.peek().ending}, not ${options.begin}`);
+            }
         });
     }
     _.forEach(iterators, iter => {

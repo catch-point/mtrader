@@ -49,6 +49,7 @@ const config = require('./config.js');
 const version = require('./version.js').version;
 const Fetch = require('./mtrader-fetch.js');
 const Quote = require('./mtrader-quote.js');
+const Model = require('./quote-model.js');
 const SlaveQuote = require('./quote.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
@@ -252,7 +253,10 @@ function spawn() {
     const parent = replyTo(process).handle('collect', payload => {
         return collect()(payload);
     });
-    const quote = new SlaveQuote(callFetch.bind(this, parent));
+    const fetch = callFetch.bind(this, parent);
+    const settings = config('quote');
+    const model = new Model(fetch, settings);
+    const quote = new SlaveQuote(model, settings);
     const quoteFn = createSlaveQuote(quote, parent);
     const collect = _.once(() => new Collect(quoteFn, callCollect.bind(this, parent)));
     process.on('disconnect', () => collect().close().then(quote.close));

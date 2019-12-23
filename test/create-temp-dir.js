@@ -34,14 +34,15 @@ const fs = require('fs');
 const path = require('path');
 const _ = require('underscore');
 
-var tempDirs = [];
+let counter = 0;
+const tempDirs = [];
 
 after(function() {
     tempDirs.forEach(deleteFolderRecursive);
 });
 
 module.exports = function(name) {
-    var tmp = path.resolve(os.tmpdir(), name + Date.now().toString(16));
+    var tmp = path.resolve(os.tmpdir(), name + (Date.now()*1000 + counter++).toString(16));
     tempDirs.push(tmp);
     fs.mkdirSync(tmp);
     return tmp;

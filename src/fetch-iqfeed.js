@@ -463,8 +463,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
     }, {});
     const three = symbol.substring(0, 3);
     const two = symbol.substring(0, 2);
-    const mapped_symbol = isWeekOfYearExpiration(symbol) ? weekOfYearToWeekOfMonth(symbol) :
-        map[symbol] ? map[symbol] :
+    const mapped_symbol = map[symbol] ? map[symbol] :
         map[three] ? map[three] + symbol.substring(3) :
         map[two] ? map[two] + symbol.substring(2) : symbol;
     return iqclient.lookup(mapped_symbol, listed_markets).then(rows => rows.map(row => {

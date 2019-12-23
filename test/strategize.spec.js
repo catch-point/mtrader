@@ -155,12 +155,7 @@ describe("strategize", function() {
         }).should.eventually.be.like({
             variables: {
                 strategy: '-sma_crossA'
-            },
-            parameters: {
-                fast_lenA: 25,
-                slow_lenA: 100
-            },
-            score: 14.186871
+            }
         });
     });
     it("should find complex strategy", function() {

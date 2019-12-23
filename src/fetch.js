@@ -97,7 +97,6 @@ module.exports = function(settings = {}) {
 async function promiseDatasources(settings = {}) {
     const yahoo = require('./fetch-yahoo.js');
     const all_factories = [
-        {name: 'model', fn: require('./fetch-model.js')},
         {name: 'files', fn: require('./fetch-files.js')},
         {name: 'ib', fn: require('./fetch-ib.js')},
         {name: 'ivolatility', fn: require('./fetch-ivolatility.js')},
@@ -207,9 +206,9 @@ function lookup(markets, datasources, options) {
     });
     const market = options.market;
     if (market) expect(market).to.be.oneOf(_.keys(datasources));
-    const symbol = options.symbol.toUpperCase();
-    const same = new RegExp('^' + symbol.replace(/\W/g, '\\W') + '$');
-    const almost = new RegExp('\\b' + symbol.replace(/\W/g, '.*') + '\\b');
+    const symbol = options.symbol;
+    const same = new RegExp('^' + symbol.replace(/\W/g, '\\W') + '$', 'i');
+    const almost = new RegExp('\\b' + symbol.replace(/\W/g, '.*') + '\\b', 'i');
     const sources = market ? datasources[market] : _.uniq(_.flatten(_.values(datasources)));
     const results = _.map(sources, datasource => {
         return datasource(_.defaults({

@@ -41,6 +41,7 @@ const logger = require('./logger.js');
 const tabular = require('./tabular.js');
 const interrupt = require('./interrupt.js');
 const workerQueue = require('./worker-queue.js');
+const Model = require('./quote-model.js');
 const Quote = require('./quote.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
@@ -89,8 +90,10 @@ process.setMaxListeners(process.getMaxListeners()+1);
 if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length) {
+        const settings = config('quote');
         const fetch = new Fetch();
-        const quote = new Quote(fetch, config('quote'));
+        const model = new Model(fetch, settings);
+        const quote = new Quote(model, settings);
         process.on('SIGINT', () => quote.close().then(() => fetch.close()));
         process.on('SIGTERM', () => quote.close().then(() => fetch.close()));
         let symbol = program.args[0];
@@ -106,17 +109,18 @@ if (require.main === module) {
         .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
         .then(() => quote.close())
+        .then(() => model.close())
         .then(() => fetch.close());
     } else if (process.send) {
-        const parent = replyTo(process).handle('quote', payload => {
-            return quote()(payload);
-        });
-        const quote = _.once(() => new Quote(function(options) {
-            return parent.request('fetch', options);
-        }, config('quote')));
-        process.on('disconnect', () => quote().close());
-        process.on('SIGINT', () => quote().close());
-        process.on('SIGTERM', () => quote().close());
+        const settings = config('quote');
+        const parent = replyTo(process).handle('quote', payload => quote()(payload));
+        const fetch = options => parent.request('fetch', options);
+        const model = new Model(fetch, settings);
+        const quote = _.once(() => new Quote(model, settings));
+        const close = () => Promise.all([quote().close(), model.close()]);
+        process.on('disconnect', close);
+        process.on('SIGINT', close);
+        process.on('SIGTERM', close);
     } else {
         program.help();
     }
@@ -142,7 +146,7 @@ function createInstance(program) {
     };
     instance.close = function() {
         if (closed) return closed;
-        else return closed = queue.close().then(fetch.close);
+        else return closed = Promise.all([queue.close(), direct.close(), model.close(), fetch.close()]);
     };
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = () => {
@@ -155,7 +159,9 @@ function createInstance(program) {
             queue = createQueue(createWorkers.bind(this, program, fetch));
         }
     };
-    const direct = new Quote(fetch, config('quote'));
+    const settings = config('quote');
+    const model = new Model(fetch, settings);
+    const direct = new Quote(model, settings);
     let queue = createQueue(createWorkers.bind(this, program, fetch));
     return instance;
 }

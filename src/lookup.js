@@ -85,7 +85,7 @@ function fetchOptionsFactory(fetch, offline, read_only) {
     });
     return function(options) {
         expect(options).to.have.property('symbol');
-        const symbol = options.symbol.toUpperCase();
+        const symbol = options.symbol;
         const market = options.market;
         return memoizeFirstLookup(symbol, market);
     };

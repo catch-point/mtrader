@@ -61,11 +61,12 @@ describe("yahoo-client", function() {
         return client.dividend('SPY', '2019-01-01', 'America/New_York')
           .then(data => data.filter(d => d.Date < '2020'))
           .then(data => _.sortBy(data, 'Date'))
-          .then(data => data.slice(data.length-3,data.length))
+          .then(data => data.slice(data.length-4,data.length))
           .should.eventually.be.like([
             { Date: '2019-03-15', Dividends: '1.233' },
             { Date: '2019-06-21', Dividends: '1.432' },
-            { Date: '2019-09-20', Dividends: '1.384' }
+            { Date: '2019-09-20', Dividends: '1.384' },
+            { Date: '2019-12-20', Dividends: '1.57' }
         ]);
     });
     it("should find dividends for XLK", function() {

@@ -62,7 +62,7 @@ module.exports = function(settings) {
         close() {
             return Promise.all([
                 adjustments.close(),
-                ib.close()
+                ib && ib.close()
             ]);
         }
     });
@@ -145,8 +145,8 @@ async function presentValueOfDividends(ib, options) {
 }
 
 function parseExpiry(symbol, options) {
-    if (symbol.length != 21) return null;
-    expect(symbol).to.be.like(/^(\w(?:\w| )*)(\d\d)(\d\d)(\d\d)([CP])(\d{8})$/);
+    if (symbol.length < 21) return null;
+    expect(symbol).to.be.like(/^(\w(?:\w| )*)(\d\d)(\d\d)(\d\d)([CP])(\d{8})/);
     const underlying = symbol.substring(0, 6);
     const year = symbol.substring(6, 8);
     const month = symbol.substring(8, 10);

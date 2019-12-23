@@ -173,7 +173,9 @@ module.exports = function(settings = {}) {
         } else {
             const now = moment(options.now);
             const next_open = marketOpensAt(now, options);
-            if (isContractExpired(markets, client, now, options) || isHistorical(next_open, now, options)) {
+            if (isContractExpired(markets, client, now, options)) {
+                throw Error(`Contract has expired ${options.symbol} and unavailable`);
+            } else if (isHistorical(next_open, now, options)) {
                 return fetch(options).catch(err => {
                     return fetch_ib(options).catch(err2 => {
                         logger.debug(err2);
