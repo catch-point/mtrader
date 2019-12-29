@@ -288,18 +288,18 @@ async function fetchModel(markets, fetch, adjustments, asset, model, options) {
         ...market_opts,
         begin, end
     };
-    const fetchInputData_fn = fetchInputData.bind(this, markets, fetch, adjustments, asset);
-    const bars = await fetchModelBars(fetchInputData_fn, adjustments, model, opts);
+    const fetchInputData_fn = fetchInputData.bind(this, markets, fetch, adjustments);
+    const bars = await fetchModelBars(fetchInputData_fn, adjustments, asset, model, opts);
     if (!model.interval || model.interval == options.interval) return bars;
     else return rollBars(bars, options);
 }
 
-async function fetchModelBars(fetchInputData, adjustments, model, options) {
+async function fetchModelBars(fetchInputData, adjustments, asset, model, options) {
     const check = interrupt();
-    const input_data = await fetchInputData(model, options);
+    const input_data = await fetchInputData(asset, model, Object.values(model.input), options);
     const input = _.object(Object.keys(model.input), input_data);
     const points = [];
-    const parser = createParser(adjustments, model, options);
+    const parser = createParser(adjustments, model, getTermVariables(asset, model, options), options);
     const eval_input = await parseInputVariables(parser, model, options);
     const eval_variables = await parseVariablesUsedInRolling(parser, model, options);
     const eval_coefficients = await parseCoefficientVariables(parser, model, options);
@@ -343,8 +343,8 @@ async function rollBars(bars, options) {
     }, []);
 }
 
-async function fetchInputData(markets, fetch, adjustments, asset, model, options) {
-    return Promise.all(Object.values(model.input).map(async(term) => {
+async function fetchInputData(markets, fetch, adjustments, asset, model, input, options) {
+    return Promise.all(input.map(async(term) => {
         if (term.bars) return term.bars;
         else if (term.file_csv_gz) return (await readModel(asset, term, options)).bars;
         else if (term.output) return fetchModel(markets, fetch, adjustments, asset, term, options);
@@ -362,7 +362,19 @@ async function fetchInputData(markets, fetch, adjustments, asset, model, options
     }));
 }
 
-function createParser(adjustments, model, options) {
+function getTermVariables(asset, model, options) {
+    return _.object(Object.keys(model.input), Object.values(model.input).map(async(term) => {
+        return _.defaults(
+            term.symbol_replacement ? {
+                symbol: options.symbol.replace(new RegExp(asset.symbol_pattern), term.symbol_replacement)
+            } : {},
+            _.pick(term, 'symbol', 'market', 'interval'),
+            _.pick(options, 'symbol', 'market', 'interval')
+        );
+    }));
+}
+
+function createParser(adjustments, model, terms, options) {
     var options_variables = [
         'symbol', 'market', 'name', 'interval', 'tz',
         'currency', 'security_type', 'security_tz',
@@ -379,6 +391,11 @@ function createParser(adjustments, model, options) {
                 return _.constant(options[name]);
             else if (!~name.indexOf('.') || !model.input[name.substring(0, name.indexOf('.'))])
                 throw Error(`Unknown variable ${name}`);
+            const left = name.substring(0, name.indexOf('.'));
+            const right = name.substring(name.indexOf('.')+1);
+            if (!terms[left]) throw Error(`Unknown input term ${left}`);
+            if (~options_variables.indexOf(right))
+                return _.constant(terms[left][right]);
             else return points => {
                 const key = _.last(_.keys(_.last(points)));
                 return _.last(points)[key][name];
