@@ -174,9 +174,8 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
     const pulse_fn = () => {
         pulse_counter++;
         const expired = active.filter(entry => entry.expires < pulse_counter);
-        const err = expired.length && Error(`ib-client ${clientId} timed out`);
         expired.forEach(entry => {
-            entry.abort(err);
+            entry.abort(Error(`ib-client ${clientId} ${entry.cmd} timed out`));
             const idx = active.indexOf(entry);
             if (~idx) active.splice(idx, 1);
         });

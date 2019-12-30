@@ -329,7 +329,8 @@ async function listPositions(markets, ib, fetch, settings, options) {
     const ib_tz = settings.tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const account = settings.account;
     const positions = account && account != 'All' ? await ib.reqPositionsMulti(account) : await ib.reqPositions();
-    if (!positions) throw Error(`No IB account ${account} exists`);
+    if (!positions) logger.warn(`IB account ${account} does not exist or has no positions`);
+    if (!positions) return [];
     const historical = {};
     const changes = await Promise.all(Object.keys(positions).sort().map(account => {
         return listAccountPositions(markets, ib, fetch, account, positions[account], historical, ib_tz, options);

@@ -55,8 +55,16 @@ const client_instances = {};
 module.exports = function(settings) {
     const json = _.object(client_settings.filter(key => key in settings).map(key => [key, settings[key]]));
     const key = crypto.createHash('sha256').update(JSON.stringify(json)).digest('hex');
-    const shared = client_instances[key] = client_instances[key] || share(createClientInstance, () => {
+    const shared = client_instances[key] = client_instances[key] || share(createClientInstance, async() => {
         delete client_instances[key];
+        if (_.isEmpty(client_instances)) {
+            // all clients are closed, so close all gateways
+            await Promise.all(Object.keys(gateway_instances).map(gateway_key => {
+                const gateway = gateway_instances[gateway_key];
+                delete gateway_instances[gateway_key];
+                if (gateway) return gateway.close();
+            }));
+        }
     });
     return shared({label: key, ...settings});
 };
@@ -130,7 +138,7 @@ async function assignClient(self, settings) {
     }), {
         async force_close(closedBy) {
             await client.close(closedBy);
-            await gateway.close(closedBy);
+            // all gateways are kept open until all clients are closed
         }
     });
 }
@@ -138,21 +146,17 @@ async function assignClient(self, settings) {
 function getSharedGateway(settings) {
     const json = _.object(private_settings.filter(key => key in settings).map(key => [key, settings[key]]));
     const key = crypto.createHash('sha256').update(JSON.stringify(json)).digest('hex');
-    let shared = gateway_instances[key] = gateway_instances[key] || share(createGatewayInstance, () => {
-        delete gateway_instances[key];
-    });
-    const gateway = shared({label: key, ...settings});
+    let gateway = gateway_instances[key] = gateway_instances[key] ||
+        createGatewayInstance({label: key, ...settings});
     return gateway.open().catch(async(err) => {
         logger.debug("IB Gateway", err);
         await gateway.close();
-        if (shared == gateway_instances[key]) {
+        if (gateway == gateway_instances[key]) {
             // replace gateway (if not already replaced)
-            shared = gateway_instances[key] = share(createGatewayInstance, () => {
-                delete gateway_instances[key];
-            });
+            gateway = gateway_instances[key] = createGatewayInstance({label: key, ...settings});
         }
         // try again
-        return shared({label: key, ...settings}).open();
+        return gateway_instances[key].open();
     });
 };
 
@@ -270,7 +274,7 @@ async function spawn(ibc_command, overrideTwsApiPort, commandServerPort, setting
             if (data && ~data.indexOf('Performing port configuration')) {
                 port_config = true;
             }
-            if (port_config && data && ~data.indexOf('Configuration; event=Closed')) {
+            if (port_config && data && ~data.indexOf('Configuration') && ~data.indexOf('event=Closed')) {
                 clearTimeout(timer);
                 pipe.removeListener('data', onlogin);
                 ready(ibc);
