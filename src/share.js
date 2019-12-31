@@ -50,13 +50,17 @@ module.exports = function(factory, onclose) {
         self.close = async function(closedBy, force) {
             if (closed || --used && !force) return;
             closed = true;
+            process.removeListener('SIGINT', on_sigint);
+            process.removeListener('SIGTERM', on_sigterm);
             if (shared.instance === self) shared.instance = null;
             if (onclose) await onclose.apply(this, arguments);
             return close_handler.apply(this, arguments);
         };
         return self;
     };
-    process.on('SIGINT', () => shared.instance && shared.instance.close('SIGINT', true));
-    process.on('SIGTERM', () => shared.instance && shared.instance.close('SIGTERM', true));
+    const on_sigint = () => shared.instance && shared.instance.close('SIGINT', true);
+    const on_sigterm = () => shared.instance && shared.instance.close('SIGTERM', true);
+    process.on('SIGINT', on_sigint);
+    process.on('SIGTERM', on_sigterm);
     return shared;
 }
