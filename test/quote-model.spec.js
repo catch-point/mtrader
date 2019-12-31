@@ -1240,22 +1240,24 @@ describe("quote-model", function() {
         const model = new Model(fetch, {
             assets:[{
                 symbol_pattern: '^(SPY|EEM)(   )(......)([CP])(........)$',
-                market: 'OPRA', security_type: 'OPT',
-                intervals: ['day', 'm240', 'm120', 'm60', 'm30'],
+                market: 'OPRA',
+                security_type: 'OPT',
+                intervals: [ 'day', 'm240', 'm120', 'm60' ],
                 models: [{
-                    interval: 'm30',
-                    pad_begin: 108,
+                    interval: "m60",
+                    pad_begin: 48,
+                    begin_expression: "EDATE(`20{RIGHT(LEFT(symbol,12),6)}`,-6)",
+                    end_expression: "WORKDAY(`20{RIGHT(LEFT(symbol,12),6)}`,1)",
                     input: {
-                        call: {symbol_replacement: '$1$2$3C$5'},
-                        put: {symbol_replacement: '$1$2$3P$5'},
-                        etf: {symbol_replacement: '$1', market: 'ARCA' },
-                        irx: {symbol: 'IRX', market: 'CBOE', interval: 'day' }
-                    },
+                        call: { symbol_replacement: "$1$2$3C$5" },
+                        put: { symbol_replacement: "$1$2$3P$5" },
+                        etf: { symbol_replacement: "$1", market: "ARCA" },
+                        irx: { symbol: "IRX", market: "CBOE", interval: "day" } },
                     variables: {
-                        open: "ROUND(BS(etf.open/split-dividend, strike, dte, iv, rate, right),2)",
-                        high: "MAX(IF(call_live,call.high, put_live,put.high), FLOOR(BS(etf.high/split-dividend, strike, dte, iv, rate, right),0.01))",
-                        low: "MIN(IF(call_live,call.low, put_live,put.low, etf.high/split), CEILING(BS(etf.low/split-dividend, strike, dte, iv, rate, right),0.01))",
-                        close: "live_close OR ROUND(BS(asset_price, strike, dte, iv, rate, right),2)",
+                        open: "BS(etf.open/split-dividend, strike, dte, iv, rate, right)",
+                        high: "MAX(IF(call_live,call.high, put_live,put.high), BS(etf.high/split-dividend, strike, dte, iv, rate, right))",
+                        low: "MIN(IF(call_live,call.low, put_live,put.low, etf.high/split), BS(etf.low/split-dividend,strike,dte,iv,rate,right))",
+                        close: "live_close OR BS(asset_price, strike, dte, iv, rate, right)",
                         volume: "IF(call_live,call.volume, put_live,put.volume, 0)",
                         iv: "IF(live_close,live_iv, right='C',alt_call_iv, alt_put_iv)",
                         live_close: "IF(call_live,call.close, put_live,put.close)",
@@ -1263,30 +1265,41 @@ describe("quote-model", function() {
                         alt_put_iv: "IF(strike<asset_price,put_iv) OR call_iv*skew OR put_iv",
                         alt_call_iv: "IF(asset_price<strike,call_iv) OR put_iv/skew OR call_iv",
                         skew: "IF(call.ending!=put.ending OR call.ending!=etf.ending,PREV('skew')) OR put_iv/call_iv",
-                        call_iv: "IF(call.ending!=etf.ending,PREV('call_iv')) OR live_call_iv",
-                        put_iv: "IF(put.ending!=etf.ending,PREV('put_iv')) OR live_put_iv",
-                        live_call_iv: "BSIV(call.close, asset_price, strike, dte, rate, 'C')",
-                        live_put_iv: "BSIV(put.close, asset_price, strike, dte, rate, 'P')",
+                        call_iv: "IF(call.ending!=etf.ending,PREV('call_iv')) OR live_call_iv OR 20",
+                        put_iv: "IF(put.ending!=etf.ending,PREV('put_iv')) OR live_put_iv OR 20",
+                        live_call_iv: "IF(call.close,BSIV(call.close, asset_price, strike, dte, rate, 'C'))",
+                        live_put_iv: "IF(put.close,BSIV(put.close, asset_price, strike, dte, rate, 'P'))",
                         call_live: "right='C' AND call.ending=etf.ending",
                         put_live: "right='P' AND put.ending=etf.ending",
+                        v1: "iv/100*SQRT(dte/365)",
+                        d1: "(LN(asset_price/strike)+(rate/100+POWER(iv/100,2)/2)*dte/365)/(v1)",
+                        g1: "EXP(-POWER(d1,2)/2)/SQRT(2*PI())",
+                        t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
+                        r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
                         asset_price: "etf.close/split-dividend",
-                        dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, symbol, market)",
-                        split: "SPLIT(asset, 'ARCA', etf.ending, symbol, market)",
+                        dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, call.symbol, market)",
+                        split: "SPLIT(asset, 'ARCA', etf.ending, call.symbol, market)",
                         asset: "LEFT(symbol,3)",
-                        strike: "NUMBERVALUE(RIGHT(symbol,8))/1000",
-                        expiry: "`20{LEFT(RIGHT(symbol,15),6)}`",
-                        dte: "DAYS(expiry, MAX(call.ending,put.ending))",
-                        rate: "irx.close/10",
-                        right: "LEFT(RIGHT(symbol,9),1)"
-                    },
+                        strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
+                        expiry: "`20{RIGHT(LEFT(call.symbol,12),6)}`",
+                        dte: "DAYS(expiry, etf.ending)",
+                        rate: "irx.close/10 OR 1",
+                        right: "LEFT(RIGHT(symbol,9),1)",
+                        pointvalue: "100" },
                     output: {
-                        ending: 'etf.ending',
-                        open: 'open',
-                        high: 'high',
-                        low: 'low',
-                        close: 'close',
-                        volume: 'volume'
-                    }
+                        open: "ROUND(open,3)",
+                        high: "FLOOR(high,0.001)",
+                        low: "CEILING(low,0.001)",
+                        close: "ROUND(close,3)",
+                        volume: "volume",
+                        asset_price: "ROUND(asset_price,3)",
+                        delta: "ROUND((NORMSDIST(d1)-IF(right='P',1))*pointvalue, 2)",
+                        gamma: "ROUND(g1/(asset_price*v1)*pointvalue, 4)",
+                        theta: "ROUND((t1/365+(rate/100*r1)/365*IF(right='C',-1,1))*pointvalue, 2)",
+                        vega: "ROUND(g1*asset_price*SQRT(dte/365)/100*pointvalue, 2)",
+                        rho: "ROUND(dte/365*r1/100*pointvalue, 2)",
+                        iv: "ROUND(iv,4)",
+                        rate: "rate" }
                 }]
             }]
         });
@@ -1305,26 +1318,366 @@ describe("quote-model", function() {
                 symbol: 'SPY   200221C00280000', market: 'OPRA',
                 begin: '2019-11-01', end: '2019-12-01', tz
             }).should.eventually.be.like([
-        { ending: '2019-11-01T16:15:00-04:00', open: 28.66, high: 29.57, low: 28.53, close: 29.56, volume: 2 },
-        { ending: '2019-11-04T16:15:00-05:00', open: 31.06, high: 31.17, low: 30.2, close: 30.52, volume: 4 },
-        { ending: '2019-11-05T16:15:00-05:00', open: 30.76, high: 31.44, low: 30, close: 30.26, volume: 4 },
-        { ending: '2019-11-06T16:15:00-05:00', open: 30.37, high: 30.65, low: 29.57, close: 30.42, volume: 13 },
-        { ending: '2019-11-07T16:15:00-05:00', open: 31.49, high: 32.35, low: 30.76, close: 31.23, volume: 1 },
-        { ending: '2019-11-08T16:15:00-05:00', open: 30.66, high: 31.78, low: 29.69, close: 31.79, volume: 9 },
-        { ending: '2019-11-11T16:15:00-05:00', open: 30.39, high: 31.41, low: 30.27, close: 31.03, volume: 23 },
-        { ending: '2019-11-12T16:15:00-05:00', open: 31.17, high: 32.59, low: 30.96, close: 31.66, volume: 6 },
-        { ending: '2019-11-13T16:15:00-05:00', open: 30.56, high: 31.86, low: 30.36, close: 31.54, volume: 1 },
-        { ending: '2019-11-14T16:15:00-05:00', open: 31.29, high: 32.13, low: 30.84, close: 32.05, volume: 7 },
-        { ending: '2019-11-15T16:15:00-05:00', open: 33.17, high: 33.76, low: 32.53, close: 33.59, volume: 66 },
-        { ending: '2019-11-18T16:15:00-05:00', open: 33.6, high: 34.37, low: 33.08, close: 33.88, volume: 15 },
-        { ending: '2019-11-19T16:15:00-05:00', open: 34.97, high: 34.99, low: 33.78, close: 34.37, volume: 8 },
-        { ending: '2019-11-20T16:15:00-05:00', open: 33.84, high: 34.29, low: 32.07, close: 33.11, volume: 10 },
-        { ending: '2019-11-21T16:15:00-05:00', open: 33.22, high: 33.38, low: 32.04, close: 32.89, volume: 4 },
-        { ending: '2019-11-22T16:15:00-05:00', open: 33.5, high: 33.61, low: 32.47, close: 32.83, volume: 22 },
-        { ending: '2019-11-25T16:15:00-05:00', open: 33.5, high: 34.73, low: 33.5, close: 34.71, volume: 0 },
-        { ending: '2019-11-26T16:15:00-05:00', open: 34.74, high: 35.64, low: 34.44, close: 35.22, volume: 11 },
-        { ending: '2019-11-27T16:15:00-05:00', open: 35.75, high: 36.68, low: 35.54, close: 36.66, volume: 21 },
-        { ending: '2019-11-29T16:15:00-05:00', open: 36.14, high: 36.38, low: 35.45, close: 35.78, volume: 0 }
+    { ending: '2019-11-01T16:15:00-04:00', open: 28.095, high: 29.57, low: 27.999, close: 29.562, volume: 2 },
+    { ending: '2019-11-04T16:15:00-05:00', open: 31.064, high: 31.179, low: 30.211, close: 30.523, volume: 4 },
+    { ending: '2019-11-05T16:15:00-05:00', open: 31.127, high: 31.44, low: 30.004, close: 30.227, volume: 4 },
+    { ending: '2019-11-06T16:15:00-05:00', open: 30.518, high: 30.623, low: 29.529, close: 30.18, volume: 13 },
+    { ending: '2019-11-07T16:15:00-05:00', open: 31.327, high: 32.358, low: 30.766, close: 31.229, volume: 1 },
+    { ending: '2019-11-08T16:15:00-05:00', open: 30.914, high: 31.788, low: 29.595, close: 31.789, volume: 9 },
+    { ending: '2019-11-11T16:15:00-05:00', open: 30.554, high: 31.345, low: 30.265, close: 31.03, volume: 23 },
+    { ending: '2019-11-12T16:15:00-05:00', open: 31.065, high: 32.679, low: 31.006, close: 31.895, volume: 6 },
+    { ending: '2019-11-13T16:15:00-05:00', open: 30.794, high: 31.876, low: 30.351, close: 31.537, volume: 1 },
+    { ending: '2019-11-14T16:15:00-05:00', open: 31.31, high: 32.218, low: 30.835, close: 32.061, volume: 7 },
+    { ending: '2019-11-15T16:15:00-05:00', open: 32.875, high: 33.776, low: 32.525, close: 33.59, volume: 66 },
+    { ending: '2019-11-18T16:15:00-05:00', open: 33.691, high: 34.373, low: 33.008, close: 33.88, volume: 15 },
+    { ending: '2019-11-19T16:15:00-05:00', open: 34.973, high: 35.144, low: 33.775, close: 34.368, volume: 8 },
+    { ending: '2019-11-20T16:15:00-05:00', open: 33.46, high: 34.33, low: 32.041, close: 32.66, volume: 10 },
+    { ending: '2019-11-21T16:15:00-05:00', open: 32.837, high: 32.974, low: 31.868, close: 32.48, volume: 4 },
+    { ending: '2019-11-22T16:15:00-05:00', open: 33.078, high: 33.232, low: 32.001, close: 32.83, volume: 22 },
+    { ending: '2019-11-25T16:15:00-05:00', open: 33.604, high: 34.73, low: 33.481, close: 34.713, volume: 0 },
+    { ending: '2019-11-26T16:15:00-05:00', open: 34.713, high: 35.64, low: 34.431, close: 35.22, volume: 14 },
+    { ending: '2019-11-27T16:15:00-05:00', open: 35.832, high: 36.686, low: 35.537, close: 36.66, volume: 21 },
+    { ending: '2019-11-29T16:15:00-05:00', open: 36.179, high: 36.383, low: 35.445, close: 35.773, volume: 0 }
+            ]);
+        } finally {
+            await quote.close();
+            await model.close();
+            await fetch.close();
+        }
+    });
+    it("SPY options spread", async() => {
+        const fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
+        const model = new Model(fetch, {
+            assets:[{
+                symbol_pattern: "^(SPY|EEM)(   )(......)([CP])(........)-(......)([CP])(........)$",
+                market: "spread",
+                trading_hours: "02:00:00 - 15:15:00",
+                liquid_hours: "08:30:00 - 15:15:00",
+                open_time: "08:30:00",
+                security_tz: "America/Chicago",
+                currency: "USD",
+                security_type: "OPT",
+                intervals: [ "day", "m240", "m120", "m60" ],
+                models: [{
+                    interval: "m60",
+                    pad_begin: 48,
+                    begin_expression: "EDATE(MIN(`20{RIGHT(LEFT(symbol,12),6)}`, `20{RIGHT(LEFT(symbol,28),6)}`),-6)",
+                    end_expression: "WORKDAY(MIN(`20{RIGHT(LEFT(symbol,12),6)}`, `20{RIGHT(LEFT(symbol,28),6)}`),1)",
+                    input: {
+                        long: {
+                            input: {
+                                call: { symbol_replacement: "$1$2$3C$5", market: "OPRA" },
+                                put: { symbol_replacement: "$1$2$3P$5", market: "OPRA" },
+                                etf: { symbol_replacement: "$1", market: "ARCA" },
+                                irx: { symbol: "IRX", market: "CBOE", interval: "day" }
+                            },
+                            variables: {
+                                open: "BS(etf.open/split-dividend, strike, dte, iv, rate, right)",
+                                high: "MAX(IF(call_live,call.high, put_live,put.high), BS(etf.high/split-dividend, strike, dte, iv, rate, right))",
+                                low: "MIN(IF(call_live,call.low, put_live,put.low, etf.high/split), BS(etf.low/split-dividend, strike, dte, iv, rate, right))",
+                                close: "live_close OR BS(asset_price, strike, dte, iv, rate, right)",
+                                volume: "IF(call_live,call.volume, put_live,put.volume, 0)",
+                                iv: "IF(live_close,live_iv, right='C',alt_call_iv, alt_put_iv)",
+                                live_close: "IF(call_live,call.close, put_live,put.close)",
+                                live_iv: "BSIV(live_close, asset_price, strike, dte, rate, right)",
+                                alt_put_iv: "IF(strike<asset_price,put_iv) OR call_iv*skew OR put_iv",
+                                alt_call_iv: "IF(asset_price<strike,call_iv) OR put_iv/skew OR call_iv",
+                                skew: "IF(call.ending!=put.ending OR call.ending!=etf.ending,PREV('skew')) OR put_iv/call_iv",
+                                call_iv: "IF(call.ending!=etf.ending,PREV('call_iv')) OR live_call_iv OR 20",
+                                put_iv: "IF(put.ending!=etf.ending,PREV('put_iv')) OR live_put_iv OR 20",
+                                live_call_iv: "IF(call.close,BSIV(call.close, asset_price, strike, dte, rate, 'C'))",
+                                live_put_iv: "IF(put.close,BSIV(put.close, asset_price, strike, dte, rate, 'P'))",
+                                call_live: "right='C' AND call.ending=etf.ending",
+                                put_live: "right='P' AND put.ending=etf.ending",
+                                v1: "iv/100*SQRT(dte/365)",
+                                d1: "(LN(asset_price/strike)+(rate/100+POWER(iv/100,2)/2)*dte/365)/(v1)",
+                                g1: "EXP(-POWER(d1,2)/2)/SQRT(2*PI())",
+                                t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
+                                r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
+                                asset_price: "etf.close/split-dividend",
+                                dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, call.symbol, market)",
+                                split: "SPLIT(asset, 'ARCA', etf.ending, call.symbol, market)",
+                                asset: "LEFT(symbol,3)",
+                                strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
+                                expiry: "`20{RIGHT(LEFT(call.symbol,12),6)}`",
+                                dte: "DAYS(expiry, etf.ending)",
+                                rate: "irx.close/10 OR 1",
+                                right: "RIGHT(LEFT(symbol,13),1)",
+                                pointvalue: "100"
+                            },
+                            output: {
+                                open: "open",
+                                high: "high",
+                                low: "low",
+                                close: "close",
+                                volume: "volume",
+                                asset_price: "asset_price",
+                                delta: "(NORMSDIST(d1)-IF(right='P',1))*pointvalue",
+                                gamma: "g1/(asset_price*v1)*pointvalue",
+                                theta: "(t1/365+(rate/100*r1)/365*IF(right='C',-1,1))*pointvalue",
+                                vega: "g1*asset_price*SQRT(dte/365)/100*pointvalue",
+                                rho: "dte/365*r1/100*pointvalue",
+                                iv: "iv",
+                                rate: "rate"
+                            }
+                        },
+                        short: {
+                            input: {
+                                call: { symbol_replacement: "$1$2$6C$8", market: "OPRA" },
+                                put: { symbol_replacement: "$1$2$6P$8", market: "OPRA" },
+                                etf: { symbol_replacement: "$1", market: "ARCA" },
+                                irx: { symbol: "IRX", market: "CBOE", interval: "day" }
+                            },
+                            variables: {
+                                open: "BS(etf.open/split-dividend, strike, dte, iv, rate, right)",
+                                high: "MAX(IF(call_live,call.high, put_live,put.high), BS(etf.high/split-dividend, strike, dte, iv, rate, right))",
+                                low: "MIN(IF(call_live,call.low, put_live,put.low, etf.high/split), BS(etf.low/split-dividend, strike, dte, iv, rate, right))",
+                                close: "live_close OR BS(asset_price, strike, dte, iv, rate, right)",
+                                volume: "IF(call_live,call.volume, put_live,put.volume, 0)",
+                                iv: "IF(live_close,live_iv, right='C',alt_call_iv, alt_put_iv)",
+                                live_close: "IF(call_live,call.close, put_live,put.close)",
+                                live_iv: "BSIV(live_close, asset_price, strike, dte, rate, right)",
+                                alt_put_iv: "IF(strike<asset_price,put_iv) OR call_iv*skew OR put_iv",
+                                alt_call_iv: "IF(asset_price<strike,call_iv) OR put_iv/skew OR call_iv",
+                                skew: "IF(call.ending!=put.ending OR call.ending!=etf.ending,PREV('skew')) OR put_iv/call_iv",
+                                call_iv: "IF(call.ending!=etf.ending,PREV('call_iv')) OR live_call_iv OR 20",
+                                put_iv: "IF(put.ending!=etf.ending,PREV('put_iv')) OR live_put_iv OR 20",
+                                live_call_iv: "IF(call.close,BSIV(call.close, asset_price, strike, dte, rate, 'C'))",
+                                live_put_iv: "IF(put.close,BSIV(put.close, asset_price, strike, dte, rate, 'P'))",
+                                call_live: "right='C' AND call.ending=etf.ending",
+                                put_live: "right='P' AND put.ending=etf.ending",
+                                v1: "iv/100*SQRT(dte/365)",
+                                d1: "(LN(asset_price/strike)+(rate/100+POWER(iv/100,2)/2)*dte/365)/(v1)",
+                                g1: "EXP(-POWER(d1,2)/2)/SQRT(2*PI())",
+                                t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
+                                r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
+                                asset_price: "etf.close/split-dividend",
+                                dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, call.symbol, market)",
+                                split: "SPLIT(asset, 'ARCA', etf.ending, call.symbol, market)",
+                                asset: "LEFT(symbol,3)",
+                                strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
+                                expiry: "`20{RIGHT(LEFT(call.symbol,12),6)}`",
+                                dte: "DAYS(expiry, etf.ending)",
+                                rate: "irx.close/10 OR 1",
+                                right: "LEFT(RIGHT(symbol,9),1)",
+                                pointvalue: "100"
+                            },
+                            output: {
+                                open: "open",
+                                high: "high",
+                                low: "low",
+                                close: "close",
+                                volume: "volume",
+                                asset_price: "asset_price",
+                                delta: "(NORMSDIST(d1)-IF(right='P',1))*pointvalue",
+                                gamma: "g1/(asset_price*v1)*pointvalue",
+                                theta: "(t1/365+(rate/100*r1)/365*IF(right='C',-1,1))*pointvalue",
+                                vega: "g1*asset_price*SQRT(dte/365)/100*pointvalue",
+                                rho: "dte/365*r1/100*pointvalue",
+                                iv: "iv",
+                                rate: "rate"
+                            }
+                        }
+                    },
+                    variables: {
+                        high: "long.high - IF(long_right=short_right,short.high, short.low)",
+                        low: "long.low - IF(long_right=short_right,short.low, short.high)",
+                        vert: "long_right=short_right",
+                        long_right: "RIGHT(LEFT(symbol,13),1)",
+                        short_right: "LEFT(RIGHT(symbol,9),1)"
+                    },
+                    output: {
+                        open: "ROUND(long.open-short.open,3)",
+                        high: "FLOOR(MAX(long.open-short.open, high, low, long.close-short.close),0.001)",
+                        low: "CEILING(MIN(long.open-short.open, high, low, long.close-short.close),0.001)",
+                        close: "ROUND(long.close-short.close,3)",
+                        volume: "long.volume-short.volume",
+                        asset_price: "ROUND(long.asset_price,3)",
+                        delta: "ROUND(long.delta-short.delta,2)",
+                        gamma: "ROUND(long.gamma-short.gamma,4)",
+                        theta: "ROUND(long.theta-short.theta,2)",
+                        vega: "ROUND(long.vega-short.vega,2)",
+                        rho: "ROUND(long.rho-short.rho,2)",
+                        iv: "ROUND(long.iv-short.iv,4)",
+                        rate: "long.rate"
+                    }
+                }]
+            }]
+        });
+        const quote = new Quote(model, {cache_dir: createTempDir('quote-model')});
+        try {
+            await quote({
+                columns: {
+                    date: 'DATE(ending)',
+                    close: 'day.close',
+                    change: 'day.close-OFFSET(1,day.close)'
+                },
+                transient: true,
+                symbol: 'SPY   200221C00280000-200221P00280000', market: 'spread',
+                begin: '2019-11-01', end: '2019-12-01', tz
+            }).should.eventually.be.like([
+                { date: '2019-11-01', close: 26.38, change: 3.08 },
+                { date: '2019-11-04', close: 27.58, change: 1.2 },
+                { date: '2019-11-05', close: 27.19, change: -0.39 },
+                { date: '2019-11-06', close: 27.1, change: -0.09 },
+                { date: '2019-11-07', close: 28.26, change: 1.16 },
+                { date: '2019-11-08', close: 29.06, change: 0.8 },
+                { date: '2019-11-11', close: 28.36, change: -0.7 },
+                { date: '2019-11-12', close: 29.32, change: 0.96 },
+                { date: '2019-11-13', close: 28.96, change: -0.36 },
+                { date: '2019-11-14', close: 29.46, change: 0.5 },
+                { date: '2019-11-15', close: 31.46, change: 2 },
+                { date: '2019-11-18', close: 31.81, change: 0.35 },
+                { date: '2019-11-19', close: 32.27, change: 0.46 },
+                { date: '2019-11-20', close: 30.4, change: -1.87 },
+                { date: '2019-11-21', close: 30.19, change: -0.21 },
+                { date: '2019-11-22', close: 30.71, change: 0.52 },
+                { date: '2019-11-25', close: 33, change: 2.29 },
+                { date: '2019-11-26', close: 33.64, change: 0.64 },
+                { date: '2019-11-27', close: 35.17, change: 1.53 },
+                { date: '2019-11-29', close: 34.17, change: -1 }
+            ]);
+        } finally {
+            await quote.close();
+            await model.close();
+            await fetch.close();
+        }
+    });
+    it("SPY synthetic options spread", async() => {
+        const fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
+        const model = new Model(fetch, {
+            assets:[{
+                symbol_pattern: "^(SPY|EEM)(   )(......)([CP])(........)-\\3([CP])\\5$",
+                market: "spread",
+                security_type: "OPT",
+                intervals: [ "day", "m240", "m120", "m60" ],
+                models: [ {
+                    interval: "m60",
+                    pad_begin: 48,
+                    begin_expression: "EDATE(`20{RIGHT(LEFT(symbol,12),6)}`,-6)",
+                    end_expression: "WORKDAY(`20{RIGHT(LEFT(symbol,12),6)}`,1)",
+                    input: {
+                        long: { symbol_replacement: "$1$2$3$4$5", market: "OPRA" },
+                        short: { symbol_replacement: "$1$2$3$6$5", market: "OPRA" },
+                        etf: { symbol_replacement: "$1", market: "ARCA" },
+                        irx: { symbol: "IRX", market: "CBOE", interval: "day" }
+                    },
+                    variables: {
+                        long_open: "BS(etf.open/split-dividend, strike, dte, long_iv, rate, long_right)",
+                        long_high: "MAX(IF(long_live,long.high), BS(etf.high/split-dividend, strike, dte, long_iv, rate, long_right))",
+                        long_low: "MIN(IF(long_live,long.low, etf.high/split), BS(etf.low/split-dividend, strike, dte, long_iv,rate,long_right))",
+                        long_close: "IF(long_live,long.close) OR BS(asset_price, strike, dte, long_iv, rate, long_right)",
+                        long_volume: "IF(long_live,long.volume, 0)",
+                        long_delta: "(NORMSDIST(long_d1)-IF(long_right='P',1))*pointvalue",
+                        long_gamma: "long_g1/(asset_price*long_v1)*pointvalue",
+                        long_theta: "(long_t1/365+(rate/100*long_r1)/365*IF(long_right='C',-1,1))*pointvalue",
+                        long_vega: "long_g1*asset_price*SQRT(dte/365)/100*pointvalue",
+                        long_rho: "dte/365*long_r1/100*pointvalue",
+                        long_iv: "IF(long_live,live_long_iv, alt_long_iv)",
+                        live_long_iv: "IF(long_live,BSIV(long.close, asset_price, strike, dte, rate, 'C'))",
+                        alt_long_iv: "IF(use_long_iv,last_long_iv) OR last_short_iv/skew OR last_long_iv",
+                        use_long_iv: "asset_price<strike AND long_right='C' OR strike<asset_price AND long_right='P'",
+                        last_long_iv: "IF(long.ending!=etf.ending,PREV('last_long_iv')) OR live_long_iv OR 20",
+                        long_live: "long.ending=etf.ending",
+                        long_right: "RIGHT(LEFT(symbol,13),1)",
+                        long_v1: "long_iv/100*SQRT(dte/365)",
+                        long_d1: "(LN(asset_price/strike)+(rate/100+POWER(long_iv/100,2)/2)*dte/365)/(long_v1)",
+                        long_g1: "EXP(-POWER(long_d1,2)/2)/SQRT(2*PI())",
+                        long_t1: "-asset_price*long_g1*long_iv/100/(2*SQRT(dte/365))",
+                        long_r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(long_d1-long_v1)",
+                        skew: "IF(long.ending!=short.ending OR long.ending!=etf.ending,PREV('skew')) OR last_short_iv/last_long_iv",
+                        asset_price: "etf.close/split-dividend",
+                        dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, long.symbol, market)",
+                        split: "SPLIT(asset, 'ARCA', etf.ending, long.symbol, market)",
+                        asset: "LEFT(symbol,3)",
+                        strike: "NUMBERVALUE(RIGHT(long.symbol,8))/1000",
+                        expiry: "`20{RIGHT(LEFT(long.symbol,12),6)}`",
+                        dte: "DAYS(expiry, etf.ending)",
+                        rate: "irx.close/10 OR 1",
+                        pointvalue: "100",
+                        short_open: "BS(etf.open/split-dividend, strike, dte, short_iv, rate, short_right)",
+                        short_high: "MAX(IF(short_live,short.high), BS(etf.high/split-dividend, strike, dte, short_iv, rate, short_right))",
+                        short_low: "MIN(IF(short_live,short.low,etf.high/split),BS(etf.low/split-dividend,strike,dte,short_iv,rate,short_right))",
+                        short_close: "IF(short_live,short.close) OR BS(asset_price, strike, dte, short_iv, rate, short_right)",
+                        short_volume: "IF(short_live,short.volume, 0)",
+                        short_delta: "(NORMSDIST(short_d1)-IF(short_right='P',1))*pointvalue",
+                        short_gamma: "short_g1/(asset_price*short_v1)*pointvalue",
+                        short_theta: "(short_t1/365+(rate/100*short_r1)/365*IF(short_right='C',-1,1))*pointvalue",
+                        short_vega: "short_g1*asset_price*SQRT(dte/365)/100*pointvalue",
+                        short_rho: "dte/365*short_r1/100*pointvalue",
+                        short_iv: "IF(short_live,live_short_iv, alt_short_iv)",
+                        live_short_iv: "IF(short_live,BSIV(short.close, asset_price, strike, dte, rate, 'P'))",
+                        alt_short_iv: "IF(use_short_iv,last_short_iv) OR last_long_iv*skew OR last_short_iv",
+                        use_short_iv: "asset_price<strike AND short_right='C' OR strike<asset_price AND short_right='P'",
+                        last_short_iv: "IF(short.ending!=etf.ending,PREV('last_short_iv')) OR live_short_iv OR 20",
+                        short_live: "short.ending=etf.ending",
+                        short_right: "LEFT(RIGHT(symbol,9),1)",
+                        short_v1: "short_iv/100*SQRT(dte/365)",
+                        short_d1: "(LN(asset_price/strike)+(rate/100+POWER(short_iv/100,2)/2)*dte/365)/(short_v1)",
+                        short_g1: "EXP(-POWER(short_d1,2)/2)/SQRT(2*PI())",
+                        short_t1: "-asset_price*short_g1*short_iv/100/(2*SQRT(dte/365))",
+                        short_r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(short_d1-short_v1)"
+                    },
+                    output: {
+                        open: "ROUND(long_open-short_open,2)",
+                        high: "FLOOR(MAX(long_open-short_open, long_high-short_low, long_low-short_high, long_close-short_close),0.01)",
+                        low: "CEILING(MIN(long_open-short_open, long_high-short_low, long_low-short_high, long_close-short_close),0.01)",
+                        close: "ROUND(long_close-short_close,2)",
+                        volume: "long_volume-short_volume",
+                        asset_price: "ROUND(asset_price,3)",
+                        delta: "ROUND(long_delta-short_delta,2)",
+                        gamma: "ROUND(long_gamma-short_gamma,4)",
+                        theta: "ROUND(long_theta-short_theta,2)",
+                        vega: "ROUND(long_vega-short_vega,2)",
+                        rho: "ROUND(long_rho-short_rho,2)",
+                        iv: "ROUND(long_iv-short_iv,4)",
+                        rate: "rate"
+                    }
+                }]
+            }]
+        });
+        const quote = new Quote(model, {cache_dir: createTempDir('quote-model')});
+        try {
+            await quote({
+                columns: {
+                    date: 'DATE(ending)',
+                    close: 'day.close',
+                    change: 'day.close-OFFSET(1,day.close)'
+                },
+                transient: true,
+                symbol: 'SPY   200221C00280000-200221P00280000', market: 'spread',
+                begin: '2019-11-01', end: '2019-12-01', tz
+            }).should.eventually.be.like([
+                { date: '2019-11-01', close: 26.38, change: 3.08 },
+                { date: '2019-11-04', close: 27.58, change: 1.2 },
+                { date: '2019-11-05', close: 27.19, change: -0.39 },
+                { date: '2019-11-06', close: 27.1, change: -0.09 },
+                { date: '2019-11-07', close: 28.26, change: 1.16 },
+                { date: '2019-11-08', close: 29.06, change: 0.8 },
+                { date: '2019-11-11', close: 28.36, change: -0.7 },
+                { date: '2019-11-12', close: 29.32, change: 0.96 },
+                { date: '2019-11-13', close: 28.96, change: -0.36 },
+                { date: '2019-11-14', close: 29.46, change: 0.5 },
+                { date: '2019-11-15', close: 31.46, change: 2 },
+                { date: '2019-11-18', close: 31.81, change: 0.35 },
+                { date: '2019-11-19', close: 32.27, change: 0.46 },
+                { date: '2019-11-20', close: 30.4, change: -1.87 },
+                { date: '2019-11-21', close: 30.19, change: -0.21 },
+                { date: '2019-11-22', close: 30.71, change: 0.52 },
+                { date: '2019-11-25', close: 33, change: 2.29 },
+                { date: '2019-11-26', close: 33.64, change: 0.64 },
+                { date: '2019-11-27', close: 35.17, change: 1.53 },
+                { date: '2019-11-29', close: 34.17, change: -1 }
             ]);
         } finally {
             await quote.close();

@@ -180,13 +180,15 @@ function lookup(markets, assets, options) {
 }
 
 function findAsset(assets, options) {
-    return assets.find(asset => {
+    const filtered = assets.filter(asset => {
         if (asset.market != options.market) return false;
         else if (asset.intervals && !~asset.intervals.indexOf(options.interval)) return false;
         else if (asset.symbol && asset.symbol != options.symbol) return false;
         else if (asset.symbol_pattern && !options.symbol.match(new RegExp(asset.symbol_pattern))) return false;
         else return true;
     });
+    if (filtered.length <= 1) return filtered[0];
+    return _.sortBy(filtered, asset => (asset.symbol_pattern || asset.symbol || '').length)[0];
 }
 
 async function blendCall(markets, fetch, adjustments, asset, options) {
@@ -255,8 +257,10 @@ async function readModel(asset, model, options) {
                 });
             }
         });
-        const begin = model.begin_expression ? parser.parse(model.begin_expression)(options) : model.begin;
-        const end = model.end_expression ? parser.parse(model.end_expression)(options) : model.end;
+        const parsed_begin = model.begin_expression && parser.parse(model.begin_expression)(options);
+        const parsed_end = model.end_expression && parser.parse(model.end_expression)(options);
+        const begin = maxDate(parsed_begin, model.begin, options.begin);
+        const end = minDate(parsed_end, model.end, options.end);
         if (!moment(begin).isValid()) throw Error(`Invalid begin ${begin}`);
         if (!moment(end).isValid()) throw Error(`Invalid begin ${end}`);
         return {...model, ...(begin ? {begin} : {}), ...(end ? {end} : {})};
@@ -314,7 +318,7 @@ async function fetchModelBars(fetchInputData, adjustments, asset, model, options
         points.push({variables: input_variables});
         const variables = {...input_variables, ...eval_coefficients(points), ...eval_variables(points)};
         points[points.length-1] = {variables};
-        result.push(_.defaults(eval_output(points), {ending}));
+        result.push({ending, ...eval_output(points)});
     }
     return result;
 }
@@ -363,7 +367,7 @@ async function fetchInputData(markets, fetch, adjustments, asset, model, input, 
 }
 
 function getTermVariables(asset, model, options) {
-    return _.object(Object.keys(model.input), Object.values(model.input).map(async(term) => {
+    return _.object(Object.keys(model.input), Object.values(model.input).map(term => {
         return _.defaults(
             term.symbol_replacement ? {
                 symbol: options.symbol.replace(new RegExp(asset.symbol_pattern), term.symbol_replacement)
@@ -416,12 +420,9 @@ function createParser(adjustments, model, terms, options) {
 async function parseInputVariables(parser, model, options) {
     return input_bars => {
         return merge.apply(null, _.map(input_bars, (bar, left) => {
-            const term = {..._.pick(options, 'symbol', 'market', 'interval'), ...model.input[left]};
             const keys = Object.keys(bar)
-                .concat('symbol', 'market', 'interval')
                 .map(name => `${left}.${name}`);
-            const values = Object.values(bar)
-                .concat(term.symbol, term.market, term.interval);
+            const values = Object.values(bar);
             return _.object(keys, values);
         }));
     };
@@ -582,6 +583,7 @@ function minDate(date1, date2) {
     const dates = Array.prototype.slice.call(arguments)
         .filter(date => date);
     if (!dates.length) return date1;
+    else if (dates.length < 2) return dates[0];
     else return dates.map(date => ({parsed: moment(date), text: date}))
         .reduce((a, b) => b.parsed.isBefore(a.parsed) ? b : a).text;
 }
@@ -590,6 +592,7 @@ function maxDate(date1, date2) {
     const dates = Array.prototype.slice.call(arguments)
         .filter(date => date);
     if (!dates.length) return date1;
+    else if (dates.length < 2) return dates[0];
     else return dates.map(date => ({parsed: moment(date), text: date}))
         .reduce((a, b) => b.parsed.isAfter(a.parsed) ? b : a).text;
 }
