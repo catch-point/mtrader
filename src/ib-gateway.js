@@ -87,6 +87,10 @@ function createClientInstance(settings) {
 }
 
 async function assignClient(self, settings) {
+    const market_functions = [
+        'historicalData', 'reqMktData', 'reqRealTimeBars',
+        'calculateImpliedVolatility', 'calculateOptionPrice'
+    ];
     if ('clientId' in settings) {
         const {username} = await readAuthentication(settings);
         const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
@@ -101,6 +105,7 @@ async function assignClient(self, settings) {
         host: settings.host || gateway.host,
         port: gateway.port
     });
+    const market_client = settings.market_data && module.exports(settings.market_data);
     const locks = new ReadWriteLock();
     return Object.assign(self, _.mapObject(client, (fn, name) => {
         if (name == 'close') return self.close; // this was overriden by share.js already
@@ -130,13 +135,19 @@ async function assignClient(self, settings) {
                     return self;
                 });
             });
-        }; else {
+        }; else if (market_client && ~market_functions.indexOf(name)) {
+            return async function() {
+                await market_client.open();
+                return market_client[name].apply(market_client, arguments);
+            };
+        } else {
             return function() {
                 return client[name].apply(client, arguments);
             };
         }
     }), {
         async force_close(closedBy) {
+            if (market_client) await market_client.close(closedBy);
             await client.close(closedBy);
             // all gateways are kept open until all clients are closed
         }
