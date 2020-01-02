@@ -173,14 +173,16 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
     });
     const pulse_fn = () => {
         pulse_counter++;
-        const expired = active.filter(entry => entry.expires < pulse_counter);
-        expired.forEach(entry => {
-            entry.abort(Error(`ib-client ${clientId} ${entry.cmd} timed out`));
-            const idx = active.indexOf(entry);
-            if (~idx) active.splice(idx, 1);
+        _.defer(() => {
+            const expired = active.filter(entry => entry.expires < pulse_counter);
+            expired.forEach(entry => {
+                entry.abort(Error(`ib-client ${clientId} ${entry.cmd} timed out`));
+                const idx = active.indexOf(entry);
+                if (~idx) active.splice(idx, 1);
+            });
+            if (active.length) pulse_timeout = setTimeout(pulse_fn, 1000).unref();
+            else pulse_timeout = null;
         });
-        if (active.length) pulse_timeout = setTimeout(pulse_fn, 1000).unref();
-        else pulse_timeout = null;
     };
     return Object.assign(self, methods, {
         connecting: false,
