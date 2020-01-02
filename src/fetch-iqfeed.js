@@ -584,7 +584,11 @@ async function intraday(iqclient, adjustments, symbol, options) {
 async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     const tz = options.security_tz;
     const now = moment.tz(options.now, tz);
-    if (now.days() === 6 || !bars.length) return bars;
+    if (now.days() === 6) return bars;
+    if (!bars.length) return mostRecentTrade(iqclient, adjustments, symbol, _.defaults({
+        begin: moment.tz(options.begin, options.tz).format(options.ending_format),
+        end: moment.tz(options.end || now, options.tz).format(options.ending_format)
+    }, options));
     const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
     const opensAt = moment.tz(`${now.format('YYYY-MM-DD')}T${options.open_time}`, tz);
     const closesAt = moment.tz(`${now.format('YYYY-MM-DD')}T${close_time}`, tz);
