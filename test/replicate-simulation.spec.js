@@ -2055,4 +2055,121 @@ describe("replicate-simulation", function() {
             });
         });
     });
+    describe("combo orders", function() {
+        it("should cancel combo order", async() => {
+            await broker({
+                asof: '2019-12-18T16:00:00-05:00',
+                now: '2019-12-18T16:00:00-05:00',
+                action: 'BUY',
+                quant: '2',
+                tif: 'DAY',
+                order_type: 'MOC',
+                symbol: 'SPX   200320C03225000',
+                market: 'OPRA',
+                currency: 'USD',
+                security_type: 'OPT',
+                multiplier: '100',
+                status: 'working'
+            });
+            await broker({
+                order_ref: 'MOC.SPX200320C.mkspxorders',
+                asof: '2019-12-19T12:00:00-05:00',
+                now: '2019-12-19T12:00:00-05:00',
+                action: 'BUY',
+                quant: 2,
+                order_type: 'MOC',
+                tif: 'DAY',
+                attached: [{
+                    action: 'BUY',
+                    quant: '1',
+                    order_type: 'LEG',
+                    symbol: 'SPX   200320C03200000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    multiplier: '100',
+                    status: 'working'
+                }, {
+                    action: 'SELL',
+                    quant: '1',
+                    order_type: 'LEG',
+                    symbol: 'SPX   200320C03225000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    multiplier: '100',
+                    status: 'working'
+                }]
+            });
+            return replicate(function(options) {
+                if (options.info=='help') return quote(options);
+                else return Promise.resolve([{
+                    action: null,
+                    order_type: 'MKT',
+                    tif: 'DAY',
+                    traded_at: '2019-12-19T16:15:00-05:00',
+                    traded_price: '81.4',
+                    order_ref: 'MOC.SPX200320C03200000.mkspxorders',
+                    symbol: 'SPX   200320C03200000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    minTick: '0.1'
+                }, {
+                    action: null,
+                    order_type: 'MOC',
+                    tif: 'DAY',
+                    traded_at: '2019-12-19T16:15:00-05:00',
+                    traded_price: '66.2',
+                    order_ref: 'MOC.SPX200320C03225000.mkspxorders',
+                    symbol: 'SPX   200320C03225000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    minTick: '0.1'
+                }]);
+            })({
+                label: 'mkspxorders',
+                now: '2019-12-19T13:00:00-05:00',
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MOC']
+            }).should.eventually.be.like([{
+                action: 'SELL',
+                quant: '2',
+                order_type: 'MOC',
+                tif: 'DAY',
+                symbol: 'SPX   200320C03225000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD',
+                status: 'working'
+            }, {
+                order_type: 'MOC',
+                order_ref: 'MOC.SPX200320C.mkspxorders',
+                status: 'cancelled'
+            }, {
+                order_type: 'LEG',
+                symbol: 'SPX   200320C03200000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD',
+                attach_ref: 'MOC.SPX200320C.mkspxorders',
+                status: 'cancelled'
+            }, {
+                order_type: 'LEG',
+                attach_ref: 'MOC.SPX200320C.mkspxorders',
+                symbol: 'SPX   200320C03225000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD',
+                status: 'cancelled'
+            }]);
+        });
+    });
 });
+
+function printEach(d) {
+    d.forEach(d=>console.log(require('util').inspect(d,{breakLength:Infinity})));
+    return d;
+}

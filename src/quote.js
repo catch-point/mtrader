@@ -338,7 +338,7 @@ function inlinePadBegin(quoteBars, interval, opts) {
         const start = _.sortedIndex(bars, {ending: options.begin}, 'ending');
         const i = Math.max(start - options.pad_begin, 0);
         return _.defaults({
-            pad_begin: 0,
+            pad_begin: Math.max(+options.pad_begin - start, 0),
             begin: bars[i].ending
         }, options);
     });
@@ -353,7 +353,7 @@ function formatBeginEnd(options) {
     const begin = options.begin ? moment.tz(options.begin, tz) : eod;
     const oend = options.end && moment.tz(options.end, tz);
     const end = !oend || eod.isBefore(oend) ? eod : oend; // limit end to end of today
-    const pad_begin = options.pad_begin ? options.pad_begin :
+    const pad_begin = options.pad_begin ? +options.pad_begin :
             options.begin ? 0 : 100;
     const pad_end = end && options.pad_end || 0;
     if (!begin.isValid())
@@ -379,9 +379,12 @@ function inlinePadEnd(quoteBars, interval, options) {
         begin: options.end
     }, options)).then(bars => {
         if (!bars.length) return options;
+        const idx = _.sortedIndex(bars, {ending: options.end}, 'ending');
+        const start = idx && bars[idx].ending == options.end ? idx : idx -1;
+        const i = Math.min(start + options.pad_end, bars.length-1);
         return _.defaults({
-            pad_end: 0,
-            end: _.last(bars).ending
+            pad_end: Math.max(+options.pad_end + start - i, 0),
+            end: bars[i].ending
         }, options);
     });
 }
@@ -679,9 +682,10 @@ function flattenSlice(array, start, end) {
  * trims the result to be within the begin/end range
  */
 function trimTables(tables, options) {
+    const begin = parseBegin(new Periods(options), 0, options).format(options.ending_format);
     const dataset = tables.filter(table => table.length);
     if (!dataset.length) return [];
-    while (dataset.length > 1 && _.first(dataset[1]).ending < options.begin) {
+    while (dataset.length > 1 && _.first(dataset[1]).ending < begin) {
         dataset.shift();
     }
     let bars = _.flatten(dataset, true);

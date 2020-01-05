@@ -171,11 +171,6 @@ async function replicate(broker, collect, lookup, options) {
         now: options.now
     }) || options.now;
     const desired = await getDesiredPositions(broker, collect, lookup, begin, options);
-    const asof = _.reduce(desired, (asof, d) => {
-        if (asof.isBefore(d.asof)) return moment(d.asof);
-        else return asof;
-    }, moment(begin)).format();
-    logger.debug("replicate desired", asof || '', ...Object.keys(desired));
     const working_refs = _.reduce(desired, (refs, pos) => _.union(refs, Object.keys(pos.working), Object.keys(pos.realized.working||{})), []);
     const [broker_balances, broker_positions, broker_orders] = await Promise.all([
         broker({action: 'balances', now: options.now}),
@@ -194,29 +189,16 @@ async function replicate(broker, collect, lookup, options) {
             logger.warn("Unknown position", options.label || '', w.position, w.symbol, w.market);
         }
     });
-    const orders = portfolio.reduce((orders, contract) => {
+    const replicateContract = replicateContracts(desired, begin, options);
+    const order_changes = portfolio.reduce((order_changes, contract) => {
         const [, symbol, market] = contract.match(/^(.+)\W(\w+)$/);
-        const no_position = {
-            position:0, asof: begin,
-            ..._.pick(desired[contract] || actual[contract],
-                'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick'
-            ),
-            working: {},
-            realized: {}
-        };
-        const d = desired[contract] || {...no_position, asof};
-        const a = actual[contract] || no_position;
-        const quant_threshold = getQuantThreshold(a, options);
-        const update = updateActual(d, a, _.defaults({quant_threshold}, options));
-        if (_.isEmpty(update)) return orders;
-        logger.debug("replicate", "actual", actual[contract] || Object.keys(actual));
-        logger.debug("replicate", "desired", desired[contract] || Object.keys(desired));
-        logger.debug("replicate", "change", update);
-        return orders.concat(update);
+        return order_changes.concat(replicateContract(actual[`${symbol}.${market}`] || {symbol, market}));
     }, []);
     await check();
-    logger.trace("replicate", options.label || '', "submit orders", ...orders);
-    return submitOrders(broker, broker_orders, orders, options);
+    logger.trace("replicate", options.label || '', "submit orders", ...order_changes);
+    const updated_orders = updateComboOrders(broker_orders, actual, replicateContract, order_changes, options);
+    const pending_orders = combineOrders(broker_orders, updated_orders, options);
+    return submitOrders(broker, pending_orders, options);
 }
 
 /**
@@ -451,23 +433,8 @@ function getActualPositions(broker_positions, broker_orders, working_refs, begin
     const positions = _.mapObject(all_positions, positions => positions.reduce((net, pos) => {
         return {...net, position: +net.position + +pos.position};
     }));
-    const inline_legs = broker_orders.map(leg => {
-        if (leg.order_type != 'LEG') return leg;
-        const combo = broker_orders.find(combo => combo.order_ref == leg.attach_ref);
-        const prefix = symbolPrefix(leg, options);
-        return {
-            ...leg,
-            ..._.pick(combo, 'order_type', 'limit', 'offset', 'stop', 'tif', 'status'),
-            action: combo.action == 'BUY' ? leg.action : leg.action == 'BUY' ? 'SELL' : 'BUY',
-            quant: Big(combo.quant).times(leg.quant).toString(),
-            // need to restore order_ref (before combining) to help identify working orders
-            order_ref: (leg.order_ref || combo.order_ref).replace(prefix, ref(leg.symbol))
-        };
-    });
-    const working_orders = _.groupBy(inline_legs.filter(ord => {
-        if (!ord.symbol || !ord.market) return false;
-        return ord.status == 'pending' || ord.status == 'working';
-    }), ord => `${ord.symbol}.${ord.market}`);
+    const inline_orders = inlineComboOrders(broker_orders, options);
+    const working_orders = _.groupBy(inline_orders, ord => `${ord.symbol}.${ord.market}`);
     const assets = _.union(Object.keys(positions), Object.keys(working_orders));
     return _.object(assets, assets.map(asset => {
         const position = positions[asset] ? positions[asset].position : 0;
@@ -508,10 +475,6 @@ function getPortfolio(markets, options, portfolio = []) {
     }, portfolio);
 }
 
-function symbolPrefix(order, options) {
-    return order.symbol ? ref(order.symbol.substring(0, 13)) : null;
-}
-
 /**
  * Converts quant_threshold_percent into quant_threshold relative to open position size
  */
@@ -528,7 +491,8 @@ function getQuantThreshold(actual, options) {
  * Array of orders to update the working positions to the desired positions
  */
 function updateActual(desired, actual, options) {
-    const desired_adjustment = desired.position - actual.position >= options.quant_threshold ? {
+    const quant_threshold = getQuantThreshold(actual, options);
+    const desired_adjustment = desired.position - actual.position >= quant_threshold ? {
         action: 'BUY',
         quant: (desired.position - actual.position).toString(),
         ...(((desired.adjustment||{action:'n/a'}).action||'BUY') == 'BUY' ? {
@@ -538,7 +502,7 @@ function updateActual(desired, actual, options) {
             order_type: options.default_order_type || 'MKT', tif: 'DAY',
             ..._.pick(desired, 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick')
         })
-    } : actual.position - desired.position >= options.quant_threshold ? {
+    } : actual.position - desired.position >= quant_threshold ? {
         action: 'SELL',
         quant: (actual.position - desired.position).toString(),
         ...(((desired.adjustment||{action:'n/a'}).action||'SELL') == 'SELL' ? {
@@ -668,7 +632,85 @@ function isStopOrder(order) {
     return ~(order.order_type||'').indexOf('STP');
 }
 
-async function submitOrders(broker, broker_orders, orders, options) {
+function replicateContracts(desired, begin, options) {
+    const asof = _.reduce(desired, (asof, d) => {
+        if (asof.isBefore(d.asof)) return moment(d.asof);
+        else return asof;
+    }, moment(begin)).format();
+    logger.debug("replicate desired", asof || '', ...Object.keys(desired));
+    return actual => {
+        const contract = `${actual.symbol}.${actual.market}`;
+        const no_position = {
+            position:0, asof: begin,
+            ..._.pick(desired[contract] || actual,
+                'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick'
+            ),
+            working: {},
+            realized: {}
+        };
+        const d = desired[contract] || {...no_position, asof};
+        const a = {...no_position, ...actual};
+        const update = updateActual(d, a, options);
+        if (_.isEmpty(update)) return [];
+        logger.debug("replicate", "actual", a);
+        logger.debug("replicate", "desired", desired[contract] || Object.keys(desired));
+        logger.debug("replicate", "change", update);
+        return update;
+    };
+}
+
+function inlineComboOrders(orders, options) {
+    const inline_legs = orders.map(leg => {
+        if (leg.order_type != 'LEG') return leg;
+        const combo = orders.find(combo => combo.order_ref == leg.attach_ref);
+        const prefix = symbolPrefix(leg, options);
+        return {
+            ...leg,
+            ..._.pick(combo, 'order_type', 'limit', 'offset', 'stop', 'tif', 'status'),
+            action: combo.action == 'BUY' ? leg.action : leg.action == 'BUY' ? 'SELL' : 'BUY',
+            quant: Big(combo.quant).times(leg.quant).toString(),
+            // need to restore order_ref (before combining) to help identify working orders
+            order_ref: (leg.order_ref || combo.order_ref).replace(prefix, ref(leg.symbol))
+        };
+    });
+    return inline_legs.filter(ord => {
+        if (!ord.symbol || !ord.market) return false;
+        return ord.status == 'pending' || ord.status == 'working';
+    });
+}
+
+function updateComboOrders(broker_orders, actual, replicateContract, order_changes, options) {
+    const changed_combo_orders = broker_orders
+        .filter(combo => broker_orders.some(leg => leg.order_type == 'LEG' && leg.attach_ref == combo.order_ref))
+        .filter(combo => order_changes.some(ord => ord.attach_ref == combo.order_ref));
+    const cancel_combo_orders = changed_combo_orders.filter(combo => {
+        if (!order_changes.some(ord => ord.attach_ref == combo.order_ref)) return false;
+        const legs = broker_orders.filter(leg => leg.attach_ref == combo.order_ref);
+        const updated_legs = order_changes.filter(ord => ord.action != 'cancel' && ord.attach_ref == combo.order_ref);
+        return legs.length != updated_legs.length;
+    }).map(combo => ({...combo, action: 'cancel'}));
+    const cancel_combo_order_refs = cancel_combo_orders.map(combo => combo.order_ref);
+    const obsolete_legs = cancel_combo_orders.reduce((obsolete_legs, combo) => {
+        return obsolete_legs.concat(broker_orders.filter(leg => leg.attach_ref == combo.order_ref)
+            .filter(leg => !order_changes.some(upd => upd.symbol == leg.symbol && upd.market == leg.market && upd.attach_ref == leg.attach_ref)));
+    }, []).map(leg => `${leg.symbol}.${leg.market}`);
+    const updated_legs = obsolete_legs.reduce((updated_legs, contract) => {
+        const adjustment = actual[contract].adjustment;
+        return updated_legs.concat(replicateContract({
+            ...actual[contract],
+            adjustment: !~cancel_combo_order_refs.indexOf((adjustment||{}).attach_ref) ? adjustment : null,
+            working: _.omit(actual[contract].working, cancel_combo_order_refs)
+        }));
+    }, []);
+    return order_changes
+        // these contracts were updated
+        .filter(ord => !~obsolete_legs.indexOf(`${ord.symbol}.${ord.market}`))
+        // these legs are cancelled via cancel_combo_orders
+        .filter(ord => ord.action != 'cancel' || !~cancel_combo_order_refs.indexOf(ord.attach_ref))
+        .concat(cancel_combo_orders, updated_legs);
+}
+
+function combineOrders(broker_orders, orders, options) {
     const potential_combos = options.combo_order_types ?
         orders.filter(ord => {
             return ~options.combo_order_types.indexOf(ord.order_type) &&
@@ -712,9 +754,16 @@ async function submitOrders(broker, broker_orders, orders, options) {
             }))
         };
     });
-    const pending_orders = _.difference(orders, _.flatten(order_legs));
-    const grouped_orders = _.groupBy(pending_orders, ord => `${ord.symbol}.${ord.market}`);
-    const all_orders = _.values(grouped_orders).concat(combo_orders.map(ord => [ord]));
+    return _.difference(orders, _.flatten(order_legs)).concat(combo_orders);
+}
+
+function symbolPrefix(order, options) {
+    return order.symbol ? ref(order.symbol.substring(0, 13)) : null;
+}
+
+async function submitOrders(broker, orders, options) {
+    const grouped_orders = _.groupBy(orders.filter(ord => ord.symbol), ord => `${ord.symbol}.${ord.market}`);
+    const all_orders = _.values(grouped_orders).concat(orders.filter(ord => !ord.symbol).map(ord => [ord]));
     const submitted = await Promise.all(all_orders.map(async(orders) => {
         if (options.dry_run) return {posted: orders, orders};
         else return orders.reduce(async(promise, order) => {

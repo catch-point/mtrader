@@ -469,7 +469,10 @@ function openOrders(ib, store, ib_tz, clientId) {
         const account = order.account || order.faGroup || order.faProfile;
         if (account) {
             const acct_log = order_log[account] = order_log[account] || [];
-            if (!_.isMatch(_.last(acct_log), _.omit(ord, 'posted_time', 'time'))) acct_log.push(ord);
+            const matcher = _.matcher(_.omit(ord, 'posted_time', 'time'));
+            if (!acct_log.reduceRight((found, entry) => found || matcher(entry), false)) {
+                acct_log.push(ord);
+            }
         }
         return ord;
     };
