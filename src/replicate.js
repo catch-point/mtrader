@@ -675,16 +675,19 @@ function updateComboOrders(broker_orders, actual, replicateContract, order_chang
         .filter(combo => order_changes.some(ord => ord.attach_ref == combo.order_ref));
     const cancel_combo_orders = changed_combo_orders.filter(combo => {
         if (!order_changes.some(ord => ord.attach_ref == combo.order_ref)) return false;
-        const legs = broker_orders.filter(leg => leg.attach_ref == combo.order_ref);
+        const legs = broker_orders.filter(leg => leg.order_type == 'LEG' && leg.attach_ref == combo.order_ref);
         const updated_legs = order_changes.filter(ord => ord.action != 'cancel' && ord.attach_ref == combo.order_ref);
         return legs.length != updated_legs.length;
     }).map(combo => ({...combo, action: 'cancel'}));
     const cancel_combo_order_refs = cancel_combo_orders.map(combo => combo.order_ref);
     const obsolete_legs = cancel_combo_orders.reduce((obsolete_legs, combo) => {
-        return obsolete_legs.concat(broker_orders.filter(leg => leg.attach_ref == combo.order_ref)
+        return obsolete_legs.concat(broker_orders
+            .filter(leg => leg.order_type == 'LEG' && leg.attach_ref == combo.order_ref)
             .filter(leg => !order_changes.some(upd => upd.symbol == leg.symbol && upd.market == leg.market && upd.attach_ref == leg.attach_ref)));
     }, []).map(leg => `${leg.symbol}.${leg.market}`);
     const updated_legs = obsolete_legs.reduce((updated_legs, contract) => {
+        if (!actual[contract]) logger.error("No actual position or orders for cancelling combo with", contract);
+        if (!actual[contract]) return updated_legs;
         const adjustment = actual[contract].adjustment;
         return updated_legs.concat(replicateContract({
             ...actual[contract],
