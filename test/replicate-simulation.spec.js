@@ -2166,6 +2166,185 @@ describe("replicate-simulation", function() {
                 status: 'cancelled'
             }]);
         });
+        it("should combine LMT orders", async() => {
+            return replicate(function(options) {
+                if (options.info=='help') return quote(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    quant: 1,
+                    order_type: 'LOC',
+                    tif: 'DAY',
+                    traded_at: '2019-12-19T16:15:00-05:00',
+                    limit: '81.4',
+                    order_ref: 'MOC.SPX200320C03200000.mkspxorders',
+                    symbol: 'SPX   200320C03200000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    minTick: '0.1'
+                }, {
+                    action: 'SELL',
+                    quant: 1,
+                    order_type: 'LOC',
+                    tif: 'DAY',
+                    traded_at: '2019-12-19T16:15:00-05:00',
+                    limit: '66.2',
+                    order_ref: 'MOC.SPX200320C03225000.mkspxorders',
+                    symbol: 'SPX   200320C03225000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    minTick: '0.1'
+                }]);
+            })({
+                label: 'mkspxorders',
+                now: '2019-12-19T13:00:00-05:00',
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MOC']
+            }).should.eventually.be.like([{
+                order_type: 'LOC',
+                action: 'BUY',
+                limit: (8140-6620)/100
+            }, {
+                action: 'BUY',
+                order_type: 'LEG',
+                symbol: 'SPX   200320C03200000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD'
+            }, {
+                action: 'SELL',
+                order_type: 'LEG',
+                symbol: 'SPX   200320C03225000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD'
+            }]);
+        });
+        it("should roll LMT orders", async() => {
+            return replicate(function(options) {
+                if (options.info=='help') return quote(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    quant: 1,
+                    order_type: 'LOC',
+                    tif: 'DAY',
+                    traded_at: '2019-12-19T16:15:00-05:00',
+                    limit: '81.4',
+                    order_ref: 'MOC.SPX200320C03200000.mkspxorders',
+                    symbol: 'SPX   200320C03200000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    minTick: '0.1'
+                }, {
+                    action: 'SELL',
+                    quant: 1,
+                    order_type: 'LOC',
+                    tif: 'DAY',
+                    traded_at: '2019-12-19T16:15:00-05:00',
+                    limit: '66.2',
+                    order_ref: 'MOC.SPX200221C03225000.mkspxorders',
+                    symbol: 'SPX   200221C03225000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    minTick: '0.1'
+                }]);
+            })({
+                label: 'mkspxorders',
+                now: '2019-12-19T13:00:00-05:00',
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MOC']
+            }).then(printEach).should.eventually.be.like([{
+                order_type: 'LOC',
+                action: 'BUY',
+                limit: (8140-6620)/100
+            }, {
+                action: 'SELL',
+                order_type: 'LEG',
+                symbol: 'SPX   200221C03225000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD'
+            }, {
+                action: 'BUY',
+                order_type: 'LEG',
+                symbol: 'SPX   200320C03200000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD'
+            }]);
+        });
+        it("should combine 1-to-1 orders with remaining", async() => {
+            return replicate(function(options) {
+                if (options.info=='help') return quote(options);
+                else return Promise.resolve([{
+                    action: 'BUY',
+                    quant: 5,
+                    order_type: 'LOC',
+                    tif: 'DAY',
+                    traded_at: '2019-12-19T16:15:00-05:00',
+                    limit: '81.4',
+                    order_ref: 'MOC.SPX200320C03200000.mkspxorders',
+                    symbol: 'SPX   200320C03200000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    minTick: '0.1'
+                }, {
+                    action: 'SELL',
+                    quant: 3,
+                    order_type: 'LOC',
+                    tif: 'DAY',
+                    traded_at: '2019-12-19T16:15:00-05:00',
+                    limit: '66.2',
+                    order_ref: 'MOC.SPX200320C03225000.mkspxorders',
+                    symbol: 'SPX   200320C03225000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    minTick: '0.1'
+                }]);
+            })({
+                label: 'mkspxorders',
+                now: '2019-12-19T13:00:00-05:00',
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MOC']
+            }).should.eventually.be.like([{
+                action: 'BUY',
+                order_type: 'LOC',
+                quant: '2',
+                symbol: 'SPX   200320C03200000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD'
+            }, {
+                order_type: 'LOC',
+                action: 'BUY',
+                quant: '3',
+                limit: (8140-6620)/100
+            }, {
+                action: 'BUY',
+                order_type: 'LEG',
+                quant: '1',
+                symbol: 'SPX   200320C03200000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD'
+            }, {
+                action: 'SELL',
+                order_type: 'LEG',
+                quant: '1',
+                symbol: 'SPX   200320C03225000',
+                market: 'OPRA',
+                security_type: 'OPT',
+                currency: 'USD'
+            }]);
+        });
     });
 });
 

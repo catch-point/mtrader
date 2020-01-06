@@ -111,14 +111,6 @@ function help(broker, collect) {
                 usage: '<order_type>',
                 description: "Default order type to close unexpected positions, defaults to MKT"
             },
-            combo_order_type: {
-                usage: '<order_type>',
-                description: "Order type used for combo BAG orders"
-            },
-            combo_order_types: {
-                usage: '[<order_type>...]',
-                description: "Order types that can be combined into combo BAG orders with matching legs"
-            },
             default_multiplier: {
                 usage: '<number>',
                 description: "Default value multiplier defaults to 1"
@@ -284,7 +276,7 @@ function getDesiredPosition(lookup, position, order, options) {
 }
 
 function ref(long_ref) {
-    return long_ref.replace(/[^\w.]+/g,'');
+    return long_ref.replace(/[^\w.\+\-]+/g,'');
 }
 
 async function getDesiredParameters(broker, begin, options) {
@@ -663,14 +655,12 @@ function inlineComboOrders(orders, options) {
     const inline_legs = orders.map(leg => {
         if (leg.order_type != 'LEG') return leg;
         const combo = orders.find(combo => combo.order_ref == leg.attach_ref);
-        const prefix = symbolPrefix(leg, options);
         return {
             ...leg,
             ..._.pick(combo, 'order_type', 'limit', 'offset', 'stop', 'tif', 'status'),
             action: combo.action == 'BUY' ? leg.action : leg.action == 'BUY' ? 'SELL' : 'BUY',
             quant: Big(combo.quant).times(leg.quant).toString(),
-            // need to restore order_ref (before combining) to help identify working orders
-            order_ref: (leg.order_ref || combo.order_ref).replace(prefix, ref(leg.symbol))
+            order_ref: leg.order_ref || `${combo.order_ref}.${leg.symbol}.${leg.market}`
         };
     });
     return inline_legs.filter(ord => {
@@ -711,54 +701,90 @@ function updateComboOrders(broker_orders, actual, replicateContract, order_chang
 }
 
 function combineOrders(broker_orders, orders, options) {
-    const potential_combos = options.combo_order_types ?
-        orders.filter(ord => {
-            return ~options.combo_order_types.indexOf(ord.order_type) &&
-                ord.security_type == 'OPT' &&
-                ( ord.action == 'BUY' || ord.action == 'SELL' );
-        }) : [];
-    const grouped = _.groupBy(potential_combos, ord => {
-        const prefix = symbolPrefix(ord, options);
-        return [
-            prefix, ord.market,
-            ord.security_type, ord.currency, ord.multiplier,
-            ord.order_type, ord.limit, ord.offset, ord.stop, ord.tif,
-            ord.attach_ref, (ord.order_ref||'').replace(ref(ord.symbol), prefix)
-        ].join(' ');
-    });
-    const order_legs = _.values(grouped).filter(legs => legs.length > 1);
-    const combo_orders = order_legs.map(legs => {
-        const quant = greatestCommonFactor(_.uniq(legs.map(leg => Math.abs(leg.quant))));
+    return reduceComboPairs(orders, (combined_orders, legs) => {
+        const quant = Math.min.apply(Math, legs.map(leg => leg.quant)).toString();
+        const remaining = legs.filter(leg => leg.quant != quant)
+            .map(leg => ({...leg, quant: (leg.quant - quant).toString()}));
         const existing_order = broker_orders.find(ord => {
             return ord.order_type != 'LEG' && ord.order_ref == _.first(legs).attach_ref;
         });
         const traded_price = +legs.reduce((net, leg) => {
-            return net.add(Big(leg.traded_price || 1).times(leg.action == 'BUY' ? 1 : -1).times(leg.quant));
-        }, Big(0)).div(quant);
+            return net.add(Big(leg.traded_price || leg.limit || 1).times(leg.action == 'BUY' ? 1 : -1));
+        }, Big(0));
         if (existing_order) logger.trace("existing_order", traded_price, existing_order);
         const action = existing_order ? existing_order.action : traded_price < 0 ? 'SELL' : 'BUY';
+        const limit = +legs.reduce((net, leg) => {
+            return net.add(Big(leg.limit || 0).times(leg.action == action ? 1 : -1));
+        }, Big(0));
+        const stop = +legs.reduce((net, leg) => {
+            return net.add(Big(leg.stop || 0).times(leg.action == action ? 1 : -1));
+        }, Big(0));
+        const leg_symbols = _.sortBy(legs, leg =>
+                (leg.traded_price || leg.limit || 1) * (leg.action == action ? 1 : -1))
+            .reverse().map(leg => `${leg.action == action ? '+' : '-'}${leg.symbol}`).join('').substring(1);
         const order_ref = (existing_order||{}).order_ref ||
-            (_.first(legs).order_ref||'').replace(ref(_.first(legs).symbol), symbolPrefix(_.first(legs), options));
-        return {
+            _.first(legs).order_ref.replace(ref(_.first(legs).symbol), ref(leg_symbols));
+        return combined_orders.concat(remaining, {
             action,
             quant,
-            order_type: options.combo_order_type || _.first(legs).order_type,
-            ..._.pick(_.first(legs), 'limit', 'offset', 'stop', 'tif'),
+            order_type: _.first(legs).order_type,
+            tif: _.first(legs).tif,
+            limit, stop,
+            offset: _.first(legs).offset,
             order_ref,
             attached: legs.map(leg => ({
                 ..._.omit(leg, 'order_type', 'limit', 'offset', 'stop', 'tif'),
                 action: action == 'SELL' && leg.action == 'BUY' ? 'SELL' :
                     action == 'SELL' && leg.action == 'SELL' ? 'BUY' : leg.action,
-                quant: Big(leg.quant).div(quant).toString(),
+                quant: '1',
                 order_type: 'LEG'
             }))
-        };
-    });
-    return _.difference(orders, _.flatten(order_legs)).concat(combo_orders);
+        });
+    }, []);
 }
 
-function symbolPrefix(order, options) {
-    return order.symbol ? ref(order.symbol.substring(0, 13)) : null;
+function reduceComboPairs(orders, cb, initial) {
+    const matrix = orders.map((a,i) => orders.map((b,j) => ({
+        a, b,
+        score: i < j ? comboFitScore(a, b) : 0
+    })));
+    let result = initial;
+    while (true) {
+        const pair = matrix.reduce((best, array, i) => array.reduce((best, pair, j) =>
+            i < j && best.score < pair.score ? {...pair, i, j} : best, best), {score:0});
+        if (!pair.score)
+            return result.concat(matrix.map(array => array[0].a));
+        matrix.forEach(array => {
+            array.splice(pair.j, 1);
+            array.splice(pair.i, 1);
+        });
+        matrix.splice(pair.j, 1);
+        matrix.splice(pair.i, 1);
+        result = cb(result, [pair.a, pair.b]);
+    }
+}
+
+function comboFitScore(a, b) {
+    if (!_.isMatch(a, _.pick(b, 'market', 'security_type', 'currency', 'multiplier', 'order_type', 'tif'))) {
+        return 0; // different markets
+    } else if (_.difference([a.action, b.action], ['BUY', 'SELL']).length) {
+        return 0; // cancelling order
+    } else if (a.order_type != b.order_type) {
+        return 0; // different order types
+    } else if (a.offset != b.offset) {
+        return 0; // SNAP STK or SNAP PRIM
+    } else if (a.security_type == 'OPT') {
+        if (a.symbol.length != 21 || b.symbol.length != 21) return 0;
+        if (a.symbol.substring(0, 6) != b.symbol.substring(0, 6)) return 0;
+        const [, a_expiry, a_right, a_strike] = a.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
+        const [, b_expiry, b_right, b_strike] = b.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
+        const right_score = a_right == b_right && a.action != b.action ? 1e15 : 1e15 - 1e14;
+        const expiry_score = 1e14 - Math.abs(a_expiry - b_expiry) * 1e8;
+        const strike_score = 1e8 - Math.abs(a_strike - b_strike);
+        return expiry_score + right_score + strike_score;
+    } else {
+        return 0;
+    }
 }
 
 async function submitOrders(broker, orders, options) {
@@ -827,11 +853,4 @@ function sortAttachedOrders(orders) {
         }, sorted);
     }
     return sorted;
-}
-
-function greatestCommonFactor(numbers) {
-    if (numbers.length == 1) return _.first(numbers);
-    return _.range(Math.min(...numbers), 0, -1).find(dem => {
-        return numbers.every(number => number/dem == Math.floor(number/dem));
-    });
 }
