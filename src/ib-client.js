@@ -150,7 +150,8 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
         requestWithId.call(self, ib)
     ];
     const methods = _.mapObject(Object.assign({}, ...modules), (fn, cmd) => {
-        return function() {
+        if (cmd == 'reqId') return fn; // reqId is a blocking sequential call
+        else return function() {
             return new Promise((ready, abort) => {
                 const entry = {
                     cmd, arguments,
