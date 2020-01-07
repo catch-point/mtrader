@@ -410,13 +410,25 @@ async function lookup(markets, client, options) {
 async function fundamental(markets, client, options) {
     const details = await listContractDetails(markets, client, options);
     const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
-    return conIds.map(details => flattenContractDetails(details)).map(contract => _.omit({
-        symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
-        market: options.market || markets[contract.primaryExch] && contract.primaryExch,
-        security_type: contract.secType,
-        name: contract.longName,
-        ..._.omit(contract, 'conId', 'underConId', 'priceMagnifier')
-    }, v => !v));
+    const contracts = conIds.map(details => flattenContractDetails(details));
+    const under_contracts = await Promise.all(contracts.map(async(contract) => {
+        if (!contract.underConId) return contract;
+        const under_details = await client.reqContractDetails({conId: contract.underConId});
+        if (!under_details.length) return contract;
+        else return flattenContractDetails(under_details);
+    }));
+    return contracts.map((contract, i) => {
+        const under = under_contracts[i] || contract;
+        return _.omit({
+            symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
+            market: options.market || markets[contract.primaryExch] && contract.primaryExch,
+            security_type: contract.secType,
+            name: contract.longName,
+            ..._.omit(contract, 'symbol', 'market', 'security_type', 'name', 'conId', 'underConId', 'priceMagnifier'),
+            under_symbol: toSymbol(markets[under.primaryExch], under),
+            under_market: under.primaryExch
+        }, v => !v);
+    });
 }
 
 async function interday(findContract, markets, adjustments, client, options) {

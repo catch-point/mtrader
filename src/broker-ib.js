@@ -147,7 +147,8 @@ function helpOptions() {
         properties: [
             'asof', 'acctNumber', 'action', 'quant', 'position', 'traded_at', 'traded_price', 'price',
             'sales', 'purchases', 'dividend', 'commission', 'mtm', 'value',
-            'symbol', 'market', 'currency', 'security_type', 'multiplier'
+            'symbol', 'market', 'currency', 'security_type', 'multiplier',
+            'industry', 'category', 'subcategory', 'under_symbol', 'under_market'
         ],
         options: {
             action: {
@@ -743,9 +744,19 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
             asof: parseTime(exe.time, ib_tz).format(),
             ...exe
         })).filter(exe => exe.asof <= asof_format);
+        const details = await ib.reqContractDetails({conId});
         const contract = con_pos ? await ib.reqContract(conId) : _.first(con_exe);
         if (contract.secType == 'BAG') return [];
-        const changes = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options);
+        const under_contract = !(_.first(details)||{}).underConId ? contract :
+            await ib.reqContract(_.first(details).underConId);
+        const under_symbol = asSymbol(under_contract);
+        const under_market = await asMarket(markets, ib, under_contract);
+        const change_list = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options);
+        const changes = change_list.map(change => ({
+            ...change,
+            ..._.pick(_.first(details), ['industry', 'category', 'subcategory']),
+            under_symbol, under_market
+        }));
         if (options.begin) return changes.filter((p,i,a) => {
             return begin_format < p.asof || i == a.length-1 && p.position;
         });
@@ -946,13 +957,6 @@ function toLocalSymbol(market, symbol) {
     else if (market.secType) return symbol;
     else if (symbol.match(/^(.*)([A-Z])(\d)(\d)$/)) return toFutSymbol(market, symbol);
     else return symbol;
-}
-
-function toSymbol(market, detail) {
-    if (detail.secType == 'FUT') return fromFutSymbol(market, detail.localSymbol);
-    else if (detail.secType == 'CASH') return detail.symbol;
-    else if (detail.secType == 'OPT') return detail.localSymbol;
-    else return ~detail.localSymbol.indexOf(' ') ? detail.localSymbol.replace(' ', '.') : detail.localSymbol;
 }
 
 function toFutSymbol(market, symbol) {
