@@ -36,6 +36,7 @@ const Big = require('big.js');
 const cache = require('./memoize-cache.js');
 const Adjustments = require('./adjustments.js');
 const logger = require('./logger.js');
+const config = require('./config.js');
 const IB = require('./ib-gateway.js');
 const expect = require('chai').expect;
 
@@ -44,19 +45,23 @@ const expect = require('chai').expect;
  */
 module.exports = function(settings) {
     const ib = settings.ib ? new IB(settings.ib) : null;
-    const pvd = ib ? cache(
-        presentValueOfDividends.bind(this, ib),
-        options => JSON.stringify(_.pick(options, 'symbol', 'market', 'now', 'offline')),
+    const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
+        _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
+    )), v => !v);
+    const cache_keys = ['symbol', 'market', 'security_type', 'currency', 'now', 'offline', 'tz'];
+    const nxd = ib ? cache(
+        nextDividend.bind(this, markets, ib),
+        options => JSON.stringify(_.pick(options, cache_keys)),
         10
-    ) : () => 0;
+    ) : () => null;
     const adjustments = cache(
-        new Adjustments(),
-        options => JSON.stringify(_.pick(options, 'symbol', 'market', 'begin', 'end', 'tz', 'now', 'offline')),
+        new Adjustments(settings),
+        options => JSON.stringify(_.pick(options, cache_keys.concat('begin', 'end'))),
         10
     );
     return Object.assign(function(expr, name, args, options) {
         if (functions[name]) {
-            return functions[name].apply(this, [pvd, adjustments, options].concat(args));
+            return functions[name].apply(this, [nxd, adjustments, options].concat(args));
         }
     }, {
         close() {
@@ -73,36 +78,39 @@ module.exports.has = function(name) {
 };
 
 const functions = module.exports.functions = {
-    SPLIT: _.extend(async(pvd, adjustments, options, symbol_fn, market_fn, refdate_fn, exdate_fn, opt_mkt_fn) => {
+    SPLIT: _.extend(async(nxd, adjustments, options, symbol_fn, market_fn, refdate_fn, exdate_fn) => {
         const [symbol, market] = [symbol_fn(), market_fn()];
-        const data = await adjustments({...options, symbol, market});
-        const expiry = opt_mkt_fn ? parseExpiry(exdate_fn(), options) : null;
+        const begin = options.begin || refdate_fn();
+        const tz = options.tz || (moment.defaultZone||{}).name || moment.tz.guess();
+        const data = await adjustments({...options, symbol, market, begin, tz});
         return points => {
-            const exdate = expiry || moment.tz((exdate_fn||refdate_fn)(points), options.tz);
+            const exdate = moment.tz((exdate_fn||refdate_fn)(points), options.tz);
             const ref = exdate_fn ? moment.tz(refdate_fn(points), options.tz) : moment(exdate).subtract(1,'days');
             let start = _.sortedIndex(data, {exdate: ref.format("Y-MM-DD")}, 'exdate');
             let end = _.sortedIndex(data, {exdate: exdate.format("Y-MM-DD")}, 'exdate');
             if (data[start] && data[start].exdate == ref.format("Y-MM-DD")) start++;
             if (data[end] && data[end].exdate == exdate.format("Y-MM-DD")) end++;
             if (start <= end) {
-                return +data.slice(start, end).reduce((split, datum) => split.times(datum.split), Big(1));
+                return +data.slice(start, end).reduce((split, datum) => split.times(datum.split||1), Big(1));
             } else {
-                return +data.slice(end, start).reduce((split, datum) => split.div(datum.split), Big(1));
+                return +data.slice(end, start).reduce((split, datum) => split.div(datum.split||1), Big(1));
             }
         };
     }, {
-        args: "symbol, market, [reference-date,] (exdate | option_symbol, option_market)",
+        args: "symbol, market, [reference-date,] exdate",
         description: "Ratio of shares on reference date for every share on exdate (X-to-1 split)"
     }),
-    DIVIDEND: _.extend(async(pvd, adjustments, options, symbol_fn, market_fn, refdate_fn, rate_fn, exdate_fn, opt_mkt_fn) => {
+    DIVIDEND: _.extend(async(nxd, adjustments, options, symbol_fn, market_fn, refdate_fn, exdate_fn, rate_fn) => {
         const [symbol, market] = [symbol_fn(), market_fn()];
-        const data = await adjustments({...options, symbol, market});
-        const expiry = opt_mkt_fn ? parseExpiry(exdate_fn(), options) : null;
-        let pvDividend = expiry && !expiry.isBefore(options.now) ?
-            pvd({...options, symbol: exdate_fn()}) : 0;
+        const begin = options.begin || refdate_fn();
+        const tz = options.tz || (moment.defaultZone||{}).name || moment.tz.guess();
+        const adj_data = await adjustments({...options, symbol, market, begin, tz});
+        const next_dividend = await nxd({...options, symbol, market});
+        const data = next_dividend && next_dividend.exdate != (_.last(adj_data)||{}).exdate ?
+            adj_data.concat(next_dividend) : adj_data;
         return points => {
             const rate = rate_fn ? rate_fn(points) : 0;
-            const exdate = expiry || moment.tz((exdate_fn||refdate_fn)(points), options.tz);
+            const exdate = moment.tz((exdate_fn||refdate_fn)(points), options.tz);
             const ref = exdate_fn ? moment.tz(refdate_fn(points), options.tz) : moment(exdate).subtract(1,'days');
             let start = _.sortedIndex(data, {exdate: ref.format("Y-MM-DD")}, 'exdate');
             let end = _.sortedIndex(data, {exdate: exdate.format("Y-MM-DD")}, 'exdate');
@@ -112,44 +120,46 @@ const functions = module.exports.functions = {
                 return +data.slice(start, end).reduce((dividend, datum) => {
                     const days_to_dividend = datum.dividend ? -ref.diff(datum.exdate, 'days') : 0;
                     const value = Big(datum.dividend).times(Math.exp(-rate*days_to_dividend/365));
-                    return dividend.add(value).div(datum.split);
-                }, Big(0)).add(pvDividend);
+                    return dividend.add(value).div(datum.split||1);
+                }, Big(0));
             } else {
                 return +data.slice(end, start).reduceRight((dividend, datum) => {
                     const days_to_dividend = datum.dividend ? -ref.diff(datum.exdate, 'days') : 0;
                     const value = Big(datum.dividend).times(Math.exp(-rate*days_to_dividend/365));
-                    return dividend.minus(value).times(datum.split);
-                }, Big(0)).minus(pvDividend);
+                    return dividend.minus(value).times(datum.split||1);
+                }, Big(0));
             }
         };
     }, {
-        args: "symbol, market, [reference-date, risk-free-rate,] (exdate | option_symbol, option_market)",
+        args: "symbol, market, [reference-date,] exdate [, risk-free-rate]",
         description: "Dividend value per share for shareholders who owned the stock on reference date until exdate"
     })
 };
 
-async function presentValueOfDividends(ib, options) {
-    if (options.offline) return 0;
+async function nextDividend(markets, ib, options) {
+    if (options.offline) return;
+    const market = markets[options.market] || {};
     await ib.open();
     const bar = await ib.reqMktData({
         localSymbol: options.symbol,
-        secType: options.security_type,
-        exchange: 'SMART',
-        currency: options.currency
-    });
-    if (((bar||{}).model_option||{}).pvDividend) {
-        return bar.mode_option.pvDividend;
-    } else {
-        return 0;
+        secType: market.secType || options.security_type,
+        exchange: market.exchange || 'SMART',
+        currency: market.currency || options.currency
+    }, ['ib_dividends']);
+    logger.trace("adjustment-functions", options.symbol, bar);
+    if ((bar||{}).ib_dividends) {
+        const datum = _.object(
+            ['past_dividends', 'expected_dividends', 'exdate', 'dividend'],
+            bar.ib_dividends.split(',')
+        );
+        if (datum.exdate) {
+            const exdate = moment.tz(datum.exdate, options.tz);
+            if (!exdate.isValid())
+                logger.error("Invalid date in ib_dividends", options.symbol, bar);
+            else return {
+                ...datum,
+                exdate: exdate.format('Y-MM-DD')
+            };
+        }
     }
-}
-
-function parseExpiry(symbol, options) {
-    if (!symbol || symbol.length < 21) return null;
-    expect(symbol).to.be.like(/^(\w(?:\w| )*)(\d\d)(\d\d)(\d\d)([CP])(\d{8})/);
-    const underlying = symbol.substring(0, 6);
-    const year = symbol.substring(6, 8);
-    const month = symbol.substring(8, 10);
-    const day = symbol.substring(10, 12);
-    return moment.tz(`20${year}-${month}-${day}`, options.tz);
 }

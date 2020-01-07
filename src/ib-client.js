@@ -1214,7 +1214,10 @@ function isTickComplete(ib, req) {
     if (!genericTickList) return false;
     const genericTickNameArray = genericTickList.split(',').map(getTickTypeName);
     if (_.difference(genericTickNameArray, _.keys(req.tickData)).length) return false;
-    ib.cancelMktData(req.reqId);
+    if (!req.cancelled) {
+        ib.cancelMktData(req.reqId);
+        req.cancelled = true;
+    }
     return true;
 }
 

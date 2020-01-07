@@ -214,7 +214,7 @@ function createInstance(settings = {}) {
         settings.productId,
         config('version')
     );
-    const adjustments = Adjustments();
+    const adjustments = new Adjustments(settings);
     const lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_markets) => {
         return symbol + ' ' + _.compact(_.flatten([listed_markets])).join(' ');
     }, 10);

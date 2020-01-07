@@ -117,7 +117,7 @@ module.exports = function(settings = {}) {
             return JSON.stringify(_.toArray(arguments));
         });
     });
-    const adjustments = new Adjustments(yahoo);
+    const adjustments = new Adjustments(settings, yahoo);
     return Object.assign(async(options) => {
         if (options.info=='help') return helpInfo;
         if (options.info=='version') return [{version}];

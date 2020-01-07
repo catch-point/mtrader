@@ -353,7 +353,7 @@ async function combineHistoricalLiveFeeds(historical_promise, live_promise, opti
 
 function createInstance(settings = {}) {
     const client = new IB(settings);
-    const adjustments = Adjustments();
+    const adjustments = new Adjustments(settings);
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);

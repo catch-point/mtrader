@@ -1038,7 +1038,7 @@ describe("quote-model", function() {
                     },
                     variables: {
                         adj_price: 'aapl.close/split-dividend',
-                        dividend: "DIVIDEND(symbol, 'NASDAQ', aapl.ending, 1, '2014-09-01')",
+                        dividend: "DIVIDEND(symbol, 'NASDAQ', aapl.ending, '2014-09-01', 1)",
                         split: "SPLIT(symbol, 'NASDAQ', aapl.ending, '2014-09-01')"
                     },
                     output: {
@@ -1148,7 +1148,7 @@ describe("quote-model", function() {
                     },
                     variables: {
                         adj_price: 'aapl.close/split-dividend',
-                        dividend: "DIVIDEND(symbol, 'NASDAQ', aapl.ending, 1, '2014-05-01')",
+                        dividend: "DIVIDEND(symbol, 'NASDAQ', aapl.ending, '2014-05-01', 1)",
                         split: "SPLIT(symbol, 'NASDAQ', aapl.ending, '2014-05-01')"
                     },
                     output: {
@@ -1277,8 +1277,8 @@ describe("quote-model", function() {
                         t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
                         r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
                         asset_price: "etf.close/split-dividend",
-                        dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, call.symbol, market)",
-                        split: "SPLIT(asset, 'ARCA', etf.ending, call.symbol, market)",
+                        dividend: "DIVIDEND(asset, 'ARCA', etf.ending, expiry, rate)",
+                        split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
                         asset: "LEFT(symbol,3)",
                         strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
                         expiry: "`20{RIGHT(LEFT(call.symbol,12),6)}`",
@@ -1400,8 +1400,8 @@ describe("quote-model", function() {
                                 t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
                                 r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
                                 asset_price: "etf.close/split-dividend",
-                                dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, call.symbol, market)",
-                                split: "SPLIT(asset, 'ARCA', etf.ending, call.symbol, market)",
+                                dividend: "DIVIDEND(asset, 'ARCA', etf.ending, expiry, rate)",
+                                split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
                                 asset: "LEFT(symbol,3)",
                                 strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
                                 expiry: "`20{RIGHT(LEFT(call.symbol,12),6)}`",
@@ -1457,8 +1457,8 @@ describe("quote-model", function() {
                                 t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
                                 r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
                                 asset_price: "etf.close/split-dividend",
-                                dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, call.symbol, market)",
-                                split: "SPLIT(asset, 'ARCA', etf.ending, call.symbol, market)",
+                                dividend: "DIVIDEND(asset, 'ARCA', etf.ending, expiry, rate)",
+                                split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
                                 asset: "LEFT(symbol,3)",
                                 strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
                                 expiry: "`20{RIGHT(LEFT(call.symbol,12),6)}`",
@@ -1597,8 +1597,8 @@ describe("quote-model", function() {
                         long_r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(long_d1-long_v1)",
                         skew: "IF(long.ending!=short.ending OR long.ending!=etf.ending,PREV('skew')) OR last_short_iv/last_long_iv",
                         asset_price: "etf.close/split-dividend",
-                        dividend: "DIVIDEND(asset, 'ARCA', etf.ending, rate, long.symbol, market)",
-                        split: "SPLIT(asset, 'ARCA', etf.ending, long.symbol, market)",
+                        dividend: "DIVIDEND(asset, 'ARCA', etf.ending, expiry, rate)",
+                        split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
                         asset: "LEFT(symbol,3)",
                         strike: "NUMBERVALUE(RIGHT(long.symbol,8))/1000",
                         expiry: "`20{RIGHT(LEFT(long.symbol,12),6)}`",
