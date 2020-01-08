@@ -73,8 +73,14 @@ module.exports = function(settings) {
         } else if (cmd == 'open') {
             return open();
         } else {
+            const caller_error = new Error("Called from");
             const client = await open();
-            return client[cmd].apply(client, arguments);
+            return client[cmd].apply(client, arguments).catch(err => {
+                logger.trace(err);
+                const stack = (caller_error.stack || caller_error).toString();
+                const msg = stack.replace(/(Error: )?Called from/, err.message);
+                throw Error(msg);
+            });
         }
     }));
 };
@@ -241,7 +247,7 @@ function reqPositions(ib) {
                 positions_fail = fail;
                 logger.log('reqPositions');
                 ib.reqPositions();
-            })).catch(err => logger.warn('reqPositions', err.message) || Promise.reject(err));
+            }));
         }
     };
 }
@@ -264,7 +270,7 @@ function currentTime(ib) {
                 received = resolve;
                 fail = reject;
                 ib.reqCurrentTime();
-            })).catch(err => logger.warn('reqCurrentTime', err.message) || Promise.reject(err));
+            }));
         }
     };
 }
@@ -301,7 +307,7 @@ function requestFA(ib) {
                 received = resolve;
                 fail = reject;
                 return ib.requestFA(IB.FA_DATA_TYPE.GROUPS);
-            })).catch(err => logger.warn('requestFA', err.message) || Promise.reject(err));
+            }));
         },
         requestProfiles() {
             if (fa_disabled) throw fa_disabled;
@@ -310,7 +316,7 @@ function requestFA(ib) {
                 received = resolve;
                 fail = reject;
                 return ib.requestFA(IB.FA_DATA_TYPE.PROFILES);
-            })).catch(err => logger.warn('requestFA', err.message) || Promise.reject(err));
+            }));
         },
         requestAliases() {
             if (fa_disabled) throw fa_disabled;
@@ -319,7 +325,7 @@ function requestFA(ib) {
                 received = resolve;
                 fail = reject;
                 return ib.requestFA(IB.FA_DATA_TYPE.ALIASES);
-            })).catch(err => logger.warn('requestFA', err.message) || Promise.reject(err));
+            }));
         }
     };
 }
@@ -416,7 +422,7 @@ function accountUpdates(ib, store, ib_tz) {
                 subscriptions[acctCode] = +reqId;
             logger.log('reqAccountUpdates', acctCode, modelCode || '', false);
             ib.reqAccountUpdatesMulti(+reqId, acctCode, modelCode || '', false);
-        }).catch(err => logger.warn('reqAccountUpdates', err.message) || Promise.reject(err));
+        });
     };
     return {
         reqAccountUpdate,
@@ -711,8 +717,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 orders_fail = fail;
                 logger.log('reqOpenOrders');
                 ib.reqOpenOrders();
-            })).then(orders => orders.filter(order => order.clientId == clientId))
-              .catch(err => logger.warn('reqOpenOrders', err.message) || Promise.reject(err));
+            })).then(orders => orders.filter(order => order.clientId == clientId));
         },
         reqAllOpenOrders() {
             return promise_orders = promise_orders.catch(logger.debug)
@@ -721,7 +726,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 orders_fail = fail;
                 logger.log('reqAllOpenOrders');
                 ib.reqAllOpenOrders();
-            })).catch(err => logger.warn('reqAllOpenOrders', err.message) || Promise.reject(err));
+            }));
         },
         async reqCompletedOrders(filter) {
             const acctCode = (filter||{}).acctCode;

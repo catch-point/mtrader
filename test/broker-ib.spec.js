@@ -134,6 +134,13 @@ describe("broker-ib", function() {
                  currency: 'USD',
                  multiplier: '' })
             }},
+          reqContractDetails: (arg) => {switch(arg.conId) {
+            case 4215235: return Promise.resolve({ secType: 'STK',
+                 localSymbol: 'XLU',
+                 exchange: 'ARCA',
+                 currency: 'USD',
+                 multiplier: '' })
+            }},
           close: () => Promise.resolve()
         });
         await broker({action: 'positions', now: '2019-05-18'})

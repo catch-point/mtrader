@@ -236,7 +236,7 @@ describe("fetch-ib", function() {
             }));
         });
         describe("should lookup CBOT quarterly futures symbols", function() {
-            const year = moment().subtract(1,'weeks').year();
+            const year = moment().subtract(1,'months').year();
             _.range(year%100,(year+1)%100).map(year => ['H','M','U','Z'].map(mo => {
                 it(`ZN${mo}${year}`, function() {
                     return client({
