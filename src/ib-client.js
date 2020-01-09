@@ -647,6 +647,20 @@ function openOrders(ib, store, ib_tz, clientId) {
             cancelling_orders[orderId].ready(orders[orderId]);
             delete cancelling_orders[orderId];
         }
+        if (placing_orders[orderId] && ~status.indexOf('Cancel')) {
+            placing_orders[orderId].fail(Error(`${status} ${placing_orders[orderId].orderRef || orderId}`));
+            delete placing_orders[orderId];
+        } else if (placing_orders[orderId] && ~status.indexOf('Inactive')) {
+            _.defer(() => { // if no errors, Inactive orders are successful
+                if (placing_orders[orderId]) {
+                    placing_orders[orderId].ready(orders[orderId]);
+                    delete placing_orders[orderId];
+                }
+            });
+        } else if (placing_orders[orderId]) {
+            placing_orders[orderId].ready(orders[orderId]);
+            delete placing_orders[orderId];
+        }
         if (flushed) flusher.flush();
         else flusher();
     }).on('openOrderEnd', function() {
