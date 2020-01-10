@@ -197,7 +197,11 @@ async function replicate(broker, collect, lookup, options) {
  * Collects the options results and converts the orders into positions
  */
 async function getDesiredPositions(broker, collect, lookup, begin, options) {
-    const parameters = await getDesiredParameters(broker, begin, options);
+    const desired_parameters = await getDesiredParameters(broker, begin, options);
+    const parameters = {
+        ...desired_parameters,
+        ...(options.parameters || {})
+    };
     logger.debug("replicate", options.label || '', begin, "parameters", parameters);
     const orders = await collect(merge(options, {begin, parameters}));
     const normalized_orders = await Promise.all(orders.map(row => normalize(lookup, row, options)));
