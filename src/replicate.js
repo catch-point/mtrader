@@ -729,8 +729,9 @@ function combineOrders(broker_orders, orders, options) {
         const leg_symbols = _.sortBy(legs, leg =>
                 (leg.traded_price || leg.limit || 1) * (leg.action == action ? 1 : -1))
             .reverse().map(leg => `${leg.action == action ? '+' : '-'}${leg.symbol}`).join('').substring(1);
+        const first_leg = legs.find(leg => leg.order_ref) || {order_ref: '', symbol: ''};
         const order_ref = (existing_order||{}).order_ref ||
-            _.first(legs).order_ref.replace(ref(_.first(legs).symbol), ref(leg_symbols));
+            first_leg.order_ref.replace(ref(first_leg.symbol), ref(leg_symbols));
         return combined_orders.concat(remaining, {
             action,
             quant,
