@@ -2263,16 +2263,16 @@ describe("replicate-simulation", function() {
                 action: 'BUY',
                 limit: (8140-6620)/100
             }, {
-                action: 'SELL',
+                action: 'BUY',
                 order_type: 'LEG',
-                symbol: 'SPX   200221C03225000',
+                symbol: 'SPX   200320C03200000',
                 market: 'OPRA',
                 security_type: 'OPT',
                 currency: 'USD'
             }, {
-                action: 'BUY',
+                action: 'SELL',
                 order_type: 'LEG',
-                symbol: 'SPX   200320C03200000',
+                symbol: 'SPX   200221C03225000',
                 market: 'OPRA',
                 security_type: 'OPT',
                 currency: 'USD'

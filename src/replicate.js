@@ -716,10 +716,11 @@ function combineOrders(broker_orders, orders, options) {
             return ord.order_type != 'LEG' && ord.order_ref == _.first(legs).attach_ref;
         });
         const traded_price = +legs.reduce((net, leg) => {
-            return net.add(Big(leg.traded_price || leg.limit || 1).times(leg.action == 'BUY' ? 1 : -1));
+            return net.add(Big(leg.traded_price || leg.limit || 0).times(leg.action == 'BUY' ? 1 : -1));
         }, Big(0));
         if (existing_order) logger.trace("existing_order", traded_price, existing_order);
-        const action = existing_order ? existing_order.action : traded_price < 0 ? 'SELL' : 'BUY';
+        const action = existing_order ? existing_order.action :
+            traded_price < 0 ? 'SELL' : traded_price > 0 ? 'BUY' : _.first(legs).action;
         const limit = +legs.reduce((net, leg) => {
             return net.add(Big(leg.limit || 0).times(leg.action == action ? 1 : -1));
         }, Big(0));
@@ -754,20 +755,20 @@ function combineOrders(broker_orders, orders, options) {
 function reduceComboPairs(orders, cb, initial) {
     const matrix = orders.map((a,i) => orders.map((b,j) => ({
         a, b,
-        score: i < j ? comboFitScore(a, b) : 0
+        score: i != j ? comboFitScore(a, b) : 0
     })));
     let result = initial;
     while (true) {
         const pair = matrix.reduce((best, array, i) => array.reduce((best, pair, j) =>
-            i < j && best.score < pair.score ? {...pair, i, j} : best, best), {score:0});
+            best.score < pair.score ? {...pair, i, j} : best, best), {score:0});
         if (!pair.score)
             return result.concat(matrix.map(array => array[0].a));
         matrix.forEach(array => {
-            array.splice(pair.j, 1);
-            array.splice(pair.i, 1);
+            array.splice(Math.max(pair.i, pair.j), 1);
+            array.splice(Math.min(pair.i, pair.j), 1);
         });
-        matrix.splice(pair.j, 1);
-        matrix.splice(pair.i, 1);
+        matrix.splice(Math.max(pair.i, pair.j), 1);
+        matrix.splice(Math.min(pair.i, pair.j), 1);
         result = cb(result, [pair.a, pair.b]);
     }
 }
@@ -786,12 +787,31 @@ function comboFitScore(a, b) {
         if (a.symbol.substring(0, 6) != b.symbol.substring(0, 6)) return 0;
         const [, a_expiry, a_right, a_strike] = a.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
         const [, b_expiry, b_right, b_strike] = b.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
+        // combo action defaults to change first leg to BUY, so higher price first
+        if (!firstLegHasHigherPrice(a_expiry, a_right, a_strike, b_expiry, b_right, b_strike)) return 0;
         const right_score = a_right == b_right && a.action != b.action ? 1e15 : 1e15 - 1e14;
         const expiry_score = 1e14 - Math.abs(a_expiry - b_expiry) * 1e8;
         const strike_score = 1e8 - Math.abs(a_strike - b_strike);
         return expiry_score + right_score + strike_score;
     } else {
         return 0;
+    }
+}
+
+function firstLegHasHigherPrice(a_expiry, a_right, a_strike, b_expiry, b_right, b_strike) {
+    if (a_right == b_right) {
+        if (a_expiry == b_expiry) {
+            if (a_right == 'C')
+                return a_strike < b_strike; // BUY ITM CALL and SELL OTM CALL
+            else if (a_right == 'P')
+                return a_strike > b_strike; // BUY ITM PUT and SELL OTM PUT
+            else
+                throw Error(`Invalid right: ${a_right}`);
+        } else {
+            return a_expiry > b_expiry; // BUY far and SELL near
+        }
+    } else {
+        return a_right == 'P' && b_right == 'C'; // BUY PUT and SELL CALL
     }
 }
 

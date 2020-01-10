@@ -636,8 +636,9 @@ function openOrders(ib, store, ib_tz, clientId) {
     }).on('orderStatus', function(orderId, status, filled, remaining, avgFillPrice,
             permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice) {
         const order = orders[orderId] || {};
-        if (orders[orderId]) logger.info(`${order.orderRef || orderId}`, order.action, order.symbol,
-            status, order.orderType, order.tif, filled, '/', remaining, avgFillPrice);
+        if (orders[orderId] && orders[orderId].action)
+            logger.info("order", `${order.orderRef || orderId}`, order.action, order.symbol,
+                status, order.orderType, order.tif, filled, '/', remaining, avgFillPrice, clientId);
         orders[orderId] = log(Object.assign({}, order, {
             time: moment().tz(ib_tz).milliseconds(0).format(F),
             status, filled, remaining, avgFillPrice, permId, parentId,
