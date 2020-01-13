@@ -637,8 +637,8 @@ function openOrders(ib, store, ib_tz, clientId) {
             permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice) {
         const order = orders[orderId] || {};
         if (orders[orderId] && orders[orderId].action)
-            logger.info("order", `${order.orderRef || orderId}`, order.action, order.symbol,
-                status, order.orderType, order.tif, filled, '/', remaining, avgFillPrice, clientId);
+            logger.info("order", orderId, `${order.orderRef || ''}`, order.action, order.symbol,
+                status, order.orderType, order.tif, filled, '/', remaining, avgFillPrice);
         orders[orderId] = log(Object.assign({}, order, {
             time: moment().tz(ib_tz).milliseconds(0).format(F),
             status, filled, remaining, avgFillPrice, permId, parentId,
@@ -653,12 +653,12 @@ function openOrders(ib, store, ib_tz, clientId) {
             delete placing_orders[orderId];
         } else if (placing_orders[orderId] && ~status.indexOf('Inactive')) {
             _.defer(() => { // if no errors, Inactive orders are successful
-                if (placing_orders[orderId]) {
+                if (placing_orders[orderId] && orders[orderId].action) {
                     placing_orders[orderId].ready(orders[orderId]);
                     delete placing_orders[orderId];
                 }
             });
-        } else if (placing_orders[orderId]) {
+        } else if (placing_orders[orderId] && orders[orderId].action) {
             placing_orders[orderId].ready(orders[orderId]);
             delete placing_orders[orderId];
         }
@@ -709,6 +709,15 @@ function openOrders(ib, store, ib_tz, clientId) {
             }
             else return new Promise((ready, fail) => {
                 placing_orders[orderId] = {ready, fail, orderId, contract, order};
+                const check_order = timeout => {
+                    if (placing_orders[orderId]) {
+                        // Paper accounts don't change order status until filled
+                        logger.log('reqOpenOrders');
+                        ib.reqOpenOrders();
+                        setTimeout(check_order.bind(this, Math.min(timeout*2,60000)), timeout).unref();
+                    }
+                };
+                setTimeout(check_order.bind(this, 5000), 1000).unref();
             }).catch(err => logger.warn('placeOrder', orderId, contract, order, err.message) || Promise.reject(err));
         },
         async cancelOrder(orderId) {
