@@ -147,6 +147,14 @@ function help(broker, collect) {
             force: {
                 usage: 'true',
                 description: "If live positions, that have been changed more recently, should also be adjusted"
+            },
+            working_orders_only: {
+                usage: 'true',
+                description: "Don't try to align positions sizes, only submit working orders"
+            },
+            exclude_working_orders: {
+                usage: 'true',
+                description: "Only update positions sizes, don't submit/update working orders"
             }
         }
     })).then(help => [help]);
@@ -509,7 +517,8 @@ function updateActual(desired, actual, options) {
             ..._.pick(desired, 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick')
         })
     } : null;
-    const adjustments = orderReplacements(actual.adjustment, desired_adjustment, 0, options);
+    const adjustments = options.working_orders_only ? [] :
+        orderReplacements(actual.adjustment, desired_adjustment, 0, options);
     const adjusting_order = !adjustments.length ? actual.adjustment :
         _.first(adjustments.filter(ord => ord.action != 'cancel'));
     const adjust_position = !adjusting_order ? 0 :
@@ -539,6 +548,8 @@ function updateActual(desired, actual, options) {
         logger.warn(`Working ${desired.attach_ref} position has since been changed ${actual.traded_at}`, options.label || '');
         logger.debug("replicate", "actual", actual);
         return cancelled;
+    } else if (options.exclude_working_orders) {
+        return adjustments;
     } else if (adjustment_order && (desired.realized.stoploss || !_.isEmpty(desired.realized.working))) {
         // keep existing transition orders (i.e. stoploss), and don't submit new working orders
         return groupIntoOCAOrder(transition.concat(adjustments));
@@ -576,8 +587,8 @@ function orderReplacements(working_order, desired_order, pos_offset, options) {
         {...working_order, action: 'cancel'} : null;
     const quant = desired_order && (desired_order.action == 'BUY' ? +desired_order.quant - pos_offset :
         +desired_order.quant + + pos_offset).toString();
-    const order = {...desired_order, quant};
-    const replacement_order = !desired_order ? null :
+    const order = desired_order && +quant ? {...desired_order, quant} : null;
+    const replacement_order = !order ? null :
         !working_order || cancel_order ? order :
         !sameSignal(working_order, order) ? {
             ...working_order,

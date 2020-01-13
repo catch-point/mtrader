@@ -115,8 +115,8 @@ function createInstance(session) {
     };
 
     config.fork = function(modulePath, program) {
-        const pairs = program.options.filter(o => o.required || o.optional).map(o => o.name().replace('-', '_'));
-        const bools = _.reject(program.options, o => o.required || o.optional).map(o => o.name().replace('-', '_'));
+        const pairs = program.options.filter(o => o.required || o.optional).map(o => o.name().replace(/-/g, '_'));
+        const bools = _.reject(program.options, o => o.required || o.optional).map(o => o.name().replace(/-/g, '_'));
         const opts = commander_opts();
         const cfg = _.omit(config(), value => value == null);
         const cfg_pairs = _.pick(_.pick(cfg, pairs), _.isString);
@@ -124,10 +124,10 @@ function createInstance(session) {
         const cfg_other = _.difference(_.keys(cfg), pairs, bools)
             .filter(key => _.has(session, key) || _.has(opts, key));
         const arg_pairs = _.flatten(_.zip(
-            _.keys(cfg_pairs).map(option => '--' + option.replace('_', '-')),
+            _.keys(cfg_pairs).map(option => '--' + option.replace(/_/g, '-')),
             _.values(cfg_pairs)
         ));
-        const arg_bools = cfg_bools.map(option => option.replace('_', '-'))
+        const arg_bools = cfg_bools.map(option => option.replace(/_/g, '-'))
             .map(opt => (opt.charAt(0) == '-' ? '' : '--') + opt);
         const arg_other = _.flatten(cfg_other.map(name => ['--set', name + '=' + JSON.stringify(cfg[name])]));
         const args = arg_pairs.concat(arg_bools, arg_other);
@@ -262,7 +262,7 @@ function createInstance(session) {
 function commander_opts() {
     return commander_options.reduce((result, opt) => {
         const name = opt.name();
-        const prop = name.replace('-', '_');
+        const prop = name.replace(/-/g, '_');
         const key = name.split('-').reduce((str, word) => {
             return str + word[0].toUpperCase() + word.slice(1);
         });
@@ -275,7 +275,7 @@ function commander_opts() {
 }
 
 function opt(name, defaultValue) {
-    const opt = '--' + name.replace('_', '-');
+    const opt = '--' + name.replace(/_/g, '-');
     const idx = process.argv.indexOf(opt)+1;
     const value = idx && process.argv[idx];
     return value || process.argv.reduce((value, arg) => {
