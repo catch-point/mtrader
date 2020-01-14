@@ -250,6 +250,7 @@ function aquireLock(cache, lock_file) {
     return attemptLock(lock_file).catch(err => new Promise((locked, error) => {
         if (cache.closed) return error(Error(`Process ${process.pid} could not aquire lock ${lock_file}`));
         logger.log(err.message);
+        let watcher;
         const cleanup = () => {
             if (watcher) watcher.close();
             cache.removeListener('close', onclose);
@@ -259,7 +260,7 @@ function aquireLock(cache, lock_file) {
             error(Error(`Process ${process.pid} could not aquire lock in time ${lock_file}`));
         };
         cache.on('close', onclose);
-        const watcher = fs.watch(lock_file, {persistent:false}, () => attemptLock(lock_file).then(() => {
+        watcher = fs.watch(lock_file, {persistent:false}, () => attemptLock(lock_file).then(() => {
             cleanup();
             locked();
         }, err => logger.log(err.message))).on('error', err =>{

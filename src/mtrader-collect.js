@@ -37,6 +37,7 @@ const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
+const debounce = require('./debounce.js');
 const share = require('./share.js');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
@@ -125,7 +126,6 @@ function createInstance(program, runInBand = false) {
     let promiseKeys, closed;
     const fetch = new Fetch();
     const quote = new Quote();
-    let inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
     const instance = function(options) {
         if (closed) throw Error("Collect is closed");
         if (!promiseKeys) {
@@ -137,7 +137,7 @@ function createInstance(program, runInBand = false) {
             if (options.info=='help' || isSplitting(options)) return direct(options);
             else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
             else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
-            else if (cache && inPast(options)) return cache(options);
+            else if (cache) return cache(options);
             else if (config('runInBand') || runInBand) return direct(options);
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (!remote.hasWorkers()) return local(options);
@@ -156,15 +156,12 @@ function createInstance(program, runInBand = false) {
           .then(() => cache && cache.close());
     };
     instance.shell = shell.bind(this, program.description(), instance);
-    instance.reload = _.debounce(() => {
-        local.reload();
-        remote.reload();
-        inPast = beforeTimestamp.bind(this, Date.now() - 24 * 60 * 60 * 1000);
-        try {
-            cache && cache.close().catch(err => logger.warn("Could not reset collect cache", err));
-        } finally {
-            cache = createCache(direct, local, remote, settings);
-        }
+    instance.reload = debounce(async() => {
+        await local.reload();
+        await remote.reload();
+        await (cache && cache.close()
+            .catch(err => logger.warn("Could not reset collect cache", err)));
+        cache = createCache(direct, local, remote, settings);
     }, 100);
     instance.reset = () => {
         try {
@@ -209,10 +206,6 @@ function createCache(direct, local, remote, settings) {
         else if (!local.hasWorkers()) return remote.collect(options);
         else return local(options);
     }, collect_cache_size);
-}
-
-function beforeTimestamp(past, options) {
-    return options.end && moment(options.end).valueOf() < past;
 }
 
 function isSplitting(options) {

@@ -55,6 +55,7 @@ function usage(command) {
         .option('-q, --quiet', "Include less information about what the system is doing")
         .option('-x, --debug', "Include details about what the system is working on")
         .option('-X', "Hide details about what the system is working on")
+        .option('-i, --runInBand', "Runs in the same process rather than spawning or using remote workers")
         .option('--prefix <dirname>', "Path where the program files are stored")
         .option('--config-dir <dirname>', "Directory where stored sessions are kept")
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
