@@ -412,6 +412,48 @@ describe("common-functions", function(){
             expect(RIGHT({n:1})).to.equal(null);
         });
     });
+    describe("MID", function() {
+        var parser = Parser({
+            constant(value) {
+                return () => value;
+            },
+            variable(name) {
+                return context => context[name];
+            },
+            expression(expr, name, args) {
+                return common(name, args, {tz: 'America/New_York'});
+            }
+        });
+        var MID = parser.parse('MID(t, n, m)');
+        it("a1", function() {
+            expect(MID({t:"a",n:1,m:1})).to.equal("a");
+        });
+        it("ab1", function() {
+            expect(MID({t:"ab",n:1,m:1})).to.equal("a");
+            expect(MID({t:"ab",n:2,m:1})).to.equal("b");
+        });
+        it("abc2", function() {
+            expect(MID({t:"abc",n:1,m:2})).to.equal("ab");
+            expect(MID({t:"abc",n:2,m:2})).to.equal("bc");
+        });
+        it("abc4", function() {
+            expect(MID({t:"abc",n:1,m:3})).to.equal("abc");
+        });
+        it("1", function() {
+            expect(MID({t:"",n:1,m:0})).to.equal("");
+            expect(MID({t:"",n:1,m:1})).to.equal("");
+        });
+        it("abc0", function() {
+            expect(MID({t:"abc",n:1,m:0})).to.equal("");
+        });
+        it("abc-1", function() {
+            expect(MID({t:"abc",n:-1})).to.equal(null);
+            expect(MID({t:"abc",n:1,m:-1})).to.equal(null);
+        });
+        it("null1", function() {
+            expect(MID({n:1})).to.equal(null);
+        });
+    });
     describe("SEARCH/REPLACE", function() {
         var parser = Parser({
             constant(value) {

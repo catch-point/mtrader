@@ -134,7 +134,7 @@ const functions = module.exports.functions = {
         return context => {
             const str = text(context);
             if (str == null) return null;
-            const n = number(context) || 0;
+            const n = +number(context) || 0;
             return str.toString().substring(0, n);
         };
     }, {
@@ -144,12 +144,26 @@ const functions = module.exports.functions = {
         return context => {
             const str = text(context);
             if (str == null) return null;
-            const n = number(context) || 0;
+            const n = +number(context) || 0;
             const len = str.toString().length;
             return str.toString().substring(Math.max(len - n, 0), len);
         };
     }, {
         description: "Returns the last character or characters of a text"
+    }),
+    MID: _.extend((opts, text, start, number) => {
+        return context => {
+            const str = text(context);
+            if (str == null) return null;
+            const s = +start(context) || 0;
+            const n = +number(context) || 0;
+            const len = str.toString().length;
+            if (s < 1 || n < 0) return null;
+            else if (!n || len < s) return '';
+            else return str.toString().substring(Math.max(s -1, 0), Math.min(n + s -1, len));
+        };
+    }, {
+        description: "Returns the character or characters in text"
     }),
     LEN: _.extend((opts, text) => {
         return context => {
