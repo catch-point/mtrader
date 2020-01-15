@@ -405,7 +405,10 @@ async function cancelOrder(markets, ib, settings, options) {
     const ib_order = await orderByRef(ib, options.order_ref);
     if (!ib_order) throw Error(`Unknown order_ref ${options.order_ref}`);
     const cancelled_order = await ib.cancelOrder(ib_order.orderId);
-    const order = ibToOrder(markets, ib, settings, {...ib_order, ...cancelled_order}, options);
+    const order = ibToOrder(markets, ib, settings, {
+        ...ib_order,
+        ..._.omit(cancelled_order, v => v == null)
+    }, options);
     return [order];
 }
 

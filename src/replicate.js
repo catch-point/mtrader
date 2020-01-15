@@ -587,7 +587,7 @@ function orderReplacements(working_order, desired_order, pos_offset, options) {
         {...working_order, action: 'cancel'} : null;
     const quant = desired_order && (desired_order.action == 'BUY' ? +desired_order.quant - pos_offset :
         +desired_order.quant + + pos_offset).toString();
-    const order = desired_order && +quant ? {...desired_order, quant} : null;
+    const order = desired_order && +quant > 0 ? { ...desired_order, quant } : null;
     const replacement_order = !order ? null :
         !working_order || cancel_order ? order :
         !sameSignal(working_order, order) ? {

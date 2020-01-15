@@ -120,9 +120,9 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
                 fail(err);
             }
         }).once('nextValidId', order_id => {
+            logger.log("ib-client connected to", host, port, "as", clientId);
             ready();
         }).once('disconnected', () => {
-            logger.trace("ib disconnected");
             fail(first_error || Error("disconnected"));
         });
     });
@@ -134,7 +134,7 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
             self.connecting = false;
             self.connected = false;
             self.disconnected = true;
-            logger.debug("ib-client disconnected", host, port, clientId);
+            logger.log("ib-client disconnected from", host, port, "as", clientId);
             ready();
         });
     });
@@ -203,7 +203,7 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
                 if (module.close) return module.close().catch(err => error = error || err);
             }));
             if (self.connecting || self.connected) {
-                if (!self.disconnected) ib.disconnect();
+                _.defer(() => !self.disconnected && ib.disconnect());
                 await once_disconnected;
             }
             if (store) await store.close();
@@ -558,10 +558,13 @@ function openOrders(ib, store, ib_tz, clientId) {
                         const contract = _.pick(order, 'conId', 'exchange', 'currency');
                         const update = {
                             ..._.omit(order, v => Number.isNaN(v) || v == Number.MAX_VALUE),
-                            totalQuantity
+                            totalQuantity,
+                            remaining: totalQuantity
                         };
-                        logger.log('placeOrder', update.orderId, contract, update);
-                        ib.placeOrder(update.orderId, contract, update);
+                        self.reqId(orderId => {
+                            logger.log('placeOrder', orderId, contract, update);
+                            ib.placeOrder(orderId, contract, update);
+                        }).catch(err => logger.error("update order quant error", err));
                     }
                 }
             }
@@ -626,9 +629,11 @@ function openOrders(ib, store, ib_tz, clientId) {
                 {time},
                 order, orderStatus
             );
-            if (placing_orders[orderId]) {
+            if (placing_orders[orderId] && placing_orders[orderId].status) {
                 placing_orders[orderId].ready(orders[orderId]);
                 delete placing_orders[orderId];
+            } else if (placing_orders[orderId]) {
+                logger.trace("waiting for palced order status", orderId);
             }
             if (flushed) flusher.flush();
             else flusher();
