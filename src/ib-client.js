@@ -649,7 +649,7 @@ function openOrders(ib, store, ib_tz, clientId) {
             status, filled, remaining, avgFillPrice, permId, parentId,
             lastFillPrice, clientId, whyHeld, mktCapPrice
         }));
-        if (cancelling_orders[orderId]) {
+        if (cancelling_orders[orderId] && ~status.indexOf('Cancel')) {
             cancelling_orders[orderId].ready(orders[orderId]);
             delete cancelling_orders[orderId];
         }
@@ -730,6 +730,15 @@ function openOrders(ib, store, ib_tz, clientId) {
             ib.cancelOrder(orderId);
             return new Promise((ready, fail) => {
                 cancelling_orders[orderId] = {ready, fail};
+                const check_order = timeout => {
+                    if (cancelling_orders[orderId]) {
+                        // ApiCancelled does not trigger a notification, such as when market is closed
+                        logger.log('reqOpenOrders');
+                        ib.reqOpenOrders();
+                        setTimeout(check_order.bind(this, Math.min(timeout*2,60000)), timeout).unref();
+                    }
+                };
+                setTimeout(check_order.bind(this, 5000), 1000).unref();
             }).catch(err => logger.warn('cancelOrder', orderId, err.message) || Promise.reject(err));
         },
         async reqRecentOrders() {
