@@ -464,6 +464,7 @@ function openOrders(ib, store, ib_tz, clientId) {
     const next_valid_id_queue = [];
     const placing_orders = {};
     const cancelling_orders = {};
+    const watching_orders = {};
     const orders = {};
     const order_log = {};
     const managed_accounts = [];
@@ -586,6 +587,10 @@ function openOrders(ib, store, ib_tz, clientId) {
                 req.fail(err);
                 delete cancelling_orders[orderId];
             });
+            Object.entries(watching_orders).forEach(([orderId, req]) => {
+                req.fail(err);
+                delete watching_orders[orderId];
+            });
             if (orders_fail) orders_fail(err);
         }
     }).on('disconnected', () => {
@@ -597,6 +602,10 @@ function openOrders(ib, store, ib_tz, clientId) {
         Object.entries(cancelling_orders).forEach(([orderId, req]) => {
             req.fail(err);
             delete cancelling_orders[orderId];
+        });
+        Object.entries(watching_orders).forEach(([orderId, req]) => {
+            req.fail(err);
+            delete watching_orders[orderId];
         });
         if (orders_fail) orders_fail(err);
     }).on('nextValidId', order_id => {
@@ -649,6 +658,10 @@ function openOrders(ib, store, ib_tz, clientId) {
             status, filled, remaining, avgFillPrice, permId, parentId,
             lastFillPrice, clientId, whyHeld, mktCapPrice
         }));
+        if (watching_orders[orderId]) {
+            watching_orders[orderId].ready(orders[orderId]);
+            delete watching_orders[orderId];
+        }
         if (cancelling_orders[orderId] && ~status.indexOf('Cancel')) {
             cancelling_orders[orderId].ready(orders[orderId]);
             delete cancelling_orders[orderId];
@@ -713,9 +726,9 @@ function openOrders(ib, store, ib_tz, clientId) {
                 });
             }
             else return new Promise((ready, fail) => {
-                placing_orders[orderId] = {ready, fail, orderId, contract, order};
+                const hdlr = combineListeners(placing_orders, orderId, {ready, fail, orderId, contract, order});
                 const check_order = timeout => {
-                    if (placing_orders[orderId]) {
+                    if (placing_orders[orderId] === hdlr) {
                         // Paper accounts don't change order status until filled
                         logger.log('reqOpenOrders');
                         ib.reqOpenOrders();
@@ -729,9 +742,9 @@ function openOrders(ib, store, ib_tz, clientId) {
             logger.log('cancelOrder', orderId);
             ib.cancelOrder(orderId);
             return new Promise((ready, fail) => {
-                cancelling_orders[orderId] = {ready, fail};
+                const hdlr = combineListeners(cancelling_orders, orderId, {ready, fail});
                 const check_order = timeout => {
-                    if (cancelling_orders[orderId]) {
+                    if (cancelling_orders[orderId] === hdlr) {
                         // ApiCancelled does not trigger a notification, such as when market is closed
                         logger.log('reqOpenOrders');
                         ib.reqOpenOrders();
@@ -740,6 +753,18 @@ function openOrders(ib, store, ib_tz, clientId) {
                 };
                 setTimeout(check_order.bind(this, 5000), 1000).unref();
             }).catch(err => logger.warn('cancelOrder', orderId, err.message) || Promise.reject(err));
+        },
+        async watchOrder(orderId, timeout) {
+            const timer = setTimeout(() => {
+                if (watching_orders[orderId] && orders[orderId]) {
+                    watching_orders[orderId].ready(orders[orderId]);
+                } else if (watching_orders[orderId]) {
+                    watching_orders[orderId].fail(Error("Order status has not changed"));
+                }
+            }, timeout).unref();
+            return new Promise((ready, fail) => {
+                combineListeners(watching_orders, orderId, {ready, fail});
+            }).then(result => clearTimeout(timer) || result, err => clearTimeout(timer) || Promise.reject(err));
         },
         async reqRecentOrders() {
             return _.values(orders).filter(order => {
@@ -1221,6 +1246,16 @@ function requestWithId(ib) {
             return request('calculateOptionPrice', contract, volatility, underPrice);
         }
     };
+}
+
+function combineListeners(hash, key, handlers) {
+    return hash[key] = hash[key] ? _.object(Object.keys(handlers).map(event => {
+        if (typeof handlers[event] != 'function') return [event, handlers[event]];
+        else return [event, function() {
+            hash[key][event].apply(this, arguments);
+            return handlers[event].apply(this, arguments);
+        }];
+    })) : handlers;
 }
 
 async function expandComboLegs(self, contract) {

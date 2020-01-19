@@ -58,19 +58,20 @@ const Lookup = require('./lookup.js');
  * STP GTC order to close current position and is not cancelled during an
  * adjustment order. All working and stoploss orders are OCA.
  */
-module.exports = function(broker, fetch, collect) {
-    let promiseHelp;
+module.exports = function(broker, fetch, collect, settings) {
+    let promiseHelp, brokerHelp;
     const lookup = new Lookup(fetch);
     return _.extend(async function(options) {
-        if (!promiseHelp) promiseHelp = help(broker, collect);
+        if (!brokerHelp) brokerHelp = broker({info:'help'});
+        if (!promiseHelp) promiseHelp = helpInfo(brokerHelp, collect({info:'help'}));
         if (options.info=='help') return promiseHelp;
         else if (options.info=='version') return [{version:version.toString()}];
-        else return promiseHelp.then(help => {
-            const opts = _.defaults({
-                now: moment(options.now).valueOf()
-            }, _.pick(options, _.keys(_.first(help).options)));
-            return replicate(broker, collect, lookup, opts);
-        });
+        const help = await promiseHelp;
+        const broker_watch = wrapBroker(broker, await brokerHelp, settings);
+        const opts = _.defaults({
+            now: moment(options.now).valueOf()
+        }, _.pick(options, _.keys(_.first(help).options)));
+        return replicate(broker_watch, collect, lookup, opts);
     }, {
         close() {
             return lookup.close();
@@ -81,8 +82,8 @@ module.exports = function(broker, fetch, collect) {
 /**
  * Array of one Object with description of module, including supported options
  */
-function help(broker, collect) {
-    return Promise.all([collect({info:'help'}), broker({info:'help'})]).then(_.flatten)
+function helpInfo(broker, collect) {
+    return Promise.all([collect, broker]).then(_.flatten)
       .then(list => list.reduce((help, delegate) => {
         return _.extend(help, {options: _.extend({}, delegate.options, help.options)});
     }, {
@@ -158,6 +159,25 @@ function help(broker, collect) {
             }
         }
     })).then(help => [help]);
+}
+
+/**
+ * Wait for pending orders to become working orders, if broker supports it
+ */
+function wrapBroker(broker, brokerHelp, settings) {
+    if (!brokerHelp.some(info => ~(((info.options||{}).action||{}).values||[]).indexOf('watch')))
+        return broker; // broker does not support order watching
+    const timeout = settings.timeout || 1000;
+    return _.extendOwn(async(options) => {
+        if (options.action != 'BUY' && options.action != 'SELL')
+            return broker(options);
+        const orders = await broker(options);
+        if (!orders.some(ord => ord.status == 'pending')) return orders;
+        else return Promise.all(orders.map(ord => {
+            if (ord.status != 'pending' || !ord.order_ref) return ord;
+            else return broker({..._.omit(options, 'quant'), action: 'watch', timeout});
+        }));
+    }, broker);
 }
 
 /**

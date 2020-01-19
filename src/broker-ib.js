@@ -63,6 +63,7 @@ module.exports = function(settings = {}, mock_ib_client = null) {
             case 'positions': return listPositions(markets, ib, fetch, settings, options);
             case 'orders': return listOrders(markets, ib, settings, options);
             case 'cancel': return cancelOrder(markets, ib, settings, options);
+            case 'watch': return watchOrder(markets, ib, settings, options);
             case 'OCA': return oneCancelsAllOrders(root_ref, markets, ib, settings, options);
             case 'BUY':
             case 'SELL': return submitOrder(root_ref, markets, ib, settings, options);
@@ -112,6 +113,72 @@ function helpSettings() {
  * Array of one Object with description of module, including supported options
  */
 function helpOptions() {
+    const order_properties = {
+        quant: {
+            usage: '<positive-integer>',
+            description: "The number of shares or contracts to buy or sell"
+        },
+        order_type: {
+            usage: '<order-type>',
+            values: ['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']
+        },
+        limit: {
+            usage: '<limit-price>',
+            descirption: "The limit price for orders of type LMT"
+        },
+        stop: {
+            usage: '<aux-price>',
+            description: "Stop limit price for STP orders"
+        },
+        offset: {
+            usage: '<price-offset>',
+            description: "Pegged and snap order offset"
+        },
+        tif: {
+            usage: '<time-in-forced>',
+            values: ['GTC', 'DAY', 'IOC']
+        },
+        extended_hours: {
+            usage: 'true',
+            values: ['true'],
+            description: "If set, Allows orders to also trigger or fill outside of regular trading hours."
+        },
+        order_ref: {
+            usage: '<string>',
+            description: "The order identifier that is unique among working orders"
+        },
+        attach_ref: {
+            usage: '<string>',
+            description: "The order_ref of the parent order that must be filled before this order or a common identifier for orders in the same one-cancels-all (OCA) group."
+        },
+        attached: {
+            usage: '[...orders]',
+            description: "Submit attached parent/child orders together or OCA group of orders"
+        },
+        symbol: {
+            usage: '<string>',
+            description: "The symbol of the contract to be traded, omit for OCA and bag orders"
+        },
+        market: {
+            usage: '<string>',
+            description: "The market of the contract (might also be the name of the exchange)"
+        },
+        security_type: {
+            values: ['STK', 'FUT', 'OPT']
+        },
+        currency: {
+            usage: '<string>',
+            values: ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY']
+        },
+        multiplier: {
+            usage: '<number>',
+            description: "The value of a single unit of change in price"
+        },
+        minTick: {
+            usage: '<decimal>',
+            description: "The minimum increment at the current price level (used by SNAP STK)"
+        }
+    };
     return Promise.resolve([{
         name: 'balances',
         usage: 'broker(options)',
@@ -211,72 +278,50 @@ function helpOptions() {
         options: {
             action: {
                 usage: '<string>',
-                values: ['BUY', 'SELL', 'OCA', 'cancel']
+                values: ['BUY', 'SELL', 'OCA']
             },
-            quant: {
-                usage: '<positive-integer>',
-                description: "The number of shares or contracts to buy or sell"
-            },
-            order_type: {
-                usage: '<order-type>',
-                values: ['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']
-            },
-            limit: {
-                usage: '<limit-price>',
-                descirption: "The limit price for orders of type LMT"
-            },
-            stop: {
-                usage: '<aux-price>',
-                description: "Stop limit price for STP orders"
-            },
-            offset: {
-                usage: '<price-offset>',
-                description: "Pegged and snap order offset"
-            },
-            tif: {
-                usage: '<time-in-forced>',
-                values: ['GTC', 'DAY', 'IOC']
-            },
-            extended_hours: {
-                usage: 'true',
-                values: ['true'],
-                description: "If set, Allows orders to also trigger or fill outside of regular trading hours."
-            },
-            order_ref: {
+            ...order_properties
+        }
+    }, {
+        name: 'cancel',
+        usage: 'broker(options)',
+        description: "Cancels a working order",
+        properties: [
+            'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset',
+            'tif', 'extended_hours', 'status',
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
+        ],
+        options: {
+            action: {
                 usage: '<string>',
-                description: "The order identifier that is unique among working orders"
+                values: ['cancel']
             },
-            attach_ref: {
+            ...order_properties
+        }
+    }, {
+        name: 'watch',
+        usage: 'broker(options)',
+        description: "Waits until a working order has changed from the given properties or a timeout",
+        properties: [
+            'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset',
+            'tif', 'extended_hours', 'status',
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
+        ],
+        options: {
+            action: {
                 usage: '<string>',
-                description: "The order_ref of the parent order that must be filled before this order or a common identifier for orders in the same one-cancels-all (OCA) group."
+                values: ['watch']
             },
-            attached: {
-                usage: '[...orders]',
-                description: "Submit attached parent/child orders together or OCA group of orders"
+            timeout: {
+                usage: '<milliseconds>',
+                description: "Number of milliseconds to wait for a working order to change"
             },
-            symbol: {
-                usage: '<string>',
-                description: "The symbol of the contract to be traded, omit for OCA and bag orders"
+            status: {
+                usage: 'pending|working',
+                values: ['pending', 'working'],
+                description: "Stop watching order when order state is different from given"
             },
-            market: {
-                usage: '<string>',
-                description: "The market of the contract (might also be the name of the exchange)"
-            },
-            security_type: {
-                values: ['STK', 'FUT', 'OPT']
-            },
-            currency: {
-                usage: '<string>',
-                values: ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY']
-            },
-            multiplier: {
-                usage: '<number>',
-                description: "The value of a single unit of change in price"
-            },
-            minTick: {
-                usage: '<decimal>',
-                description: "The minimum increment at the current price level (used by SNAP STK)"
-            }
+            ..._.pick(order_properties, 'order_ref', 'quant', 'limit', 'stop', 'offset', 'tif')
         }
     }]);
 }
@@ -406,10 +451,32 @@ async function cancelOrder(markets, ib, settings, options) {
     if (!ib_order) throw Error(`Unknown order_ref ${options.order_ref}`);
     const cancelled_order = await ib.cancelOrder(ib_order.orderId);
     const order = await ibToOrder(markets, ib, settings, {
-        ..._.omit(ib_order, v => !v),
-        ..._.omit(cancelled_order, v => !v)
+        ...ib_order,
+        ...cancelled_order
     }, options);
     return [order];
+}
+
+async function watchOrder(markets, ib, settings, options) {
+    expect(options).to.have.property('order_ref').that.is.ok;
+    const started_at = Date.now();
+    const matches = _.matcher(_.pick(options, 'order_ref', 'status', 'quant', 'limit', 'stop', 'offset', 'tif'));
+    const ib_order = await orderByRef(ib, options.order_ref);
+    if (!ib_order) throw Error(`Unknown order_ref ${options.order_ref}`);
+    const original_order = await ibToOrder(markets, ib, settings, ib_order, options);
+    if (!matches(original_order)) return [original_order]; // already changed
+    let timeout = options.timeout || settings.timeout || 600000;
+    const end_at = started_at + timeout;
+    let orderId = ib_order.orderId;
+    while(orderId) {
+        const changed_order = await ib.watchOrder(orderId, timeout);
+        const replace_by = await orderByRef(ib, options.order_ref);
+        const order = await ibToOrder(markets, ib, settings, replace_by || changed_order, options);
+        if (!matches(order)) return [order];
+        timeout = end_at - Date.now();
+        if (timeout <= 0) return [order];
+        orderId = replace_by ? replace_by.orderId : changed_order.orderId;
+    }
 }
 
 async function oneCancelsAllOrders(root_ref, markets, ib, settings, options) {

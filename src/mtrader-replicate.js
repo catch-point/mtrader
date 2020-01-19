@@ -36,6 +36,7 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
 const tabular = require('./tabular.js');
+const merge = require('./merge.js');
 const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
@@ -115,7 +116,7 @@ function createInstance(program, settings = {}) {
     const fetch = new Fetch();
     const collect = new Collect(settings);
     const broker = new Broker(settings);
-    const replicate = new Replicate(broker, fetch, collect);
+    const replicate = new Replicate(broker, fetch, collect, merge(settings.replicate, config('replicate')));
     let promiseKeys, closed;
     const instance = function(options) {
         if (!promiseKeys) {
