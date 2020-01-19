@@ -98,7 +98,7 @@ function createRemoteWorkers(settings, check_queue) {
     const queue = this;
     const remote_workers = getRemoteWorkerSettings(settings);
     const remoteWorkers = remote_workers.map(remote_settings => {
-        return replyTo(remote(remote_settings)).on('connect', function() {
+        const worker = replyTo(remote(remote_settings)).on('connect', function() {
             if (!queue.getStoppedWorkers().find(w => w.connected && w.process.pid == this.process.pid))
                 logger.log("Worker", this.process.pid, "is connected");
             if (queue.isClosed()) this.disconnect();
@@ -108,6 +108,8 @@ function createRemoteWorkers(settings, check_queue) {
             else
                 logger.log("Worker", this.process.pid, "has disconnected");
         }).on('error', err => logger.warn(err.message || err));
+        worker.tier = remote_settings.tier || 0;
+        return worker;
     });
     const nice = settings.nice;
     Promise.all(remoteWorkers.map(worker => worker.request('worker_count').catch(err => err)))

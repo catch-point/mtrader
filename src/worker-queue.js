@@ -39,7 +39,8 @@ module.exports = function(createWorkers, execTask) {
     const stoppedWorkers = [];
     const run = function() {
         if (closed) throw Error("Workers have closed");
-        const loads = workers.map(load);
+        const low_tier = _.min(workers.map(wrk => wrk.tier));
+        const loads = workers.map(wrk => wrk.tier == low_tier ? load(wrk) : Infinity);
         const min = _.min(loads);
         const avail = _.reject(loads.map((load, idx) => load == min ? idx : null), _.isNull);
         const idx = avail.length == 1 ? 0 : Math.floor(Math.random() * avail.length);
