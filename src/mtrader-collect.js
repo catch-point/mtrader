@@ -132,8 +132,10 @@ function createInstance(program, runInBand = false) {
             promiseKeys = direct({info:'help'})
                 .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
         }
+        const local_tier = settings.tier || 0;
         return promiseKeys.then(keys => trimOptions(keys, options))
           .then(options => {
+            const remote_tier = remote.getWorkerTier() || 0;
             if (options.info=='help' || isSplitting(options)) return direct(options);
             else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
             else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
@@ -141,8 +143,10 @@ function createInstance(program, runInBand = false) {
             else if (config('runInBand') || runInBand) return direct(options);
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (!remote.hasWorkers()) return local(options);
+            else if (local.hasWorkers() && local_tier < remote_tier) return local(options);
             else if (options.reset_every || isLeaf(options)) return remote.collect(options);
             else if (!local.hasWorkers()) return remote.collect(options);
+            else if (remote.hasWorkers() && remote_tier < local_tier) return remote.collect(options);
             else return local(options);
         });
     };
@@ -196,14 +200,18 @@ function createCache(direct, local, remote, settings) {
     if (!_.isFinite(settings.cache_size)) return null;
     const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const dir = path.resolve(cache_dir, 'collect');
+    const local_tier = settings.tier || 0;
     return Cache(dir, function(options) {
+        const remote_tier = remote.getWorkerTier() || 0;
         if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
         else if (options.info=='help' || isSplitting(options)) return direct(options);
         else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
         else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
         else if (!remote.hasWorkers()) return local(options);
+        else if (local.hasWorkers() && local_tier < remote_tier) return local(options);
         else if (options.reset_every || isLeaf(options)) return remote.collect(options);
         else if (!local.hasWorkers()) return remote.collect(options);
+        else if (remote.hasWorkers() && remote_tier < local_tier) return remote.collect(options);
         else return local(options);
     }, collect_cache_size);
 }

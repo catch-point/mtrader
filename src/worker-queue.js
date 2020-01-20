@@ -93,6 +93,10 @@ module.exports = function(createWorkers, execTask) {
         getConnectedWorkers() {
             return workers.concat(stoppedWorkers).filter(worker => worker.connected);
         },
+        getWorkerTier() {
+            const connected_workers = workers.filter(worker => worker.connected);
+            return connected_workers.length ? _.min(connected_workers.map(wrk => wrk.tier)) : undefined;
+        },
         getWorkers() {
             if (_.isEmpty(workers)) {
                 registerWorkers(createWorkers.call(self, check_queue), workers, stoppedWorkers, check_queue);
