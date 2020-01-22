@@ -512,6 +512,12 @@ describe("common-functions", function(){
         it("MIN", function() {
             expect(+parser.parse('MIN(50/1,100-0)')()).to.equal(50);
         });
+        it("MOD", function() {
+            expect(+parser.parse('MOD(8,3)')()).to.equal(2);
+            expect(+parser.parse('MOD(-8,3)')()).to.equal(1);
+            expect(+parser.parse('MOD(8,-3)')()).to.equal(-1);
+            expect(+parser.parse('MOD(-8,-3)')()).to.equal(-2);
+        });
     });
     describe("Options", function() {
         var parser = Parser({

@@ -646,12 +646,13 @@ const functions = module.exports.functions = {
     /* Modulus */
     MOD(opts, number, divisor) {
         if (opts.fast_arithmetic) return context => {
-            return number(context) % divisor(context);
+            const d = divisor(context);
+            return (number(context) % d + d) % d;
         };
         return context => {
             const d = divisor(context);
             if (!+d) return null;
-            else return z(Big(number(context)||0).mod(d), opts);
+            else return z(Big(number(context)||0).mod(d).add(d).mod(d), opts);
         };
     },
     POWER: _.extend((opts, base, exponent) => {
