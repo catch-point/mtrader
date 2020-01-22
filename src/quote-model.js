@@ -305,6 +305,7 @@ async function fetchModel(markets, fetch, adjustments, asset, model, options) {
 
 async function fetchModelBars(fetchInputData, adjustments, asset, model, options) {
     const check = interrupt();
+    const now = moment.tz(options.now, options.tz).format(options.ending_format);
     const input_data = await fetchInputData(asset, model, Object.values(model.input), options);
     const input = _.object(Object.keys(model.input), input_data);
     const points = [];
@@ -315,7 +316,7 @@ async function fetchModelBars(fetchInputData, adjustments, asset, model, options
     const eval_output = await parseOutputExpressions(parser, model, options);
     const iterators = createAndAlignIterators(input, options);
     const result = [];
-    while (_.some(iterators, iter => iter.hasNext())) {
+    while (_.some(iterators, iter => iter.hasNext()) && !(result.length && _.last(result).asof)) {
         await check();
         const ending = nextBarEnding(Object.values(iterators), options);
         const input_bars = _.mapObject(iterators, iter => iter.review() || {});
@@ -324,6 +325,9 @@ async function fetchModelBars(fetchInputData, adjustments, asset, model, options
         const variables = {...input_variables, ...eval_coefficients(points), ...eval_variables(points)};
         points[points.length-1] = {variables};
         result.push({ending, ...eval_output(points)});
+        if (now <= ending) {
+            result[result.length-1].asof = now; // most recent bar and maybe incomplete
+        }
     }
     return result;
 }
