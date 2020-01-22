@@ -195,7 +195,7 @@ async function blendCall(markets, fetch, adjustments, asset, options) {
     const end = options.end && moment.tz(options.end, options.tz).format(options.ending_format);
     const begin = moment.tz(options.begin, options.tz);
     const models = sliceModelsAfter(await Promise.all(sliceModelsAfter(asset.models, begin)
-        .map(async(model) => readModel(asset, model, options))), begin);
+        .map(async(model) => readModel(asset, model, {}, options))), begin);
     return models.reduceRight(async(promise, model_p, i, models) => {
         const model = await model_p;
         const periods = new Periods({...options, ...asset});
@@ -232,40 +232,45 @@ function sliceModelsAfter(models, begin) {
     return models.slice(idx);
 }
 
-async function readModel(asset, model, options) {
+async function readModel(asset, model, values, options) {
     if (model.bars) {
         const begin = maxDate(model.begin, _.first(model.bars).ending);
         const end = minDate(model.end, _.last(model.bars).ending);
-        return {...model, begin, end};
+        return {...model, values, begin, end};
     } else if (model.file_csv_gz) {
         const bars = await readTable(config.resolve(asset.base, model.file_csv_gz));
         const begin = maxDate(model.begin, _.first(bars).ending);
         const end = minDate(model.end, _.last(bars).ending);
-        return {...model, bars, begin, end};
-    } else if (model.begin_expression || model.end_expression) {
+        return {...model, values, bars, begin, end};
+    } else if (model.eval) {
         const parser = new Parser({
             constant(value) {
                 return () => value;
             },
             variable(name) {
-                return () => options[name];
+                if (model.eval[name]) return parser.parse(model.eval[name]);
+                else if (values && name in values) return () => values[name];
+                else if (~['symbol', 'market', 'interval'].indexOf(name)) return () => options[name];
+                else if (~['begin', 'end'].indexOf(name)) return () => model[name];
+                else return () => { throw Error(`Unknown eval variable: ${name}`); };
             },
             expression(expr, name, args) {
                 return common(name, args, options) ||
                 (() => {
-                    throw Error("Only common functions can be used in begin/end_expression: " + expr);
+                    throw Error(`Only common functions can be used in model.eval: ${expr}`);
                 });
             }
         });
-        const parsed_begin = model.begin_expression && parser.parse(model.begin_expression)(options);
-        const parsed_end = model.end_expression && parser.parse(model.end_expression)(options);
-        const begin = maxDate(parsed_begin, model.begin, options.begin);
-        const end = minDate(parsed_end, model.end, options.end);
+        const new_values = _.mapObject(parser.parse(model.eval), fn => fn());
+        const revised_values = { ...values, ...new_values };
+        if (!revised_values.begin && !revised_values.end) return { ...model, values: revised_values };
+        const begin = maxDate(revised_values.begin, model.begin, options.begin);
+        const end = minDate(revised_values.end, model.end, options.end);
         if (!moment(begin).isValid()) throw Error(`Invalid begin ${begin}`);
         if (!moment(end).isValid()) throw Error(`Invalid begin ${end}`);
-        return {...model, ...(begin ? {begin} : {}), ...(end ? {end} : {})};
+        return {...model, values: revised_values, ...(begin ? {begin} : {}), ...(end ? {end} : {})};
     } else {
-        return model;
+        return {...model, values};
     }
 }
 
@@ -280,7 +285,7 @@ async function fetchModel(markets, fetch, adjustments, asset, model, options) {
     };
     const market_opts = {
         ...options,
-        ..._.pick(asset, marketOptions),
+        ...(asset.market == options.market ? _.pick(asset, marketOptions) : {}),
         interval: model.interval || options.interval
     };
     const periods = new Periods(market_opts);
@@ -349,14 +354,12 @@ async function rollBars(bars, options) {
 
 async function fetchInputData(markets, fetch, adjustments, asset, model, input, options) {
     return Promise.all(input.map(async(term) => {
-        if (term.bars) return term.bars;
-        else if (term.file_csv_gz) return (await readModel(asset, term, options)).bars;
-        else if (term.output) return fetchModel(markets, fetch, adjustments, asset, term, options);
+        const input_model = await readModel(asset, term, model.values, options);
+        if (input_model.bars) return term.bars;
+        else if (input_model.output) return fetchModel(markets, fetch, adjustments, asset, input_model, options);
         else return fetch(_.defaults(
-            term.symbol_replacement ? {
-                symbol: options.symbol.replace(new RegExp(asset.symbol_pattern), term.symbol_replacement)
-            } : {},
-            _.pick(term, 'symbol', 'market', 'interval'),
+            _.pick(input_model, 'symbol', 'market', 'interval'),
+            _.pick(input_model.values, 'symbol', 'market', 'interval'),
             _.omit(options, [
                 'name',
                 'currency', 'security_type', 'security_tz',
@@ -391,6 +394,8 @@ function createParser(adjustments, model, terms, options) {
         variable(name) {
             if ((model.variables||{})[name])
                 return parser.parse(model.variables[name]);
+            else if (model.values && name in model.values)
+                return _.constant(model.values[name]);
             else if (~options_variables.indexOf(name))
                 return _.constant(options[name]);
             else if (!~name.indexOf('.') || !model.input[name.substring(0, name.indexOf('.'))])

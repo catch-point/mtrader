@@ -1230,7 +1230,163 @@ describe("quote-model", function() {
             await fetch.close();
         }
     });
-    it("use previous implied volatility to estimate options prices based on underlying", async() => {
+    it("use previous SPX implied volatility to estimate options prices based on futures", async() => {
+        const fetch = new Fetch(merge(config('fetch'), {
+            files: {
+                enabled: true,
+                dirname: path.resolve(__dirname, 'data')
+            }
+        }));
+        const model = new Model(fetch, {
+            assets:[{
+                symbol_pattern: '^(SPX)(   )(......)([CP])(........)$',
+                market: 'greeks',
+                trading_hours: "02:00:00 - 15:15:00",
+                liquid_hours: "08:30:00 - 15:15:00",
+                open_time: "08:30:00",
+                security_tz: "America/Chicago",
+                currency: "USD",
+                security_type: "OPT",
+                intervals: [ 'day', 'm240', 'm120', 'm60' ],
+                models: [{
+                    interval: "m60",
+                    pad_begin: 48,
+                    eval: {
+                        opt_symbol: "symbol",
+                        begin: "EDATE(`20{MID(symbol,7,6)}`,-6)",
+                        end: "WORKDAY(`20{MID(symbol,7,6)}`,1)"
+                    },
+                    input: {
+                        opt: { market: "OPRA" },
+                        fut: {
+                            eval: {
+                                fut_expiry: "EDATE(opt_expiry,(3-MONTH(opt_expiry))%3)",
+                                opt_expiry: "`20{MID(opt_symbol,7,6)}`"
+                            },
+                            input: {
+                                idx: { symbol: "SPX", market: "CBOE" },
+                                fut: {
+                                    eval: {
+                                        symbol: "`ES{month_code}{year_code}`",
+                                        month_code: "MID('FGHJKMNQUVXZ',MONTH(fut_expiry),1)",
+                                        year_code: "RIGHT(YEAR(fut_expiry),2)"
+                                    },
+                                    market: "CME"
+                                }
+                            },
+                            variables: {
+                                fade: "opt_dte/fut_dte",
+                                opt_dte: "DAYS(opt_expiry, fut.ending)",
+                                fut_dte: "DAYS(fut_expiry, fut.ending)"
+                            },
+                            output: {
+                                open: "idx.open*(1-fade) + fut.open*fade",
+                                high: "idx.high*(1-fade) + fut.high*fade",
+                                low: "idx.low*(1-fade) + fut.low*fade",
+                                close: "idx.close*(1-fade) + fut.close*fade",
+                                volume: "fut.volume"
+                            }
+                        },
+                        vix: {
+                            eval: {
+                                symbol: "`VX{month_code}{year_code}`",
+                                month_code: "MID('FGHJKMNQUVXZ',MONTH(prior_expiry),1)",
+                                year_code: "RIGHT(YEAR(prior_expiry),2)",
+                                prior_expiry: "EDATE(expiry,-1)",
+                                expiry: "`20{MID(opt_symbol,7,6)}`"
+                            },
+                            market: "CFE"
+                        },
+                        irx: { symbol: "IRX", market: "CBOE", interval: "day" } },
+                    variables: {
+                        open: "BS(fut.open, strike, dte, iv_open, rate, right)",
+                        high: "MAX(IF(opt_live,opt.high), at_asset_high, at_asset_low)",
+                        low: "MIN(IF(opt_live,opt.low, fut.high), at_asset_low, at_asset_high)",
+                        close: "IF(opt_live,opt.close, BS(asset_price, strike, dte, iv, rate, right))",
+                        volume: "IF(opt_live,opt.volume, 0)",
+                        at_asset_high: "BS(fut.high, strike, dte, iv_low, rate, right)",
+                        at_asset_low: "BS(fut.low, strike, dte, iv_high, rate, right)",
+                        iv: "IF(opt_live,live_iv) OR iv_close",
+                        opt_live: "opt.ending=fut.ending",
+                        live_iv: "BSIV(opt.close, asset_price, strike, dte, rate, right)",
+                        iv_open: "vix.open*skew",
+                        iv_high: "vix.high*skew",
+                        iv_low: "vix.low*skew",
+                        iv_close: "vix.close*skew",
+                        skew: "IF(!opt_live,PREV('skew')) OR (live_iv/vix.close)",
+                        v1: "iv/100*SQRT(dte/365)",
+                        d1: "(LN(asset_price/strike)+(rate/100+POWER(iv/100,2)/2)*dte/365)/(v1)",
+                        g1: "EXP(-POWER(d1,2)/2)/SQRT(2*PI())",
+                        t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
+                        r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
+                        asset_price: "fut.close",
+                        asset: "LEFT(symbol,3)",
+                        strike: "NUMBERVALUE(RIGHT(opt.symbol,8))/1000",
+                        expiry: "`20{MID(opt.symbol,7,6)}`",
+                        dte: "DAYS(expiry, fut.ending)",
+                        rate: "irx.close/10 OR 1",
+                        right: "LEFT(RIGHT(symbol,9),1)",
+                        pointvalue: "100" },
+                    output: {
+                        open: "ROUND(open,3)",
+                        high: "FLOOR(high,0.001)",
+                        low: "CEILING(low,0.001)",
+                        close: "ROUND(close,3)",
+                        volume: "volume",
+                        asset_price: "ROUND(asset_price,3)",
+                        delta: "ROUND((NORMSDIST(d1)-IF(right='P',1))*pointvalue, 2)",
+                        gamma: "ROUND(g1/(asset_price*v1)*pointvalue, 4)",
+                        theta: "ROUND((t1/365+(rate/100*r1)/365*IF(right='C',-1,1))*pointvalue, 2)",
+                        vega: "ROUND(g1*asset_price*SQRT(dte/365)/100*pointvalue, 2)",
+                        rho: "ROUND(dte/365*r1/100*pointvalue, 2)",
+                        iv: "ROUND(iv,4)",
+                        rate: "rate" }
+                }]
+            }]
+        });
+        const quote = new Quote(model, {cache_dir: createTempDir('quote-model')});
+        try {
+            await quote({
+                columns: {
+                    ending: 'ending',
+                    close: 'day.close',
+                    volume: 'day.volume',
+                    asset_price: 'day.asset_price',
+                    delta: 'day.delta'
+                },
+                transient: true,
+                symbol: 'SPX   200221C03200000', market: 'greeks',
+                begin: '2019-12-01', end: '2019-12-31T16:15:00-05:00', tz
+            }).should.eventually.be.like([
+        { ending: '2019-12-02T16:15:00-05:00', close: 34.326, volume: 0, asset_price: 3116.141, delta: 33.46 },
+        { ending: '2019-12-03T16:15:00-05:00', close: 27.39, volume: 13, asset_price: 3094.326, delta: 28.54 },
+        { ending: '2019-12-04T16:15:00-05:00', close: 34.95, volume: 307, asset_price: 3114.203, delta: 33.33 },
+        { ending: '2019-12-05T16:15:00-05:00', close: 35.15, volume: 270, asset_price: 3119.252, delta: 34.02 },
+        { ending: '2019-12-06T16:15:00-05:00', close: 45.99, volume: 3654, asset_price: 3147.134, delta: 40.63 },
+        { ending: '2019-12-09T16:15:00-05:00', close: 42.114, volume: 1, asset_price: 3137.647, delta: 38.31 },
+        { ending: '2019-12-10T16:15:00-05:00', close: 40.901, volume: 2, asset_price: 3134.492, delta: 37.56 },
+        { ending: '2019-12-11T16:15:00-05:00', close: 44.164, volume: 4, asset_price: 3143.584, delta: 39.64 },
+        { ending: '2019-12-12T16:15:00-05:00', close: 54.477, volume: 107, asset_price: 3170.481, delta: 46.01 },
+        { ending: '2019-12-13T16:15:00-05:00', close: 48.31, volume: 2120, asset_price: 3171.501, delta: 45.57 },
+        { ending: '2019-12-16T16:15:00-05:00', close: 57.606, volume: 1392, asset_price: 3194.62, delta: 51.85 },
+        { ending: '2019-12-17T16:15:00-05:00', close: 56.66, volume: 2087, asset_price: 3194.408, delta: 51.76 },
+        { ending: '2019-12-18T16:15:00-05:00', close: 58.95, volume: 3666, asset_price: 3195.288, delta: 51.95 },
+        { ending: '2019-12-19T16:15:00-05:00', close: 62.39, volume: 5343, asset_price: 3208.69, delta: 55.92 },
+        { ending: '2019-12-20T16:15:00-05:00', close: 74.32, volume: 4184, asset_price: 3222.888, delta: 59.45 },
+        { ending: '2019-12-23T16:15:00-05:00', close: 73.51, volume: 513, asset_price: 3225.532, delta: 60.36 },
+        { ending: '2019-12-24T16:15:00-05:00', close: 73.424, volume: 13, asset_price: 3225.48, delta: 60.34 },
+        { ending: '2019-12-26T16:15:00-05:00', close: 83.529, volume: 297, asset_price: 3241.565, delta: 64.58 },
+        { ending: '2019-12-27T16:15:00-05:00', close: 83.69, volume: 66, asset_price: 3240.882, delta: 64.17 },
+        { ending: '2019-12-30T16:15:00-05:00', close: 75.1, volume: 112, asset_price: 3222.342, delta: 58.66 },
+        { ending: '2019-12-31T16:15:00-05:00', close: 75.12, volume: 405, asset_price: 3230.044, delta: 61.37 }
+            ]);
+        } finally {
+            await quote.close();
+            await model.close();
+            await fetch.close();
+        }
+    });
+    it("use previous SPY implied volatility to estimate options prices based on underlying", async() => {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
@@ -1246,12 +1402,15 @@ describe("quote-model", function() {
                 models: [{
                     interval: "m60",
                     pad_begin: 48,
-                    begin_expression: "EDATE(`20{RIGHT(LEFT(symbol,12),6)}`,-6)",
-                    end_expression: "WORKDAY(`20{RIGHT(LEFT(symbol,12),6)}`,1)",
+                    eval: {
+                        opt_symbol: "symbol",
+                        begin: "EDATE(`20{MID(symbol,7,6)}`,-6)",
+                        end: "WORKDAY(`20{MID(symbol,7,6)}`,1)"
+                    },
                     input: {
-                        call: { symbol_replacement: "$1$2$3C$5" },
-                        put: { symbol_replacement: "$1$2$3P$5" },
-                        etf: { symbol_replacement: "$1", market: "ARCA" },
+                        call: { eval: { symbol: "`{LEFT(opt_symbol,12)}C{RIGHT(opt_symbol,8)}`" } },
+                        put: { eval: { symbol: "`{LEFT(opt_symbol,12)}P{RIGHT(opt_symbol,8)}`" } },
+                        etf: { eval: { symbol: "LEFT(opt_symbol,3)" }, market: "ARCA" },
                         irx: { symbol: "IRX", market: "CBOE", interval: "day" } },
                     variables: {
                         open: "BS(etf.open/split-dividend, strike, dte, iv, rate, right)",
@@ -1281,7 +1440,7 @@ describe("quote-model", function() {
                         split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
                         asset: "LEFT(symbol,3)",
                         strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
-                        expiry: "`20{RIGHT(LEFT(call.symbol,12),6)}`",
+                        expiry: "`20{MID(call.symbol,7,6)}`",
                         dte: "DAYS(expiry, etf.ending)",
                         rate: "irx.close/10 OR 1",
                         right: "LEFT(RIGHT(symbol,9),1)",
@@ -1366,14 +1525,17 @@ describe("quote-model", function() {
                 models: [{
                     interval: "m60",
                     pad_begin: 48,
-                    begin_expression: "EDATE(MIN(`20{RIGHT(LEFT(symbol,12),6)}`, `20{RIGHT(LEFT(symbol,28),6)}`),-6)",
-                    end_expression: "WORKDAY(MIN(`20{RIGHT(LEFT(symbol,12),6)}`, `20{RIGHT(LEFT(symbol,28),6)}`),1)",
+                    eval: {
+                        sprd: "symbol",
+                        begin: "EDATE(MIN(`20{MID(symbol,7,6)}`, `20{MID(symbol,23,6)}`),-6)",
+                        end: "WORKDAY(MIN(`20{MID(symbol,7,6)}`, `20{MID(symbol,23,6)}`),1)"
+                    },
                     input: {
                         long: {
                             input: {
-                                call: { symbol_replacement: "$1$2$3C$5", market: "OPRA" },
-                                put: { symbol_replacement: "$1$2$3P$5", market: "OPRA" },
-                                etf: { symbol_replacement: "$1", market: "ARCA" },
+                                call: { eval: {symbol: "`{LEFT(sprd,12)}C{MID(sprd,14,8)}`" }, market: "OPRA" },
+                                put: { eval: {symbol: "`{LEFT(sprd,12)}P{MID(sprd,14,8)}`" }, market: "OPRA" },
+                                etf: { eval: {symbol: "LEFT(sprd,3)" }, market: "ARCA" },
                                 irx: { symbol: "IRX", market: "CBOE", interval: "day" }
                             },
                             variables: {
@@ -1404,10 +1566,10 @@ describe("quote-model", function() {
                                 split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
                                 asset: "LEFT(symbol,3)",
                                 strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
-                                expiry: "`20{RIGHT(LEFT(call.symbol,12),6)}`",
+                                expiry: "`20{MID(call.symbol,7,6)}`",
                                 dte: "DAYS(expiry, etf.ending)",
                                 rate: "irx.close/10 OR 1",
-                                right: "RIGHT(LEFT(symbol,13),1)",
+                                right: "MID(symbol,13,1)",
                                 pointvalue: "100"
                             },
                             output: {
@@ -1428,9 +1590,9 @@ describe("quote-model", function() {
                         },
                         short: {
                             input: {
-                                call: { symbol_replacement: "$1$2$6C$8", market: "OPRA" },
-                                put: { symbol_replacement: "$1$2$6P$8", market: "OPRA" },
-                                etf: { symbol_replacement: "$1", market: "ARCA" },
+                                call: { eval: {symbol: "`{LEFT(sprd,6)}{MID(sprd,23,6)}C{RIGHT(sprd,8)}`" }, market: "OPRA" },
+                                put: { eval: {symbol: "`{LEFT(sprd,6)}{MID(sprd,23,6)}P{RIGHT(sprd,8)}`" }, market: "OPRA" },
+                                etf: { eval: {symbol: "LEFT(sprd,3)" }, market: "ARCA" },
                                 irx: { symbol: "IRX", market: "CBOE", interval: "day" }
                             },
                             variables: {
@@ -1461,7 +1623,7 @@ describe("quote-model", function() {
                                 split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
                                 asset: "LEFT(symbol,3)",
                                 strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
-                                expiry: "`20{RIGHT(LEFT(call.symbol,12),6)}`",
+                                expiry: "`20{MID(call.symbol,7,6)}`",
                                 dte: "DAYS(expiry, etf.ending)",
                                 rate: "irx.close/10 OR 1",
                                 right: "LEFT(RIGHT(symbol,9),1)",
@@ -1488,7 +1650,7 @@ describe("quote-model", function() {
                         high: "long.high - IF(long_right=short_right,short.high, short.low)",
                         low: "long.low - IF(long_right=short_right,short.low, short.high)",
                         vert: "long_right=short_right",
-                        long_right: "RIGHT(LEFT(symbol,13),1)",
+                        long_right: "MID(symbol,13,1)",
                         short_right: "LEFT(RIGHT(symbol,9),1)"
                     },
                     output: {
@@ -1559,17 +1721,25 @@ describe("quote-model", function() {
             assets:[{
                 symbol_pattern: "^(SPY|EEM)(   )(......)([CP])(........)-\\3([CP])\\5$",
                 market: "spread",
+                trading_hours: "02:00:00 - 15:15:00",
+                liquid_hours: "08:30:00 - 15:15:00",
+                open_time: "08:30:00",
+                security_tz: "America/Chicago",
+                currency: "USD",
                 security_type: "OPT",
                 intervals: [ "day", "m240", "m120", "m60" ],
                 models: [ {
                     interval: "m60",
                     pad_begin: 48,
-                    begin_expression: "EDATE(`20{RIGHT(LEFT(symbol,12),6)}`,-6)",
-                    end_expression: "WORKDAY(`20{RIGHT(LEFT(symbol,12),6)}`,1)",
+                    eval: {
+                        sprd: "symbol",
+                        begin: "EDATE(`20{MID(symbol,7,6)}`,-6)",
+                        end: "WORKDAY(`20{MID(symbol,7,6)}`,1)"
+                    },
                     input: {
-                        long: { symbol_replacement: "$1$2$3$4$5", market: "OPRA" },
-                        short: { symbol_replacement: "$1$2$3$6$5", market: "OPRA" },
-                        etf: { symbol_replacement: "$1", market: "ARCA" },
+                        long: { eval: {symbol: "LEFT(sprd,21)" }, market: "OPRA" },
+                        short: { eval: {symbol: "`{LEFT(sprd,6)}{RIGHT(sprd,15)}`" }, market: "OPRA" },
+                        etf: { eval: {symbol: "LEFT(sprd,3)" }, market: "ARCA" },
                         irx: { symbol: "IRX", market: "CBOE", interval: "day" }
                     },
                     variables: {
@@ -1589,7 +1759,7 @@ describe("quote-model", function() {
                         use_long_iv: "asset_price<strike AND long_right='C' OR strike<asset_price AND long_right='P'",
                         last_long_iv: "IF(long.ending!=etf.ending,PREV('last_long_iv')) OR live_long_iv OR 20",
                         long_live: "long.ending=etf.ending",
-                        long_right: "RIGHT(LEFT(symbol,13),1)",
+                        long_right: "MID(symbol,13,1)",
                         long_v1: "long_iv/100*SQRT(dte/365)",
                         long_d1: "(LN(asset_price/strike)+(rate/100+POWER(long_iv/100,2)/2)*dte/365)/(long_v1)",
                         long_g1: "EXP(-POWER(long_d1,2)/2)/SQRT(2*PI())",
@@ -1601,7 +1771,7 @@ describe("quote-model", function() {
                         split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
                         asset: "LEFT(symbol,3)",
                         strike: "NUMBERVALUE(RIGHT(long.symbol,8))/1000",
-                        expiry: "`20{RIGHT(LEFT(long.symbol,12),6)}`",
+                        expiry: "`20{MID(long.symbol,7,6)}`",
                         dte: "DAYS(expiry, etf.ending)",
                         rate: "irx.close/10 OR 1",
                         pointvalue: "100",
