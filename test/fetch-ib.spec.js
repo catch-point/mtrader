@@ -299,9 +299,39 @@ describe("fetch-ib", function() {
         });
         it("should find SPX symbol", function() {
             return client({interval:'lookup', symbol:'SPX', market:"CBOE"})
-              .should.eventually.be.like([
-                {symbol: 'SPX', name: 'S&P 500 Stock Index'}
-            ]);
+              .should.eventually.be.like([{
+                symbol: 'SPX',
+                name: 'S&P 500 Stock Index',
+                market: 'CBOE',
+                security_type: 'IND',
+                currency: 'USD',
+                trading_hours: '08:30:00 - 15:00:00',
+                liquid_hours: '08:30:00 - 15:00:00'
+            }]);
+        });
+        it("should find VIX symbol", function() {
+            return client({interval:'lookup', symbol:'VIX', market:"CBOE"})
+              .should.eventually.be.like([{
+                symbol: 'VIX',
+                name: 'CBOE Volatility Index',
+                market: 'CBOE',
+                security_type: 'IND',
+                currency: 'USD',
+                trading_hours: '02:15:00 - 15:15:00',
+                liquid_hours: '02:15:00 - 15:15:00'
+            }]);
+        });
+        it("should find SPY symbol", function() {
+            return client({interval:'lookup', symbol:'SPY', market:"ARCA"})
+              .should.eventually.be.like([{
+                symbol: 'SPY',
+                name: 'SPDR S&P 500 ETF TRUST',
+                market: 'ARCA',
+                security_type: 'STK',
+                currency: 'USD',
+                trading_hours: '04:00:00 - 20:00:00',
+                liquid_hours: '09:30:00 - 16:00:00'
+            }]);
         });
         it("should find RUT symbol", function() {
             return client({interval:'lookup', symbol:'RUT', market:"X"})
@@ -680,6 +710,128 @@ describe("fetch-ib", function() {
                 {ending:"2014-03-03T11:00:00-05:00",high:1.1081,low:1.1070,open:1.1080,close:1.1080}
             ]);
         });
+        it("should return 15 minute intervals", function() {
+            return client({
+                interval: 'm15',
+                symbol: 'VIX', market: 'CBOE',
+                begin: '2020-01-22T00:00:00-0500',
+                end: '2020-01-23T00:00:00-0500',
+                trading_hours: "02:00:00 - 15:15:00",
+                liquid_hours: "08:30:00 - 15:15:00",
+                open_time: "08:30:00",
+                security_tz: "America/Chicago", tz: tz
+            }).should.eventually.be.like([
+                { ending: '2020-01-22T03:30:00-05:00', open: 12.45, high: 12.46, low: 12.38, close: 12.4 } ,
+                { ending: '2020-01-22T03:45:00-05:00', open: 12.41, high: 12.47, low: 12.41, close: 12.44 } ,
+                { ending: '2020-01-22T04:00:00-05:00', open: 12.45, high: 12.5, low: 12.45, close: 12.49 } ,
+                { ending: '2020-01-22T04:15:00-05:00', open: 12.51, high: 12.53, low: 12.42, close: 12.47 } ,
+                { ending: '2020-01-22T04:30:00-05:00', open: 12.51, high: 12.54, low: 12.45, close: 12.52 } ,
+                { ending: '2020-01-22T04:45:00-05:00', open: 12.51, high: 12.52, low: 12.48, close: 12.5 } ,
+                { ending: '2020-01-22T05:00:00-05:00', open: 12.52, high: 12.52, low: 12.43, close: 12.47 } ,
+                { ending: '2020-01-22T05:15:00-05:00', open: 12.46, high: 12.48, low: 12.45, close: 12.47 } ,
+                { ending: '2020-01-22T05:30:00-05:00', open: 12.48, high: 12.48, low: 12.44, close: 12.44 } ,
+                { ending: '2020-01-22T05:45:00-05:00', open: 12.45, high: 12.46, low: 12.41, close: 12.46 } ,
+                { ending: '2020-01-22T06:00:00-05:00', open: 12.45, high: 12.47, low: 12.44, close: 12.45 } ,
+                { ending: '2020-01-22T06:15:00-05:00', open: 12.46, high: 12.51, low: 12.46, close: 12.47 } ,
+                { ending: '2020-01-22T06:30:00-05:00', open: 12.46, high: 12.5, low: 12.46, close: 12.5 } ,
+                { ending: '2020-01-22T06:45:00-05:00', open: 12.51, high: 12.51, low: 12.43, close: 12.45 } ,
+                { ending: '2020-01-22T07:00:00-05:00', open: 12.44, high: 12.44, low: 12.4, close: 12.4 } ,
+                { ending: '2020-01-22T07:15:00-05:00', open: 12.42, high: 12.42, low: 12.36, close: 12.37 } ,
+                { ending: '2020-01-22T07:30:00-05:00', open: 12.36, high: 12.41, low: 12.36, close: 12.38 } ,
+                { ending: '2020-01-22T07:45:00-05:00', open: 12.39, high: 12.39, low: 12.35, close: 12.39 } ,
+                { ending: '2020-01-22T08:00:00-05:00', open: 12.38, high: 12.43, low: 12.33, close: 12.43 } ,
+                { ending: '2020-01-22T08:15:00-05:00', open: 12.44, high: 12.44, low: 12.39, close: 12.44 } ,
+                { ending: '2020-01-22T08:30:00-05:00', open: 12.43, high: 12.48, low: 12.42, close: 12.45 } ,
+                { ending: '2020-01-22T08:45:00-05:00', open: 12.49, high: 12.51, low: 12.47, close: 12.49 } ,
+                { ending: '2020-01-22T09:00:00-05:00', open: 12.48, high: 12.48, low: 12.4, close: 12.46 } ,
+                { ending: '2020-01-22T09:15:00-05:00', open: 12.47, high: 12.5, low: 12.44, close: 12.45 } ,
+                { ending: '2020-01-22T09:45:00-05:00', open: 12.58, high: 12.58, low: 12.4, close: 12.44 } ,
+                { ending: '2020-01-22T10:00:00-05:00', open: 12.42, high: 12.53, low: 12.41, close: 12.44 } ,
+                { ending: '2020-01-22T10:15:00-05:00', open: 12.37, high: 12.54, low: 12.37, close: 12.49 } ,
+                { ending: '2020-01-22T10:30:00-05:00', open: 12.53, high: 12.53, low: 12.37, close: 12.39 } ,
+                { ending: '2020-01-22T10:45:00-05:00', open: 12.38, high: 12.41, low: 12.31, close: 12.36 } ,
+                { ending: '2020-01-22T11:00:00-05:00', open: 12.35, high: 12.53, low: 12.34, close: 12.53 } ,
+                { ending: '2020-01-22T11:15:00-05:00', open: 12.59, high: 12.79, low: 12.57, close: 12.79 } ,
+                { ending: '2020-01-22T11:30:00-05:00', open: 12.78, high: 12.81, low: 12.69, close: 12.72 } ,
+                { ending: '2020-01-22T11:45:00-05:00', open: 12.7, high: 12.7, low: 12.58, close: 12.65 } ,
+                { ending: '2020-01-22T12:00:00-05:00', open: 12.64, high: 12.72, low: 12.6, close: 12.7 } ,
+                { ending: '2020-01-22T12:15:00-05:00', open: 12.69, high: 12.75, low: 12.66, close: 12.72 } ,
+                { ending: '2020-01-22T12:30:00-05:00', open: 12.75, high: 12.89, low: 12.7, close: 12.83 } ,
+                { ending: '2020-01-22T12:45:00-05:00', open: 12.84, high: 12.84, low: 12.72, close: 12.76 } ,
+                { ending: '2020-01-22T13:00:00-05:00', open: 12.75, high: 12.75, low: 12.64, close: 12.65 } ,
+                { ending: '2020-01-22T13:15:00-05:00', open: 12.61, high: 12.67, low: 12.59, close: 12.59 } ,
+                { ending: '2020-01-22T13:30:00-05:00', open: 12.58, high: 12.59, low: 12.5, close: 12.51 } ,
+                { ending: '2020-01-22T13:45:00-05:00', open: 12.52, high: 12.53, low: 12.47, close: 12.5 } ,
+                { ending: '2020-01-22T14:00:00-05:00', open: 12.51, high: 12.63, low: 12.5, close: 12.63 } ,
+                { ending: '2020-01-22T14:15:00-05:00', open: 12.64, high: 12.64, low: 12.56, close: 12.57 } ,
+                { ending: '2020-01-22T14:30:00-05:00', open: 12.6, high: 12.63, low: 12.58, close: 12.59 } ,
+                { ending: '2020-01-22T14:45:00-05:00', open: 12.6, high: 12.63, low: 12.56, close: 12.6 } ,
+                { ending: '2020-01-22T15:00:00-05:00', open: 12.61, high: 12.61, low: 12.55, close: 12.57 } ,
+                { ending: '2020-01-22T15:15:00-05:00', open: 12.58, high: 12.78, low: 12.58, close: 12.78 } ,
+                { ending: '2020-01-22T15:30:00-05:00', open: 12.8, high: 13.01, low: 12.78, close: 12.9 } ,
+                { ending: '2020-01-22T15:45:00-05:00', open: 12.91, high: 12.91, low: 12.71, close: 12.85 } ,
+                { ending: '2020-01-22T16:00:00-05:00', open: 12.86, high: 12.86, low: 12.68, close: 12.75 } ,
+                { ending: '2020-01-22T16:15:00-05:00', open: 12.88, high: 12.91, low: 12.82, close: 12.91 }
+            ]);
+        });
+        it("should return 1 minute intervals", function() {
+            return client({
+                interval: 'm1',
+                symbol: 'VIX', market: 'CBOE',
+                begin: '2020-01-22T00:00:00-0500',
+                end: '2020-01-22T04:00:00-0500',
+                trading_hours: "02:00:00 - 15:15:00",
+                liquid_hours: "08:30:00 - 15:15:00",
+                open_time: "08:30:00",
+                security_tz: "America/Chicago", tz: tz
+            }).should.eventually.be.like([
+                { ending: '2020-01-22T03:16:00-05:00', open: 12.45, high: 12.46, low: 12.45, close: 12.45 } ,
+                { ending: '2020-01-22T03:17:00-05:00', open: 12.46, high: 12.46, low: 12.44, close: 12.44 } ,
+                { ending: '2020-01-22T03:18:00-05:00', open: 12.44, high: 12.44, low: 12.44, close: 12.44 } ,
+                { ending: '2020-01-22T03:19:00-05:00', open: 12.44, high: 12.44, low: 12.44, close: 12.44 } ,
+                { ending: '2020-01-22T03:20:00-05:00', open: 12.43, high: 12.43, low: 12.42, close: 12.42 } ,
+                { ending: '2020-01-22T03:21:00-05:00', open: 12.43, high: 12.44, low: 12.43, close: 12.44 } ,
+                { ending: '2020-01-22T03:22:00-05:00', open: 12.43, high: 12.43, low: 12.4, close: 12.4 } ,
+                { ending: '2020-01-22T03:23:00-05:00', open: 12.39, high: 12.39, low: 12.39, close: 12.39 } ,
+                { ending: '2020-01-22T03:24:00-05:00', open: 12.39, high: 12.39, low: 12.39, close: 12.39 } ,
+                { ending: '2020-01-22T03:25:00-05:00', open: 12.38, high: 12.39, low: 12.38, close: 12.38 } ,
+                { ending: '2020-01-22T03:26:00-05:00', open: 12.4, high: 12.4, low: 12.39, close: 12.4 } ,
+                { ending: '2020-01-22T03:27:00-05:00', open: 12.42, high: 12.42, low: 12.41, close: 12.41 } ,
+                { ending: '2020-01-22T03:28:00-05:00', open: 12.4, high: 12.41, low: 12.4, close: 12.4 } ,
+                { ending: '2020-01-22T03:29:00-05:00', open: 12.41, high: 12.41, low: 12.41, close: 12.41 } ,
+                { ending: '2020-01-22T03:30:00-05:00', open: 12.4, high: 12.4, low: 12.4, close: 12.4 } ,
+                { ending: '2020-01-22T03:31:00-05:00', open: 12.41, high: 12.42, low: 12.41, close: 12.42 } ,
+                { ending: '2020-01-22T03:32:00-05:00', open: 12.41, high: 12.42, low: 12.41, close: 12.42 } ,
+                { ending: '2020-01-22T03:33:00-05:00', open: 12.43, high: 12.44, low: 12.43, close: 12.44 } ,
+                { ending: '2020-01-22T03:34:00-05:00', open: 12.43, high: 12.44, low: 12.43, close: 12.44 } ,
+                { ending: '2020-01-22T03:35:00-05:00', open: 12.45, high: 12.45, low: 12.44, close: 12.45 } ,
+                { ending: '2020-01-22T03:36:00-05:00', open: 12.45, high: 12.45, low: 12.45, close: 12.45 } ,
+                { ending: '2020-01-22T03:37:00-05:00', open: 12.45, high: 12.45, low: 12.45, close: 12.45 } ,
+                { ending: '2020-01-22T03:38:00-05:00', open: 12.44, high: 12.44, low: 12.43, close: 12.43 } ,
+                { ending: '2020-01-22T03:39:00-05:00', open: 12.44, high: 12.44, low: 12.42, close: 12.43 } ,
+                { ending: '2020-01-22T03:40:00-05:00', open: 12.42, high: 12.43, low: 12.42, close: 12.43 } ,
+                { ending: '2020-01-22T03:41:00-05:00', open: 12.42, high: 12.43, low: 12.42, close: 12.43 } ,
+                { ending: '2020-01-22T03:42:00-05:00', open: 12.42, high: 12.42, low: 12.42, close: 12.42 } ,
+                { ending: '2020-01-22T03:43:00-05:00', open: 12.43, high: 12.44, low: 12.43, close: 12.44 } ,
+                { ending: '2020-01-22T03:44:00-05:00', open: 12.46, high: 12.47, low: 12.46, close: 12.47 } ,
+                { ending: '2020-01-22T03:45:00-05:00', open: 12.46, high: 12.46, low: 12.44, close: 12.44 } ,
+                { ending: '2020-01-22T03:46:00-05:00', open: 12.44, high: 12.44, low: 12.44, close: 12.44 } ,
+                { ending: '2020-01-22T03:47:00-05:00', open: 12.45, high: 12.46, low: 12.45, close: 12.46 } ,
+                { ending: '2020-01-22T03:48:00-05:00', open: 12.48, high: 12.48, low: 12.48, close: 12.48 } ,
+                { ending: '2020-01-22T03:49:00-05:00', open: 12.49, high: 12.49, low: 12.48, close: 12.48 } ,
+                { ending: '2020-01-22T03:50:00-05:00', open: 12.47, high: 12.47, low: 12.47, close: 12.47 } ,
+                { ending: '2020-01-22T03:51:00-05:00', open: 12.48, high: 12.49, low: 12.48, close: 12.49 } ,
+                { ending: '2020-01-22T03:52:00-05:00', open: 12.5, high: 12.5, low: 12.49, close: 12.49 } ,
+                { ending: '2020-01-22T03:53:00-05:00', open: 12.48, high: 12.49, low: 12.48, close: 12.49 } ,
+                { ending: '2020-01-22T03:54:00-05:00', open: 12.48, high: 12.48, low: 12.47, close: 12.47 } ,
+                { ending: '2020-01-22T03:55:00-05:00', open: 12.48, high: 12.49, low: 12.48, close: 12.49 } ,
+                { ending: '2020-01-22T03:56:00-05:00', open: 12.48, high: 12.48, low: 12.47, close: 12.48 } ,
+                { ending: '2020-01-22T03:57:00-05:00', open: 12.47, high: 12.48, low: 12.47, close: 12.48 } ,
+                { ending: '2020-01-22T03:58:00-05:00', open: 12.48, high: 12.48, low: 12.48, close: 12.48 } ,
+                { ending: '2020-01-22T03:59:00-05:00', open: 12.48, high: 12.48, low: 12.48, close: 12.48 } ,
+                { ending: '2020-01-22T04:00:00-05:00', open: 12.49, high: 12.49, low: 12.49, close: 12.49 }
+            ]);
+        });
     });
     it.skip("should use summary info for OPRA intraday", function() {
         return client({
@@ -712,3 +864,8 @@ describe("fetch-ib", function() {
         ]);
     });
 });
+
+function printEach(d) {
+    d.forEach(d=>console.log(require('util').inspect(d,{breakLength:Infinity}),','));
+    return d;
+}

@@ -324,9 +324,10 @@ function marketOpensAt(now, options) {
 
 async function combineHistoricalLiveFeeds(historical_promise, live_promise, options) {
     const [historical_bars, live_intraday] = await Promise.all([historical_promise, live_promise]);
+    const period = new Periods(options);
     const live_bars = live_intraday.map(bar => ({
         ...bar,
-        ending: formatTime(bar.ending, options),
+        ending: period.ceil(bar.ending).format(options.ending_format),
         open: bar.open,
         high: bar.high,
         low: bar.low,
@@ -403,8 +404,36 @@ async function lookup(markets, client, options) {
         security_type: contract.secType,
         name: contract.longName,
         currency: contract.currency,
-        conId: contract.conId
+        trading_hours: !contract.tradingHours ? undefined :
+            `${market_open(contract.tradingHours)} - ${market_close(contract.tradingHours)}`,
+        liquid_hours: !contract.liquidHours ? undefined :
+            `${market_open(contract.liquidHours)} - ${market_close(contract.liquidHours)}`
     }, v => !v));
+}
+
+function market_open(hours) {
+    return hours.split(';').reduce((open, range) => {
+        const idx = range.indexOf('-');
+        if (!~idx) return open;
+        const hour = range.substring(idx-4, idx-2);
+        const minute = range.substring(idx-2, idx);
+        const time = `${hour}:${minute}:00`;
+        if (!open || time < open) return time;
+        else return open;
+    }, undefined);
+}
+
+function market_close(hours) {
+    return hours.split(';').reduce((open, range) => {
+        if (!~range.indexOf('-')) return open;
+        const idx = range.indexOf(':', range.indexOf('-'));
+        if (!~idx) return open;
+        const hour = range.substring(idx+1, idx+3);
+        const minute = range.substring(idx+3, idx+5);
+        const time = `${hour}:${minute}:00`;
+        if (!open || open < time) return time;
+        else return open;
+    }, undefined);
 }
 
 async function fundamental(markets, client, options) {
@@ -477,7 +506,7 @@ async function intraday(findContract, markets, adjustments, client, options) {
     const finish = moment.tz(options.end || options.now, options.tz).format(options.ending_format);
     let first = _.sortedIndex(result, {ending: start}, 'ending');
     let last = _.sortedIndex(result, {ending: finish}, 'ending');
-    if (result[last]) last++;
+    if (result[last] && result[last].ending == finish) last++;
     const results = first <= 0 && last >= result.length ? result : result.slice(first, last);
     const latest = _.last(results);
     if (results.length && now.diff(latest.ending, 'minutes') < 15) {
