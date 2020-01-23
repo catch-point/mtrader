@@ -92,10 +92,21 @@ function help(settings) {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IB client",
-        properties: ['symbol', 'conId', 'market', 'name', 'security_type', 'currency'],
+        properties: ['symbol', 'market', 'name', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
+            },
+        })
+    };
+    const contract = {
+        name: "contract",
+        usage: "contract(options)",
+        description: "Looks up existing symbol/market using the given symbol using the local IB client",
+        properties: ['symbol', 'market', 'name', 'security_type', 'currency'],
+        options: _.extend({}, commonOptions, {
+            interval: {
+                values: ["contract"]
             },
         })
     };
@@ -105,7 +116,7 @@ function help(settings) {
         description: "Details of the given symbol/market contract",
         properties: [
             'symbol', 'market', 'security_type', 'name', 'secType', 'exchange', 'currency',
-            'localSymbol', 'tradingClass', 'conId', 'primaryExch', 'marketName', 'longName',
+            'localSymbol', 'tradingClass', 'primaryExch', 'marketName', 'longName',
             'minTick', 'orderTypes', 'validExchanges', 'priceMagnifier',
             'industry', 'category', 'subcategory',
             'timeZoneId', 'tradingHours', 'liquidHours'
@@ -145,6 +156,7 @@ function help(settings) {
     };
     return _.compact([
         ~settings.intervals.indexOf('lookup') && lookup,
+        ~settings.intervals.indexOf('contract') && contract,
         ~settings.intervals.indexOf('fundamental') && fundamental,
         interday.options.interval.values.length && interday,
         intraday.options.interval.values.length && intraday
@@ -165,6 +177,9 @@ module.exports = function(settings = {}) {
         } else if (options.info=='version') {
             return fetch_ib(options);
         } else if (options.interval=='lookup') {
+            if (isContractExpired(markets, client, moment(options.now), options)) return fetch(options);
+            else return fetch_ib(options);
+        } else if (options.interval=='contract') {
             if (isContractExpired(markets, client, moment(options.now), options)) return fetch(options);
             else return fetch_ib(options);
         } else if (options.interval=='fundamental') {
@@ -373,6 +388,7 @@ function createInstance(settings = {}) {
         await client.open();
         const adj = isNotEquity(markets, options) ? null : adjustments;
         if (options.interval == 'lookup') return lookup(markets, client, options);
+        else if (options.interval == 'contract') return contract(markets, client, options);
         else if (options.interval == 'fundamental') return fundamental(markets, client, options);
         else if (options.interval == 'day') return interday(findContract_fn, markets, adj, client, options);
         else if (options.interval.charAt(0) == 'm') return intraday(findContract_fn, markets, adj, client, options);
@@ -411,6 +427,54 @@ async function lookup(markets, client, options) {
     }, v => !v));
 }
 
+async function contract(markets, client, options) {
+    const details = await listContractDetails(markets, client, options);
+    const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
+    const contracts = conIds.map(details => flattenContractDetails(details));
+    return contracts.map((contract, i) => {
+        return _.omit({
+            symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
+            market: options.market || markets[contract.primaryExch] && contract.primaryExch,
+            security_type: contract.secType,
+            name: contract.longName,
+            currency: contract.currency,
+            trading_hours: !contract.tradingHours ? undefined :
+                `${market_open(contract.tradingHours)} - ${market_close(contract.tradingHours)}`,
+            liquid_hours: !contract.liquidHours ? undefined :
+                `${market_open(contract.liquidHours)} - ${market_close(contract.liquidHours)}`
+        }, v => !v);
+    });
+}
+
+async function fundamental(markets, client, options) {
+    const details = await listContractDetails(markets, client, options);
+    const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
+    const contracts = conIds.map(details => flattenContractDetails(details));
+    const under_contracts = await Promise.all(contracts.map(async(contract) => {
+        if (!contract.underConId) return contract;
+        const under_details = await client.reqContractDetails({conId: contract.underConId});
+        if (!under_details.length) return contract;
+        else return flattenContractDetails(under_details);
+    }));
+    return contracts.map((contract, i) => {
+        const under = under_contracts[i] || contract;
+        return _.omit({
+            symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
+            market: options.market || markets[contract.primaryExch] && contract.primaryExch,
+            security_type: contract.secType,
+            name: contract.longName,
+            currency: contract.currency,
+            trading_hours: !contract.tradingHours ? undefined :
+                `${market_open(contract.tradingHours)} - ${market_close(contract.tradingHours)}`,
+            liquid_hours: !contract.liquidHours ? undefined :
+                `${market_open(contract.liquidHours)} - ${market_close(contract.liquidHours)}`,
+            ..._.omit(contract, 'symbol', 'market', 'security_type', 'name', 'conId', 'underConId', 'priceMagnifier'),
+            under_symbol: toSymbol(markets[under.primaryExch], under),
+            under_market: under.primaryExch
+        }, v => !v);
+    });
+}
+
 function market_open(hours) {
     return hours.split(';').reduce((open, range) => {
         const idx = range.indexOf('-');
@@ -434,30 +498,6 @@ function market_close(hours) {
         if (!open || open < time) return time;
         else return open;
     }, undefined);
-}
-
-async function fundamental(markets, client, options) {
-    const details = await listContractDetails(markets, client, options);
-    const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
-    const contracts = conIds.map(details => flattenContractDetails(details));
-    const under_contracts = await Promise.all(contracts.map(async(contract) => {
-        if (!contract.underConId) return contract;
-        const under_details = await client.reqContractDetails({conId: contract.underConId});
-        if (!under_details.length) return contract;
-        else return flattenContractDetails(under_details);
-    }));
-    return contracts.map((contract, i) => {
-        const under = under_contracts[i] || contract;
-        return _.omit({
-            symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
-            market: options.market || markets[contract.primaryExch] && contract.primaryExch,
-            security_type: contract.secType,
-            name: contract.longName,
-            ..._.omit(contract, 'symbol', 'market', 'security_type', 'name', 'conId', 'underConId', 'priceMagnifier'),
-            under_symbol: toSymbol(markets[under.primaryExch], under),
-            under_market: under.primaryExch
-        }, v => !v);
-    });
 }
 
 async function interday(findContract, markets, adjustments, client, options) {

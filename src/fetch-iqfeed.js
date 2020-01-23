@@ -98,6 +98,17 @@ function help(settings = {}) {
             },
         })
     };
+    const contract = {
+        name: "contract",
+        usage: "contract(options)",
+        description: "Looks up existing symbol/market using the given symbol using the local IQFeed client",
+        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'security_type', 'currency'],
+        options: _.extend({}, commonOptions, {
+            interval: {
+                values: ["contract"]
+            },
+        })
+    };
     const fundamental = {
         name: "fundamental",
         usage: "fundamental(options)",
@@ -138,6 +149,7 @@ function help(settings = {}) {
     };
     return _.compact([
         ~(settings.intervals||[]).indexOf('lookup') && lookup,
+        ~(settings.intervals||[]).indexOf('contract') && contract,
         ~(settings.intervals||[]).indexOf('fundamental') && fundamental,
         interday.options.interval.values.length && interday,
         intraday.options.interval.values.length && intraday
@@ -215,8 +227,8 @@ function createInstance(settings = {}) {
         config('version')
     );
     const adjustments = new Adjustments(settings);
-    const lookupCached = cache(lookup.bind(this, iqclient), (exchs, symbol, listed_markets) => {
-        return symbol + ' ' + _.compact(_.flatten([listed_markets])).join(' ');
+    const contract_cached = cache(contract.bind(this, iqclient, symbol), (exchs, listed_markets, options) => {
+        return `${options.symbol} ${options.market}`;
     }, 10);
     return Object.assign(async(options) => {
         if (options.open) {
@@ -248,7 +260,16 @@ function createInstance(settings = {}) {
             const listed_markets = options.listed_market ? [options.listed_market] :
                 _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
             if (_.isEmpty(exchs)) return Promise.resolve([]);
-            else return lookupCached(exchs, symbol(options), listed_markets);
+            else return lookup(iqclient, exchs, symbol(options), listed_markets);
+        } else if (options.interval == 'contract') {
+            const exchs = _.pick(_.mapObject(
+                options.market ? _.pick(markets, [options.market]) : markets,
+                exch => Object.assign({currency: exch.currency}, exch.datasources.iqfeed)
+            ), val => val);
+            const listed_markets = options.listed_market ? [options.listed_market] :
+                _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
+            if (_.isEmpty(exchs)) return Promise.resolve([]);
+            else return contract_cached(exchs, listed_markets, options);
         } else if (options.interval == 'fundamental') {
             expect(options).to.be.like({
                 symbol: /^(\S| )+$/,
@@ -294,7 +315,7 @@ function createInstance(settings = {}) {
     }, {
         close() {
             return Promise.all([
-                lookupCached.close(),
+                contract_cached.close(),
                 iqclient.close(),
                 adjustments.close()
             ]);
@@ -454,6 +475,12 @@ const security_types_map = {
     FOREX: "CASH",
     PRECMTL: "CMDTY"
 };
+
+function contract(iqclient, symbol_fn, exchs, listed_markets, options) {
+    return lookup(iqclient, exchs, symbol_fn(options), listed_markets).then(rows => rows.filter(row => {
+        return row.symbol == options.symbol && row.market == options.market;
+    }));
+}
 
 function lookup(iqclient, exchs, symbol, listed_markets) {
     const map = _.reduce(exchs, (map, ds) => {

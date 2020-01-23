@@ -331,6 +331,7 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
     const all_changes = await Promise.all(_.map(group, (signals, symbol) => attachSignals(signals))
       .map(async(signals) => {
         const contract = await lookup(_.first(signals));
+        if (!contract) throw Error(`Could not lookup contract ${symbol}`);
         const changes = await Promise.all(signals.map(async(signal) => {
             const time = _.max([
                 'killedwhen', 'tradedwhen', 'postedwhen', 'createdWhen',
@@ -677,11 +678,10 @@ async function lookup(fetch, markets, signal) {
             fullSymbol;
         expect(symbol).to.be.a('string');
         return await fetch({interval:'lookup', symbol, market})
-          .then(matches => matches.filter(match => match.symbol == symbol && match.currency == 'USD'))
+          .then(matches => matches.filter(match => match.symbol == symbol && match.currency == 'USD'), err => [])
           .then(matches => matches.length ? matches :
             // expired futures cannot be looked up, this might be one of then
-            instrument == 'future' ? [{symbol, market, currency: m.currency, security_type: 'FUT'}] : [])
-          .catch(err => []);
+            instrument == 'future' ? [{symbol, market, currency: m.currency, security_type: 'FUT'}] : []);
     }));
     return _.first(_.flatten(matches));
 }

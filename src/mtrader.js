@@ -185,6 +185,11 @@ function createInstance(settings = {}) {
                 interval: 'lookup'
             }, options));
         },
+        contract(options) {
+            return fetch(_.defaults({
+                interval: 'contract'
+            }, options));
+        },
         fundamental(options) {
             return fetch(_.defaults({
                 interval: 'fundamental'

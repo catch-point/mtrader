@@ -10,21 +10,21 @@
       "passwordFile": "",
       "downloadType": "DAILY_ONLY",
       "combine_after": "2000-01-01",
-      "intervals": ["lookup", "day"],
+      "intervals": ["lookup", "contract", "day"],
       "markets": ["OPRA"]
     },
     "iqfeed": {
       "enabled": false,
-      "intervals": ["lookup", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
+      "intervals": ["lookup", "contract", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
       "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CBOT", "CFE", "CHF", "CME", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NYMEX", "NYSE", "NZD", "OPRA", "TSE", "USD", "VENTURE", "ICE", "X" ]
     },
     "ib": {
       "enabled": false,
-      "intervals": ["lookup", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
+      "intervals": ["lookup", "contract", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
       "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CBOT", "CFE", "CHF", "CME", "CNH", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NOK", "NYMEX", "NYSE", "NZD", "OPRA", "SEK", "TSE", "USD", "VENTURE", "ICE", "X" ]
     },
     "yahoo": {
-      "intervals": ["lookup", "day"],
+      "intervals": ["lookup", "contract", "day"],
       "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSE", "VENTURE"]
     },
     "remote": {

@@ -60,13 +60,16 @@ module.exports = function(settings = {}) {
                 const others = _.uniq(_.flatten(_.map(datasources, _.keys)));
                 expect(market).to.be.oneOf(_.uniq(_.union(_.keys(markets), others)));
             }
-            const opt = _.extend(
-                {ending_format: moment.defaultFormat},
-                market && _.omit(markets[market], 'datasources', 'label', 'description'),
-                options
-            );
+            const opt = options.security_tz || options.interval == 'contract' || options.interval == 'lookup' ?
+                {...options, ending_format: moment.defaultFormat} :
+                {
+                    ..._.first(await contract(markets, datasources.lookup, options)),
+                    ...options,
+                    ending_format: moment.defaultFormat
+                };
             const interval = options.interval;
             if (interval == 'lookup') return lookup(markets, datasources.lookup, opt);
+            if (interval == 'contract') return contract(markets, datasources.contract, opt);
             if (interval == 'fundamental') return fundamental(datasources.fundamental, opt);
             expect(options).to.have.property('tz').that.is.a('string');
             if (options.end) expect(options).to.have.property('begin');
@@ -205,7 +208,10 @@ function lookup(markets, datasources, options) {
         symbol: /^\S(\S| )*$/
     });
     const market = options.market;
-    if (market) expect(market).to.be.oneOf(_.keys(datasources));
+    if (market && !datasources[market]) {
+        logger.warn(`No ${options.market} market source configured`);
+        return [];
+    }
     const symbol = options.symbol;
     const same = new RegExp('^' + symbol.replace(/\W/g, '\\W') + '$', 'i');
     const almost = new RegExp('\\b' + symbol.replace(/\W/g, '.*') + '\\b', 'i');
@@ -233,7 +239,7 @@ function lookup(markets, datasources, options) {
         });
     }), Promise.resolve([])).then(result => {
         if (error && _.isEmpty(result)) throw error;
-        else if (error) logger.debug("Fetch fundamental failed", error);
+        else if (error) logger.debug("Fetch lookup failed", error);
         return result;
     }).then(rows => _.map(
         _.groupBy(rows, row => row.symbol + ':' + row.market),
@@ -263,11 +269,46 @@ function lookup(markets, datasources, options) {
     });
 }
 
+function contract(markets, datasources, options) {
+    expect(options).to.be.like({
+        symbol: /^\S(\S| )*$/,
+        market: /^\w+$/
+    });
+    if (!datasources[options.market]) {
+        logger.warn(`No ${options.market} market source configured`);
+        return [];
+    }
+    const opts = options.interval == 'contract' ? options : {...options, interval: 'contract'};
+    const symbol = options.symbol;
+    const market = options.market;
+    return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
+        return datasource(opts).catch(err2 => {
+            if (!err) throw err2;
+            logger.debug("Fetch", opts.interval, "failed", err2);
+            throw err;
+        });
+    }), Promise.reject()).then(rows => rows.map(row => {
+        const market = row.market;
+        return _.defaults({},
+            row,
+            markets[market] && {
+                currency: markets[market].currency,
+                security_type: markets[market].default_security_type,
+                ..._.pick(markets[market], 'security_tz', 'liquid_hours', 'trading_hours', 'open_time')
+            }
+        );
+    }));
+}
+
 function fundamental(datasources, options) {
     expect(options).to.be.like({
         symbol: /^\S(\S| )*$/,
-        market: ex => expect(ex).to.be.oneOf(_.keys(datasources))
+        market: /^\w+$/
     });
+    if (!datasources[options.market]) {
+        logger.warn(`No ${options.market} market source configured`);
+        return [];
+    }
     const now = moment();
     let error;
     return datasources[options.market].map(datasource => {

@@ -66,7 +66,7 @@ function fetchOptionsFactory(fetch, offline, read_only) {
         return readInfo(dir, symbol, market, offline).catch(async(err) => {
             if (offline) return guessSecurityOptions(markets, symbol, market, err);
             else return fetch({
-                interval: 'lookup',
+                interval: 'contract',
                 symbol: symbol,
                 market: market
             }).then(matches => _.first(matches))
@@ -93,7 +93,7 @@ function fetchOptionsFactory(fetch, offline, read_only) {
 
 function guessSecurityOptions(markets, symbol, market, e) {
     if (!market || !markets[market]) throw e; // missing or unknown market
-    logger.debug("Fetch lookup failed on ", symbol + '.' + market, e);
+    logger.debug("Fetch contract failed on ", symbol + '.' + market, e);
     return {
         symbol, market, name: symbol,
         currency: markets[market].currency,
@@ -120,7 +120,7 @@ async function saveInfo(dir, symbol, market, info) {
 }
 
 function getInfoFileName(dir, symbol, market) {
-    return path.resolve(dir, market || '', safe(symbol), 'info.json');
+    return path.resolve(dir, market || '', safe(symbol), 'contract.json');
 }
 
 function safe(segment) {

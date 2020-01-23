@@ -181,6 +181,7 @@ function listen(settings) {
         }));
         replyTo(process)
             .handle('lookup', mtrader.lookup)
+            .handle('contract', mtrader.contract)
             .handle('fundamental', mtrader.fundamental)
             .handle('fetch', mtrader.fetch)
             .handle('quote', mtrader.quote)

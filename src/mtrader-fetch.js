@@ -151,6 +151,15 @@ function shell(desc, fetch, app) {
             interval: 'lookup', symbol, market, tz, ending_format: moment.defaultFormat
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
+    // contract
+    app.cmd('contract :symbol', "List securities with similar symbols", (cmd, sh, cb) => {
+        const s = cmd.params.symbol;
+        const symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
+        const market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
+        fetch(_.defaults({
+            interval: 'contract', symbol, market, tz, ending_format: moment.defaultFormat
+        }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
+    });
     // fundamental
     app.cmd('fundamental :symbol', "List fundamental information about security", (cmd, sh, cb) => {
         const s = cmd.params.symbol;
@@ -178,6 +187,14 @@ help(app, 'lookup', `
 
   Options:
 ${listOptions(info.lookup.options)}
+`);
+if (info.contract) help(app, 'contract', `
+  Usage: contract :symbol.market
+
+  List contract details for symbol.market
+
+  Options:
+${listOptions(info.contract.options)}
 `);
 if (info.fundamental) help(app, 'fundamental', `
   Usage: fundamental :symbol.market

@@ -96,7 +96,7 @@ function help(assets, help, settings = {}) {
         if (!info.options) return info;
         const info_intervals = (info.options.interval||[]).values||[];
         const match_assets = assets.filter(asset => _.intersection(asset.intervals, info_intervals).length);
-        const market_assets = ~info_intervals.indexOf('lookup') || ~info_intervals.indexOf('fundamental') ?
+        const market_assets = ~info_intervals.indexOf('lookup') || ~info_intervals.indexOf('contract') || ~info_intervals.indexOf('fundamental') ?
             assets : match_assets;
         const markets = _.uniq(market_assets.map(asset => asset.market));
         const variables = _.uniq(_.flatten(match_assets.map(asset => {
@@ -133,11 +133,12 @@ module.exports = function(fetch, settings = {}) {
                 if (contracts.length) return contracts;
                 else throw err;
             });
+            case 'contract':
             case 'fundamental': return fetch(options).then(contracts => contracts.map(contract => {
-                return merge(_.frist(lookup(markets, assets, options)), contract);
+                return merge(_.first(lookup(markets, assets, options)), contract);
             }), err => {
                 const contracts = lookup(markets, assets, options);
-                if (contracts.length) return contracts[0];
+                if (contracts.length) return contracts;
                 else throw err;
             });
             default:

@@ -89,14 +89,14 @@ function help(settings = {}) {
             description: "Sets the latest dateTime to retrieve"
         }
     };
-    const lookup = {
-        name: "lookup",
-        usage: "lookup(options)",
+    const contract = {
+        name: "contract",
+        usage: "contract(options)",
         description: "Looks up existing symbol/market using the given symbol",
         properties: ['symbol', 'market', 'name', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
-                values: ["lookup"]
+                values: ["contract"]
             },
         })
     };
@@ -114,7 +114,7 @@ function help(settings = {}) {
         })
     };
     return _.compact([
-        lookup,
+        contract,
         interday
     ]);
 }
@@ -138,9 +138,9 @@ module.exports = function(settings = {}) {
         if (options.info=='help') return help(settings);
         if (options.info=='version') return [{version}];
         switch(options.interval) {
-            case 'lookup': return lookup(options);
+            case 'contract': return contract(options);
             case 'day': return interday(ivolatility, options);
-            default: expect(options.interval).to.be.oneOf(['lookup', 'day']);
+            default: expect(options.interval).to.be.oneOf(['contract', 'day']);
         }
     }, {
         close() {
@@ -149,7 +149,7 @@ module.exports = function(settings = {}) {
     });
 };
 
-async function lookup(options) {
+async function contract(options) {
     if (options.market && options.market != 'OPRA') return [];
     const symbol = options.symbol;
     if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);

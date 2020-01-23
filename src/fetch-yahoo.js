@@ -65,6 +65,17 @@ function help(settings = {}) {
             },
         })
     };
+    const contract = {
+        name: "contract",
+        usage: "contract(options)",
+        description: "Looks up existing symbol/market using the given symbol on the Yahoo! network",
+        properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'security_type', 'currency'],
+        options: _.extend({}, commonOptions, {
+            interval: {
+                values: ["contract"]
+            },
+        })
+    };
     const interday = {
         name: "interday",
         usage: "interday(options)",
@@ -104,7 +115,11 @@ function help(settings = {}) {
             }
         })
     };
-    return ~(settings.intervals||[]).indexOf('lookup') ? [lookup, interday] : [interday];
+    return _.compact([
+        ~(settings.intervals||[]).indexOf('lookup') && lookup,
+        ~(settings.intervals||[]).indexOf('contract') && contract,
+        interday
+    ]);
 }
 
 module.exports = function(settings = {}) {
@@ -123,6 +138,7 @@ module.exports = function(settings = {}) {
         if (options.info=='version') return [{version}];
         switch(options.interval) {
             case 'lookup': return lookup(markets, yahoo, options);
+            case 'contract': return contract(markets, yahoo, options);
             case 'fundamental': throw Error("Yahoo! fundamental service has been discontinued");
             case 'day': return interday(yahoo, adjustments, symbol(options), options);
             default: throw Error("Only daily is supported by this Yahoo! datasource");
@@ -139,6 +155,12 @@ module.exports = function(settings = {}) {
         }
     });
 };
+
+function contract(markets, yahoo, options) {
+    return lookup(markets, yahoo, options).then(rows => rows.filter(row => {
+        return row.symbol == options.symbol && row.market == options.market;
+    }));
+}
 
 function lookup(markets, yahoo, options) {
     const langs = _.uniq(_.compact(_.map(markets, (market, name) =>
