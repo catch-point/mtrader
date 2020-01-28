@@ -215,7 +215,7 @@ function helpOptions() {
             'asof', 'acctNumber', 'action', 'quant', 'position', 'traded_at', 'traded_price', 'price',
             'sales', 'purchases', 'dividend', 'commission', 'mtm', 'value',
             'symbol', 'market', 'currency', 'security_type', 'multiplier',
-            'industry', 'category', 'subcategory', 'under_symbol', 'under_market'
+            'trading_class', 'industry', 'category', 'subcategory', 'under_symbol', 'under_market'
         ],
         options: {
             action: {
@@ -824,6 +824,7 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
         const change_list = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options);
         const changes = change_list.map(change => ({
             ...change,
+            trading_class: ((_.first(details)||{}).summary||{}).tradingClass,
             ..._.pick(_.first(details), ['industry', 'category', 'subcategory']),
             under_symbol, under_market
         }));
@@ -1051,40 +1052,29 @@ async function asMarket(markets, ib, contract) {
     const market = [contract.primaryExchange, contract.exchange]
       .filter(market => market && market != 'SMART')
       .concat(Object.keys(markets))
-      .find(name => {
-        if (!markets[name]) return false;
-        const currency = markets[name].currency;
-        if (currency && currency != contract.currency) return false;
-        // secType filter
-        const secType = markets[name].secType;
-        if (secType && secType != contract.secType) return false;
-        const secTypes = markets[name].secTypes;
-        if (secTypes && !~secTypes.indexOf(contract.secType)) return false;
-        // primaryExch filter
-        const primaryExch = markets[name].primaryExch;
-        if (primaryExch && primaryExch != contract.primaryExch &&
-            primaryExch != contract.exchange) return false;
-        const primaryExchs = markets[name].primaryExchs;
-        if (primaryExchs && !~primaryExchs.indexOf(contract.primaryExch) &&
-            !~primaryExchs.indexOf(contract.exchange)) return false;
-        // exchange filter
-        const exchange = markets[name].exchange;
-        if (exchange && exchange != 'SMART' && exchange != 'IDEALPRO' &&
-            contract.exchange != 'SMART' && contract.exchange != 'IDEALPRO' &&
-            exchange != contract.exchange && exchange != contract.primaryExch) return false;
-        const exchanges = markets[name].exchanges;
-        if (exchanges && contract.exchange != 'SMART' && contract.exchange != 'IDEALPRO' &&
-            !exchanges.indexOf(contract.exchange) && !exchanges.indexOf(contract.primaryExch)) return false;
-        return true;
-    });
+      .find(name => inMarket(contract, markets[name]));
     if (market) return market;
     const details = ib ? await ib.reqContractDetails(contract.conId ? {conId: contract.conId} : contract)
       .catch(err => []): [];
     return details.reduce(async(promise, detail) => {
         const prior = await promise.catch(err => err);
         if (!(prior instanceof Error)) return prior;
-        else return asMarket(markets, null, detail.summary).catch(err => Promise.reject(prior));
+        else return asMarket(markets, null, {...detail, ...detail.summary}).catch(err => Promise.reject(prior));
     }, Promise.reject(Error(`Could not determine market for ${util.inspect(contract, {breakLength:Infinity})}`)));
+}
+
+function inMarket(contract, market) {
+    if (!market) return false;
+    if (market.currency && market.currency != contract.currency) return false;
+    if (market.secType && market.secType != contract.secType) return false;
+    if (market.secTypes && !~market.secTypes.indexOf(contract.secType)) return false;
+    if (market.tradingClasses && ~market.tradingClasses.indexOf(contract.tradingClass)) return true;
+    const exchanges = [].concat(market.primaryExch, market.primaryExchs, market.exchange, market.exchanges);
+    const unique = _.compact(exchanges).filter(ex => ex != 'SMART' && ex != 'IDEALPRO');
+    const validExchanges = contract.validExchanges ? _.compact(contract.validExchanges.split(',')) : [];
+    if (~unique.indexOf(contract.primaryExch) || ~unique.indexOf(contract.exchange)) return true;
+    else if (_.intersection(unique, validExchanges).length) return true;
+    else return !unique.length;
 }
 
 function parseTime(time, ib_tz) {

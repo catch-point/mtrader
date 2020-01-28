@@ -315,7 +315,8 @@
           "whatToShow": "TRADES",
           "secTypes": ["STK", "IND"],
           "primaryExchs": ["NASDAQ", ""],
-          "exchanges": ["SMART", "NASDAQ"]
+          "exchanges": ["SMART", "NASDAQ"],
+          "tradingClasses": ["NAS", "NCM", "NGM", "NMS", "NIM"]
         },
         "collective2": {
             "instrument": "stock"

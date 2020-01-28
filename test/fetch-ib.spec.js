@@ -66,6 +66,15 @@ describe("fetch-ib", function() {
                   }
                 }
             }, {
+                "name": "contract",
+                "options": {
+                  "interval": {
+                    "values": [
+                      "contract"
+                    ]
+                  }
+                }
+            }, {
                 "name": "fundamental",
                 "options": {
                   "interval": {

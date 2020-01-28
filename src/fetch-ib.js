@@ -92,7 +92,7 @@ function help(settings) {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IB client",
-        properties: ['symbol', 'market', 'name', 'security_type', 'currency'],
+        properties: ['symbol', 'market', 'name', 'security_type', 'currency', 'trading_hours', 'liquid_hours'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -103,7 +103,7 @@ function help(settings) {
         name: "contract",
         usage: "contract(options)",
         description: "Looks up existing symbol/market using the given symbol using the local IB client",
-        properties: ['symbol', 'market', 'name', 'security_type', 'currency'],
+        properties: ['symbol', 'market', 'name', 'security_type', 'currency', 'trading_hours', 'liquid_hours'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["contract"]
@@ -115,7 +115,8 @@ function help(settings) {
         usage: "fundamental(options)",
         description: "Details of the given symbol/market contract",
         properties: [
-            'symbol', 'market', 'security_type', 'name', 'secType', 'exchange', 'currency',
+            'symbol', 'market', 'security_type', 'name', 'secType', 'exchange',
+            'currency', 'trading_hours', 'liquid_hours',
             'localSymbol', 'tradingClass', 'primaryExch', 'marketName', 'longName',
             'minTick', 'orderTypes', 'validExchanges', 'priceMagnifier',
             'industry', 'category', 'subcategory',
