@@ -53,9 +53,6 @@ function help(settings) {
         market: {
             description: "Exchange market acronym",
             values: settings.markets
-        },
-        conId: {
-            description: "IB contract ID"
         }
     };
     const tzOptions = {
@@ -92,7 +89,7 @@ function help(settings) {
         name: "lookup",
         usage: "lookup(options)",
         description: "Looks up existing symbol/market using the given symbol prefix using the local IB client",
-        properties: ['symbol', 'market', 'name', 'security_type', 'currency', 'trading_hours', 'liquid_hours'],
+        properties: ['symbol', 'market', 'name', 'security_type', 'currency'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
@@ -103,7 +100,7 @@ function help(settings) {
         name: "contract",
         usage: "contract(options)",
         description: "Looks up existing symbol/market using the given symbol using the local IB client",
-        properties: ['symbol', 'market', 'name', 'security_type', 'currency', 'trading_hours', 'liquid_hours'],
+        properties: ['symbol', 'market', 'name', 'security_type', 'currency', 'open_time', 'trading_hours', 'liquid_hours', 'security_tz'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["contract"]
@@ -116,7 +113,7 @@ function help(settings) {
         description: "Details of the given symbol/market contract",
         properties: [
             'symbol', 'market', 'security_type', 'name', 'secType', 'exchange',
-            'currency', 'trading_hours', 'liquid_hours',
+            'currency', 'open_time', 'trading_hours', 'liquid_hours', 'security_tz',
             'localSymbol', 'tradingClass', 'primaryExch', 'marketName', 'longName',
             'minTick', 'orderTypes', 'validExchanges', 'priceMagnifier',
             'industry', 'category', 'subcategory',
@@ -420,11 +417,7 @@ async function lookup(markets, client, options) {
         market: options.market || markets[contract.primaryExch] && contract.primaryExch,
         security_type: contract.secType,
         name: contract.longName,
-        currency: contract.currency,
-        trading_hours: !contract.tradingHours ? undefined :
-            `${market_open(contract.tradingHours)} - ${market_close(contract.tradingHours)}`,
-        liquid_hours: !contract.liquidHours ? undefined :
-            `${market_open(contract.liquidHours)} - ${market_close(contract.liquidHours)}`
+        currency: contract.currency
     }, v => !v));
 }
 
@@ -433,15 +426,18 @@ async function contract(markets, client, options) {
     const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
     const contracts = conIds.map(details => flattenContractDetails(details));
     return contracts.map((contract, i) => {
+        const market = markets[options.market] || markets[contract.primaryExch] || {};
         return _.omit({
-            symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
+            symbol: toSymbol(market, contract),
             market: options.market || markets[contract.primaryExch] && contract.primaryExch,
-            security_type: contract.secType,
+            security_type: contract.secType || market.default_security_type,
             name: contract.longName,
-            currency: contract.currency,
-            trading_hours: !contract.tradingHours ? undefined :
+            currency: contract.currency || market.currency,
+            security_tz: market.security_tz,
+            open_time: market.open_time,
+            trading_hours: !contract.tradingHours ? market.trading_hours :
                 `${market_open(contract.tradingHours)} - ${market_close(contract.tradingHours)}`,
-            liquid_hours: !contract.liquidHours ? undefined :
+            liquid_hours: !contract.liquidHours ? market.liquid_hours :
                 `${market_open(contract.liquidHours)} - ${market_close(contract.liquidHours)}`
         }, v => !v);
     });
@@ -459,15 +455,18 @@ async function fundamental(markets, client, options) {
     }));
     return contracts.map((contract, i) => {
         const under = under_contracts[i] || contract;
+        const market = markets[options.market] || markets[contract.primaryExch] || {};
         return _.omit({
-            symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
+            symbol: toSymbol(market, contract),
             market: options.market || markets[contract.primaryExch] && contract.primaryExch,
-            security_type: contract.secType,
+            security_type: contract.secType || market.default_security_type,
             name: contract.longName,
-            currency: contract.currency,
-            trading_hours: !contract.tradingHours ? undefined :
+            currency: contract.currency || market.currency,
+            security_tz: market.security_tz,
+            open_time: market.open_time,
+            trading_hours: !contract.tradingHours ? market.trading_hours :
                 `${market_open(contract.tradingHours)} - ${market_close(contract.tradingHours)}`,
-            liquid_hours: !contract.liquidHours ? undefined :
+            liquid_hours: !contract.liquidHours ? market.liquid_hours :
                 `${market_open(contract.liquidHours)} - ${market_close(contract.liquidHours)}`,
             ..._.omit(contract, 'symbol', 'market', 'security_type', 'name', 'conId', 'underConId', 'priceMagnifier'),
             under_symbol: toSymbol(markets[under.primaryExch], under),
@@ -728,7 +727,6 @@ function joinCommon(contracts) {
 
 function toContract(market, options) {
     return _.omit({
-        conId: options.conId,
         localSymbol: toLocalSymbol(market, options.symbol),
         secType: market.secType,
         primaryExch: market.primaryExch,

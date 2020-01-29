@@ -307,7 +307,7 @@ describe("fetch-ib", function() {
             });
         });
         it("should find SPX symbol", function() {
-            return client({interval:'lookup', symbol:'SPX', market:"CBOE"})
+            return client({interval:'contract', symbol:'SPX', market:"CBOE"})
               .should.eventually.be.like([{
                 symbol: 'SPX',
                 name: 'S&P 500 Stock Index',
@@ -319,7 +319,7 @@ describe("fetch-ib", function() {
             }]);
         });
         it("should find VIX symbol", function() {
-            return client({interval:'lookup', symbol:'VIX', market:"CBOE"})
+            return client({interval:'contract', symbol:'VIX', market:"CBOE"})
               .should.eventually.be.like([{
                 symbol: 'VIX',
                 name: 'CBOE Volatility Index',
@@ -331,7 +331,7 @@ describe("fetch-ib", function() {
             }]);
         });
         it("should find SPY symbol", function() {
-            return client({interval:'lookup', symbol:'SPY', market:"ARCA"})
+            return client({interval:'contract', symbol:'SPY', market:"ARCA"})
               .should.eventually.be.like([{
                 symbol: 'SPY',
                 name: 'SPDR S&P 500 ETF TRUST',

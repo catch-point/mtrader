@@ -63,7 +63,7 @@ module.exports = function(settings = {}) {
             const opt = options.security_tz || options.interval == 'contract' || options.interval == 'lookup' ?
                 {...options, ending_format: moment.defaultFormat} :
                 {
-                    ..._.first(await contract(markets, datasources.lookup, options)),
+                    ..._.first(await contract(markets, datasources.contract, options)),
                     ...options,
                     ending_format: moment.defaultFormat
                 };
@@ -269,7 +269,7 @@ function lookup(markets, datasources, options) {
     });
 }
 
-function contract(markets, datasources, options) {
+async function contract(markets, datasources, options) {
     expect(options).to.be.like({
         symbol: /^\S(\S| )*$/,
         market: /^\w+$/
@@ -281,13 +281,14 @@ function contract(markets, datasources, options) {
     const opts = options.interval == 'contract' ? options : {...options, interval: 'contract'};
     const symbol = options.symbol;
     const market = options.market;
-    return datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
+    const rows = datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
         return datasource(opts).catch(err2 => {
             if (!err) throw err2;
             logger.debug("Fetch", opts.interval, "failed", err2);
             throw err;
         });
-    }), Promise.reject()).then(rows => rows.map(row => {
+    }), Promise.reject());
+    if (rows.length) return rows.map(row => {
         const market = row.market;
         return _.defaults({},
             row,
@@ -297,7 +298,16 @@ function contract(markets, datasources, options) {
                 ..._.pick(markets[market], 'security_tz', 'liquid_hours', 'trading_hours', 'open_time')
             }
         );
-    }));
+    });
+    else if (markets[options.market]) return [{
+        symbol: options.symbol,
+        market: options.market,
+        name: `${options.symbol}.${options.market}`,
+        currency: markets[market].currency,
+        security_type: markets[market].default_security_type,
+        ..._.pick(markets[market], 'security_tz', 'liquid_hours', 'trading_hours', 'open_time')
+    }];
+    else return [];
 }
 
 function fundamental(datasources, options) {

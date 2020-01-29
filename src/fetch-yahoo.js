@@ -69,7 +69,7 @@ function help(settings = {}) {
         name: "contract",
         usage: "contract(options)",
         description: "Looks up existing symbol/market using the given symbol on the Yahoo! network",
-        properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'security_type', 'currency'],
+        properties: ['symbol', 'yahoo_symbol', 'market', 'name', 'security_type', 'currency', 'open_time', 'trading_hours', 'liquid_hours', 'security_tz'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["contract"]
@@ -175,13 +175,13 @@ function lookup(markets, yahoo, options) {
     })).then(rows => rows.map(row => {
         const sym = row.symbol;
         const sources = _.pick(_.mapObject(markets, market =>
-                Object.assign({currency: market.currency}, market.datasources.yahoo)
+                ({...market, ...market.datasources.yahoo})
             ), (source, market) =>
                 source && _.contains(source.exchs, row.exch) &&
                 (!options.market || market == options.market)
             );
-        const ds = _.find(sources);
-        const suffix = ds && ds.yahooSuffix || '';
+        const ds = _.find(sources) || {};
+        const suffix = ds.yahooSuffix || '';
         const endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
         const symbol = endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
         return {
@@ -190,7 +190,11 @@ function lookup(markets, yahoo, options) {
             market: _.first(_.keys(sources)),
             name: row.name,
             security_type: row.type == 'S' || row.type == 'E' ? 'STK' : row.type,
-            currency: (ds||{}).currency
+            currency: ds.currency,
+            security_tz: ds.security_tz,
+            open_time: ds.open_time,
+            trading_hours: ds.trading_hours,
+            liquid_hours: ds.liquid_hours
         };
     })).then(rows => rows.filter(row => row.market));
 }

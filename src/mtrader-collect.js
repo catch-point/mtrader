@@ -117,7 +117,7 @@ if (require.main === module) {
     }
 } else {
     const prog = usage(new commander.Command());
-    const shared = module.exports = share(() => createInstance(prog));
+    const shared = module.exports = share(settings => createInstance(prog, settings.runInBand));
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
 }
 

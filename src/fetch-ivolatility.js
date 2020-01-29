@@ -93,7 +93,7 @@ function help(settings = {}) {
         name: "contract",
         usage: "contract(options)",
         description: "Looks up existing symbol/market using the given symbol",
-        properties: ['symbol', 'market', 'name', 'security_type', 'currency'],
+        properties: ['symbol', 'market', 'name', 'security_type', 'currency', 'open_time', 'trading_hours', 'liquid_hours', 'security_tz'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["contract"]
@@ -122,6 +122,7 @@ function help(settings = {}) {
 const shared_clients = {};
 
 module.exports = function(settings = {}) {
+    const markets = _.pick(config('markets'), settings.markets);
     const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const cacheDir = settings.cache || path.resolve(cache_dir, 'ivolatility');
     const libDir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
@@ -138,7 +139,7 @@ module.exports = function(settings = {}) {
         if (options.info=='help') return help(settings);
         if (options.info=='version') return [{version}];
         switch(options.interval) {
-            case 'contract': return contract(options);
+            case 'contract': return contract(markets, options);
             case 'day': return interday(ivolatility, options);
             default: expect(options.interval).to.be.oneOf(['contract', 'day']);
         }
@@ -149,9 +150,10 @@ module.exports = function(settings = {}) {
     });
 };
 
-async function contract(options) {
+async function contract(markets, options) {
     if (options.market && options.market != 'OPRA') return [];
     const symbol = options.symbol;
+    const market = markets[options.market] || {};
     if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);
     const underlying = symbol.substring(0, 6);
     const year = symbol.substring(6, 8);
@@ -166,9 +168,13 @@ async function contract(options) {
     return [{
         symbol: symbol,
         market: 'OPRA',
-        security_type: 'OPT',
         name: `${underlying.trim()} ${expiry.format('MMM Y')} ${right} ${strike}`,
-        currency: 'USD'
+        security_type: market.default_security_type,
+        currency: market.currency,
+        security_tz: market.security_tz,
+        open_time: market.open_time,
+        trading_hours: market.trading_hours,
+        liquid_hours: market.liquid_hours
     }];
 }
 

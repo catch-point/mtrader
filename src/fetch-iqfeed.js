@@ -102,7 +102,7 @@ function help(settings = {}) {
         name: "contract",
         usage: "contract(options)",
         description: "Looks up existing symbol/market using the given symbol using the local IQFeed client",
-        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'security_type', 'currency'],
+        properties: ['symbol', 'iqfeed_symbol', 'market', 'name', 'security_type', 'currency', 'open_time', 'trading_hours', 'liquid_hours', 'security_tz'],
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["contract"]
@@ -264,7 +264,7 @@ function createInstance(settings = {}) {
         } else if (options.interval == 'contract') {
             const exchs = _.pick(_.mapObject(
                 options.market ? _.pick(markets, [options.market]) : markets,
-                exch => Object.assign({currency: exch.currency}, exch.datasources.iqfeed)
+                exch => ({...exch, ...exch.datasources.iqfeed})
             ), val => val);
             const listed_markets = options.listed_market ? [options.listed_market] :
                 _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
@@ -476,10 +476,19 @@ const security_types_map = {
     PRECMTL: "CMDTY"
 };
 
-function contract(iqclient, symbol_fn, exchs, listed_markets, options) {
-    return lookup(iqclient, exchs, symbol_fn(options), listed_markets).then(rows => rows.filter(row => {
+async function contract(iqclient, symbol_fn, exchs, listed_markets, options) {
+    const market = exchs[options.market] || {};
+    const rows = await lookup(iqclient, exchs, symbol_fn(options), listed_markets);
+    return rows.filter(row => {
         return row.symbol == options.symbol && row.market == options.market;
-    }));
+    }).map(row => _.omit({
+        ...row,
+        currency: market.currency,
+        security_tz: market.security_tz,
+        open_time: market.open_time,
+        trading_hours: market.trading_hours,
+        liquid_hours: market.liquid_hours
+    }, v => !v));
 }
 
 function lookup(iqclient, exchs, symbol, listed_markets) {
