@@ -488,15 +488,15 @@ function market_open(hours) {
 }
 
 function market_close(hours) {
-    return hours.split(';').reduce((open, range) => {
-        if (!~range.indexOf('-')) return open;
+    return hours.split(';').reduce((close, range) => {
+        if (!~range.indexOf('-')) return close;
         const idx = range.indexOf(':', range.indexOf('-'));
-        if (!~idx) return open;
+        if (!~idx) return close;
         const hour = range.substring(idx+1, idx+3);
         const minute = range.substring(idx+3, idx+5);
         const time = `${hour}:${minute}:00`;
-        if (!open || open < time) return time;
-        else return open;
+        if (!close || close < time) return time;
+        else return close;
     }, undefined);
 }
 

@@ -281,7 +281,7 @@ async function contract(markets, datasources, options) {
     const opts = options.interval == 'contract' ? options : {...options, interval: 'contract'};
     const symbol = options.symbol;
     const market = options.market;
-    const rows = datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
+    const rows = await datasources[options.market].reduce((promise, datasource) => promise.catch(err => {
         return datasource(opts).catch(err2 => {
             if (!err) throw err2;
             logger.debug("Fetch", opts.interval, "failed", err2);

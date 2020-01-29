@@ -39,6 +39,7 @@ const moment = require('moment-timezone');
 const Big = require('big.js');
 const smr = require('smr');
 const merge = require('./merge.js');
+const cache = require('./memoize-cache.js');
 const interrupt = require('./interrupt.js');
 const Parser = require('../src/parser.js');
 const common = require('./common-functions.js');
@@ -121,12 +122,19 @@ module.exports = function(fetch, settings = {}) {
         _.pick(config('markets'), market_values),
         m => _.omit(m, 'datasources', 'label', 'description')
     );
+    const cache_size = settings.cache_size || 100;
+    const options_keys = ['symbol', 'market', 'interval', 'begin', 'end', 'tz', 'ending_format'];
+    const cached_fetch = cache(fetch, options => {
+        const keys = options.end && moment(options.end).isBefore(options.now) ?
+            options_keys : options_keys.concat('now');
+        return JSON.stringify(keys.map(key => options[key]));
+    }, cache_size);
     let helpInfo;
     return Object.assign(async(options) => {
         if (options.info=='version') return fetch(options);
         if (options.info=='help') return helpInfo = helpInfo || help(assets, await fetch({info:'help'}), settings);
         switch(options.interval) {
-            case 'lookup': return fetch(options).then(contracts => {
+            case 'lookup': return cached_fetch(options).then(contracts => {
                 return lookup(markets, assets, options).concat(contracts);
             }, err => {
                 const contracts = lookup(markets, assets, options);
@@ -134,7 +142,7 @@ module.exports = function(fetch, settings = {}) {
                 else throw err;
             });
             case 'contract':
-            case 'fundamental': return fetch(options).then(contracts => contracts.map(contract => {
+            case 'fundamental': return cached_fetch(options).then(contracts => contracts.map(contract => {
                 return merge(_.first(lookup(markets, assets, options)), contract);
             }), err => {
                 const contracts = lookup(markets, assets, options);
@@ -143,13 +151,13 @@ module.exports = function(fetch, settings = {}) {
             });
             default:
             const asset = findAsset(assets, options);
-            if (!asset || !asset.models) return fetch(options);
-            const blend_fn = blendCall.bind(this, markets, fetch, adjustments, asset);
+            if (!asset || !asset.models) return cached_fetch(options);
+            const blend_fn = blendCall.bind(this, markets, cached_fetch, adjustments, asset);
             return trim(await blend_fn(options), options);
         }
     }, {
         close() {
-            return Promise.all([adjustments.close()]);
+            return Promise.all([adjustments.close(), cached_fetch.close()]);
         }
     });
 };
