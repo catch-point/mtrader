@@ -817,10 +817,18 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
         const details = con_pos ? await ib.reqContractDetails({conId}) : [];
         const contract = con_pos ? await ib.reqContract(conId) : _.first(con_exe);
         if (contract.secType == 'BAG') return [];
-        const under_contract = !(_.first(details)||{}).underConId ? contract :
-            await ib.reqContract(_.first(details).underConId);
+        const detail = _.first(details)||{};
+        const under_contract = !detail.underConId ? contract :
+            await ib.reqContract(detail.underConId).catch(err => {
+                logger.warn(`${err.message.replace(/\n[\S\s]*$/,'')} ${contract.localSymbol||contract.symbol} underConId ${detail.underConId}`);
+                return {
+                    conId: detail.underConId,
+                    symbol: detail.underSymbol || contract.symbol,
+                    secType: detail.underSecType
+                };
+            });
         const under_symbol = asSymbol(under_contract);
-        const under_market = await asMarket(markets, ib, under_contract);
+        const under_market = await asMarket(markets, ib, under_contract).catch(err => null);
         const change_list = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options);
         const changes = change_list.map(change => ({
             ...change,
