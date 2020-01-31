@@ -116,7 +116,9 @@ function help(assets, help, settings = {}) {
 
 module.exports = function(fetch, settings = {}) {
     const adjustments = new Adjustements(settings);
-    const assets = (settings.assets||[]).map(asset => typeof asset == 'string' ? readConfig(asset, settings) : asset);
+    const assets = (settings.assets||[]).map(asset => {
+        return readConfig(typeof asset == 'string' ? {load:asset} : asset, config.configDirname());
+    });
     const market_values = _.uniq(assets.map(asset => asset.market));
     const markets = _.mapObject(
         _.pick(config('markets'), market_values),
@@ -162,10 +164,18 @@ module.exports = function(fetch, settings = {}) {
     });
 };
 
-function readConfig(name, settings = {}) {
-    const filename = config.resolve(name);
-    const base = path.dirname(filename);
-    return _.extend({base}, config.read(filename), settings);
+function readConfig(object, dir, black_list = []) {
+    if (_.isArray(object)) return object.map(value => readConfig(value, dir, black_list));
+    else if (!_.isObject(object)) return object;
+    const included = [].concat(object.load||[]).reduce((object, name) => {
+        const filename = config.resolve(name);
+        if (~black_list.indexOf(filename)) throw Error(`Recursive loading of ${black_list.concat(filename)}`);
+        const base = path.dirname(filename);
+        const json = config.read(dir, filename);
+        return Object.assign(object, readConfig(json, base, black_list.concat(filename)));
+    }, {});
+    const obj = Object.assign(included, _.omit(object, 'load'));
+    return _.mapObject(obj, value => readConfig(value, dir, black_list));
 }
 
 function lookup(markets, assets, options) {
@@ -204,7 +214,7 @@ async function blendCall(markets, fetch, adjustments, asset, options) {
     const end = options.end && moment.tz(options.end, options.tz).format(options.ending_format);
     const begin = moment.tz(options.begin, options.tz);
     const models = sliceModelsAfter(await Promise.all(sliceModelsAfter(asset.models, begin)
-        .map(async(model) => readModel(asset, model, {}, options))), begin);
+        .map(async(model) => readModel(asset, model, model.parameters, options))), begin);
     return models.reduceRight(async(promise, model_p, i, models) => {
         const model = await model_p;
         const periods = new Periods({...options, ...asset});
@@ -241,16 +251,16 @@ function sliceModelsAfter(models, begin) {
     return models.slice(idx);
 }
 
-async function readModel(asset, model, values, options) {
+async function readModel(asset, model, parameters, options) {
     if (model.bars) {
         const begin = maxDate(model.begin, _.first(model.bars).ending);
         const end = minDate(model.end, _.last(model.bars).ending);
-        return {...model, values, begin, end};
+        return {...model, parameters, begin, end};
     } else if (model.file_csv_gz) {
         const bars = await readTable(config.resolve(asset.base, model.file_csv_gz));
         const begin = maxDate(model.begin, _.first(bars).ending);
         const end = minDate(model.end, _.last(bars).ending);
-        return {...model, values, bars, begin, end};
+        return {...model, parameters, bars, begin, end};
     } else if (model.eval) {
         const parser = new Parser({
             constant(value) {
@@ -258,7 +268,7 @@ async function readModel(asset, model, values, options) {
             },
             variable(name) {
                 if (model.eval[name]) return parser.parse(model.eval[name]);
-                else if (values && name in values) return () => values[name];
+                else if (parameters && name in parameters) return () => parameters[name];
                 else if (~['symbol', 'market', 'interval'].indexOf(name)) return () => options[name];
                 else if (~['begin', 'end'].indexOf(name)) return () => model[name];
                 else return () => { throw Error(`Unknown eval variable: ${name}`); };
@@ -270,16 +280,16 @@ async function readModel(asset, model, values, options) {
                 });
             }
         });
-        const new_values = _.mapObject(parser.parse(model.eval), fn => fn());
-        const revised_values = { ...values, ...new_values };
-        if (!revised_values.begin && !revised_values.end) return { ...model, values: revised_values };
-        const begin = maxDate(revised_values.begin, model.begin, options.begin);
-        const end = minDate(revised_values.end, model.end, options.end);
+        const new_parameters = _.mapObject(parser.parse(model.eval), fn => fn());
+        const revised_params = { ...parameters, ...new_parameters };
+        if (!revised_params.begin && !revised_params.end) return { ...model, parameters: revised_params };
+        const begin = maxDate(revised_params.begin, model.begin, options.begin);
+        const end = minDate(revised_params.end, model.end, options.end);
         if (!moment(begin).isValid()) throw Error(`Invalid begin ${begin}`);
         if (!moment(end).isValid()) throw Error(`Invalid begin ${end}`);
-        return {...model, values: revised_values, ...(begin ? {begin} : {}), ...(end ? {end} : {})};
+        return {...model, parameters: revised_params, ...(begin ? {begin} : {}), ...(end ? {end} : {})};
     } else {
-        return {...model, values};
+        return {...model, parameters};
     }
 }
 
@@ -367,12 +377,12 @@ async function rollBars(bars, options) {
 
 async function fetchInputData(markets, fetch, adjustments, asset, model, input, options) {
     return Promise.all(input.map(async(term) => {
-        const input_model = await readModel(asset, term, model.values, options);
+        const input_model = await readModel(asset, term, model.parameters, options);
         if (input_model.bars) return term.bars;
         else if (input_model.output) return fetchModel(markets, fetch, adjustments, asset, input_model, options);
         else return fetch(_.defaults(
             _.pick(input_model, 'symbol', 'market', 'interval'),
-            _.pick(input_model.values, 'symbol', 'market', 'interval'),
+            _.pick(input_model.parameters, 'symbol', 'market', 'interval'),
             _.omit(options, [
                 'name',
                 'currency', 'security_type', 'security_tz',
@@ -407,8 +417,8 @@ function createParser(adjustments, model, terms, options) {
         variable(name) {
             if ((model.variables||{})[name])
                 return parser.parse(model.variables[name]);
-            else if (model.values && name in model.values)
-                return _.constant(model.values[name]);
+            else if (model.parameters && name in model.parameters)
+                return _.constant(model.parameters[name]);
             else if (~options_variables.indexOf(name))
                 return _.constant(options[name]);
             else if (!~name.indexOf('.') || !model.input[name.substring(0, name.indexOf('.'))])
