@@ -832,16 +832,18 @@ async function fetchCompleteBlock(fetch, options, collection, store_ver, block, 
 function fetchPartialBlock(fetch, fields, options, collection, block, begin, latest) {
     return fetch(_.defaults({
         begin: begin
-    }, blockOptions(block, options))).then(records => {
-        if (_.isEmpty(records)) return; // nothing newer
-        return collection.readFrom(block).then(async(partial) => {
-            partial.pop(); // incomplete
-            const first = records.shift(); // overlap
+    }, blockOptions(block, options))).then(new_records => {
+        if (_.isEmpty(new_records)) return; // nothing newer
+        return collection.readFrom(block).then(async(previous) => {
+            const partial = previous.slice(0, -1); // remove last incomplete row
+            const first = new_records[0]; // overlap
+            const records = new_records.slice(1);
             if (!_.isMatch(_.last(partial), first)) {
                 logger.debug("Quote blocks incompatible", options.symbol, _.last(partial), first);
                 return 'incompatible';
             }
             if (latest && records.length) _.last(records).incomplete = true;
+            else if (latest && partial.length) _.last(partial).incomplete = true;
             const warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
                 const warmUps_promises = warmUps.map(expr => createParser(fields, {}, options).parse(expr));
