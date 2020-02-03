@@ -758,8 +758,10 @@ function openOrders(ib, store, ib_tz, clientId) {
             const timer = setTimeout(() => {
                 if (watching_orders[orderId] && orders[orderId]) {
                     watching_orders[orderId].ready(orders[orderId]);
+                    delete watching_orders[orderId];
                 } else if (watching_orders[orderId]) {
                     watching_orders[orderId].fail(Error("Order status has not changed"));
+                    delete watching_orders[orderId];
                 }
             }, timeout).unref();
             return new Promise((ready, fail) => {
@@ -1251,10 +1253,11 @@ function requestWithId(ib) {
 function combineListeners(hash, key, handlers) {
     return hash[key] = hash[key] ? _.object(Object.keys(handlers).map(event => {
         if (typeof handlers[event] != 'function') return [event, handlers[event]];
-        else return [event, function() {
-            hash[key][event].apply(this, arguments);
-            return handlers[event].apply(this, arguments);
-        }];
+        const listeners = hash[key][event].combined_listeners || [ hash[key][event] ];
+        const combined_listeners = listeners.concat(handlers[event]);
+        return [event, Object.assign(function() {
+            return combined_listeners.reduce((ret, fn) => fn.apply(this, arguments), undefined);
+        }, {combined_listeners})];
     })) : handlers;
 }
 

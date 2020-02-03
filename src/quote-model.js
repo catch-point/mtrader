@@ -124,7 +124,7 @@ module.exports = function(fetch, settings = {}) {
         _.pick(config('markets'), market_values),
         m => _.omit(m, 'datasources', 'label', 'description')
     );
-    const cache_size = settings.cache_size || 100;
+    const cache_size = settings.cache_size || 12;
     const options_keys = ['symbol', 'market', 'interval', 'begin', 'end', 'tz', 'ending_format'];
     const cached_fetch = cache(fetch, options => {
         const keys = options.end && moment(options.end).isBefore(options.now) ?
