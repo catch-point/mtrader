@@ -38,6 +38,7 @@ const merge = require('../src/merge.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
+const Collect = require('../src/collect.js');
 const Replicate = require('../src/replicate.js');
 const Broker = require('../src/broker-simulation.js');
 const beautify = require('js-beautify');
@@ -48,7 +49,7 @@ const expect = require('chai').use(like).expect;
 
 describe("replicate-simulation", function() {
     this.timeout(60000);
-    var fetch, quote, broker, snapshot, replicate;
+    var fetch, quote, collect, broker, snapshot, replicate;
     before(function() {
         config('runInBand', true);
         config('prefix', createTempDir('simulation'));
@@ -59,6 +60,7 @@ describe("replicate-simulation", function() {
             }
         }));
         quote = new Quote(fetch);
+        collect = new Collect(quote);
         broker = new Broker({
             simulation: 'test',
             ...config('broker.simulation'),
@@ -98,6 +100,7 @@ describe("replicate-simulation", function() {
         config.unset('runInBand');
         return Promise.all([
             broker.close(),
+            collect.close(),
             quote.close(),
             fetch.close()
         ]);
@@ -783,6 +786,40 @@ describe("replicate-simulation", function() {
                 currency: 'CAD',
                 markets: ['TSE']
             }).should.eventually.be.rejectedWith(Error);
+        });
+        it("Match adjustment orders", async() => {
+            await broker({
+                action: 'BUY',
+                order_type: 'MKT',
+                tif: 'DAY',
+                quant: 678,
+                asof: '2019-12-27T16:00:00-05:00',
+                symbol: 'AMGN',
+                market: 'NASDAQ',
+                currency: 'USD',
+                security_type: 'STK'
+            });
+            await broker({
+                action: 'SELL',
+                quant: '678',
+                symbol: 'AMGN',
+                market: 'NASDAQ',
+                order_type: 'MKT',
+                tif: 'DAY',
+                order_ref: '1a3019e2',
+                status: 'working',
+                asof: "2020-01-31T09:30:09-05:00"
+            });
+            return Replicate(broker, fetch, function(options) {
+                if (options.info=='help') return collect(options);
+                else return Promise.resolve([]);
+            })({
+                begin: "2020-01-31T09:30:09-05:00",
+                now: "2020-01-31T09:30:09-05:00",
+                currency: 'USD',
+                markets: ['NASDAQ'],
+                portfolio: "AMGN.NASDAQ"
+            }).should.eventually.be.like([]);
         });
     });
     describe("Options", function() {
