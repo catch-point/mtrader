@@ -537,8 +537,8 @@ function updateActual(desired, actual, options) {
             ..._.pick(desired, 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick')
         })
     } : null;
-    const adjustments = options.working_orders_only ? [] :
-        orderReplacements(actual.adjustment, desired_adjustment, 0, options);
+    const adjustments = orderReplacements(actual.adjustment, desired_adjustment, 0, options)
+        .filter(ord => ord.action == 'cancel' || !options.working_orders_only);
     const adjusting_order = !adjustments.length ? actual.adjustment :
         _.first(adjustments.filter(ord => ord.action != 'cancel'));
     const adjust_position = !adjusting_order ? 0 :
