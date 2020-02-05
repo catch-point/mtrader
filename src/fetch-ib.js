@@ -220,8 +220,7 @@ module.exports = function(settings = {}) {
                         close: +Big(bar.bid).add(bar.ask).div(2),
                         volume: bar.volume,
                         adj_close: Big(bar.bid).add(bar.ask).div(2),
-                        asof: now.format(options.ending_format),
-                        incomplete: true
+                        asof: now.format(options.ending_format)
                     }];
                     // else market is not active
                     const historical = await historical_promise;

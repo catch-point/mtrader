@@ -770,10 +770,8 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks
                 collection.propertyOf(block, 'tz') != options.tz)
             return fetchComplete(block, latest);
         const tail = collection.tailOf(block);
-        if (_.isEmpty(tail) || !_.last(tail).incomplete)
-            return; // empty blocks are complete
-        if (_.first(tail).incomplete)
-            return fetchComplete(block, latest);
+        if (collection.propertyOf(block, 'complete'))
+            return; // no need to update complete blocks
         if (i < blocks.length -1 || (_.last(tail).asof || _.last(tail).ending) <= stop) {
             if (isWeekend(_.last(tail), options)) return;
             return fetchPartial(block, _.first(tail).ending, latest).catch(error => {
@@ -823,8 +821,8 @@ function isBeforeStartOfWeek(asof, options) {
 async function fetchCompleteBlock(fetch, options, collection, store_ver, block, latest) {
     const records = await fetch(blockOptions(block, options));
     if (latest && _.isEmpty(records)) return records; // don't write incomplete empty blocks
-    if (latest) _.last(records).incomplete = true;
     await collection.replaceWith(records, block);
+    await collection.propertyOf(block, 'complete', !latest);
     await collection.propertyOf(block, 'version', store_ver);
     await collection.propertyOf(block, 'tz', options.tz);
     await collection.propertyOf(block, 'salt', options.salt);
@@ -847,8 +845,7 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin, lat
                 logger.debug("Quote blocks incompatible", options.symbol, _.last(partial), first);
                 return 'incompatible';
             }
-            if (latest && records.length) _.last(records).incomplete = true;
-            else if (latest && partial.length) _.last(partial).incomplete = true;
+            await collection.propertyOf(block, 'complete', !latest);
             const warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
                 const warmUps_promises = warmUps.map(expr => createParser(fields, {}, options).parse(expr));

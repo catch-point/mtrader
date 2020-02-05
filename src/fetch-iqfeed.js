@@ -547,6 +547,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
 }
 
 async function interday(iqclient, adjustments, symbol, options) {
+    const periods = new Periods(options);
     const now = moment().tz(options.tz);
     const [prices, adjusts] = await Promise.all([
         iqclient.day(symbol, options.begin, options.end, options.tz),
@@ -564,7 +565,7 @@ async function interday(iqclient, adjustments, symbol, options) {
     return Promise.resolve(result).then(result => {
         if (_.last(result) && !_.last(result).close) result.pop();
         if (!options.end) return result;
-        const end = moment.tz(options.end || options.now, options.tz);
+        const end = periods.ceil(options.end || options.now);
         if (end.isAfter()) return result;
         const final = end.format(options.ending_format);
         let last = _.sortedIndex(result, {ending: final}, 'ending');
@@ -574,7 +575,7 @@ async function interday(iqclient, adjustments, symbol, options) {
     }).then(bars => includeIntraday(iqclient, adjustments, bars, symbol, options))
       .then(results => {
         const latest = _.last(results);
-        if (results.length && !latest.incomplete && now.diff(latest.ending, 'hours') < 1) {
+        if (results.length && now.diff(latest.ending, 'hours') < 1) {
             // today's session might not be over yet or data might be delayed
             latest.asof = now.format(options.ending_format);
         }
@@ -642,7 +643,7 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
         end: end.format(options.ending_format)
     }, options));
     return intraday.reduce((bars, bar) => {
-        if (_.last(bars).incomplete) bars.pop(); // remove incomplete (holi)days
+        if (_.last(bars).asof) bars.pop(); // remove incomplete (holi)days
         if (bar.ending > _.last(bars).ending) {
             bars.push(_.extend({}, bar, {adj_close: bar.close}));
         }

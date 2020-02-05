@@ -35,6 +35,7 @@ const moment = require('moment-timezone');
 const merge = require('../src/merge.js');
 const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
+const Storage = require('../src/storage.js');
 const config = require('../src/config.js');
 const Fetch = require('../src/fetch.js');
 const Quote = require('../src/quote.js');
@@ -162,19 +163,21 @@ describe("quote", function() {
             columns: {
                 Date: 'DATE(day.ending)',
                 Close: 'day.close',
-                Change: '(day.close - PRIOR(1, day.close)) *100 / day.close',
-                incomplete: 'day.incomplete'
+                Change: '(day.close - PRIOR(1, day.close)) *100 / day.close'
             },
             symbol: 'IBM',
             market: 'NYSE',
             begin: moment.tz('2009-12-01', tz),
             end: moment.tz('2010-02-01', tz)
-        }).then(partial => {
-            _.first(partial).should.have.property('incomplete').that.is.not.ok;
-            _.last(partial).should.have.property('incomplete').that.is.ok;
-        }).then(() => {
-            fetch.close();
-            quote.close();
+        }).then(async() => {
+            await fetch.close();
+            await quote.close();
+            const store = new Storage(path.resolve(config('prefix'), 'var/cache', 'NYSE'));
+            await store.open('IBM', async(err, db) => {
+                const coll = await db.collection('daily');
+                await coll.propertyOf('2010', 'complete', false);
+            });
+            await store.close();
             fetch = new Fetch(merge(config('fetch'), {
                 files: {
                     enabled: true,
@@ -281,9 +284,15 @@ describe("quote", function() {
             _.last(wrong).should.be.like(
                 {Date:"2016-12-08",Close:103.38,Change:1.36}
             );
-        }).then(() => {
-            fetch.close();
-            quote.close();
+        }).then(async() => {
+            await fetch.close();
+            await quote.close();
+            const store = new Storage(path.resolve(config('prefix'), 'var/cache', 'NYSE'));
+            await store.open('DIS', async(err, db) => {
+                const coll = await db.collection('daily');
+                await coll.propertyOf('2015', 'complete', false);
+            });
+            await store.close();
             fetch = new Fetch(merge(config('fetch'), {
                 files: {
                     enabled: true,
@@ -733,19 +742,21 @@ describe("quote", function() {
                 Time: 'TIME(m240.ending)',
                 Price: 'm240.close',
                 M1: 'OFFSET(120, m240.close)',
-                M2: 'OFFSET(240, m240.close)',
-                incomplete: 'm240.incomplete'
+                M2: 'OFFSET(240, m240.close)'
             },
             symbol: 'USD',
             market: 'CAD',
             begin: '2016-02-15',
             end: '2016-02-16'
-        }).then(partial => {
-            _.first(partial).should.have.property('incomplete').that.is.not.ok;
-            _.last(partial).should.have.property('incomplete').that.is.ok;
-        }).then(partial => {
-            fetch.close();
-            quote.close();
+        }).then(async() => {
+            await fetch.close();
+            await quote.close();
+            const store = new Storage(path.resolve(config('prefix'), 'var/cache', 'CAD'));
+            await store.open('USD', async(err, db) => {
+                const coll = await db.collection('m240');
+                await coll.propertyOf('2016-02', 'complete', false);
+            });
+            await store.close();
             fetch = new Fetch(merge(config('fetch'), {
                 files: {
                     enabled: true,
