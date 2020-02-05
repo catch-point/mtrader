@@ -620,7 +620,7 @@ function readComputedBlocks(collection, warmUpLength, blocks, begin, expressions
             })).then(async(results) => {
                 const dataSize = results.reduce((size,result) => size + result.length, 0);
                 const warmUpRecords = dataSize - _.last(results).length;
-                const bars = _.last(results).map((point, i, points) => {
+                const bars = await Promise.all(_.last(results).map(async(point, i, points) => {
                     let bar = point[options.interval];
                     if (options.transient) {
                         if (points[i+1] && points[i+1].ending < options.begin)
@@ -629,12 +629,14 @@ function readComputedBlocks(collection, warmUpLength, blocks, begin, expressions
                             return bar;
                         bar = _.clone(bar);
                     }
-                    return _.extend(bar, _.object(missing, missing.map(expr => {
+                    const ret = _.extend(bar, _.object(missing, missing.map(expr => {
                         const end = warmUpRecords + i;
                         const start = Math.max(end - expressions[expr].warmUpLength, 0);
                         return expressions[expr](flattenSlice(results, start, end+1));
                     })));
-                });
+                    await check();
+                    return ret;
+                }));
                 dataBlocks[block] = bars;
                 await check();
                 return collection.writeTo(bars, block).then(() => {
