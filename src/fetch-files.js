@@ -51,9 +51,9 @@ module.exports = function(settings = {}) {
         if (options.info=='version') return [{version}];
         if (options.info=='help') return readOrWriteHelp(fetch, open, 'help', options);
         switch(options.interval) {
-            case 'lookup': return readOrWriteResult(fetch, open, 'lookup', options);
-            case 'contract': return readOrWriteResult(fetch, open, 'contract', options);
-            case 'fundamental': return readOrWriteResult(fetch, open, 'fundamental', options);
+            case 'lookup': return readOrWriteResult(fetch, open, 'lookup', _.omit(options, 'begin', 'end'));
+            case 'contract': return readOrWriteResult(fetch, open, 'contract', _.omit(options, 'begin', 'end'));
+            case 'fundamental': return readOrWriteResult(fetch, open, 'fundamental', _.omit(options, 'begin', 'end'));
             case 'year':
             case 'quarter':
             case 'month':
