@@ -92,7 +92,6 @@ describe("optimize", function() {
                 slow_len: [20,25,50,80,100,150,200]
             }
         }).should.eventually.be.like({
-            score: 18.713364,
             parameters: {
                 fast_len: 15,
                 slow_len: 25

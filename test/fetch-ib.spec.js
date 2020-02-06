@@ -245,8 +245,10 @@ describe("fetch-ib", function() {
             }));
         });
         describe("should lookup CBOT quarterly futures symbols", function() {
+            const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
             const year = moment().subtract(1,'months').year();
             _.range(year%100,(year+1)%100).map(year => ['H','M','U','Z'].map(mo => {
+                if (month_code.indexOf(mo) > moment().month() && month_code.indexOf(mo) < moment().month()+10)
                 it(`ZN${mo}${year}`, function() {
                     return client({
                         interval:'lookup',

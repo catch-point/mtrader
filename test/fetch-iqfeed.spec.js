@@ -218,19 +218,17 @@ describe("fetch-iqfeed", function() {
             }));
         });
         describe("should lookup CFE monthly futures symbols", function() {
-            _.range((moment().year())%100,(moment().year()+2)%100).map(year => ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'].map((mo,m) => {
-                if (moment().year()%100==year && (moment().month()>m||moment().month()+9<=m)) return;
-                if (moment().year()%100<year && (moment().month()+9)%12<=m) return;
+            const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
+            const year = (moment().year())%100;
+            ['H', 'J', 'K', 'M', 'N'].filter(mo => month_code.indexOf(mo) > moment().month()).map(mo => {
                 it(`VX${mo}${year}`, function() {
                     return client({
-                        interval:'lookup',
+                        interval:'contract',
                         symbol: `VX${mo}${year}`,
                         market: "CFE"
-                    })
-                      .then(array => array.filter(item => item.symbol == `VX${mo}${year}`))
-                      .should.eventually.be.like([{symbol: `VX${mo}${year}`}]);
+                    }).should.eventually.be.like([{symbol: `VX${mo}${year}`}]);
                 });
-            }));
+            });
         });
         describe.skip("should lookup CFE weekly futures symbols", function() {
             const week = moment().isoWeek() + 3;

@@ -1123,9 +1123,9 @@ describe("lookback-functions", function(){
             { Date: '2016-01-08', Time: '12:00:00', Close: 1.41517, Volume: 31373, Relative: 39.33 },
             { Date: '2016-01-08', Time: '13:00:00', Close: 1.41126, Volume: 21201, Relative: 35.46 },
             { Date: '2016-01-08', Time: '14:00:00', Close: 1.41333, Volume: 20108, Relative: 49.11 },
-            { Date: '2016-01-08', Time: '15:00:00', Close: 1.41348, Volume: 14878, Relative: -8.74 },
-            { Date: '2016-01-08', Time: '16:00:00', Close: 1.41479, Volume: 13069, Relative: -6.54 },
-            { Date: '2016-01-08', Time: '17:00:00', Close: 1.41688, Volume: 5491, Relative: -40.53 }
+            { Date: '2016-01-08', Time: '15:00:00', Close: 1.41348, Volume: 14878, Relative: -9.8 },
+            { Date: '2016-01-08', Time: '16:00:00', Close: 1.41479, Volume: 13069, Relative: -7.31 },
+            { Date: '2016-01-08', Time: '17:00:00', Close: 1.41688, Volume: 5491, Relative: -41.77 }
         ]);
     });
 });
