@@ -80,7 +80,8 @@ function help() {
 module.exports = share(function(settings, yahooClient) {
     const helpInfo = help();
     const salt = config('salt') || '';
-    const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
+    const dir = path.resolve(config('prefix'), settings.cache_dir || cache_dir);
     const stores = {};
     const markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
     const symbol = yahoo_symbol.bind(this, markets);
@@ -257,10 +258,11 @@ async function adjustments(yahoo, db, salt, symbol, options) {
  */
 function parseSplit(stock_splits) {
     if (!stock_splits) return Big(1);
-    const splits = stock_splits.split('/');
+    const splits = ~stock_splits.indexOf('/') ?
+        stock_splits.split('/').reverse() : stock_splits.split(':');
     // TRI.TO 2018-11-27 Stock Splits of 1/0
-    if (!splits[0] || !splits[1] || splits[0] == '0' || splits[1] == '0') return Big(1);
-    else return Big(splits[1]).div(splits[0]);
+    if (!+splits[0] || !+splits[1]) return Big(1);
+    else return Big(splits[0]).div(splits[1]);
 }
 
 function filterAdj(adjustments, options) {
