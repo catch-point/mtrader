@@ -515,8 +515,7 @@ function fetchBars(fetch, db, fields, expressions, options) {
  */
 function getCollectionName(options) {
     const m = options.interval.match(/^m(\d+)$/);
-    if (m && +m[1] < 30) return options.begin.substring(0,4) + options.interval;
-    else if (m) return options.interval;
+    if (m) return options.interval;
     else return 'daily';
 }
 
@@ -898,7 +897,7 @@ function getBlocks(warmUpLength, begin, end, within, options) {
         const start = Math.floor(warm_yr.year() /5) *5;
         const stop = Math.floor(end.year() /5) *5;
         return _.range(start, stop +5, 5);
-    } else if (+m[1] >= 30) { // m30 is separated monthly
+    } else if (+m[1] >= 15) { // m15 is separated monthly
         const start = within ? moment(begin).add(1, 'months') :
             periods.dec(moment(begin).startOf('month'), warmUpLength);
         const stop = within ? moment(end).subtract(1, 'months') : end;
@@ -956,7 +955,7 @@ function blockOptions(block, options) {
             begin: begin.format(options.ending_format),
             end: end.format(options.ending_format)
         }, options);
-    } else if (+m[1] >= 30) {
+    } else if (+m[1] >= 15) {
         const begin = moment.tz(block + '-01', options.tz);
         const end = moment(begin).add(1, 'months');
         return _.defaults({
