@@ -53,7 +53,7 @@ const Fetch = require('./fetch.js');
 const storage = require('./storage.js');
 const expect = require('chai').expect;
 
-function help(assets, help, settings = {}) {
+function help(assets, help) {
     const all_intervals = _.uniq(_.flatten(assets.map(asset => asset.intervals)));
     const included_intervals = _.uniq(_.flatten(help.map(info => (((info||{}).options||{}).interval||{}).values||[])));
     const missing_intervals = _.difference(all_intervals, included_intervals);
@@ -115,16 +115,15 @@ function help(assets, help, settings = {}) {
 }
 
 module.exports = function(fetch, settings = {}) {
-    const adjustments = new Adjustements(settings);
-    const assets = (settings.assets||[]).map(asset => {
-        return readConfig(typeof asset == 'string' ? {load:asset} : asset, config.configDirname());
-    });
+    const incl_settings = readConfig(settings, config.configDirname());
+    const adjustments = new Adjustements(incl_settings);
+    const assets = incl_settings.assets || [];
     const market_values = _.uniq(assets.map(asset => asset.market));
     const markets = _.mapObject(
         _.pick(config('markets'), market_values),
         m => _.omit(m, 'datasources', 'label', 'description')
     );
-    const cache_size = settings.cache_size || 12;
+    const cache_size = incl_settings.cache_size || 12;
     const options_keys = ['symbol', 'market', 'interval', 'begin', 'end', 'tz', 'ending_format'];
     const cached_fetch = cache(fetch, options => {
         const keys = options.end && moment(options.end).isBefore(options.now) ?
@@ -134,7 +133,7 @@ module.exports = function(fetch, settings = {}) {
     let helpInfo;
     return Object.assign(async(options) => {
         if (options.info=='version') return fetch(options);
-        if (options.info=='help') return helpInfo = helpInfo || help(assets, await fetch({info:'help'}), settings);
+        if (options.info=='help') return helpInfo = helpInfo || help(assets, await fetch({info:'help'}));
         switch(options.interval) {
             case 'lookup': return cached_fetch(options).then(contracts => {
                 return lookup(markets, assets, options).concat(contracts);
@@ -167,15 +166,21 @@ module.exports = function(fetch, settings = {}) {
 function readConfig(object, dir, black_list = []) {
     if (_.isArray(object)) return object.map(value => readConfig(value, dir, black_list));
     else if (!_.isObject(object)) return object;
-    const included = [].concat(object.load||[]).reduce((object, name) => {
+    const included = [].concat(object.include||[]).reduce((object, name) => {
         const filename = config.resolve(name);
-        if (~black_list.indexOf(filename)) throw Error(`Recursive loading of ${black_list.concat(filename)}`);
+        if (~black_list.indexOf(filename)) throw Error(`Recursive including of ${black_list.concat(filename)}`);
         const base = path.dirname(filename);
         const json = config.read(dir, filename);
-        return Object.assign(object, readConfig(json, base, black_list.concat(filename)));
+        const inc_obj = readConfig(json, base, black_list.concat(filename));
+        const assets = (object.assets || []).concat(inc_obj.assets || []);
+        return merge(object, inc_obj, assets.length ? {assets} : {});
     }, {});
-    const obj = Object.assign(included, _.omit(object, 'load'));
-    return _.mapObject(obj, value => readConfig(value, dir, black_list));
+    const rest = _.mapObject(_.omit(object, 'include'), value => readConfig(value, dir, black_list));
+    const assets = (included.assets || []).concat((rest.assets || []).map(asset => {
+        if (typeof asset != 'string') return asset;
+        else return readConfig({include:asset}, dir, black_list);
+    }));
+    return merge(included, rest, assets.length ? {assets} : {});
 }
 
 function lookup(markets, assets, options) {

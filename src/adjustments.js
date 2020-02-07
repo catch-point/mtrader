@@ -77,7 +77,7 @@ function help() {
     }];
 }
 
-module.exports = share(function(settings, yahooClient) {
+module.exports = share(function(settings = {}, yahooClient = null) {
     const helpInfo = help();
     const salt = config('salt') || '';
     const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
