@@ -771,6 +771,8 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks
         const tail = collection.tailOf(block);
         if (collection.propertyOf(block, 'complete'))
             return; // no need to update complete blocks
+        if (!collection.sizeOf(block))
+            return fetchComplete(block, latest);
         if (i < blocks.length -1 || (_.last(tail).asof || _.last(tail).ending) <= stop) {
             if (isWeekend(_.last(tail), options)) return;
             return fetchPartial(block, _.first(tail).ending, latest).catch(error => {
@@ -819,7 +821,6 @@ function isBeforeStartOfWeek(asof, options) {
  */
 async function fetchCompleteBlock(fetch, options, collection, store_ver, block, latest) {
     const records = await fetch(blockOptions(block, options));
-    if (latest && _.isEmpty(records)) return records; // don't write incomplete empty blocks
     await collection.replaceWith(records, block);
     await collection.propertyOf(block, 'complete', !latest);
     await collection.propertyOf(block, 'version', store_ver);
