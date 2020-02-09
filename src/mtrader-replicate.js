@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-replicate.js
 /*
- *  Copyright (c) 2018-2019 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018-2020 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -72,6 +72,7 @@ function usage(command) {
         .option('-o, --offline', "Disable data updates")
         .option('-n, --dry-run', "Disable order submission")
         .option('--allocation-pct <percent>', "Percentage 0-100 of the balance that should be allocated to this strategy")
+        .option('--allocation-peak-pct <percent>', "Percentage 0-100 of the maximum balance in the past 12 months to allocate")
         .option('--allocation-min <number>', "Minimum monetary amount that should be allocated to this strategy")
         .option('--allocation-max <number>', "Maximum monetary amount that should be allocated to this strategy")
         .option('-f, --force', "Change live position even if it was changed more recently then model")

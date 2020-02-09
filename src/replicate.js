@@ -133,6 +133,10 @@ function helpInfo(broker, collect) {
                 usage: '<number>',
                 description: "Percentage 0-100 of the balance that should be allocated to this strategy"
             },
+            allocation_peak_pct: {
+                usage: '<number>',
+                description: "Percentage 0-100 of the maximum balance in the past 12 months to allocate"
+            },
             allocation_min: {
                 usage: '<number>',
                 description: "Minimum amount that should be allocated to this strategy"
@@ -318,9 +322,15 @@ async function getDesiredParameters(broker, begin, options) {
     ]);
     const first_traded_at = getFirstTradedAt(past_positions, begin, options);
     const initial_balances = await broker({action: 'balances', asof: first_traded_at, now: options.now});
-    const initial_deposit = getAllocation(initial_balances, options);
-    const net_allocation = getAllocation(current_balances, options);
-    const net_deposit = getNetDeposit(current_balances, past_positions, options);
+    const peak_balances = options.allocation_peak_pct ? await broker({
+        action: 'balances',
+        begin: moment(first_traded_at).subtract(1,'year').format(),
+        now: options.now
+    }) : initial_balances;
+    const peak_initial_balances = peak_balances.filter(bal => !moment(bal.asof).isAfter(first_traded_at));
+    const initial_deposit = getAllocation(peak_initial_balances, initial_balances, options);
+    const net_allocation = getAllocation(peak_balances, current_balances, options);
+    const net_deposit = getNetDeposit(peak_balances, current_balances, past_positions, options);
     const settled_cash = getSettledCash(current_balances, options);
     const accrued_cash = getAccruedCash(current_balances, options);
     const total_cash = getTotalCash(current_balances, options);
@@ -390,22 +400,25 @@ function getFirstTradedAt(positions, begin, options) {
     return moment(eod).subtract(1, 'days').format();
 }
 
-function getAllocation(balances, options) {
-    const cash_acct = balances.every(bal => bal.margin == null);
-    const local_balances = balances.filter(options.currency ?
-        bal => bal.currency == options.currency : bal => +bal.rate == 1
+function getAllocation(peak_balances, balances, options) {
+    const initial_balance = getBalance(balances, options);
+    const peak_balance = !options.allocation_peak_pct ? initial_balance :
+        getPeakBalance(peak_balances, options);
+    const alloc_pct = options.allocation_pct || 100;
+    const alloc_peak_pct = options.allocation_peak_pct || alloc_pct;
+    return Math.min(
+        Math.max(
+            Math.min(
+                initial_balance.times(alloc_pct).div(100),
+                peak_balance.times(alloc_peak_pct).div(100)
+            ),
+            options.allocation_min||0
+        ),
+        options.allocation_max||Infinity
     );
-    const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
-    const local_rate = local_balances.length ? local_balances[0].rate : 1;
-    const initial_balance = cash_acct ? Big(local_balance_net) : balances.map(bal => {
-        return Big(bal.net).times(bal.rate).div(local_rate);
-    }).reduce((a,b) => a.add(b), Big(0));
-    return Math.min(Math.max(
-        initial_balance.times(options.allocation_pct || 100).div(100),
-        options.allocation_min||0), options.allocation_max||Infinity);
 }
 
-function getNetDeposit(balances, positions, options) {
+function getNetDeposit(peak_balances, balances, positions, options) {
     const portfolio = getPortfolio(options.markets, options).reduce((hash, item) => {
         const [, symbol, market] = item.match(/^(.+)\W(\w+)$/);
         (hash[symbol] = hash[symbol] || []).push(market);
@@ -414,10 +427,33 @@ function getNetDeposit(balances, positions, options) {
     const relevant = _.isEmpty(portfolio) ? positions :
         positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
     const mtm = relevant.map(pos => Big(pos.mtm||0)).reduce((a,b) => a.add(b), Big(0));
-    const balance = getAllocation(balances, options);
+    const balance = getAllocation(peak_balances, balances, options);
     return Math.min(Math.max(
         +Big(balance).minus(mtm),
         options.allocation_min||0), options.allocation_max||Infinity);
+}
+
+function getBalance(balances, options) {
+    const cash_acct = balances.every(bal => bal.margin == null);
+    const local_balances = balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
+    const local_rate = local_balances.length ? _.last(local_balances).rate : 1;
+    return cash_acct ? Big(local_balance_net) : balances.map(bal => {
+        return Big(bal.net).times(bal.rate).div(local_rate);
+    }).reduce((a,b) => a.add(b), Big(0));
+}
+
+function getPeakBalance(balances, options) {
+    const group_by_date = balances.reduce((group, bal) => {
+        const last = group.last = group[bal.asof] = group[bal.asof] || group.last;
+        const found_idx = last.findIndex(_.matcher(_.pick(bal, 'acctNumber', 'currency')));
+        if (found_idx >= 0) last.splice(found_idx, 1);
+        last.push(bal); // preserve the original order of balances
+        return group;
+    }, {last:[]});
+    return _.max(Object.values(group_by_date).map(balances => getBalance(balances, options)));
 }
 
 function getSettledCash(current_balances, options) {

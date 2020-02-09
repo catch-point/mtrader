@@ -1937,6 +1937,21 @@ describe("replicate-simulation", function() {
                 markets: ['NYSE']
             }).should.eventually.be.like([]);
         });
+        it("allocation_peak_pct", async() => {
+            await replicate(function(options) {
+                if (options.info=='help') return quote(options);
+                expect(options).to.be.like({
+                    now: 1546639200000,
+                    parameters: { initial_deposit: 9000 }
+                });
+                return Promise.resolve([])
+            })({
+                now: "2019-01-04T17:00:00",
+                allocation_peak_pct: 90,
+                currency: 'USD',
+                markets: ['NYSE']
+            }).should.eventually.be.like([]);
+        });
         it("allocation_min", async() => {
             await replicate(function(options) {
                 if (options.info=='help') return quote(options);
