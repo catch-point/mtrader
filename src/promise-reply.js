@@ -63,16 +63,22 @@ module.exports = function(process) {
             inc(stats, msg.cmd.substring('reply_to_'.length), 'replies_rec');
             const pending = queue.remove(msg.in_reply_to);
             try {
-                if (!_.has(msg, 'error'))
+                if (!_.has(msg, 'error')) {
                     return pending.onresponse(msg.payload);
-                else if (!_.isObject(msg.error))
-                    return pending.onerror(Error(msg.error));
-                else if (msg.error.name == 'AssertionError')
+                } else if (!_.isObject(msg.error)) {
+                    const stack = (pending.called_from.stack || pending.called_from).toString();
+                    const message = stack.replace(/(Error: )?called_from/, msg.error);
+                    return pending.onerror(Error(message));
+                } else if (msg.error.name == 'AssertionError') {
+                    const stack = (pending.called_from.stack || pending.called_from).toString();
                     return pending.onerror(new AssertionError(
-                        msg.error.message + '\n' + _.rest(msg.error.stack.split('\n')).join('\n'),
+                        msg.error.message + '\n' + _.rest(stack.split('\n')).join('\n'),
                         msg.error));
-                else
-                    return pending.onerror(Error(msg.error.message));
+                } else {
+                    const stack = (pending.called_from.stack || pending.called_from).toString();
+                    const message = stack.replace(/(Error: )?called_from/, msg.error.message);
+                    return pending.onerror(Error(message));
+                }
             } catch (err) {
                 return pending.onerror(err);
             }
@@ -147,11 +153,13 @@ module.exports = function(process) {
             inc(stats, cmd, 'requests_sent');
             if (process.connecting)
                 await new Promise((ready, fail) => process.once('connect', ready).once('error', fail));
+            const called_from = new Error("called_from");
             return new Promise((response, error) => {
                 const id = nextId(cmd);
                 queue.add(id, {
                     onresponse: response,
                     onerror: error,
+                    called_from,
                     cmd: cmd,
                     payload: payload
                 });
