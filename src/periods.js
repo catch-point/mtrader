@@ -214,6 +214,7 @@ function intervalInMinutes(m, ex) {
 }
 
 function intervalInHours(h, ex) {
+    const m = h*60;
     const sample_hours = marketHours(ex, moment.tz('2010-03-01T12:00:00', ex.security_tz));
     return {
         value: `m${h * 60}`,
@@ -243,7 +244,7 @@ function intervalInHours(h, ex) {
             if (!amount) return moment.min(dateTime, this.ceil(dateTime));
             else if (amount < 1) return this.dec(dateTime, -amount);
             const start = this.floor(dateTime).startOf('hour');
-            start.subtract(start.hour() % h, 'hours');
+            start.subtract((start.hour()*60+start.minute()) % m, 'minutes');
             const hours = marketHours(ex, start);
             const friday = moment(hours.ends).day(5);
             const hoursInDay = Math.ceil(hours.hoursInDay/h)*h;
@@ -263,7 +264,7 @@ function intervalInHours(h, ex) {
             if (!amount) return moment.min(dateTime, this.ceil(dateTime));
             else if (amount < 1) return this.inc(dateTime, -amount);
             const start = this.ceil(dateTime);
-            start.add((h - start.hour() %h) %h, 'hours');
+            start.add((m - (start.hour()*60+start.minute()) %m) %m, 'minutes');
             const hours = marketHours(ex, start, true);
             const sunday = moment(hours.opens).subtract(hours.ends.day()-1, 'days');
             const hoursInDay = Math.ceil(hours.hoursInDay/h)*h;
@@ -283,9 +284,9 @@ function intervalInHours(h, ex) {
             if (to.isBefore(from)) return -1 * this.diff(from, to);
             else if (to.isSame(from)) return 0;
             const start = this.floor(from);
-            start.subtract(start.hour() % h, 'hours');
+            start.subtract((start.hour()*60+start.minute()) % m, 'minutes');
             const end = this.ceil(to);
-            end.add((h - end.hour() %h) %h, 'hours');
+            end.add((m - (end.hour()*60+end.minute()) % m) % m, 'minutes');
             const hours = marketHours(ex, start);
             const friday = moment(hours.ends).day(5);
             const hoursInDay = Math.ceil(hours.hoursInDay/h)*h;
@@ -499,5 +500,5 @@ function parseTime(date, time) {
     const hour = +time.substring(0, 2);
     const minute = +time.substring(3, 5);
     const second = +time.substring(6, 8);
-    return moment(date).hour(hour).minute(minute).second(second).millisecond(0);
+    return moment(date).millisecond(0).second(second).minute(minute).hour(hour);
 }

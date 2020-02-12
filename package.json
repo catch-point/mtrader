@@ -1,6 +1,6 @@
 {
   "name": "mtrader",
-  "version": "10.8.7",
+  "version": "10.8.8",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
   "dependencies": {
@@ -16,7 +16,7 @@
     "graceful-fs": "^4.1.11",
     "ib": "jamesrdf/node-ib#develop",
     "implied-volatility": "^1.0.0",
-    "moment-timezone": "^0.5.14",
+    "moment-timezone": "^0.5.25",
     "shell": "adaltas/node-shell",
     "smr": "^0.12.6",
     "statkit": "^0.2.0",

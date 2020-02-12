@@ -70,12 +70,25 @@ describe("periods", function(){
             security_tz: "America/New_York",
         });
     });
+    describe("options", function() {
+        testMarket({
+            tz: "America/New_York",
+            trading_hours: "02:00:00 - 15:15:00",
+            liquid_hours: "08:30:00 - 15:15:00",
+            open_time: "08:30:00",
+            security_tz: "America/Chicago"
+        });
+    });
 });
 
 function testMarket(ex) {
     var intervals = _.object(periods.values, periods.values.map(value => periods(_.extend({
         interval: value
     }, ex))));
+    describe('spot check', function() {
+        shouldBeConsistent(it, ex, intervals['m30'], moment('2014-03-09T20:31:00-04:00'), 144);
+        shouldBeConsistent(it, ex, intervals['m120'], moment('2010-01-01T00:02:00-05:00'), 1);
+    });
     describe('interday', function() {
         describe('day', function(){
             var dates = datesBetween(new Date(2010,0,1), new Date(2015,0,1), 60 *60 *1000);
