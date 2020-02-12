@@ -90,12 +90,9 @@ process.setMaxListeners(process.getMaxListeners()+1);
 if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        const settings = config('quote');
-        const fetch = new Fetch();
-        const model = new Model(fetch, settings);
-        const quote = new Quote(model, settings);
-        process.on('SIGINT', () => quote.close().then(() => fetch.close()));
-        process.on('SIGTERM', () => quote.close().then(() => fetch.close()));
+        const quote = createInstance(program);
+        process.on('SIGINT', () => quote.close());
+        process.on('SIGTERM', () => quote.close());
         let symbol = program.args[0];
         let market = program.args[1];
         if (!market && ~symbol.indexOf('.')) {
@@ -108,14 +105,13 @@ if (require.main === module) {
         }, config.options())))
         .then(result => tabular(result, config()))
         .catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
-        .then(() => quote.close())
-        .then(() => model.close())
-        .then(() => fetch.close());
+        .then(() => quote.close());
     } else if (process.send) {
         const settings = config('quote');
         const parent = replyTo(process).handle('quote', payload => quote()(payload));
         const fetch = options => parent.request('fetch', options);
-        const model = new Model(fetch, settings);
+        const parent_quote = options => parent.request('quote', options);
+        const model = new Model(fetch, parent_quote, settings);
         const quote = _.once(() => new Quote(model, settings));
         const close = () => Promise.all([quote().close(), model.close()]);
         process.on('disconnect', close);
@@ -144,25 +140,49 @@ function createInstance(program) {
             else return queue(options);
         });
     };
+    const directFactory = share(() => {
+        const settings = config('quote');
+        const model = new Model(fetch, instance, settings);
+        const quote = new Quote(model, settings);
+        quote.close = _.wrap(quote.close, async function(fn) {
+            await model.close();
+            return fn.apply(this, _.rest(arguments));
+        });
+        return quote;
+    });
+    const direct = options => {
+        const instance = directFactory();
+        return instance(options).then(async(result) => {
+            await instance.close();
+            return result;
+        }, async(err) => {
+            await instance.close();
+            throw err;
+        });
+    };
+    let direct_instance = directFactory();
     instance.close = function() {
         if (closed) return closed;
-        else return closed = Promise.all([queue.close(), direct.close(), model.close(), fetch.close()]);
+        else return closed = Promise.all([queue.close(), direct_instance.close(), fetch.close()]);
     };
     instance.shell = shell.bind(this, program.description(), instance);
-    instance.reload = () => {
-        queue.reload();
+    instance.reload = async() => {
+        const prior_direct = direct_instance;
+        direct_instance = directFactory();
+        await queue.reload();
+        await prior_direct.close();
     };
-    instance.reset = () => {
+    instance.reset = async() => {
+        const prior_direct = direct_instance;
+        direct_instance = directFactory();
+        await prior_direct.close();
         try {
-            return queue.close();
+            return await queue.close();
         } finally {
-            queue = createQueue(createWorkers.bind(this, program, fetch));
+            queue = createQueue(createWorkers.bind(this, program, fetch, instance));
         }
     };
-    const settings = config('quote');
-    const model = new Model(fetch, settings);
-    const direct = new Quote(model, settings);
-    let queue = createQueue(createWorkers.bind(this, program, fetch));
+    let queue = createQueue(createWorkers.bind(this, program, fetch, instance));
     return instance;
 }
 
@@ -186,7 +206,7 @@ function createQueue(createWorkers) {
     return queue;
 }
 
-function createWorkers(program, fetch) {
+function createWorkers(program, fetch, quote) {
     const prime = [0,1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97];
     const size = config('runInBand') || ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand') ? 0 :
         _.isFinite(config('quote.workers')) ? +config('quote.workers') :
@@ -194,7 +214,7 @@ function createWorkers(program, fetch) {
     if (size) logger.debug("Launching", size, "quote workers");
     return _.range(size).map(() => {
         const worker = replyTo(config.fork(module.filename, program));
-        return worker.handle('fetch', payload => fetch(payload));
+        return worker.handle('fetch', payload => fetch(payload)).handle('quote', payload => quote(payload));
     });
 };
 

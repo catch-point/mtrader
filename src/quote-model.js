@@ -39,7 +39,6 @@ const moment = require('moment-timezone');
 const Big = require('big.js');
 const smr = require('smr');
 const merge = require('./merge.js');
-const cache = require('./memoize-cache.js');
 const interrupt = require('./interrupt.js');
 const Parser = require('../src/parser.js');
 const common = require('./common-functions.js');
@@ -49,7 +48,6 @@ const config = require('./config.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const Periods = require('./periods.js');
-const Fetch = require('./fetch.js');
 const storage = require('./storage.js');
 const expect = require('chai').expect;
 
@@ -103,10 +101,16 @@ function help(assets, help) {
         const variables = _.uniq(_.flatten(match_assets.map(asset => {
             return (asset.models||[]).map(model => Object.keys(_.last(model.bars)||model.output||{}));
         })));
+        const options = {
+            ...info.options,
+            processed_symbols: {
+                description: "Array of symbol.market strings that have already been processed"
+            }
+        };
         return {
             ...info,
             properties: _.uniq((info.properties||[]).concat(variables)),
-            options: _.mapObject(info.options, (prop, key) => {
+            options: _.mapObject(options, (prop, key) => {
                 if (key == 'market') return {...prop, values: _.uniq((prop.values||[]).concat(markets))};
                 else return prop;
             })
@@ -114,7 +118,9 @@ function help(assets, help) {
     });
 }
 
-module.exports = function(fetch, settings = {}) {
+module.exports = function(fetch, quote, settings = {}) {
+    if (_.isFunction(fetch) && !_.isFunction(quote) && _.isEmpty(settings))
+        return module.exports(fetch, fetch, quote);
     const incl_settings = readConfig(settings, config.configDirname());
     const adjustments = new Adjustements(incl_settings);
     const assets = incl_settings.assets || [];
@@ -123,19 +129,12 @@ module.exports = function(fetch, settings = {}) {
         _.pick(config('markets'), market_values),
         m => _.omit(m, 'datasources', 'label', 'description')
     );
-    const cache_size = incl_settings.cache_size || 12;
-    const options_keys = ['symbol', 'market', 'interval', 'begin', 'end', 'tz', 'ending_format'];
-    const cached_fetch = cache(fetch, options => {
-        const keys = options.end && moment(options.end).isBefore(options.now) ?
-            options_keys : options_keys.concat('now');
-        return JSON.stringify(keys.map(key => options[key]));
-    }, cache_size);
     let helpInfo;
     return Object.assign(async(options) => {
         if (options.info=='version') return fetch(options);
         if (options.info=='help') return helpInfo = helpInfo || help(assets, await fetch({info:'help'}));
         switch(options.interval) {
-            case 'lookup': return cached_fetch(options).then(contracts => {
+            case 'lookup': return fetch(options).then(contracts => {
                 return lookup(markets, assets, options).concat(contracts);
             }, err => {
                 const contracts = lookup(markets, assets, options);
@@ -143,7 +142,7 @@ module.exports = function(fetch, settings = {}) {
                 else throw err;
             });
             case 'contract':
-            case 'fundamental': return cached_fetch(options).then(contracts => contracts.map(contract => {
+            case 'fundamental': return fetch(options).then(contracts => contracts.map(contract => {
                 return merge(_.first(lookup(markets, assets, options)), contract);
             }), err => {
                 const contracts = lookup(markets, assets, options);
@@ -152,13 +151,22 @@ module.exports = function(fetch, settings = {}) {
             });
             default:
             const asset = findAsset(assets, options);
-            if (!asset || !asset.models) return cached_fetch(options);
-            const blend_fn = blendCall.bind(this, markets, cached_fetch, adjustments, asset);
-            return trim(await blend_fn(options), options);
+            if (!asset || !asset.models) return fetch(options);
+            const contract_key = `${options.symbol}.${options.market}/${options.interval}`;
+            if (options.processed_symbols && ~options.processed_symbols.indexOf(contract_key))
+                return fetch(options);
+            const processed_symbols = (options.processed_symbols||[]).concat(contract_key);
+            const fetch_or_quote = options => {
+                const contract_key = `${options.symbol}.${options.market}/${options.interval}`;
+                if (~processed_symbols.indexOf(contract_key)) return fetch(options);
+                else return quote(options);
+            };
+            const blend_fn = blendCall.bind(this, markets, fetch_or_quote, adjustments, asset);
+            return trim(await blend_fn({...options, processed_symbols}), options);
         }
     }, {
         close() {
-            return Promise.all([adjustments.close(), cached_fetch.close()]);
+            return adjustments.close();
         }
     });
 };
@@ -167,7 +175,7 @@ function readConfig(object, dir, black_list = []) {
     if (_.isArray(object)) return object.map(value => readConfig(value, dir, black_list));
     else if (!_.isObject(object)) return object;
     const included = [].concat(object.include||[]).reduce((object, name) => {
-        const filename = config.resolve(name);
+        const filename = config.resolve(dir, name);
         if (~black_list.indexOf(filename)) throw Error(`Recursive including of ${black_list.concat(filename)}`);
         const base = path.dirname(filename);
         const json = config.read(dir, filename);
@@ -287,18 +295,40 @@ async function readModel(asset, model, parameters, options) {
         });
         const new_parameters = _.mapObject(parser.parse(model.eval), fn => fn());
         const revised_params = { ...parameters, ...new_parameters };
-        if (!revised_params.begin && !revised_params.end) return { ...model, parameters: revised_params };
-        const begin = maxDate(revised_params.begin, model.begin, options.begin);
-        const end = minDate(revised_params.end, model.end, options.end);
-        if (!moment(begin).isValid()) throw Error(`Invalid begin ${begin}`);
-        if (!moment(end).isValid()) throw Error(`Invalid begin ${end}`);
-        return {...model, parameters: revised_params, ...(begin ? {begin} : {}), ...(end ? {end} : {})};
+        const begin = moment.tz(maxDate(revised_params.begin, model.begin, options.begin), options.tz);
+        const end = moment.tz(minDate(revised_params.end, model.end, options.end), options.tz);
+        if (!begin.isValid()) throw Error(`Invalid begin ${revised_params.begin}`);
+        if (!end.isValid()) throw Error(`Invalid begin ${revised_params.end}`);
+        return {
+            ...model,
+            parameters: revised_params,
+            begin: begin.format(options.ending_format),
+            end: end.format(options.ending_format),
+            pad_begin: revised_params.pad_begin || model.pad_begin,
+            pad_end: revised_params.pad_end || model.pad_end
+        };
     } else {
         return {...model, parameters};
     }
 }
 
 async function fetchModel(markets, fetch, adjustments, asset, model, options) {
+    const bars = await fetchModelBars(markets, fetch, adjustments, asset, model, options);
+    if (!model.interval || model.interval == options.interval) return bars;
+    else return rollBars(bars, options);
+}
+
+async function fetchModelBars(markets, fetch, adjustments, asset, model, options) {
+    if (model.bars) return term.bars;
+    else if (model.begin && model.end && moment(model.end).isBefore(model.begin)) return [];
+    else if (!model.output) return fetch(_.defaults(
+        _.pick(model, 'symbol', 'market', 'interval', 'begin', 'end'),
+        _.pick(model.parameters, 'symbol', 'market', 'interval'),
+        _.pick(options, [
+            'symbol', 'market', 'interval', 'begin', 'end',
+            'tz', 'ending_format'
+        ])
+    ));
     const marketOptions = [
         'symbol', 'market', 'name',
         'currency', 'security_type', 'security_tz',
@@ -317,17 +347,16 @@ async function fetchModel(markets, fetch, adjustments, asset, model, options) {
     const pad_end = (+model.end_begin||0);
     const begin = periods.dec(periods.floor(options.begin), pad_begin).format(options.ending_format);
     const end = periods.inc(periods.ceil(options.end), pad_end).format(options.ending_format);
+    if (end < begin) return [];
     const opts = {
         ...market_opts,
         begin, end
     };
     const fetchInputData_fn = fetchInputData.bind(this, markets, fetch, adjustments);
-    const bars = await fetchModelBars(fetchInputData_fn, adjustments, asset, model, opts);
-    if (!model.interval || model.interval == options.interval) return bars;
-    else return rollBars(bars, options);
+    return calcModelBars(fetchInputData_fn, adjustments, asset, model, opts);
 }
 
-async function fetchModelBars(fetchInputData, adjustments, asset, model, options) {
+async function calcModelBars(fetchInputData, adjustments, asset, model, options) {
     const check = interrupt();
     const now = moment.tz(options.now, options.tz).format(options.ending_format);
     const input_data = await fetchInputData(asset, model, Object.values(model.input), options);
@@ -343,6 +372,7 @@ async function fetchModelBars(fetchInputData, adjustments, asset, model, options
     while (_.some(iterators, iter => iter.hasNext()) && !(result.length && _.last(result).asof)) {
         await check();
         const ending = nextBarEnding(Object.values(iterators), options);
+        if (!ending) break; // last bar is past end of range
         const input_bars = _.mapObject(iterators, iter => iter.review() || {});
         const input_variables = eval_input(input_bars);
         points.push({variables: input_variables});
@@ -363,13 +393,15 @@ async function rollBars(bars, options) {
     return bars.reduce(async(rolled_promise, bar) => {
         await check();
         const rolled = await rolled_promise;
-        const merging = rolled.length && _.last(rolled).ending >= bar.ending; // before close
-        if (!merging && !all_day && bar.ending <= periods.floor(bar.ending).format(options.ending_format))
+        const merging = rolled.length && bar.ending <= _.last(rolled).ending; // before close
+        const ending = periods.ceil(bar.ending).format(options.ending_format);
+        if (!merging && !all_day && bar.ending != ending &&
+                ending <= periods.floor(bar.ending).format(options.ending_format))
             return rolled; // at or before open
         const today = merging ? rolled.pop() : {};
         rolled.push({
             ...bar,
-            ending: today.ending || periods.ceil(bar.ending).format(options.ending_format),
+            ending: today.ending || ending,
             open: today.open || bar.open,
             high: Math.max(today.high || 0, bar.high) || bar.high,
             low: today.low && today.low < bar.low ? today.low : bar.low,
@@ -383,17 +415,7 @@ async function rollBars(bars, options) {
 async function fetchInputData(markets, fetch, adjustments, asset, model, input, options) {
     return Promise.all(input.map(async(term) => {
         const input_model = await readModel(asset, term, model.parameters, options);
-        if (input_model.bars) return term.bars;
-        else if (input_model.output) return fetchModel(markets, fetch, adjustments, asset, input_model, options);
-        else return fetch(_.defaults(
-            _.pick(input_model, 'symbol', 'market', 'interval'),
-            _.pick(input_model.parameters, 'symbol', 'market', 'interval'),
-            _.omit(options, [
-                'name',
-                'currency', 'security_type', 'security_tz',
-                'liquid_hours', 'open_time', 'trading_hours'
-            ])
-        ));
+        return fetchModel(markets, fetch, adjustments, asset, input_model, options);
     }));
 }
 
@@ -567,20 +589,29 @@ function calculateCoefficients(data) {
 
 function nextBarEnding(iterators, options) {
     const periods = new Periods(options);
-    const ending = iterators
-        .filter(iter => iter.hasNext())
-        .map(iter => iter.peek().ending)
-        .sort()[0];
-    const end = moment(ending);
-    let next = periods.ceil(end);
-    while (next.isBefore(end)) {
-        next = periods.inc(next, 1);
-    }
-    const eod = next.format(options.ending_format);
-    iterators.forEach(iter => {
-        while (iter.hasNext() && iter.peek().ending <= eod) iter.next();
-    });
-    return eod;
+    for (let i=0; true; i++) {
+        const ending = iterators
+            .filter(iter => iter.hasNext())
+            .map(iter => iter.peek().ending)
+            .sort()[0];
+        if (!ending) return ending;
+        const end = moment(ending);
+        let next = periods.ceil(end);
+        while (next.isBefore(end)) {
+            next = periods.inc(next, 1);
+        }
+        const eod = next.format(options.ending_format);
+        iterators.forEach(iter => {
+            while (iter.hasNext() && iter.peek().ending <= eod) iter.next();
+        });
+        const endings = iterators
+            .filter(iter => iter.hasPrevious())
+            .map(iter => iter.review().ending);
+        const recent = _.last(endings.sort()) || eod;
+        if (recent == eod) return eod; // input ends at bar end
+        else if (periods.floor(recent).format(options.ending_format) < recent) return eod;
+        else if (i>10000) throw Error(`Cannot find next bar ${eod} among ${endings.join(', ')}`);
+    } // while input ends befor bar starts
 }
 
 function readTable(filename, size) {

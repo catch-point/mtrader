@@ -256,7 +256,7 @@ function spawn() {
     });
     const fetch = callFetch.bind(this, parent);
     const settings = config('quote');
-    const model = new Model(fetch, settings);
+    const model = new Model(fetch, options => quote(options), settings);
     const quote = new SlaveQuote(model, settings);
     const quoteFn = createSlaveQuote(quote, parent);
     const collect = _.once(() => new Collect(quoteFn, callCollect.bind(this, parent)));

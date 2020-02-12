@@ -39,7 +39,7 @@ const like = require('./should-be-like.js');
 const createTempDir = require('./create-temp-dir.js');
 
 describe("mtrader", function() {
-    this.timeout(60000);
+    this.timeout(120000);
     var mtrader;
     before(function() {
         Mtrader.config('prefix', createTempDir('mtrader'));
