@@ -198,22 +198,25 @@ function createInstance(session) {
 
     config.resolve = function(name) {
         const args = _.toArray(arguments);
+        const file = path.resolve.apply(path, args);
         const filename = _.last(args).replace(/\.json$/, '') + '.json';
         const loc = path.resolve(config.configDirname(), filename);
         try {
-            fs.accessSync(loc, fs.R_OK);
-            return loc;
+            if (_.last(args) != filename) {
+                // no .json extension, lookup name in config-dir
+                fs.accessSync(loc, fs.R_OK);
+                return loc;
+            }
         } catch(e) {
             // not a config name, maybe a file?
         }
         try {
-            const file = path.resolve.apply(path, args);
             fs.accessSync(file, fs.R_OK);
             return file;
         } catch(e) {
             // couldn't find it
         }
-        return args.length == 1 && !~args[0].lastIndexOf('.json') ? loc : filename;
+        return args.length == 1 && name != filename ? loc : file;
     };
 
     config.read = function(name) {
