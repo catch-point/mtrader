@@ -523,7 +523,7 @@ async function readBlocks(fetch, fields, collection, warmUpLength, expressions, 
     const period = new Periods(options);
     const start = parseBegin(period, options);
     const start_format = start.format(options.ending_format);
-    const now = moment().tz(options.tz);
+    const now = moment(options.now).tz(options.tz);
     const stop = parseEnd(period, now, options);
     const loaded_blocks = await fetchNeededBlocks(fetch, fields, collection, warmUpLength, start, stop, now, options);
     if (options.transient) {
@@ -569,9 +569,9 @@ function parseBegin(period, options) {
 }
 
 function parseEnd(period, now, options) {
-    const end = options.end || moment.tz(options.now || now, options.tz);
-    if (!options.pad_end) return moment.tz(end, options.tz);
-    else return options.pad_end ? period.inc(end, options.pad_end) : period.ceil(end);
+    const end = options.pad_end ? period.inc(options.end || now, options.pad_end) :
+        moment.tz(options.end || now, options.tz);
+    return now.isBefore(end) ? now : end;
 }
 
 /**
