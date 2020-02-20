@@ -85,8 +85,8 @@ const functions = module.exports.functions = {
                 if (!previous) return Big(bar.high).minus(bar.low);
                 return Math.max(
                     Big(bar.high).minus(bar.low),
-                    Big(bar.high).minus(previous.close).abs(),
-                    Big(bar.low).minus(previous.close).abs()
+                    Big(bar.high).minus(previous.close),
+                    Big(previous.close).minus(bar.low)
                 );
             });
             const first = ranges.slice(0,n);
