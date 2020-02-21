@@ -180,7 +180,7 @@ function wrapBroker(broker, brokerHelp, settings) {
         else return Promise.all(orders.map(ord => {
             if (ord.status != 'pending' || !ord.order_ref) return ord;
             else return broker({..._.omit(options, 'quant'), ..._.omit(ord, 'quant'), action: 'watch', timeout});
-        }));
+        })).then(_.flatten);
     }, broker);
 }
 
