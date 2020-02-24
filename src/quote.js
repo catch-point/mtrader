@@ -783,6 +783,7 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks
         }
     })).then(results => {
         if (!_.contains(results, 'incompatible')) return blocks;
+        logger.log("Replacing all stored quotes for", options.symbol);
         const store_ver = createStorageVersion();
         return fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks, latest_blocks);
     });

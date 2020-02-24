@@ -378,7 +378,7 @@ const functions = module.exports.functions = {
     /* Absolute value */
     ABS(opts, expression) {
         return context => {
-            return z(Big(expression(context)||0).abs(), opts);
+            return z(Big(+expression(context)||0).abs(), opts);
         };
     },
     CEILING(opts, expression, significance) {
@@ -389,10 +389,10 @@ const functions = module.exports.functions = {
             return Math.ceil(expression(context)/sig)*sig;
         };
         else return context => {
-            if (!significance) return Math.ceil(expression(context)||0);
+            if (!significance) return Math.ceil(+expression(context)||0);
             const sig = significance(context);
-            if (!sig) return Math.ceil(expression(context)||0);
-            return z(Big(Math.ceil(Big(expression(context)||0).div(sig))).times(sig), opts);
+            if (!sig) return Math.ceil(+expression(context)||0);
+            return z(Big(Math.ceil(Big(+expression(context)||0).div(sig))).times(sig), opts);
         };
     },
     ROUND(opts, expression, count) {
@@ -401,7 +401,7 @@ const functions = module.exports.functions = {
             return Math.round(expression(context)*scale)/scale;
         };
         else return context => {
-            return z(Big(expression(context)||0).times(scale).round().div(scale), opts);
+            return z(Big(+expression(context)||0).times(scale).round().div(scale), opts);
         };
     },
     FLOOR(opts, expression, significance) {
@@ -412,10 +412,10 @@ const functions = module.exports.functions = {
             return Math.floor(expression(context)/sig)*sig;
         };
         else return context => {
-            if (!significance) return Math.floor(expression(context)||0);
+            if (!significance) return Math.floor(+expression(context)||0);
             const sig = significance(context);
-            if (!sig) return Math.floor(expression(context)||0);
-            return z(Big(Math.floor(Big(expression(context)||0).div(sig))).times(sig), opts);
+            if (!sig) return Math.floor(+expression(context)||0);
+            return z(Big(Math.floor(Big(+expression(context)||0).div(sig))).times(sig), opts);
         };
     },
     TRUNC(opts, expression) {
@@ -613,7 +613,7 @@ const functions = module.exports.functions = {
             return a(context) - b(context);
         };
         else return context => {
-            return z(Big(a(context)||0).minus(b(context)||0), opts);
+            return z(Big(+a(context)||0).minus(+b(context)||0), opts);
         };
     },
     /* Multiplication */
@@ -652,7 +652,7 @@ const functions = module.exports.functions = {
         return context => {
             const d = divisor(context);
             if (!+d) return null;
-            else return z(Big(number(context)||0).mod(d).add(d).mod(d), opts);
+            else return z(Big(+number(context)||0).mod(d).add(d).mod(d), opts);
         };
     },
     POWER: _.extend((opts, base, exponent) => {
@@ -759,7 +759,7 @@ const functions = module.exports.functions = {
         else return bars => {
             const d = den(bars);
             if (!+d) return null;
-            return z(Big(target(bars)||0).minus(reference(bars)||0).times(100).div(d).round(2), opts);
+            return z(Big(+target(bars)||0).minus(+reference(bars)||0).times(100).div(d).round(2), opts);
         };
     }
 };
