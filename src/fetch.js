@@ -58,7 +58,8 @@ module.exports = function(settings = {}) {
             const market = options.market;
             if (market && !markets[market]) {
                 const others = _.uniq(_.flatten(_.map(datasources, _.keys)));
-                expect(market).to.be.oneOf(_.uniq(_.union(_.keys(markets), others)));
+                expect(market, options.symbol)
+                    .to.be.oneOf(_.uniq(_.union(_.keys(markets), others)));
             }
             const opt = options.security_tz || options.interval == 'contract' || options.interval == 'lookup' ?
                 {...options, ending_format: moment.defaultFormat} :

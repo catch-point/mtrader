@@ -71,12 +71,11 @@ module.exports = function(process) {
                     return pending.onerror(Error(message));
                 } else if (msg.error.name == 'AssertionError') {
                     const stack = (pending.called_from.stack || pending.called_from).toString();
-                    return pending.onerror(new AssertionError(
-                        msg.error.message + '\n' + _.rest(stack.split('\n')).join('\n'),
-                        msg.error));
+                    const message = stack.replace(/(Error: )?called_from/, msg.error.stack);
+                    return pending.onerror(new AssertionError(message, msg.error));
                 } else {
                     const stack = (pending.called_from.stack || pending.called_from).toString();
-                    const message = stack.replace(/(Error: )?called_from/, msg.error.message);
+                    const message = stack.replace(/(Error: )?called_from/, msg.error.stack || msg.error.message);
                     return pending.onerror(Error(message));
                 }
             } catch (err) {
