@@ -601,7 +601,9 @@ async function intraday(iqclient, adjustments, symbol, options) {
         volume: parseFloat(datum.Period_Volume) || 0,
         total_volume: parseFloat(datum.Total_Volume),
         adj_close: +Big(datum.Close).times(adj)
-    }));
+    }))
+      // iqfeed SPX.CBOE has after hours bars, but options' hours might not
+      .filter((bar, i, bars) => !i || bars[i].ending != bars[i-1].ending);
     if (_.last(result) && !_.last(result).close) result.pop();
     if (!options.end) return result;
     const end = moment.tz(options.end, options.tz);
