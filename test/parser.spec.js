@@ -109,6 +109,14 @@ describe("parser", function() {
             }
         }).parse('2 * (9 % 5)')()).to.equal(8);
     });
+    it("NOT", function() {
+        expect(parser.parse('!0')()).to.be.ok;
+        expect(parser.parse('!1')()).to.not.be.ok;
+        expect(parser.parse('!!0')()).to.not.be.ok;
+        expect(parser.parse('!!1')()).to.be.ok;
+        expect(parser.parse('!-1')()).to.not.be.ok;
+        expect(parser.parse('!(1+1)')()).to.not.be.ok;
+    });
     it("NEGATIVE", function() {
         expect(parser.parse('5 × -(2 + 3)')()).to.equal(-25);
     });

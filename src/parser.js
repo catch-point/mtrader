@@ -355,7 +355,7 @@ function parseExpressionList(str) {
     function parseUnaryExpression() {
         if (peek() == '!') {
             index++;
-            return ['NOT', parseBrackettedExpression()];
+            return ['NOT', parseUnaryExpression()];
         } else if (peek() == '+') {
             index++;
             return parseBrackettedExpression();
