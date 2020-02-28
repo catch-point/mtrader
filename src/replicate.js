@@ -852,6 +852,7 @@ function comboFitScore(a, b) {
     } else if (a.security_type == 'OPT') {
         if (a.symbol.length != 21 || b.symbol.length != 21) return 0;
         if (a.symbol.substring(0, 6) != b.symbol.substring(0, 6)) return 0;
+        if (a.symbol.charAt(12) != b.symbol.charAt(12)) return 0; // different rights
         const [, a_expiry, a_right, a_strike] = a.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
         const [, b_expiry, b_right, b_strike] = b.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
         // combo action defaults to change first leg to BUY, so higher price first
