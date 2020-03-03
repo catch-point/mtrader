@@ -501,12 +501,16 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     }) : ib.reqId;
     const contract = await toContract(markets, ib, options);
     const ib_order = await orderToIbOrder(markets, ib, settings, contract, options, options);
+    const attached = flattenOCA(options.attached);
+    const existing_orders = await Promise.all(attached.map(ord => orderByRef(ib, ord.order_ref)));
+    const new_orders = attached.filter((ord, i) => !existing_orders[i]);
+    const last_new_order = existing_orders.reduce((last, ord, i) => !existing_orders[i] ? i : last, 0);
     const posted_order = await reqId(async(order_id) => {
         const order_ref = orderRef(root_ref, order_id, options);
         const submit_order = {
             ...ib_order,
             orderId: order_id, orderRef: order_ref,
-            transmit: (contract.secType == 'BAG' || _.isEmpty(options.attached)) && settings.transmit || false,
+            transmit: (contract.secType == 'BAG' || _.isEmpty(new_orders)) && settings.transmit || false,
             parentId: parentId || (attach_order ? attach_order.orderId : null),
             ocaGroup: oca_group, ocaType: oca_group ? 1 : 0,
             smartComboRoutingParams: contract.secType == 'BAG' ? [{tag:'NonGuaranteed',value:'1'}] : []
@@ -516,7 +520,6 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const order_id = posted_order.orderId;
     const order_ref = orderRef(root_ref, order_id, options);
     const parent_order = await ibToOrder(markets, ib, settings, posted_order, options);
-    const attached = flattenOCA(options.attached);
     return attached.reduce(async(promise, attach, i, attached) => {
         const child_orders = attach.order_type == 'LEG' ? [{
             ..._.omit(parent_order, 'limit', 'stop', 'offset', 'traded_price', 'order_ref'),
@@ -524,7 +527,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
             attach_ref: parent_order.order_ref
         }] : await submitOrder(root_ref, markets, ib, {
             ...settings,
-            transmit: i == attached.length -1 && settings.transmit || false
+            transmit: last_new_order <= i && settings.transmit || false
         }, attach, order_id);
         return (await promise).concat(child_orders.map(ord => ({...ord, attach_ref: order_ref})));
     }, [parent_order]);
