@@ -33,12 +33,13 @@
 const _ = require('underscore');
 const Big = require('big.js');
 const moment = require('moment-timezone');
+const cache = require('./memoize-cache.js');
 const Parser = require('./parser.js');
 const interrupt = require('./interrupt.js');
 const version = require('./version.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
-const quoting = require('./quoting-functions.js');
+const Quoting = require('./quoting-functions.js');
 const logger = require('./logger.js');
 const expect = require('chai').expect;
 
@@ -47,8 +48,16 @@ const expect = require('chai').expect;
  * securities and read previous retained values.
  * @returns a function that returns array of row objects based on given options.
  */
-module.exports = function(quote, collectFn) {
+module.exports = function(fetch, quote, collectFn) {
     let promiseHelp, self;
+    const cache_keys = ['interval', 'symbol', 'market', 'security_type', 'currency', 'now', 'offline', 'tz', 'begin', 'end'];
+    const adjustments = cache(
+        options => fetch(options),
+        options => JSON.stringify(_.pick(options, cache_keys)),
+        10
+    );
+    const fetch_with_cache = options =>
+        options.interval == 'adjustments' ? adjustments(options) : fetch(options);
     return self = Object.assign(async function(options) {
         if (!promiseHelp) promiseHelp = help(quote);
         expect(options).to.be.an('object');
@@ -62,10 +71,10 @@ module.exports = function(quote, collectFn) {
             marketCol: '$market',
             temporalCol: '$temporal'
         });
-        return collect(quote, collectFn || self, fields, opts);
+        return collect(fetch_with_cache, quote, collectFn || self, fields, opts);
     }, {
         close() {
-            return Promise.resolve();
+            return adjustments.close();
         }
     });
 };
@@ -123,7 +132,7 @@ async function help(quote) {
 /**
  * Computes column values given expressions and variables in options
  */
-async function collect(quote, callCollect, fields, options) {
+async function collect(fetch, quote, callCollect, fields, options) {
     const duration = options.reset_every && moment.duration(options.reset_every);
     const begin = moment(options.begin);
     const end = moment(options.end || options.now);
@@ -153,7 +162,7 @@ async function collect(quote, callCollect, fields, options) {
     }
     const compacted = compactPortfolio(fields, options.begin, options.end, options);
     if (segments.length < 2) {// only one period
-        return collectDuration(quote, callCollect, fields, compacted);
+        return collectDuration(fetch, quote, callCollect, fields, compacted);
     }
     const optionset = segments.map((segment, i, segments) => {
         if (i === 0) return _.defaults({
@@ -173,7 +182,7 @@ async function collect(quote, callCollect, fields, options) {
 /**
  * Computes column values given expressions and variables in options for a duration
  */
-async function collectDuration(quote, callCollect, fields, options) {
+async function collectDuration(fetch, quote, callCollect, fields, options) {
     expect(options).to.have.property('portfolio');
     expect(options).to.have.property('begin');
     expect(options).to.have.property('columns').that.is.an('object');
@@ -233,7 +242,8 @@ async function collectDuration(quote, callCollect, fields, options) {
             }, opts));
         }
     })).then(dataset => {
-        const parser = createParser(quote, dataset, columns, _.keys(simpleColumns), options);
+        const quoting = new Quoting(fetch, quote, dataset, options);
+        const parser = createParser(quoting, columns, _.keys(simpleColumns), options);
         return collectDataset(dataset, parser, columns, options);
     }).then(collection => {
         const begin = moment(options.begin).toISOString();
@@ -584,7 +594,7 @@ function createColumnParser(columns, options) {
                 complex: true,
                 columns: _.pluck(args, 'columns').reduce((a,b)=>_.extend(a,b), {})
             };
-            if (quoting.has(name)) return {complex: true, columns: {}};
+            if (Quoting.has(name)) return {complex: true, columns: {}};
             else if (order || rolling.has(name) || complex) return nested;
             const inlined = await inline(expr);
             if (common.has(name) && inlined.length > 512) return nested;
@@ -612,7 +622,7 @@ async function getSimpleCriteria(columns, options) {
         async expression(expr, name, args) {
             const order = name == 'DESC' || name == 'ASC';
             const complex = _.some(args, _.isNull);
-            if (quoting.has(name)) return null;
+            if (Quoting.has(name)) return null;
             else if (order || rolling.has(name) || complex) return null;
             else return inline(expr);
         }
@@ -651,10 +661,7 @@ function createInlineParser(columns, options) {
 /**
  * Creates an expression parser that recognizes the rolling/quote functions.
  */
-function createParser(quote, dataset, columns, cached, options) {
-    const external = _.memoize((expr, name, args) => {
-        return quoting(expr, name, args, quote, dataset, options);
-    });
+function createParser(quoting, columns, cached, options) {
     const pCols = {};
     const parser = new Parser({
         substitutions: getSubstitutions(_.keys(columns), options),
@@ -673,7 +680,7 @@ function createParser(quote, dataset, columns, cached, options) {
             else {
                 const fn = common(name, args, options) ||
                     rolling(expr, name, args, options) ||
-                    external(expr, name, args);
+                    quoting(expr, name, args, options);
                 if (fn) return fn;
                 else return () => {
                     throw Error("Only common and rolling functions can be used here: " + expr);

@@ -33,13 +33,13 @@ const _ = require('underscore');
 const Big = require('big.js');
 const moment = require('moment-timezone');
 const like = require('./should-be-like.js');
-const Adjustments = require('../src/adjustments.js');
+const Adjustments = require('../src/adjustments-yahoo.js');
 const createTempDir = require('./create-temp-dir.js');
 
 describe("adjustments", function() {
     this.timeout(10000);
     var tz = 'America/New_York';
-    var adjustments = Adjustments({cache_dir: createTempDir('adjustments.spec')});
+    var adjustments = new Adjustments({cache_dir: createTempDir('adjustments.spec')});
     after(function() {
         return adjustments.close();
     });

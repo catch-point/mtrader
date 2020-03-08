@@ -53,11 +53,11 @@ describe("strategize", function() {
                 dirname: path.resolve(__dirname, 'data')
             }
         }));
-        quote = Quote(fetch);
-        collect = Collect(quote);
-        optimize = Optimize(collect);
-        bestsignals = Bestsignals(optimize);
-        strategize = Strategize(bestsignals);
+        quote = new Quote(fetch);
+        collect = new Collect(fetch, quote);
+        optimize = new Optimize(collect);
+        bestsignals = new Bestsignals(optimize);
+        strategize = new Strategize(bestsignals);
     });
     beforeEach(function() {
         optimize.seed(27644437);

@@ -52,10 +52,10 @@ describe("bestsignals", function() {
                 dirname: path.resolve(__dirname, 'data')
             }
         }));
-        quote = Quote(fetch);
-        collect = Collect(quote);
-        optimize = Optimize(collect);
-        bestsignals = Bestsignals(optimize);
+        quote = new Quote(fetch);
+        collect = new Collect(fetch, quote);
+        optimize = new Optimize(collect);
+        bestsignals = new Bestsignals(optimize);
     });
     beforeEach(function() {
         optimize.seed(27644437);

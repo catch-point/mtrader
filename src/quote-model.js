@@ -39,11 +39,12 @@ const moment = require('moment-timezone');
 const Big = require('big.js');
 const smr = require('smr');
 const merge = require('./merge.js');
+const cache = require('./memoize-cache.js');
 const interrupt = require('./interrupt.js');
 const Parser = require('../src/parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
-const Adjustements = require('./adjustment-functions.js');
+const Quoting = require('./quoting-functions.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
@@ -121,8 +122,8 @@ function help(assets, help) {
 module.exports = function(fetch, quote, settings = {}) {
     if (_.isFunction(fetch) && !_.isFunction(quote) && _.isEmpty(settings))
         return module.exports(fetch, fetch, quote);
+    const cached_fetch = cacheFetch(fetch, quote);
     const incl_settings = readConfig(settings, config.configDirname());
-    const adjustments = new Adjustements(incl_settings);
     const assets = incl_settings.assets || [];
     const market_values = _.uniq(assets.map(asset => asset.market));
     const markets = _.mapObject(
@@ -134,7 +135,7 @@ module.exports = function(fetch, quote, settings = {}) {
         if (options.info=='version') return fetch(options);
         if (options.info=='help') return helpInfo = helpInfo || help(assets, await fetch({info:'help'}));
         switch(options.interval) {
-            case 'lookup': return fetch(options).then(contracts => {
+            case 'lookup': return cached_fetch(options).then(contracts => {
                 return lookup(markets, assets, options).concat(contracts);
             }, err => {
                 const contracts = lookup(markets, assets, options);
@@ -142,13 +143,14 @@ module.exports = function(fetch, quote, settings = {}) {
                 else throw err;
             });
             case 'contract':
-            case 'fundamental': return fetch(options).then(contracts => contracts.map(contract => {
+            case 'fundamental': return cached_fetch(options).then(contracts => contracts.map(contract => {
                 return merge(_.first(lookup(markets, assets, options)), contract);
             }), err => {
                 const contracts = lookup(markets, assets, options);
                 if (contracts.length) return contracts;
                 else throw err;
             });
+            case 'adjustments': return cached_fetch(options);
             default:
             const asset = findAsset(assets, options);
             if (!asset || !asset.models) return fetch(options);
@@ -156,20 +158,36 @@ module.exports = function(fetch, quote, settings = {}) {
             if (options.processed_symbols && ~options.processed_symbols.indexOf(contract_key))
                 return fetch(options);
             const processed_symbols = (options.processed_symbols||[]).concat(contract_key);
-            const fetch_or_quote = options => {
-                const contract_key = `${options.symbol}.${options.market}/${options.interval}`;
-                if (~processed_symbols.indexOf(contract_key)) return fetch(options);
-                else return quote(options);
-            };
-            const blend_fn = blendCall.bind(this, markets, fetch_or_quote, adjustments, asset);
+            const blend_fn = blendCall.bind(this, markets, cached_fetch, quote, asset);
             return trim(await blend_fn({...options, processed_symbols}), options);
         }
     }, {
         close() {
-            return adjustments.close();
+            return cached_fetch.close();
         }
     });
 };
+
+function cacheFetch(fetch, quote) {
+    const cache_intervals = ['lookup', 'contract', 'fundamental', 'adjustments'];
+    const cache_keys = ['interval', 'symbol', 'market', 'security_type', 'currency', 'now', 'offline', 'tz', 'begin', 'end'];
+    const cached = cache(
+        options => fetch(options),
+        options => JSON.stringify(_.pick(options, cache_keys)),
+        10
+    );
+    return Object.assign(options => {
+        const contract_key = `${options.symbol}.${options.market}/${options.interval}`;
+        if (options.info) return fetch(options);
+        else if (~cache_intervals.indexOf(options.interval)) return cached(options);
+        else if (~(options.processed_symbols||[]).indexOf(contract_key)) return fetch(options);
+        else return quote(options);
+    }, {
+        close() {
+            return cached.close()
+        }
+    });
+}
 
 function readConfig(object, dir, black_list = []) {
     if (_.isArray(object)) return object.map(value => readConfig(value, dir, black_list));
@@ -223,7 +241,7 @@ function findAsset(assets, options) {
     return _.sortBy(filtered, asset => (asset.symbol_pattern || asset.symbol || '').length)[0];
 }
 
-async function blendCall(markets, fetch, adjustments, asset, options) {
+async function blendCall(markets, fetch, quote, asset, options) {
     const end = options.end && moment.tz(options.end, options.tz).format(options.ending_format);
     const begin = moment.tz(options.begin, options.tz);
     const models = sliceModelsAfter(await Promise.all(sliceModelsAfter(asset.models, begin)
@@ -237,7 +255,7 @@ async function blendCall(markets, fetch, adjustments, asset, options) {
             (i == models.length-1 && options.end ? maxDate(options.end, max_begin) : undefined);
         const end = !model.end && i <models.length-1 ? periods.inc(max_end, 1).format(options.ending_format) : max_end;
         const part = model.bars ? model.bars :
-            await fetchModel(markets, fetch, adjustments, asset, model, { ...options, begin, end });
+            await fetchModel(markets, fetch, quote, asset, model, { ...options, begin, end });
         const result = await promise;
         if (_.isEmpty(result)) return part;
         else if (_.isEmpty(part)) return result;
@@ -312,13 +330,13 @@ async function readModel(asset, model, parameters, options) {
     }
 }
 
-async function fetchModel(markets, fetch, adjustments, asset, model, options) {
-    const bars = await fetchModelBars(markets, fetch, adjustments, asset, model, options);
+async function fetchModel(markets, fetch, quote, asset, model, options) {
+    const bars = await fetchModelBars(markets, fetch, quote, asset, model, options);
     if (!model.interval || model.interval == options.interval) return bars;
     else return rollBars(bars, options);
 }
 
-async function fetchModelBars(markets, fetch, adjustments, asset, model, options) {
+async function fetchModelBars(markets, fetch, quote, asset, model, options) {
     if (model.bars) return term.bars;
     else if (model.begin && model.end && moment(model.end).isBefore(model.begin)) return [];
     else if (!model.output) return fetch(_.defaults(
@@ -352,7 +370,8 @@ async function fetchModelBars(markets, fetch, adjustments, asset, model, options
         ...market_opts,
         begin, end
     };
-    const fetchInputData_fn = fetchInputData.bind(this, markets, fetch, adjustments);
+    const adjustments = new Quoting(fetch, quote, [], options);
+    const fetchInputData_fn = fetchInputData.bind(this, markets, fetch, quote);
     return calcModelBars(fetchInputData_fn, adjustments, asset, model, opts);
 }
 
@@ -412,10 +431,10 @@ async function rollBars(bars, options) {
     }, []);
 }
 
-async function fetchInputData(markets, fetch, adjustments, asset, model, input, options) {
+async function fetchInputData(markets, fetch, quote, asset, model, input, options) {
     return Promise.all(input.map(async(term) => {
         const input_model = await readModel(asset, term, model.parameters, options);
-        return fetchModel(markets, fetch, adjustments, asset, input_model, options);
+        return fetchModel(markets, fetch, quote, asset, input_model, options);
     }));
 }
 

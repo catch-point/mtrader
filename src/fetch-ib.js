@@ -40,7 +40,6 @@ const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
 const Periods = require('./periods.js');
-const Adjustments = require('./adjustments.js');
 const IB = require('./ib-gateway.js');
 const Fetch = require('./fetch.js');
 const expect = require('chai').expect;
@@ -104,7 +103,7 @@ function help(settings) {
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["contract"]
-            },
+            }
         })
     };
     const fundamental = {
@@ -122,7 +121,29 @@ function help(settings) {
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["fundamental"]
+            }
+        })
+    };
+    const adjustments = {
+        name: "adjustments",
+        usage: "adjustments(options)",
+        description: "Split and dividend history and expectations",
+        properties: ['exdate', 'adj', 'adj_dividend_only', 'adj_split_only', 'cum_close', 'split', 'dividend'],
+        options: _.extend({}, commonOptions, durationOptions, {
+            interval: {
+                values: ["adjustments"]
             },
+            tz: {
+                description: "Timezone of the market formatted using the identifier in the tz database"
+            },
+            now: {
+                usage: '<timestamp>',
+                description: "The current date/time this request is started"
+            },
+            offline: {
+                usage: 'true',
+                description: "If only the local data should be used in the computation"
+            }
         })
     };
     const interday = {
@@ -135,7 +156,7 @@ function help(settings) {
                 usage: "day",
                 description: "The bar timeframe for the results",
                 values: _.intersection(["day"],settings.intervals)
-            },
+            }
         })
     };
     const intraday = {
@@ -156,6 +177,7 @@ function help(settings) {
         ~settings.intervals.indexOf('lookup') && lookup,
         ~settings.intervals.indexOf('contract') && contract,
         ~settings.intervals.indexOf('fundamental') && fundamental,
+        ~settings.intervals.indexOf('adjustments') && adjustments,
         interday.options.interval.values.length && interday,
         intraday.options.interval.values.length && intraday
     ]);
@@ -163,7 +185,8 @@ function help(settings) {
 
 module.exports = function(settings = {}) {
     const fetch = new Fetch(merge(config('fetch'), {ib:{enabled:false}}, settings.fetch));
-    const fetch_ib = createInstance(settings);
+    const adjustments = options => fetch({...options, interval: 'adjustments'});
+    const fetch_ib = createInstance(adjustments, settings);
     const client = fetch_ib.client;
     const markets = fetch_ib.markets;
     const findContract = fetch_ib.findContract;
@@ -183,6 +206,8 @@ module.exports = function(settings = {}) {
         } else if (options.interval=='fundamental') {
             if (isContractExpired(markets, client, moment(options.now), options)) return fetch(options);
             else return fetch_ib(options);
+        } else if (options.interval=='adjustments') {
+            return fetch_ib(options);
         } else {
             const now = moment(options.now);
             const next_open = marketOpensAt(now, options);
@@ -364,9 +389,8 @@ async function combineHistoricalLiveFeeds(historical_promise, live_promise, opti
     return historical_bars.concat(live_bars);
 }
 
-function createInstance(settings = {}) {
+function createInstance(adjustments, settings = {}) {
     const client = new IB(settings);
-    const adjustments = new Adjustments(settings);
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
@@ -383,10 +407,12 @@ function createInstance(settings = {}) {
             });
         }
         await client.open();
-        const adj = isNotEquity(markets, options) ? null : adjustments;
+        const adj = isNotEquity(markets, options) ? null :
+            pastAndFutureAdjustments.bind(this, markets, client, adjustments);
         if (options.interval == 'lookup') return lookup(markets, client, options);
         else if (options.interval == 'contract') return contract(markets, client, options);
         else if (options.interval == 'fundamental') return fundamental(markets, client, options);
+        else if (options.interval == 'adjustments') return adj ? adj(options) : [];
         else if (options.interval == 'day') return interday(findContract_fn, markets, adj, client, options);
         else if (options.interval.charAt(0) == 'm') return intraday(findContract_fn, markets, adj, client, options);
         else throw Error(`Unknown interval: ${options.interval}`);
@@ -395,10 +421,7 @@ function createInstance(settings = {}) {
     self.markets = markets;
     self.findContract = findContract_fn;
     self.open = () => client.open();
-    self.close = () => Promise.all([
-        client.close(),
-        adjustments.close()
-    ]);
+    self.close = () => client.close();
     return self;
 };
 
@@ -471,6 +494,84 @@ async function fundamental(markets, client, options) {
             under_symbol: toSymbol(markets[under.primaryExch], under),
             under_market: under.primaryExch
         }, v => !v);
+    });
+}
+
+async function pastAndFutureAdjustments(markets, client, adjustments, options) {
+    const historic = await adjustments(options);
+    if (options.offline) return historic;
+    const past_only = !options.end || moment.tz(options.end, options.tz).isBefore(options.now);
+    if (past_only) return historic;
+    else return futureAdjustments(markets, client, historic, options).catch(err => {
+        logger.warn("Could not load IB future adjustments", err);
+        return historic;
+    });
+}
+
+async function futureAdjustments(markets, client, historic, options) {
+    const market = markets[options.market] || {};
+    const contract = {
+        localSymbol: options.symbol,
+        secType: market.secType || options.security_type || market.default_security_type || 'STK',
+        exchange: market.exchange || 'SMART',
+        currency: market.currency || options.currency
+    };
+    const bar = await client.reqMktData(contract, ['ib_dividends']);
+    logger.trace("adjustments", options.symbol, bar);
+    if (!(bar||{}).ib_dividends) return historic;
+    const datum = _.object(
+        ['past_dividends', 'expected_dividends', 'exdate', 'dividend'],
+        bar.ib_dividends.split(',')
+    );
+    const last = _.last(historic) || {};
+    const mark = bar.close || await lastClose(client, contract);
+    if (!mark) return historic;
+    const next_dividend = nextDividend(last, datum.exdate, datum.dividend, mark, options);
+    const historic_next = next_dividend ? historic.concat(next_dividend) : historic;
+    if (!+datum.expected_dividends || !historic_next.length) return historic_next;
+    const close = next_dividend ? Big(next_dividend.cum_close).minus(next_dividend.dividend) : mark;
+    const dividend = Big(datum.expected_dividends).div(4);
+    const expected_dividends = expectedDividends(_.last(historic_next), dividend, close, options);
+    if (expected_dividends.length) return historic_next.concat(expected_dividends);
+    else return historic_next;
+}
+
+async function lastClose(client, contract) {
+    const now = moment().utc().format('YYYYMMDD HH:mm:ss z');
+    const last = await client.reqHistoricalData(contract, now, '1 D', '1 day', 'TRADES', 1, 1);
+    if (last.length) return last[last.length-1].close;
+    else return null;
+}
+
+function nextDividend(previously, date, dividend, cum_close, options) {
+    if (!date || !+dividend || !+cum_close) return;
+    const point = moment.tz(date, options.tz);
+    if (!point.isValid())
+        return logger.error("Invalid date in ib_dividends", options.symbol, bar);
+    if (moment.tz(options.end || options.now, options.tz).isBefore(point)) return;
+    const exdate = point.format('Y-MM-DD');
+    if (exdate == previously.exdate) return;
+    // no adjustments for today's price
+    return { exdate, adj:1, adj_dividend_only:1, adj_split_only:1, cum_close, split:1, dividend };
+}
+
+function expectedDividends(previously, dividend, close, options) {
+    const end = moment.tz(options.end || options.now, options.tz);
+    const point = moment.tz(previously.exdate, options.tz).add(13, 'weeks');
+    const dates = [];
+    while (!end.isBefore(point)) {
+        dates.push(point.format('Y-MM-DD'));
+        point.add(13, 'weeks');
+    }
+    let last = previously;
+    return dates.map((exdate,i) => {
+        // future dividends must reverse last, since the data is adjusted to today
+        const cum_close = i === 0 ? close : Big(last.cum_close).minus(last.dividend);
+        const dj = Big(last.cum_close).div(Big(last.cum_close).minus(last.dividend));
+        const adj = Big(last.adj || 1).times(dj);
+        const adj_dividend_only = Big(last.adj_dividend_only || 1).times(dj);
+        const adj_split_only = last.adj_split_only || 1;
+        return last = { exdate, adj, adj_dividend_only, adj_split_only, cum_close, split:1, dividend };
     });
 }
 

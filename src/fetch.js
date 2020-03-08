@@ -72,6 +72,7 @@ module.exports = function(settings = {}) {
             if (interval == 'lookup') return lookup(markets, datasources.lookup, opt);
             if (interval == 'contract') return contract(markets, datasources.contract, opt);
             if (interval == 'fundamental') return fundamental(datasources.fundamental, opt);
+            if (interval == 'adjustments') return adjustments(datasources.adjustments, opt);
             expect(options).to.have.property('tz').that.is.a('string');
             if (options.end) expect(options).to.have.property('begin');
             if (options.end) expect(options.begin).not.to.be.above(options.end);
@@ -112,8 +113,14 @@ async function promiseDatasources(settings = {}) {
         if (!settings[factory.name] || settings[factory.name].enabled) return disabled;
         else return Object.assign(disabled, {[factory.name]: {enabled: false}});
     }, {});
-    const enabled_factories = all_factories.filter(factory => (settings[factory.name]||{}).enabled);
-    const factories = enabled_factories.length ? enabled_factories : [{name:'yahoo', fn: yahoo}];
+    const factories = all_factories.filter(factory => (settings[factory.name]||{}).enabled);
+    return {
+        ...await mergeDatasources([{name:'yahoo', fn: yahoo}], disabled, settings),
+        ...await mergeDatasources(factories, disabled, settings)
+    };
+}
+
+async function mergeDatasources(factories, disabled, settings = {}) {
     const sources = factories.map(factory => {
         const name = factory.name;
         const settings_loop_disabled = factory.name == 'remote' ? settings[name] :
@@ -341,6 +348,37 @@ function fundamental(datasources, options) {
             name: result.name,
             asof: now.format(options.ending_format)
         }, result)];
+    });
+}
+
+function adjustments(datasources, options) {
+    expect(options).to.be.like({
+        symbol: /^\S(\S| )*$/,
+        market: /^\w+$/
+    });
+    const begin = options.begin ? moment.tz(options.begin, options.tz) :
+        moment().tz(options.tz).startOf('month').subtract(1, 'month');
+    const opts = _.defaults({
+        begin: begin.format(options.ending_format)
+    }, options);
+    const sources = datasources[options.market] || _.uniq(_.flatten(_.values(datasources)));
+    return sources.reduce((promise, datasource) => promise.catch(err => {
+        return datasource(opts).then(result => {
+            if (err && !_.isArray(err)) logger.debug("Fetch", opts.interval, "failed", err.stack);
+            if (_.isArray(err) && err.length >= result.length)
+                return err;
+            if (_.isEmpty(result))
+                return Promise.reject(result); // empty result error is an array
+            return result;
+        }, err2 => {
+            if (!err) throw err2;
+            else if (_.isArray(err)) return err;
+            logger.debug("Fetch", opts.interval, "failed", err2);
+            throw err;
+        });
+    }), Promise.reject()).catch(err => {
+        if (_.isArray(err)) return err;
+        else throw err;
     });
 }
 

@@ -169,6 +169,15 @@ function shell(desc, fetch, app) {
             interval: 'fundamental', symbol, market, tz, ending_format: moment.defaultFormat
         }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
+    // adjustments
+    app.cmd('adjustments :symbol', "List split/dividend history about security", (cmd, sh, cb) => {
+        const s = cmd.params.symbol;
+        const symbol = ~s.indexOf('.') ? s.substring(0, s.lastIndexOf('.')) : s;
+        const market = ~s.indexOf('.') ? s.substring(s.lastIndexOf('.')+1) : null;
+        fetch(_.defaults({
+            interval: 'adjustments', symbol, market, tz, ending_format: moment.defaultFormat
+        }, config.options())).then(result => tabular(result, config())).then(() => sh.prompt(), cb);
+    });
     // fetch
     app.cmd('fetch :interval :symbol', desc, (cmd, sh, cb) => {
         const s = cmd.params.symbol;
@@ -209,6 +218,23 @@ ${listOptions(config('markets'))}
 ${listOptions(info.fundamental.options)}
   See also:
     help transpose  
+`);
+if (info.adjustments) help(app, 'adjustments', `
+  Usage: adjustments :symbol.market
+
+  List split/dividend history about security
+
+    :symbol.market
+      The ticker symbol used by the market followed by a dot and one of the following market acronyms:
+${listOptions(config('markets'))}
+
+  Options:
+${listOptions(_.omit(info.adjustments.options, ['symbol', 'market', 'interval']))}
+  See also:
+    help begin  
+    help end  
+    help output  
+    help reverse  
 `);
 help(app, 'fetch', `
   Usage: fetch :interval :symbol.market

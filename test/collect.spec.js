@@ -50,8 +50,8 @@ describe("collect", function() {
                 dirname: path.resolve(__dirname, 'data')
             }
         }));
-        quote = Quote(fetch);
-        collect = Collect(quote);
+        quote = new Quote(fetch);
+        collect = new Collect(fetch, quote);
     });
     after(function() {
         config.unset('prefix');
@@ -447,6 +447,26 @@ describe("collect", function() {
             {symbol:"XLK",date:"2016-11-30",shares:0,position:571,price:47.48,basis:46.61,profit:493.78},
             {symbol:"XLE",date:"2016-11-30",shares:0,position:240,price:74.41,basis:71.01,profit:813.87},
             {symbol:"XLY",date:"2016-11-30",shares:-108,position:212,price:81.83,basis:80.08,profit:368.24}
+        ]);
+    });
+    it("DIVIDEND and SPLIT functions", async() => {
+        return collect({
+            columns: {
+                ending: 'ending',
+                open: 'day.open',
+                high: 'day.high',
+                low: 'day.low',
+                close: 'day.close',
+                volume: 'day.volume',
+                dividend: "DIVIDEND(symbol, market, day.ending)",
+                split: "SPLIT(symbol, market, day.ending)"
+            },
+            portfolio: 'AAPL.NASDAQ',
+            begin: '2014-05-01', end: '2014-07-01'
+        }).then(data => data.filter(datum => datum.dividend || datum.split!=1))
+          .should.eventually.be.like([
+            { ending: '2014-05-08T16:00:00-04:00', close: 587.990011, dividend: 3.29, split: 1 },
+            { ending: '2014-06-09T16:00:00-04:00', close: 93.699997, dividend: 0, split: 7 }
         ]);
     });
     it("external instrument", function() {

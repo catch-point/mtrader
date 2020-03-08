@@ -177,7 +177,7 @@ function createInstance(program, runInBand = false) {
             cache = createCache(direct, local, remote, settings);
         }
     };
-    const direct = Collect(quote, instance);
+    const direct = Collect(fetch, quote, instance);
     const localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance, settings);
     let local = createQueue(localWorkers);
     let remote = new Remote(settings);
@@ -259,7 +259,7 @@ function spawn() {
     const model = new Model(fetch, options => quote(options), settings);
     const quote = new SlaveQuote(model, settings);
     const quoteFn = createSlaveQuote(quote, parent);
-    const collect = _.once(() => new Collect(quoteFn, callCollect.bind(this, parent)));
+    const collect = _.once(() => new Collect(fetch, quoteFn, callCollect.bind(this, parent)));
     process.on('disconnect', () => collect().close().then(quote.close));
     process.on('SIGINT', () => collect().close().then(quote.close));
     process.on('SIGTERM', () => collect().close().then(quote.close));

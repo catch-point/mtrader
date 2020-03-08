@@ -70,11 +70,11 @@ describe("fetch-yahoo", function() {
             })));
         });
         it.skip("should find GLOW", function() {
-            return client({interval:'lookup',symbol:'GLOW', market:"AMEX"})
+            return client({interval:'lookup',symbol:'OBLG', market:"AMEX"})
               .then(array => array.slice(0,1))
               .should.eventually.be.like([{
-                symbol: 'GLOW',
-                name: /GLOWPOINT/i
+                symbol: 'OBLG',
+                name: /Oblong/i
             }]);
         });
         it("should find 88E", function() {

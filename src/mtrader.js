@@ -195,6 +195,11 @@ function createInstance(settings = {}) {
                 interval: 'fundamental'
             }, options)).then(_.first);
         },
+        adjustments(options) {
+            return fetch(_.defaults({
+                interval: 'adjustments'
+            }, options)).then(_.first);
+        },
         fetch: fetch,
         quote: quote,
         collect: collect,

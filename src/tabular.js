@@ -181,6 +181,7 @@ function parseValue(value) {
 
 function formatValue(value) {
     if (value == null) return '';
+    if (_.isObject(value) && typeof value.toJSON == 'function') return formatValue(value.toJSON());
     if (_.isObject(value)) return JSON.stringify(value);
     if (!_.isString(value)) return value;
     const chr = value.charAt(0);

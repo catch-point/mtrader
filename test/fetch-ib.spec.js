@@ -84,6 +84,15 @@ describe("fetch-ib", function() {
                   }
                 }
             }, {
+                "name": "adjustments",
+                "options": {
+                  "interval": {
+                    "values": [
+                      "adjustments"
+                    ]
+                  }
+                }
+            }, {
                 "name": "interday",
                 "options": {
                   "interval": {
@@ -145,10 +154,10 @@ describe("fetch-ib", function() {
             }]);
         });
         it("should find GLOW", function() {
-            return client({interval:'lookup',symbol:'GLOW', market:"AMEX"})
+            return client({interval:'lookup',symbol:'OBLG', market:"AMEX"})
               .should.eventually.be.like([{
-                symbol: 'GLOW',
-                name: "GLOWPOINT INC"
+                symbol: 'OBLG',
+                name: /Oblong/i
             }]);
         });
         it("should find 88E", function() {

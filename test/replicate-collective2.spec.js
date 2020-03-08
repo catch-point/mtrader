@@ -65,7 +65,7 @@ describe("replicate-collective2", function() {
             }
         }));
         quote = new Quote(fetch);
-        collect = new Collect(quote);
+        collect = new Collect(fetch, quote);
         broker = new Broker({
             systemid: 'test',
             apikey: 'test',

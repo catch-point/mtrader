@@ -60,7 +60,7 @@ describe("replicate-simulation", function() {
             }
         }));
         quote = new Quote(fetch);
-        collect = new Collect(quote);
+        collect = new Collect(fetch, quote);
         broker = new Broker({
             simulation: 'test',
             ...config('broker.simulation'),

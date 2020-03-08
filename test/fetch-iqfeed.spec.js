@@ -89,10 +89,10 @@ describe("fetch-iqfeed", function() {
             })));
         });
         it("should find GLOW", function() {
-            return client({interval:'lookup',symbol:'GLOW', market:"AMEX"})
+            return client({interval:'lookup',symbol:'OBLG', market:"AMEX"})
               .should.eventually.be.like([{
-                symbol: 'GLOW',
-                name: /GLOWPOINT/
+                symbol: 'OBLG',
+                name: /Oblong/i
             }]);
         });
         it("should find 88E", function() {

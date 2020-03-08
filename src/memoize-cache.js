@@ -179,8 +179,8 @@ function sweep(cache) {
 function closeEntry(entry) {
     try {
         if (entry.result && _.isFunction(entry.result.then)) {
-            return entry.result
-                .then(obj => _.isFunction(obj.close) ? obj.close() : obj);
+            return entry.result.catch(err => {})
+                .then(obj => obj && _.isFunction(obj.close) ? obj.close() : obj);
         } else if (entry.result && _.isFunction(entry.result.close)) {
             const closing = entry.result.close();
             if (closing && _.isFunction(closing.then)) return closing;

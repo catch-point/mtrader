@@ -20,11 +20,11 @@
     },
     "ib": {
       "enabled": false,
-      "intervals": ["lookup", "contract", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
+      "intervals": ["adjustments", "lookup", "contract", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
       "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CBOT", "CFE", "CHF", "CME", "CNH", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NOK", "NYMEX", "NYSE", "NZD", "OPRA", "SEK", "TSE", "USD", "VENTURE", "ICE", "X" ]
     },
     "yahoo": {
-      "intervals": ["lookup", "contract", "day"],
+      "intervals": ["adjustments", "lookup", "contract", "day"],
       "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSE", "VENTURE"]
     },
     "remote": {

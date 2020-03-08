@@ -1,6 +1,6 @@
 // fetch-iqfeed.js
 /*
- *  Copyright (c) 2016-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2020 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -34,12 +34,13 @@ const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
 const d3 = require('d3-format');
+const merge = require('./merge.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
 const Periods = require('./periods.js');
 const iqfeed = require('./iqfeed-client.js');
-const Adjustments = require('./adjustments.js');
+const Fetch = require('./fetch.js');
 const cache = require('./memoize-cache.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
@@ -226,7 +227,8 @@ function createInstance(settings = {}) {
         settings.productId,
         config('version')
     );
-    const adjustments = new Adjustments(settings);
+    const fetch = new Fetch(merge(config('fetch'), {iqfeed:{enabled:false}}, settings.fetch));
+    const adjustments = options => fetch({...options, interval: 'adjustments'});
     const contract_cached = cache(contract.bind(this, iqclient, symbol), (exchs, listed_markets, options) => {
         return `${options.symbol} ${options.market}`;
     }, 10);
@@ -317,7 +319,7 @@ function createInstance(settings = {}) {
             return Promise.all([
                 contract_cached.close(),
                 iqclient.close(),
-                adjustments.close()
+                fetch.close()
             ]);
         }
     });
@@ -638,7 +640,6 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     if (!closesAt.isAfter(_.last(bars).ending)) return bars;
     const end = moment.tz(options.end || now, options.tz);
     if (end.isBefore(opensAt)) return bars;
-    let adj = _.last(bars).adj_close / _.last(bars).close;
     const test_size = bars.length;
     const intraday = await mostRecentTrade(iqclient, adjustments, symbol, _.defaults({
         begin: _.last(bars).ending,

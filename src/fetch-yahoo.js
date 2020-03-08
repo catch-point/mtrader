@@ -36,7 +36,7 @@ const Big = require('big.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
 const yahooClient = require('./yahoo-client.js');
-const Adjustments = require('./adjustments.js');
+const Adjustments = require('./adjustments-yahoo.js');
 const cache = require('./memoize-cache.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
@@ -74,6 +74,36 @@ function help(settings = {}) {
             interval: {
                 values: ["contract"]
             },
+        })
+    };
+    const adjustments = {
+        name: "adjustments",
+        usage: "adjustments(options)",
+        description: "Looks up existing symbol/market using the given symbol on the Yahoo! network",
+        properties: ['exdate', 'adj', 'adj_dividend_only', 'adj_split_only', 'cum_close', 'split', 'dividend'],
+        options: _.extend({}, commonOptions, {
+            interval: {
+                values: ["adjustments"]
+            },
+            begin: {
+                example: "YYYY-MM-DD",
+                description: "Sets the earliest date to retrieve"
+            },
+            end: {
+                example: "YYYY-MM-DD",
+                description: "Sets the latest date to retrieve"
+            },
+            tz: {
+                description: "Timezone of the market formatted using the identifier in the tz database"
+            },
+            now: {
+                usage: '<timestamp>',
+                description: "The current date/time this request is started"
+            },
+            offline: {
+                usage: 'true',
+                description: "If only the local data should be used in the computation"
+            }
         })
     };
     const interday = {
@@ -118,6 +148,7 @@ function help(settings = {}) {
     return _.compact([
         ~(settings.intervals||[]).indexOf('lookup') && lookup,
         ~(settings.intervals||[]).indexOf('contract') && contract,
+        ~(settings.intervals||[]).indexOf('adjustments') && adjustments,
         interday
     ]);
 }
@@ -139,6 +170,7 @@ module.exports = function(settings = {}) {
         switch(options.interval) {
             case 'lookup': return lookup(markets, yahoo, options);
             case 'contract': return contract(markets, yahoo, options);
+            case 'adjustments': return adjustments(options);
             case 'fundamental': throw Error("Yahoo! fundamental service has been discontinued");
             case 'day': return interday(yahoo, adjustments, symbol(options), options);
             default: throw Error("Only daily is supported by this Yahoo! datasource");

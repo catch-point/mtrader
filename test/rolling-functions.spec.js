@@ -50,8 +50,8 @@ describe("rolling functions", function() {
                 dirname: path.resolve(__dirname, 'data')
             }
         }));
-        quote = Quote(fetch);
-        collect = Collect(quote);
+        quote = new Quote(fetch);
+        collect = new Collect(fetch, quote);
     });
     after(function() {
         config.unset('prefix');
