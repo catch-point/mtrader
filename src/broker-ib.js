@@ -486,7 +486,7 @@ async function oneCancelsAllOrders(root_ref, markets, ib, settings, options) {
         const posted_orders = await submitOrder(root_ref, markets, ib, {
             ...settings,
             transmit: settings.transmit || false
-        }, order, null, order_ref);
+        }, {extended_hours: options.extended_hours, ...order}, null, order_ref);
         return (await promise).concat(posted_orders.map(ord => ({...ord, attach_ref: order_ref})));
     }, []);
 }
@@ -528,7 +528,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
         }] : await submitOrder(root_ref, markets, ib, {
             ...settings,
             transmit: last_new_order <= i && settings.transmit || false
-        }, attach, order_id);
+        }, {extended_hours: options.extended_hours, ...attach}, order_id);
         return (await promise).concat(child_orders.map(ord => ({...ord, attach_ref: order_ref})));
     }, [parent_order]);
 }
