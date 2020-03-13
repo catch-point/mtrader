@@ -130,6 +130,14 @@ const functions = module.exports.functions = {
     }, {
         description: "Converts numbers and dates to text in the given format"
     }),
+    TRIM: _.extend((opts, text) => {
+        return context => {
+            const str = text(context);
+            if (str) return str.toString().replace(/\s+/g, ' ').trim();
+        };
+    }, {
+        description: "Removes extra spaces from text"
+    }),
     LEFT: _.extend((opts, text, number) => {
         return context => {
             const str = text(context);
