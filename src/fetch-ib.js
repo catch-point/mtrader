@@ -397,6 +397,11 @@ function createInstance(adjustments, settings = {}) {
     const lookupContract_fn = lookupContract.bind(this, markets, client);
     const lookupContract_cache = cache(lookupContract_fn, o => `${o.symbol}.${o.market}`, 10);
     const findContract_fn = findContract.bind(this, lookupContract_cache, markets, client);
+    const fetchDividendInfo_cache = cache(
+        fetchDividendInfo,
+        (client, contract) => JSON.stringify(contract),
+        100
+    );
     const self = async(options) => {
         if (options.info=='help') return help(settings);
         if (options.info=='version') {
@@ -408,7 +413,7 @@ function createInstance(adjustments, settings = {}) {
         }
         await client.open();
         const adj = isNotEquity(markets, options) ? null :
-            pastAndFutureAdjustments.bind(this, markets, client, adjustments);
+            pastAndFutureAdjustments.bind(this, fetchDividendInfo_cache, markets, client, adjustments);
         if (options.interval == 'lookup') return lookup(markets, client, options);
         else if (options.interval == 'contract') return contract(markets, client, options);
         else if (options.interval == 'fundamental') return fundamental(markets, client, options);
@@ -421,7 +426,11 @@ function createInstance(adjustments, settings = {}) {
     self.markets = markets;
     self.findContract = findContract_fn;
     self.open = () => client.open();
-    self.close = () => client.close();
+    self.close = () => Promise.all([
+        lookupContract_cache.close(),
+        fetchDividendInfo_cache.close(),
+        client.close()
+    ]);
     return self;
 };
 
@@ -497,18 +506,18 @@ async function fundamental(markets, client, options) {
     });
 }
 
-async function pastAndFutureAdjustments(markets, client, adjustments, options) {
+async function pastAndFutureAdjustments(fetchDividendInfo, markets, client, adjustments, options) {
     const historic = await adjustments(options);
     if (options.offline) return historic;
     const past_only = !options.end || moment.tz(options.end, options.tz).isBefore(options.now);
     if (past_only) return historic;
-    else return futureAdjustments(markets, client, historic, options).catch(err => {
-        logger.warn("Could not load IB future adjustments", err);
+    else return futureAdjustments(fetchDividendInfo, markets, client, historic, options).catch(err => {
+        logger.warn("Could not load IB future adjustments for", options.symbol, options.market, err.message);
         return historic;
     });
 }
 
-async function futureAdjustments(markets, client, historic, options) {
+async function futureAdjustments(fetchDividendInfo, markets, client, historic, options) {
     const market = markets[options.market] || {};
     const contract = {
         localSymbol: options.symbol,
@@ -516,35 +525,37 @@ async function futureAdjustments(markets, client, historic, options) {
         exchange: market.exchange || 'SMART',
         currency: market.currency || options.currency
     };
-    const bar = await client.reqMktData(contract, ['ib_dividends']);
-    logger.trace("adjustments", options.symbol, bar);
-    if (!(bar||{}).ib_dividends) return historic;
-    const datum = _.object(
-        ['past_dividends', 'expected_dividends', 'exdate', 'dividend'],
-        bar.ib_dividends.split(',')
-    );
+    const info = fetchDividendInfo(client, contract);
+    if (!info) return historic;
     const last = _.last(historic) || {};
-    const mark = bar.close || await lastClose(client, contract);
-    if (!mark) return historic;
-    const next_dividend = nextDividend(last, datum.exdate, datum.dividend, mark, options);
+    const mark = info.close || Big(last.cum_close||0).minus(last.dividend||0);
+    const next_dividend = nextDividend(last, info.exdate, info.dividend, mark, options);
     const historic_next = next_dividend ? historic.concat(next_dividend) : historic;
-    if (!+datum.expected_dividends || !historic_next.length) return historic_next;
+    if (!+info.expected_dividends || !historic_next.length) return historic_next;
     const close = next_dividend ? Big(next_dividend.cum_close).minus(next_dividend.dividend) : mark;
-    const dividend = Big(datum.expected_dividends).div(4);
+    const dividend = Big(info.expected_dividends).div(4);
     const expected_dividends = expectedDividends(_.last(historic_next), dividend, close, options);
     if (expected_dividends.length) return historic_next.concat(expected_dividends);
     else return historic_next;
 }
 
-async function lastClose(client, contract) {
-    const now = moment().utc().format('YYYYMMDD HH:mm:ss z');
-    const last = await client.reqHistoricalData(contract, now, '1 D', '1 day', 'TRADES', 1, 1);
-    if (last.length) return last[last.length-1].close;
-    else return null;
+async function fetchDividendInfo(client, contract) {
+    const bar = await client.reqMktData(contract, ['ib_dividends']);
+    logger.trace("adjustments", contract.localSymbol, bar);
+    if (!bar || !bar.ib_dividends) return null;
+    const datum = _.object(
+        ['past_dividends', 'expected_dividends', 'exdate', 'dividend'],
+        bar.ib_dividends.split(',')
+    );
+    if (bar.close) return {...bar, ...datum};
+    const now = moment().utc().startOf('day').format('YYYYMMDD HH:mm:ss z');
+    const last = await client.reqHistoricalData(contract, now, '1 D', '1 day', 'TRADES', 1, 1).catch(err => []);
+    if (last.length) return {...last[last.length-1], ...bar, ...datum};
+    else return {...bar, ...datum};
 }
 
 function nextDividend(previously, date, dividend, cum_close, options) {
-    if (!date || !+dividend || !+cum_close) return;
+    if (!date || !+dividend) return;
     const point = moment.tz(date, options.tz);
     if (!point.isValid())
         return logger.error("Invalid date in ib_dividends", options.symbol, bar);

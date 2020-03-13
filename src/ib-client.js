@@ -1224,14 +1224,14 @@ function requestWithId(ib) {
         reqFundamentalData(contract, reportType) {
             return request('reqFundamentalData', contract, reportType);
         },
-        reqHistoricalData(contract, endDateTime, durationString, barSizeSetting, whatToShow, useRTH, formatDate) {
+        reqHistoricalData: promiseThrottle((contract, endDateTime, durationString, barSizeSetting, whatToShow, useRTH, formatDate) => {
             return request('reqHistoricalData', contract, endDateTime, durationString,
                 barSizeSetting, whatToShow, useRTH, formatDate, false);
-        },
-        reqMktData(contract, genericTickNameArray, snapshot, regulatorySnapshot, mktDataOptions) {
+        }, 50),
+        reqMktData: promiseThrottle((contract, genericTickNameArray, snapshot, regulatorySnapshot, mktDataOptions) => {
             const genericTickList = (genericTickNameArray||[]).map(getTickTypeId).join(',');
             return request('reqMktData', contract, genericTickList, _.isEmpty(genericTickNameArray), regulatorySnapshot || false, mktDataOptions || []);
-        },
+        }, 100),
         reqRealTimeBars(contract, whatToShow) {
             return request('reqRealTimeBars', contract, 0, whatToShow, false);
         },
