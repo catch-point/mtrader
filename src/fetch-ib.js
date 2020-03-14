@@ -525,7 +525,7 @@ async function futureAdjustments(fetchDividendInfo, markets, client, historic, o
         exchange: market.exchange || 'SMART',
         currency: market.currency || options.currency
     };
-    const info = fetchDividendInfo(client, contract);
+    const info = await fetchDividendInfo(client, contract).catch(logger.debug);
     if (!info) return historic;
     const last = _.last(historic) || {};
     const mark = info.close || Big(last.cum_close||0).minus(last.dividend||0);
@@ -540,6 +540,7 @@ async function futureAdjustments(fetchDividendInfo, markets, client, historic, o
 }
 
 async function fetchDividendInfo(client, contract) {
+    if (contract.secType != 'STK') return null;
     const bar = await client.reqMktData(contract, ['ib_dividends']);
     logger.trace("adjustments", contract.localSymbol, bar);
     if (!bar || !bar.ib_dividends) return null;
