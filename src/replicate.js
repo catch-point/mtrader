@@ -237,14 +237,11 @@ async function getDesiredPositions(broker, collect, lookup, begin, options) {
     logger.debug("replicate", options.label || '', begin, "parameters", parameters);
     const orders = await collect(merge(options, {begin, parameters}));
     const normalized_orders = await Promise.all(orders.map(row => normalize(lookup, row, options)));
-    const grouped = _.groupBy(normalized_orders, ord => `${ord.symbol}.${ord.market}`);
-    return _.object(Object.keys(grouped), await Promise.all(Object.values(grouped).map(async(orders) => {
-        const last_row = _.last(orders.filter(ord => ord.status != 'pending' || +ord.quant)) || _.last(orders);
-        const realized_orders = orders.filter(ord => ord.status != 'pending');
-        const realized_row = _.last(realized_orders) || last_row;
-        const pending = getDesiredPosition(lookup, getPositionSize(orders), last_row, options);
-        const realized = realized_row != last_row ?
-            getDesiredPosition(lookup, getPositionSize(realized_orders), realized_row, options) : {};
+    const indexed = _.indexBy(normalized_orders, ord => `${ord.symbol}.${ord.market}`);
+    return _.object(Object.keys(indexed), await Promise.all(Object.values(indexed).map(async(order) => {
+        const pending = getDesiredPosition(lookup, +order.position, order, options);
+        const realized = +order.quant && getRealizedPosition(order) ?
+            getDesiredPosition(lookup, getRealizedPosition(order), order, options) : {};
         return {
             ...pending,
             realized
@@ -252,14 +249,15 @@ async function getDesiredPositions(broker, collect, lookup, begin, options) {
     })));
 }
 
-function getPositionSize(orders, options) {
-    return orders.reduce((position, row) => {
-        switch(row.action ? row.action.charAt(0) : '') {
-            case 'B': return position + + (row.quant || 0);
-            case 'S': return position - (row.quant || 0);
-            default: return position;
-        }
-    }, 0);
+function getRealizedPosition(order) {
+    expect(order).to.have.property('position');
+    if (!order.action || !+order.quant)
+        return +order.position;
+    expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
+    if (order.action == 'BUY')
+        return +order.position - +order.quant;
+    else
+        return +order.position + +order.quant;
 }
 
 function getDesiredPosition(lookup, position, order, options) {
@@ -271,7 +269,7 @@ function getDesiredPosition(lookup, position, order, options) {
         order_ref: order.order_ref || ref(`${order_prefix}${attach_ref}`),
         ...common
     };
-    const stoploss = order.stoploss ? {
+    const stoploss = order.stoploss && +position ? {
         action: +position < 0 ? 'BUY' : 'SELL',
         quant: Math.abs(position).toString(),
         order_type: 'STP',

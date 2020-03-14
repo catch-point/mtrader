@@ -112,6 +112,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '111',
+                    position: '111',
                     symbol: 'ENB',
                     market: 'TSE',
                     order_type: 'LOC',
@@ -121,6 +122,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: '111',
+                    position: '0',
                     symbol: 'ENB',
                     market: 'TSE',
                     order_type: 'LOC',
@@ -169,6 +171,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '36',
+                    position: '36',
                     symbol: 'CP',
                     market: 'TSE',
                     order_type: 'LOC',
@@ -178,6 +181,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                      quant: '19',
+                    position: '17',
                      symbol: 'CP',
                      market: 'TSE',
                      order_type: 'LOC',
@@ -204,6 +208,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-17T16:00:00-04:00',
                     action: 'BUY',
                     quant: '63',
+                    position: '63',
                     order_type: 'LOC',
                     limit: '297.69',
                     traded_price: '307.99',
@@ -214,6 +219,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-23T16:00:00-04:00',
                     action: 'SELL',
                     quant: '9',
+                    position: '54',
                     order_type: 'LOC',
                     limit: '293.94',
                     traded_price: '299'
@@ -251,6 +257,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-17T16:00:00-04:00',
                     action: 'BUY',
                     quant: '63',
+                    position: '63',
                     order_type: 'LOC',
                     limit: '297.69',
                     traded_price: '307.99'
@@ -260,6 +267,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-23T16:00:00-04:00',
                     action: 'SELL',
                     quant: '9',
+                    position: '54',
                     order_type: 'LOC',
                     limit: '293.94',
                     traded_price: '299'
@@ -269,6 +277,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-24T16:00:00-04:00',
                     action: 'BUY',
                     quant: '19',
+                    position: '73',
                     order_type: 'LOC',
                     limit: '305',
                     traded_price: '300.21'
@@ -304,6 +313,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                      quant: '6',
+                     position: '6',
                      symbol: 'CSU',
                      market: 'TSE',
                      order_type: 'LOC',
@@ -347,6 +357,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '281',
+                    position: '281',
                     symbol: 'TRI',
                     market: 'TSE',
                     security_type: 'STK',
@@ -357,6 +368,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'BUY',
                     quant: '65',
+                    position: '346',
                     symbol: 'TRI',
                     market: 'TSE',
                     security_type: 'STK',
@@ -368,6 +380,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'BUY',
                     quant: '48',
+                    position: '394',
                     symbol: 'TRI',
                     market: 'TSE',
                     security_type: 'STK',
@@ -434,6 +447,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '324',
+                    position: '324',
                     symbol: 'XGB',
                     market: 'TSE',
                     currency: 'CAD',
@@ -445,6 +459,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'BUY',
                     quant: '144',
+                    position: '468',
                     symbol: 'XGB',
                     market: 'TSE',
                     currency: 'CAD',
@@ -560,6 +575,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '1248',
+                    position: '1248',
                     symbol: 'XHB',
                     market: 'TSE',
                     currency: 'CAD',
@@ -570,6 +586,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: '345',
+                    position: '903',
                     symbol: 'XHB',
                     market: 'TSE',
                     currency: 'CAD',
@@ -581,6 +598,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: '525',
+                    position: '378',
                     symbol: 'XHB',
                     market: 'TSE',
                     currency: 'CAD',
@@ -704,9 +722,11 @@ describe("replicate-simulation", function() {
                     currency: 'USD',
                     security_type: 'STK',
                     quant: 343+446,
+                    position: 343+446
                 }, {
                     action: 'SELL',
                     quant: '446',
+                    position: 343,
                     symbol: 'HYMB',
                     market: 'ARCA',
                     currency: 'USD',
@@ -719,6 +739,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: '166',
+                    position: 177,
                     symbol: 'HYMB',
                     market: 'ARCA',
                     currency: 'USD',
@@ -771,6 +792,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '324',
+                    position: 324,
                     symbol: 'XGB',
                     market: 'TSE',
                     currency: 'CAD',
@@ -833,7 +855,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'BUY',
                     quant: '3',
-                    position: '0',
+                    position: '3',
                     order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.15'
@@ -844,7 +866,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'SELL',
                     quant: '3',
-                    position: '0',
+                    position: '-3',
                     order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.05'
@@ -899,7 +921,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'SELL',
                     quant: '3',
-                    position: '0',
+                    position: '-3',
                     order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.15',
@@ -923,7 +945,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'BUY',
                     quant: '3',
-                    position: '0',
+                    position: '3',
                     order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.05',
@@ -1015,7 +1037,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'SELL',
                     quant: '3',
-                    position: '0',
+                    position: '-3',
                     order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.15',
@@ -1039,7 +1061,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'BUY',
                     quant: '3',
-                    position: '0',
+                    position: '3',
                     order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.05',
@@ -1140,7 +1162,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'SELL',
                     quant: '3',
-                    position: '0',
+                    position: '-3',
                     order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.15',
@@ -1164,7 +1186,7 @@ describe("replicate-simulation", function() {
                     traded_at: '2019-05-29T16:15:00-04:00',
                     action: 'BUY',
                     quant: '3',
-                    position: '0',
+                    position: '3',
                     order_type: 'MKT',
                     offset: '0',
                     traded_price: '0.05',
@@ -1228,6 +1250,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '3',
+                    position: '3',
                     symbol: 'SPX   190621P02575000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -1239,6 +1262,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: '2',
+                    position: '1',
                     symbol: 'SPX   190621P02575000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -1250,6 +1274,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: '1',
+                    position: '0',
                     symbol: 'SPX   190621P02575000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -1313,6 +1338,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: '2',
+                    position: '2',
                     symbol: 'SPX   190920C02975000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -1644,6 +1670,11 @@ describe("replicate-simulation", function() {
                     offset: '0',
                     limit: '',
                     stop: '',
+                    stp_action: 'SELL',
+                    stp_quant: '5',
+                    stp_order_type: 'STP',
+                    stp_tif: 'GTC',
+                    stp_stop: '122.25',
                     traded_price: '122.21875',
                     basis: '120.91',
                     commission: '10.25',
@@ -2157,6 +2188,7 @@ describe("replicate-simulation", function() {
                 if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: null,
+                    position: '0',
                     order_type: 'MKT',
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
@@ -2169,6 +2201,7 @@ describe("replicate-simulation", function() {
                     minTick: '0.1'
                 }, {
                     action: null,
+                    position: '0',
                     order_type: 'MOC',
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
@@ -2224,6 +2257,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: 1,
+                    position: '1',
                     order_type: 'LOC',
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
@@ -2237,6 +2271,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: 1,
+                    position: '-1',
                     order_type: 'LOC',
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
@@ -2280,6 +2315,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: 1,
+                    position: '1',
                     order_type: 'LOC',
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
@@ -2293,6 +2329,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: 1,
+                    position: '-1',
                     order_type: 'LOC',
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
@@ -2336,6 +2373,7 @@ describe("replicate-simulation", function() {
                 else return Promise.resolve([{
                     action: 'BUY',
                     quant: 5,
+                    position: '5',
                     order_type: 'LOC',
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
@@ -2349,6 +2387,7 @@ describe("replicate-simulation", function() {
                 }, {
                     action: 'SELL',
                     quant: 3,
+                    position: '-3',
                     order_type: 'LOC',
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
