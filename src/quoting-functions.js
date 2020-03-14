@@ -183,7 +183,7 @@ const functions = module.exports.functions = {
         }, {}));
         const optionset = unique_assets.map(asset => ({
             ...options, ...asset, interval: 'adjustments', tz,
-            end: moment.tz(options.now, options.tz).add(40, 'months').format('Y-MM-DD')
+            end: moment.tz(options.now, options.tz).add(40, 'months').startOf('year').add(1,'years').format('Y-MM-DD')
         }));
         const adjustments = (await Promise.all(optionset.map(options => fetch(options))))
           .reduce((hash, data, i) => {
