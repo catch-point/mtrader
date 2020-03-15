@@ -523,6 +523,7 @@ async function futureAdjustments(fetchDividendInfo, markets, client, historic, o
         localSymbol: options.symbol,
         secType: market.secType || options.security_type || market.default_security_type || 'STK',
         exchange: market.exchange || 'SMART',
+        primaryExch: market.primaryExch,
         currency: market.currency || options.currency
     };
     const info = await fetchDividendInfo(client, contract).catch(logger.debug);
