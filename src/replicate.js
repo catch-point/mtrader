@@ -445,7 +445,7 @@ function getBalance(balances, options) {
 
 function getPeakBalance(balances, options) {
     const group_by_date = balances.reduce((group, bal) => {
-        const last = group.last = group[bal.asof] = group[bal.asof] || group.last;
+        const last = group.last = group[bal.asof] = group[bal.asof] || [].concat(group.last);
         const found_idx = last.findIndex(_.matcher(_.pick(bal, 'acctNumber', 'currency')));
         if (found_idx >= 0) last.splice(found_idx, 1);
         last.push(bal); // preserve the original order of balances
