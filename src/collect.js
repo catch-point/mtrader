@@ -695,11 +695,13 @@ function createParser(quoting, columns, cached, options) {
  * Combines the quote.js results into a single array containing retained securities.
  */
 async function collectDataset(dataset, parser, columns, options) {
+    const check = interrupt();
     const pcolumns = promiseColumns(parser, columns, options);
     const pcriteria = promiseFilter(parser, options.criteria);
     const precedence = await getOrderBy(options.precedence, columns, options);
     return pcolumns.then(fcolumns => pcriteria.then(async(criteria) => {
-        return await reduceInterval(dataset, options.temporalCol, (result, points) => {
+        return await reduceInterval(dataset, options.temporalCol, async(result, points) => {
+            await check();
             const positions = sortBy(points, precedence);
             const row = result.length;
             result[row] = positions.reduce((retained, point) => {
@@ -790,7 +792,7 @@ async function reduceInterval(dataset, temporal, cb, memo) {
             }
             return result;
         }, []);
-        memo = cb(memo, points);
+        memo = await cb(memo, points);
     }
     return memo;
 }
