@@ -1935,6 +1935,136 @@ describe("replicate-simulation", function() {
                 status: 'cancelled'
             }]);
         });
+        it("keep stoploss for ZNM20 when submiting profit order", async() => {
+            await broker({
+                asof: '2020-03-15',
+                action: 'BUY',
+                quant: '10',
+                order_type: 'MOC',
+                tif: 'DAY',
+                symbol: 'ZNM20',
+                market: 'CBOT',
+                security_type: 'FUT',
+                currency: 'USD',
+                multiplier: 1000
+            });
+            const stp = await broker({
+                asof: '2020-03-16T18:00:00-04:00',
+                action: 'SELL',
+                quant: 10,
+                order_type: 'STP',
+                stop: 137.4375,
+                tif: 'GTC',
+                extended_hours: true,
+                status: 'working',
+                order_ref: 'stoploss.ZNM20.mksafe-orders',
+                symbol: 'ZNM20',
+                market: 'CBOT',
+                currency: 'USD',
+                security_type: 'FUT',
+                multiplier: '1000'
+            });
+            await replicate(function(options) {
+                if (options.info=='help') return quote(options);
+                else return Promise.resolve([{
+                    posted_at: '2020-03-16T19:00:00-04:00',
+                    action: 'SELL',
+                    quant: '6',
+                    position: '4',
+                    order_type: 'LMT',
+                    limit: '138.578125',
+                    tif: 'DAY',
+                    order_ref: 'LMT.ZNM20.mksafe-orders',
+                    symbol: 'ZNM20',
+                    market: 'CBOT',
+                    currency: 'USD',
+                    security_type: 'FUT',
+                    stoploss: '137.4375'
+                }]);
+            })({
+                now: "2020-03-16T20:00:00",
+                currency: 'USD',
+                markets: ['CBOT'],
+                label: 'test'
+            }).should.eventually.be.like([{
+                action: 'SELL',
+                quant: 6,
+                order_type: 'LMT',
+                limit: 138.578125,
+                symbol: 'ZNM20',
+                market: 'CBOT'
+            }]);
+        });
+        it("keep stoploss for ZNM20 while working profit order", async() => {
+            await broker({
+                asof: '2020-03-15',
+                action: 'BUY',
+                quant: '10',
+                order_type: 'MOC',
+                tif: 'DAY',
+                symbol: 'ZNM20',
+                market: 'CBOT',
+                security_type: 'FUT',
+                currency: 'USD',
+                multiplier: 1000
+            });
+            const stp = await broker({
+                asof: '2020-03-16T18:00:00-04:00',
+                action: 'SELL',
+                quant: 10,
+                order_type: 'STP',
+                stop: 137.4375,
+                tif: 'GTC',
+                extended_hours: true,
+                status: 'working',
+                order_ref: 'stoploss.ZNM20.mksafe-orders',
+                symbol: 'ZNM20',
+                market: 'CBOT',
+                currency: 'USD',
+                security_type: 'FUT',
+                multiplier: '1000'
+            });
+            const sell = await broker({
+                asof: '2020-03-16T18:00:00-04:00',
+                action: 'SELL',
+                quant: 6,
+                order_type: 'LMT',
+                limit: 138.578125,
+                tif: 'DAY',
+                extended_hours: false,
+                status: 'working',
+                traded_price: null,
+                order_ref: 'LMT.ZNM20.mksafe-orders',
+                symbol: 'ZNM20',
+                market: 'CBOT',
+                currency: 'USD',
+                security_type: 'FUT',
+                multiplier: '1000'
+            });
+            await replicate(function(options) {
+                if (options.info=='help') return quote(options);
+                else return Promise.resolve([{
+                    posted_at: '2020-03-16T19:00:00-04:00',
+                    action: 'SELL',
+                    quant: '6',
+                    position: '4',
+                    order_type: 'LMT',
+                    limit: '138.578125',
+                    tif: 'DAY',
+                    order_ref: 'LMT.ZNM20.mksafe-orders',
+                    symbol: 'ZNM20',
+                    market: 'CBOT',
+                    currency: 'USD',
+                    security_type: 'FUT',
+                    stoploss: '137.4375'
+                }]);
+            })({
+                now: "2020-03-16T20:00:00",
+                currency: 'USD',
+                markets: ['CBOT'],
+                label: 'test'
+            }).should.eventually.be.like([]);
+        });
     });
     describe("parameters", function() {
         it("working_duration", async() => {

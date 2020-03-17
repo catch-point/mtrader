@@ -596,6 +596,7 @@ function updateActual(desired, actual, options) {
         const drw = (desired.realized.working||{})[ref];
         return orders.concat(orderReplacements(actual.working[ref], drw, realized_offset, options));
     }, transition_stoploss) : [];
+    const adjustment_pending = adjustment_order || actual.position != desired.position;
     if (!options.force && !actual.adjustment && actual.traded_at &&
             moment(desired.asof).isBefore(actual.traded_at)) {
         // working position has since been traded (stoploss?) since the last desired signal was produced
@@ -604,7 +605,7 @@ function updateActual(desired, actual, options) {
         return cancelled;
     } else if (options.exclude_working_orders) {
         return adjustments;
-    } else if (adjustment_order && (desired.realized.stoploss || !_.isEmpty(desired.realized.working))) {
+    } else if (adjustment_pending && (desired.realized.stoploss || !_.isEmpty(desired.realized.working))) {
         // keep existing transition orders (i.e. stoploss), and don't submit new working orders
         return groupIntoOCAOrder(transition.concat(adjustments));
     } else if (adjustment_order && oca_orders.length) {
