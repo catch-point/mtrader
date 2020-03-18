@@ -586,7 +586,7 @@ function updateActual(desired, actual, options) {
         return orders.concat(orderReplacements(actual.working[ref], desired.working[ref], pos_offset, options));
     }, stoplosses);
     const cancelled = adjustments.concat(working).filter(ord => ord.action == 'cancel');
-    const oca_orders = groupIntoOCAOrder(working.filter(ord => ord.action != 'cancel'));
+    const oca_orders = groupIntoOCAOrder(working.filter(ord => ord.action != 'cancel'), options);
     const adjustment_order = _.first(adjustments.filter(ord => ord.action != 'cancel'));
     const realized_offset = actual.position - desired.realized.position;
     const transition_stoploss = adjustment_order && desired.realized.stoploss ?
@@ -607,7 +607,7 @@ function updateActual(desired, actual, options) {
         return adjustments;
     } else if (adjustment_pending && (desired.realized.stoploss || !_.isEmpty(desired.realized.working))) {
         // keep existing transition orders (i.e. stoploss), and don't submit new working orders
-        return groupIntoOCAOrder(transition.concat(adjustments));
+        return groupIntoOCAOrder(transition.concat(adjustments), options);
     } else if (adjustment_order && oca_orders.length) {
         // submit new orders attached as child orders to the adjustment order
         return cancelled.concat({...adjustment_order, attached:oca_orders});
@@ -620,12 +620,13 @@ function updateActual(desired, actual, options) {
     }
 }
 
-function groupIntoOCAOrder(orders, attach_ref) {
+function groupIntoOCAOrder(orders, options) {
+    if (!orders.length) return [];
+    const attach_ref = ref(`${orders[0].symbol}.${options.label}`)
     const cancelled = orders.filter(ord => ord.action == 'cancel');
-    const oca_orders = orders
-        .filter(ord => ord.action != 'cancel' && (!ord.attach_ref || ord.attach_ref == attach_ref));
-    const leg_orders = orders
-        .filter(ord => ord.action != 'cancel' && (ord.attach_ref && ord.attach_ref != attach_ref));
+    const working = orders.filter(ord => ord.action != 'cancel');
+    const oca_orders = working.filter(ord => !ord.attach_ref || ord.attach_ref == attach_ref);
+    const leg_orders = working.filter(ord => ord.attach_ref && ord.attach_ref != attach_ref);
     const oca_order = _.isEmpty(oca_orders) ? null : oca_orders.length == 1 ? _.first(oca_orders) : {
         action: 'OCA',
         order_ref: attach_ref,

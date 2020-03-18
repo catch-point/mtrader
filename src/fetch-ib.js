@@ -617,6 +617,7 @@ async function interday(findContract, markets, adjustments, client, options) {
     expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
     expect(options).to.have.property('tz').that.is.ok;
     const now = moment().tz(options.tz);
+    if (now.isBefore(options.begin)) throw Error(`Cannot fetch future data: ${options.symbol} ${options.begin}`);
     const adjusts = adjustments && await adjustments(options);
     const market = markets[options.market];
     const contract = await findContract(options);
@@ -645,6 +646,7 @@ async function intraday(findContract, markets, adjustments, client, options) {
     expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
     expect(options).to.have.property('tz').that.is.ok;
     const now = moment().tz(options.tz);
+    if (now.isBefore(options.begin)) throw Error(`Cannot fetch future data: ${options.symbol} ${options.begin}`);
     const adjusts = adjustments && await adjustments(options);
     const market = markets[options.market];
     const contract = await findContract(options);
@@ -777,6 +779,7 @@ function toDurationString(end, options) {
     const start_of_day = moment(ending).startOf('day');
     const offset = ending.diff(start_of_day, 'milliseconds') % periods.millis;
     const begin = ending.subtract(offset || periods.millis, 'milliseconds');
+    if (end.isBefore(begin)) throw Error(`Invalid duration range: ${begin.format()} - ${end.format()}`);
     const years = end.diff(begin,'years', true);
     if (years > 1) return `${Math.ceil(years)} Y`;
     const day = new Periods({...options, interval: 'day'});
