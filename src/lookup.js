@@ -61,7 +61,7 @@ module.exports = function(fetch) {
  */
 function fetchOptionsFactory(fetch, offline, read_only) {
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
-    const markets = config('markets');
+    let markets = config('markets');
     const memoizeFirstLookup = _.memoize((symbol, market) => {
         return readInfo(dir, symbol, market, offline).catch(async(err) => {
             if (offline) return guessSecurityOptions(markets, symbol, market, err);
@@ -75,9 +75,6 @@ function fetchOptionsFactory(fetch, offline, read_only) {
                 else if (security.symbol == symbol && read_only) return security;
                 else if (security.symbol == symbol) return saveInfo(dir, symbol, market, security);
                 else throw Error("Unknown symbol: " + symbol + ", but " + security.symbol + " is known");
-            }).catch(e => {
-                memoizeFirstLookup.cache = {};
-                return guessSecurityOptions(markets, symbol, market, e);
             });
         });
     }, (symbol, market) => {
@@ -87,7 +84,12 @@ function fetchOptionsFactory(fetch, offline, read_only) {
         expect(options).to.have.property('symbol');
         const symbol = options.symbol;
         const market = options.market;
-        return memoizeFirstLookup(symbol, market);
+        return memoizeFirstLookup(symbol, market).catch(e => {
+            logger.trace("Lookup failed, resetting: ", e);
+            markets = config('markets');
+            memoizeFirstLookup.cache = {};
+            return memoizeFirstLookup(symbol, market);
+        });
     };
 }
 
