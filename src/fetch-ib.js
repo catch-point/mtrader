@@ -402,6 +402,7 @@ function createInstance(adjustments, settings = {}) {
         (client, contract) => JSON.stringify(contract),
         100
     );
+    const market_tz_fn = _.memoize(market_tz);
     const self = async(options) => {
         if (options.info=='help') return help(settings);
         if (options.info=='version') {
@@ -415,8 +416,8 @@ function createInstance(adjustments, settings = {}) {
         const adj = isNotEquity(markets, options) ? null :
             pastAndFutureAdjustments.bind(this, fetchDividendInfo_cache, markets, client, adjustments);
         if (options.interval == 'lookup') return lookup(markets, client, options);
-        else if (options.interval == 'contract') return contract(markets, client, options);
-        else if (options.interval == 'fundamental') return fundamental(markets, client, options);
+        else if (options.interval == 'contract') return contract(market_tz_fn, markets, client, options);
+        else if (options.interval == 'fundamental') return fundamental(market_tz_fn, markets, client, options);
         else if (options.interval == 'adjustments') return adj ? adj(options) : [];
         else if (options.interval == 'day') return interday(findContract_fn, markets, adj, client, options);
         else if (options.interval.charAt(0) == 'm') return intraday(findContract_fn, markets, adj, client, options);
@@ -452,20 +453,23 @@ async function lookup(markets, client, options) {
     }, v => !v));
 }
 
-async function contract(markets, client, options) {
+async function contract(market_tz, markets, client, options) {
     const details = await listContractDetails(markets, client, options);
     const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
     const contracts = conIds.map(details => flattenContractDetails(details));
     return contracts.map((contract, i) => {
         const market = markets[options.market] || markets[contract.primaryExch] || {};
+        const security_tz = contract.timeZoneId && market_tz(contract.timeZoneId) || market.security_tz;
+        const open_time = security_tz == market.security_tz && market.open_time ||
+            contract.liquidHours && market_open(contract.liquidHours) || null;
         return _.omit({
             symbol: toSymbol(market, contract),
             market: options.market || markets[contract.primaryExch] && contract.primaryExch,
             security_type: contract.secType || market.default_security_type,
             name: contract.longName,
             currency: contract.currency || market.currency,
-            security_tz: market.security_tz,
-            open_time: market.open_time,
+            security_tz,
+            open_time,
             trading_hours: !contract.tradingHours ? market.trading_hours :
                 `${market_open(contract.tradingHours)} - ${market_close(contract.tradingHours)}`,
             liquid_hours: !contract.liquidHours ? market.liquid_hours :
@@ -474,7 +478,7 @@ async function contract(markets, client, options) {
     });
 }
 
-async function fundamental(markets, client, options) {
+async function fundamental(market_tz, markets, client, options) {
     const details = await listContractDetails(markets, client, options);
     const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
     const contracts = conIds.map(details => flattenContractDetails(details));
@@ -487,14 +491,17 @@ async function fundamental(markets, client, options) {
     return contracts.map((contract, i) => {
         const under = under_contracts[i] || contract;
         const market = markets[options.market] || markets[contract.primaryExch] || {};
+        const security_tz = contract.timeZoneId && market_tz(contract.timeZoneId) || market.security_tz;
+        const open_time = security_tz == market.security_tz && market.open_time ||
+            contract.liquidHours && market_open(contract.liquidHours) || null;
         return _.omit({
             symbol: toSymbol(market, contract),
             market: options.market || markets[contract.primaryExch] && contract.primaryExch,
             security_type: contract.secType || market.default_security_type,
             name: contract.longName,
             currency: contract.currency || market.currency,
-            security_tz: market.security_tz,
-            open_time: market.open_time,
+            security_tz,
+            open_time,
             trading_hours: !contract.tradingHours ? market.trading_hours :
                 `${market_open(contract.tradingHours)} - ${market_close(contract.tradingHours)}`,
             liquid_hours: !contract.liquidHours ? market.liquid_hours :
@@ -586,6 +593,21 @@ function expectedDividends(previously, dividend, close, options) {
         const adj_split_only = last.adj_split_only || 1;
         return last = { exdate, adj, adj_dividend_only, adj_split_only, cum_close, split:1, dividend };
     });
+}
+
+function market_tz(timeZoneId) {
+    const abbr = ~timeZoneId.indexof(' ') ? timeZoneId.substring(0, timeZoneId.indexof(' ')) : timeZoneId;
+    const zones = moment.tz.names()
+      .map(name => moment.tz.zone(name))
+      .filter(zone => ~zone.abbrs.indexOf(abbr))
+      .sort((a,b) => b.abbrs.filter(e => e == abbr).length - a.abbrs.filter(e => e == abbr).length)
+      .reduce((largest, zone) => {
+        if (!largest) return zone;
+        else if (largest.population < zone.population) return zone;
+        else return largest;
+    }, null);
+    if (zones.length) return zones[0].name;
+    else return null;
 }
 
 function market_open(hours) {
