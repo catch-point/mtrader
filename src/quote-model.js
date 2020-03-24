@@ -1,6 +1,6 @@
-// fetch-model.js
+// quote-model.js
 /*
- *  Copyright (c) 2019 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2019-2020 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -368,7 +368,8 @@ async function fetchModelBars(markets, fetch, quote, asset, model, options) {
     if (end < begin) return [];
     const opts = {
         ...market_opts,
-        begin, end
+        begin: maxDate(model.begin, begin),
+        end: minDate(model.end, end)
     };
     const adjustments = new Quoting(fetch, quote, [], options);
     const fetchInputData_fn = fetchInputData.bind(this, markets, fetch, quote);
@@ -557,9 +558,12 @@ function createAndAlignIterators(input, options) {
     const peeks = Object.values(iterators).filter(iter => iter.hasNext()).map(iter => iter.peek().ending);
     const earliest = _.last(peeks.sort());
     if (earliest && options.begin < earliest && moment(earliest).subtract(1,'weeks').isAfter(options.begin)) {
+        const periods = new Periods(options);
+        const begin_m = periods.ceil(options.begin);
+        const begin = periods.inc(begin_m, begin_m.isBefore(options.begin) ? 1 : 0).format(options.ending_format);
         _.forEach(iterators, (iter, i) => {
-            if (iter.hasNext() && options.begin < iter.peek().ending) {
-                logger.warn(`fetch-model ${i} input in ${options.symbol}.${options.market} not available until ${iter.peek().ending}, not ${options.begin}`);
+            if (iter.hasNext() && begin < iter.peek().ending) {
+                logger.warn(`quote-model ${i} input in ${options.symbol}.${options.market} not available until ${iter.peek().ending}, not ${begin}`);
             }
         });
     }
