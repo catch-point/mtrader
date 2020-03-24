@@ -596,7 +596,7 @@ function expectedDividends(previously, dividend, close, options) {
 }
 
 function market_tz(timeZoneId) {
-    const abbr = ~timeZoneId.indexof(' ') ? timeZoneId.substring(0, timeZoneId.indexof(' ')) : timeZoneId;
+    const abbr = ~timeZoneId.indexOf(' ') ? timeZoneId.substring(0, timeZoneId.indexOf(' ')) : timeZoneId;
     const zones = moment.tz.names()
       .map(name => moment.tz.zone(name))
       .filter(zone => ~zone.abbrs.indexOf(abbr))
