@@ -323,11 +323,11 @@ describe("quote-model", function() {
                 symbol: 'XLC', market: 'ARCA2018',
                 begin: '2018-06-18', end: '2018-06-23', tz
             }).should.eventually.be.like([
-                { ending: '2018-06-18T16:00:00-04:00', close: 50.44, adj_close: 49.41 },
-                { ending: '2018-06-19T16:00:00-04:00', close: 50.35, adj_close: 49.32 },
-                { ending: '2018-06-20T16:00:00-04:00', close: 50.99, adj_close: 49.95 },
-                { ending: '2018-06-21T16:00:00-04:00', close: 50.27, adj_close: 49.65 },
-                { ending: '2018-06-22T16:00:00-04:00', close: 50.49, adj_close: 49.87 }
+                { ending: '2018-06-18T16:00:00-04:00', close: 50.44 },
+                { ending: '2018-06-19T16:00:00-04:00', close: 50.35 },
+                { ending: '2018-06-20T16:00:00-04:00', close: 50.99 },
+                { ending: '2018-06-21T16:00:00-04:00', close: 50.27 },
+                { ending: '2018-06-22T16:00:00-04:00', close: 50.49 }
             ]);
         } finally {
             await quote.close();
@@ -1358,7 +1358,7 @@ describe("quote-model", function() {
                 symbol: 'SPX   200221C03200000', market: 'greeks',
                 begin: '2019-12-01', end: '2019-12-31T16:15:00-05:00', tz
             }).should.eventually.be.like([
-        { ending: '2019-12-02T16:15:00-05:00', close: 34.326, volume: 0, asset_price: 3116.141, delta: 33.46 },
+        { ending: '2019-12-02T16:15:00-05:00', close: 32.172, volume: 0, asset_price: 3116.141, delta: 32.79 },
         { ending: '2019-12-03T16:15:00-05:00', close: 27.39, volume: 13, asset_price: 3094.326, delta: 28.54 },
         { ending: '2019-12-04T16:15:00-05:00', close: 34.95, volume: 307, asset_price: 3114.203, delta: 33.33 },
         { ending: '2019-12-05T16:15:00-05:00', close: 35.15, volume: 270, asset_price: 3119.252, delta: 34.02 },
@@ -1477,7 +1477,7 @@ describe("quote-model", function() {
                 symbol: 'SPY   200221C00280000', market: 'OPRA',
                 begin: '2019-11-01', end: '2019-12-01', tz
             }).should.eventually.be.like([
-    { ending: '2019-11-01T16:15:00-04:00', open: 28.095, high: 29.57, low: 27.999, close: 29.562, volume: 2 },
+    { ending: '2019-11-01T16:15:00-04:00', open: 27.541, high: 30.101, low: 27.445, close: 30.094, volume: 2 },
     { ending: '2019-11-04T16:15:00-05:00', open: 31.064, high: 31.179, low: 30.211, close: 30.523, volume: 4 },
     { ending: '2019-11-05T16:15:00-05:00', open: 31.127, high: 31.44, low: 30.004, close: 30.227, volume: 4 },
     { ending: '2019-11-06T16:15:00-05:00', open: 30.518, high: 30.623, low: 29.529, close: 30.18, volume: 13 },
@@ -1683,26 +1683,26 @@ describe("quote-model", function() {
                 symbol: 'SPY   200221C00280000-200221P00280000', market: 'spread',
                 begin: '2019-11-01', end: '2019-12-01', tz
             }).should.eventually.be.like([
-                { date: '2019-11-01', close: 26.38, change: 3.08 },
-                { date: '2019-11-04', close: 27.58, change: 1.2 },
-                { date: '2019-11-05', close: 27.19, change: -0.39 },
-                { date: '2019-11-06', close: 27.1, change: -0.09 },
+                { date: '2019-11-01', close: 26.38, change: 2.46 },
+                { date: '2019-11-04', close: 27.59, change: 1.21 },
+                { date: '2019-11-05', close: 27.19, change: -0.40 },
+                { date: '2019-11-06', close: 27.10, change: -0.09 },
                 { date: '2019-11-07', close: 28.26, change: 1.16 },
-                { date: '2019-11-08', close: 29.06, change: 0.8 },
-                { date: '2019-11-11', close: 28.36, change: -0.7 },
+                { date: '2019-11-08', close: 29.06, change: 0.80 },
+                { date: '2019-11-11', close: 28.36, change: -0.70 },
                 { date: '2019-11-12', close: 29.32, change: 0.96 },
                 { date: '2019-11-13', close: 28.96, change: -0.36 },
-                { date: '2019-11-14', close: 29.46, change: 0.5 },
-                { date: '2019-11-15', close: 31.46, change: 2 },
+                { date: '2019-11-14', close: 29.46, change: 0.50 },
+                { date: '2019-11-15', close: 31.46, change: 2.00 },
                 { date: '2019-11-18', close: 31.81, change: 0.35 },
                 { date: '2019-11-19', close: 32.27, change: 0.46 },
-                { date: '2019-11-20', close: 30.4, change: -1.87 },
+                { date: '2019-11-20', close: 30.40, change: -1.87 },
                 { date: '2019-11-21', close: 30.19, change: -0.21 },
                 { date: '2019-11-22', close: 30.71, change: 0.52 },
-                { date: '2019-11-25', close: 33, change: 2.29 },
-                { date: '2019-11-26', close: 33.64, change: 0.64 },
+                { date: '2019-11-25', close: 33.00, change: 2.29 },
+                { date: '2019-11-26', close: 33.64, change: 0.65 },
                 { date: '2019-11-27', close: 35.17, change: 1.53 },
-                { date: '2019-11-29', close: 34.17, change: -1 }
+                { date: '2019-11-29', close: 34.17, change: -1.00 }
             ]);
         } finally {
             await quote.close();
@@ -1828,7 +1828,7 @@ describe("quote-model", function() {
                 symbol: 'SPY   200221C00280000-200221P00280000', market: 'spread',
                 begin: '2019-11-01', end: '2019-12-01', tz
             }).should.eventually.be.like([
-                { date: '2019-11-01', close: 26.38, change: 3.08 },
+                { date: '2019-11-01', close: 26.38, change: 2.46 },
                 { date: '2019-11-04', close: 27.58, change: 1.2 },
                 { date: '2019-11-05', close: 27.19, change: -0.39 },
                 { date: '2019-11-06', close: 27.1, change: -0.09 },

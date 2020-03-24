@@ -62,7 +62,7 @@ process.on('SIGINT', () => {
 
 const delay = debounce(() => {
     return new Promise(cb => setTimeout(cb, 1));
-}, 100000, Promise.resolve());
+}, 10000, Promise.resolve());
 
 function debounce(fn, ticks, initial) {
     let clock = 0;
