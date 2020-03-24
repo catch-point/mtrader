@@ -572,7 +572,7 @@ function nextDividend(previously, date, dividend, cum_close, options) {
     const exdate = point.format('Y-MM-DD');
     if (exdate == previously.exdate) return;
     // no adjustments for today's price
-    return { exdate, adj:1, adj_dividend_only:1, adj_split_only:1, cum_close, split:1, dividend };
+    return { exdate, dividend, split:1, cum_close, adj:1, adj_dividend_only:1, adj_split_only:1 };
 }
 
 function expectedDividends(previously, dividend, close, options) {
@@ -591,7 +591,7 @@ function expectedDividends(previously, dividend, close, options) {
         const adj = Big(last.adj || 1).times(dj);
         const adj_dividend_only = Big(last.adj_dividend_only || 1).times(dj);
         const adj_split_only = last.adj_split_only || 1;
-        return last = { exdate, adj, adj_dividend_only, adj_split_only, cum_close, split:1, dividend };
+        return last = { exdate, dividend, split:1, cum_close, adj, adj_dividend_only, adj_split_only };
     });
 }
 

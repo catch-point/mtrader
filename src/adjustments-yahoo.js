@@ -246,7 +246,7 @@ async function adjustments(yahoo, db, salt, symbol, options) {
             adj_dividend_only = adj_dividend_only.times(Big(cum_close).minus(dividend)).div(cum_close);
             adj = adj.times(Big(cum_close).minus(dividend)).div(cum_close);
         }
-        adjustments.push({ exdate, adj, adj_dividend_only, adj_split_only, cum_close, split, dividend });
+        adjustments.push({ exdate, dividend, split, cum_close, adj, adj_dividend_only, adj_split_only });
         return adjustments;
     }, []).reverse();
 }
