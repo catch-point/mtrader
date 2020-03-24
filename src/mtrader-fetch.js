@@ -74,8 +74,8 @@ process.setMaxListeners(process.getMaxListeners()+1);
 if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length) {
-        const interval = program.args[0];
-        let symbol = program.args[1];
+        const interval = program.args.length > 1 ? program.args[0] : 'day';
+        let symbol = program.args[1] || program.args[0];
         let market = program.args[2];
         if (!market && symbol && ~symbol.indexOf('.')) {
             market = symbol.substring(symbol.lastIndexOf('.')+1);

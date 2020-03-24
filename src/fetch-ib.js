@@ -361,8 +361,10 @@ function marketOpensAt(now, options) {
 
 async function combineHistoricalLiveFeeds(historical_promise, live_promise, options) {
     const [historical_bars, live_intraday] = await Promise.all([historical_promise, live_promise]);
+    const last = _.last(historical_bars) || {}
+    const skip_volume_on = +last.volume && last.ending;
     const period = new Periods(options);
-    const live_bars = live_intraday.map(bar => ({
+    return live_intraday.map(bar => ({
         ...bar,
         ending: period.ceil(bar.ending).format(options.ending_format),
         open: bar.open,
@@ -372,8 +374,10 @@ async function combineHistoricalLiveFeeds(historical_promise, live_promise, opti
         volume: bar.volume,
         adj_close: bar.close
     })).reduce((reduced, bar) => {
+        if (reduced.length && _.last(reduced).ending > bar.ending) return reduced;
         const merge = reduced.length && _.last(reduced).ending == bar.ending;
         const merge_with = merge ? reduced.pop() : {};
+        const add_volume = !merge || skip_volume_on != bar.ending;
         reduced.push({
             ...merge_with, ...bar,
             ending: bar.ending,
@@ -381,12 +385,11 @@ async function combineHistoricalLiveFeeds(historical_promise, live_promise, opti
             high: Math.max(merge_with.high||bar.high, bar.high),
             low: Math.min(merge_with.low||bar.low, bar.low),
             close: bar.close,
-            volume: merge_with.volume + bar.volume,
+            volume: add_volume ? merge_with.volume + bar.volume : Math.max(merge.volume, bar.volume),
             adj_close: bar.adj_close
         });
         return reduced;
-    }, []);
-    return historical_bars.concat(live_bars);
+    }, historical_bars);
 }
 
 function createInstance(adjustments, settings = {}) {
