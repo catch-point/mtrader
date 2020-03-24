@@ -843,7 +843,7 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin, lat
             const first = new_records[0]; // overlap
             const records = new_records.slice(1);
             if (!_.isMatch(_.last(partial), first)) {
-                logger.debug("Quote blocks incompatible", options.symbol, _.last(partial), first);
+                logger.debug("Quote blocks incompatible", options.symbol, options.market, _.last(partial), first);
                 return 'incompatible';
             }
             await collection.propertyOf(block, 'complete', !latest);

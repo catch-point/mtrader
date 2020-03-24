@@ -140,7 +140,7 @@ function createInstance(program) {
             else return queue(options);
         });
     };
-    const directFactory = share(() => {
+    const direct_factory = () => {
         const settings = config('quote');
         const model = new Model(fetch, instance, settings);
         const quote = new Quote(model, settings);
@@ -149,9 +149,11 @@ function createInstance(program) {
             return fn.apply(this, _.rest(arguments));
         });
         return quote;
-    });
+    };
+    let shared_direct_factory = share(direct_factory);
+    let direct_instance = shared_direct_factory();
     const direct = options => {
-        const instance = directFactory();
+        const instance = shared_direct_factory();
         return instance(options).then(async(result) => {
             await instance.close();
             return result;
@@ -160,7 +162,6 @@ function createInstance(program) {
             throw err;
         });
     };
-    let direct_instance = directFactory();
     instance.close = function() {
         if (closed) return closed;
         else return closed = Promise.all([queue.close(), direct_instance.close(), fetch.close()]);
@@ -168,13 +169,15 @@ function createInstance(program) {
     instance.shell = shell.bind(this, program.description(), instance);
     instance.reload = async() => {
         const prior_direct = direct_instance;
-        direct_instance = directFactory();
+        shared_direct_factory = share(direct_factory);
+        direct_instance = shared_direct_factory();
         await queue.reload();
         await prior_direct.close();
     };
     instance.reset = async() => {
         const prior_direct = direct_instance;
-        direct_instance = directFactory();
+        shared_direct_factory = share(direct_factory);
+        direct_instance = shared_direct_factory();
         await prior_direct.close();
         try {
             return await queue.close();
