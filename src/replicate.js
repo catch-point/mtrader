@@ -731,7 +731,7 @@ function inlineComboOrders(orders, options) {
             ..._.pick(combo, 'order_type', 'limit', 'offset', 'stop', 'tif', 'status'),
             action: combo.action == 'BUY' ? leg.action : leg.action == 'BUY' ? 'SELL' : 'BUY',
             quant: Big(combo.quant).times(leg.quant).toString(),
-            order_ref: leg.order_ref || `${combo.order_ref}.${leg.symbol}.${leg.market}`
+            order_ref: leg.order_ref || combo.order_ref
         };
     });
     return inline_legs.filter(ord => {
@@ -776,31 +776,29 @@ function updateComboOrders(broker_orders, actual, replicateContract, order_chang
 
 function combineOrders(broker_orders, orders, options) {
     return reduceComboPairs(orders, (combined_orders, legs) => {
-        const quant = Math.min.apply(Math, legs.map(leg => leg.quant)).toString();
-        const remaining = legs.filter(leg => leg.quant != quant)
-            .map(leg => ({...leg, quant: (leg.quant - quant).toString()}));
+        const quant = greatestCommonFactor(_.uniq(legs.map(leg => Math.abs(leg.quant)))).toString();
         const existing_order = broker_orders.find(ord => {
             return ord.order_type != 'LEG' && ord.order_ref == _.first(legs).attach_ref;
         });
         const traded_price = +legs.reduce((net, leg) => {
-            return net.add(Big(leg.traded_price || leg.limit || 0).times(leg.action == 'BUY' ? 1 : -1));
-        }, Big(0));
+            return net.add(Big(leg.traded_price || leg.limit || 0).times(leg.action == 'BUY' ? 1 : -1).times(leg.quant));
+        }, Big(0)).div(quant);
         if (existing_order) logger.trace("existing_order", traded_price, existing_order);
         const action = existing_order ? existing_order.action :
             traded_price < 0 ? 'SELL' : traded_price > 0 ? 'BUY' : _.first(legs).action;
         const limit = +legs.reduce((net, leg) => {
-            return net.add(Big(leg.limit || 0).times(leg.action == action ? 1 : -1));
-        }, Big(0));
+            return net.add(Big(leg.limit || 0).times(leg.action == action ? 1 : -1).times(leg.quant));
+        }, Big(0)).div(quant);
         const stop = +legs.reduce((net, leg) => {
-            return net.add(Big(leg.stop || 0).times(leg.action == action ? 1 : -1));
-        }, Big(0));
+            return net.add(Big(leg.stop || 0).times(leg.action == action ? 1 : -1).times(leg.quant));
+        }, Big(0)).div(quant);
         const leg_symbols = _.sortBy(legs, leg =>
                 (leg.traded_price || leg.limit || 1) * (leg.action == action ? 1 : -1))
             .reverse().map(leg => `${leg.action == action ? '+' : '-'}${leg.symbol}`).join('').substring(1);
         const first_leg = legs.find(leg => leg.order_ref) || {order_ref: '', symbol: ''};
         const order_ref = (existing_order||{}).order_ref ||
             first_leg.order_ref.replace(ref(first_leg.symbol), ref(leg_symbols));
-        return combined_orders.concat(remaining, {
+        return combined_orders.concat({
             action,
             quant,
             order_type: _.first(legs).order_type,
@@ -812,74 +810,53 @@ function combineOrders(broker_orders, orders, options) {
                 ..._.omit(leg, 'order_type', 'limit', 'offset', 'stop', 'tif'),
                 action: action == 'SELL' && leg.action == 'BUY' ? 'SELL' :
                     action == 'SELL' && leg.action == 'SELL' ? 'BUY' : leg.action,
-                quant: '1',
+                quant: Big(leg.quant).div(quant).toString(),
                 order_type: 'LEG'
             }))
         });
-    }, []);
+    });
 }
 
 function reduceComboPairs(orders, cb, initial) {
-    const matrix = orders.map((a,i) => orders.map((b,j) => ({
-        a, b,
-        score: i != j ? comboFitScore(a, b) : 0
-    })));
-    let result = initial;
-    while (true) {
-        const pair = matrix.reduce((best, array, i) => array.reduce((best, pair, j) =>
-            best.score < pair.score ? {...pair, i, j} : best, best), {score:0});
-        if (!pair.score)
-            return result.concat(matrix.map(array => array[0].a));
-        matrix.forEach(array => {
-            array.splice(Math.max(pair.i, pair.j), 1);
-            array.splice(Math.min(pair.i, pair.j), 1);
-        });
-        matrix.splice(Math.max(pair.i, pair.j), 1);
-        matrix.splice(Math.min(pair.i, pair.j), 1);
-        result = cb(result, [pair.a, pair.b]);
-    }
+    const cancelling = orders.filter(ord => ord.action != 'BUY' && ord.action != 'SELL');
+    const buy_sell = orders.filter(ord => ord.action == 'BUY' || ord.action == 'SELL');
+    const grouped = Object.values(_.groupBy(buy_sell, ord => ord.order_ref));
+    const single_legs = grouped.filter(group => group.length == 1).map(group => group[0]);
+    const combo_legs = grouped.filter(group => group.length > 1).map(group => group.sort(sortByHigherPrice));
+    return combo_legs.reduce(cb, cancelling.concat(single_legs));
 }
 
-function comboFitScore(a, b) {
-    if (!_.isMatch(a, _.pick(b, 'market', 'security_type', 'currency', 'multiplier', 'order_type', 'tif'))) {
-        return 0; // different markets
-    } else if (_.difference([a.action, b.action], ['BUY', 'SELL']).length) {
-        return 0; // cancelling order
-    } else if (a.order_type != b.order_type) {
-        return 0; // different order types
-    } else if (a.offset != b.offset) {
-        return 0; // SNAP STK or SNAP PRIM
-    } else if (a.security_type == 'OPT') {
-        if (a.symbol.length != 21 || b.symbol.length != 21) return 0;
-        if (a.symbol.substring(0, 6) != b.symbol.substring(0, 6)) return 0;
-        if (a.symbol.charAt(12) != b.symbol.charAt(12)) return 0; // different rights
-        const [, a_expiry, a_right, a_strike] = a.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
-        const [, b_expiry, b_right, b_strike] = b.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
-        // combo action defaults to change first leg to BUY, so higher price first
-        if (!firstLegHasHigherPrice(a_expiry, a_right, a_strike, b_expiry, b_right, b_strike)) return 0;
-        const right_score = a_right == b_right && a.action != b.action ? 1e15 : 1e15 - 1e14;
-        const expiry_score = 1e14 - Math.abs(a_expiry - b_expiry) * 1e8;
-        const strike_score = 1e8 - Math.abs(a_strike - b_strike);
-        return expiry_score + right_score + strike_score;
-    } else {
-        return 0;
-    }
-}
-
-function firstLegHasHigherPrice(a_expiry, a_right, a_strike, b_expiry, b_right, b_strike) {
+function sortByHigherPrice(a, b) {
+    if (a.traded_price && b.traded_price && a.traded_price != b.traded_price) return b.traded_price - a.traded_price;
+    else if (a.limit && b.limit && a.limit != b.limit) return b.limit - a.limit;
+    else if (a.stop && b.stop && a.stop != b.stop) return b.stop - a.stop;
+    else if (a.symbol.length != b.symbol.length) return b.symbol.length - a.symbol.length;
+    else if (a.symbol.length != 21 && a.symbol < b.symbol) return -1;
+    else if (a.symbol.length != 21 && a.symbol > b.symbol) return 1;
+    else if (a.symbol.length != 21) return b.action.length - a.action.length;
+    const [, a_expiry, a_right, a_strike] = a.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
+    const [, b_expiry, b_right, b_strike] = b.symbol.match(/\S{1,6} *(\d{6})([CP])(\d{8})/);
     if (a_right == b_right) {
         if (a_expiry == b_expiry) {
             if (a_right == 'C')
-                return a_strike < b_strike; // BUY ITM CALL and SELL OTM CALL
+                return a_strike - b_strike; // BUY ITM CALL and SELL OTM CALL
             else if (a_right == 'P')
-                return a_strike > b_strike; // BUY ITM PUT and SELL OTM PUT
+                return b_strike - a_strike; // BUY ITM PUT and SELL OTM PUT
             else
                 throw Error(`Invalid right: ${a_right}`);
         } else {
-            return a_expiry > b_expiry; // BUY far and SELL near
+            return b_expiry - a_expiry; // BUY far and SELL near
         }
+    } else if (a_right == 'P' && b_right == 'C') {
+        return -1; // BUY PUT and SELL CALL
+    } else if (a_right == 'C' && b_right == 'P') {
+        return 1; // SELL CALL and BUY PUT
+    } else if (a.symbol < b.symbol) {
+        return -1;
+    } else if (a.symbol > b.symbol) {
+        return 1;
     } else {
-        return a_right == 'P' && b_right == 'C'; // BUY PUT and SELL CALL
+        return b.action.length - a.action.length;
     }
 }
 
@@ -949,4 +926,11 @@ function sortAttachedOrders(orders) {
         }, sorted);
     }
     return sorted;
+}
+
+function greatestCommonFactor(numbers) {
+    if (numbers.length == 1) return _.first(numbers);
+    return _.range(Math.min(...numbers), 0, -1).find(dem => {
+        return numbers.every(number => number/dem == Math.floor(number/dem));
+    });
 }

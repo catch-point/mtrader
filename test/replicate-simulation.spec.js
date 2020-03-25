@@ -858,6 +858,7 @@ describe("replicate-simulation", function() {
                     position: '3',
                     order_type: 'MKT',
                     offset: '0',
+                    order_ref: 'spx_combo',
                     traded_price: '0.15'
                 }, {
                     symbol: 'SPX   190621C03125000',
@@ -869,6 +870,7 @@ describe("replicate-simulation", function() {
                     position: '-3',
                     order_type: 'MKT',
                     offset: '0',
+                    order_ref: 'spx_combo',
                     traded_price: '0.05'
                 }]);
             })({
@@ -923,6 +925,7 @@ describe("replicate-simulation", function() {
                     quant: '3',
                     position: '-3',
                     order_type: 'MKT',
+                    order_ref: 'spx_combo',
                     offset: '0',
                     traded_price: '0.15',
                     basis: '0.3',
@@ -947,6 +950,7 @@ describe("replicate-simulation", function() {
                     quant: '3',
                     position: '3',
                     order_type: 'MKT',
+                    order_ref: 'spx_combo',
                     offset: '0',
                     traded_price: '0.05',
                     basis: '0.18',
@@ -998,11 +1002,11 @@ describe("replicate-simulation", function() {
         });
         it("adjust combo order", async() => {
             await broker({
-                order_ref: 'combo_order',
                 asof: '2019-05-27T12:00:00-04:00',
                 action: 'SELL',
                 quant: 3,
                 order_type: 'MKT',
+                order_ref: 'combo_order',
                 offset: '1',
                 tif: 'DAY',
                 attached: [{
@@ -1039,6 +1043,7 @@ describe("replicate-simulation", function() {
                     quant: '3',
                     position: '-3',
                     order_type: 'MKT',
+                    order_ref: 'combo_order',
                     offset: '0',
                     traded_price: '0.15',
                     basis: '0.3',
@@ -1063,6 +1068,7 @@ describe("replicate-simulation", function() {
                     quant: '3',
                     position: '3',
                     order_type: 'MKT',
+                    order_ref: 'combo_order',
                     offset: '0',
                     traded_price: '0.05',
                     basis: '0.18',
@@ -1128,6 +1134,7 @@ describe("replicate-simulation", function() {
                 action: 'SELL',
                 quant: 3,
                 order_type: 'MKT',
+                order_ref: 'spx_combo',
                 offset: '0',
                 tif: 'DAY',
                 attached: [{
@@ -1164,6 +1171,7 @@ describe("replicate-simulation", function() {
                     quant: '3',
                     position: '-3',
                     order_type: 'MKT',
+                    order_ref: 'spx_combo',
                     offset: '0',
                     traded_price: '0.15',
                     basis: '0.3',
@@ -1188,6 +1196,7 @@ describe("replicate-simulation", function() {
                     quant: '3',
                     position: '3',
                     order_type: 'MKT',
+                    order_ref: 'spx_combo',
                     offset: '0',
                     traded_price: '0.05',
                     basis: '0.18',
@@ -2392,7 +2401,7 @@ describe("replicate-simulation", function() {
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
                     limit: '81.4',
-                    order_ref: 'MOC.SPX200320C03200000.mkspxorders',
+                    order_ref: 'MOC.SPX200320C.mkspxorders',
                     symbol: 'SPX   200320C03200000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -2406,7 +2415,7 @@ describe("replicate-simulation", function() {
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
                     limit: '66.2',
-                    order_ref: 'MOC.SPX200320C03225000.mkspxorders',
+                    order_ref: 'MOC.SPX200320C.mkspxorders',
                     symbol: 'SPX   200320C03225000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -2450,7 +2459,7 @@ describe("replicate-simulation", function() {
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
                     limit: '81.4',
-                    order_ref: 'MOC.SPX200320C03200000.mkspxorders',
+                    order_ref: 'MOC.mkspxorders',
                     symbol: 'SPX   200320C03200000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -2464,7 +2473,7 @@ describe("replicate-simulation", function() {
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
                     limit: '66.2',
-                    order_ref: 'MOC.SPX200221C03225000.mkspxorders',
+                    order_ref: 'MOC.mkspxorders',
                     symbol: 'SPX   200221C03225000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -2477,7 +2486,7 @@ describe("replicate-simulation", function() {
                 currency: 'USD',
                 markets: ['OPRA'],
                 combo_order_types: ['MOC']
-            }).then(printEach).should.eventually.be.like([{
+            }).should.eventually.be.like([{
                 order_type: 'LOC',
                 action: 'BUY',
                 limit: (8140-6620)/100
@@ -2497,18 +2506,18 @@ describe("replicate-simulation", function() {
                 currency: 'USD'
             }]);
         });
-        it("should combine 1-to-1 orders with remaining", async() => {
+        it("should combine 2-to-1 orders", async() => {
             return replicate(function(options) {
                 if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     action: 'BUY',
-                    quant: 5,
-                    position: '5',
+                    quant: 6,
+                    position: '6',
                     order_type: 'LOC',
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
                     limit: '81.4',
-                    order_ref: 'MOC.SPX200320C03200000.mkspxorders',
+                    order_ref: 'MOC.SPX200320C.mkspxorders',
                     symbol: 'SPX   200320C03200000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -2522,7 +2531,7 @@ describe("replicate-simulation", function() {
                     tif: 'DAY',
                     traded_at: '2019-12-19T16:15:00-05:00',
                     limit: '66.2',
-                    order_ref: 'MOC.SPX200320C03225000.mkspxorders',
+                    order_ref: 'MOC.SPX200320C.mkspxorders',
                     symbol: 'SPX   200320C03225000',
                     market: 'OPRA',
                     currency: 'USD',
@@ -2536,22 +2545,14 @@ describe("replicate-simulation", function() {
                 markets: ['OPRA'],
                 combo_order_types: ['MOC']
             }).should.eventually.be.like([{
-                action: 'BUY',
-                order_type: 'LOC',
-                quant: '2',
-                symbol: 'SPX   200320C03200000',
-                market: 'OPRA',
-                security_type: 'OPT',
-                currency: 'USD'
-            }, {
                 order_type: 'LOC',
                 action: 'BUY',
                 quant: '3',
-                limit: (8140-6620)/100
+                limit: (2*8140-6620)/100
             }, {
                 action: 'BUY',
                 order_type: 'LEG',
-                quant: '1',
+                quant: '2',
                 symbol: 'SPX   200320C03200000',
                 market: 'OPRA',
                 security_type: 'OPT',
