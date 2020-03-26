@@ -235,12 +235,6 @@ async function adjustments(yahoo, db, salt, symbol, options) {
             adj_split_only = adj_split_only.div(split);
             adj = adj.div(split);
         }
-        // heuristic to test if the split has been applied REM.NYSE 2016-11-07
-        if (!split.eq(1) && adjustments.length &&
-                Big(datum.cum_close||0).minus(_.last(adjustments).cum_close||0).abs().gt(
-                Big(datum.cum_close||0).times(adj_split_only).minus(_.last(adjustments).cum_close||0).abs())) {
-            adj_split_only = adj_split_only.times(split);
-        }
         const cum_close = Big(datum.cum_close||0).div(adj_split_only);
         if (!dividend.eq(0) && !Big(datum.cum_close||0).eq(0)) {
             adj_dividend_only = adj_dividend_only.times(Big(cum_close).minus(dividend)).div(cum_close);

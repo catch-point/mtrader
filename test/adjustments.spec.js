@@ -165,6 +165,33 @@ describe("adjustments", function() {
             {exdate:'2016-12-21',dividend:0.85,cum_close:42.94,adj:0.9800}
         ]);
     });
+    it("should ignore NOV 2-to-1 split (it was actually 9079/10000)", function() {
+        return adjustments({
+            symbol: 'NOV',
+            market: 'NYSE',
+            begin: '2007-09-01',
+            tz: tz
+        }).then(adjustments => {
+            var end = '2008-01-01';
+            var idx = _.sortedIndex(adjustments, {exdate: end}, 'exdate');
+            var after = adjustments[idx] && adjustments[idx].exdate == end ? adjustments[idx+1] : adjustments[idx];
+            return adjustments
+              .filter(datum => datum.exdate <= end)
+              .map(datum => _.mapObject({...datum,
+                adj: Big(datum.adj).div(after.adj),
+                adj_dividend_only: Big(datum.adj_dividend_only).div(after.adj_dividend_only),
+                adj_split_only: Big(datum.adj_split_only).div(after.adj_split_only)
+              }, num => _.isFinite(num) ? +num : num));
+        }).should.eventually.be.like([{
+            exdate: '2007-10-01',
+            adj: 1/2,
+            adj_dividend_only: 1,
+            adj_split_only: 1/2,
+            cum_close: Math.round(65.15*2*1109/1000 *100)/100,
+            split: 2,
+            dividend: 0
+        }]);
+    });
     it("should adjust for Citigroup reverse split", function() {
         return adjustments({
             symbol: 'C',

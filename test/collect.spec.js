@@ -449,7 +449,7 @@ describe("collect", function() {
             {symbol:"XLY",date:"2016-11-30",shares:-108,position:212,price:81.83,basis:80.08,profit:368.24}
         ]);
     });
-    it("DIVIDEND and SPLIT functions", async() => {
+    it("DIVIDEND and SPLIT functions AAPL", async() => {
         return collect({
             columns: {
                 ending: 'ending',
@@ -467,6 +467,29 @@ describe("collect", function() {
           .should.eventually.be.like([
             { ending: '2014-05-08T16:00:00-04:00', close: 587.990011, dividend: 3.29, split: 1 },
             { ending: '2014-06-09T16:00:00-04:00', close: 93.699997, dividend: 0, split: 7 }
+        ]);
+    });
+    it("SPLIT functions NOV", async() => {
+        return collect({
+            columns: {
+                date: 'DATE(ending)',
+                close: 'ROUND(day.close,2)',
+                split: "SPLIT(symbol, market, day.ending, '20090117')",
+                adj_close: "ROUND(close/split,2)"
+            },
+            portfolio: 'NOV.NYSE',
+            begin: '2007-09-24', end: '2007-10-06'
+        }).should.eventually.be.like([
+            { date: '2007-09-24', close: 142.68, split: 2, adj_close: 71.34 },
+            { date: '2007-09-25', close: 142.2, split: 2, adj_close: 71.1 },
+            { date: '2007-09-26', close: 146.71, split: 2, adj_close: 73.36 },
+            { date: '2007-09-27', close: 147.33, split: 2, adj_close: 73.67 },
+            { date: '2007-09-28', close: 144.5, split: 2, adj_close: 72.25 },
+            { date: '2007-10-01', close: 73.4, split: 1, adj_close: 73.4 },
+            { date: '2007-10-02', close: 73.49, split: 1, adj_close: 73.49 },
+            { date: '2007-10-03', close: 73.19, split: 1, adj_close: 73.19 },
+            { date: '2007-10-04', close: 74.67, split: 1, adj_close: 74.67 },
+            { date: '2007-10-05', close: 76.74, split: 1, adj_close: 76.74 }
         ]);
     });
     it("external instrument", function() {
