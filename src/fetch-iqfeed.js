@@ -626,10 +626,6 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     const tz = options.security_tz;
     const now = moment.tz(options.now, tz);
     if (now.days() === 6) return bars;
-    if (!bars.length) return mostRecentTrade(iqclient, adjustments, symbol, _.defaults({
-        begin: moment.tz(options.begin, options.tz).format(options.ending_format),
-        end: moment.tz(options.end || now, options.tz).format(options.ending_format)
-    }, options));
     const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
     const opensAt = moment.tz(`${now.format('YYYY-MM-DD')}T${options.open_time}`, tz);
     const closesAt = moment.tz(`${now.format('YYYY-MM-DD')}T${close_time}`, tz);
@@ -637,6 +633,11 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     if (now.isAfter(closesAt)) opensAt.add(1, 'day');
     if (now.isAfter(closesAt)) closesAt.add(1, 'day');
     if (now.isBefore(opensAt)) return bars;
+    if (opensAt.isAfter(options.end)) return bars;
+    if (!bars.length) return mostRecentTrade(iqclient, adjustments, symbol, _.defaults({
+        begin: moment.tz(options.begin, options.tz).format(options.ending_format),
+        end: moment.tz(options.end || now, options.tz).format(options.ending_format)
+    }, options));
     if (!closesAt.isAfter(_.last(bars).ending)) return bars;
     const end = moment.tz(options.end || now, options.tz);
     if (end.isBefore(opensAt)) return bars;
