@@ -94,6 +94,8 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
         // @see https://groups.io/g/twsapi/message/40551
         if (info && info.code == 1101) {
             logger.log("ib-client", clientId, err.message);
+        } else if (info && info.code == 1102) {
+            logger.log("ib-client", clientId, err.message);
         } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
             logger.debug("ib-client", clientId, err.message);
         } else if (info && info.code >= 2000 && info.code < 3000) {
@@ -1080,6 +1082,7 @@ function isGeneralError(info) {
     else if (!info.code) return true;
     const code = info.code;
     if (code == 1101) return false; // Connectivity restored
+    else if (code == 1102) return false; // Connectivity restored
     else if (code == 202) return false; // Order Canceled
     else if (code >= 2000 && code < 3000) return false; // Warnings
     else return true;
