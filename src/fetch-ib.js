@@ -227,7 +227,15 @@ module.exports = function(settings = {}) {
                         throw err;
                     });
                 });
-            } else if (next_open.isBefore(now) && (!options.end || !next_open.isAfter(options.end))) {
+            } else if (now.isBefore(next_open) || options.end && next_open.isAfter(options.end)) {
+                // market is closed
+                return fetch(options).catch(err => {
+                    return fetch_ib(options).catch(err2 => {
+                        logger.debug(err2);
+                        throw err;
+                    });
+                });
+            } else {
                 // market is open
                 const market = markets[options.market];
                 const secTypes = [].concat(market.secTypes || [], market.secType || []);
@@ -267,26 +275,6 @@ module.exports = function(settings = {}) {
                         throw err;
                     });
                 });
-            } else {
-                // market is closed
-                const market = markets[options.market];
-                const secTypes = [].concat(market.secTypes || [], market.secType || []);
-                const opt = _.intersection(secTypes, ['OPT', 'FOP']).length;
-                const historical = await fetch(options).catch(err => []);
-                const earlier = (_.last(historical)||{}).ending;
-                const yesterday = !earlier ? moment.tz(options.begin, options.tz) :
-                    moment(next_open).subtract(Math.min(next_open.diff(earlier, 'days'),4), 'days');
-                if (yesterday.isAfter(now)) return historical;
-                else if (options.end && yesterday.isAfter(options.end)) return historical;
-                return combineHistoricalLiveFeeds(historical, fetch_ib({
-                    ...options,
-                    begin: yesterday.format(),
-                    interval: opt && options.interval.charAt(0) != 'm' ? 'm30' : options.interval
-                }).catch(err => {
-                    if (!historical.length) throw err;
-                    logger.warn(`Could not fetch ${options.symbol} snapshot IB data ${err.message}`);
-                    return [];
-                }), options);
             }
         }
     };
