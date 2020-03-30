@@ -701,15 +701,15 @@ async function collectDataset(dataset, parser, columns, options) {
     const precedence = await getOrderBy(options.precedence, columns, options);
     return pcolumns.then(fcolumns => pcriteria.then(async(criteria) => {
         return await reduceInterval(dataset, options.temporalCol, async(result, points) => {
-            await check();
             const positions = sortBy(points, precedence);
             const row = result.length;
-            result[row] = positions.reduce((retained, point) => {
+            result[row] = await positions.reduce(async(retained, point) => {
                 const key = point[options.indexCol];
-                const pending = _.extend({}, retained, {
+                const pending = _.extend({}, await retained, {
                     [key]: point
                 });
                 result[row] = pending;
+                await check();
                 if (criteria && !criteria(result)) return retained;
                 else return _.extend(pending, {
                     [key]: _.mapObject(fcolumns, fn => fn(result))
