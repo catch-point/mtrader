@@ -102,7 +102,8 @@ module.exports.getVariables = function(expr, options) {
 const functions = module.exports.functions = {
     PREC: _.extend((options, name, columnExpr, defaultValue) => {
         return positions => {
-            const keys = _.keys(_.pick(_.last(positions), _.isObject));
+            const last = _.last(positions);
+            const keys = Object.keys(last).filter(key => _.isObject(last[key]));
             const previously = positions[positions.length -2];
             if (keys.length > 1)
                 return _.last(positions)[keys[keys.length-2]][name];

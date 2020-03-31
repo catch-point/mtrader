@@ -672,11 +672,19 @@ function createParser(quoting, columns, cached, options) {
             if (columns[name] && name!=columns[name])
                 return pCols[name] = pCols[name] || await parser.parse(columns[name]);
             // [{"USD.CAD": {"close": 1.00}}]
-            else return ctx => _.last(_.values(_.last(ctx)))[name];
+            else return ctx => {
+                const last = _.last(ctx);
+                const last_key = _.last(Object.keys(last));
+                return last[last_key][name];
+            };
         },
         expression(expr, name, args) {
             if (_.contains(cached, expr))
-                return ctx => _.last(_.values(_.last(ctx)))[expr];
+                return ctx => {
+                    const last = _.last(ctx);
+                    const last_key = _.last(Object.keys(last));
+                    return last[last_key][expr];
+                };
             else {
                 const fn = common(name, args, options) ||
                     rolling(expr, name, args, options) ||
