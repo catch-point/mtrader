@@ -588,7 +588,7 @@ function expectedDividends(previously, dividend, close, options) {
 
 function market_tz(timeZoneId) {
     const abbr = ~timeZoneId.indexOf(' ') ? timeZoneId.substring(0, timeZoneId.indexOf(' ')) : timeZoneId;
-    const zones = moment.tz.names()
+    const zone = moment.tz.names()
       .map(name => moment.tz.zone(name))
       .filter(zone => ~zone.abbrs.indexOf(abbr))
       .sort((a,b) => b.abbrs.filter(e => e == abbr).length - a.abbrs.filter(e => e == abbr).length)
@@ -597,7 +597,7 @@ function market_tz(timeZoneId) {
         else if (largest.population < zone.population) return zone;
         else return largest;
     }, null);
-    if (zones.length) return zones[0].name;
+    if (zone) return zone.name;
     else return null;
 }
 
