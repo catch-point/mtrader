@@ -1844,12 +1844,9 @@ describe("broker-ib", function() {
                             return Promise.resolve({ bid: 0.25, ask: 0.4 })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1})
                         default:
                             throw Error("Too many times")
                     }
@@ -2066,12 +2063,9 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }
@@ -2349,12 +2343,9 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }
@@ -2617,12 +2608,9 @@ describe("broker-ib", function() {
                             return Promise.resolve({ bid: 6.1, ask: 6.3 })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }
@@ -2854,12 +2842,9 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }
@@ -3138,12 +3123,9 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }
@@ -3424,12 +3406,9 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }
@@ -3708,12 +3687,9 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }
@@ -3992,12 +3968,9 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }
@@ -4281,12 +4254,9 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904,
-                                symbol: undefined,
-                                secType: undefined,
-                                exchange: 'CBOE'
+                                conId: 416904
                             }]);
-                            return Promise.resolve({})
+                            return Promise.resolve({ bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }

@@ -625,13 +625,13 @@ async function snapStockLimit(markets, ib, contract, order) {
         const exchange = (detail.validExchanges||'').split(',').find(ex => ex != 'SMART') ||
             detail.summary.exchange;
         const [bar, under_bar] = await Promise.all([
-            ib.reqMktData(contract),
-            ib.reqMktData({
+            reqMktData(ib, contract),
+            reqMktData(ib, {
                 conId: detail.underConId,
                 exchange: exchange
             })
         ]);
-        if (!bar || !bar.bid || !bar.ask)
+        if (!bar || !(bar.midpoint || bar.last || bar.close))
             throw Error(`Can only submit SNAP STK ${order.order_ref} orders while market is open`);
         const net_offset = order.action == 'BUY' && right == 'C' ||
             order.action == 'SELL' && right == 'P' ?
@@ -667,18 +667,18 @@ async function snapStockLimit(markets, ib, contract, order) {
         });
         const [bars, under_bar] = await Promise.all([
             Promise.all(contracts.map(async(contract) => {
-                return ib.reqMktData(contract);
+                return reqMktData(ib, contract);
             })),
-            ib.reqMktData({
+            reqMktData(ib, {
                 conId: detail.underConId,
                 symbol: detail.underSymbol,
                 secType: detail.underSecType,
                 exchange: exchange
             })
         ]);
-        if (bars.some(bar => !bar.bid || !bar.ask))
+        if (bars.some(bar => !bar.midpoint && !bar.last && !bar.close))
             throw Error("Can only submit SNAP STK orders while market is active");
-        const net_mid_price = netPrice(order.attached, bars.map(bar => +Big(bar.bid).add(bar.ask).div(2)));
+        const net_mid_price = netPrice(order.attached, bars.map(bar => bar.midpoint || bar.last || bar.close));
         const net_offset = order.action == 'BUY' && right == 'C' && +net_mid_price >= 0 ||
             order.action == 'SELL' && right == 'P' && +net_mid_price >= 0 ?
             Big(order.offset||0).times(-1) : Big(order.offset||0);
@@ -696,23 +696,35 @@ async function snapStockLimit(markets, ib, contract, order) {
     }
 }
 
+async function reqMktData(client, contract) {
+    const bar = await client.reqMktData(contract);
+    if (bar && bar.bid && bar.ask) return {...bar, midpoint: +Big(bar.bid).add(bar.ask).div(2)};
+    else if (bar && (bar.last || bar.close)) return bar;
+    const now = moment().utc().startOf('day').format('YYYYMMDD HH:mm:ss z');
+    const last = await client.reqHistoricalData(contract, now, '1 D', '1 day', 'MIDPOINT', 0, 1).catch(err => []);
+    if (last.length) return last[last.length-1];
+    else return bar;
+}
+
 async function snapStockPrice(ib, contract, bar, under_bar, net_offset) {
-    if (!+net_offset) return +Big(bar.bid).add(bar.ask).div(2);
-    else if (!bar.ask_option && contract.secType != 'OPT' && contract.secType != 'FOP')
-        return +Big(bar.bid).add(bar.ask).div(2).add(net_offset);
-    if (!bar.model_option)
-        throw Error(`No model for option ${contract.localSymbol} ${util.inspect(bar)}`);
-    const undPrice = bar.model_option.undPrice != Number.MAX_VALUE && bar.model_option.undPrice || null;
-    const asset_price = undPrice || under_bar.last || +Big(under_bar.bid).add(under_bar.ask).div(2);
+    const opt_price = bar.midpoint || bar.last || bar.close;
+    const model_price = (bar.model_option||{}).optPrice || opt_price;
+    if (!+net_offset) return opt_price;
+    else if (contract.secType != 'OPT' && contract.secType != 'FOP')
+        return +Big(opt_price).add(net_offset);
+    const undPrice = (bar.model_option||{}).undPrice != Number.MAX_VALUE && (bar.model_option||{}).undPrice||null;
+    const asset_price = undPrice || under_bar.midpoint || under_bar.last || under_bar.close;
     if (!+asset_price)
         throw Error(`Can only submit SNAP STK orders while market is active ${util.inspect(under_bar)}`);
-    const asset_offset = +Big(asset_price).add(net_offset);
-    const iv = bar.model_option.iv || +Big(bar.ask_option.iv).add(bar.bid_option.iv).div(2);
+    const asset_limit = +Big(asset_price).add(net_offset);
+    const iv = (bar.model_option||{}).iv ||
+        bar.ask_option && bar.bid_option && +Big(bar.ask_option.iv).add(bar.bid_option.iv).div(2) ||
+        (await ib.calculateImpliedVolatility(contract, model_price, asset_price)).iv;
     if (!iv || iv == Number.MAX_VALUE || iv == Number.MAX_VALUE/2)
-        throw Error(`No implied volatility for option ${contract.localSymbol} ${util.inspect(bar.model_option)}`);
-    const option = await ib.calculateOptionPrice(contract, iv, asset_offset);
-    logger.log("calculated option price model", option.optPrice, '+', +net_offset, bar.model_option);
-    return +Big(option.optPrice).minus(bar.model_option.optPrice).add(Big(bar.bid).add(bar.ask).div(2));
+        throw Error(`No implied volatility for ${contract.localSymbol} ${util.inspect(bar.model_option||bar)}`);
+    const option = await ib.calculateOptionPrice(contract, iv, asset_limit);
+    logger.log("calculated option price model", option.optPrice, '+', +net_offset, iv, bar.model_option || bar);
+    return +Big(option.optPrice).minus(model_price).add(opt_price);
 }
 
 function netPrice(legs, leg_prices) {
