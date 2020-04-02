@@ -88,12 +88,12 @@ describe("optimize", function() {
                 slow_len: 200
             },
             parameter_values: {
-                fast_len: [1,5,10,15,20,25,50],
-                slow_len: [20,25,50,80,100,150,200]
+                fast_len: [1,5,10,20,50],
+                slow_len: [25,50,100,200]
             }
         }).should.eventually.be.like({
             parameters: {
-                fast_len: 15,
+                fast_len: 20,
                 slow_len: 25
             }
         });
