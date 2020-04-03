@@ -393,7 +393,7 @@ function createInstance(adjustments, settings = {}) {
         (client, contract) => JSON.stringify(contract),
         100
     );
-    const market_tz_fn = _.memoize(market_tz);
+    const market_tz_fn = _.memoize(market_tz, (timeZoneId, default_tz) => `${timeZoneId},${default_tz}`);
     const self = async(options) => {
         if (options.info=='help') return help(settings);
         if (options.info=='version') {
@@ -450,7 +450,7 @@ async function contract(market_tz, markets, client, options) {
     const contracts = conIds.map(details => flattenContractDetails(details));
     return contracts.map((contract, i) => {
         const market = markets[options.market] || markets[contract.primaryExch] || {};
-        const security_tz = contract.timeZoneId && market_tz(contract.timeZoneId) || market.security_tz;
+        const security_tz = contract.timeZoneId && market_tz(contract.timeZoneId, market.security_tz);
         const open_time = security_tz == market.security_tz && market.open_time ||
             contract.liquidHours && market_open(contract.liquidHours) || null;
         return _.omit({
@@ -482,7 +482,7 @@ async function fundamental(market_tz, markets, client, options) {
     return contracts.map((contract, i) => {
         const under = under_contracts[i] || contract;
         const market = markets[options.market] || markets[contract.primaryExch] || {};
-        const security_tz = contract.timeZoneId && market_tz(contract.timeZoneId) || market.security_tz;
+        const security_tz = contract.timeZoneId && market_tz(contract.timeZoneId, market.security_tz);
         const open_time = security_tz == market.security_tz && market.open_time ||
             contract.liquidHours && market_open(contract.liquidHours) || null;
         return _.omit({
@@ -586,19 +586,29 @@ function expectedDividends(previously, dividend, close, options) {
     });
 }
 
-function market_tz(timeZoneId) {
-    const abbr = ~timeZoneId.indexOf(' ') ? timeZoneId.substring(0, timeZoneId.indexOf(' ')) : timeZoneId;
-    const zone = moment.tz.names()
+function market_tz(timeZoneId, default_tz = '') {
+    const continent = default_tz.substring(0, default_tz.indexOf('/')+1);
+    const abbr = ~timeZoneId.indexOf(' ') ?
+        timeZoneId.substring(0, timeZoneId.indexOf(' ')) : timeZoneId;
+    const zones = moment.tz.names()
+      .filter(name => name.indexOf(continent) === 0)
       .map(name => moment.tz.zone(name))
       .filter(zone => ~zone.abbrs.indexOf(abbr))
-      .sort((a,b) => b.abbrs.filter(e => e == abbr).length - a.abbrs.filter(e => e == abbr).length)
-      .reduce((largest, zone) => {
-        if (!largest) return zone;
+      .map(zone => ({
+        name: zone.name,
+        population: zone.population,
+        frequency: zone.abbrs.filter(e => e == abbr).length
+    })).sort((a,b) => b.frequency - a.frequency);
+    if (!zones.length) return default_tz;
+    const threshold = zones[0].frequency/2;
+    const zone = zones.reduce((largest, zone) => {
+        if (zone.frequency < threshold) return largest;
+        else if (!largest) return zone;
         else if (largest.population < zone.population) return zone;
         else return largest;
     }, null);
     if (zone) return zone.name;
-    else return null;
+    else return default_tz;
 }
 
 function market_open(hours) {
