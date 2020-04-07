@@ -704,8 +704,8 @@ function trimTables(tables, options) {
     const formatE = options.end;
     let to = _.sortedIndex(bars, {ending: formatE}, 'ending');
     if (to < bars.length && formatE != bars[to].ending) to--;
-    const stop = Math.min(Math.max(to + options.pad_end, 0), bars.length -1);
-    return bars.slice(0, stop +1);
+    const stop = Math.min(Math.max(to + options.pad_end +1, 0), bars.length);
+    return bars.slice(0, stop);
 }
 
 /**
