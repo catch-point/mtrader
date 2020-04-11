@@ -344,7 +344,8 @@ async function fetchModelBars(markets, fetch, quote, asset, model, options) {
         _.pick(model.parameters, 'symbol', 'market', 'interval'),
         _.pick(options, [
             'symbol', 'market', 'interval', 'begin', 'end',
-            'tz', 'ending_format'
+            'tz', 'ending_format',
+            'processed_symbols'
         ])
     ));
     const marketOptions = [
