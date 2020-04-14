@@ -73,6 +73,7 @@ function usage(command) {
         .option('-n, --dry-run', "Disable order submission")
         .option('--allocation-pct <percent>', "Percentage 0-100 of the balance that should be allocated to this strategy")
         .option('--allocation-peak-pct <percent>', "Percentage 0-100 of the maximum balance in the past 12 months to allocate")
+        .option('--reserve-peak-allocation <number>', "Amount to exclude from allocation at peak balance in the past 12 month")
         .option('--allocation-min <number>', "Minimum monetary amount that should be allocated to this strategy")
         .option('--allocation-max <number>', "Maximum monetary amount that should be allocated to this strategy")
         .option('-f, --force', "Change live position even if it was changed more recently then model")

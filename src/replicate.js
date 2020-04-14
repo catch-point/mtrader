@@ -137,6 +137,10 @@ function helpInfo(broker, collect) {
                 usage: '<number>',
                 description: "Percentage 0-100 of the maximum balance in the past 12 months to allocate"
             },
+            reserve_peak_allocation: {
+                usage: '<number>',
+                description: "Amount to exclude from allocation at peak balance in the past 12 months"
+            },
             allocation_min: {
                 usage: '<number>',
                 description: "Minimum amount that should be allocated to this strategy"
@@ -320,7 +324,7 @@ async function getDesiredParameters(broker, begin, options) {
     ]);
     const first_traded_at = getFirstTradedAt(past_positions, begin, options);
     const initial_balances = await broker({action: 'balances', asof: first_traded_at, now: options.now});
-    const peak_balances = options.allocation_peak_pct ? await broker({
+    const peak_balances = options.allocation_peak_pct || options.reserve_peak_allocation ? await broker({
         action: 'balances',
         begin: moment(first_traded_at).subtract(1,'year').format(),
         now: options.now
@@ -400,15 +404,17 @@ function getFirstTradedAt(positions, begin, options) {
 
 function getAllocation(peak_balances, balances, options) {
     const initial_balance = getBalance(balances, options);
-    const peak_balance = !options.allocation_peak_pct ? initial_balance :
-        getPeakBalance(peak_balances, options);
-    const alloc_pct = options.allocation_pct || 100;
-    const alloc_peak_pct = options.allocation_peak_pct || alloc_pct;
+    const peak_balance = !options.allocation_peak_pct && !options.reserve_peak_allocation ?
+        initial_balance : getPeakBalance(peak_balances, options);
+    const alloc_pct = +options.allocation_pct || 100;
+    const alloc_peak_pct = +options.allocation_peak_pct || alloc_pct;
+    const reserve_peak_allocation = +options.reserve_peak_allocation || 0;
     return Math.min(
         Math.max(
             Math.min(
                 initial_balance.times(alloc_pct).div(100),
-                peak_balance.times(alloc_peak_pct).div(100)
+                peak_balance.times(alloc_peak_pct).div(100),
+                peak_balance.minus(reserve_peak_allocation)
             ),
             options.allocation_min||0
         ),
