@@ -662,6 +662,7 @@ async function snapStockLimit(markets, ib, contract, order) {
         const exchange = (detail.validExchanges||'').split(',').find(ex => ex != 'SMART') ||
             detail.summary.exchange;
         contracts.forEach(contract => {
+            expect(contract.secType).to.be.oneOf(['FUT', 'OPT','FOP']);
             expect(contract.right).is.oneOf(['C', 'P']);
             expect(contract.right).to.eql(right);
         });

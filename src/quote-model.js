@@ -313,15 +313,15 @@ async function readModel(asset, model, parameters, options) {
         });
         const new_parameters = _.mapObject(parser.parse(model.eval), fn => fn());
         const revised_params = { ...parameters, ...new_parameters };
-        const begin = moment.tz(maxDate(revised_params.begin, model.begin, options.begin), options.tz);
-        const end = moment.tz(minDate(revised_params.end, model.end, options.end), options.tz);
-        if (!begin.isValid()) throw Error(`Invalid begin ${revised_params.begin}`);
-        if (!end.isValid()) throw Error(`Invalid begin ${revised_params.end}`);
+        const begin = revised_params.begin && moment.tz(revised_params.begin, options.tz);
+        const end = revised_params.end && moment.tz(revised_params.end, options.tz);
+        if (begin && !begin.isValid()) throw Error(`Invalid begin ${revised_params.begin}`);
+        if (end && !end.isValid()) throw Error(`Invalid begin ${revised_params.end}`);
         return {
             ...model,
             parameters: revised_params,
-            begin: begin.format(options.ending_format),
-            end: end.format(options.ending_format),
+            begin: begin ? begin.format(options.ending_format) : model.begin,
+            end: end ? end.format(options.ending_format) : model.end,
             pad_begin: revised_params.pad_begin || model.pad_begin,
             pad_end: revised_params.pad_end || model.pad_end
         };

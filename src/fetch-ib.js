@@ -318,12 +318,13 @@ function isTimeFrameAvailable(markets, client, now, options) {
     const market = markets[options.market];
     const begin = moment(options.begin);
     const m = options.interval.charAt(0) == 'm' && +options.interval.substring(1);
-    if (!m && market && ~['OPT', 'FOP'].indexOf(market.secType)) return false;
+    const opt = ~['OPT', 'FOP'].indexOf(market.secType);
+    if (!m && market && opt) return false;
     const days = m && now.diff(begin, 'days', true);
     if (m && m <= 1 && days > 1) return false;
     if (m && m <= 2 && days > 2) return false;
     if (m && m <= 3 && days > 7) return false;
-    if (m && market.whatToShow == 'MIDPOINT' && days > 7) return false;
+    if (m && opt && market.whatToShow == 'MIDPOINT' && days > 7) return false;
     if (m && m <= 30 && days > 31) return false;
     return days <= 370;
 }
@@ -800,7 +801,7 @@ function toDurationString(end, options) {
     const periods = new Periods(options);
     const ending = periods.ceil(options.begin);
     const start_of_day = moment(ending).startOf('day');
-    const offset = ending.diff(start_of_day, 'milliseconds') % periods.millis;
+    const offset = Math.min(ending.diff(start_of_day, 'milliseconds'), periods.millis);
     const begin = ending.subtract(offset || periods.millis, 'milliseconds');
     if (end.isBefore(begin)) throw Error(`Invalid duration range: ${begin.format()} - ${end.format()}`);
     const years = end.diff(begin,'years', true);
