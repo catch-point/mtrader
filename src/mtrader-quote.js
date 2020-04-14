@@ -82,7 +82,7 @@ function usage(command) {
         .option('--reverse', "Reverse the order of the rows")
         .option('-a, --append', "Append the new rows to the end of the file")
         .option('-z, --gzip', "Compress the output file")
-        .option('--transpose', "Swap the columns and rows");
+        .option('-t, --transpose', "Swap the columns and rows");
 }
 
 process.setMaxListeners(process.getMaxListeners()+1);
