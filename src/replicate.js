@@ -824,12 +824,11 @@ function combineOrders(broker_orders, orders, options) {
 }
 
 function reduceComboPairs(orders, cb, initial) {
-    const cancelling = orders.filter(ord => ord.action != 'BUY' && ord.action != 'SELL');
-    const buy_sell = orders.filter(ord => ord.action == 'BUY' || ord.action == 'SELL');
-    const grouped = Object.values(_.groupBy(buy_sell, ord => ord.order_ref));
+    const {ineligible, buy_sell} = _.groupBy(orders, ord => ord.action != 'BUY' && ord.action != 'SELL' || !ord.order_ref ? 'ineligible' : 'buy_sell');
+    const grouped = Object.values(_.groupBy(buy_sell || [], ord => ord.order_ref));
     const single_legs = grouped.filter(group => group.length == 1).map(group => group[0]);
     const combo_legs = grouped.filter(group => group.length > 1).map(group => group.sort(sortByHigherPrice));
-    return combo_legs.reduce(cb, cancelling.concat(single_legs));
+    return combo_legs.reduce(cb, ineligible ? ineligible.concat(single_legs) : single_legs);
 }
 
 function sortByHigherPrice(a, b) {
