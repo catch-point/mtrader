@@ -249,10 +249,10 @@ async function blendCall(markets, fetch, quote, asset, options) {
     return models.reduceRight(async(promise, model_p, i, models) => {
         const model = await model_p;
         const periods = new Periods({...options, ...asset});
-        const max_begin = model.begin || maxDate((await (models[i-1]||{})).end, options.begin);
+        const max_begin = maxDate(model.begin || (await (models[i-1]||{})).end, options.begin);
         const begin = !model.begin && i ? periods.dec(max_begin, 1).format(options.ending_format) : max_begin;
-        const max_end = model.end || (_.first(await promise)||{}).ending ||
-            (i == models.length-1 && options.end ? maxDate(options.end, max_begin) : undefined);
+        const max_end = minDate(model.end, (_.first(await promise)||{}).ending,
+            (i == models.length-1 && options.end ? maxDate(options.end, max_begin) : undefined));
         const end = !model.end && i <models.length-1 ? periods.inc(max_end, 1).format(options.ending_format) : max_end;
         const part = model.bars ? model.bars :
             await fetchModel(markets, fetch, quote, asset, model, { ...options, begin, end });
