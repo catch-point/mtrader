@@ -349,7 +349,8 @@ function inlinePadBegin(quoteBars, interval, opts) {
  */
 function formatBeginEnd(options) {
     const tz = options.tz;
-    const eod = moment.tz(options.now, tz).endOf('day');
+    const now = moment.tz(options.now, tz);
+    const eod = moment(now).endOf('day');
     const begin = options.begin ? moment.tz(options.begin, tz) : eod;
     const oend = options.end && moment.tz(options.end, tz);
     const end = !oend || eod.isBefore(oend) ? eod : oend; // limit end to end of today
@@ -361,6 +362,7 @@ function formatBeginEnd(options) {
     if (end && !end.isValid())
         throw Error("End date is not valid " + options.end);
     return _.defaults({
+        now: now.format(options.ending_format),
         begin: begin.format(options.ending_format),
         pad_begin: pad_begin,
         end: end && end.format(options.ending_format),
@@ -585,7 +587,7 @@ function fetchNeededBlocks(fetch, fields, collection, warmUpLength, start, stop,
     if (options.offline || !blocks.length) return Promise.resolve(blocks);
     else return collection.lockWith(blocks, blocks => {
         const store_ver = getStorageVersion(collection);
-        return fetchBlocks(fetch, fields, options, collection, store_ver, stop.format(), blocks, latest);
+        return fetchBlocks(fetch, fields, options, collection, store_ver, stop.format(), now, blocks, latest);
     });
 }
 
@@ -752,7 +754,7 @@ function createStorageVersion() {
 /**
  * Checks if any of the blocks need to be updated
  */
-function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks, latest_blocks) {
+function fetchBlocks(fetch, fields, options, collection, store_ver, stop, now, blocks, latest_blocks) {
     const cmsg = "Incomplete data try again without the read_only flag";
     const pmsg = "or without the read_only flag";
     const fetchComplete = options.read_only ? () => Promise.reject(Error(cmsg)) :
@@ -774,7 +776,7 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks
         if (!collection.sizeOf(block))
             return fetchComplete(block, latest);
         if (i < blocks.length -1 || (_.last(tail).asof || _.last(tail).ending) <= stop) {
-            if (isWeekend(_.last(tail), options)) return;
+            if (isMarketClosed(_.last(tail), now, options)) return;
             return fetchPartial(block, _.first(tail).ending, latest).catch(error => {
                 if (stop) logger.debug("Need to fetch", _.last(tail).ending);
                 logger.trace("Fetch failed", error);
@@ -785,36 +787,14 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks
         if (!_.contains(results, 'incompatible')) return blocks;
         logger.log("Replacing all stored quotes for", options.symbol, options.market);
         const store_ver = createStorageVersion();
-        return fetchBlocks(fetch, fields, options, collection, store_ver, stop, blocks, latest_blocks);
+        return fetchBlocks(fetch, fields, options, collection, store_ver, stop, now, blocks, latest_blocks);
     });
 }
 
-function isWeekend(bar, options) {
-    if (bar.asof && !(bar.asof >= bar.ending)) return false; // more upto date bar available
-    if (!isEndOfWeek(bar.ending, options)) return false;
-    return isBeforeStartOfWeek(bar.asof || bar.ending, options);
-}
-
-function isEndOfWeek(ending, options) {
-    expect(options).to.have.property('tz');
-    expect(options).to.have.property('security_tz');
-    expect(options).to.have.property('liquid_hours');
-    const end_time = options.liquid_hours.substring(options.liquid_hours.indexOf(' - ') + 3);
-    const end = moment.tz(ending, options.security_tz);
-    const close = moment.tz(`${end.format('Y-MM-DD')}T${end_time}`, options.security_tz);
-    return end.day() == 5 && !end.isBefore(close); // Friday on market close
-}
-
-function isBeforeStartOfWeek(asof, options) {
-    expect(options).to.have.property('security_tz');
-    expect(options).to.have.property('liquid_hours');
-    const open_time = options.liquid_hours.substring(0, options.liquid_hours.indexOf(' - '));
-    const end_time = options.liquid_hours.substring(options.liquid_hours.indexOf(' - ') + 3);
-    const week_day_opens = open_time < end_time ? 1 : 0;
-    const masof = moment.tz(asof, options.security_tz);
-    const now = moment.tz(options.now, options.security_tz);
-    const opens = moment.tz(`${masof.format('YYYY-MM-DD')} ${open_time}`, options.security_tz).day(week_day_opens);
-    return !opens.isBefore(now); // now is Before market opens on Sunday or Monday
+function isMarketClosed(bar, now, options) {
+    const periods = new Periods(options);
+    const opens_at = periods.floor(bar.asof || bar.ending);
+    return now.isBefore(opens_at);
 }
 
 /**

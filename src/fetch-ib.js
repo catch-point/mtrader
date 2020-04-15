@@ -336,7 +336,6 @@ function marketOpensAt(now, options) {
     expect(options).to.have.property('liquid_hours');
     const tz = options.security_tz;
     const weekday = moment.tz(now, options.tz).tz(tz);
-    const end = options.end ? moment.tz(options.end, options.tz).tz(tz) : moment(weekday);
     if (weekday.days() === 0) weekday.add(1, 'days');
     if (weekday.days() === 6) weekday.add(2, 'days');
     const close_time = options.liquid_hours.substring(options.liquid_hours.length - 8);
