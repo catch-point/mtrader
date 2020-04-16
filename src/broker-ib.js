@@ -619,19 +619,15 @@ async function snapStockLimit(markets, ib, contract, order) {
     if (_.isEmpty(order.attached)) {
         expect(contract.secType).to.be.oneOf(['FUT', 'OPT','FOP']);
         const detail = _.first(await ib.reqContractDetails(contract));
+        const under_contract = await ib.reqContract(detail.underConId);
         const right = detail.summary.right;
         expect(right).is.oneOf(['C', 'P']);
         const minTick = Math.max(order.minTick||0, detail.minTick||0.000001);
-        const exchange = (detail.validExchanges||'').split(',').find(ex => ex != 'SMART') ||
-            detail.summary.exchange;
         const [bar, under_bar] = await Promise.all([
             reqMktData(ib, contract),
-            reqMktData(ib, {
-                conId: detail.underConId,
-                exchange: exchange
-            })
+            reqMktData(ib, under_contract)
         ]);
-        if (!bar || !(bar.midpoint || bar.last || bar.close))
+        if (!bar || !(bar.midpoint || bar.close || bar.last))
             throw Error(`Can only submit SNAP STK ${order.order_ref} orders while market is open`);
         const net_offset = order.action == 'BUY' && right == 'C' ||
             order.action == 'SELL' && right == 'P' ?
@@ -653,14 +649,13 @@ async function snapStockLimit(markets, ib, contract, order) {
                 return toContractWithId(markets, ib, leg);
             }))
         ]);
+        const under_contract = await ib.reqContract(detail.underConId);
         const detail_minTick = detail.minTick||0.000001;
         const leg_minTick = order.attached.reduce((minTick, leg) => {
             return Math.min(minTick, leg.minTick||detail_minTick);
         }, Infinity);
         const minTick = Math.max(detail_minTick, leg_minTick, order.minTick||0);
         const right = detail.summary.right;
-        const exchange = (detail.validExchanges||'').split(',').find(ex => ex != 'SMART') ||
-            detail.summary.exchange;
         contracts.forEach(contract => {
             expect(contract.secType).to.be.oneOf(['FUT', 'OPT','FOP']);
             expect(contract.right).is.oneOf(['C', 'P']);
@@ -670,16 +665,11 @@ async function snapStockLimit(markets, ib, contract, order) {
             Promise.all(contracts.map(async(contract) => {
                 return reqMktData(ib, contract);
             })),
-            reqMktData(ib, {
-                conId: detail.underConId,
-                symbol: detail.underSymbol,
-                secType: detail.underSecType,
-                exchange: exchange
-            })
+            reqMktData(ib, under_contract)
         ]);
-        if (bars.some(bar => !bar.midpoint && !bar.last && !bar.close))
+        if (bars.some(bar => !bar.midpoint && !bar.close && !bar.last))
             throw Error("Can only submit SNAP STK orders while market is active");
-        const net_mid_price = netPrice(order.attached, bars.map(bar => bar.midpoint || bar.last || bar.close));
+        const net_mid_price = netPrice(order.attached, bars.map(bar => bar.midpoint || bar.close || bar.last));
         const net_offset = order.action == 'BUY' && right == 'C' && +net_mid_price >= 0 ||
             order.action == 'SELL' && right == 'P' && +net_mid_price >= 0 ?
             Big(order.offset||0).times(-1) : Big(order.offset||0);
@@ -700,21 +690,21 @@ async function snapStockLimit(markets, ib, contract, order) {
 async function reqMktData(client, contract) {
     const bar = await client.reqMktData(contract);
     if (bar && bar.bid && bar.ask) return {...bar, midpoint: +Big(bar.bid).add(bar.ask).div(2)};
-    else if (bar && (bar.last || bar.close)) return bar;
+    else if (bar && (bar.close || bar.last)) return bar;
     const now = moment().utc().startOf('day').format('YYYYMMDD HH:mm:ss z');
-    const last = await client.reqHistoricalData(contract, now, '1 D', '1 day', 'MIDPOINT', 0, 1).catch(err => []);
+    const last = await client.reqHistoricalData(contract, now, '1 D', '30 mins', 'MIDPOINT', 1, 1).catch(err => []);
     if (last.length) return last[last.length-1];
     else return bar;
 }
 
 async function snapStockPrice(ib, contract, bar, under_bar, limit, net_offset) {
-    const opt_price = bar.midpoint || bar.last || bar.close;
+    const opt_price = bar.midpoint || bar.close || bar.last;
     if (!+net_offset && !+limit) return opt_price;
     else if (contract.secType != 'OPT' && contract.secType != 'FOP')
         return +limit || +Big(opt_price).add(net_offset);
     const model_price = (bar.model_option||{}).optPrice || opt_price;
     const undPrice = (bar.model_option||{}).undPrice != Number.MAX_VALUE && (bar.model_option||{}).undPrice||null;
-    const asset_price = undPrice || under_bar.midpoint || under_bar.last || under_bar.close;
+    const asset_price = undPrice || under_bar.midpoint || under_bar.close || under_bar.last;
     if (!+asset_price)
         throw Error(`Can only submit SNAP STK orders while market is active ${util.inspect(under_bar)}`);
     const asset_limit = +limit || +Big(asset_price).add(net_offset);

@@ -88,7 +88,7 @@ function createClientInstance(settings) {
 
 async function assignClient(self, settings) {
     const market_functions = [
-        'historicalData', 'reqMktData', 'reqRealTimeBars',
+        'reqHistoricalData', 'reqMktData', 'reqRealTimeBars',
         'calculateImpliedVolatility', 'calculateOptionPrice'
     ];
     if ('clientId' in settings) {
