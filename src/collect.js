@@ -712,16 +712,20 @@ async function collectDataset(dataset, parser, columns, options) {
             const positions = sortBy(points, precedence);
             const row = result.length;
             result[row] = await positions.reduce(async(retained, point) => {
+                const obj = await retained || {};
                 const key = point[options.indexCol];
-                const pending = _.extend({}, await retained, {
-                    [key]: point
-                });
-                result[row] = pending;
+                const present = key in obj;
+                const value = obj[key];
                 await check();
-                if (criteria && !criteria(result)) return retained;
-                else return _.extend(pending, {
-                    [key]: _.mapObject(fcolumns, fn => fn(result))
-                });
+                obj[key] = point;
+                result[row] = obj;
+                if (criteria && !criteria(result)) {
+                    if (present) obj[key] = value;
+                    else delete obj[key];
+                } else {
+                    obj[key] = _.mapObject(fcolumns, fn => fn(result));
+                }
+                return obj;
             }, {[options.temporalCol]: points[0][options.temporalCol]});
             if (_.keys(result[row]).length == 1) result.pop();
             return result;
