@@ -636,7 +636,7 @@ async function snapStockLimit(markets, ib, contract, order) {
         const net_offset = order.action == 'BUY' && right == 'C' ||
             order.action == 'SELL' && right == 'P' ?
             Big(order.offset||0).times(-1) : Big(order.offset||0);
-        const price = await snapStockPrice(ib, contract, bar, under_bar, net_offset);
+        const price = await snapStockPrice(ib, contract, bar, under_bar, order.limit, net_offset);
         return +Big(price).div(minTick).round(0, order.action == 'BUY' ? 0 : 3).times(minTick);
     } else {
         order.attached.forEach(leg => {
@@ -684,7 +684,7 @@ async function snapStockLimit(markets, ib, contract, order) {
             order.action == 'SELL' && right == 'P' && +net_mid_price >= 0 ?
             Big(order.offset||0).times(-1) : Big(order.offset||0);
         const prices = await Promise.all(order.attached.map(async(leg, i) => {
-            return snapStockPrice(ib, contracts[i], bars[i], under_bar, net_offset);
+            return snapStockPrice(ib, contracts[i], bars[i], under_bar, order.limit, net_offset);
         }));
         const price = netPrice(order.attached, prices);
         if (order.action == 'BUY') {
@@ -707,24 +707,24 @@ async function reqMktData(client, contract) {
     else return bar;
 }
 
-async function snapStockPrice(ib, contract, bar, under_bar, net_offset) {
+async function snapStockPrice(ib, contract, bar, under_bar, limit, net_offset) {
     const opt_price = bar.midpoint || bar.last || bar.close;
-    const model_price = (bar.model_option||{}).optPrice || opt_price;
-    if (!+net_offset) return opt_price;
+    if (!+net_offset && !+limit) return opt_price;
     else if (contract.secType != 'OPT' && contract.secType != 'FOP')
-        return +Big(opt_price).add(net_offset);
+        return +limit || +Big(opt_price).add(net_offset);
+    const model_price = (bar.model_option||{}).optPrice || opt_price;
     const undPrice = (bar.model_option||{}).undPrice != Number.MAX_VALUE && (bar.model_option||{}).undPrice||null;
     const asset_price = undPrice || under_bar.midpoint || under_bar.last || under_bar.close;
     if (!+asset_price)
         throw Error(`Can only submit SNAP STK orders while market is active ${util.inspect(under_bar)}`);
-    const asset_limit = +Big(asset_price).add(net_offset);
+    const asset_limit = +limit || +Big(asset_price).add(net_offset);
     const iv = (bar.model_option||{}).iv ||
         bar.ask_option && bar.bid_option && +Big(bar.ask_option.iv).add(bar.bid_option.iv).div(2) ||
         (await ib.calculateImpliedVolatility(contract, model_price, asset_price)).iv;
     if (!iv || iv == Number.MAX_VALUE || iv == Number.MAX_VALUE/2)
         throw Error(`No implied volatility for ${contract.localSymbol} ${util.inspect(bar.model_option||bar)}`);
     const option = await ib.calculateOptionPrice(contract, iv, asset_limit);
-    logger.log("calculated option price model", option.optPrice, '+', +net_offset, iv, bar.model_option || bar);
+    logger.log("calculated option price model", option.optPrice, +limit || +net_offset, iv, bar.model_option || bar);
     return +Big(option.optPrice).minus(model_price).add(opt_price);
 }
 

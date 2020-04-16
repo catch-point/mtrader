@@ -1252,6 +1252,253 @@ describe("broker-ib", function() {
             security_type: 'FOP',
             multiplier: 50 } ]);
     });
+    it("should submit BUY Call SNAP STK limit options order", async() => {
+        const broker = new Broker(settings, {
+            async open() { return this; },
+            reqId: cb => cb(1),
+            reqContractDetails: (...args) => {
+                expect(args).to.be.like([{
+                    localSymbol: 'ESM9 C2800',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    includeExpired: true,
+                    multiplier: 50
+                }]);
+                return Promise.resolve([{
+                    summary: { right: 'C', exchange: 'GLOBEX' },
+                    minTick: 0.05,
+                    underConId: 310629209
+                }]);
+            },
+            reqMktData: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'ESM9 C2800',
+                                secType: 'FOP',
+                                exchange: 'GLOBEX',
+                                currency: 'USD',
+                                includeExpired: true,
+                                multiplier: 50
+                            }]);
+                            return Promise.resolve({
+                                bid: 16.25,
+                                ask: 17,
+                                model_option: {
+                                    optPrice: 16.625,
+                                    undPrice: 1.7976931348623157e+308,
+                                    iv: 0.1602330880202159
+                                }
+                            })
+                        case 1:
+                            expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
+                            return Promise.resolve({ bid: 2738.25, ask: 2738.5 })
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
+            calculateOptionPrice: (...args) => {
+                expect(args).to.be.like([{
+                        localSymbol: 'ESM9 C2800',
+                        secType: 'FOP',
+                        exchange: 'GLOBEX',
+                        currency: 'USD',
+                        includeExpired: true,
+                        multiplier: 50
+                    },
+                    0.1602330880202159,
+                    2723.375
+                ]);
+                return Promise.resolve({ optPrice: 12.55977560633167 });
+            },
+            reqManagedAccts: () => Promise.resolve(['test']),
+            placeOrder: (...args) => {
+                expect(args).to.be.like([1,
+                {
+                    localSymbol: 'ESM9 C2800',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    includeExpired: true,
+                    multiplier: 50
+                },
+                {
+                    action: 'BUY',
+                    totalQuantity: 1,
+                    orderType: 'LMT',
+                    lmtPrice: 12.55,
+                    tif: 'DAY',
+                    orderRef: /SNAPSTK/,
+                    account: 'test',
+                    orderId: 1,
+                    parentId: null,
+                    ocaGroup: null,
+                    ocaType: 0,
+                    smartComboRoutingParams: []
+                }]);
+                return Promise.resolve({
+                    localSymbol: 'ESM9 C2800',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    multiplier: 50,
+                    status: 'ApiPending',
+                    action: 'BUY',
+                    totalQuantity: 1,
+                    orderRef: args[2].orderRef,
+                    lmtPrice: 12.55,
+                    orderType: 'LMT',
+                    tif: 'DAY',
+                    account: 'test'
+                });
+            }
+        });
+        const orders = await broker({
+            action: 'BUY', quant: 1, limit: 2738.375-15, order_type: 'SNAP STK', tif: 'DAY',
+            symbol: 'ESM9 C2800', market: 'CME',
+            currency: 'USD', security_type: 'FOP', multiplier: 50
+        }).should.eventually.be.like([ {
+            action: 'BUY',
+            quant: 1,
+            order_type: 'SNAP STK',
+            limit: 12.55,
+            tif: 'DAY',
+            status: 'pending',
+            order_ref: /SNAPSTK/,
+            account: 'test',
+            symbol: 'ESM9 C2800',
+            market: 'CME',
+            currency: 'USD',
+            security_type: 'FOP',
+            multiplier: 50 } ]);
+    });
+    it("should submit SELL Call SNAP STK limit options order", async() => {
+        const broker = new Broker(settings, {
+            async open() { return this; },
+            reqId: cb => cb(2),
+            reqContractDetails: (...args) => {
+                expect(args).to.be.like([{
+                    localSymbol: 'ESM9 C2800',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    includeExpired: true,
+                    multiplier: 50
+                }]);
+                return Promise.resolve([{
+                    summary: { right: 'C', exchange: 'GLOBEX' },
+                    minTick: 0.05,
+                    underConId: 310629209
+                }]);
+            },
+            reqMktData: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'ESM9 C2800',
+                                secType: 'FOP',
+                                exchange: 'GLOBEX',
+                                currency: 'USD',
+                                includeExpired: true,
+                                multiplier: 50
+                            }]);
+                            return Promise.resolve({
+                                bid: 16.25,
+                                ask: 17,
+                                model_option: {
+                                    optPrice: 16.625,
+                                    undPrice: 1.7976931348623157e+308,
+                                    iv: 0.1596098191933759
+                                }
+                            })
+                        case 1:
+                            expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
+                            return Promise.resolve({ bid: 2738.25, ask: 2738.5 })
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
+            calculateOptionPrice: (...args) => {
+                expect(args).to.be.like([{
+                        localSymbol: 'ESM9 C2800',
+                        secType: 'FOP',
+                        exchange: 'GLOBEX',
+                        currency: 'USD',
+                        includeExpired: true,
+                        multiplier: 50
+                    },
+                    0.1596098191933759,
+                    2753.375
+                ]);
+                return Promise.resolve({ optPrice: 20.734445781477927 });
+            },
+            reqManagedAccts: () => Promise.resolve(['test']),
+            placeOrder: (...args) => {
+                expect(args).to.be.like([2,
+                {
+                    localSymbol: 'ESM9 C2800',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    multiplier: 50
+                },
+                {
+                    action: 'SELL',
+                    totalQuantity: 1,
+                    orderType: 'LMT',
+                    lmtPrice: 20.75,
+                    tif: 'DAY',
+                    orderRef: /SNAPSTK/,
+                    account: 'test',
+                    orderId: 2,
+                    parentId: null,
+                    ocaGroup: null,
+                    ocaType: 0,
+                    smartComboRoutingParams: []
+                }]);
+                return Promise.resolve({
+                    localSymbol: 'ESM9 C2800',
+                    secType: 'FOP',
+                    exchange: 'GLOBEX',
+                    currency: 'USD',
+                    multiplier: 50,
+                    status: 'ApiPending',
+                    action: 'SELL',
+                    totalQuantity: 1,
+                    orderRef: args[2].orderRef,
+                    lmtPrice: 20.75,
+                    orderType: 'LMT',
+                    tif: 'DAY',
+                    account: 'test'
+                });
+            }
+        });
+        const orders = await broker({
+            action: 'SELL', quant: 1, limit: 2738.375+15, order_type: 'SNAP STK', tif: 'DAY',
+            symbol: 'ESM9 C2800', market: 'CME',
+            currency: 'USD', security_type: 'FOP', multiplier: 50
+        }).should.eventually.be.like([ {
+            action: 'SELL',
+            quant: 1,
+            order_type: 'SNAP STK',
+            limit: 20.75,
+            tif: 'DAY',
+            status: 'pending',
+            order_ref: /SNAPSTK/,
+            account: 'test',
+            symbol: 'ESM9 C2800',
+            market: 'CME',
+            currency: 'USD',
+            security_type: 'FOP',
+            multiplier: 50 } ]);
+    });
     it("should submit BUY Call SNAP STK offset options order", async() => {
         const broker = new Broker(settings, {
             async open() { return this; },

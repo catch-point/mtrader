@@ -782,6 +782,19 @@ function updateComboOrders(broker_orders, actual, replicateContract, order_chang
 
 function combineOrders(broker_orders, orders, options) {
     return reduceComboPairs(orders, (combined_orders, legs) => {
+        if (!legs.every(ord => ord.order_type == legs[0].order_type && ord.tif == legs[0].tif)) {
+            logger.warn("Cannot combine orders", ...legs);
+            return combined_orders.concat(legs);
+        }
+        if (!legs.every(ord => ord.offset == legs[0].offset)) {
+            logger.warn("Cannot combine orders with different offsets", ...legs);
+            return combined_orders.concat(legs);
+        }
+        const stk_order = legs.every(ord => ord.order_type == 'SNAP STK');
+        if (stk_order && !legs.every(ord => ord.limit == legs[0].limit && ord.stop == legs[0].stop)) {
+            logger.warn("Cannot combine STK orders", ...legs);
+            return combined_orders.concat(legs);
+        }
         const quant = greatestCommonFactor(_.uniq(legs.map(leg => Math.abs(leg.quant)))).toString();
         const existing_order = broker_orders.find(ord => {
             return ord.order_type != 'LEG' && ord.order_ref == _.first(legs).attach_ref;
@@ -792,12 +805,12 @@ function combineOrders(broker_orders, orders, options) {
         if (existing_order) logger.trace("existing_order", traded_price, existing_order);
         const action = existing_order ? existing_order.action :
             traded_price < 0 ? 'SELL' : traded_price > 0 ? 'BUY' : _.first(legs).action;
-        const limit = +legs.reduce((net, leg) => {
-            return net.add(Big(leg.limit || 0).times(leg.action == action ? 1 : -1).times(leg.quant));
-        }, Big(0)).div(quant);
-        const stop = +legs.reduce((net, leg) => {
-            return net.add(Big(leg.stop || 0).times(leg.action == action ? 1 : -1).times(leg.quant));
-        }, Big(0)).div(quant);
+        const limit = stk_order ? _.first(legs).limit : +legs.reduce((net, leg) => {
+                return net.add(Big(leg.limit || 0).times(leg.action == action ? 1 : -1).times(leg.quant));
+            }, Big(0)).div(quant);
+        const stop = stk_order ? _.first(legs).stop : +legs.reduce((net, leg) => {
+                return net.add(Big(leg.stop || 0).times(leg.action == action ? 1 : -1).times(leg.quant));
+            }, Big(0)).div(quant);
         const leg_symbols = _.sortBy(legs, leg =>
                 (leg.traded_price || leg.limit || 1) * (leg.action == action ? 1 : -1))
             .reverse().map(leg => `${leg.action == action ? '+' : '-'}${leg.symbol}`).join('').substring(1);
