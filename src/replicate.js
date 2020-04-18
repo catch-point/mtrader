@@ -603,9 +603,17 @@ function updateActual(desired, actual, options) {
         return orders.concat(orderReplacements(actual.working[ref], drw, realized_offset, options));
     }, transition_stoploss) : [];
     const adjustment_pending = adjustment_order || actual.position != desired.position;
+    const working_targets = [].concat(
+        !actual.stoploss && desired.stoploss || [],
+        Object.values(_.omit(desired.working, Object.keys(actual.working)))
+    ).map(ord => {
+        if (ord.action == 'BUY') return +desired.position + +ord.quant;
+        else if (ord.action == 'SELL') return +desired.position - +ord.quant;
+    });
     if (!options.force && !actual.adjustment && actual.traded_at &&
-            moment(desired.asof).isBefore(actual.traded_at)) {
-        // working position has since been traded (stoploss?) since the last desired signal was produced
+            moment(desired.asof).isBefore(actual.traded_at) &&
+            working_targets.some(trg => trg != null && Math.abs(+actual.position - trg) < quant_threshold)) {
+        // working position has since advanced to target (stoploss?)
         logger.warn(`Working ${desired.attach_ref} position has since been changed ${actual.traded_at}`, options.label || '');
         logger.debug("replicate", "actual", actual);
         return cancelled;

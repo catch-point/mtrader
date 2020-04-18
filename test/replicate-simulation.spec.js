@@ -1377,6 +1377,119 @@ describe("replicate-simulation", function() {
                 tif: 'DAY'
               }]);
         });
+        it("filled working order", async() => {
+            return Replicate(async(...args) => {
+                if (args[0].info=='help') return broker({info:'help'});
+                switch (args[0].action) {
+                    case 'balances':
+                        return Promise.resolve([{ currency: 'USD', net: '10000', rate: '1', settled: '10000' },
+                            { currency: 'CAD' }
+                        ]);
+                    case 'positions':
+                        return Promise.resolve([{
+                            traded_at: '2018-04-05T16:00:00-04:00',
+                            symbol: 'GLD',
+                            market: 'ARCA',
+                            currency: 'USD',
+                            security_type: 'STK',
+                            action: 'STC',
+                            quant: 1,
+                            position: 0,
+                            traded_price: 125.8,
+                            price: 125.8,
+                            value: '125.80'
+                        }]);
+                    case 'orders':
+                        return Promise.resolve([]);
+                    default:
+                        throw Error(`Unexpected call ${util.inspect(args)}`);
+                }
+            }, fetch, function(options) {
+                if (options.info=='help') return quote(options);
+                else return Promise.resolve([{
+                    symbol: 'GLD',
+                    market: 'ARCA',
+                    position: 1,
+                    posted_at: "2018-04-04",
+                    stc_action: 'SELL',
+                    stc_quant: 1,
+                    stc_order_type: 'LMT',
+                    stc_limit: 125.8,
+                    stc_order_ref: 'stc.GLD'
+                }]);
+            })({
+                now: moment.tz("2018-04-05T16:00:00", 'America/New_York').valueOf(),
+                currency: 'USD',
+                markets: ['OPRA']
+            }).should.eventually.be.like([]);
+        });
+        it("adjust position, but not a filled working order", async() => {
+            return Replicate(async(...args) => {
+                if (args[0].info=='help') return broker({info:'help'});
+                switch (args[0].action) {
+                    case 'balances':
+                        return Promise.resolve([{ currency: 'USD', net: '10000', rate: '1', settled: '10000' },
+                            { currency: 'CAD' }
+                        ]);
+                    case 'positions':
+                        return Promise.resolve([{
+                            traded_at: '2018-04-05T16:00:00-04:00',
+                            symbol: 'GLD',
+                            market: 'ARCA',
+                            currency: 'USD',
+                            security_type: 'STK',
+                            action: 'STC',
+                            quant: 1,
+                            position: 1,
+                            traded_price: 125.8,
+                            price: 125.8,
+                            value: '125.80'
+                        }]);
+                    case 'orders':
+                        return Promise.resolve([]);
+                    case 'SELL':
+                        expect(args).to.be.like([{
+                            action: 'SELL',
+                            quant: 1,
+                            order_type: 'LMT',
+                            limit: 125.8,
+                            order_ref: 'stc.GLD'
+                        }]);
+                        return Promise.resolve([{
+                            action: 'SELL',
+                            quant: 1,
+                            order_type: 'LMT',
+                            limit: 125.8,
+                            order_ref: 'stc.GLD'
+                        }]);
+                    default:
+                        throw Error(`Unexpected call ${util.inspect(args)}`);
+                }
+            }, fetch, function(options) {
+                if (options.info=='help') return quote(options);
+                else return Promise.resolve([{
+                    symbol: 'GLD',
+                    market: 'ARCA',
+                    position: 1,
+                    posted_at: "2018-04-04",
+                    stc_action: 'SELL',
+                    stc_quant: 1,
+                    stc_order_type: 'LMT',
+                    stc_limit: 125.8,
+                    stc_order_ref: 'stc.GLD'
+                }]);
+            })({
+                now: moment.tz("2018-04-05T16:00:00", 'America/New_York').valueOf(),
+                currency: 'USD',
+                markets: ['OPRA']
+            }).should.eventually.be.like([{
+                action: 'SELL',
+                quant: 1,
+                order_type: 'LMT',
+                limit: 125.8,
+                order_ref: 'stc.GLD'
+            }]);
+        });
     });
     describe("Futures", function() {
         it("no position in ZNH19", async() => {

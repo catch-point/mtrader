@@ -1166,6 +1166,12 @@ describe("broker-ib", function() {
                     underConId: 310629209
                 }]);
             },
+            reqContract: (...args) => {
+                expect(args).to.be.like([310629209]);
+                return Promise.resolve({
+                    conId: 310629209, exchange: 'GLOBEX'
+                });
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -1270,6 +1276,12 @@ describe("broker-ib", function() {
                     minTick: 0.05,
                     underConId: 310629209
                 }]);
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([310629209]);
+                return Promise.resolve({
+                    conId: 310629209, exchange: 'GLOBEX'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
@@ -1395,6 +1407,12 @@ describe("broker-ib", function() {
                     underConId: 310629209
                 }]);
             },
+            reqContract: (...args) => {
+                expect(args).to.be.like([310629209]);
+                return Promise.resolve({
+                    conId: 310629209, exchange: 'GLOBEX'
+                });
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -1517,6 +1535,12 @@ describe("broker-ib", function() {
                     minTick: 0.05,
                     underConId: 310629209
                 }]);
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([310629209]);
+                return Promise.resolve({
+                    conId: 310629209, exchange: 'GLOBEX'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
@@ -1642,6 +1666,12 @@ describe("broker-ib", function() {
                     underConId: 310629209
                 }]);
             },
+            reqContract: (...args) => {
+                expect(args).to.be.like([310629209]);
+                return Promise.resolve({
+                    conId: 310629209, exchange: 'GLOBEX'
+                });
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -1765,6 +1795,12 @@ describe("broker-ib", function() {
                     underConId: 310629209
                 }]);
             },
+            reqContract: (...args) => {
+                expect(args).to.be.like([310629209]);
+                return Promise.resolve({
+                    conId: 310629209, exchange: 'GLOBEX'
+                });
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -1887,6 +1923,12 @@ describe("broker-ib", function() {
                     minTick: 0.05,
                     underConId: 310629209
                 }]);
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([310629209]);
+                return Promise.resolve({
+                    conId: 310629209, exchange: 'GLOBEX'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
@@ -2052,6 +2094,12 @@ describe("broker-ib", function() {
                     default:
                         throw Error("Too many times")
                 }
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
@@ -2255,6 +2303,12 @@ describe("broker-ib", function() {
                     default:
                         throw Error("Too many times")
                 }
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
@@ -2535,6 +2589,12 @@ describe("broker-ib", function() {
                     default:
                         throw Error("Too many times")
                 }
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
@@ -2817,6 +2877,12 @@ describe("broker-ib", function() {
                         throw Error("Too many times")
                 }
             },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -3034,6 +3100,12 @@ describe("broker-ib", function() {
                     default:
                         throw Error("Too many times")
                 }
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
@@ -3315,6 +3387,12 @@ describe("broker-ib", function() {
                     default:
                         throw Error("Too many times")
                 }
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
@@ -3599,6 +3677,12 @@ describe("broker-ib", function() {
                         throw Error("Too many times")
                 }
             },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -3880,6 +3964,12 @@ describe("broker-ib", function() {
                         throw Error("Too many times")
                 }
             },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
+            },
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
@@ -4160,6 +4250,12 @@ describe("broker-ib", function() {
                     default:
                         throw Error("Too many times")
                 }
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
@@ -4446,6 +4542,12 @@ describe("broker-ib", function() {
                     default:
                         throw Error("Too many times")
                 }
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([416904]);
+                return Promise.resolve({
+                    conId: 416904, exchange: 'CBOE'
+                });
             },
             reqMktData: (() => {
                 let count = 0;
