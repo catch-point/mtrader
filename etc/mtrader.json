@@ -851,7 +851,8 @@
             "GC": "QGC",
             "MGC": "QMGC",
             "SI": "QSI",
-            "CL": "QCL"
+            "CL": "QCL",
+            "PA": "QPA"
           }
         },
         "ib": {
@@ -866,7 +867,8 @@
             "GC": "QGC",
             "MGC": "QMGC",
             "SI": "QSI",
-            "CL": "QCL"
+            "CL": "QCL",
+            "PA": "QPA"
           },
           "instrument": "future"
         }
