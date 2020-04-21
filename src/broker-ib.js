@@ -861,9 +861,18 @@ async function listContractPositions(markets, ib, fetch, contract, pos, executio
     const earliest = moment(options.asof || options.now).subtract(5, 'days').startOf('day').format();
     const key = `${contract.conId} ${earliest}`;
     const promise = historical[key] = historical[key] ||
-        loadHistoricalData(fetch, symbol, market, earliest, {...options, ...markets[market]});
+        loadHistoricalData(fetch, symbol, market, earliest, options);
     const bars = await promise;
-    if (!bars.length) return [];
+    if (!bars.length && !(pos && +pos.position)) return [];
+    else if (!bars.length) return [{
+        asof: now,
+        action: +pos.position > 0 ? 'LONG' : 'SHORT',
+        position: pos.position,
+        symbol, market,
+        currency: contract.currency,
+        security_type: contract.secType,
+        multiplier: contract.multiplier
+    }];
     const multiplier = contract.multiplier || 1;
     const ending_position = pos ? pos.position : 0;
     const newer_details = executions.filter(exe => {
