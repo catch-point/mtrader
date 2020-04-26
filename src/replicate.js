@@ -141,6 +141,10 @@ function helpInfo(broker, collect) {
                 usage: '<number>',
                 description: "Amount to exclude from allocation at peak balance in the past 12 months"
             },
+            reserve_allocation: {
+                usage: '<number>',
+                description: "Amount to exclude from allocation to this strategy"
+            },
             allocation_min: {
                 usage: '<number>',
                 description: "Minimum amount that should be allocated to this strategy"
@@ -406,15 +410,17 @@ function getAllocation(peak_balances, balances, options) {
     const initial_balance = getBalance(balances, options);
     const peak_balance = !options.allocation_peak_pct && !options.reserve_peak_allocation ?
         initial_balance : getPeakBalance(peak_balances, options);
-    const alloc_pct = +options.allocation_pct || 100;
-    const alloc_peak_pct = +options.allocation_peak_pct || alloc_pct;
-    const reserve_peak_allocation = +options.reserve_peak_allocation || 0;
+    const reserve_alloc = +options.reserve_allocation || 0;
+    const reserve_peak_alloc = +options.reserve_peak_allocation || 0;
+    const alloc_peak_pct = +options.allocation_peak_pct || 0;
+    const alloc_pct = +options.allocation_pct || !reserve_alloc && 100;
     return Math.min(
         Math.max(
             Math.min(
-                initial_balance.times(alloc_pct).div(100),
-                peak_balance.times(alloc_peak_pct).div(100),
-                peak_balance.minus(reserve_peak_allocation)
+                reserve_alloc ? initial_balance.minus(reserve_alloc) : Infinity,
+                reserve_peak_alloc ? peak_balance.minus(reserve_peak_alloc) : Infinity,
+                alloc_peak_pct ? peak_balance.times(alloc_peak_pct).div(100) : Infinity,
+                alloc_pct ? initial_balance.times(alloc_pct).div(100) : Infinity
             ),
             options.allocation_min||0
         ),
