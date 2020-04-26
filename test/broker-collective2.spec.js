@@ -780,6 +780,7 @@ describe("broker-collective2", function() {
                 opening_price_VWAP: '1.00270',
                 trade_id: '118904708',
                 symbol: '@MSFU8',
+                market: 'CME',
                 quant_opened: '1',
                 closedWhen: '',
                 instrument: 'future',
@@ -804,6 +805,7 @@ describe("broker-collective2", function() {
                 stop: 1.023,
                 fullSymbol: '@MSFU18',
                 symbol: '@MSFU8',
+                market: 'CME',
                 typeofsymbol: 'future'
             }, {
                 isLimitOrder: '1.011800000',
@@ -818,6 +820,7 @@ describe("broker-collective2", function() {
                 parked_releasewhen: '',
                 fullSymbol: '@MSFU18',
                 symbol: '@MSFU8',
+                market: 'CME',
                 name: '',
                 instrument: 'future',
                 isStopOrder: '0',
@@ -839,6 +842,7 @@ describe("broker-collective2", function() {
                 parked_releasewhen: '',
                 fullSymbol: '@MSFU18',
                 symbol: '@MSFU8',
+                market: 'CME',
                 name: '',
                 instrument: 'future',
                 isStopOrder: '0',

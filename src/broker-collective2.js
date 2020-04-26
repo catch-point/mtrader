@@ -681,9 +681,13 @@ async function lookup(fetch, markets, signal) {
           .then(matches => matches.filter(match => match.symbol == symbol && match.currency == 'USD'), err => [])
           .then(matches => matches.length ? matches :
             // expired futures cannot be looked up, this might be one of then
-            instrument == 'future' ? [{symbol, market, currency: m.currency, security_type: 'FUT'}] : []);
+            instrument == 'future' ? [{symbol, market, currency: m.currency, security_type: 'FUT', guess: true}] : []);
     }));
-    return _.first(_.flatten(matches));
+    const list = _.flatten(matches);
+    if (_.isEmpty(list)) return null;
+    const confirmed = list.find(item => item && !item.guess && item.market == signal.market) || list.find(item => item && !item.guess);
+    if (confirmed) return confirmed;
+    else return _.omit(list.find(item => item && item.market == signal.market) || list.find(item => item), 'guess');
 }
 
 function fromFutureSymbol(symbol) {

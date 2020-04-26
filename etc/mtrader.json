@@ -15,17 +15,34 @@
     },
     "iqfeed": {
       "enabled": false,
-      "intervals": ["lookup", "contract", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CBOT", "CFE", "CHF", "CME", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NYMEX", "NYSE", "NZD", "OPRA", "TSE", "USD", "VENTURE", "ICE", "X" ]
+      "intervals": [
+        "lookup", "contract", "fundamental", "day",
+        "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"
+      ],
+      "markets": [
+        "AMEX","ARCA","BATS","CBOE","CBOT","CFE","CME","ICE","LSE",
+        "NASDAQ","NYMEX","NYSE","OPRA","TSE","VENTURE","X",
+        "AUD","CAD","CHF","CNH","GBP","JPY","NOK","NZD","SEK","USD"
+      ]
     },
     "ib": {
       "enabled": false,
-      "intervals": ["adjustments", "lookup", "contract", "fundamental", "day", "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"],
-      "markets": [ "AMEX", "ARCA", "AUD", "BATS", "CAD", "CBOE", "CBOT", "CFE", "CHF", "CME", "CNH", "COMEX", "GBP", "JPY", "LSE", "NASDAQ", "NOK", "NYMEX", "NYSE", "NZD", "OPRA", "SEK", "TSE", "USD", "VENTURE", "ICE", "X" ]
+      "intervals": [
+        "adjustments", "lookup", "contract", "fundamental", "day",
+        "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"
+      ],
+      "markets": [
+        "AEB","AMEX","ARCA","ASX","BATS","BM","CBOE","CBOT","CFE","CME","IBIS","ICE","LSE",
+        "NASDAQ","NYMEX","NYSE","OPRA","SBF","TSE","TSEJ","VENTURE","VIRTX","X",
+        "AUD","CAD","CHF","CNH","GBP","JPY","NOK","NZD","SEK","USD"
+      ]
     },
     "yahoo": {
       "intervals": ["adjustments", "lookup", "contract", "day"],
-      "markets": ["ARCA", "BATS", "NASDAQ", "NYSE", "AMEX", "LSE", "TSE", "VENTURE"]
+      "markets": [
+        "AEB","AMEX","ARCA","ASX","BATS","BM","IBIS","LSE",
+        "NASDAQ","NYMEX","NYSE","SBF","TSE","TSEJ","VENTURE","VIRTX"
+      ]
     },
     "remote": {
       "enabled": false,
@@ -155,200 +172,26 @@
     }
   },
   "markets": {
-    "ARCA": {
-      "label": "Archipelago Electronic Communications Network",
-      "description": "The Archipelago Electronic Communications Network (ARCX) allows the trading of listed NYSE, AMEX, NYSE Arca, and Nasdaq stocks in quantities from 1 to 1,000,000.",
-      "trading_hours": "04:00:00 - 20:00:00",
-      "liquid_hours": "09:30:00 - 16:00:00",
-      "open_time": "09:30:00",
-      "security_tz": "America/New_York",
-      "currency": "USD",
+    "AEB": {
+      "description": "Euronext NL Stocks",
+      "label": "Euronext NL Stocks",
+      "trading_hours": "09:00:00 - 17:40:00",
+      "liquid_hours": "09:00:00 - 17:40:00",
+      "open_time": "09:00:00",
+      "security_tz": "Europe/Amsterdam",
+      "currency": "EUR",
       "default_security_type": "STK",
       "datasources": {
         "yahoo": {
-          "exchs": ["NYQ", "PCX"],
-          "marketLang": "en-US"
-        },
-        "iqfeed": {
-          "security_types": ["EQUITY"],
-          "listed_markets": ["NYSE_ARCA"]
+          "exchs": ["AMS"],
+          "marketLang": "en-NL",
+          "yahooSuffix": ".AS"
         },
         "ib": {
           "whatToShow": "TRADES",
           "secType": "STK",
-          "primaryExch": "ARCA",
+          "primaryExch": "AEB",
           "exchange": "SMART"
-        },
-        "collective2": {
-            "instrument": "stock"
-        }
-      }
-    },
-    "BATS": {
-      "label": "BATS Global Markets",
-      "description": "In the United States Bats operates two stock exchanges, the BZX Exchange and the BYX Exchange (The Bats Exchanges), which as of 2012 accounted for about 10-12% of all U.S. equity trading on a daily basis.",
-      "trading_hours": "04:00:00 - 20:00:00",
-      "liquid_hours": "09:30:00 - 16:00:00",
-      "open_time": "09:30:00",
-      "security_tz": "America/New_York",
-      "currency": "USD",
-      "default_security_type": "STK",
-      "datasources": {
-        "yahoo": {
-          "exchs": ["NYQ", "PCX", "BTS"],
-          "marketLang": "en-US"
-        },
-        "iqfeed": {
-          "security_types": ["EQUITY"],
-          "listed_markets": ["BATS"]
-        },
-        "ib": {
-          "whatToShow": "TRADES",
-          "secType": "STK",
-          "primaryExch": "BATS",
-          "exchange": "SMART"
-        },
-        "collective2": {
-            "instrument": "stock"
-        }
-      }
-    },
-    "NASDAQ": {
-      "description": "NASDAQ is an American/Canadian stock exchange. It is the second-largest exchange in the world by market capitalization, behind only the New York Stock Exchange.",
-      "label": "NASDAQ - All Markets",
-      "trading_hours": "04:00:00 - 20:00:00",
-      "liquid_hours": "09:30:00 - 16:00:00",
-      "open_time": "09:30:00",
-      "security_tz": "America/New_York",
-      "currency": "USD",
-      "default_security_type": "STK",
-      "datasources": {
-        "yahoo": {
-          "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
-          "marketLang": "en-US"
-        },
-        "iqfeed": {
-          "security_types": ["EQUITY", "INDEX", "MUTUAL"],
-          "listed_markets": ["NGM", "NASDAQ", "NGSM", "NCM", "OTC"],
-          "dtnSymbolMap": {
-            "AJW": "AJW.X",
-            "AUM": "AUM.X",
-            "AUX": "AUX.X",
-            "BFW": "BFW.X",
-            "BIQ": "BIQ.X",
-            "BKX": "BKX.X",
-            "BPX": "BPX.X",
-            "BRB": "BRB.X",
-            "CBW": "CBW.X",
-            "CDD": "CDD.X",
-            "CPQ": "CPQ.X",
-            "CVL": "CVL.X",
-            "DAA": "DAA.X",
-            "DAT": "DAT.X",
-            "DAY": "DAY.X",
-            "DRB": "DRB.X",
-            "DVG": "DVG.X",
-            "EPW": "EPW.X",
-            "ETI": "ETI.X",
-            "EUI": "EUI.X",
-            "EUU": "EUU.X",
-            "FUM": "FUM.X",
-            "GBP": "GBP.X",
-            "GWE": "GWE.X",
-            "HGD": "HGD.X",
-            "HGX": "HGX.X",
-            "HHO": "HHO.X",
-            "HXC": "HXC.X",
-            "HXR": "HXR.X",
-            "ICK": "ICK.X",
-            "INW": "INW.X",
-            "IPY": "IPY.X",
-            "IXF": "IXF.X",
-            "JQL": "JQL.X",
-            "JYW": "JYW.X",
-            "KDX": "KDX.X",
-            "KIX": "KIX.X",
-            "KPX": "KPX.X",
-            "KRX": "KRX.X",
-            "KSX": "KSX.X",
-            "KYX": "KYX.X",
-            "NBI": "NBI.X",
-            "NBX": "NBX.X",
-            "NDO": "NDO.X",
-            "NDX": "NDX.X",
-            "NQX": "NQX.X",
-            "NZD": "NZD.X",
-            "OSV": "OSV.X",
-            "OSX": "OSX.X",
-            "PZO": "PZO.X",
-            "QIV": "QIV.X",
-            "QMI": "QMI.X",
-            "QTW": "QTW.X",
-            "QXV": "QXV.X",
-            "RCH": "RCH.X",
-            "SFC": "SFC.X",
-            "SFW": "SFW.X",
-            "SIN": "SIN.X",
-            "SKA": "SKA.X",
-            "SOX": "SOX.X",
-            "SOXX": "SOXX",
-            "SX": "SX.X",
-            "UTY": "UTY.X",
-            "UUW": "UUW.X",
-            "XAG": "XAG.X",
-            "XAU": "XAU.X",
-            "XCQ": "XCQ.X",
-            "XDA": "XDA.X",
-            "XDB": "XDB.X",
-            "XDC": "XDC.X",
-            "XDE": "XDE.X",
-            "XDN": "XDN.X",
-            "XDS": "XDS.X",
-            "XDZ": "XDZ.X",
-            "XQC": "XQC.X",
-            "XQO": "XQO.X",
-            "YUK": "YUK.X",
-            "ZIR": "ZIR.X"
-          }
-        },
-        "ib": {
-          "whatToShow": "TRADES",
-          "secTypes": ["STK", "IND"],
-          "primaryExchs": ["NASDAQ", ""],
-          "exchanges": ["SMART", "NASDAQ"],
-          "tradingClasses": ["NAS", "NCM", "NGM", "NMS", "NIM"]
-        },
-        "collective2": {
-            "instrument": "stock"
-        }
-      }
-    },
-    "NYSE": {
-      "description": "The New York Stock Exchange, sometimes known as the \"Big Board\", is a stock exchange located in New York. It is by far the world's largest stock exchange by market capitalization",
-      "label": "New York Stock Exchange",
-      "trading_hours": "04:00:00 - 20:00:00",
-      "liquid_hours": "09:30:00 - 16:00:00",
-      "open_time": "09:30:00",
-      "security_tz": "America/New_York",
-      "currency": "USD",
-      "default_security_type": "STK",
-      "datasources": {
-        "yahoo": {
-          "exchs": ["NYQ"],
-          "marketLang": "en-US"
-        },
-        "iqfeed": {
-          "security_types": ["EQUITY"],
-          "listed_markets": ["NYSE"]
-        },
-        "ib": {
-          "whatToShow": "TRADES",
-          "secType": "STK",
-          "primaryExch": "NYSE",
-          "exchange": "SMART"
-        },
-        "collective2": {
-            "instrument": "stock"
         }
       }
     },
@@ -381,329 +224,217 @@
         }
       }
     },
-    "LSE": {
-      "description": "The London Stock Exchange (LSE) is a stock exchange located in the City of London in the United Kingdom and the third-largest stock exchange in the world.",
-      "label": "London Stock Exchange",
-      "trading_hours": "08:00:00 - 16:30:00",
-      "liquid_hours": "08:00:00 - 16:30:00",
-      "open_time": "08:00:00",
-      "security_tz": "Europe/London",
-      "currency": "GBP",
+    "ARCA": {
+      "label": "Archipelago Electronic Communications Network",
+      "description": "The Archipelago Electronic Communications Network (ARCX) allows the trading of listed NYSE, AMEX, NYSE Arca, and Nasdaq stocks in quantities from 1 to 1,000,000.",
+      "trading_hours": "04:00:00 - 20:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "open_time": "09:30:00",
+      "security_tz": "America/New_York",
+      "currency": "USD",
       "default_security_type": "STK",
       "datasources": {
         "yahoo": {
-          "exchs": ["LSE", "YHD"],
-          "marketLang": "en-GB",
-          "yahooSuffix": ".L"
+          "exchs": ["NYQ", "PCX"],
+          "marketLang": "en-US"
         },
         "iqfeed": {
-          "dtnPrefix": "L.",
           "security_types": ["EQUITY"],
-          "listed_markets": ["LSE"]
+          "listed_markets": ["NYSE_ARCA"]
         },
         "ib": {
           "whatToShow": "TRADES",
           "secType": "STK",
-          "primaryExch": "LSE",
+          "primaryExch": "ARCA",
+          "exchange": "SMART"
+        },
+        "collective2": {
+            "instrument": "stock"
+        }
+      }
+    },
+    "ASX": {
+      "description": "Australian Stock Exchange (ASX)",
+      "label": "Australian Stock Exchange",
+      "trading_hours": "10:00:00 - 16:00:00",
+      "liquid_hours": "10:00:00 - 16:00:00",
+      "open_time": "10:00:00",
+      "security_tz": "Australia/Sydney",
+      "currency": "AUD",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["ASX"],
+          "marketLang": "en-AU",
+          "yahooSuffix": ".AX"
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "ASX",
           "exchange": "SMART"
         }
       }
     },
-    "TSE": {
-      "label": "Toronto Stock Exchange",
-      "description": "The Toronto Stock Exchange is the largest stock exchange in Canada, the third largest in North America and the seventh largest in the world by market capitalization. Based in Toronto, it is owned by and operated as a subsidiary of the TMX Group for the trading of senior equities.",
-      "trading_hours": "09:30:00 - 16:00:00",
+    "BATS": {
+      "label": "BATS Global Markets",
+      "description": "In the United States Bats operates two stock exchanges, the BZX Exchange and the BYX Exchange (The Bats Exchanges), which as of 2012 accounted for about 10-12% of all U.S. equity trading on a daily basis.",
+      "trading_hours": "04:00:00 - 20:00:00",
       "liquid_hours": "09:30:00 - 16:00:00",
       "open_time": "09:30:00",
-      "security_tz": "America/Toronto",
-      "currency": "CAD",
+      "security_tz": "America/New_York",
+      "currency": "USD",
       "default_security_type": "STK",
       "datasources": {
         "yahoo": {
-          "exchs": ["TOR", "YHD"],
-          "marketLang": "en-CA",
-          "yahooSuffix": ".TO"
+          "exchs": ["NYQ", "PCX", "BTS"],
+          "marketLang": "en-US"
         },
         "iqfeed": {
-          "dtnPrefix": "C.",
-          "security_types": ["EQUITY", "INDEX", "BONDS"],
-          "listed_markets": ["TSE"],
-          "dtnSymbolMap": {
-            "JX": "C.JX.X",
-            "RTCM": "C.RTCM.X",
-            "RTRE": "C.RTRE.X",
-            "STNC": "C.STNC.X",
-            "STNU": "C.STNU.X",
-            "T0000": "C.T0000.X",
-            "T00C": "C.T00C.X",
-            "TTCD": "C.TTCD.X",
-            "TTCS": "C.TTCS.X",
-            "TTEN": "C.TTEN.X",
-            "TTFS": "C.TTFS.X",
-            "TTGD": "C.TTGD.X",
-            "TTHC": "C.TTHC.X",
-            "TTIN": "C.TTIN.X",
-            "TTMT": "C.TTMT.X",
-            "TTRE": "C.TTRE.X",
-            "TTTK": "C.TTTK.X",
-            "TTTS": "C.TTTS.X",
-            "TTUT": "C.TTUT.X",
-            "TX20": "C.TX20.X",
-            "TX40": "C.TX40.X",
-            "TX60": "C.TX60.X",
-            "TX6C": "C.TX6C.X",
-            "TXBA": "C.TXBA.X",
-            "TXBB": "C.TXBB.X",
-            "TXBE": "C.TXBE.X",
-            "TXBM": "C.TXBM.X",
-            "TXCE": "C.TXCE.X",
-            "TXCT": "C.TXCT.X",
-            "TXDC": "C.TXDC.X",
-            "TXDE": "C.TXDE.X",
-            "TXDV": "C.TXDV.X",
-            "TXEI": "C.TXEI.X",
-            "TXEW": "C.TXEW.X",
-            "TXGE": "C.TXGE.X",
-            "TXGM": "C.TXGM.X",
-            "TXHB": "C.TXHB.X",
-            "TXHE": "C.TXHE.X",
-            "TXHU": "C.TXHU.X",
-            "TXIE": "C.TXIE.X",
-            "TXLV": "C.TXLV.X",
-            "TXOE": "C.TXOE.X",
-            "TXPR": "C.TXPR.X",
-            "TXSI": "C.TXSI.X",
-            "VIXC": "C.VIXC.X"
+          "security_types": ["EQUITY"],
+          "listed_markets": ["BATS"]
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "BATS",
+          "exchange": "SMART"
+        },
+        "collective2": {
+            "instrument": "stock"
+        }
+      }
+    },
+    "BM": {
+      "description": "Bolsa de Madrid (BM)",
+      "label": "Bolsa de Madrid",
+      "trading_hours": "09:00:00 - 17:35:00",
+      "liquid_hours": "09:00:00 - 17:30:00",
+      "open_time": "09:00:00",
+      "security_tz": "Europe/Madrid",
+      "currency": "EUR",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["MCE"],
+          "marketLang": "en-ES",
+          "yahooSuffix": ".MC"
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "BM",
+          "exchange": "SMART"
+        }
+      }
+    },
+    "BVME": {
+      "description": "Borsa Italiana (BVME)",
+      "label": "Borsa Italiana",
+      "trading_hours": "09:00:00 - 17:42:00",
+      "liquid_hours": "09:00:00 - 17:30:00",
+      "open_time": "09:00:00",
+      "security_tz": "Europe/Rome",
+      "currency": "EUR",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["MIL"],
+          "marketLang": "en-IT",
+          "yahooSuffix": ".MI"
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "BVME",
+          "exchange": "SMART"
+        }
+      }
+    },
+    "CBOE": {
+      "description": "Indexes listed on the Chicago Board Options Exchange",
+      "trading_hours": "08:30:00 - 15:00:00",
+      "liquid_hours": "08:30:00 - 15:00:00",
+      "open_time": "08:30:00",
+      "security_tz": "America/Chicago",
+      "currency": "USD",
+      "default_security_type": "IND",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": ".XO",
+          "security_types": ["INDEX"],
+          "listed_markets": ["CBOE"]
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "IND",
+          "exchange": "CBOE"
+        }
+      }
+    },
+    "CBOT": {
+      "description": "Futures and options contracts on the Chicago Board of Trade",
+      "trading_hours": "17:00:00 - 16:00:00",
+      "liquid_hours": "08:30:00 - 16:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/Chicago",
+      "currency": "USD",
+      "default_security_type": "FUT",
+      "datasources": {
+        "iqfeed": {
+          "security_types": ["FUTURE", "FOPTION", "COMBINED_FUTURE", "COMBINED_FOPTION", "ICSPREAD", "SPREAD", "STRATSPREAD"],
+          "listed_markets": ["CBOT", "CBOTMINI", "CBOT_GBX"],
+          "dtnPrefix": "@",
+          "dtnPrefixMap": {
+            "ZT": "@TU",
+            "ZF": "@FV",
+            "ZN": "@TY",
+            "ZB": "@US",
+            "UB": "@UB"
           }
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "STK",
-          "primaryExch": "TSE",
-          "exchange": "SMART"
+          "secType": "FUT",
+          "exchange": "ECBOT",
+          "month_abbreviation": true
+        },
+        "collective2": {
+          "c2_prefix": "@",
+          "c2_map": {
+            "ZT": "@TU",
+            "ZF": "@FV",
+            "ZN": "@TY",
+            "ZB": "@US",
+            "UB": "@UB"
+          },
+          "instrument": "future"
         }
       }
     },
-    "VENTURE": {
-      "description": "The TSX Venture Exchange is a stock exchange in Canada. It is headquartered in Calgary, Alberta and has offices in Toronto, Vancouver, and Montreal.",
-      "label": "TSX Venture Exchange",
-      "trading_hours": "09:30:00 - 16:00:00",
-      "liquid_hours": "09:30:00 - 16:00:00",
-      "open_time": "09:30:00",
-      "security_tz": "America/Toronto",
-      "currency": "CAD",
-      "default_security_type": "STK",
+    "CFE": {
+      "description": "Indexes listed on the Chicago Board Futures Exchange",
+      "trading_hours": "17:00:00 - 16:00:00",
+      "liquid_hours": "08:30:00 - 15:15:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/Chicago",
+      "currency": "USD",
+      "default_security_type": "FUT",
       "datasources": {
-        "yahoo": {
-          "exchs": ["TOR"],
-          "marketLang": "en-CA",
-          "yahooSuffix": ".V"
-        },
         "iqfeed": {
-          "dtnPrefix": "C.",
-          "security_types": ["EQUITY"],
-          "listed_markets": ["CVE"]
+          "dtnPrefix": "@",
+          "week_of_month": true,
+          "security_types": ["FUTURE", "COMBINED_FUTURE", "SPREAD"],
+          "listed_markets": ["CFE"]
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "STK",
-          "primaryExch": "VENTURE",
-          "exchange": "SMART"
-        }
-      }
-    },
-    "GBP": {
-      "description": "Forex Capital Markets trading using GBP as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "GBP",
-      "default_security_type": "CASH",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "GBP.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
+          "secType": "FUT",
+          "exchange": "CFE"
         },
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
-        }
-      }
-    },
-    "AUD": {
-      "description": "Forex Capital Markets trading using AUD as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "AUD",
-      "default_security_type": "CASH",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "AUD.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
-        },
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
-        }
-      }
-    },
-    "NZD": {
-      "description": "Forex Capital Markets trading using NZD as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "NZD",
-      "default_security_type": "CASH",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "NZD.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
-        },
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
-        }
-      }
-    },
-    "USD": {
-      "description": "Forex Capital Markets trading using USD as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "USD",
-      "default_security_type": "CASH",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "USD.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
-        },
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
-        }
-      }
-    },
-    "CAD": {
-      "description": "Forex Capital Markets trading using CAD as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "CAD",
-      "default_security_type": "CASH",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "CAD.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
-        },
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
-        }
-      }
-    },
-    "CHF": {
-      "description": "Forex Capital Markets trading using CHF as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "CHF",
-      "default_security_type": "CASH",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "CHF.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
-        },
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
-        }
-      }
-    },
-    "NOK": {
-      "description": "Forex Capital Markets trading using NOK as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "NOK",
-      "default_security_type": "CASH",
-      "datasources": {
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
-        }
-      }
-    },
-    "SEK": {
-      "description": "Forex Capital Markets trading using SEK as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "SEK",
-      "default_security_type": "CASH",
-      "datasources": {
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
-        }
-      }
-    },
-    "CNH": {
-      "description": "Forex Capital Markets trading using CNH as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "CNH",
-      "default_security_type": "CASH",
-      "datasources": {
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
-        }
-      }
-    },
-    "JPY": {
-      "description": "Forex Capital Markets trading using JPY as the quote currency.",
-      "trading_hours": "17:00:00 - 17:00:00",
-      "liquid_hours": "17:00:00 - 17:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/New_York",
-      "currency": "JPY",
-      "default_security_type": "CASH",
-      "datasources": {
-        "iqfeed": {
-          "dtnSuffix": "JPY.FXCM",
-          "security_types": ["SPOT", "FOREX"],
-          "listed_markets": ["FXCM"]
-        },
-        "ib": {
-          "whatToShow": "MIDPOINT",
-          "secType": "CASH",
-          "exchange": "IDEALPRO"
+        "collective2": {
+          "c2_prefix": "@",
+          "instrument": "future"
         }
       }
     },
@@ -833,6 +564,215 @@
         }
       }
     },
+    "IBIS": {
+      "description": "XETRA (IBIS)",
+      "label": "XETRA",
+      "trading_hours": "09:00:00 - 17:40:00",
+      "liquid_hours": "09:00:00 - 17:30:00",
+      "open_time": "09:00:00",
+      "security_tz": "Europe/Berlin",
+      "currency": "EUR",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["GER"],
+          "marketLang": "en-DE",
+          "yahooSuffix": ".DE"
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "IBIS",
+          "exchange": "SMART"
+        }
+      }
+    },
+    "ICE": {
+      "description": "Intercontinental Exchange",
+      "trading_hours": "20:00:00 - 17:00:00",
+      "liquid_hours": "20:00:00 - 17:00:00",
+      "open_time": "18:00:00",
+      "security_tz": "America/New_York",
+      "currency": "USD",
+      "default_security_type": "FUT",
+      "datasources": {
+        "iqfeed": {
+          "dtnPrefix": "@",
+          "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPREAD", "STRATSPREAD"],
+          "listed_markets": ["ICEEA", "ICEEC", "ICEEF", "ICEENDEX", "ICEFC", "ICEFU"]
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "FUT",
+          "exchange": "NYBOT"
+        },
+        "collective2": {
+          "c2_prefix": "@",
+          "instrument": "future"
+        }
+      }
+    },
+    "LSE": {
+      "description": "The London Stock Exchange (LSE) is a stock exchange located in the City of London in the United Kingdom and the third-largest stock exchange in the world.",
+      "label": "London Stock Exchange",
+      "trading_hours": "08:00:00 - 16:30:00",
+      "liquid_hours": "08:00:00 - 16:30:00",
+      "open_time": "08:00:00",
+      "security_tz": "Europe/London",
+      "currency": "GBP",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["LSE", "YHD"],
+          "marketLang": "en-GB",
+          "yahooSuffix": ".L"
+        },
+        "iqfeed": {
+          "dtnPrefix": "L.",
+          "security_types": ["EQUITY"],
+          "listed_markets": ["LSE"]
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "LSE",
+          "exchange": "SMART"
+        }
+      }
+    },
+    "LSEIOB1": {
+      "description": "LSE International Order Book (LSEIOB1)",
+      "label": "LSE International Order Book",
+      "trading_hours": "09:00:00 - 17:00:00",
+      "liquid_hours": "09:00:00 - 17:00:00",
+      "open_time": "09:00:00",
+      "security_tz": "Europe/London",
+      "currency": "USD",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["IOB"],
+          "marketLang": "en-GB",
+          "yahooSuffix": ".IL"
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "LSEIOB1",
+          "exchange": "SMART"
+        }
+      }
+    },
+    "NASDAQ": {
+      "description": "NASDAQ is an American/Canadian stock exchange. It is the second-largest exchange in the world by market capitalization, behind only the New York Stock Exchange.",
+      "label": "NASDAQ - All Markets",
+      "trading_hours": "04:00:00 - 20:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "open_time": "09:30:00",
+      "security_tz": "America/New_York",
+      "currency": "USD",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["NAS", "NCM", "NGM", "NMS", "NIM"],
+          "marketLang": "en-US"
+        },
+        "iqfeed": {
+          "security_types": ["EQUITY", "INDEX", "MUTUAL"],
+          "listed_markets": ["NGM", "NASDAQ", "NGSM", "NCM", "OTC"],
+          "dtnSymbolMap": {
+            "AJW": "AJW.X",
+            "AUM": "AUM.X",
+            "AUX": "AUX.X",
+            "BFW": "BFW.X",
+            "BIQ": "BIQ.X",
+            "BKX": "BKX.X",
+            "BPX": "BPX.X",
+            "BRB": "BRB.X",
+            "CBW": "CBW.X",
+            "CDD": "CDD.X",
+            "CPQ": "CPQ.X",
+            "CVL": "CVL.X",
+            "DAA": "DAA.X",
+            "DAT": "DAT.X",
+            "DAY": "DAY.X",
+            "DRB": "DRB.X",
+            "DVG": "DVG.X",
+            "EPW": "EPW.X",
+            "ETI": "ETI.X",
+            "EUI": "EUI.X",
+            "EUU": "EUU.X",
+            "FUM": "FUM.X",
+            "GBP": "GBP.X",
+            "GWE": "GWE.X",
+            "HGD": "HGD.X",
+            "HGX": "HGX.X",
+            "HHO": "HHO.X",
+            "HXC": "HXC.X",
+            "HXR": "HXR.X",
+            "ICK": "ICK.X",
+            "INW": "INW.X",
+            "IPY": "IPY.X",
+            "IXF": "IXF.X",
+            "JQL": "JQL.X",
+            "JYW": "JYW.X",
+            "KDX": "KDX.X",
+            "KIX": "KIX.X",
+            "KPX": "KPX.X",
+            "KRX": "KRX.X",
+            "KSX": "KSX.X",
+            "KYX": "KYX.X",
+            "NBI": "NBI.X",
+            "NBX": "NBX.X",
+            "NDO": "NDO.X",
+            "NDX": "NDX.X",
+            "NQX": "NQX.X",
+            "NZD": "NZD.X",
+            "OSV": "OSV.X",
+            "OSX": "OSX.X",
+            "PZO": "PZO.X",
+            "QIV": "QIV.X",
+            "QMI": "QMI.X",
+            "QTW": "QTW.X",
+            "QXV": "QXV.X",
+            "RCH": "RCH.X",
+            "SFC": "SFC.X",
+            "SFW": "SFW.X",
+            "SIN": "SIN.X",
+            "SKA": "SKA.X",
+            "SOX": "SOX.X",
+            "SOXX": "SOXX",
+            "SX": "SX.X",
+            "UTY": "UTY.X",
+            "UUW": "UUW.X",
+            "XAG": "XAG.X",
+            "XAU": "XAU.X",
+            "XCQ": "XCQ.X",
+            "XDA": "XDA.X",
+            "XDB": "XDB.X",
+            "XDC": "XDC.X",
+            "XDE": "XDE.X",
+            "XDN": "XDN.X",
+            "XDS": "XDS.X",
+            "XDZ": "XDZ.X",
+            "XQC": "XQC.X",
+            "XQO": "XQO.X",
+            "YUK": "YUK.X",
+            "ZIR": "ZIR.X"
+          }
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secTypes": ["STK", "IND"],
+          "primaryExchs": ["NASDAQ", ""],
+          "exchanges": ["SMART", "NASDAQ"],
+          "tradingClasses": ["NAS", "NCM", "NGM", "NMS", "NIM"]
+        },
+        "collective2": {
+            "instrument": "stock"
+        }
+      }
+    },
     "NYMEX": {
       "description": "New York Mercantile Exchange",
       "trading_hours": "17:00:00 - 17:00:00",
@@ -874,6 +814,35 @@
         }
       }
     },
+    "NYSE": {
+      "description": "The New York Stock Exchange, sometimes known as the \"Big Board\", is a stock exchange located in New York. It is by far the world's largest stock exchange by market capitalization",
+      "label": "New York Stock Exchange",
+      "trading_hours": "04:00:00 - 20:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "open_time": "09:30:00",
+      "security_tz": "America/New_York",
+      "currency": "USD",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["NYQ"],
+          "marketLang": "en-US"
+        },
+        "iqfeed": {
+          "security_types": ["EQUITY"],
+          "listed_markets": ["NYSE"]
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "NYSE",
+          "exchange": "SMART"
+        },
+        "collective2": {
+            "instrument": "stock"
+        }
+      }
+    },
     "OPRA": {
       "description": "The Options Price Reporting Authority (OPRA) is a committee of representatives from participating securities exchanges responsible for providing last-sale options quotations and information from the participating exchanges.",
       "trading_hours": "02:00:00 - 15:15:00",
@@ -894,115 +863,175 @@
         }
       }
     },
-    "CBOE": {
-      "description": "Indexes listed on the Chicago Board Options Exchange",
-      "trading_hours": "08:30:00 - 15:00:00",
-      "liquid_hours": "08:30:00 - 15:00:00",
-      "open_time": "08:30:00",
-      "security_tz": "America/Chicago",
-      "currency": "USD",
-      "default_security_type": "IND",
+    "SBF": {
+      "description": "Euronext France (SBF)",
+      "label": "Euronext France",
+      "trading_hours": "09:00:00 - 17:40:00",
+      "liquid_hours": "09:00:00 - 17:30:00",
+      "open_time": "09:00:00",
+      "security_tz": "Europe/Paris",
+      "currency": "EUR",
+      "default_security_type": "STK",
       "datasources": {
-        "iqfeed": {
-          "dtnSuffix": ".XO",
-          "security_types": ["INDEX"],
-          "listed_markets": ["CBOE"]
+        "yahoo": {
+          "exchs": ["PAR"],
+          "marketLang": "en-FR",
+          "yahooSuffix": ".PA"
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "IND",
-          "exchange": "CBOE"
+          "secType": "STK",
+          "primaryExch": "SBF",
+          "exchange": "SMART"
         }
       }
     },
-    "CBOT": {
-      "description": "Futures and options contracts on the Chicago Board of Trade",
-      "trading_hours": "17:00:00 - 16:00:00",
-      "liquid_hours": "08:30:00 - 16:00:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/Chicago",
-      "currency": "USD",
-      "default_security_type": "FUT",
+    "TSE": {
+      "label": "Toronto Stock Exchange",
+      "description": "The Toronto Stock Exchange is the largest stock exchange in Canada, the third largest in North America and the seventh largest in the world by market capitalization. Based in Toronto, it is owned by and operated as a subsidiary of the TMX Group for the trading of senior equities.",
+      "trading_hours": "09:30:00 - 16:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "open_time": "09:30:00",
+      "security_tz": "America/Toronto",
+      "currency": "CAD",
+      "default_security_type": "STK",
       "datasources": {
+        "yahoo": {
+          "exchs": ["TOR", "YHD"],
+          "marketLang": "en-CA",
+          "yahooSuffix": ".TO"
+        },
         "iqfeed": {
-          "security_types": ["FUTURE", "FOPTION", "COMBINED_FUTURE", "COMBINED_FOPTION", "ICSPREAD", "SPREAD", "STRATSPREAD"],
-          "listed_markets": ["CBOT", "CBOTMINI", "CBOT_GBX"],
-          "dtnPrefix": "@",
-          "dtnPrefixMap": {
-            "ZT": "@TU",
-            "ZF": "@FV",
-            "ZN": "@TY",
-            "ZB": "@US",
-            "UB": "@UB"
+          "dtnPrefix": "C.",
+          "security_types": ["EQUITY", "INDEX", "BONDS"],
+          "listed_markets": ["TSE"],
+          "dtnSymbolMap": {
+            "JX": "C.JX.X",
+            "RTCM": "C.RTCM.X",
+            "RTRE": "C.RTRE.X",
+            "STNC": "C.STNC.X",
+            "STNU": "C.STNU.X",
+            "T0000": "C.T0000.X",
+            "T00C": "C.T00C.X",
+            "TTCD": "C.TTCD.X",
+            "TTCS": "C.TTCS.X",
+            "TTEN": "C.TTEN.X",
+            "TTFS": "C.TTFS.X",
+            "TTGD": "C.TTGD.X",
+            "TTHC": "C.TTHC.X",
+            "TTIN": "C.TTIN.X",
+            "TTMT": "C.TTMT.X",
+            "TTRE": "C.TTRE.X",
+            "TTTK": "C.TTTK.X",
+            "TTTS": "C.TTTS.X",
+            "TTUT": "C.TTUT.X",
+            "TX20": "C.TX20.X",
+            "TX40": "C.TX40.X",
+            "TX60": "C.TX60.X",
+            "TX6C": "C.TX6C.X",
+            "TXBA": "C.TXBA.X",
+            "TXBB": "C.TXBB.X",
+            "TXBE": "C.TXBE.X",
+            "TXBM": "C.TXBM.X",
+            "TXCE": "C.TXCE.X",
+            "TXCT": "C.TXCT.X",
+            "TXDC": "C.TXDC.X",
+            "TXDE": "C.TXDE.X",
+            "TXDV": "C.TXDV.X",
+            "TXEI": "C.TXEI.X",
+            "TXEW": "C.TXEW.X",
+            "TXGE": "C.TXGE.X",
+            "TXGM": "C.TXGM.X",
+            "TXHB": "C.TXHB.X",
+            "TXHE": "C.TXHE.X",
+            "TXHU": "C.TXHU.X",
+            "TXIE": "C.TXIE.X",
+            "TXLV": "C.TXLV.X",
+            "TXOE": "C.TXOE.X",
+            "TXPR": "C.TXPR.X",
+            "TXSI": "C.TXSI.X",
+            "VIXC": "C.VIXC.X"
           }
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "FUT",
-          "exchange": "ECBOT",
-          "month_abbreviation": true
-        },
-        "collective2": {
-          "c2_prefix": "@",
-          "c2_map": {
-            "ZT": "@TU",
-            "ZF": "@FV",
-            "ZN": "@TY",
-            "ZB": "@US",
-            "UB": "@UB"
-          },
-          "instrument": "future"
+          "secType": "STK",
+          "primaryExch": "TSE",
+          "exchange": "SMART"
         }
       }
     },
-    "CFE": {
-      "description": "Indexes listed on the Chicago Board Futures Exchange",
-      "trading_hours": "17:00:00 - 16:00:00",
-      "liquid_hours": "08:30:00 - 15:15:00",
-      "open_time": "17:00:00",
-      "security_tz": "America/Chicago",
-      "currency": "USD",
-      "default_security_type": "FUT",
+    "TSEJ": {
+      "description": "Tokyo Stock Exchange (TSEJ)",
+      "label": "Tokyo Stock Exchange",
+      "trading_hours": "09:00:00 - 15:00:00",
+      "liquid_hours": "09:00:00 - 15:00:00",
+      "open_time": "09:00:00",
+      "security_tz": "Asia/Tokyo",
+      "currency": "JPY",
+      "default_security_type": "STK",
       "datasources": {
-        "iqfeed": {
-          "dtnPrefix": "@",
-          "week_of_month": true,
-          "security_types": ["FUTURE", "COMBINED_FUTURE", "SPREAD"],
-          "listed_markets": ["CFE"]
+        "yahoo": {
+          "exchs": ["JPX"],
+          "marketLang": "en-JP",
+          "yahooSuffix": ".T"
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "FUT",
-          "exchange": "CFE"
-        },
-        "collective2": {
-          "c2_prefix": "@",
-          "instrument": "future"
+          "secType": "STK",
+          "primaryExch": "TSEJ",
+          "exchange": "SMART"
         }
       }
     },
-    "ICE": {
-      "description": "Intercontinental Exchange",
-      "trading_hours": "20:00:00 - 17:00:00",
-      "liquid_hours": "20:00:00 - 17:00:00",
-      "open_time": "18:00:00",
-      "security_tz": "America/New_York",
-      "currency": "USD",
-      "default_security_type": "FUT",
+    "VENTURE": {
+      "description": "The TSX Venture Exchange is a stock exchange in Canada. It is headquartered in Calgary, Alberta and has offices in Toronto, Vancouver, and Montreal.",
+      "label": "TSX Venture Exchange",
+      "trading_hours": "09:30:00 - 16:00:00",
+      "liquid_hours": "09:30:00 - 16:00:00",
+      "open_time": "09:30:00",
+      "security_tz": "America/Toronto",
+      "currency": "CAD",
+      "default_security_type": "STK",
       "datasources": {
+        "yahoo": {
+          "exchs": ["TOR"],
+          "marketLang": "en-CA",
+          "yahooSuffix": ".V"
+        },
         "iqfeed": {
-          "dtnPrefix": "@",
-          "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPREAD", "STRATSPREAD"],
-          "listed_markets": ["ICEEA", "ICEEC", "ICEEF", "ICEENDEX", "ICEFC", "ICEFU"]
+          "dtnPrefix": "C.",
+          "security_types": ["EQUITY"],
+          "listed_markets": ["CVE"]
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "FUT",
-          "exchange": "NYBOT"
+          "secType": "STK",
+          "primaryExch": "VENTURE",
+          "exchange": "SMART"
+        }
+      }
+    },
+    "VIRTX": {
+      "description": "VIRT-X (VIRTX)",
+      "label": "VIRT-X",
+      "trading_hours": "09:00:00 - 17:32:00",
+      "liquid_hours": "09:00:00 - 17:30:00",
+      "open_time": "09:00:00",
+      "security_tz": "Europe/Zurich",
+      "currency": "CHF",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["EBS"],
+          "marketLang": "en-CHE",
+          "yahooSuffix": ".SW"
         },
-        "collective2": {
-          "c2_prefix": "@",
-          "instrument": "future"
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "VIRTX",
+          "exchange": "SMART"
         }
       }
     },
@@ -1023,6 +1052,201 @@
         "ib": {
           "whatToShow": "TRADES",
           "secType": "IND"
+        }
+      }
+    },
+    "AUD": {
+      "description": "Forex Capital Markets trading using AUD as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "AUD",
+      "default_security_type": "CASH",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "AUD.FXCM",
+          "security_types": ["SPOT", "FOREX"],
+          "listed_markets": ["FXCM"]
+        },
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
+        }
+      }
+    },
+    "CAD": {
+      "description": "Forex Capital Markets trading using CAD as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "CAD",
+      "default_security_type": "CASH",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "CAD.FXCM",
+          "security_types": ["SPOT", "FOREX"],
+          "listed_markets": ["FXCM"]
+        },
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
+        }
+      }
+    },
+    "CHF": {
+      "description": "Forex Capital Markets trading using CHF as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "CHF",
+      "default_security_type": "CASH",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "CHF.FXCM",
+          "security_types": ["SPOT", "FOREX"],
+          "listed_markets": ["FXCM"]
+        },
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
+        }
+      }
+    },
+    "CNH": {
+      "description": "Forex Capital Markets trading using CNH as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "CNH",
+      "default_security_type": "CASH",
+      "datasources": {
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
+        }
+      }
+    },
+    "GBP": {
+      "description": "Forex Capital Markets trading using GBP as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "GBP",
+      "default_security_type": "CASH",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "GBP.FXCM",
+          "security_types": ["SPOT", "FOREX"],
+          "listed_markets": ["FXCM"]
+        },
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
+        }
+      }
+    },
+    "JPY": {
+      "description": "Forex Capital Markets trading using JPY as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "JPY",
+      "default_security_type": "CASH",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "JPY.FXCM",
+          "security_types": ["SPOT", "FOREX"],
+          "listed_markets": ["FXCM"]
+        },
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
+        }
+      }
+    },
+    "NOK": {
+      "description": "Forex Capital Markets trading using NOK as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "NOK",
+      "default_security_type": "CASH",
+      "datasources": {
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
+        }
+      }
+    },
+    "NZD": {
+      "description": "Forex Capital Markets trading using NZD as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "NZD",
+      "default_security_type": "CASH",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "NZD.FXCM",
+          "security_types": ["SPOT", "FOREX"],
+          "listed_markets": ["FXCM"]
+        },
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
+        }
+      }
+    },
+    "SEK": {
+      "description": "Forex Capital Markets trading using SEK as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "SEK",
+      "default_security_type": "CASH",
+      "datasources": {
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
+        }
+      }
+    },
+    "USD": {
+      "description": "Forex Capital Markets trading using USD as the quote currency.",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "17:00:00 - 17:00:00",
+      "open_time": "17:00:00",
+      "security_tz": "America/New_York",
+      "currency": "USD",
+      "default_security_type": "CASH",
+      "datasources": {
+        "iqfeed": {
+          "dtnSuffix": "USD.FXCM",
+          "security_types": ["SPOT", "FOREX"],
+          "listed_markets": ["FXCM"]
+        },
+        "ib": {
+          "whatToShow": "MIDPOINT",
+          "secType": "CASH",
+          "exchange": "IDEALPRO"
         }
       }
     }

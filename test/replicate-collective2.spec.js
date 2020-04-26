@@ -2199,7 +2199,8 @@ describe("replicate-collective2", function() {
                 fullSymbol: "@MCDU18",
                 instrument: "future",
                 quant: "1",
-                symbol: "@MCDU8"
+                symbol: "@MCDU8",
+                market: 'CME'
             }, {
                 action: 'BTO',
                 status: 'traded',
@@ -2209,7 +2210,8 @@ describe("replicate-collective2", function() {
                 fullSymbol: "@MCDU18",
                 instrument: "future",
                 quant: "1",
-                symbol: "@MCDU8"
+                symbol: "@MCDU8",
+                market: 'CME'
             }, {
                 action: 'STO',
                 status: 'traded',
@@ -2219,7 +2221,8 @@ describe("replicate-collective2", function() {
                 fullSymbol: "@MCDU18",
                 instrument: "future",
                 quant: "1",
-                symbol: "@MCDU8"
+                symbol: "@MCDU8",
+                market: 'CME'
             }, {
                 action: 'BTC',
                 status: 'traded',
@@ -2229,7 +2232,8 @@ describe("replicate-collective2", function() {
                 fullSymbol: "@MCDU18",
                 instrument: "future",
                 quant: "1",
-                symbol: "@MCDU8"
+                symbol: "@MCDU8",
+                market: 'CME'
             }]}));
             fs.writeFileSync(retrieveSignalsWorking, JSON.stringify({ok:1,response:[]}));
             return Replicate(broker, fetch, function(options) {
@@ -2453,6 +2457,7 @@ describe("replicate-collective2", function() {
 	          markToMarket_time: "2015-06-11 16:40:03",
 	          trade_id: "94369671",
 	          symbol: "GLD",
+              market: 'CME',
 	          opening_price_VWAP: "58.23390",
 	          quant_opened: "2",
 	          closedWhen: "",
@@ -2467,6 +2472,7 @@ describe("replicate-collective2", function() {
                 signal_id: "94974798",
                 typeofsymbol: 'stock',
                 symbol: 'GLD',
+                market: 'CME',
                 action: 'STC',
                 quant: 2,
                 duration: 'GTC',
@@ -3030,6 +3036,7 @@ describe("replicate-collective2", function() {
                    opening_price_VWAP: '1.12300',
                    trade_id: '123813141',
                    symbol: '@EUM9',
+                   market: 'CME',
                    quant_opened: '1',
                    closedWhen: '',
                    instrument: 'future',
@@ -3054,6 +3061,7 @@ describe("replicate-collective2", function() {
                    quant: '1',
                    parked_releasewhen: '',
                    symbol: '@EUM9',
+                   market: 'CME',
                    name: '',
                    instrument: 'future',
                    isStopOrder: '1.1395',
@@ -3731,6 +3739,7 @@ describe("replicate-collective2", function() {
                 opening_price_VWAP: '1.00270',
                 trade_id: '118904708',
                 symbol: '@MSFU8',
+                market: 'CME',
                 quant_opened: '1',
                 closedWhen: '',
                 instrument: 'future',
@@ -3753,6 +3762,7 @@ describe("replicate-collective2", function() {
                 signalid: 12240489,
                 stop: 1.023,
                 symbol: '@MSFU8',
+                market: 'CME',
                 typeofsymbol: 'future'
             }, {
                 isLimitOrder: '1.011800000',
@@ -3766,6 +3776,7 @@ describe("replicate-collective2", function() {
                 quant: '1',
                 parked_releasewhen: '',
                 symbol: '@MSFU8',
+                market: 'CME',
                 name: '',
                 instrument: 'future',
                 isStopOrder: '0',
@@ -3786,6 +3797,7 @@ describe("replicate-collective2", function() {
                 quant: '1',
                 parked_releasewhen: '',
                 symbol: '@MSFU8',
+                market: 'CME',
                 name: '',
                 instrument: 'future',
                 isStopOrder: '0',
@@ -3969,6 +3981,7 @@ describe("replicate-collective2", function() {
                 opening_price_VWAP: "0.75815",
                 trade_id: "122730309",
                 symbol: "@CDH9",
+                market: 'CME',
                 quant_opened: "1",
                 closedWhen: "",
                 instrument: "future",
@@ -3993,6 +4006,7 @@ describe("replicate-collective2", function() {
                 quant: "1",
                 parked_releasewhen: "",
                 symbol: "@CDH9",
+                market: 'CME',
                 name: "",
                 instrument: "future",
                 isStopOrder: "0",
@@ -4013,6 +4027,7 @@ describe("replicate-collective2", function() {
                 quant: "1",
                 parked_releasewhen: "",
                 symbol: "@CDH9",
+                market: 'CME',
                 name: "",
                 instrument: "future",
                 isStopOrder: "0",
