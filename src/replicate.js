@@ -795,6 +795,23 @@ function updateComboOrders(broker_orders, actual, replicateContract, order_chang
 }
 
 function combineOrders(broker_orders, orders, options) {
+    const combined = combineSimpleOrders(broker_orders, orders, options);
+    return combined.reduce((orders, ord) => {
+        if (_.isEmpty(ord.attached)) return orders;
+        if (ord.attached.some(ord => ord.order_type == 'LEG')) return orders;
+        if (ord.action != 'BUY' && ord.action != 'SELL') return orders;
+        const idx = orders.indexOf(ord);
+        expect(idx).to.be.at.least(0);
+        const other = orders.filter(other => other != ord);
+        const combined = combineSimpleOrders(broker_orders, ord.attached.concat(other), options);
+        const attached = _.uniq(ord.attached.map(ord => !ord.order_ref || ~combined.indexOf(ord) ? ord :
+            combined.find(o => o.order_ref == ord.order_ref)));
+        const replacement = {...ord, attached};
+        return combined.filter(ord => !~attached.indexOf(ord)).concat(replacement);
+    }, combined);
+}
+
+function combineSimpleOrders(broker_orders, orders, options) {
     return reduceComboPairs(orders, (combined_orders, legs) => {
         if (!legs.every(ord => ord.order_type == legs[0].order_type && ord.tif == legs[0].tif)) {
             logger.warn("Cannot combine orders", ...legs);
@@ -851,7 +868,7 @@ function combineOrders(broker_orders, orders, options) {
 }
 
 function reduceComboPairs(orders, cb, initial) {
-    const {ineligible, buy_sell} = _.groupBy(orders, ord => ord.action != 'BUY' && ord.action != 'SELL' || !ord.order_ref ? 'ineligible' : 'buy_sell');
+    const {ineligible, buy_sell} = _.groupBy(orders, ord => ord.action != 'BUY' && ord.action != 'SELL' || !ord.order_ref || !_.isEmpty(ord.attached) ? 'ineligible' : 'buy_sell');
     const grouped = Object.values(_.groupBy(buy_sell || [], ord => ord.order_ref));
     const single_legs = grouped.filter(group => group.length == 1).map(group => group[0]);
     const combo_legs = grouped.filter(group => group.length > 1).map(group => group.sort(sortByHigherPrice));
