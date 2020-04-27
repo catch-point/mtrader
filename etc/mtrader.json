@@ -857,7 +857,7 @@
           "listed_markets": ["OPRA"]
         },
         "ib": {
-          "whatToShow": "MIDPOINT",
+          "whatToShow": "TRADES",
           "secType": "OPT",
           "exchange": "SMART"
         }
