@@ -248,7 +248,7 @@ function yahoo_symbol(markets, options) {
         else
             return options.symbol
                 .replace(/\^/, '-P')
-                .replace(/[\.\-\/]/, '-')
+                .replace(/[\.\-\/](?!$)/, '-')
                 .replace(/-PR./, '-P')
                 .replace(/\./g, '') +
                 suffix;
