@@ -32,7 +32,7 @@
         "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"
       ],
       "markets": [
-        "AEB","AMEX","ARCA","ASX","BATS","BM","CBOE","CBOT","CFE","CME","IBIS","ICE","LSE",
+        "AEB","AMEX","ARCA","ASX","BATS","BM","CBOE","CBOT","CFE","CME","FWB","IBIS","ICE","LSE",
         "NASDAQ","NYMEX","NYSE","OPRA","SBF","TSE","TSEJ","VENTURE","VIRTX","X",
         "AUD","CAD","CHF","CNH","GBP","JPY","NOK","NZD","SEK","USD"
       ]
@@ -40,7 +40,7 @@
     "yahoo": {
       "intervals": ["adjustments", "lookup", "contract", "day"],
       "markets": [
-        "AEB","AMEX","ARCA","ASX","BATS","BM","IBIS","LSE",
+        "AEB","AMEX","ARCA","ASX","BATS","BM","FWB","IBIS","LSE",
         "NASDAQ","NYMEX","NYSE","SBF","TSE","TSEJ","VENTURE","VIRTX"
       ]
     },
@@ -561,6 +561,29 @@
             "XVT": "@XCT"
           },
           "instrument": "future"
+        }
+      }
+    },
+    "FWB": {
+      "description": "Frankfurt Stock Exchange (FWB)",
+      "label": "Frankfurt Stock Exchange",
+      "trading_hours": "08:00:00 - 20:00:00",
+      "liquid_hours": "09:00:00 - 17:30:00",
+      "open_time": "09:00:00",
+      "security_tz": "Europe/Berlin",
+      "currency": "EUR",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["FRA"],
+          "marketLang": "en-DE",
+          "yahooSuffix": ".F"
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "FWB",
+          "exchange": "SMART"
         }
       }
     },
