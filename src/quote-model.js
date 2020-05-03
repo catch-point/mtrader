@@ -122,7 +122,7 @@ function help(assets, help) {
 module.exports = function(fetch, quote, settings = {}) {
     if (_.isFunction(fetch) && !_.isFunction(quote) && _.isEmpty(settings))
         return module.exports(fetch, fetch, quote);
-    const cached_fetch = cacheFetch(fetch, quote);
+    const cached_fetch = cacheFetch(fetch);
     const incl_settings = readConfig(settings, config.configDirname());
     const assets = incl_settings.assets || [];
     const market_values = _.uniq(assets.map(asset => asset.market));
@@ -168,23 +168,29 @@ module.exports = function(fetch, quote, settings = {}) {
     });
 };
 
-function cacheFetch(fetch, quote) {
+function cacheFetch(fetch) {
     const cache_intervals = ['lookup', 'contract', 'fundamental', 'adjustments'];
     const cache_keys = ['interval', 'symbol', 'market', 'security_type', 'currency', 'now', 'offline', 'tz', 'begin', 'end'];
-    const cached = cache(
+    const cached_intervals = cache(
         options => fetch(options),
         options => JSON.stringify(_.pick(options, cache_keys)),
-        10
+        32
+    );
+    const cached_bars = cache(
+        options => fetch(options),
+        options => JSON.stringify(_.pick(options, cache_keys)),
+        64
     );
     return Object.assign(options => {
         const contract_key = `${options.symbol}.${options.market}/${options.interval}`;
         if (options.info) return fetch(options);
-        else if (~cache_intervals.indexOf(options.interval)) return cached(options);
-        else if (~(options.processed_symbols||[]).indexOf(contract_key)) return fetch(options);
-        else return quote(options);
+        else if (~cache_intervals.indexOf(options.interval)) return cached_intervals(options);
+        else if (!options.processed_symbols) return fetch(options);
+        else if (~options.processed_symbols.indexOf(contract_key)) return fetch(options);
+        else return cached_bars(options);
     }, {
         close() {
-            return cached.close()
+            return Promise.all([cached_intervals.close(), cached_bars.close()]);
         }
     });
 }
@@ -254,6 +260,7 @@ async function blendCall(markets, fetch, quote, asset, options) {
         const max_end = minDate(model.end, (_.first(await promise)||{}).ending,
             (i == models.length-1 && options.end ? maxDate(options.end, max_begin) : undefined));
         const end = !model.end && i <models.length-1 ? periods.inc(max_end, 1).format(options.ending_format) : max_end;
+        if (end <= begin) return promise;
         const part = model.bars ? model.bars :
             await fetchModel(markets, fetch, quote, asset, model, { ...options, begin, end });
         const result = await promise;
