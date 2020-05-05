@@ -82,7 +82,8 @@ const functions = module.exports.functions = {
             if (n <= 0) return null;
             const ranges = adj(bars).map(function(bar,i,bars) {
                 const previous = bars[i-1];
-                if (!previous) return Big(bar.high).minus(bar.low);
+                if (!+bar.high && !+bar.low) return 0;
+                if (!previous || !+previous.close) return Big(bar.high).minus(bar.low);
                 return Math.max(
                     Big(bar.high).minus(bar.low),
                     Big(bar.high).minus(previous.close),
