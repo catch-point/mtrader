@@ -977,6 +977,7 @@
           }
         },
         "ib": {
+          "transmit": false,
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "TSE",

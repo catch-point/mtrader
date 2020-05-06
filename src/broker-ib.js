@@ -483,10 +483,9 @@ async function oneCancelsAllOrders(root_ref, markets, ib, settings, options) {
     expect(options).to.have.property('attached').that.is.an('array');
     const order_ref = orderRef(root_ref, await ib.reqId(), options);
     return await options.attached.reduce(async(promise, order, i, orders) => {
-        const posted_orders = await submitOrder(root_ref, markets, ib, {
-            ...settings,
-            transmit: settings.transmit || false
-        }, {extended_hours: options.extended_hours, ...order}, null, order_ref);
+        const posted_orders = await submitOrder(root_ref, markets, ib, settings, {
+            extended_hours: options.extended_hours, ...order
+        }, null, order_ref);
         return (await promise).concat(posted_orders.map(ord => ({...ord, attach_ref: order_ref})));
     }, []);
 }
@@ -502,6 +501,9 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
     const contract = await toContract(markets, ib, options);
     const ib_order = await orderToIbOrder(markets, ib, settings, contract, options, options);
     const attached = flattenOCA(options.attached);
+    const transmit = 'transmit' in markets[options.market || (attached[0]||{}).market] ?
+        markets[options.market || (attached[0]||{}).market].transmit && settings.transmit || false :
+        settings.transmit || false;
     const existing_orders = await Promise.all(attached.map(ord => orderByRef(ib, ord.order_ref)));
     const new_orders = attached.filter((ord, i) => !existing_orders[i]);
     const last_new_order = existing_orders.reduce((last, ord, i) => !existing_orders[i] ? i : last, 0);
@@ -510,7 +512,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
         const submit_order = {
             ...ib_order,
             orderId: order_id, orderRef: order_ref,
-            transmit: (contract.secType == 'BAG' || _.isEmpty(new_orders)) && settings.transmit || false,
+            transmit: (contract.secType == 'BAG' || _.isEmpty(new_orders)) && transmit,
             parentId: parentId || (attach_order ? attach_order.orderId : null),
             ocaGroup: oca_group, ocaType: oca_group ? 1 : 0,
             smartComboRoutingParams: contract.secType == 'BAG' ? [{tag:'NonGuaranteed',value:'1'}] : []
@@ -527,7 +529,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
             attach_ref: parent_order.order_ref
         }] : await submitOrder(root_ref, markets, ib, {
             ...settings,
-            transmit: last_new_order <= i && settings.transmit || false
+            transmit: last_new_order <= i && transmit
         }, {extended_hours: options.extended_hours, ...attach}, order_id);
         return (await promise).concat(child_orders.map(ord => ({...ord, attach_ref: order_ref})));
     }, [parent_order]);
@@ -584,7 +586,6 @@ async function orderToIbOrder(markets, ib, settings, contract, order, options) {
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
-            transmit: settings.transmit || false,
             ...await ibAccountOrderProperties(ib, settings)
         };
     } else if (order.order_type == 'SNAP STK') {
@@ -596,7 +597,6 @@ async function orderToIbOrder(markets, ib, settings, contract, order, options) {
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
-            transmit: settings.transmit || false,
             ...await ibAccountOrderProperties(ib, settings)
         };
     } else {
@@ -609,7 +609,6 @@ async function orderToIbOrder(markets, ib, settings, contract, order, options) {
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
-            transmit: settings.transmit || false,
             ...await ibAccountOrderProperties(ib, settings)
         };
     }
