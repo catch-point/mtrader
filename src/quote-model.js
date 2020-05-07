@@ -174,12 +174,12 @@ function cacheFetch(fetch) {
     const cached_intervals = cache(
         options => fetch(options),
         options => JSON.stringify(_.pick(options, cache_keys)),
-        32
+        8
     );
     const cached_bars = cache(
         options => fetch(options),
         options => JSON.stringify(_.pick(options, cache_keys)),
-        64
+        16
     );
     return Object.assign(options => {
         const contract_key = `${options.symbol}.${options.market}/${options.interval}`;
