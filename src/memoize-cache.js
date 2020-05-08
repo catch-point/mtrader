@@ -30,6 +30,7 @@
  */
 'use strict';
 
+const process = require('process');
 const _ = require('underscore');
 const debounce = require('./debounce.js');
 const logger = require('./logger.js');
@@ -63,6 +64,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             await cache[key].closing;
             const entry = cache[key] = {
                 id: key,
+                heap_before: size > 1 ? process.memoryUsage().heapUsed : null,
                 result: func.apply(cached, args),
                 registered: 0,
                 locks: []
@@ -74,6 +76,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
         } else {
             const entry = cache[key] = {
                 id: key,
+                heap_before: size > 1 ? process.memoryUsage().heapUsed : null,
                 result: func.apply(this, args),
                 registered: 0,
                 locks: []
@@ -84,6 +87,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
     cached.replaceEntry = (key, result) => {
         cache[key] = {
             id: key,
+            heap_before: size > 1 ? process.memoryUsage().heapUsed : null,
             result: result,
             error: null,
             registered: 0,
@@ -144,10 +148,29 @@ function aquire(entry) {
 function release(sweep, size, cache, entry, lock) {
     _.forEach(cache, entry => !entry.registered && !entry.marked && entry.age++);
     entry.registered--;
+    if (!entry.heap_after && size > 1) entry.heap_after = process.memoryUsage().heapUsed;
+    const heap_avail_size = size > 1 ? availableHeapSize(cache) : size;
+    const limit = Math.min(size, heap_avail_size);
     const idx = entry.locks.indexOf(lock);
     if (idx >= 0) entry.locks.splice(idx, 1);
-    while(_.reject(cache, 'marked').length > size && mark(cache));
+    while(_.reject(cache, 'marked').length > limit && mark(cache));
     sweep(cache);
+}
+
+/**
+ * Keep checking available heap size and compare memory growth rate. Try to keep
+ * as much heap available as has been observed by the heap growth while aquiring
+ * cache entries.
+ */
+function availableHeapSize(cache) {
+    const sample = Object.values(cache).filter(entry => entry.heap_before < entry.heap_after);
+    const heap_growth_rate = sample.reduce((total, entry) => {
+        return total + entry.heap_after - entry.heap_before;
+    }, 0) / sample.length;
+    if (!sample.length || !heap_growth_rate) return Infinity;
+    const usage = process.memoryUsage();
+    const heap_avail = usage.heapTotal - usage.heapUsed;
+    return Math.floor(heap_avail/heap_growth_rate);
 }
 
 function mark(cache) {
