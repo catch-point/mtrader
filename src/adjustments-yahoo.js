@@ -83,7 +83,7 @@ module.exports = share(function(settings = {}, yahooClient = null) {
     const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const dir = path.resolve(config('prefix'), settings.cache_dir || cache_dir);
     const stores = {};
-    const markets = _.pick(config('markets'), config('fetch.yahoo.markets'));
+    const markets = config('markets');
     const symbol = yahoo_symbol.bind(this, markets);
     const yahoo = yahooClient || Yahoo();
     return _.extend(async(options) => {
