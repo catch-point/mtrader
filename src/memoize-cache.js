@@ -64,7 +64,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             await cache[key].closing;
             const entry = cache[key] = {
                 id: key,
-                heap_before: size > 1 ? process.memoryUsage().heapUsed : null,
+                heap_before: size > 1 ? memoryUsage().heapUsed : null,
                 result: func.apply(cached, args),
                 registered: 0,
                 locks: []
@@ -76,7 +76,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
         } else {
             const entry = cache[key] = {
                 id: key,
-                heap_before: size > 1 ? process.memoryUsage().heapUsed : null,
+                heap_before: size > 1 ? memoryUsage().heapUsed : null,
                 result: func.apply(this, args),
                 registered: 0,
                 locks: []
@@ -87,7 +87,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
     cached.replaceEntry = (key, result) => {
         cache[key] = {
             id: key,
-            heap_before: size > 1 ? process.memoryUsage().heapUsed : null,
+            heap_before: size > 1 ? memoryUsage().heapUsed : null,
             result: result,
             error: null,
             registered: 0,
@@ -148,7 +148,7 @@ function aquire(entry) {
 function release(sweep, size, cache, entry, lock) {
     _.forEach(cache, entry => !entry.registered && !entry.marked && entry.age++);
     entry.registered--;
-    if (!entry.heap_after && size > 1) entry.heap_after = process.memoryUsage().heapUsed;
+    if (!entry.heap_after && size > 1) entry.heap_after = memoryUsage().heapUsed;
     const heap_avail_size = size > 1 ? availableHeapSize(cache) : size;
     const limit = Math.min(size, heap_avail_size);
     const idx = entry.locks.indexOf(lock);
@@ -168,9 +168,20 @@ function availableHeapSize(cache) {
         return total + entry.heap_after - entry.heap_before;
     }, 0) / sample.length;
     if (!sample.length || !heap_growth_rate) return Infinity;
-    const usage = process.memoryUsage();
+    const usage = memoryUsage();
     const heap_avail = usage.heapTotal - usage.heapUsed;
     return Math.floor(heap_avail/heap_growth_rate);
+}
+
+
+let heapMax = 0;
+function memoryUsage() {
+    const usage = process.memoryUsage();
+    heapMax = Math.max(usage.heapTotal, heapMax);
+    return {
+        heapUsed: usage.heapUsed,
+        heapTotal: heapMax
+    };
 }
 
 function mark(cache) {
