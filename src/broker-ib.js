@@ -515,7 +515,8 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
             transmit: (contract.secType == 'BAG' || _.isEmpty(new_orders)) && transmit,
             parentId: parentId || (attach_order ? attach_order.orderId : null),
             ocaGroup: oca_group, ocaType: oca_group ? 1 : 0,
-            smartComboRoutingParams: contract.secType == 'BAG' ? [{tag:'NonGuaranteed',value:'1'}] : []
+            smartComboRoutingParams: contract.secType == 'BAG' && contract.exchange == 'SMART' ?
+                [{tag:'NonGuaranteed',value:'1'}] : []
         };
         return await ib.placeOrder(order_id, contract, submit_order);
     });
