@@ -4774,4 +4774,120 @@ describe("broker-ib", function() {
             security_type: 'BAG',
             multiplier: 100 } ]);
     });
+    it("should submit BUY Call SNAP STK MID offset OPT order after hours", async() => {
+        const broker = new Broker(settings, {
+            async open() { return this; },
+            reqId: cb => cb(1),
+            reqContractDetails: (...args) => {
+                expect(args).to.be.like([{
+                    localSymbol: 'NVDA  210115C00300000',
+                    secType: 'OPT',
+                    exchange: 'SMART',
+                    currency: 'USD',
+                    multiplier: 100
+                }]);
+                return Promise.resolve([{
+                    summary: { right: 'C', exchange: 'SMART' },
+                    minTick: 0.01,
+                    underConId: 4815747
+                }]);
+            },
+            reqContract: (...args) => {
+                expect(args).to.be.like([4815747]);
+                return Promise.resolve({
+                    conId: 4815747, exchange: 'SMART'
+                });
+            },
+            reqMktData: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'NVDA  210115C00300000',
+                                secType: 'OPT',
+                                exchange: 'SMART',
+                                currency: 'USD',
+                                multiplier: 100
+                            }]);
+                            return Promise.resolve({
+                                bid_size: 0,
+                                ask_size: 0,
+                                last: 78.15,
+                                last_size: 3,
+                                volume: 194,
+                                high: 78.15,
+                                low: 60.9,
+                                close: 62.75,
+                                last_timestamp: '1589572644',
+                                halted: 0
+                            })
+                        case 1:
+                            expect(args).to.be.like([{ conId: 4815747, exchange: 'SMART' }]);
+                            return Promise.resolve({ close: 321.22 })
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
+            reqManagedAccts: () => Promise.resolve(['test']),
+            placeOrder: (...args) => {
+                expect(args).to.be.like([1,
+                {
+                    localSymbol: 'NVDA  210115C00300000',
+                    secType: 'OPT',
+                    exchange: 'SMART',
+                    currency: 'USD',
+                    multiplier: 100
+                },
+                {
+                    action: 'BUY',
+                    totalQuantity: 1,
+                    orderType: 'LMT',
+                    lmtPrice: 78.15,
+                    tif: 'DAY',
+                    orderRef: /SNAPSTK/,
+                    account: 'test',
+                    orderId: 1,
+                    parentId: null,
+                    ocaGroup: null,
+                    ocaType: 0,
+                    smartComboRoutingParams: []
+                }]);
+                return Promise.resolve({
+                    localSymbol: 'NVDA  210115C00300000',
+                    secType: 'OPT',
+                    exchange: 'SMART',
+                    currency: 'USD',
+                    multiplier: 100,
+                    status: 'ApiPending',
+                    action: 'BUY',
+                    totalQuantity: 1,
+                    orderRef: args[2].orderRef,
+                    lmtPrice: 78.15,
+                    orderType: 'LMT',
+                    tif: 'DAY',
+                    account: 'test'
+                });
+            }
+        });
+        const orders = await broker({
+            action: 'BUY', quant: 1, order_type: 'SNAP STK', tif: 'DAY',
+            symbol: 'NVDA  210115C00300000', market: 'OPRA',
+            currency: 'USD', security_type: 'OPT', multiplier: 100
+        }).should.eventually.be.like([ {
+            action: 'BUY',
+            quant: 1,
+            order_type: 'SNAP STK',
+            limit: 78.15,
+            tif: 'DAY',
+            status: 'pending',
+            order_ref: /SNAPSTK/,
+            account: 'test',
+            symbol: 'NVDA  210115C00300000',
+            market: 'OPRA',
+            currency: 'USD',
+            security_type: 'OPT',
+            multiplier: 100 } ]);
+    });
 });

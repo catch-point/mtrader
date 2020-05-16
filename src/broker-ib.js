@@ -64,9 +64,9 @@ module.exports = function(settings = {}, mock_ib_client = null) {
             case 'orders': return listOrders(markets, ib, settings, options);
             case 'cancel': return cancelOrder(markets, ib, settings, options);
             case 'watch': return watchOrder(markets, ib, settings, options);
-            case 'OCA': return oneCancelsAllOrders(root_ref, markets, ib, settings, options);
+            case 'OCA': return oneCancelsAllOrders(root_ref, markets, ib, fetch, settings, options);
             case 'BUY':
-            case 'SELL': return submitOrder(root_ref, markets, ib, settings, options);
+            case 'SELL': return submitOrder(root_ref, markets, ib, fetch, settings, options);
             default: expect(options).to.have.property('action').to.be.oneOf([
                 'balances', 'positions', 'orders', 'cancel', 'OCA', 'BUY', 'SELL'
             ]);
@@ -479,18 +479,18 @@ async function watchOrder(markets, ib, settings, options) {
     }
 }
 
-async function oneCancelsAllOrders(root_ref, markets, ib, settings, options) {
+async function oneCancelsAllOrders(root_ref, markets, ib, fetch, settings, options) {
     expect(options).to.have.property('attached').that.is.an('array');
     const order_ref = orderRef(root_ref, await ib.reqId(), options);
     return await options.attached.reduce(async(promise, order, i, orders) => {
-        const posted_orders = await submitOrder(root_ref, markets, ib, settings, {
+        const posted_orders = await submitOrder(root_ref, markets, ib, fetch, settings, {
             extended_hours: options.extended_hours, ...order
         }, null, order_ref);
         return (await promise).concat(posted_orders.map(ord => ({...ord, attach_ref: order_ref})));
     }, []);
 }
 
-async function submitOrder(root_ref, markets, ib, settings, options, parentId, ocaGroup) {
+async function submitOrder(root_ref, markets, ib, fetch, settings, options, parentId, ocaGroup) {
     const attach_order = options.attach_ref ? await orderByRef(ib, options.attach_ref) : null;
     const oca_group = ocaGroup || (options.attach_ref && !attach_order ? options.attach_ref : null);
     const replacing_order = await orderByRef(ib, options.order_ref);
@@ -501,7 +501,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
         return ib.reqId(fn);
     }) : ib.reqId;
     const contract = await toContract(markets, ib, options);
-    const ib_order = await orderToIbOrder(markets, ib, settings, contract, options, options);
+    const ib_order = await orderToIbOrder(markets, ib, fetch, settings, contract, options, options);
     const attached = flattenOCA(options.attached);
     const transmit = 'transmit' in markets[options.market || (attached[0]||{}).market] ?
         markets[options.market || (attached[0]||{}).market].transmit && settings.transmit || false :
@@ -530,7 +530,7 @@ async function submitOrder(root_ref, markets, ib, settings, options, parentId, o
             ..._.omit(parent_order, 'limit', 'stop', 'offset', 'traded_price', 'order_ref'),
             ..._.pick(attach, 'symbol', 'market', 'currency', 'multiplier', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset'),
             attach_ref: parent_order.order_ref
-        }] : await submitOrder(root_ref, markets, ib, {
+        }] : await submitOrder(root_ref, markets, ib, fetch, {
             ...settings,
             transmit: last_new_order <= i && transmit
         }, {extended_hours: options.extended_hours, ...attach}, order_id);
@@ -569,7 +569,7 @@ async function orderByRef(ib, order_ref) {
     else return null;
 }
 
-async function orderToIbOrder(markets, ib, settings, contract, order, options) {
+async function orderToIbOrder(markets, ib, fetch, settings, contract, order, options) {
     expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
     expect(order).to.have.property('quant').that.is.ok;
     expect(order).to.have.property('order_type').that.is.ok;
@@ -596,7 +596,7 @@ async function orderToIbOrder(markets, ib, settings, contract, order, options) {
             action: order.action,
             totalQuantity: order.quant,
             orderType: 'LMT',
-            lmtPrice: await snapStockLimit(markets, ib, contract, order),
+            lmtPrice: await snapStockLimit(markets, ib, fetch, contract, order, options),
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
@@ -617,7 +617,8 @@ async function orderToIbOrder(markets, ib, settings, contract, order, options) {
     }
 }
 
-async function snapStockLimit(markets, ib, contract, order) {
+async function snapStockLimit(markets, ib, fetch, contract, order, options) {
+    const now = moment(options.now);
     if (_.isEmpty(order.attached)) {
         expect(contract.secType).to.be.oneOf(['FUT', 'OPT','FOP']);
         const detail = _.first(await ib.reqContractDetails(contract));
@@ -626,10 +627,10 @@ async function snapStockLimit(markets, ib, contract, order) {
         expect(right).is.oneOf(['C', 'P']);
         const minTick = Math.max(order.minTick||0, detail.minTick||0.000001);
         const [bar, under_bar] = await Promise.all([
-            reqMktData(ib, contract),
-            reqMktData(ib, under_contract)
+            reqMktData(markets, ib, fetch, contract, now, options),
+            reqMktData(markets, ib, fetch, under_contract, now, options)
         ]);
-        if (!bar || !(bar.midpoint || bar.close || bar.last))
+        if (!bar || !(bar.midpoint || bar.last || bar.close))
             throw Error(`Can only submit SNAP STK ${order.order_ref} orders while market is open`);
         const net_offset = order.action == 'BUY' && right == 'C' ||
             order.action == 'SELL' && right == 'P' ?
@@ -665,13 +666,13 @@ async function snapStockLimit(markets, ib, contract, order) {
         });
         const [bars, under_bar] = await Promise.all([
             Promise.all(contracts.map(async(contract) => {
-                return reqMktData(ib, contract);
+                return reqMktData(markets, ib, fetch, contract, now, options);
             })),
-            reqMktData(ib, under_contract)
+            reqMktData(markets, ib, fetch, under_contract, now, options)
         ]);
-        if (bars.some(bar => !bar.midpoint && !bar.close && !bar.last))
+        if (bars.some(bar => !bar.midpoint && !bar.last && !bar.close))
             throw Error("Can only submit SNAP STK orders while market is active");
-        const net_mid_price = netPrice(order.attached, bars.map(bar => bar.midpoint || bar.close || bar.last));
+        const net_mid_price = netPrice(order.attached, bars.map(bar => bar.midpoint || bar.last || bar.close));
         const net_offset = order.action == 'BUY' && right == 'C' && +net_mid_price >= 0 ||
             order.action == 'SELL' && right == 'P' && +net_mid_price >= 0 ?
             Big(order.offset||0).times(-1) : Big(order.offset||0);
@@ -689,24 +690,43 @@ async function snapStockLimit(markets, ib, contract, order) {
     }
 }
 
-async function reqMktData(client, contract) {
+async function reqMktData(markets, client, fetch, contract, now, options) {
     const bar = await client.reqMktData(contract);
     if (bar && bar.bid && bar.ask) return {...bar, midpoint: +Big(bar.bid).add(bar.ask).div(2)};
-    else if (bar && (bar.close || bar.last)) return bar;
-    const now = moment().utc().startOf('day').format('YYYYMMDD HH:mm:ss z');
-    const last = await client.reqHistoricalData(contract, now, '1 D', '30 mins', 'MIDPOINT', 1, 1).catch(err => []);
+    if (bar && bar.last) { // only include bar.last if within liquid_hours
+        const hours = _.first(await fetch({
+            ...options,
+            interval: 'contract',
+            symbol: asSymbol(contract),
+            market: await asMarket(markets, client, contract)
+        }));
+        const open_time = hours.liquid_hours.substring(0, 8);
+        const close_time = hours.liquid_hours.substring(hours.liquid_hours.length - 8);
+        if (open_time == close_time) return bar; // last must be within liquid_hours
+        const last_moment = moment.tz(bar.last_timestamp, 'X', hours.security_tz);
+        const opens_at = moment.tz(`${last_moment.format('YYYY-MM-DD')}T${open_time}`, hours.security_tz);
+        const closes_at = moment.tz(`${last_moment.format('YYYY-MM-DD')}T${close_time}`, hours.security_tz);
+        if (opens_at.isBefore(closes_at)) {
+            if (!opens_at.isAfter(last_moment) && !last_moment.isAfter(closes_at)) return bar;
+        } else { // liquid_hours cross midnight
+            if (!opens_at.isAfter(last_moment) || !last_moment.isAfter(closes_at)) return bar;
+        }
+    }
+    if (bar && bar.close) return _.omit(bar, 'last'); // bar.last is pre-market or after-hours
+    const endDateTime = moment(now).utc().startOf('day').format('YYYYMMDD HH:mm:ss z');
+    const last = await client.reqHistoricalData(contract, endDateTime, '1 D', '30 mins', 'MIDPOINT', 1, 1).catch(err => []);
     if (last.length) return last[last.length-1];
     else return bar;
 }
 
 async function snapStockPrice(ib, contract, bar, under_bar, limit, net_offset) {
-    const opt_price = bar.midpoint || bar.close || bar.last;
+    const opt_price = bar.midpoint || bar.last || bar.close;
     if (!+net_offset && !+limit) return opt_price;
     else if (contract.secType != 'OPT' && contract.secType != 'FOP')
         return +limit || +Big(opt_price).add(net_offset);
     const model_price = (bar.model_option||{}).optPrice || opt_price;
     const undPrice = (bar.model_option||{}).undPrice != Number.MAX_VALUE && (bar.model_option||{}).undPrice||null;
-    const asset_price = undPrice || under_bar.midpoint || under_bar.close || under_bar.last;
+    const asset_price = undPrice || under_bar.midpoint || under_bar.last || under_bar.close;
     if (!+asset_price)
         throw Error(`Can only submit SNAP STK orders while market is active ${util.inspect(under_bar)}`);
     const asset_limit = +limit || +Big(asset_price).add(net_offset);
@@ -716,7 +736,7 @@ async function snapStockPrice(ib, contract, bar, under_bar, limit, net_offset) {
     if (!iv || iv == Number.MAX_VALUE || iv == Number.MAX_VALUE/2)
         throw Error(`No implied volatility for ${contract.localSymbol} ${util.inspect(bar.model_option||bar)}`);
     const option = await ib.calculateOptionPrice(contract, iv, asset_limit);
-    logger.log("calculated option price model", option.optPrice, +limit || +net_offset, iv, bar.model_option || bar);
+    logger.log("calculated option price model", option.optPrice, +limit || +net_offset, opt_price, iv, bar.model_option || bar);
     return +Big(option.optPrice).minus(model_price).add(opt_price);
 }
 

@@ -71,10 +71,10 @@ describe("mtrader", function() {
                 peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
                 drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)'
             },
-            parameters: { fast_len: 25, slow_len: 200 },
+            parameters: { fast_len: 20, slow_len: 200 },
             parameter_values: {
-                fast_len: [5,10,15,20,25,50],
-                slow_len: [20,25,50,80,100,150,200]
+                fast_len: [5,10,20,50],
+                slow_len: [20,50,100,200]
             }
         }).should.eventually.be.like({
             parameters: { fast_len: 50, slow_len: 200 }

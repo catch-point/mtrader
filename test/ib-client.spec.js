@@ -299,7 +299,7 @@ describe("ib-client", function() {
             'MIDPOINT'
         ).then(d=>console.log(d)||d);
     });
-    it("should support reqMktData for dividends", function() {
+    it.skip("should support reqMktData for dividends", function() {
         return client.reqMktData({
             localSymbol: 'PNC',
             secType: 'STK',
