@@ -243,7 +243,9 @@ function createInstance(settings = {}) {
             }, err => {
                 return [{version: null, name: 'IQFeed', message: err.message}];
             });
-        } else if (options.rollday) {
+        }
+        await iqclient.open();
+        if (options.rollday) {
             expect(options).to.be.like({
                 interval: _.isString,
                 minutes: _.isFinite,
@@ -507,6 +509,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
     return iqclient.lookup(mapped_symbol, listed_markets).then(rows => rows.map(row => {
         const sym = row.symbol;
         const sources = _.pick(exchs, ds => {
+            if (!ds.listed_markets) return false;
             if (!~ds.listed_markets.indexOf(row.listed_market)) return false;
             const prefix = ds && ds.dtnPrefix || '';
             const suffix = ds && ds.dtnSuffix || '';
