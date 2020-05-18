@@ -633,8 +633,13 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
     const opensAt = moment.tz(`${now.format('YYYY-MM-DD')}T${options.open_time}`, tz);
     const closesAt = moment.tz(`${now.format('YYYY-MM-DD')}T${close_time}`, tz);
     if (!opensAt.isBefore(closesAt)) opensAt.subtract(1, 'day');
-    if (now.isAfter(closesAt)) opensAt.add(1, 'day');
-    if (now.isAfter(closesAt)) closesAt.add(1, 'day');
+    if (now.isAfter(closesAt)) {
+        const last = bars.length && moment.tz(_.last(bars).ending, options.tz);
+        if (last && !last.isBefore(closesAt)) {
+            opensAt.add(1, 'day');
+            closesAt.add(1, 'day');
+        }
+    }
     if (now.isBefore(opensAt)) return bars;
     if (opensAt.isAfter(options.end)) return bars;
     if (!bars.length) return mostRecentTrade(iqclient, adjustments, symbol, _.defaults({
@@ -650,7 +655,8 @@ async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
         end: end.format(options.ending_format)
     }, options));
     return intraday.reduce((bars, bar) => {
-        if (_.last(bars).asof) bars.pop(); // remove incomplete (holi)days
+        if (_.last(bars).asof && _.last(bars).asof < bar.ending)
+            bars.pop(); // remove incomplete (holi)days
         if (bar.ending > _.last(bars).ending) {
             bars.push(_.extend({}, bar, {adj_close: bar.close}));
         }
