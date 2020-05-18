@@ -337,6 +337,7 @@ describe("quote", function() {
     });
     it("should load the last 100 days", function() {
         return quote({
+            now: '2020-01-01',
             symbol: 'IBM',
             market: 'NYSE'
         }).should.eventually.be.an('array').and.lengthOf(100);

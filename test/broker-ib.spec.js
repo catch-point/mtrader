@@ -1031,7 +1031,6 @@ describe("broker-ib", function() {
           reqManagedAccts: () => Promise.resolve([ 'test' ]),
           placeOrder: (...args) => {expect(args).to.be.like([ 1,
              { localSymbol: 'MESM9',
-               secType: 'FUT',
                exchange: 'GLOBEX',
                currency: 'USD',
                includeExpired: true },
@@ -1151,25 +1150,50 @@ describe("broker-ib", function() {
         const broker = new Broker(settings, {
             async open() { return this; },
             reqId: cb => cb(1),
-            reqContractDetails: (...args) => {
-                expect(args).to.be.like([{
-                    localSymbol: 'ESM9 C2800',
-                    secType: 'FOP',
-                    exchange: 'GLOBEX',
-                    currency: 'USD',
-                    includeExpired: true,
-                    multiplier: 50
-                }]);
-                return Promise.resolve([{
-                    summary: { right: 'C', exchange: 'GLOBEX' },
-                    minTick: 0.05,
-                    underConId: 310629209
-                }]);
-            },
+            reqContractDetails: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'ESM9 C2800',
+                                secType: 'FOP',
+                                exchange: 'GLOBEX',
+                                currency: 'USD',
+                                includeExpired: true,
+                                multiplier: 50
+                            }]);
+                            return Promise.resolve([{
+                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                minTick: 0.05,
+                                underConId: 310629209
+                            }]);
+                        case 1:
+                            expect(args).to.be.like([{
+                                conId: 310629209
+                            }]);
+                            return Promise.resolve([{
+                                summary: {
+                                    conId: 310629209,
+                                    localSymbol:'ESM9',
+                                    currency:'USD',
+                                    secType:'FUT',
+                                    exchange:'GLOBEX'
+                                }
+                            }]);
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209, exchange: 'GLOBEX'
+                    conId: 310629209,
+                    localSymbol:'ESM9',
+                    currency:'USD',
+                    secType:'FUT',
+                    exchange:'GLOBEX'
                 });
             },
             reqMktData: (() => {
@@ -1186,12 +1210,17 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 16.25,
                                 ask: 17
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
-                            return Promise.resolve({ bid: 2738.25, ask: 2738.5 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 2738.25,
+                                ask: 2738.5
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -1240,8 +1269,9 @@ describe("broker-ib", function() {
             }
         });
         const orders = await broker({
+            now: '2019-06-01T12:00:00',
             action: 'BUY', quant: 1, order_type: 'SNAP STK', tif: 'DAY',
-            symbol: 'ESM9 C2800', market: 'CME',
+            symbol: 'ESM19 C2800', market: 'CME',
             currency: 'USD', security_type: 'FOP', multiplier: 50
         }).should.eventually.be.like([ {
             action: 'BUY',
@@ -1252,7 +1282,7 @@ describe("broker-ib", function() {
             status: 'pending',
             order_ref: /SNAPSTK/,
             account: 'test',
-            symbol: 'ESM9 C2800',
+            symbol: 'ESM19 C2800',
             market: 'CME',
             currency: 'USD',
             security_type: 'FOP',
@@ -1262,25 +1292,50 @@ describe("broker-ib", function() {
         const broker = new Broker(settings, {
             async open() { return this; },
             reqId: cb => cb(1),
-            reqContractDetails: (...args) => {
-                expect(args).to.be.like([{
-                    localSymbol: 'ESM9 C2800',
-                    secType: 'FOP',
-                    exchange: 'GLOBEX',
-                    currency: 'USD',
-                    includeExpired: true,
-                    multiplier: 50
-                }]);
-                return Promise.resolve([{
-                    summary: { right: 'C', exchange: 'GLOBEX' },
-                    minTick: 0.05,
-                    underConId: 310629209
-                }]);
-            },
+            reqContractDetails: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'ESM9 C2800',
+                                secType: 'FOP',
+                                exchange: 'GLOBEX',
+                                currency: 'USD',
+                                includeExpired: true,
+                                multiplier: 50
+                            }]);
+                            return Promise.resolve([{
+                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                minTick: 0.05,
+                                underConId: 310629209
+                            }]);
+                        case 1:
+                            expect(args).to.be.like([{
+                                conId: 310629209
+                            }]);
+                            return Promise.resolve([{
+                                summary: {
+                                    conId: 310629209,
+                                    localSymbol:'ESM9',
+                                    currency:'USD',
+                                    secType:'FUT',
+                                    exchange:'GLOBEX'
+                                }
+                            }]);
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209, exchange: 'GLOBEX'
+                    conId: 310629209,
+                    localSymbol:'ESM9',
+                    currency:'USD',
+                    secType:'FUT',
+                    exchange:'GLOBEX'
                 });
             },
             reqMktData: (() => {
@@ -1297,17 +1352,22 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 16.25,
                                 ask: 17,
                                 model_option: {
                                     optPrice: 16.625,
-                                    undPrice: 1.7976931348623157e+308,
+                                    undPrice: 2738.375,
                                     iv: 0.1602330880202159
                                 }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
-                            return Promise.resolve({ bid: 2738.25, ask: 2738.5 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 2738.25,
+                                ask: 2738.5
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -1370,8 +1430,9 @@ describe("broker-ib", function() {
             }
         });
         const orders = await broker({
+            now: '2019-06-01T12:00:00',
             action: 'BUY', quant: 1, limit: 2738.375-15, order_type: 'SNAP STK', tif: 'DAY',
-            symbol: 'ESM9 C2800', market: 'CME',
+            symbol: 'ESM19 C2800', market: 'CME',
             currency: 'USD', security_type: 'FOP', multiplier: 50
         }).should.eventually.be.like([ {
             action: 'BUY',
@@ -1382,7 +1443,7 @@ describe("broker-ib", function() {
             status: 'pending',
             order_ref: /SNAPSTK/,
             account: 'test',
-            symbol: 'ESM9 C2800',
+            symbol: 'ESM19 C2800',
             market: 'CME',
             currency: 'USD',
             security_type: 'FOP',
@@ -1392,25 +1453,50 @@ describe("broker-ib", function() {
         const broker = new Broker(settings, {
             async open() { return this; },
             reqId: cb => cb(2),
-            reqContractDetails: (...args) => {
-                expect(args).to.be.like([{
-                    localSymbol: 'ESM9 C2800',
-                    secType: 'FOP',
-                    exchange: 'GLOBEX',
-                    currency: 'USD',
-                    includeExpired: true,
-                    multiplier: 50
-                }]);
-                return Promise.resolve([{
-                    summary: { right: 'C', exchange: 'GLOBEX' },
-                    minTick: 0.05,
-                    underConId: 310629209
-                }]);
-            },
+            reqContractDetails: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'ESM9 C2800',
+                                secType: 'FOP',
+                                exchange: 'GLOBEX',
+                                currency: 'USD',
+                                includeExpired: true,
+                                multiplier: 50
+                            }]);
+                            return Promise.resolve([{
+                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                minTick: 0.05,
+                                underConId: 310629209
+                            }]);
+                        case 1:
+                            expect(args).to.be.like([{
+                                conId: 310629209
+                            }]);
+                            return Promise.resolve([{
+                                summary: {
+                                    conId: 310629209,
+                                    localSymbol:'ESM9',
+                                    currency:'USD',
+                                    secType:'FUT',
+                                    exchange:'GLOBEX'
+                                }
+                            }]);
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209, exchange: 'GLOBEX'
+                    conId: 310629209,
+                    localSymbol:'ESM9',
+                    currency:'USD',
+                    secType:'FUT',
+                    exchange:'GLOBEX'
                 });
             },
             reqMktData: (() => {
@@ -1427,17 +1513,22 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 16.25,
                                 ask: 17,
                                 model_option: {
                                     optPrice: 16.625,
-                                    undPrice: 1.7976931348623157e+308,
+                                    undPrice: 2738.375,
                                     iv: 0.1596098191933759
                                 }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
-                            return Promise.resolve({ bid: 2738.25, ask: 2738.5 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 2738.25,
+                                ask: 2738.5
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -1499,8 +1590,9 @@ describe("broker-ib", function() {
             }
         });
         const orders = await broker({
+            now: '2019-06-01T12:00:00',
             action: 'SELL', quant: 1, limit: 2738.375+15, order_type: 'SNAP STK', tif: 'DAY',
-            symbol: 'ESM9 C2800', market: 'CME',
+            symbol: 'ESM19 C2800', market: 'CME',
             currency: 'USD', security_type: 'FOP', multiplier: 50
         }).should.eventually.be.like([ {
             action: 'SELL',
@@ -1511,7 +1603,7 @@ describe("broker-ib", function() {
             status: 'pending',
             order_ref: /SNAPSTK/,
             account: 'test',
-            symbol: 'ESM9 C2800',
+            symbol: 'ESM19 C2800',
             market: 'CME',
             currency: 'USD',
             security_type: 'FOP',
@@ -1521,25 +1613,50 @@ describe("broker-ib", function() {
         const broker = new Broker(settings, {
             async open() { return this; },
             reqId: cb => cb(1),
-            reqContractDetails: (...args) => {
-                expect(args).to.be.like([{
-                    localSymbol: 'ESM9 C2800',
-                    secType: 'FOP',
-                    exchange: 'GLOBEX',
-                    currency: 'USD',
-                    includeExpired: true,
-                    multiplier: 50
-                }]);
-                return Promise.resolve([{
-                    summary: { right: 'C', exchange: 'GLOBEX' },
-                    minTick: 0.05,
-                    underConId: 310629209
-                }]);
-            },
+            reqContractDetails: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'ESM9 C2800',
+                                secType: 'FOP',
+                                exchange: 'GLOBEX',
+                                currency: 'USD',
+                                includeExpired: true,
+                                multiplier: 50
+                            }]);
+                            return Promise.resolve([{
+                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                minTick: 0.05,
+                                underConId: 310629209
+                            }]);
+                        case 1:
+                            expect(args).to.be.like([{
+                                conId: 310629209
+                            }]);
+                            return Promise.resolve([{
+                                summary: {
+                                    conId: 310629209,
+                                    localSymbol:'ESM9',
+                                    currency:'USD',
+                                    secType:'FUT',
+                                    exchange:'GLOBEX'
+                                }
+                            }]);
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209, exchange: 'GLOBEX'
+                    conId: 310629209,
+                    localSymbol:'ESM9',
+                    currency:'USD',
+                    secType:'FUT',
+                    exchange:'GLOBEX'
                 });
             },
             reqMktData: (() => {
@@ -1556,17 +1673,22 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 16.25,
                                 ask: 17,
                                 model_option: {
                                     optPrice: 16.625,
-                                    undPrice: 1.7976931348623157e+308,
+                                    undPrice: 2738.375,
                                     iv: 0.1602330880202159
                                 }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
-                            return Promise.resolve({ bid: 2738.25, ask: 2738.5 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 2738.25,
+                                ask: 2738.5
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -1629,8 +1751,9 @@ describe("broker-ib", function() {
             }
         });
         const orders = await broker({
+            now: '2019-06-01T12:00:00',
             action: 'BUY', quant: 1, offset: 15, order_type: 'SNAP STK', tif: 'DAY',
-            symbol: 'ESM9 C2800', market: 'CME',
+            symbol: 'ESM19 C2800', market: 'CME',
             currency: 'USD', security_type: 'FOP', multiplier: 50
         }).should.eventually.be.like([ {
             action: 'BUY',
@@ -1641,7 +1764,7 @@ describe("broker-ib", function() {
             status: 'pending',
             order_ref: /SNAPSTK/,
             account: 'test',
-            symbol: 'ESM9 C2800',
+            symbol: 'ESM19 C2800',
             market: 'CME',
             currency: 'USD',
             security_type: 'FOP',
@@ -1651,25 +1774,50 @@ describe("broker-ib", function() {
         const broker = new Broker(settings, {
             async open() { return this; },
             reqId: cb => cb(2),
-            reqContractDetails: (...args) => {
-                expect(args).to.be.like([{
-                    localSymbol: 'ESM9 C2800',
-                    secType: 'FOP',
-                    exchange: 'GLOBEX',
-                    currency: 'USD',
-                    includeExpired: true,
-                    multiplier: 50
-                }]);
-                return Promise.resolve([{
-                    summary: { right: 'C', exchange: 'GLOBEX' },
-                    minTick: 0.05,
-                    underConId: 310629209
-                }]);
-            },
+            reqContractDetails: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'ESM9 C2800',
+                                secType: 'FOP',
+                                exchange: 'GLOBEX',
+                                currency: 'USD',
+                                includeExpired: true,
+                                multiplier: 50
+                            }]);
+                            return Promise.resolve([{
+                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                minTick: 0.05,
+                                underConId: 310629209
+                            }]);
+                        case 1:
+                            expect(args).to.be.like([{
+                                conId: 310629209
+                            }]);
+                            return Promise.resolve([{
+                                summary: {
+                                    conId: 310629209,
+                                    localSymbol:'ESM9',
+                                    currency:'USD',
+                                    secType:'FUT',
+                                    exchange:'GLOBEX'
+                                }
+                            }]);
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209, exchange: 'GLOBEX'
+                    conId: 310629209,
+                    localSymbol:'ESM9',
+                    currency:'USD',
+                    secType:'FUT',
+                    exchange:'GLOBEX'
                 });
             },
             reqMktData: (() => {
@@ -1686,17 +1834,22 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 16.25,
                                 ask: 17,
                                 model_option: {
                                     optPrice: 16.625,
-                                    undPrice: 1.7976931348623157e+308,
+                                    undPrice: 2738.375,
                                     iv: 0.1596098191933759
                                 }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
-                            return Promise.resolve({ bid: 2738.25, ask: 2738.5 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 2738.25,
+                                ask: 2738.5
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -1758,8 +1911,9 @@ describe("broker-ib", function() {
             }
         });
         const orders = await broker({
+            now: '2019-06-01T12:00:00',
             action: 'SELL', quant: 1, offset: 15, order_type: 'SNAP STK', tif: 'DAY',
-            symbol: 'ESM9 C2800', market: 'CME',
+            symbol: 'ESM19 C2800', market: 'CME',
             currency: 'USD', security_type: 'FOP', multiplier: 50
         }).should.eventually.be.like([ {
             action: 'SELL',
@@ -1770,7 +1924,7 @@ describe("broker-ib", function() {
             status: 'pending',
             order_ref: /SNAPSTK/,
             account: 'test',
-            symbol: 'ESM9 C2800',
+            symbol: 'ESM19 C2800',
             market: 'CME',
             currency: 'USD',
             security_type: 'FOP',
@@ -1780,25 +1934,50 @@ describe("broker-ib", function() {
         const broker = new Broker(settings, {
             async open() { return this; },
             reqId: cb => cb(3),
-            reqContractDetails: (...args) => {
-                expect(args).to.be.like([{
-                    localSymbol: 'ESM9 P2625',
-                    secType: 'FOP',
-                    exchange: 'GLOBEX',
-                    currency: 'USD',
-                    includeExpired: true,
-                    multiplier: 50
-                }]);
-                return Promise.resolve([{
-                    summary: { right: 'P', exchange: 'GLOBEX' },
-                    minTick: 0.05,
-                    underConId: 310629209
-                }]);
-            },
+            reqContractDetails: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'ESM9 P2625',
+                                secType: 'FOP',
+                                exchange: 'GLOBEX',
+                                currency: 'USD',
+                                includeExpired: true,
+                                multiplier: 50
+                            }]);
+                            return Promise.resolve([{
+                                summary: { right: 'P', exchange: 'GLOBEX' },
+                                minTick: 0.05,
+                                underConId: 310629209
+                            }]);
+                        case 1:
+                            expect(args).to.be.like([{
+                                conId: 310629209
+                            }]);
+                            return Promise.resolve([{
+                                summary: {
+                                    conId: 310629209,
+                                    localSymbol:'ESM9',
+                                    currency:'USD',
+                                    secType:'FUT',
+                                    exchange:'GLOBEX'
+                                }
+                            }]);
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209, exchange: 'GLOBEX'
+                    conId: 310629209,
+                    localSymbol:'ESM9',
+                    currency:'USD',
+                    secType:'FUT',
+                    exchange:'GLOBEX'
                 });
             },
             reqMktData: (() => {
@@ -1815,17 +1994,22 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 13.5,
                                 ask: 14.25,
                                 model_option: {
                                     optPrice: (13.5+14.25)/2,
-                                    undPrice: 1.7976931348623157e+308,
+                                    undPrice: 2738.375,
                                     iv: (0.21510238654276234+0.2105016705605929)/2
                                 }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
-                            return Promise.resolve({ bid: 2738.25, ask: 2738.5 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 2738.25,
+                                ask: 2738.5
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -1887,8 +2071,9 @@ describe("broker-ib", function() {
             }
         });
         const orders = await broker({
+            now: '2019-06-01T12:00:00',
             action: 'BUY', quant: 1, offset: 15, order_type: 'SNAP STK', tif: 'DAY',
-            symbol: 'ESM9 P2625', market: 'CME',
+            symbol: 'ESM19 P2625', market: 'CME',
             currency: 'USD', security_type: 'FOP', multiplier: 50
         }).should.eventually.be.like([ {
             action: 'BUY',
@@ -1899,7 +2084,7 @@ describe("broker-ib", function() {
             status: 'pending',
             order_ref: /SNAPSTK/,
             account: 'test',
-            symbol: 'ESM9 P2625',
+            symbol: 'ESM19 P2625',
             market: 'CME',
             currency: 'USD',
             security_type: 'FOP',
@@ -1909,25 +2094,50 @@ describe("broker-ib", function() {
         const broker = new Broker(settings, {
             async open() { return this; },
             reqId: cb => cb(4),
-            reqContractDetails: (...args) => {
-                expect(args).to.be.like([{
-                    localSymbol: 'ESM9 P2625',
-                    secType: 'FOP',
-                    exchange: 'GLOBEX',
-                    currency: 'USD',
-                    includeExpired: true,
-                    multiplier: 50
-                }]);
-                return Promise.resolve([{
-                    summary: { right: 'P', exchange: 'GLOBEX' },
-                    minTick: 0.05,
-                    underConId: 310629209
-                }]);
-            },
+            reqContractDetails: (() => {
+                let count = 0;
+                return (...args) => {
+                    switch (count++) {
+                        case 0:
+                            expect(args).to.be.like([{
+                                localSymbol: 'ESM9 P2625',
+                                secType: 'FOP',
+                                exchange: 'GLOBEX',
+                                currency: 'USD',
+                                includeExpired: true,
+                                multiplier: 50
+                            }]);
+                            return Promise.resolve([{
+                                summary: { right: 'P', exchange: 'GLOBEX' },
+                                minTick: 0.05,
+                                underConId: 310629209
+                            }]);
+                        case 1:
+                            expect(args).to.be.like([{
+                                conId: 310629209
+                            }]);
+                            return Promise.resolve([{
+                                summary: {
+                                    conId: 310629209,
+                                    localSymbol:'ESM9',
+                                    currency:'USD',
+                                    secType:'FUT',
+                                    exchange:'GLOBEX'
+                                }
+                            }]);
+                        default:
+                            throw Error("Too many times")
+                    }
+                }
+            })(),
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209, exchange: 'GLOBEX'
+                    conId: 310629209,
+                    localSymbol:'ESM9',
+                    currency:'USD',
+                    secType:'FUT',
+                    exchange:'GLOBEX'
                 });
             },
             reqMktData: (() => {
@@ -1944,17 +2154,22 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 13.5,
                                 ask: 14.25,
                                 model_option: {
                                     optPrice: (13.5+14.25)/2,
-                                    undPrice: 1.7976931348623157e+308,
+                                    undPrice: 2738.125,
                                     iv: (0.21510238654276234+0.2105016705605929)/2
                                 }
                             })
                         case 1:
                             expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
-                            return Promise.resolve({ bid: 2738, ask: 2738.25 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 2738,
+                                ask: 2738.25
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -2016,8 +2231,9 @@ describe("broker-ib", function() {
             }
         });
         const orders = await broker({
+            now: '2019-06-01T12:00:00',
             action: 'SELL', quant: 1, offset: 15, order_type: 'SNAP STK', tif: 'DAY',
-            symbol: 'ESM9 P2625', market: 'CME',
+            symbol: 'ESM19 P2625', market: 'CME',
             currency: 'USD', security_type: 'FOP', multiplier: 50
         }).should.eventually.be.like([ {
             action: 'SELL',
@@ -2028,7 +2244,7 @@ describe("broker-ib", function() {
             status: 'pending',
             order_ref: /SNAPSTK/,
             account: 'test',
-            symbol: 'ESM9 P2625',
+            symbol: 'ESM19 P2625',
             market: 'CME',
             currency: 'USD',
             security_type: 'FOP',
@@ -2039,7 +2255,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(1),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -2089,7 +2305,24 @@ describe("broker-ib", function() {
                                 tradingClass: 'SPX',
                                 multiplier: '100',
                                 primaryExch: ''
-                            }
+                            },
+                            minTick: 0.05,
+                            validExchanges: 'SMART,CBOE',
+                            underConId: 416904
+                        }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'CBOE',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
                         }])
                     default:
                         throw Error("Too many times")
@@ -2098,7 +2331,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -2120,7 +2357,11 @@ describe("broker-ib", function() {
                                 multiplier: '100',
                                 primaryExch: ''
                             }]);
-                            return Promise.resolve({ bid: 0.65, ask: 0.8 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 0.65,
+                                ask: 0.8
+                            })
                         case 1:
                             expect(args).to.be.like([{
                                 currency: 'USD',
@@ -2136,12 +2377,20 @@ describe("broker-ib", function() {
                                 multiplier: '100',
                                 primaryExch: ''
                             }]);
-                            return Promise.resolve({ bid: 0.25, ask: 0.4 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 0.25,
+                                ask: 0.4
+                            })
                         case 2:
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1})
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1,
+                                ask: 1
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -2248,7 +2497,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(2),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -2300,6 +2549,20 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }
                         }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
+                        }])
                     default:
                         throw Error("Too many times")
                 }
@@ -2307,7 +2570,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -2330,6 +2597,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 0.65,
                                 ask: 0.8,
                                 model_option: {
@@ -2354,6 +2622,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 0.25,
                                 ask: 0.4,
                                 model_option: {
@@ -2366,7 +2635,11 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1,
+                                ask: 1
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -2534,7 +2807,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(3),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -2586,6 +2859,20 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }
                         }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
+                        }])
                     default:
                         throw Error("Too many times")
                 }
@@ -2593,7 +2880,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -2616,6 +2907,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 0.65,
                                 ask: 0.8,
                                 model_option: {
@@ -2640,6 +2932,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 0.25,
                                 ask: 0.4,
                                 model_option: {
@@ -2652,7 +2945,9 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1, ask: 1 })
                         default:
                             throw Error("Too many times")
                     }
@@ -2821,7 +3116,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(4),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -2873,6 +3168,20 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }
                         }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
+                        }])
                     default:
                         throw Error("Too many times")
                 }
@@ -2880,7 +3189,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -2902,7 +3215,11 @@ describe("broker-ib", function() {
                                 multiplier: '100',
                                 primaryExch: ''
                             }]);
-                            return Promise.resolve({ bid: 8.6, ask: 8.9 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 8.6,
+                                ask: 8.9
+                            })
                         case 1:
                             expect(args).to.be.like([{
                                 currency: 'USD',
@@ -2918,12 +3235,20 @@ describe("broker-ib", function() {
                                 multiplier: '100',
                                 primaryExch: ''
                             }]);
-                            return Promise.resolve({ bid: 6.1, ask: 6.3 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 6.1,
+                                ask: 6.3
+                            })
                         case 2:
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1,
+                                ask: 1
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -3045,7 +3370,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(5),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -3097,6 +3422,20 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }
                         }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
+                        }])
                     default:
                         throw Error("Too many times")
                 }
@@ -3104,7 +3443,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -3127,6 +3470,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 8.6,
                                 ask: 9,
                                 model_option: {
@@ -3151,6 +3495,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 6.1,
                                 ask: 6.3,
                                 model_option: {
@@ -3163,7 +3508,11 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1,
+                                ask: 1
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -3332,7 +3681,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(6),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -3384,6 +3733,20 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }
                         }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
+                        }])
                     default:
                         throw Error("Too many times")
                 }
@@ -3391,7 +3754,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -3414,6 +3781,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 8.7,
                                 ask: 9,
                                 model_option: {
@@ -3438,6 +3806,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 6.1,
                                 ask: 6.4,
                                 model_option: {
@@ -3450,7 +3819,11 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1,
+                                ask: 1
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -3621,7 +3994,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(7),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -3673,6 +4046,20 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }
                         }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
+                        }])
                     default:
                         throw Error("Too many times")
                 }
@@ -3680,7 +4067,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -3703,6 +4094,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 0.65,
                                 ask: 0.8,
                                 model_option: {
@@ -3727,6 +4119,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 0.25,
                                 ask: 0.4,
                                 model_option: {
@@ -3739,7 +4132,11 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1,
+                                ask: 1
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -3908,7 +4305,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(8),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -3960,6 +4357,20 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }
                         }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
+                        }])
                     default:
                         throw Error("Too many times")
                 }
@@ -3967,7 +4378,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -3990,6 +4405,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 0.65,
                                 ask: 0.8,
                                 model_option: {
@@ -4014,6 +4430,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 0.25,
                                 ask: 0.4,
                                 model_option: {
@@ -4026,7 +4443,11 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1,
+                                ask: 1
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -4195,7 +4616,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(9),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -4247,6 +4668,20 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }
                         }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
+                        }])
                     default:
                         throw Error("Too many times")
                 }
@@ -4254,7 +4689,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -4277,6 +4716,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 8.7,
                                 ask: 9,
                                 model_option: {
@@ -4301,6 +4741,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 6.1,
                                 ask: 6.4,
                                 model_option: {
@@ -4313,7 +4754,11 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1,
+                                ask: 1
+                            })
                         default:
                             throw Error("Too many times")
                     }
@@ -4487,7 +4932,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(10),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol) {
+                switch (args[0].localSymbol || args[0].conId) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -4539,6 +4984,20 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }
                         }])
+                    case 416904:
+                        expect(args).to.be.like([{
+                            conId: 416904
+                        }]);
+                        return Promise.resolve([{
+                            summary: {
+                                currency: 'USD',
+                                exchange: 'SMART',
+                                symbol: 'SPX',
+                                conId: 416904,
+                                secType: 'IND'
+                            },
+                            validExchanges: 'SMART,CBOE'
+                        }])
                     default:
                         throw Error("Too many times")
                 }
@@ -4546,7 +5005,11 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([416904]);
                 return Promise.resolve({
-                    conId: 416904, exchange: 'CBOE'
+                    currency: 'USD',
+                    exchange: 'CBOE',
+                    symbol: 'SPX',
+                    conId: 416904,
+                    secType: 'IND'
                 });
             },
             reqMktData: (() => {
@@ -4569,6 +5032,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 8.7,
                                 ask: 9,
                                 model_option: {
@@ -4593,6 +5057,7 @@ describe("broker-ib", function() {
                                 primaryExch: ''
                             }]);
                             return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 6.1,
                                 ask: 6.4,
                                 model_option: {
@@ -4605,7 +5070,11 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 conId: 416904
                             }]);
-                            return Promise.resolve({ bid: 1, ask: 1 })
+                            return Promise.resolve({
+                                last_timestamp: moment('2019-06-01T12:00:00').format('X'),
+                                bid: 1,
+                                ask: 1
+                            })
                         default:
                             throw Error("Too many times")
                     }

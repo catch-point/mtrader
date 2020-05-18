@@ -68,6 +68,7 @@ module.exports = function(settings = {}) {
                     ...options,
                     ending_format: moment.defaultFormat
                 };
+            expect(options).to.have.property('symbol').that.is.ok;
             const interval = options.interval;
             if (interval == 'lookup') return lookup(markets, datasources.lookup, opt);
             if (interval == 'contract') return contract(markets, datasources.contract, opt);

@@ -692,31 +692,39 @@ async function snapStockLimit(markets, ib, fetch, contract, order, options) {
 
 async function reqMktData(markets, client, fetch, contract, now, options) {
     const bar = await client.reqMktData(contract);
-    if (bar && bar.bid && bar.ask) return {...bar, midpoint: +Big(bar.bid).add(bar.ask).div(2)};
-    if (bar && bar.last) { // only include bar.last if within liquid_hours
-        const hours = _.first(await fetch({
-            ...options,
-            interval: 'contract',
-            symbol: asSymbol(contract),
-            market: await asMarket(markets, client, contract)
-        }));
-        const open_time = hours.liquid_hours.substring(0, 8);
-        const close_time = hours.liquid_hours.substring(hours.liquid_hours.length - 8);
-        if (open_time == close_time) return bar; // last must be within liquid_hours
-        const last_moment = moment.tz(bar.last_timestamp, 'X', hours.security_tz);
-        const opens_at = moment.tz(`${last_moment.format('YYYY-MM-DD')}T${open_time}`, hours.security_tz);
-        const closes_at = moment.tz(`${last_moment.format('YYYY-MM-DD')}T${close_time}`, hours.security_tz);
-        if (opens_at.isBefore(closes_at)) {
-            if (!opens_at.isAfter(last_moment) && !last_moment.isAfter(closes_at)) return bar;
-        } else { // liquid_hours cross midnight
-            if (!opens_at.isAfter(last_moment) || !last_moment.isAfter(closes_at)) return bar;
+    if (bar && bar.last_timestamp) {
+        if (await isWithinLiquidHours(markets, client, fetch, contract, bar.last_timestamp, options)) {
+            if (bar.bid && bar.ask) return {...bar, midpoint: +Big(bar.bid).add(bar.ask).div(2)};
+            else return bar; // use bar.last
         }
     }
-    if (bar && bar.close) return _.omit(bar, 'last'); // bar.last is pre-market or after-hours
+    if (bar && bar.close) // bar is pre-market or after-hours
+        return _.omit(bar, 'last', 'bid', 'ask', 'bid_option', 'ask_option');
     const endDateTime = moment(now).utc().startOf('day').format('YYYYMMDD HH:mm:ss z');
     const last = await client.reqHistoricalData(contract, endDateTime, '1 D', '30 mins', 'MIDPOINT', 1, 1).catch(err => []);
     if (last.length) return last[last.length-1];
     else return bar;
+}
+
+async function isWithinLiquidHours(markets, client, fetch, contract, timestamp, options) {
+    const hours = _.first(await fetch({
+        ...options,
+        interval: 'contract',
+        symbol: asSymbol(contract),
+        market: await asMarket(markets, client, contract)
+    }));
+    const open_time = hours.liquid_hours.substring(0, 8);
+    const close_time = hours.liquid_hours.substring(hours.liquid_hours.length - 8);
+    if (open_time == close_time) return true; // last must be within liquid_hours
+    const last_moment = moment.tz(timestamp, 'X', hours.security_tz);
+    const opens_at = moment.tz(`${last_moment.format('YYYY-MM-DD')}T${open_time}`, hours.security_tz);
+    const closes_at = moment.tz(`${last_moment.format('YYYY-MM-DD')}T${close_time}`, hours.security_tz);
+    if (opens_at.isBefore(closes_at)) {
+        if (!opens_at.isAfter(last_moment) && !last_moment.isAfter(closes_at)) return true;
+    } else { // liquid_hours cross midnight
+        if (!opens_at.isAfter(last_moment) || !last_moment.isAfter(closes_at)) return true;
+    }
+    return false;
 }
 
 async function snapStockPrice(ib, contract, bar, under_bar, limit, net_offset) {
@@ -724,19 +732,21 @@ async function snapStockPrice(ib, contract, bar, under_bar, limit, net_offset) {
     if (!+net_offset && !+limit) return opt_price;
     else if (contract.secType != 'OPT' && contract.secType != 'FOP')
         return +limit || +Big(opt_price).add(net_offset);
-    const model_price = (bar.model_option||{}).optPrice || opt_price;
-    const undPrice = (bar.model_option||{}).undPrice != Number.MAX_VALUE && (bar.model_option||{}).undPrice||null;
-    const asset_price = undPrice || under_bar.midpoint || under_bar.last || under_bar.close;
+    const model_option = bar.midpoint && bar.model_option &&
+        bar.model_option.undPrice != Number.MAX_VALUE && bar.model_option.undPrice ?
+        bar.model_option : {};
+    const model_price = model_option.optPrice || opt_price;
+    const asset_price = model_option.undPrice || under_bar.midpoint || under_bar.last || under_bar.close;
     if (!+asset_price)
         throw Error(`Can only submit SNAP STK orders while market is active ${util.inspect(under_bar)}`);
     const asset_limit = +limit || +Big(asset_price).add(net_offset);
-    const iv = (bar.model_option||{}).iv ||
+    const iv = model_option.iv ||
         bar.ask_option && bar.bid_option && +Big(bar.ask_option.iv).add(bar.bid_option.iv).div(2) ||
         (await ib.calculateImpliedVolatility(contract, model_price, asset_price)).iv;
     if (!iv || iv == Number.MAX_VALUE || iv == Number.MAX_VALUE/2)
-        throw Error(`No implied volatility for ${contract.localSymbol} ${util.inspect(bar.model_option||bar)}`);
+        throw Error(`No implied volatility for ${contract.localSymbol} ${util.inspect(model_option||bar)}`);
     const option = await ib.calculateOptionPrice(contract, iv, asset_limit);
-    logger.log("calculated option price model", option.optPrice, +limit || +net_offset, opt_price, iv, bar.model_option || bar);
+    logger.log("calculated option price model", option.optPrice, +limit || +net_offset, opt_price, iv, model_option || bar);
     return +Big(option.optPrice).minus(model_price).add(opt_price);
 }
 
@@ -998,17 +1008,17 @@ function asSymbol(contract) {
 
 function fromFutSymbol(symbol) {
     let m, n;
-    if (m = symbol.match(/^(\w*)([A-Z])(\d)$/)) {
-        const [, root, month, y] = m;
+    if (m = symbol.match(/^(\w*)([A-Z])(\d)( [CP]\d+)?$/)) {
+        const [, root, month, y, strike] = m;
         const now = moment();
         const decade = y >= (now.year() - 2) % 10 ?
             (now.year() - 2).toString().substring(2, 3) :
             (now.year() + 8).toString().substring(2, 3);
-        return `${root}${month}${decade}${y}`;
-    } else if (n = symbol.match(/^(\w*) +([A-Z]+) (\d\d)$/)) {
+        return `${root}${month}${decade}${y}${strike||''}`;
+    } else if (n = symbol.match(/^(\w*) +([A-Z]+) (\d\d)( [CP]\d+)?$/)) {
         const codes = {JAN: 'F', FEB: 'G', MAR: 'H', APR: 'J', MAY: 'K', JUN: 'M', JUL: 'N', AUG: 'Q', SEP: 'U', OCT: 'V', NOV: 'X', DEC: 'Z'};
-        const [, root, month, year] = n;
-        return `${root}${codes[month]}${year}`;
+        const [, root, month, year, strike] = n;
+        return `${root}${codes[month]}${year}${strike||''}`;
     } else {
         return symbol;
     }
@@ -1027,7 +1037,7 @@ async function toContract(markets, ib, options) {
             primaryExch: market.primaryExch || _.first(market.primaryExchs),
             exchange: market.exchange || _.first(market.exchanges),
             currency: market.currency,
-            includeExpired: market.secType == 'FUT',
+            includeExpired: market.secType == 'FUT' || ~(market.secTypes||[]).indexOf('FUT') && true,
             multiplier: options.multiplier
         }, v => !v);
     } else if (ib != null && options.attached && options.attached.length) {
@@ -1071,6 +1081,8 @@ function toLocalSymbol(market, symbol) {
     if (market.secType == 'FUT') return toFutSymbol(market, symbol);
     else if (market.secType == 'CASH') return toCashSymbol(market, symbol);
     else if (market.secType == 'OPT') return symbol;
+    else if (market.secTypes && market.secTypes.length &&
+        !_.difference(market.secTypes, ['FUT', 'FOP']).length) return toFutSymbol(market, symbol);
     else if (market.secType) return symbol;
     else if (symbol.match(/^(.*)([A-Z])(\d)(\d)$/)) return toFutSymbol(market, symbol);
     else return symbol;
@@ -1079,13 +1091,13 @@ function toLocalSymbol(market, symbol) {
 function toFutSymbol(market, symbol) {
     if ((market||{}).month_abbreviation) {
         const abbreviations = {F: 'JAN', G: 'FEB', H: 'MAR', J: 'APR', K: 'MAY', M: 'JUN', N: 'JUL', Q: 'AUG', U: 'SEP', V: 'OCT', X: 'NOV', Z: 'DEC'};
-        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)$/);
+        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)( [CP]\d+?$/);
         if (!m) return symbol;
-        const [, root, code, decade, year] = m;
+        const [, root, code, decade, year, strike] = m;
         const space = '    '.substring(root.length);
-        return `${root}${space} ${abbreviations[code]} ${decade}${year}`;
+        return `${root}${space} ${abbreviations[code]} ${decade}${year}${stirke||''}`;
     } else {
-        return symbol.replace(/^(.*)([A-Z])(\d)(\d)( [CP]\d+)?$/,'$1$2$4');
+        return symbol.replace(/^(.*)([A-Z])(\d)(\d)( [CP]\d+|$)$/,'$1$2$4$5');
     }
 }
 

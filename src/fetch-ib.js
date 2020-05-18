@@ -318,7 +318,8 @@ function isTimeFrameAvailable(markets, client, now, options) {
     const market = markets[options.market];
     const begin = moment(options.begin);
     const m = options.interval.charAt(0) == 'm' && +options.interval.substring(1);
-    const opt = ~['OPT', 'FOP'].indexOf(market.secType);
+    const opt = ~['OPT', 'FOP'].indexOf(market.secType) ||
+        _.intersection(market.secTypes||[], ['OPT', 'FOP']).length;
     if (!m && market && opt) return false;
     const days = m && now.diff(begin, 'days', true);
     if (m && m <= 1 && days > 1) return false;
@@ -891,7 +892,7 @@ function toLocalSymbol(market, symbol) {
 }
 
 function toSymbol(market, detail) {
-    if (detail.secType == 'FUT') return fromFutSymbol(market, detail.localSymbol);
+    if (detail.secType == 'FUT' || detail.secType == 'FOP') return fromFutSymbol(market, detail.localSymbol);
     else if (detail.secType == 'CASH') return detail.symbol;
     else if (detail.secType == 'OPT') return detail.localSymbol;
     else return ~detail.localSymbol.indexOf(' ') ? detail.localSymbol.replace(' ', '.') : detail.localSymbol;
@@ -900,28 +901,28 @@ function toSymbol(market, detail) {
 function toFutSymbol(market, symbol) {
     if ((market||{}).month_abbreviation) {
         const abbreviations = {F: 'JAN', G: 'FEB', H: 'MAR', J: 'APR', K: 'MAY', M: 'JUN', N: 'JUL', Q: 'AUG', U: 'SEP', V: 'OCT', X: 'NOV', Z: 'DEC'};
-        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)$/);
+        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)( [CP]\d+)?$/);
         if (!m) return symbol;
-        const [, tradingClass, code, decade, year] = m;
+        const [, tradingClass, code, decade, year, strike] = m;
         const space = '    '.substring(tradingClass.length);
-        return `${tradingClass}${space} ${abbreviations[code]} ${decade}${year}`;
+        return `${tradingClass}${space} ${abbreviations[code]} ${decade}${year}${strike||''}`;
     } else {
-        return symbol.replace(/^(.*)([A-Z])(\d)(\d)$/,'$1$2$4');
+        return symbol.replace(/^(.*)([A-Z])(\d)(\d)( [CP]\d+|$)$/,'$1$2$4$5');
     }
 }
 
 function fromFutSymbol(market, symbol) {
     if ((market||{}).month_abbreviation) {
         const codes = {JAN: 'F', FEB: 'G', MAR: 'H', APR: 'J', MAY: 'K', JUN: 'M', JUL: 'N', AUG: 'Q', SEP: 'U', OCT: 'V', NOV: 'X', DEC: 'Z'};
-        const [, root, month, year] = symbol.match(/^(\w*) +([A-Z]+) (\d\d)$/);
-        return `${root}${codes[month]}${year}`;
+        const [, root, month, year, strike] = symbol.match(/^(\w*) +([A-Z]+) (\d\d)( [CP]\d+)?$/);
+        return `${root}${codes[month]}${year}${strike||''}`;
     } else {
-        const [, root, month, y] = symbol.match(/^(\w*)([A-Z])(\d)$/);
+        const [, root, month, y, strike] = symbol.match(/^(\w*)([A-Z])(\d)( [CP]\d+)?$/);
         const now = moment();
         const decade = y >= (now.year() - 2) % 10 ?
             (now.year() - 2).toString().substring(2, 3) :
             (now.year() + 8).toString().substring(2, 3);
-        return `${root}${month}${decade}${y}`;
+        return `${root}${month}${decade}${y}${strike||''}`;
     }
 }
 

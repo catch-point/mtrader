@@ -504,7 +504,7 @@
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "FUT",
+          "secTypes": ["FUT", "FOP"],
           "exchange": "GLOBEX"
         },
         "collective2": {
