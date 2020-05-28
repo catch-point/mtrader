@@ -70,6 +70,7 @@ function usage(command) {
         .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")
         .option('--filter <expression>', "Expression that must evaluate to non-zero to be included in result")
         .option('-o, --offline', "Disable data updates")
+        .option('-u, --update', "Update the last bar of assets")
         .option('-n, --dry-run', "Disable order submission")
         .option('--allocation-pct <percent>', "Percentage 0-100 of the balance that should be allocated to this strategy")
         .option('--allocation-peak-pct <percent>', "Percentage 0-100 of the maximum balance in the past 12 months to allocate")

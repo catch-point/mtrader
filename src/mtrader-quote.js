@@ -76,6 +76,7 @@ function usage(command) {
         .option('--add-parameter <name=value>', "Name=Value pair to include as expression parameter")
         .option('--criteria <expression>', "Expression that must evaluate to a non-zero to be retained")
         .option('-o, --offline', "Disable data updates")
+        .option('-u, --update', "Update the last bar of assets")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")

@@ -60,6 +60,7 @@ function usage(command) {
         .option('--load <filename>', "Read the given session settings")
         .option('--begin <dateTime>', "ISO dateTime of the starting point")
         .option('-o, --offline', "Disable data updates")
+        .option('-u, --update', "Update the last bar of assets")
         .option('--amend', "If the result should include option properties from the input")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")

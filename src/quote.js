@@ -147,6 +147,10 @@ function help(fetch) {
                     usage: 'true',
                     description: "If only the local data should be used in the computation"
                 },
+                update: {
+                    usage: 'true',
+                    description: "If the system should (re)fetch the last bar"
+                },
                 read_only: {
                     usage: 'true',
                     descirption: "If only precomputed lookback and indicator function should be used"
@@ -775,8 +779,8 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, now, b
             return; // no need to update complete blocks
         if (!collection.sizeOf(block))
             return fetchComplete(block, latest);
-        if (i < blocks.length -1 || (_.last(tail).asof || _.last(tail).ending) <= stop) {
-            if (isMarketClosed(_.last(tail), now, options)) return;
+        if (options.update || i < blocks.length -1 || (_.last(tail).asof || _.last(tail).ending) <= stop) {
+            if (!options.update && isMarketClosed(_.last(tail), now, options)) return;
             return fetchPartial(block, _.first(tail).ending, latest).catch(error => {
                 if (stop) logger.debug("Need to fetch", _.last(tail).ending);
                 logger.trace("Fetch failed", error);

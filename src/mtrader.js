@@ -88,6 +88,7 @@ const program = require('commander')
     .option('--cache-dir <dirname>', "Directory where processed data is kept")
     .option('--load <filename>', "Read the given session settings")
     .option('-o, --offline', "Disable data updates")
+    .option('-u, --update', "Update the last bar of assets")
     .option('--set <name=value>', "Name=Value pairs to be used in session");
 
 let program_args_version = false;
