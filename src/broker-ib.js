@@ -1091,11 +1091,11 @@ function toLocalSymbol(market, symbol) {
 function toFutSymbol(market, symbol) {
     if ((market||{}).month_abbreviation) {
         const abbreviations = {F: 'JAN', G: 'FEB', H: 'MAR', J: 'APR', K: 'MAY', M: 'JUN', N: 'JUL', Q: 'AUG', U: 'SEP', V: 'OCT', X: 'NOV', Z: 'DEC'};
-        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)( [CP]\d+?$/);
+        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)( [CP]\d+)?$/);
         if (!m) return symbol;
         const [, root, code, decade, year, strike] = m;
         const space = '    '.substring(root.length);
-        return `${root}${space} ${abbreviations[code]} ${decade}${year}${stirke||''}`;
+        return `${root}${space} ${abbreviations[code]} ${decade}${year}${strike||''}`;
     } else {
         return symbol.replace(/^(.*)([A-Z])(\d)(\d)( [CP]\d+|$)$/,'$1$2$4$5');
     }
