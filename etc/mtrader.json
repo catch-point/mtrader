@@ -390,7 +390,10 @@
             "ZF": "@FV",
             "ZN": "@TY",
             "ZB": "@US",
-            "UB": "@UB"
+            "UB": "@UB",
+            "ZC": "@C",
+            "ZS": "@S",
+            "ZW": "@W"
           }
         },
         "ib": {
@@ -812,6 +815,7 @@
           "dtnPrefixMap": {
             "HG": "QHG",
             "GC": "QGC",
+            "NG": "QNG",
             "MGC": "QMGC",
             "SI": "QSI",
             "CL": "QCL",
