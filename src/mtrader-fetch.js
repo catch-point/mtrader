@@ -93,7 +93,7 @@ if (require.main === module) {
         .then(() => {
             setTimeout(() => {
                 if (process._getActiveHandles)
-                    console.log("Still active on", process.pid, process._getActiveHandles());
+                    console.log("Still active on", process.pid);
             }, 10000).unref();
         });
     } else if (process.send) {
@@ -105,7 +105,7 @@ if (require.main === module) {
         process.on('disconnect', () => {
             setTimeout(() => {
                 if (process._getActiveHandles)
-                    console.log("Still active on", process.pid, process._getActiveHandles());
+                    console.log("Still active on", process.pid);
             }, 10000).unref();
         });
         process.on('SIGHUP', () => {

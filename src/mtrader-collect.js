@@ -164,9 +164,11 @@ function createInstance(program, runInBand = false) {
     instance.reload = debounce(async() => {
         await local.reload();
         await remote.reload();
-        await (cache && cache.close()
+        const promise = (cache && cache.close()
             .catch(err => logger.warn("Could not reset collect cache", err)));
         cache = createCache(direct, local, remote, settings);
+        promiseKeys = null;
+        await promise;
     }, 100);
     instance.reset = () => {
         try {
@@ -176,9 +178,10 @@ function createInstance(program, runInBand = false) {
             local = createQueue(localWorkers);
             remote = new Remote(settings);
             cache = createCache(direct, local, remote, settings);
+            promiseKeys = null;
         }
     };
-    const direct = Collect(fetch, quote, instance);
+    const direct = new Collect(fetch, quote, instance);
     const localWorkers = createLocalWorkers.bind(this, program, fetch, quote, instance, settings);
     let local = createQueue(localWorkers);
     let remote = new Remote(settings);

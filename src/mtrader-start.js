@@ -84,7 +84,7 @@ if (require.main === module) {
     process.on('SIGTERM', () => {
         setTimeout(() => {
             if (process._getActiveHandles)
-                console.log("Still active on", process.pid, process._getActiveHandles());
+                console.log("Still active on", process.pid);
         }, 10000).unref();
     });
 } else {
