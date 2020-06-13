@@ -162,7 +162,7 @@ async function yahoo_adjustments(yahoo, db, salt, symbol, options) {
         }).catch(err => {
             if (!col.exists(since)) throw err;
             else return col.readFrom(since).then(data => {
-                logger.warn("Could not load adjustments", err.message);
+                logger.warn("Could not load adjustments", symbol, err.message);
                 return data;
             }, e2 => Promise.reject(err));
         });
