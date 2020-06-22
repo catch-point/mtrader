@@ -130,6 +130,7 @@ module.exports = function(fetch, quote, settings = {}) {
         _.pick(config('markets'), market_values),
         m => _.omit(m, 'datasources', 'label', 'description')
     );
+    const init_date = new Date();
     let helpInfo;
     return Object.assign(async(options) => {
         if (options.info=='version') return fetch(options);
@@ -140,7 +141,8 @@ module.exports = function(fetch, quote, settings = {}) {
             }, err => {
                 const contracts = lookup(markets, assets, options);
                 if (contracts.length) return contracts;
-                else throw err;
+                logger.log("No contract", options.symbol, options.market, "in quote-model as of", init_date);
+                throw err;
             });
             case 'contract':
             case 'fundamental': return cached_fetch(options).then(contracts => contracts.map(contract => {
@@ -148,7 +150,8 @@ module.exports = function(fetch, quote, settings = {}) {
             }), err => {
                 const contracts = lookup(markets, assets, options);
                 if (contracts.length) return contracts;
-                else throw err;
+                logger.log("No contract", options.symbol, options.market, "in quote-model as of", init_date);
+                throw err;
             });
             case 'adjustments': return cached_fetch(options);
             default:

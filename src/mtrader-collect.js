@@ -299,7 +299,7 @@ function shell(desc, collect, app) {
     app.on('quit', () => collect.close());
     app.on('exit', () => collect.close());
     app.cmd('collect', desc, (cmd, sh, cb) => {
-        readCallSave(null, config.options())
+        readCallSave(null, () => collect(config.options()))
           .then(result => tabular(result, config())).then(() => sh.prompt(), cb);
     });
     app.cmd("collect :name([a-zA-Z0-9\\-._!\\$'\\(\\)\\+,;=\\[\\]@ ]+)", desc, (cmd, sh, cb) => {
