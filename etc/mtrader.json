@@ -872,8 +872,8 @@
     },
     "OPRA": {
       "description": "The Options Price Reporting Authority (OPRA) is a committee of representatives from participating securities exchanges responsible for providing last-sale options quotations and information from the participating exchanges.",
-      "trading_hours": "02:00:00 - 15:15:00",
-      "liquid_hours": "08:30:00 - 15:15:00",
+      "trading_hours": "08:30:00 - 15:00:00",
+      "liquid_hours": "08:30:00 - 15:00:00",
       "open_time": "08:30:00",
       "security_tz": "America/Chicago",
       "currency": "USD",
