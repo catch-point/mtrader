@@ -63,6 +63,7 @@ module.exports = function(fetch, quote, collectFn) {
         expect(options).to.be.an('object');
         if (options.info=='help') return promiseHelp;
         if (options.info=='version') return [{version:version.toString()}];
+        if (options.info) return [];
         const keys = _.keys(_.first(await promiseHelp).options);
         const fields = _.first(await promiseHelp).properties;
         const opts = _.defaults(_.pick(options, keys), {

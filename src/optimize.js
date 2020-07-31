@@ -56,6 +56,7 @@ module.exports = function(collect) {
         if (!promiseHelp) promiseHelp = help(collect);
         if (options.info=='help') return promiseHelp;
         else if (options.info=='version') return [{version:version.toString()}];
+        else if (options.info) return [];
         else return promiseHelp.then(help => {
             const fields = _.first(help).properties;
             const opts = _.defaults(_.pick(options, _.keys(_.first(help).options)), {

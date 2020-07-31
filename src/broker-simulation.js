@@ -66,6 +66,7 @@ module.exports = function(settings, quote) {
     return _.extend(async(options) => {
         if (options.info=='help') return helpOptions();
         if (options.info=='version') return [{version}];
+        if (options.info) return [];
         return store.open(settings.simulation, async(err, db) => {
             if (err) throw err;
             const barsFor_fn = barsFor.bind(this, markets, quote);

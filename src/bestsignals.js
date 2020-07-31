@@ -52,6 +52,7 @@ module.exports = function(optimize) {
         if (!promiseHelp) promiseHelp = help(optimize);
         if (options.info=='help') return promiseHelp;
         else if (options.info=='version') return [{version:version.toString()}];
+        else if (options.info) return [];
         const keys = _.keys(_.first(await promiseHelp).options);
         const opts = _.pick(options, keys);
         return bestsignals(optimize, opts);

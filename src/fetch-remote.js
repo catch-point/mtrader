@@ -57,6 +57,8 @@ module.exports = function(settings = {}) {
         const delay = (delayed || 500) *2;
         const client = await Fetch();
         return client.request('fetch', options).then(result => {
+            if (options.info == 'pending')
+                return client.pending().map(item => ({cmd: 'fetch', ...item})).concat(result);
             if (options.info!='version') return result;
             const location = client.process.pid;
             return result.map(version => ({...version, location, ...version}));

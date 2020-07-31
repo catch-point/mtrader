@@ -47,11 +47,11 @@ module.exports = function(settings = {}) {
         return datasources.then(async(datasources) => {
             if (options.info=='help' || options.interval == 'help')
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
-            if (options.info=='version') {
+            if (options.info) {
                 const sources = _.uniq(_.flatten(_.values(datasources).map(_.values)));
                 return _.flatten(await Promise.all(sources.map(ds => {
                     return ds(options).catch(err => {
-                        return [{message:err.message}];
+                        return [{cmd: 'fetch', label: ds.id, message:err.message}];
                     });
                 })));
             }
@@ -131,7 +131,7 @@ async function mergeDatasources(factories, disabled, settings = {}) {
             logger.trace("Fetch", name, opts.info || opts.interval,
                 opts.symbol || '', opts.market || '', opts.begin || '');
             return source(opts);
-        }, {close: source.close.bind(source)});
+        }, {id: name, close: source.close.bind(source)});
     });
     const result = await Promise.all(sources.map(source => source({info:'help'})));
     return result.reduce((datasources, help, i) => {

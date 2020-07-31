@@ -61,6 +61,7 @@ module.exports = function(fetch, settings = {}) {
         if (!promiseHelp) promiseHelp = help(fetch);
         if (options.info=='help') return promiseHelp;
         if (options.info=='version') return [{version: version.toString()}];
+        if (options.info) return [];
         const market = options.market || '';
         const store = stores[market] = stores[market] || storage(path.resolve(dir, market || ''));
         return promiseHelp.then(help => {

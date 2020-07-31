@@ -243,6 +243,8 @@ function createInstance(settings = {}) {
             }, err => {
                 return [{version: null, name: 'IQFeed', message: err.message}];
             });
+        } else if (options.info) {
+            return [];
         }
         await iqclient.open();
         if (options.rollday) {

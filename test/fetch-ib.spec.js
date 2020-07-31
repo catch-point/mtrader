@@ -130,6 +130,9 @@ describe("fetch-ib", function() {
                 name: "TWS API"
             }]);
         });
+        it("pending", function() {
+            return client({info:'pending'}).then(array => array.should.be.like([]));
+        });
     });
     describe("lookup", function() {
         it("should find IBM", function() {

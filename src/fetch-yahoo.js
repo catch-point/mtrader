@@ -167,6 +167,7 @@ module.exports = function(settings = {}) {
     return Object.assign(async(options) => {
         if (options.info=='help') return helpInfo;
         if (options.info=='version') return [{version}];
+        if (options.info) return [];
         switch(options.interval) {
             case 'lookup': return lookup(markets, yahoo, options);
             case 'contract': return contract(markets, yahoo, options);

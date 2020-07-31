@@ -75,6 +75,7 @@ const program = require('commander')
     .command('strategize [identifier]', "Modifies a strategy looking for improvements")
     .command('replicate [identifier]', "Changes workers orders to align with collected signal orders")
     .command('broker [action]', "Retrieve or execute orders in broker account")
+    .command('pending', "Lists pending queues in remote system(s)")
     .command('start', "Start a headless service on the listen interface")
     .command('stop', "Stops a headless service using the listen interface")
     .option('-V, --version', "Output the version number(s)")
@@ -211,18 +212,30 @@ function createInstance(settings = {}) {
         replicate: replicate,
         version() {
             return Promise.all([
-                fetch({info:'version'}).catch(err => [{message:err.message}]),
-                quote({info:'version'}).catch(err => [{message:err.message}]),
-                collect({info:'version'}).catch(err => [{message:err.message}]),
-                optimize({info:'version'}).catch(err => [{message:err.message}]),
-                bestsignals({info:'version'}).catch(err => [{message:err.message}]),
-                strategize({info:'version'}).catch(err => [{message:err.message}]),
-                broker({info:'version'}).catch(err => [{message:err.message}]),
-                replicate({info:'version'}).catch(err => [{message:err.message}])
+                fetch({info:'version'}).catch(err => [{cmd: 'fetch', message:err.message}]),
+                quote({info:'version'}).catch(err => [{cmd: 'quote', message:err.message}]),
+                collect({info:'version'}).catch(err => [{cmd: 'collect', message:err.message}]),
+                optimize({info:'version'}).catch(err => [{cmd: 'optimize', message:err.message}]),
+                bestsignals({info:'version'}).catch(err => [{cmd: 'bestsignals', message:err.message}]),
+                strategize({info:'version'}).catch(err => [{cmd: 'strategize', message:err.message}]),
+                broker({info:'version'}).catch(err => [{cmd: 'broker', message:err.message}]),
+                replicate({info:'version'}).catch(err => [{cmd: 'replicate', message:err.message}])
             ]).then(versions => [].concat(...versions))
               .then(versions => _.values(_.indexBy(versions, JSON.stringify.bind(JSON))))
               .then(versions => versions.map(version => ({...version, name: 'mtrader', ...version})))
               .then(versions => _.sortBy(_.sortBy(_.sortBy(versions, 'version'), 'location'), 'name'));
+        },
+        pending() {
+            return Promise.all([
+                fetch({info:'pending'}).catch(err => [{cmd: 'fetch', message:err.message}]),
+                quote({info:'pending'}).catch(err => [{cmd: 'quote', message:err.message}]),
+                collect({info:'pending'}).catch(err => [{cmd: 'collect', message:err.message}]),
+                optimize({info:'pending'}).catch(err => [{cmd: 'optimize', message:err.message}]),
+                bestsignals({info:'pending'}).catch(err => [{cmd: 'bestsignals', message:err.message}]),
+                strategize({info:'pending'}).catch(err => [{cmd: 'strategize', message:err.message}]),
+                broker({info:'pending'}).catch(err => [{cmd: 'broker', message:err.message}]),
+                replicate({info:'pending'}).catch(err => [{cmd: 'replicate', message:err.message}])
+            ]).then(pending => [].concat(...pending));
         },
         seed(number) {
             optimize.seed(number);

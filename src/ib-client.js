@@ -211,12 +211,15 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
             if (store) await store.close();
             if (error) throw error;
         },
-        open() {
+        async open() {
             if (!self.connecting && !self.connected && !self.disconnected) {
                 self.connecting = true;
                 ib.connect();
             }
             return once_connected.then(() => self);
+        },
+        async pending() {
+            return active.map(entry => ({label: entry.cmd, arguments: Array.from(entry.arguments)}));
         }
     });
 }

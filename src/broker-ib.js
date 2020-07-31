@@ -49,7 +49,6 @@ module.exports = function(settings = {}, mock_ib_client = null) {
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
-    expect(settings).to.have.property('account').that.is.ok;
     if (settings.local_accounts) expect(settings.account).to.be.oneOf(settings.local_accounts);
     const ib = mock_ib_client && mock_ib_client.open ? mock_ib_client : new IB(settings);
     const fetch = new Fetch(merge(config('fetch'), settings.fetch));
@@ -57,6 +56,8 @@ module.exports = function(settings = {}, mock_ib_client = null) {
     return _.extend(async function(options) {
         if (options.info=='help') return helpOptions();
         if (options.info=='version') return [{version}];
+        if (options.info) return [];
+        expect(settings).to.have.property('account').that.is.ok;
         await ib.open();
         switch(options.action) {
             case 'balances': return listBalances(markets, ib, fetch, settings, options);

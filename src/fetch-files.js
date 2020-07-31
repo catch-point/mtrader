@@ -50,6 +50,7 @@ module.exports = function(settings = {}) {
     return Object.assign(async(options) => {
         if (options.info=='version') return [{version}];
         if (options.info=='help') return readOrWriteHelp(fetch, open, 'help', options);
+        if (options.info) return [];
         switch(options.interval) {
             case 'lookup': return readOrWriteResult(fetch, open, 'lookup', _.omit(options, 'begin', 'end'));
             case 'contract': return readOrWriteResult(fetch, open, 'contract', _.omit(options, 'begin', 'end'));

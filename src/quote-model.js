@@ -135,6 +135,7 @@ module.exports = function(fetch, quote, settings = {}) {
     return Object.assign(async(options) => {
         if (options.info=='version') return fetch(options);
         if (options.info=='help') return helpInfo = helpInfo || help(assets, await fetch({info:'help'}));
+        if (options.info) return [];
         switch(options.interval) {
             case 'lookup': return cached_fetch(options).then(contracts => {
                 return lookup(markets, assets, options).concat(contracts);

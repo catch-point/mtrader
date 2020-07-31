@@ -60,6 +60,8 @@ module.exports = function(settings) {
         const delay = (delayed || 500) *2;
         const client = await Broker(settings);
         return client.request('broker', options).then(result => {
+            if (options.info == 'pending')
+                return client.pending().map(item => ({cmd: 'broker', ...item})).concat(result);
             if (options.info!='version') return result;
             const location = client.process.pid;
             return result.map(version => ({...version, location, ...version}));

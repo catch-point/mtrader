@@ -66,6 +66,7 @@ module.exports = function(broker, fetch, collect, settings) {
         if (!promiseHelp) promiseHelp = helpInfo(brokerHelp, collect({info:'help'}));
         if (options.info=='help') return promiseHelp;
         else if (options.info=='version') return [{version:version.toString()}];
+        else if (options.info) return [];
         const help = await promiseHelp;
         const broker_watch = wrapBroker(broker, await brokerHelp, settings);
         const opts = _.defaults({

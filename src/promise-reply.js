@@ -181,6 +181,9 @@ module.exports = function(process) {
             delete handlers[cmd];
             return true;
         },
+        pending() {
+            return queue.pending().map(item => ({label: item.cmd, payload: item.payload}));
+        },
         process: process
     };
 
@@ -267,6 +270,9 @@ function createQueue(onquit, pid) {
         },
         keys() {
             return _.keys(outstanding);
+        },
+        pending() {
+            return _.values(outstanding);
         },
         abort(err) {
             return onquit(err);

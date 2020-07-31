@@ -61,6 +61,7 @@ module.exports = function(settings, quote) {
         if (options.info && !broker) return [];
         if (!promiseHelpWithOptions) promiseHelpWithOptions = broker({info:'help'});
         if (options.info=='help') return promiseHelpWithOptions;
+        if (options.info) return [];
         const help = await promiseHelpWithOptions;
         const opts = _.pick(options, _.flatten(_.map(help, info => _.keys(info.options))));
         return broker(opts);

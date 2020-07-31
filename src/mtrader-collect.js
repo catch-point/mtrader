@@ -139,7 +139,14 @@ function createInstance(program, runInBand = false) {
             const remote_tier = remote.getWorkerTier() || 0;
             if (options.info=='help' || isSplitting(options)) return direct(options);
             else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
-            else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
+            else if (options.info=='version')
+                return Promise.all([direct(options), remote.version()]).then(_.flatten);
+            else if (options.info)
+                return Promise.all([
+                    direct(options),
+                    local.countConnectedWorkers() ? local(options) : [],
+                    remote.hasWorkers() ? remote.collect(options) : []
+                ]).then(_.flatten);
             else if (cache) return cache(options);
             else if (config('runInBand') || runInBand) return direct(options);
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);

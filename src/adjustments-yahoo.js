@@ -89,6 +89,7 @@ module.exports = share(function(settings = {}, yahooClient = null) {
     return _.extend(async(options) => {
         if (options.info=='help') return helpInfo;
         if (options.info=='version') return [{version:version.toString()}];
+        if (options.info) return [];
         else if (options.market && !markets[options.market]) return Promise.resolve([]);
         const market = options.market || '';
         const store = stores[market] = stores[market] || storage(path.resolve(dir, market || ''));

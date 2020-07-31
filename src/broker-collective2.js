@@ -59,6 +59,7 @@ module.exports = function(settings) {
     return _.extend(async function(options) {
         if (options && options.info=='help') return helpOptions();
         if (options && options.info=='version') return [{version}];
+        if (options && options.info) return [];
         const c2_multipliers = settings.c2_multipliers || {};
         return collective2(c2_multipliers, client, fetch, markets, lookup_fn, options || {});
     }, {

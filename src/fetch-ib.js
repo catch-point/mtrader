@@ -191,11 +191,7 @@ module.exports = function(settings = {}) {
     const markets = fetch_ib.markets;
     const findContract = fetch_ib.findContract;
     const self = async(options) => {
-        if (!fetch) {
-            return ib(options);
-        } else if (options.info=='help') {
-            return fetch_ib(options);
-        } else if (options.info=='version') {
+        if (options.info) {
             return fetch_ib(options);
         } else if (options.interval=='lookup') {
             if (isContractExpired(markets, client, moment(options.now), options)) return fetch(options);
@@ -404,6 +400,12 @@ function createInstance(adjustments, settings = {}) {
                 return [{version: null, name: 'TWS API', message: err.message}];
             });
         }
+        if (options.info=='pending') {
+            if (!client.pending) return []; // client is not open
+            const pending = await client.pending();
+            return pending.map(item => ({cmd: 'fetch', ...item}));
+        }
+        if (options.info) return [];
         await client.open();
         const adj = isNotEquity(markets, options) ? null :
             pastAndFutureAdjustments.bind(this, fetchDividendInfo_cache, markets, client, adjustments);
