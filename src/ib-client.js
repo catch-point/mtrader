@@ -1220,9 +1220,14 @@ function requestWithId(ib) {
         ib.cancelPositionsMulti(+reqId);
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].positionMulti);
     });
+    const reqContractDetails_cached = cache(
+        request.bind(this, 'reqContractDetails'),
+        ct => JSON.stringify(ct),
+        1000
+    );
     return {
         reqContractDetails(contract) {
-            return request('reqContractDetails', contract);
+            return reqContractDetails_cached(contract);
         },
         reqFundamentalData(contract, reportType) {
             return request('reqFundamentalData', contract, reportType);
