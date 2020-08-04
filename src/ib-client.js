@@ -36,6 +36,7 @@ const xml = require('fast-xml-parser');
 const IB = require('ib');
 const logger = require('./logger.js');
 const promiseThrottle = require('./throttle.js');
+const TimeLimit = require('./time-limit.js');
 const debounce = require('./debounce.js');
 const cache = require('./memoize-cache.js');
 const storage = require('./storage.js');
@@ -144,55 +145,20 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
         ib.once('server', version => ready(version))
           .once('disconnected', () => fail());
     });
-    let pulse_timeout, pulse_counter = 0, active = [];
+    const time_limit = new TimeLimit(timeout);
     const self = new.target ? this : {};
     const store = lib_dir && storage(lib_dir);
     const modules = [
         reqPositions.call(self, ib),
         currentTime.call(self, ib),
         requestFA.call(self, ib),
-        accountUpdates.call(self, ib, store, ib_tz),
-        openOrders.call(self, ib, store, ib_tz, clientId),
-        execDetails.call(self, ib, store, ib_tz),
-        reqContract.call(self, ib),
-        requestWithId.call(self, ib)
+        accountUpdates.call(self, ib, time_limit, store, ib_tz),
+        openOrders.call(self, ib, time_limit, store, ib_tz, clientId),
+        execDetails.call(self, ib, time_limit, store, ib_tz),
+        reqContract.call(self, ib, time_limit),
+        requestWithId.call(self, ib, time_limit)
     ];
-    const methods = _.mapObject(Object.assign({}, ...modules), (fn, cmd) => {
-        if (cmd == 'reqId') return fn; // reqId is a blocking sequential call
-        else return function() {
-            return new Promise((ready, abort) => {
-                const entry = {
-                    cmd, arguments,
-                    expires: pulse_counter +timeout/1000,
-                    ready, abort
-                };
-                active.push(entry);
-                if (!pulse_timeout) pulse_timeout = setTimeout(pulse_fn, 1000).unref();
-                return Promise.resolve(fn.apply(this, arguments)).then(result => {
-                    const idx = active.indexOf(entry);
-                    if (~idx) active.splice(idx, 1);
-                    return ready(result);
-                }, err => {
-                    const idx = active.indexOf(entry);
-                    if (~idx) active.splice(idx, 1);
-                    return abort(err);
-                });
-            });
-        };
-    });
-    const pulse_fn = () => {
-        pulse_counter++;
-        _.defer(() => {
-            const expired = active.filter(entry => entry.expires < pulse_counter);
-            expired.forEach(entry => {
-                entry.abort(Error(`ib-client ${clientId} ${entry.cmd} timed out`));
-                const idx = active.indexOf(entry);
-                if (~idx) active.splice(idx, 1);
-            });
-            if (active.length) pulse_timeout = setTimeout(pulse_fn, 1000).unref();
-            else pulse_timeout = null;
-        });
-    };
+    const methods = Object.assign({}, ...modules);
     return Object.assign(self, methods, {
         connecting: false,
         connected: false,
@@ -200,7 +166,7 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
         version: () => version_promise,
         async close() {
             let error;
-            if (pulse_timeout) clearTimeout(pulse_timeout);
+            await time_limit.close();
             await Promise.all(modules.map(module => {
                 if (module.close) return module.close().catch(err => error = error || err);
             }));
@@ -219,7 +185,7 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
             return once_connected.then(() => self);
         },
         async pending() {
-            return active.map(entry => ({label: entry.cmd, arguments: Array.from(entry.arguments)}));
+            return time_limit.pending();
         }
     });
 }
@@ -335,7 +301,7 @@ function requestFA(ib) {
     };
 }
 
-function accountUpdates(ib, store, ib_tz) {
+function accountUpdates(ib, time_limit, store, ib_tz) {
     const managed_accounts = [];
     const subscriptions = {};
     const req_queue = {};
@@ -417,7 +383,7 @@ function accountUpdates(ib, store, ib_tz) {
             }).then(item.ready, item.fail);
         }
     });
-    const reqAccountUpdate = async(acctCode, modelCode) => {
+    const reqAccountUpdate = time_limit(async(acctCode, modelCode) => {
         const now = moment().tz(ib_tz).millisecond(0).seconds(0).subtract(1,'minutes');
         return new Promise((ready, fail) => {
             if (closed) throw Error("TWS has disconnected");
@@ -428,7 +394,7 @@ function accountUpdates(ib, store, ib_tz) {
             logger.log('reqAccountUpdates', acctCode, modelCode || '', false);
             ib.reqAccountUpdatesMulti(+reqId, acctCode, modelCode || '', false);
         });
-    };
+    }, "ib-client reqAccountUpdatesMulti");
     return {
         reqAccountUpdate,
         reqAccountHistory(acctCode, time) {
@@ -462,7 +428,7 @@ function accountUpdates(ib, store, ib_tz) {
     };
 }
 
-function openOrders(ib, store, ib_tz, clientId) {
+function openOrders(ib, time_limit, store, ib_tz, clientId) {
     const self = this;
     const F = 'YYYYMMDD HH:mm:ss';
     let last_order_id = 0;
@@ -708,7 +674,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 });
             }).then(cb);
         },
-        async placeOrder(orderId, contract, order) {
+        placeOrder: time_limit(async(orderId, contract, order) => {
             logger.log('placeOrder', orderId, contract, order);
             ib.placeOrder(orderId, contract, order);
             if (!order.transmit) {
@@ -742,8 +708,8 @@ function openOrders(ib, store, ib_tz, clientId) {
                 };
                 setTimeout(check_order.bind(this, 5000), 1000).unref();
             }).catch(err => logger.warn('placeOrder', orderId, contract, order, err.message) || Promise.reject(err));
-        },
-        async cancelOrder(orderId) {
+        }, "ib-client placeOrder"),
+        cancelOrder: time_limit(async(orderId) => {
             logger.log('cancelOrder', orderId);
             ib.cancelOrder(orderId);
             return new Promise((ready, fail) => {
@@ -758,7 +724,7 @@ function openOrders(ib, store, ib_tz, clientId) {
                 };
                 setTimeout(check_order.bind(this, 5000), 1000).unref();
             }).catch(err => logger.warn('cancelOrder', orderId, err.message) || Promise.reject(err));
-        },
+        }, "ib-client cancelOrder"),
         async watchOrder(orderId, timeout) {
             const timer = setTimeout(() => {
                 if (watching_orders[orderId] && orders[orderId]) {
@@ -837,10 +803,10 @@ function openOrders(ib, store, ib_tz, clientId) {
             if (!filter) return orders;
             return orders;
         },
-        async reqAutoOpenOrders(autoBind) {
+        reqAutoOpenOrders: time_limit(async(autoBind) => {
             logger.log('reqAutoOpenOrders', autoBind);
             return ib.reqAutoOpenOrders(autoBind);
-        },
+        }, "ib-client reqAutoOpenOrders"),
         close() {
             flushed = true;
             return flusher.flush().then(() => closed = true, err => {
@@ -851,7 +817,7 @@ function openOrders(ib, store, ib_tz, clientId) {
     };
 }
 
-function execDetails(ib, store, ib_tz) {
+function execDetails(ib, time_limit, store, ib_tz) {
     const details = {};
     const commissions = {};
     const req_queue = {};
@@ -980,7 +946,7 @@ function execDetails(ib, store, ib_tz) {
                 });
             });
         },
-        reqExecutions(filter) {
+        reqExecutions: time_limit((filter) => {
             return new Promise((ready, fail) => {
                 const reqId = nextval();
                 req_queue[reqId] = {
@@ -1003,7 +969,7 @@ function execDetails(ib, store, ib_tz) {
                 logger.log('reqExecutions', filter || '');
                 ib.reqExecutions(reqId, filter || {});
             });
-        },
+        }, "ib-client reqExecutions"),
         close() {
             flushed = true;
             return flusher.flush().then(() => closed = true, err => {
@@ -1014,9 +980,9 @@ function execDetails(ib, store, ib_tz) {
     };
 }
 
-function reqContract(ib) {
+function reqContract(ib, time_limit) {
     const req_queue = {};
-    const reqContract = promiseThrottle(function(conId) {
+    const reqContract = promiseThrottle(time_limit(function(conId) {
         return new Promise((ready, fail) => {
             const reqId = nextval();
             req_queue[reqId] = {
@@ -1038,7 +1004,7 @@ function reqContract(ib) {
             logger.log('reqContractDetails', conId);
             ib.reqContractDetails(reqId, {conId});
         });
-    }, 1);
+    }, "ib-client reqContractDetails"), 1);
     const replaceEntry = contract => {
         if (contract.secType != 'BAG') {
             reqCachedContract.replaceEntry(contract.conId, contract);
@@ -1091,9 +1057,9 @@ function isGeneralError(info) {
     else return true;
 }
 
-function requestWithId(ib) {
+function requestWithId(ib, time_limit) {
     const req_queue = {};
-    const request = promiseThrottle(function(cmd) {
+    const request = promiseThrottle(time_limit(function(cmd) {
         return new Promise((ready, fail) => {
             const reqId = nextval();
             const args = _.rest(_.toArray(arguments));
@@ -1132,7 +1098,7 @@ function requestWithId(ib) {
             }));
             ib[cmd].call(ib, reqId, ...args);
         });
-    }, 50);
+    }, (cmd) => `ib-client ${cmd}`), 50);
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
             _.delay(() => {
