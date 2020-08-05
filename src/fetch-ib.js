@@ -383,12 +383,12 @@ function createInstance(adjustments, settings = {}) {
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
     const lookupContract_fn = lookupContract.bind(this, markets, client);
-    const lookupContract_cache = cache(lookupContract_fn, o => `${o.symbol}.${o.market}`, 10);
+    const lookupContract_cache = cache(lookupContract_fn, o => `${o.symbol}.${o.market}`, 100);
     const findContract_fn = findContract.bind(this, lookupContract_cache, markets, client);
     const fetchDividendInfo_cache = cache(
         fetchDividendInfo,
         (client, contract) => JSON.stringify(contract),
-        100
+        1000
     );
     const market_tz_fn = _.memoize(market_tz, (timeZoneId, default_tz) => `${timeZoneId},${default_tz}`);
     const self = async(options) => {
