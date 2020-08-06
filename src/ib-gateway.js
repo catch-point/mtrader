@@ -99,7 +99,11 @@ async function assignClient(self, settings) {
     } else {
         delete settings.lib_dir;
     }
-    let gateway = await getSharedGateway(settings);
+    const install = (config('ibgateway_installs')||[])
+      .find(inst => inst.ibg_version == settings.ibg_version && inst.ibg_name == settings.ibg_name);
+    if (!install) throw Error(`IB Gateway ${settings.ibg_name}/${settings.ibg_version} is not installed or configured correctly`);
+    const timeout = Date.now() + (install.login_timeout || 300) * 1000;
+    let gateway = await getSharedGateway(install, settings);
     let client = new ib({
         ..._.omit(settings, private_settings),
         host: settings.host || gateway.host,
@@ -121,8 +125,10 @@ async function assignClient(self, settings) {
                     if (current_client == client) {
                         // current_client could not open, try creating anew
                         await current_client.close();
-                        await gateway.close();
-                        gateway = await getSharedGateway(settings);
+                        if (timeout < Date.now()) {
+                            await gateway.close();
+                            gateway = await getSharedGateway(install, settings);
+                        }
                         client = new ib({
                             ..._.omit(settings, private_settings),
                             host: settings.host || gateway.host,
@@ -154,37 +160,34 @@ async function assignClient(self, settings) {
     });
 }
 
-function getSharedGateway(settings) {
+function getSharedGateway(install, settings) {
     const json = _.object(private_settings.filter(key => key in settings).map(key => [key, settings[key]]));
     const key = crypto.createHash('sha256').update(JSON.stringify(json)).digest('hex');
     let gateway = gateway_instances[key] = gateway_instances[key] ||
-        createGatewayInstance({label: key, ...settings});
+        createGatewayInstance(install, {label: key, ...settings});
     return gateway.open().catch(async(err) => {
         logger.debug("IB Gateway", err);
         await gateway.close();
         if (gateway == gateway_instances[key]) {
             // replace gateway (if not already replaced)
-            gateway = gateway_instances[key] = createGatewayInstance({label: key, ...settings});
+            gateway = gateway_instances[key] = createGatewayInstance(install, {label: key, ...settings});
         }
         // try again
         return gateway_instances[key].open();
     });
 };
 
-function createGatewayInstance(settings) {
+function createGatewayInstance(install, settings) {
     if (!settings || !settings.ibg_version || !settings.ibg_name) return {
         host: settings.host,
         port: settings.port,
         async open() {return this;},
         async close() {}
     };
-    const install = (config('ibgateway_installs')||[])
-      .find(inst => inst.ibg_version == settings.ibg_version && inst.ibg_name == settings.ibg_name);
-    if (!install) throw Error(`IB Gateway ${settings.ibg_name}/${settings.ibg_version} is not installed or configured correctly`);
     const self = new.target ? this : {};
     return Object.assign(self, {
         open: _.memoize(async() => {
-            const gateway = await promiseInitializedInstance(self, settings);
+            const gateway = await promiseInitializedInstance(self, install, settings);
             return gateway.open();
         }),
         close(closedBy) {
@@ -199,15 +202,13 @@ function createGatewayInstance(settings) {
 
 let initialization_lock = Promise.resolve();
 
-async function promiseInitializedInstance(self, settings) {
+async function promiseInitializedInstance(self, install, settings) {
     return initialization_lock = initialization_lock.catch(err => logger.trace).then(() => {
-        return promiseInstance(self, settings);
+        return promiseInstance(self, install, settings);
     });
 }
 
-async function promiseInstance(self, settings) {
-    const install = (config('ibgateway_installs')||[])
-      .find(inst => inst.ibg_version == settings.ibg_version && inst.ibg_name == settings.ibg_name);
+async function promiseInstance(self, install, settings) {
     if (install.ibg_name) logger.info(`Launching ${install.ibg_name} ${settings.label||''}`);
     const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port ||
         await findAvailablePort(settings.TradingMode == 'paper' ? 4002 : 4001);

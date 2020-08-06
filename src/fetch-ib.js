@@ -527,6 +527,7 @@ async function futureAdjustments(fetchDividendInfo, markets, client, historic, o
         primaryExch: market.primaryExch,
         currency: market.currency || options.currency
     };
+    if (contract.secType != 'STK') return historic;
     const info = await fetchDividendInfo(client, contract).catch(logger.debug);
     if (!info) return historic;
     const last = _.last(historic) || {};
