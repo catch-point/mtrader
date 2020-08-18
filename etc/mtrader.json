@@ -20,7 +20,7 @@
         "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"
       ],
       "markets": [
-        "AMEX","ARCA","BATS","CBOE","CBOT","CFE","CME","ICE","LSE",
+        "CBOE","CBOT","CFE","CME","ICE","LSE",
         "NASDAQ","NYMEX","NYSE","OPRA","TSE","VENTURE","X",
         "AUD","CAD","CHF","CNH","GBP","JPY","NOK","NZD","SEK","USD"
       ]
@@ -32,7 +32,7 @@
         "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"
       ],
       "markets": [
-        "AEB","AMEX","ARCA","ASX","BATS","BM","CBOE","CBOT","CFE","CME","FWB","IBIS","ICE","LSE",
+        "AEB","ASX","BM","CBOE","CBOT","CFE","CME","IBIS","ICE","LSE",
         "NASDAQ","NYMEX","NYSE","OPRA","SBF","TSE","TSEJ","VENTURE","VIRTX","X",
         "AUD","CAD","CHF","CNH","GBP","JPY","NOK","NZD","SEK","USD"
       ]
@@ -40,7 +40,7 @@
     "yahoo": {
       "intervals": ["adjustments", "lookup", "contract", "day"],
       "markets": [
-        "AEB","AMEX","ARCA","ASX","BATS","BM","FWB","IBIS","LSE",
+        "AEB","ASX","BM","IBIS","LSE",
         "NASDAQ","NYMEX","NYSE","SBF","TSE","TSEJ","VENTURE","VIRTX"
       ]
     },
@@ -195,64 +195,6 @@
         }
       }
     },
-    "AMEX": {
-      "description": "NYSE MKT LLC, formerly known as the American Stock Exchange (AMEX), is an American stock exchange situated in New York City, New York. AMEX was previously a mutual organization, owned by its members. Until 1953, it was known as the New York Curb Exchange.",
-      "label": "NYSE MKT LLC",
-      "trading_hours": "04:00:00 - 20:00:00",
-      "liquid_hours": "09:30:00 - 16:00:00",
-      "open_time": "09:30:00",
-      "security_tz": "America/New_York",
-      "currency": "USD",
-      "default_security_type": "STK",
-      "datasources": {
-        "yahoo": {
-          "exchs": ["ASE"],
-          "marketLang": "en-US"
-        },
-        "iqfeed": {
-          "security_types": ["EQUITY"],
-          "listed_markets": ["NYSE_AMERICAN"]
-        },
-        "ib": {
-          "whatToShow": "TRADES",
-          "secType": "STK",
-          "primaryExch": "AMEX",
-          "exchange": "SMART"
-        },
-        "collective2": {
-            "instrument": "stock"
-        }
-      }
-    },
-    "ARCA": {
-      "label": "Archipelago Electronic Communications Network",
-      "description": "The Archipelago Electronic Communications Network (ARCX) allows the trading of listed NYSE, AMEX, NYSE Arca, and Nasdaq stocks in quantities from 1 to 1,000,000.",
-      "trading_hours": "04:00:00 - 20:00:00",
-      "liquid_hours": "09:30:00 - 16:00:00",
-      "open_time": "09:30:00",
-      "security_tz": "America/New_York",
-      "currency": "USD",
-      "default_security_type": "STK",
-      "datasources": {
-        "yahoo": {
-          "exchs": ["NYQ", "PCX"],
-          "marketLang": "en-US"
-        },
-        "iqfeed": {
-          "security_types": ["EQUITY"],
-          "listed_markets": ["NYSE_ARCA"]
-        },
-        "ib": {
-          "whatToShow": "TRADES",
-          "secType": "STK",
-          "primaryExch": "ARCA",
-          "exchange": "SMART"
-        },
-        "collective2": {
-            "instrument": "stock"
-        }
-      }
-    },
     "ASX": {
       "description": "Australian Stock Exchange (ASX)",
       "label": "Australian Stock Exchange",
@@ -273,35 +215,6 @@
           "secType": "STK",
           "primaryExch": "ASX",
           "exchange": "SMART"
-        }
-      }
-    },
-    "BATS": {
-      "label": "BATS Global Markets",
-      "description": "In the United States Bats operates two stock exchanges, the BZX Exchange and the BYX Exchange (The Bats Exchanges), which as of 2012 accounted for about 10-12% of all U.S. equity trading on a daily basis.",
-      "trading_hours": "04:00:00 - 20:00:00",
-      "liquid_hours": "09:30:00 - 16:00:00",
-      "open_time": "09:30:00",
-      "security_tz": "America/New_York",
-      "currency": "USD",
-      "default_security_type": "STK",
-      "datasources": {
-        "yahoo": {
-          "exchs": ["NYQ", "PCX", "BTS"],
-          "marketLang": "en-US"
-        },
-        "iqfeed": {
-          "security_types": ["EQUITY"],
-          "listed_markets": ["BATS"]
-        },
-        "ib": {
-          "whatToShow": "TRADES",
-          "secType": "STK",
-          "primaryExch": "BATS",
-          "exchange": "SMART"
-        },
-        "collective2": {
-            "instrument": "stock"
         }
       }
     },
@@ -567,29 +480,6 @@
         }
       }
     },
-    "FWB": {
-      "description": "Frankfurt Stock Exchange (FWB)",
-      "label": "Frankfurt Stock Exchange",
-      "trading_hours": "08:00:00 - 20:00:00",
-      "liquid_hours": "09:00:00 - 17:30:00",
-      "open_time": "09:00:00",
-      "security_tz": "Europe/Berlin",
-      "currency": "EUR",
-      "default_security_type": "STK",
-      "datasources": {
-        "yahoo": {
-          "exchs": ["FRA"],
-          "marketLang": "en-DE",
-          "yahooSuffix": ".F"
-        },
-        "ib": {
-          "whatToShow": "TRADES",
-          "secType": "STK",
-          "primaryExch": "FWB",
-          "exchange": "SMART"
-        }
-      }
-    },
     "IBIS": {
       "description": "XETRA (IBIS)",
       "label": "XETRA",
@@ -601,14 +491,14 @@
       "default_security_type": "STK",
       "datasources": {
         "yahoo": {
-          "exchs": ["GER"],
+          "exchs": ["GER", "FRA"],
           "marketLang": "en-DE",
           "yahooSuffix": ".DE"
         },
         "ib": {
           "whatToShow": "TRADES",
           "secType": "STK",
-          "primaryExch": "IBIS",
+          "primaryExchs": ["IBIS", "FWB"],
           "exchange": "SMART"
         }
       }
@@ -852,21 +742,21 @@
       "default_security_type": "STK",
       "datasources": {
         "yahoo": {
-          "exchs": ["NYQ"],
+          "exchs": ["NYQ", "PCX", "ASE", "BTS"],
           "marketLang": "en-US"
         },
         "iqfeed": {
           "security_types": ["EQUITY"],
-          "listed_markets": ["NYSE"]
+          "listed_markets": ["NYSE", "NYSE_AMERICAN", "NYSE_ARCA", "BATS"]
         },
         "ib": {
           "whatToShow": "TRADES",
           "secType": "STK",
-          "primaryExch": "NYSE",
-          "exchange": "SMART"
+          "primaryExchs": ["NYSE", "AMEX", "ARCA", "BATS"],
+          "exchanges": ["SMART"]
         },
         "collective2": {
-            "instrument": "stock"
+          "instrument": "stock"
         }
       }
     },

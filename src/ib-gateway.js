@@ -101,8 +101,9 @@ async function assignClient(self, settings) {
     }
     const install = (config('ibgateway_installs')||[])
       .find(inst => inst.ibg_version == settings.ibg_version && inst.ibg_name == settings.ibg_name);
-    if (!install) throw Error(`IB Gateway ${settings.ibg_name}/${settings.ibg_version} is not installed or configured correctly`);
-    const timeout = Date.now() + (install.login_timeout || 300) * 1000;
+    if (settings.ibg_name && !install)
+        throw Error(`IB Gateway ${settings.ibg_name}/${settings.ibg_version} is not installed or configured correctly`);
+    const timeout = Date.now() + (install && install.login_timeout || 300) * 1000;
     let gateway = await getSharedGateway(install, settings);
     let client = new ib({
         ..._.omit(settings, private_settings),

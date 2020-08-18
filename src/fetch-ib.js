@@ -440,7 +440,9 @@ async function lookup(markets, client, options) {
     const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
     return conIds.map(details => flattenContractDetails(details)).map(contract => _.omit({
         symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
-        market: options.market || markets[contract.primaryExch] && contract.primaryExch,
+        market: options.market || _.findKey(markets,
+            mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch)
+        ),
         security_type: contract.secType,
         name: contract.longName,
         currency: contract.currency
@@ -458,7 +460,9 @@ async function contract(market_tz, markets, client, options) {
             contract.liquidHours && market_open(contract.liquidHours) || null;
         return _.omit({
             symbol: toSymbol(market, contract),
-            market: options.market || markets[contract.primaryExch] && contract.primaryExch,
+            market: options.market || _.findKey(markets,
+                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch)
+            ),
             security_type: contract.secType || market.default_security_type,
             name: contract.longName,
             currency: contract.currency || market.currency,
@@ -484,13 +488,17 @@ async function fundamental(market_tz, markets, client, options) {
     }));
     return contracts.map((contract, i) => {
         const under = under_contracts[i] || contract;
-        const market = markets[options.market] || markets[contract.primaryExch] || {};
+        const market = markets[options.market] || _.find(markets,
+            mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch)
+        ) || {};
         const security_tz = contract.timeZoneId && market_tz(contract.timeZoneId, market.security_tz);
         const open_time = security_tz == market.security_tz && market.open_time ||
             contract.liquidHours && market_open(contract.liquidHours) || null;
         return _.omit({
             symbol: toSymbol(market, contract),
-            market: options.market || markets[contract.primaryExch] && contract.primaryExch,
+            market: options.market || _.findKey(markets,
+                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch)
+            ),
             security_type: contract.secType || market.default_security_type,
             name: contract.longName,
             currency: contract.currency || market.currency,
@@ -501,8 +509,12 @@ async function fundamental(market_tz, markets, client, options) {
             liquid_hours: !contract.liquidHours ? market.liquid_hours :
                 `${market_open(contract.liquidHours)} - ${market_close(contract.liquidHours)}`,
             ..._.omit(contract, 'symbol', 'market', 'security_type', 'name', 'conId', 'underConId', 'priceMagnifier'),
-            under_symbol: toSymbol(markets[under.primaryExch], under),
-            under_market: under.primaryExch
+            under_symbol: toSymbol(_.find(markets,
+                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(under.primaryExch)
+            ), under),
+            under_market: _.findKey(markets,
+                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(under.primaryExch)
+            ) || under.primaryExch
         }, v => !v);
     });
 }
@@ -524,7 +536,7 @@ async function futureAdjustments(fetchDividendInfo, markets, client, historic, o
         localSymbol: options.symbol,
         secType: market.secType || options.security_type || market.default_security_type || 'STK',
         exchange: market.exchange || 'SMART',
-        primaryExch: market.primaryExch,
+        primaryExch: market.primaryExch || _.first(market.primaryExchs),
         currency: market.currency || options.currency
     };
     if (contract.secType != 'STK') return historic;
@@ -872,7 +884,7 @@ function toContract(market, options) {
     return _.omit({
         localSymbol: toLocalSymbol(market, options.symbol),
         secType: market.secType,
-        primaryExch: market.primaryExch,
+        primaryExch: market.primaryExch || _.first(market.primaryExchs),
         exchange: market.exchange,
         currency: market.currency,
         includeExpired: market.secType == 'FUT' || ~(market.secTypes||[]).indexOf('FUT')
