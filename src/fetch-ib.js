@@ -522,7 +522,7 @@ async function fundamental(market_tz, markets, client, options) {
 async function pastAndFutureAdjustments(fetchDividendInfo, markets, client, adjustments, options) {
     const historic = await adjustments(options);
     if (options.offline) return historic;
-    const past_only = !options.end || moment.tz(options.end, options.tz).isBefore(options.now);
+    const past_only = !options.end || !moment.tz(options.end, options.tz).isAfter(options.now);
     if (past_only) return historic;
     else return futureAdjustments(fetchDividendInfo, markets, client, historic, options).catch(err => {
         logger.warn("Could not load IB future adjustments for", options.symbol, options.market, err.message);
