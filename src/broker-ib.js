@@ -1129,8 +1129,11 @@ function inMarket(contract, market) {
     if (market.tradingClasses && ~market.tradingClasses.indexOf(contract.tradingClass)) return true;
     const exchanges = [].concat(market.primaryExch, market.primaryExchs, market.exchange, market.exchanges);
     const unique = _.compact(exchanges).filter(ex => ex != 'SMART' && ex != 'IDEALPRO');
+    const secondaryTo = market.secondaryToExchs || [];
     const validExchanges = contract.validExchanges ? _.compact(contract.validExchanges.split(',')) : [];
-    if (~unique.indexOf(contract.primaryExch) || ~unique.indexOf(contract.exchange)) return true;
+    if (~secondaryTo.indexOf(contract.primaryExch) || ~secondaryTo.indexOf(contract.exchange)) return false;
+    else if (_.intersection(secondaryTo, validExchanges).length) return false;
+    else if (~unique.indexOf(contract.primaryExch) || ~unique.indexOf(contract.exchange)) return true;
     else if (_.intersection(unique, validExchanges).length) return true;
     else return !unique.length;
 }

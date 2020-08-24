@@ -753,6 +753,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExchs": ["NYSE", "AMEX", "ARCA", "BATS"],
+          "secondaryToExchs": ["NASDAQ"],
           "exchanges": ["SMART"]
         },
         "collective2": {
