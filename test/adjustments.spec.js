@@ -46,7 +46,7 @@ describe("adjustments", function() {
     it("list dividends and adjustments", function() {
         return adjustments({
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             begin: '2017-01-01',
             tz: tz
         }).then(adjustments => {
@@ -70,7 +70,7 @@ describe("adjustments", function() {
     it("should handle ignore peudo split entry", function() {
         return adjustments({
             symbol: 'XLF',
-            market: 'ARCA',
+            market: 'NYSE',
             begin: '2016-01-01',
             tz: tz
         }).then(adjustments => {
@@ -143,7 +143,7 @@ describe("adjustments", function() {
     it("should adjust for REM reverse split", function() {
         return adjustments({
             symbol: 'REM',
-            market: 'BATS',
+            market: 'NYSE',
             begin: '2016-01-01',
             tz: tz
         }).then(adjustments => {
@@ -228,7 +228,7 @@ describe("adjustments", function() {
     it("should adjust first dividend", function() {
         return adjustments({
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             begin: '2017-03-15',
             tz: tz
         }).then(adjustments => {

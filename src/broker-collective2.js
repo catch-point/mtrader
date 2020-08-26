@@ -668,27 +668,40 @@ function c2symbol(markets, symbol, market) {
 
 async function lookup(fetch, markets, signal) {
     const instrument = signal.typeofsymbol || signal.instrument;
-    const matches = await Promise.all(_.map(_.pick(markets, m => {
+    const fullSymbol = signal.fullSymbol ||
+        (instrument == 'future' ? fromFutureSymbol(signal.symbol) : signal.symbol);
+    const symbols = _.uniq(_.map(_.pick(markets, m => {
         return m.instrument == instrument;
-    }), async(m, market) => {
-        const fullSymbol = signal.fullSymbol ||
-            (instrument == 'future' ? fromFutureSymbol(signal.symbol) : signal.symbol);
+    }), m => {
         const sym2sig = Object.entries(m.c2_map || {}).find(([sym, c2s]) => fullSymbol.indexOf(c2s) === 0);
         const symbol = sym2sig ? sym2sig[0] + fullSymbol.substring(sym2sig[1].length) :
             fullSymbol.startsWith(m.c2_prefix) ? fullSymbol.substring(m.c2_prefix.length) :
             fullSymbol;
         expect(symbol).to.be.a('string');
-        return await fetch({interval:'lookup', symbol, market})
-          .then(matches => matches.filter(match => match.symbol == symbol && match.currency == 'USD'), err => [])
-          .then(matches => matches.length ? matches :
-            // expired futures cannot be looked up, this might be one of then
-            instrument == 'future' ? [{symbol, market, currency: m.currency, security_type: 'FUT', guess: true}] : []);
+        return symbol;
+    }));
+    const matches = await Promise.all(symbols.map(async(symbol) => {
+        return await fetch({
+            interval:'lookup',
+            symbol,
+            currency: 'USD',
+            security_type: instrument == 'stock' ? 'STK' : instrument == 'future' ? 'FUT' : undefined
+        })
+          .then(matches => matches.filter(match => match.symbol == symbol), err => []);
     }));
     const list = _.flatten(matches);
-    if (_.isEmpty(list)) return null;
-    const confirmed = list.find(item => item && !item.guess && item.market == signal.market) || list.find(item => item && !item.guess);
-    if (confirmed) return confirmed;
-    else return _.omit(list.find(item => item && item.market == signal.market) || list.find(item => item), 'guess');
+    if (_.isEmpty(list) && instrument != 'future') return null;
+    // expired futures cannot be looked up, this might be one of then
+    else if (_.isEmpty(list)) {
+        const market = signal.market || _.findKey(markets, m => m.instrument == 'future');
+        const m = markets[market];
+        const sym2sig = Object.entries(m.c2_map || {}).find(([sym, c2s]) => fullSymbol.indexOf(c2s) === 0);
+        const symbol = sym2sig ? sym2sig[0] + fullSymbol.substring(sym2sig[1].length) :
+            fullSymbol.startsWith(m.c2_prefix) ? fullSymbol.substring(m.c2_prefix.length) :
+            fullSymbol;
+        return {symbol, market, currency: 'USD', security_type: 'FUT'};
+    }
+    else return list.find(item => item && item.market == signal.market) || list.find(item => item);
 }
 
 function fromFutureSymbol(symbol) {

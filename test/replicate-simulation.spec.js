@@ -645,7 +645,7 @@ describe("replicate-simulation", function() {
                                 sales: '0.00',
                                 purchases: '0.00',
                                 symbol: 'HYMB',
-                                market: 'ARCA',
+                                market: 'NYSE',
                                 currency: 'USD',
                                 security_type: 'STK',
                                 multiplier: '',
@@ -674,7 +674,7 @@ describe("replicate-simulation", function() {
                                 attach_ref: '',
                                 account: 'MKSTK',
                                 symbol: 'HYMB',
-                                market: 'ARCA',
+                                market: 'NYSE',
                                 currency: 'USD',
                                 security_type: 'STK',
                                 multiplier: ''
@@ -686,7 +686,7 @@ describe("replicate-simulation", function() {
                                 attach_ref: '',
                                 action: 'SELL',
                                 symbol: 'HYMB',
-                                market: 'ARCA',
+                                market: 'NYSE',
                                 currency: 'USD',
                                 security_type: 'STK',
                                 order_type: 'LOC',
@@ -699,7 +699,7 @@ describe("replicate-simulation", function() {
                                 attach_ref: '',
                                 action: 'SELL',
                                 symbol: 'HYMB',
-                                market: 'ARCA',
+                                market: 'NYSE',
                                 currency: 'USD',
                                 security_type: 'STK',
                                 order_type: 'LOC',
@@ -718,7 +718,7 @@ describe("replicate-simulation", function() {
                     action: 'BUY',
                     traded_at: '2019-07-30T16:00:00-04:00',
                     symbol: 'HYMB',
-                    market: 'ARCA',
+                    market: 'NYSE',
                     currency: 'USD',
                     security_type: 'STK',
                     quant: 343+446,
@@ -728,7 +728,7 @@ describe("replicate-simulation", function() {
                     quant: '446',
                     position: 343,
                     symbol: 'HYMB',
-                    market: 'ARCA',
+                    market: 'NYSE',
                     currency: 'USD',
                     security_type: 'STK',
                     order_type: 'LOC',
@@ -741,7 +741,7 @@ describe("replicate-simulation", function() {
                     quant: '166',
                     position: 177,
                     symbol: 'HYMB',
-                    market: 'ARCA',
+                    market: 'NYSE',
                     currency: 'USD',
                     security_type: 'STK',
                     order_type: 'LOC',
@@ -754,14 +754,14 @@ describe("replicate-simulation", function() {
             })({
                 now: "2019-08-01T15:48:31-04:00",
                 currency: 'USD',
-                markets: ['ARCA']
+                markets: ['NYSE']
             }).should.eventually.be.like([{
                 quant: 538-177,
                 order_ref: 'LOC.820c38d8.22',
                 attach_ref: '',
                 action: 'SELL',
                 symbol: 'HYMB',
-                market: 'ARCA',
+                market: 'NYSE',
                 currency: 'USD',
                 security_type: 'STK',
                 order_type: 'LOC',
@@ -1389,7 +1389,7 @@ describe("replicate-simulation", function() {
                         return Promise.resolve([{
                             traded_at: '2018-04-05T16:00:00-04:00',
                             symbol: 'GLD',
-                            market: 'ARCA',
+                            market: 'NYSE',
                             currency: 'USD',
                             security_type: 'STK',
                             action: 'STC',
@@ -1408,7 +1408,7 @@ describe("replicate-simulation", function() {
                 if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'GLD',
-                    market: 'ARCA',
+                    market: 'NYSE',
                     position: 1,
                     posted_at: "2018-04-04",
                     stc_action: 'SELL',
@@ -1435,7 +1435,7 @@ describe("replicate-simulation", function() {
                         return Promise.resolve([{
                             traded_at: '2018-04-05T16:00:00-04:00',
                             symbol: 'GLD',
-                            market: 'ARCA',
+                            market: 'NYSE',
                             currency: 'USD',
                             security_type: 'STK',
                             action: 'STC',
@@ -1469,7 +1469,7 @@ describe("replicate-simulation", function() {
                 if (options.info=='help') return quote(options);
                 else return Promise.resolve([{
                     symbol: 'GLD',
-                    market: 'ARCA',
+                    market: 'NYSE',
                     position: 1,
                     posted_at: "2018-04-04",
                     stc_action: 'SELL',

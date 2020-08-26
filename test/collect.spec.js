@@ -165,7 +165,7 @@ describe("collect", function() {
     });
     it("sumprec", function() {
         return collect({
-          portfolio: 'XLE.ARCA,XLF.ARCA,XLK.ARCA,XLV.ARCA,XLY.ARCA',
+          portfolio: 'XLE.NYSE,XLF.NYSE,XLK.NYSE,XLV.NYSE,XLY.NYSE',
           begin: "2016-12-01",
           end: "2016-12-02",
           columns: {
@@ -187,7 +187,7 @@ describe("collect", function() {
     });
     it("sumtotal", function() {
         return collect({
-          portfolio: 'XLE.ARCA,XLF.ARCA,XLK.ARCA,XLV.ARCA,XLY.ARCA',
+          portfolio: 'XLE.NYSE,XLF.NYSE,XLK.NYSE,XLV.NYSE,XLY.NYSE',
           begin: "2016-12-01",
           end: "2016-12-02",
           columns: {
@@ -209,7 +209,7 @@ describe("collect", function() {
     });
     it("balance", function() {
         return collect({
-          portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
+          portfolio: 'XLE.NYSE,XLF.NYSE,XLI.NYSE,XLK.NYSE,XLY.NYSE',
           begin: "2016-11-14",
           end: "2016-11-25",
           variables: {
@@ -250,32 +250,32 @@ describe("collect", function() {
             {date:"2016-11-16",symbol:"XLY",position:216,price:80.5,cash:4409.765,value:100088.755},
             {date:"2016-11-17",symbol:"XLF",position:859,price:22.16,cash:4409.765,value:100346.455},
             {date:"2016-11-17",symbol:"XLI",position:126,price:61.3,cash:12193.865,value:100368.225},
-            {date:"2016-11-17",symbol:"XLK",position:571,price:47.4,cash:12193.865,value:100528.105},
+            {date:"2016-11-17",symbol:"XLK",position:571,price:47.4,cash:12193.865,value:100528.11},
             {date:"2016-11-17",symbol:"XLE",position:240,price:70.84,cash:12193.865,value:100408.105},
             {date:"2016-11-17",symbol:"XLY",position:320,price:81.47,cash:3719.985,value:100616.625},
             {date:"2016-11-18",symbol:"XLF",position:859,price:22.16,cash:3719.985,value:100616.625},
             {date:"2016-11-18",symbol:"XLI",position:126,price:61.3,cash:3719.985,value:100616.625},
-            {date:"2016-11-18",symbol:"XLK",position:571,price:47.36,cash:3719.985,value:100593.785},
-            {date:"2016-11-18",symbol:"XLY",position:320,price:81.2,cash:3719.985,value:100507.385},
+            {date:"2016-11-18",symbol:"XLK",position:571,price:47.36,cash:3719.985,value:100593.78},
+            {date:"2016-11-18",symbol:"XLY",position:320,price:81.2,cash:3719.985,value:100507.38},
             {date:"2016-11-18",symbol:"XLE",position:240,price:71.13,cash:3719.985,value:100576.985},
             {date:"2016-11-21",symbol:"XLF",position:1233,price:22.26,cash:-4607.125,value:100661.015},
             {date:"2016-11-21",symbol:"XLI",position:0,price:61.61,cash:3154.735,value:100699.075},
-            {date:"2016-11-21",symbol:"XLK",position:571,price:47.84,cash:3154.735,value:100973.155},
+            {date:"2016-11-21",symbol:"XLK",position:571,price:47.84,cash:3154.735,value:100973.15},
             {date:"2016-11-21",symbol:"XLY",position:320,price:81.73,cash:3154.735,value:101142.755},
-            {date:"2016-11-21",symbol:"XLE",position:240,price:72.82,cash:3154.735,value:101548.355},
-            {date:"2016-11-22",symbol:"XLF",position:1233,price:22.25,cash:3154.735,value:101536.025},
-            {date:"2016-11-22",symbol:"XLK",position:571,price:47.99,cash:3154.735,value:101621.675},
+            {date:"2016-11-21",symbol:"XLE",position:240,price:72.82,cash:3154.735,value:101548.36},
+            {date:"2016-11-22",symbol:"XLF",position:1233,price:22.25,cash:3154.735,value:101536.03},
+            {date:"2016-11-22",symbol:"XLK",position:571,price:47.99,cash:3154.735,value:101621.68},
             {date:"2016-11-22",symbol:"XLY",position:320,price:82.7,cash:3154.735,value:101932.075},
             {date:"2016-11-22",symbol:"XLE",position:240,price:72.78,cash:3154.735,value:101922.475},
             {date:"2016-11-23",symbol:"XLF",position:1233,price:22.38,cash:3154.735,value:102082.765},
-            {date:"2016-11-23",symbol:"XLK",position:571,price:47.8,cash:3154.735,value:101974.275},
-            {date:"2016-11-23",symbol:"XLY",position:320,price:82.78,cash:3154.735,value:101999.875},
-            {date:"2016-11-23",symbol:"XLE",position:240,price:73.08,cash:3154.735,value:102071.875}
+            {date:"2016-11-23",symbol:"XLK",position:571,price:47.8,cash:3154.735,value:101974.27},
+            {date:"2016-11-23",symbol:"XLY",position:320,price:82.78,cash:3154.735,value:101999.87},
+            {date:"2016-11-23",symbol:"XLE",position:240,price:73.08,cash:3154.735,value:102071.87}
         ]);
     });
     it("max correl", function() {
         return collect({
-          portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLU.ARCA,XLV.ARCA,XLY.ARCA',
+          portfolio: 'XLE.NYSE,XLF.NYSE,XLI.NYSE,XLK.NYSE,XLU.NYSE,XLV.NYSE,XLY.NYSE',
           begin: "2016-11-14",
           end: "2016-12-01",
           columns: {
@@ -339,7 +339,7 @@ describe("collect", function() {
     });
     it("max correl average", function() {
         return collect({
-          portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
+          portfolio: 'XLE.NYSE,XLF.NYSE,XLI.NYSE,XLK.NYSE,XLY.NYSE',
           begin: "2016-11-14",
           end: "2016-11-22",
           columns: {
@@ -387,7 +387,7 @@ describe("collect", function() {
     });
     it("max correl trades", function() {
         return collect({
-          portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
+          portfolio: 'XLE.NYSE,XLF.NYSE,XLI.NYSE,XLK.NYSE,XLY.NYSE',
           pad_leading: 12,
           begin: "2016-11-30",
           end: "2016-12-01",
@@ -419,7 +419,7 @@ describe("collect", function() {
     });
     it("max correl nested portfolio", function() {
         return collect({
-          portfolio: {portfolio:['XLE.ARCA','XLF.ARCA','XLI.ARCA','XLK.ARCA','XLY.ARCA']},
+          portfolio: {portfolio:['XLE.NYSE','XLF.NYSE','XLI.NYSE','XLK.NYSE','XLY.NYSE']},
           pad_leading: 12,
           begin: "2016-11-30",
           end: "2016-12-01",
@@ -494,7 +494,7 @@ describe("collect", function() {
     });
     it("external instrument", function() {
         return collect({
-          portfolio: 'USD.CAD,SPY.ARCA,XIC.TSE',
+          portfolio: 'USD.CAD,SPY.NYSE,XIC.TSE',
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
@@ -508,9 +508,9 @@ describe("collect", function() {
               usd_cad_cvar: 'MAXPREC("cvar", 1, "symbol=\'USD\' AND market=\'CAD\'")'
           },
           pad_leading: 1,
-          // USD.CAD day.ending is an hour after SPY.ARCA day.ending, so
+          // USD.CAD day.ending is an hour after SPY.NYSE day.ending, so
           // the previous USD.CAD day.close is used
-          filter: 'market=IF(usd_cad_cvar<0.01,"ARCA","TSE")'
+          filter: 'market=IF(usd_cad_cvar<0.01,"NYSE","TSE")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
             {symbol:"SPY",date:"2016-01-05",Price:201.36},
@@ -543,7 +543,7 @@ describe("collect", function() {
                 cvar: 'TOD(CVAR(5,60,m240.close))'
             },
             criteria: 'TIME(m240.ending)="16:00:00"'
-          }, 'SPY.ARCA','XIC.TSE'],
+          }, 'SPY.NYSE','XIC.TSE'],
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
@@ -554,7 +554,7 @@ describe("collect", function() {
           variables: {
               usd_cad_cvar: 'MAXPREC("cvar", 0, "symbol=\'USD\' AND market=\'CAD\'")'
           },
-          filter: 'market=IF(usd_cad_cvar<0.01,"ARCA","TSE")'
+          filter: 'market=IF(usd_cad_cvar<0.01,"NYSE","TSE")'
         }).should.eventually.be.like([
             {symbol:"SPY",date:"2016-01-04",Price:201.02},
             {symbol:"SPY",date:"2016-01-05",Price:201.36},
@@ -1027,7 +1027,7 @@ describe("collect", function() {
                 portfolio: 'USD.CAD',
                 criteria: 'TIME(m240.ending)="16:00:00"'
             },
-            'SPY.ARCA'
+            'SPY.NYSE'
           ],
           begin: "2016-01-01",
           end: "2016-02-01",
@@ -1341,7 +1341,7 @@ describe("collect", function() {
     it("nested", function() {
         return collect({
           portfolio: {
-              portfolio: 'XLB.ARCA,XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLP.ARCA,XLU.ARCA,XLV.ARCA,XLY.ARCA',
+              portfolio: 'XLB.NYSE,XLE.NYSE,XLF.NYSE,XLI.NYSE,XLK.NYSE,XLP.NYSE,XLU.NYSE,XLV.NYSE,XLY.NYSE',
               variables: {
                   max: 'MIN(0.5/CVAR(5, 60, day.close), 100)'
               },
@@ -1456,7 +1456,7 @@ describe("collect", function() {
     it("should use subcollect begin/end to filter", function() {
         return collect({
             portfolio: [{
-                portfolio: 'SPY.ARCA',
+                portfolio: 'SPY.NYSE',
                 end: '1998-09-24',
                 columns: {
                     symbol: '"PYPL"',
@@ -1511,7 +1511,7 @@ describe("collect", function() {
     it("should understand variables that are filtered out", function() {
         return collect({
             portfolio: [{
-                portfolio: 'SPY.ARCA',
+                portfolio: 'SPY.NYSE',
                 end: '1998-09-24',
                 columns: {
                     symbol: '"PYPL"',
@@ -1553,7 +1553,7 @@ describe("collect", function() {
     it("should include variables only used in criteria of rolling functions", function() {
         return collect({
             portfolio: [{
-                portfolio: 'SPY.ARCA',
+                portfolio: 'SPY.NYSE',
                 columns: {
                     symbol: 'symbol',
                     date: 'DATE(ending)',

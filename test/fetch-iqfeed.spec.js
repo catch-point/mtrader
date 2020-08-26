@@ -75,7 +75,7 @@ describe("fetch-iqfeed", function() {
             )));
         });
         it("should find ITA", function() {
-            return client({interval:'lookup',symbol:'ITA', market:"BATS"})
+            return client({interval:'lookup',symbol:'ITA', market:"NYSE"})
               .should.eventually.be.like([{
                 symbol: 'ITA',
                 name: /SHARES .* AEROSPACE & DEF/
@@ -270,7 +270,7 @@ describe("fetch-iqfeed", function() {
         return client({
             interval: 'day',
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             begin: '2017-03-15',
             end: '2017-03-22',
             trading_hours: "04:00:00 - 20:00:00",
@@ -292,7 +292,7 @@ describe("fetch-iqfeed", function() {
         return client({
             interval: 'day',
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             begin: '2016-12-01',
             end: '2016-12-31',
             trading_hours: "04:00:00 - 20:00:00",
@@ -330,7 +330,7 @@ describe("fetch-iqfeed", function() {
         return client({
             interval: 'day',
             symbol: 'XLF',
-            market: 'ARCA',
+            market: 'NYSE',
             begin: '2016-09-14',
             end: '2016-09-22',
             trading_hours: "04:00:00 - 20:00:00",
@@ -417,7 +417,7 @@ describe("fetch-iqfeed", function() {
         return client({
             interval: 'day',
             symbol: 'REM',
-            market: 'BATS',
+            market: 'NYSE',
             begin: '2016-11-01',
             end: '2016-12-01',
             trading_hours: "04:00:00 - 20:00:00",

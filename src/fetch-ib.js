@@ -727,12 +727,13 @@ async function lookupContract(markets, client, options) {
 }
 
 async function listContractDetails(markets, client, options) {
-    const market_set = (options.market ? [markets[options.market]] :
+    const market_set = (options.market ? _.compact([markets[options.market]]) :
         _.values(markets)).reduce((market_set, market) => {
         if (market.secType) return market_set.concat(market);
         else if (!market.secTypes) return market_set;
         else return market_set.concat(market.secTypes.map(secType => Object.assign({}, market, {secType})));
-    }, []);
+    }, []).filter(market => !options.security_type || options.security_type == market.secType)
+          .filter(market => !options.currency || options.currency == market.currency);
     return _.flatten(await Promise.all(_.map(_.groupBy(market_set, market => {
         return `${market.secType}.${market.currency}`;
     }), async(market_set) => {
@@ -752,7 +753,19 @@ async function listContractDetails(markets, client, options) {
             if (primaryExchs && !~primaryExchs.indexOf(detail.summary.primaryExch)) return false;
             if (exchanges && !~exchanges.indexOf(detail.summary.exchange)) return false;
             if (currencies && !~currencies.indexOf(detail.summary.currency)) return false;
-            else return true;
+            else return market_set.some(market => {
+                if (market.currency != detail.summary.currency)
+                    return false;
+                else if (market.primaryExch && market.primaryExch != detail.summary.primaryExch)
+                    return false;
+                else if (market.primaryExchs && !~market.primaryExchs.indexOf(detail.summary.primaryExch))
+                    return false;
+                else if (market.exchange && market.exchange != detail.summary.exchange)
+                    return false;
+                else if (market.exchanges && !~market.exchanges.indexOf(detail.summary.exchange))
+                    return false;
+                else return true;
+            });
         });
     })));
 }

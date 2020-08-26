@@ -130,14 +130,14 @@ describe("broker-ib", function() {
           reqContract: (arg) => {switch(arg) {
             case 4215235: return Promise.resolve({ secType: 'STK',
                  localSymbol: 'XLU',
-                 exchange: 'ARCA',
+                 exchange: 'NYSE',
                  currency: 'USD',
                  multiplier: '' })
             }},
           reqContractDetails: (arg) => {switch(arg.conId) {
             case 4215235: return Promise.resolve({ secType: 'STK',
                  localSymbol: 'XLU',
-                 exchange: 'ARCA',
+                 exchange: 'NYSE',
                  currency: 'USD',
                  multiplier: '' })
             }},
@@ -150,7 +150,7 @@ describe("broker-ib", function() {
             sales: '0.00',
             purchases: '0.00',
             symbol: 'XLU',
-            market: 'ARCA',
+            market: 'NYSE',
             currency: 'USD',
             security_type: 'STK',
             multiplier: '',
@@ -206,7 +206,7 @@ describe("broker-ib", function() {
           return Promise.resolve([ { summary: { exchange: 'SMART',
                   currency: 'USD',
                   secType: 'STK',
-                  primaryExch: 'ARCA' } } ]);},
+                  primaryExch: 'NYSE' } } ]);},
           close: () => Promise.resolve() });
         await broker({action: 'orders'}).should.eventually.be.like([ { posted_at: '2019-06-01T14:48:27-04:00',
             asof: '2019-06-01T14:48:27-04:00',
@@ -224,7 +224,7 @@ describe("broker-ib", function() {
             attach_ref: undefined,
             account: 'test',
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             currency: 'USD',
             security_type: 'STK',
             attach_ref: '' } ]);
@@ -239,7 +239,7 @@ describe("broker-ib", function() {
           placeOrder: (...args) => {expect(args).to.be.like([ 1,
              { localSymbol: 'SPY',
                secType: 'STK',
-               primaryExch: 'ARCA',
+               primaryExch: 'NYSE',
                exchange: 'SMART',
                currency: 'USD' },
              { action: 'BUY',
@@ -254,7 +254,7 @@ describe("broker-ib", function() {
            return Promise.resolve({ status: 'ApiPending',
              localSymbol: 'SPY',
              secType: 'STK',
-             primaryExch: 'ARCA',
+             primaryExch: 'NYSE',
              exchange: 'SMART',
              currency: 'USD',
              action: 'BUY',
@@ -264,11 +264,11 @@ describe("broker-ib", function() {
              tif: 'DAY',
              account: 'test' });},
           close: () => Promise.resolve() });
-        const order = await broker({action: 'BUY', quant: 1, limit: 270, order_type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'ARCA'})
+        const order = await broker({action: 'BUY', quant: 1, limit: 270, order_type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'NYSE'})
           .should.eventually.be.like([ {
             status: 'pending',
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             currency: 'USD',
             security_type: 'STK' } ]);
         await broker.close();
@@ -283,7 +283,7 @@ describe("broker-ib", function() {
             case 0: expect(args).to.be.like([ 1,
                  { localSymbol: 'SPY',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD' },
                  { action: 'BUY',
@@ -302,7 +302,7 @@ describe("broker-ib", function() {
                  return Promise.resolve({ status: 'ApiPending',
                    localSymbol: 'SPY',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD',
                  orderId: 1,
@@ -316,7 +316,7 @@ describe("broker-ib", function() {
             case 1: expect(args).to.be.like([ 1,
                  { localSymbol: 'SPY',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD' },
                  { action: 'SELL',
@@ -335,7 +335,7 @@ describe("broker-ib", function() {
                  return Promise.resolve({ status: 'ApiPending',
                    localSymbol: 'SPY',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD',
                  action: 'SELL',
@@ -349,9 +349,9 @@ describe("broker-ib", function() {
             }}})(),
               close: () => Promise.resolve() });
         const orders = await broker({
-            action: 'BUY', quant: 1, limit: 270, order_type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'ARCA',
+            action: 'BUY', quant: 1, limit: 270, order_type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'NYSE',
             attached:[{
-                action: 'SELL', quant: 1, order_type: 'STP', stop: 260, tif: 'DAY', symbol: 'SPY', market: 'ARCA'
+                action: 'SELL', quant: 1, order_type: 'STP', stop: 260, tif: 'DAY', symbol: 'SPY', market: 'NYSE'
             }]
         });
         orders.should.be.like([ {
@@ -368,7 +368,7 @@ describe("broker-ib", function() {
             attach_ref: undefined,
             account: 'test',
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             currency: 'USD',
             security_type: 'STK',
             multiplier: undefined },
@@ -385,7 +385,7 @@ describe("broker-ib", function() {
             attach_ref: orders[0].order_ref,
             account: 'test',
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             currency: 'USD',
             security_type: 'STK',
             multiplier: undefined } ]);
@@ -403,7 +403,7 @@ describe("broker-ib", function() {
             placeOrder: (...args) => {expect(args).to.be.like([ 3,
              { localSymbol: 'SPY',
                secType: 'STK',
-               primaryExch: 'ARCA',
+               primaryExch: 'NYSE',
                exchange: 'SMART',
                currency: 'USD' },
              { action: 'SELL',
@@ -421,7 +421,7 @@ describe("broker-ib", function() {
                return Promise.resolve({ status: 'ApiPending',
                localSymbol: 'SPY',
                secType: 'STK',
-               primaryExch: 'ARCA',
+               primaryExch: 'NYSE',
                exchange: 'SMART',
                currency: 'USD',
              action: 'SELL',
@@ -433,7 +433,7 @@ describe("broker-ib", function() {
             close: () => Promise.resolve() });
         const profit = await broker({
             attach_ref: 'LMT.32f027a8.1',
-            action: 'SELL', quant: 1, order_type: 'LMT', limit: 280, tif: 'DAY', symbol: 'SPY', market: 'ARCA'
+            action: 'SELL', quant: 1, order_type: 'LMT', limit: 280, tif: 'DAY', symbol: 'SPY', market: 'NYSE'
         }).should.eventually.be.like([ {
             action: 'SELL',
             quant: 1,
@@ -447,7 +447,7 @@ describe("broker-ib", function() {
             attach_ref: 'LMT.32f027a8.1',
             account: 'test',
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             currency: 'USD',
             security_type: 'STK',
             multiplier: undefined } ]);
@@ -463,7 +463,7 @@ describe("broker-ib", function() {
             case 0: expect(args).to.be.like([ 1,
                  { localSymbol: 'SPY',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD' },
                  { action: 'BUY',
@@ -482,7 +482,7 @@ describe("broker-ib", function() {
                    return Promise.resolve({ status: 'ApiPending',
                    localSymbol: 'SPY',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD',
                  action: 'BUY',
@@ -495,7 +495,7 @@ describe("broker-ib", function() {
             case 1: expect(args).to.be.like([ 1,
                  { localSymbol: 'XLU',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD' },
                  { action: 'BUY',
@@ -514,7 +514,7 @@ describe("broker-ib", function() {
                    return Promise.resolve({ status: 'ApiPending',
                    localSymbol: 'XLU',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD',
                  action: 'BUY',
@@ -527,7 +527,7 @@ describe("broker-ib", function() {
             case 2: expect(args).to.be.like([ 1,
                  { localSymbol: 'XLP',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD' },
                  { action: 'BUY',
@@ -546,7 +546,7 @@ describe("broker-ib", function() {
                    return Promise.resolve({ status: 'ApiPending',
                    localSymbol: 'XLP',
                    secType: 'STK',
-                   primaryExch: 'ARCA',
+                   primaryExch: 'NYSE',
                    exchange: 'SMART',
                    currency: 'USD',
                  action: 'BUY',
@@ -566,9 +566,9 @@ describe("broker-ib", function() {
         var orders = await broker({
             action: 'OCA',
             attached: [{
-                action: 'BUY', quant: 1, limit: 270, order_type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'ARCA'
+                action: 'BUY', quant: 1, limit: 270, order_type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'NYSE'
             }, {
-                action: 'BUY', quant: 1, limit: 50, order_type: 'LMT', tif: 'DAY', symbol: 'XLU', market: 'ARCA'
+                action: 'BUY', quant: 1, limit: 50, order_type: 'LMT', tif: 'DAY', symbol: 'XLU', market: 'NYSE'
             }]
         }).should.eventually.be.like([ {
             action: 'BUY',
@@ -584,7 +584,7 @@ describe("broker-ib", function() {
             attach_ref: /OCA/,
             account: 'test',
             symbol: 'SPY',
-            market: 'ARCA',
+            market: 'NYSE',
             currency: 'USD',
             security_type: 'STK',
             multiplier: undefined },
@@ -602,13 +602,13 @@ describe("broker-ib", function() {
             attach_ref: /OCA/,
             account: 'test',
             symbol: 'XLU',
-            market: 'ARCA',
+            market: 'NYSE',
             currency: 'USD',
             security_type: 'STK',
             multiplier: undefined } ]);
         const xlp = await broker({
             attach_ref: _.first(orders).attach_ref,
-            action: 'BUY', quant: 1, limit: 50, order_type: 'LMT', tif: 'DAY', symbol: 'XLP', market: 'ARCA'
+            action: 'BUY', quant: 1, limit: 50, order_type: 'LMT', tif: 'DAY', symbol: 'XLP', market: 'NYSE'
         }).should.eventually.be.like([ {
             action: 'BUY',
             quant: 1,
@@ -623,7 +623,7 @@ describe("broker-ib", function() {
             attach_ref: /OCA/,
             account: 'test',
             symbol: 'XLP',
-            market: 'ARCA',
+            market: 'NYSE',
             currency: 'USD',
             security_type: 'STK',
             multiplier: undefined } ]);

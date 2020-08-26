@@ -44,21 +44,21 @@ describe("mtrader-collect", function() {
         Mtrader.config('runInBand', true);
         mtrader = new Mtrader();
         mtrader.config.save('SPY', {
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             columns: {
                 'day.ending': 'day.ending',
                 'day.close': 'ROUND(day.close,5)'
             }
         });
-        mtrader.config.save('SPY_ARCA', {
-            portfolio: 'ARCA_SPY',
+        mtrader.config.save('SPY_NYSE', {
+            portfolio: 'NYSE_SPY',
             columns: {
                 'day.ending': 'day.ending',
                 'day.close': 'ROUND(day.close,5)'
             }
         });
-        mtrader.config.save('ARCA_SPY', {
-            portfolio: 'SPY_ARCA',
+        mtrader.config.save('NYSE_SPY', {
+            portfolio: 'SPY_NYSE',
             columns: {
                 'day.ending': 'day.ending',
                 'day.close': 'ROUND(1/day.close,5)'
@@ -73,7 +73,7 @@ describe("mtrader-collect", function() {
     });
     it("by week should be the same as by month", function() {
         return mtrader.collect({
-          portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
+          portfolio: 'XLE.NYSE,XLF.NYSE,XLI.NYSE,XLK.NYSE,XLY.NYSE',
           pad_leading: 3,
           begin: "2016-10-30",
           end: "2016-12-03",
@@ -93,7 +93,7 @@ describe("mtrader-collect", function() {
           precedence: 'DESC(MAX(PF(120,day.adj_close), PF(200,day.adj_close)))',
           criteria: 'position OR shares'
         }).then(expected => mtrader.collect({
-          portfolio: 'XLE.ARCA,XLF.ARCA,XLI.ARCA,XLK.ARCA,XLY.ARCA',
+          portfolio: 'XLE.NYSE,XLF.NYSE,XLI.NYSE,XLK.NYSE,XLY.NYSE',
           pad_leading: 3,
           begin: "2016-10-30",
           end: "2016-12-03",
@@ -148,7 +148,7 @@ describe("mtrader-collect", function() {
     });
     it("should detect nested collect cycle", function() {
         return Promise.resolve().then(() => mtrader.collect({
-            portfolio: 'SPY_ARCA',
+            portfolio: 'SPY_NYSE',
             columns: {
                 date: 'DATE(day.ending)',
                 close: 'day.close'

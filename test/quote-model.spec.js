@@ -61,7 +61,7 @@ describe("quote-model", function() {
         }));
         const model = new Model(fetch, {
             assets:[{
-                symbol: 'XLC', market: 'ARCA', security_type: 'STK',
+                symbol: 'XLC', market: 'NYSE', security_type: 'STK',
                 name: 'COMMUNICATION SERVICES SELECT SPDR FUND',
                 intervals: ['day'],
                 models: [{
@@ -71,7 +71,7 @@ describe("quote-model", function() {
                     ]
                 }, {
                     input: {
-                        xlc: {symbol: 'XLC', market: 'ARCA'}
+                        xlc: {symbol: 'XLC', market: 'NYSE'}
                     },
                     output: {
                         open: 'xlc.open',
@@ -96,7 +96,7 @@ describe("quote-model", function() {
                     volume: 'day.volume',
                     adj_close: 'day.adj_close'
                 },
-                symbol: 'XLC', market: 'ARCA',
+                symbol: 'XLC', market: 'NYSE',
                 begin: '2018-06-18', end: '2018-06-23', tz
             }).should.eventually.be.like([
                 { ending: '2018-06-18T16:00:00-04:00', close: 50.18, adj_close: 49.41 },
@@ -125,7 +125,7 @@ describe("quote-model", function() {
         }));
         const model = new Model(fetch, {
             assets:[{
-                symbol: 'XLC', market: 'ARCA2018', security_type: 'STK',
+                symbol: 'XLC', market: 'NYSE2018', security_type: 'STK',
                 name: 'COMMUNICATION SERVICES SELECT SPDR FUND',
                 trading_hours: "04:00:00 - 20:00:00",
                 liquid_hours: "09:30:00 - 16:00:00",
@@ -140,7 +140,7 @@ describe("quote-model", function() {
                     ]
                 }, {
                     input: {
-                        xlc: {symbol: 'XLC', market: 'ARCA'}
+                        xlc: {symbol: 'XLC', market: 'NYSE'}
                     },
                     output: {
                         open: 'xlc.open',
@@ -165,7 +165,7 @@ describe("quote-model", function() {
                     volume: 'day.volume',
                     adj_close: 'day.adj_close'
                 },
-                symbol: 'XLC', market: 'ARCA2018',
+                symbol: 'XLC', market: 'NYSE2018',
                 begin: '2018-06-18', end: '2018-06-23', tz
             }).should.eventually.be.like([
                 { ending: '2018-06-18T16:00:00-04:00', close: 50.18, adj_close: 49.41 },
@@ -194,7 +194,7 @@ describe("quote-model", function() {
         }));
         const model = new Model(fetch, {
             assets:[{
-                symbol: 'XLC', market: 'ARCA2018', security_type: 'STK',
+                symbol: 'XLC', market: 'NYSE2018', security_type: 'STK',
                 name: 'COMMUNICATION SERVICES SELECT SPDR FUND',
                 trading_hours: "04:00:00 - 20:00:00",
                 liquid_hours: "09:30:00 - 16:00:00",
@@ -209,7 +209,7 @@ describe("quote-model", function() {
                     ]
                 }, {
                     input: {
-                        xlc: {symbol: 'XLC', market: 'ARCA'}
+                        xlc: {symbol: 'XLC', market: 'NYSE'}
                     },
                     output: {
                         open: 'xlc.open',
@@ -225,7 +225,7 @@ describe("quote-model", function() {
         const quote = new Quote(model, {cache_dir: createTempDir('quote-model')});
         try {
             await quote({
-                symbol: 'XLC', market: 'ARCA2018',
+                symbol: 'XLC', market: 'NYSE2018',
                 columns: {ending:'ending', close: 'day.close', adj_close:'day.adj_close'},
                 begin: '2018-06-18', end: '2018-06-23', tz
             }).should.eventually.be.like([
@@ -250,7 +250,7 @@ describe("quote-model", function() {
         }));
         const model = new Model(fetch, {
             assets:[{
-                symbol: 'XLC', market: 'ARCA2018', security_type: 'STK',
+                symbol: 'XLC', market: 'NYSE2018', security_type: 'STK',
                 name: 'COMMUNICATION SERVICES SELECT SPDR FUND',
                 trading_hours: "04:00:00 - 20:00:00",
                 liquid_hours: "09:30:00 - 16:00:00",
@@ -298,7 +298,7 @@ describe("quote-model", function() {
                 }, {
                     begin: '2018-06-19',
                     input: {
-                        xlc: {symbol: 'XLC', market: 'ARCA'}
+                        xlc: {symbol: 'XLC', market: 'NYSE'}
                     },
                     output: {
                         open: 'xlc.open',
@@ -320,7 +320,7 @@ describe("quote-model", function() {
                     adj_close: 'day.adj_close'
                 },
                 transient: true,
-                symbol: 'XLC', market: 'ARCA2018',
+                symbol: 'XLC', market: 'NYSE2018',
                 begin: '2018-06-18', end: '2018-06-23', tz
             }).should.eventually.be.like([
                 { ending: '2018-06-18T16:00:00-04:00', close: 50.44 },
@@ -359,8 +359,8 @@ describe("quote-model", function() {
                 intervals: ['day'],
                 models: [{
                     input: {
-                        spy: {symbol: 'SPY', market: 'ARCA'},
-                        tlt: {symbol: 'TLT', market: 'ARCA'}
+                        spy: {symbol: 'SPY', market: 'NYSE'},
+                        tlt: {symbol: 'TLT', market: 'NYSE'}
                     },
                     output: {
                         open: 'spy.open / tlt.open',
@@ -446,7 +446,7 @@ describe("quote-model", function() {
                 intervals: ['day'],
                 models: [{
                     input: {
-                        spy: {symbol: 'SPY', market: 'ARCA'},
+                        spy: {symbol: 'SPY', market: 'NYSE'},
                         usd: {symbol: 'USD', market: 'CAD', interval: 'm240'}
                     },
                     output: {
@@ -529,7 +529,7 @@ describe("quote-model", function() {
                 intervals: ['day'],
                 models: [{
                     input: {
-                        xlc:   {symbol:'XLC',  market:'ARCA'},
+                        xlc:   {symbol:'XLC',  market:'NYSE'},
                         goog:  {symbol:'GOOG', market:'NASDAQ'},
                         fb:    {symbol:'FB',   market:'NASDAQ'},
                         dis:   {symbol:'DIS',  market:'NYSE'},
@@ -663,7 +663,7 @@ describe("quote-model", function() {
                 intervals: ['day'],
                 models: [{
                     input: {
-                        xlc:   {symbol:'XLC',  market:'ARCA'},
+                        xlc:   {symbol:'XLC',  market:'NYSE'},
                         goog:  {symbol:'GOOG', market:'NASDAQ'},
                         fb:    {symbol:'FB',   market:'NASDAQ'},
                         dis:   {symbol:'DIS',  market:'NYSE'},
@@ -775,10 +775,10 @@ describe("quote-model", function() {
                 intervals: ['day'],
                 models: [{
                     input: {
-                        spy: {symbol:'SPY', market:'ARCA'},
-                        qqq: {symbol:'QQQ', market:'ARCA'},
-                        dia: {symbol:'DIA', market:'ARCA'},
-                        iwm: {symbol:'IWM', market:'ARCA'}
+                        spy: {symbol:'SPY', market:'NYSE'},
+                        qqq: {symbol:'QQQ', market:'NASDAQ'},
+                        dia: {symbol:'DIA', market:'NYSE'},
+                        iwm: {symbol:'IWM', market:'NYSE'}
                     },
                     pad_begin: 1,
                     regression_length: 200,
@@ -1410,7 +1410,7 @@ describe("quote-model", function() {
                     input: {
                         call: { eval: { symbol: "`{LEFT(opt_symbol,12)}C{RIGHT(opt_symbol,8)}`" } },
                         put: { eval: { symbol: "`{LEFT(opt_symbol,12)}P{RIGHT(opt_symbol,8)}`" } },
-                        etf: { eval: { symbol: "LEFT(opt_symbol,3)" }, market: "ARCA" },
+                        etf: { eval: { symbol: "LEFT(opt_symbol,3)" }, market: "NYSE" },
                         irx: { symbol: "IRX", market: "CBOE", interval: "day" } },
                     variables: {
                         open: "BS(etf.open/split-dividend, strike, dte, iv, rate, right)",
@@ -1436,8 +1436,8 @@ describe("quote-model", function() {
                         t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
                         r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
                         asset_price: "etf.close/split-dividend",
-                        dividend: "DIVIDEND(asset, 'ARCA', etf.ending, expiry, rate)",
-                        split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
+                        dividend: "DIVIDEND(asset, 'NYSE', etf.ending, expiry, rate)",
+                        split: "SPLIT(asset, 'NYSE', etf.ending, expiry)",
                         asset: "LEFT(symbol,3)",
                         strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
                         expiry: "`20{MID(call.symbol,7,6)}`",
@@ -1535,7 +1535,7 @@ describe("quote-model", function() {
                             input: {
                                 call: { eval: {symbol: "`{LEFT(sprd,12)}C{MID(sprd,14,8)}`" }, market: "OPRA" },
                                 put: { eval: {symbol: "`{LEFT(sprd,12)}P{MID(sprd,14,8)}`" }, market: "OPRA" },
-                                etf: { eval: {symbol: "LEFT(sprd,3)" }, market: "ARCA" },
+                                etf: { eval: {symbol: "LEFT(sprd,3)" }, market: "NYSE" },
                                 irx: { symbol: "IRX", market: "CBOE", interval: "day" }
                             },
                             variables: {
@@ -1562,8 +1562,8 @@ describe("quote-model", function() {
                                 t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
                                 r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
                                 asset_price: "etf.close/split-dividend",
-                                dividend: "DIVIDEND(asset, 'ARCA', etf.ending, expiry, rate)",
-                                split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
+                                dividend: "DIVIDEND(asset, 'NYSE', etf.ending, expiry, rate)",
+                                split: "SPLIT(asset, 'NYSE', etf.ending, expiry)",
                                 asset: "LEFT(symbol,3)",
                                 strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
                                 expiry: "`20{MID(call.symbol,7,6)}`",
@@ -1592,7 +1592,7 @@ describe("quote-model", function() {
                             input: {
                                 call: { eval: {symbol: "`{LEFT(sprd,6)}{MID(sprd,23,6)}C{RIGHT(sprd,8)}`" }, market: "OPRA" },
                                 put: { eval: {symbol: "`{LEFT(sprd,6)}{MID(sprd,23,6)}P{RIGHT(sprd,8)}`" }, market: "OPRA" },
-                                etf: { eval: {symbol: "LEFT(sprd,3)" }, market: "ARCA" },
+                                etf: { eval: {symbol: "LEFT(sprd,3)" }, market: "NYSE" },
                                 irx: { symbol: "IRX", market: "CBOE", interval: "day" }
                             },
                             variables: {
@@ -1619,8 +1619,8 @@ describe("quote-model", function() {
                                 t1: "-asset_price*g1*iv/100/(2*SQRT(dte/365))",
                                 r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(d1-v1)",
                                 asset_price: "etf.close/split-dividend",
-                                dividend: "DIVIDEND(asset, 'ARCA', etf.ending, expiry, rate)",
-                                split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
+                                dividend: "DIVIDEND(asset, 'NYSE', etf.ending, expiry, rate)",
+                                split: "SPLIT(asset, 'NYSE', etf.ending, expiry)",
                                 asset: "LEFT(symbol,3)",
                                 strike: "NUMBERVALUE(RIGHT(call.symbol,8))/1000",
                                 expiry: "`20{MID(call.symbol,7,6)}`",
@@ -1739,7 +1739,7 @@ describe("quote-model", function() {
                     input: {
                         long: { eval: {symbol: "LEFT(sprd,21)" }, market: "OPRA" },
                         short: { eval: {symbol: "`{LEFT(sprd,6)}{RIGHT(sprd,15)}`" }, market: "OPRA" },
-                        etf: { eval: {symbol: "LEFT(sprd,3)" }, market: "ARCA" },
+                        etf: { eval: {symbol: "LEFT(sprd,3)" }, market: "NYSE" },
                         irx: { symbol: "IRX", market: "CBOE", interval: "day" }
                     },
                     variables: {
@@ -1767,8 +1767,8 @@ describe("quote-model", function() {
                         long_r1: "strike*EXP(-rate/100*dte/365)*NORMSDIST(long_d1-long_v1)",
                         skew: "IF(long.ending!=short.ending OR long.ending!=etf.ending,PREV('skew')) OR last_short_iv/last_long_iv",
                         asset_price: "etf.close/split-dividend",
-                        dividend: "DIVIDEND(asset, 'ARCA', etf.ending, expiry, rate)",
-                        split: "SPLIT(asset, 'ARCA', etf.ending, expiry)",
+                        dividend: "DIVIDEND(asset, 'NYSE', etf.ending, expiry, rate)",
+                        split: "SPLIT(asset, 'NYSE', etf.ending, expiry)",
                         asset: "LEFT(symbol,3)",
                         strike: "NUMBERVALUE(RIGHT(long.symbol,8))/1000",
                         expiry: "`20{MID(long.symbol,7,6)}`",

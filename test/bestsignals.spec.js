@@ -72,7 +72,7 @@ describe("bestsignals", function() {
     });
     it("should find best trend cross parameters", function() {
         return bestsignals({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-10-01',
             end: '2016-12-31',
             signal_variable: 'signal',
@@ -107,7 +107,7 @@ describe("bestsignals", function() {
     });
     it("should score without signals", function() {
         return bestsignals({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-10-01',
             end: '2016-12-31',
             eval_score: 'gain',
@@ -132,7 +132,7 @@ describe("bestsignals", function() {
     });
     it("should find best two sma cross and ema cross parameters", function() {
         return bestsignals({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2015-01-01',
             end: '2015-12-31',
             solution_count: 2,
@@ -195,7 +195,7 @@ describe("bestsignals", function() {
     });
     it("should find best sma/ema cross with a fixed parameter", function() {
         return bestsignals({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2015-01-01',
             end: '2015-12-31',
             signal_variable: 'signal',
@@ -246,7 +246,7 @@ describe("bestsignals", function() {
     });
     it("should find best counter trend cross parameters", function() {
         return bestsignals({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-10-01',
             end: '2016-12-31',
             signal_variable: 'signal',
@@ -287,7 +287,7 @@ describe("bestsignals", function() {
     });
     it("should find the two best relative strength STO parameters", function() {
         return bestsignals({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-07-01',
             end: '2016-10-01',
             solution_count: 2,
@@ -328,7 +328,7 @@ describe("bestsignals", function() {
     });
     it("should find best signal parameters for each", function() {
         return bestsignals({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-07-01',
             end: '2016-12-31',
             solution_count: 2,
@@ -400,7 +400,7 @@ describe("bestsignals", function() {
     });
     it.skip("should find best overall signal", function() {
         return bestsignals({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-07-01',
             end: '2016-12-31',
             signal_variable: 'signal',

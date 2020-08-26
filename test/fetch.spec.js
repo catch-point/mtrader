@@ -169,7 +169,7 @@ describe("fetch", function() {
     it("should adjust monthly dividend", function() {
         return fetch({
             interval: 'month',
-            symbol: 'SPY', market: 'ARCA',
+            symbol: 'SPY', market: 'NYSE',
             begin: '2016-01-01', end: '2016-12-31', tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
@@ -192,7 +192,7 @@ describe("fetch", function() {
     it("should adjust splits and dividends", function() {
         return fetch({
             interval: 'month',
-            symbol: 'AAPL', market: 'ARCA',
+            symbol: 'AAPL', market: 'NASDAQ',
             begin: '2014-01-01', end: '2014-09-30', tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;
@@ -212,7 +212,7 @@ describe("fetch", function() {
     it("should adjust yearly dividends", function() {
         return fetch({
             interval: 'year',
-            symbol: 'SPY', market: 'ARCA',
+            symbol: 'SPY', market: 'NYSE',
             begin: '2010-01-01', end: '2016-12-31', tz
         }).then(data => {
             var scale = _.last(data).close / _.last(data).adj_close;

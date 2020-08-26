@@ -76,7 +76,7 @@ describe("strategize", function() {
     });
     it.skip("should find best trend cross signal", function() {
         return strategize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-10-01',
             end: '2016-12-31',
             strategy_variable: 'strategy',
@@ -117,7 +117,7 @@ describe("strategize", function() {
     it("should avoid conflicting variables", function() {
         return strategize({
             portfolio: {
-                portfolio: 'SPY.ARCA',
+                portfolio: 'SPY.NYSE',
                 columns: {
                     date: 'DATE(ending)',
                     close: 'day.adj_close',
@@ -160,7 +160,7 @@ describe("strategize", function() {
     });
     it("should find complex strategy", function() {
         return strategize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2011-01-01',
             end: '2011-12-31',
             strategy_variable: 'strategy',
@@ -204,7 +204,7 @@ describe("strategize", function() {
     });
     it("should find complex conjunction strategy", function() {
         return strategize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2011-01-01',
             end: '2011-12-31',
             strategy_variable: 'strategy',
@@ -248,7 +248,7 @@ describe("strategize", function() {
     });
     it("should find dip buying opportunities", function() {
         return strategize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2011-01-01',
             end: '2011-12-31',
             strategy_variable: 'strategy',
@@ -287,7 +287,7 @@ describe("strategize", function() {
     });
     it("should find dip buying disjunction opportunities", function() {
         return strategize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2011-01-01',
             end: '2011-12-31',
             strategy_variable: 'strategy',
@@ -327,7 +327,7 @@ describe("strategize", function() {
     });
     it.skip("should reuse existing variable", function() {
         return strategize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-10-01',
             end: '2016-12-31',
             strategy_variable: 'strategy',

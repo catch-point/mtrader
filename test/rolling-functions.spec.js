@@ -63,7 +63,7 @@ describe("rolling functions", function() {
     });
     it("criteria static expression", function() {
         return collect({
-          portfolio: 'SPY.ARCA',
+          portfolio: 'SPY.NYSE',
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
@@ -96,7 +96,7 @@ describe("rolling functions", function() {
     });
     it("criteria dynamic expression", function() {
         return collect({
-          portfolio: 'SPY.ARCA',
+          portfolio: 'SPY.NYSE',
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
@@ -129,7 +129,7 @@ describe("rolling functions", function() {
     });
     it("criteria relative expression", function() {
         return collect({
-          portfolio: 'SPY.ARCA',
+          portfolio: 'SPY.NYSE',
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {
@@ -162,7 +162,7 @@ describe("rolling functions", function() {
     });
     it("criteria value", function() {
         return collect({
-          portfolio: 'SPY.ARCA',
+          portfolio: 'SPY.NYSE',
           begin: "2016-01-01",
           end: "2016-02-01",
           columns: {

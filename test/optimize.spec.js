@@ -69,7 +69,7 @@ describe("optimize", function() {
     });
     it("should find best trend sma cross parameters", function() {
         return optimize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2015-01-01',
             end: '2015-12-31',
             eval_validity: 'fast_len<slow_len',
@@ -100,7 +100,7 @@ describe("optimize", function() {
     });
     it("should score without parameters", function() {
         return optimize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2015-01-01',
             end: '2015-12-31',
             eval_validity: 'fast_len<slow_len',
@@ -125,7 +125,7 @@ describe("optimize", function() {
     });
     it("should find best counter trend sma cross parameters", function() {
         return optimize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-10-01',
             end: '2016-12-31',
             eval_score: '-gain',
@@ -155,7 +155,7 @@ describe("optimize", function() {
     });
     it("should find best sma cross parameters with gain/pain", function() {
         return optimize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-01-01',
             end: '2016-12-31',
             eval_validity: 'fast_len<slow_len',
@@ -185,7 +185,7 @@ describe("optimize", function() {
     });
     it("should find best mean reversion bollinger parameters", function() {
         return optimize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-01-01',
             end: '2016-12-31',
             eval_score: 'gain/pain',
@@ -219,48 +219,9 @@ describe("optimize", function() {
             },
         });
     });
-    it("should find best relative strength STO parameters", function() {
-        return optimize({
-            portfolio: 'SPY.ARCA',
-            begin: '2016-10-01',
-            end: '2016-12-31',
-            eval_score: 'gain/pain',
-            columns: {
-                date: 'DATE(ending)',
-                change: 'close - PREV("close")',
-                close: 'day.adj_close',
-                gain: 'PREC("gain") + change * PREV("signal")',
-                pain: 'drawdown'
-            },
-            variables: {
-                peak: 'IF(PREC("peak")>gain,PREC("peak"),gain)',
-                drawdown: 'IF(PREC("drawdown")>peak-gain,PREC("drawdown"),peak-gain)',
-                signal: 'SIGN(K-D)',
-                STO: 'CHANGE(day.adj_close,LOWEST(lookback,day.low),HIGHEST(lookback,day.high)-LOWEST(lookback,day.low))',
-                K: 'SMA(Ksmoothing,STO)',
-                D: 'SMA(Dmoving,K)'
-            },
-            parameters: {
-                lookback: 14,
-                Ksmoothing: 3,
-                Dmoving: 3
-            },
-            parameter_values: {
-                lookback: [7,10,14,20,28,50],
-                Ksmoothing: [1,3,5,7],
-                Dmoving: [3,5]
-            }
-        }).should.eventually.be.like({
-            parameters: {
-                lookback: 10,
-                Ksmoothing: 5,
-                Dmoving: 3
-            }
-        });
-    });
     it("should find the two best relative strength STO parameters", function() {
         return optimize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-07-01',
             end: '2016-10-01',
             solution_count: 2,
@@ -294,7 +255,7 @@ describe("optimize", function() {
     });
     it("should find best momentum MACD parameters", function() {
         return optimize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-11-01',
             end: '2016-12-01',
             eval_score: 'gain/pain',
@@ -328,7 +289,7 @@ describe("optimize", function() {
     });
     it("should find best mean reversion bollinger parameters by sampling periods", function() {
         return optimize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2013-01-01',
             end: '2016-12-31',
             sample_duration: 'P1Y',

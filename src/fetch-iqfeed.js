@@ -262,7 +262,10 @@ function createInstance(settings = {}) {
             const exchs = _.pick(_.mapObject(
                 options.market ? _.pick(markets, [options.market]) : markets,
                 exch => Object.assign({currency: exch.currency}, exch.datasources.iqfeed)
-            ), val => val);
+            ), exch => exch && (!options.currency || options.currency == exch.currency) && (
+                !options.security_type ||
+                ~exch.security_types.map(t => security_types_map[t]).indexOf(options.security_type)
+            ));
             const listed_markets = options.listed_market ? [options.listed_market] :
                 _.compact(_.flatten(_.map(exchs, exch => exch.listed_markets)));
             if (_.isEmpty(exchs)) return Promise.resolve([]);

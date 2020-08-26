@@ -52,7 +52,7 @@ describe("mtrader", function() {
     it("optimize SMA", function() {
         mtrader.seed(27644437);
         return mtrader.optimize({
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2000-01-01',
             end: '2010-01-01',
             population_size: 12,
@@ -136,7 +136,7 @@ describe("mtrader", function() {
             }
         });
         mtrader.config.save('BEST', {
-            portfolio: 'SPY.ARCA',
+            portfolio: 'SPY.NYSE',
             begin: '2016-07-01',
             end: '2016-12-31',
             signal_variable: 'signal',

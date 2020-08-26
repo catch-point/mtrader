@@ -198,6 +198,7 @@ function contract(markets, yahoo, options) {
 function lookup(markets, yahoo, options) {
     const langs = _.uniq(_.compact(_.map(markets, (market, name) =>
             (!options.market || options.market == name) &&
+            (!options.currency || options.currency == market.currency) &&
             market.datasources.yahoo && market.datasources.yahoo.marketLang
         )));
     return Promise.all(langs.map(marketLang =>

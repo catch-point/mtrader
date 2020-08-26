@@ -55,7 +55,7 @@ describe("fetch-yahoo", function() {
             });
         });
         it("should find ITA", function() {
-            return client({interval:'lookup',symbol:'ITA', market:"BATS"})
+            return client({interval:'lookup',symbol:'ITA', market:"NYSE"})
               .then(array => array.slice(0,1))
               .should.eventually.be.like([{
                 symbol: 'ITA',
@@ -233,7 +233,7 @@ describe("fetch-yahoo", function() {
         return client({
             interval: 'day',
             symbol: 'REM',
-            market: 'BATS',
+            market: 'NYSE',
             begin: '2016-11-01',
             end: '2016-12-01',
             trading_hours: "04:00:00 - 20:00:00",

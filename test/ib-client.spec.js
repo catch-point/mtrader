@@ -385,7 +385,7 @@ describe("ib-client", function() {
         return client.reqFundamentalData({
             localSymbol: 'SPY',
             secType: 'STK',
-            exchange: 'ARCA',
+            exchange: 'NYSE',
             currency: 'USD'
         }, 'ReportsFinSummary').should.eventually.have.property('FinancialSummary');
         //.then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
@@ -406,7 +406,7 @@ describe("ib-client", function() {
         const contract = {
             localSymbol: 'SPY',
             secType: 'STK',
-            exchange: 'ARCA',
+            exchange: 'NYSE',
             currency: 'USD'
         };
         const order = {
