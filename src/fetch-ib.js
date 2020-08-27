@@ -440,9 +440,12 @@ async function lookup(markets, client, options) {
     const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
     return conIds.map(details => flattenContractDetails(details)).map(contract => _.omit({
         symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
-        market: options.market || _.findKey(markets,
-            mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch)
-        ),
+        market: options.market || _.findKey(markets, mkt => {
+            if (contract.primaryExch)
+                return ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch);
+            else
+                return ~(mkt.exchange||[mkt.exchanges]).indexOf(contract.exchange)
+        }),
         security_type: contract.secType,
         name: contract.longName,
         currency: contract.currency
@@ -735,7 +738,7 @@ async function listContractDetails(markets, client, options) {
     }, []).filter(market => !options.security_type || options.security_type == market.secType)
           .filter(market => !options.currency || options.currency == market.currency);
     return _.flatten(await Promise.all(_.map(_.groupBy(market_set, market => {
-        return `${market.secType}.${market.currency}`;
+        return `${toLocalSymbol(market, options.symbol)}.${market.secType}.${market.currency}`;
     }), async(market_set) => {
         const primaryExchs = _.every(market_set, 'primaryExch') && market_set.map(market => market.primaryExch);
         const exchanges = _.every(market_set, 'exchange') && market_set.map(market => market.exchange);
@@ -745,6 +748,7 @@ async function listContractDetails(markets, client, options) {
             logger.debug(`TWS IB Could not find ${options.symbol} as ${_.first(market_set).currency} ${_.first(market_set).secType}: ${err.message}`);
             return [];
         });
+        expect(contract).to.have.property('localSymbol');
         const details = as_is.length || !~contract.localSymbol.indexOf('.') ? as_is :
             await client.reqContractDetails(Object.assign({}, contract, {
                 localSymbol: contract.localSymbol.replace('.', ' ')
