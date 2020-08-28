@@ -69,6 +69,7 @@ describe("replicate-collective2", function() {
         broker = new Broker({
             systemid: 'test',
             apikey: 'test',
+            transmit: true,
             requestMarginEquity: `file://${requestMarginEquity}`,
             retrieveSystemEquity: `file://${retrieveSystemEquity}`,
             requestTrades: `file://${requestTrades}`,

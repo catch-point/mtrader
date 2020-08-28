@@ -686,8 +686,7 @@ async function lookup(fetch, markets, signal) {
             symbol,
             currency: 'USD',
             security_type: instrument == 'stock' ? 'STK' : instrument == 'future' ? 'FUT' : undefined
-        })
-          .then(matches => matches.filter(match => match.symbol == symbol), err => []);
+        }).then(matches => matches.filter(match => match.symbol == symbol), err => []);
     }));
     const list = _.flatten(matches);
     if (_.isEmpty(list) && instrument != 'future') return null;

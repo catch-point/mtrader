@@ -170,7 +170,7 @@ async function submit(agent, name, systemid, signal, settings) {
     const uri = settings[name];
     const parsed = _.isString(uri) && url.parse(uri);
     const body = await new Promise((ready, error) => {
-        if (settings.offline || !parsed) {
+        if (!settings.transmit || !parsed) {
             console.log(uri || '', JSON.stringify({
                 apikey: settings.apikey,
                 systemid: systemid,
