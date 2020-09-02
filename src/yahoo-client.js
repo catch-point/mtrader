@@ -75,7 +75,7 @@ function promiseHistoryAgent() {
                 return promiseText(options);
             };
         } catch(err) {
-            logger.error("Could not find yahoo crumb", body.substring(start-1, end+1));
+            logger.error("Could not find yahoo crumb", symbol, body.substring(start-1, end+1));
             throw err;
         }
     };
