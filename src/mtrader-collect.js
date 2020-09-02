@@ -41,6 +41,7 @@ const debounce = require('./debounce.js');
 const share = require('./share.js');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
+const Parser = require('./parser.js');
 const replyTo = require('./promise-reply.js');
 const interrupt = require('./interrupt.js');
 const workerQueue = require('./worker-queue.js');
@@ -55,6 +56,7 @@ const SlaveQuote = require('./quote.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
+const Quoting = require('./quoting-functions.js');
 const readCallSave = require('./read-call-save.js');
 
 const WORKER_COUNT = require('os').cpus().length;
@@ -136,7 +138,7 @@ function createInstance(program, runInBand = false) {
         const local_tier = settings.tier || 0;
         return promiseKeys.then(keys => trimOptions(keys, options))
           .then(options => {
-            const remote_tier = remote.getWorkerTier() || 0;
+            const remote_tier = remote.getWorkerTier() || local_tier;
             if (options.info=='help' || isSplitting(options)) return direct(options);
             else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
             else if (options.info=='version')
@@ -152,7 +154,7 @@ function createInstance(program, runInBand = false) {
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (!remote.hasWorkers()) return local(options);
             else if (local.hasWorkers() && local_tier < remote_tier) return local(options);
-            else if (options.reset_every || isLeaf(options)) return remote.collect(options);
+            else if (options.reset_every || isQuoting(options)) return remote.collect(options);
             else if (!local.hasWorkers()) return remote.collect(options);
             else if (remote.hasWorkers() && remote_tier < local_tier) return remote.collect(options);
             else return local(options);
@@ -220,7 +222,7 @@ function createCache(direct, local, remote, settings) {
         else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
         else if (!remote.hasWorkers()) return local(options);
         else if (local.hasWorkers() && local_tier < remote_tier) return local(options);
-        else if (options.reset_every || isLeaf(options)) return remote.collect(options);
+        else if (options.reset_every || isQuoting(options)) return remote.collect(options);
         else if (!local.hasWorkers()) return remote.collect(options);
         else if (remote.hasWorkers() && remote_tier < local_tier) return remote.collect(options);
         else return local(options);
@@ -233,6 +235,27 @@ function isSplitting(options) {
     const begin = moment(options.begin);
     const end = moment(options.end || options.now);
     return begin.add(Math.abs(reset_every.asMilliseconds())*1.5, 'milliseconds').isBefore(end);
+}
+
+function isQuoting(options) {
+    if (isLeaf(options)) return true;
+    const expressions = _.compact(_.values(options.columns).concat(
+        _.values(options.variables), options.criteria, options.filter, options.order
+    ));
+    const parser = new Parser({
+        constant(value) {
+            return null;
+        },
+        variable(name) {
+            return null;
+        },
+        expression(expr, name, args) {
+            if (Quoting.has(name)) return [name];
+            else return _.compact(_.flatten(args));
+        }
+    });
+    const quoting_functions = _.compact(_.flatten(parser.parseCriteriaList(expressions)));
+    return quoting_functions.length;
 }
 
 function isLeaf(options) {
