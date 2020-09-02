@@ -763,9 +763,9 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, now, b
     const cmsg = "Incomplete data try again without the read_only flag";
     const pmsg = "or without the read_only flag";
     const fetchComplete = options.read_only ? () => Promise.reject(Error(cmsg)) :
-        fetchCompleteBlock.bind(this, fetch, options, collection, store_ver);
+        fetchCompleteBlock.bind(this, fetch, options, collection, store_ver, now);
     const fetchPartial = options.read_only ? () => Promise.reject(Error(pmsg)) :
-        fetchPartialBlock.bind(this, fetch, fields, options, collection);
+        fetchPartialBlock.bind(this, fetch, fields, options, collection, now);
     return Promise.all(blocks.map((block, i, blocks) => {
         const latest = i == blocks.length -1 && latest_blocks;
         if (!collection.exists(block))
@@ -782,6 +782,8 @@ function fetchBlocks(fetch, fields, options, collection, store_ver, stop, now, b
             return fetchComplete(block, latest);
         if (options.update || i < blocks.length -1 || (_.last(tail).asof || _.last(tail).ending) <= stop) {
             if (!options.update && isMarketClosed(_.last(tail), now, options)) return;
+            if (!now.isAfter(collection.propertyOf(block, 'asof') || _.last(tail).ending))
+                return; // already updated it
             return fetchPartial(block, _.first(tail).ending, latest).catch(error => {
                 if (stop) logger.debug("Need to fetch", _.last(tail).ending);
                 logger.trace("Fetch failed", error);
@@ -805,7 +807,7 @@ function isMarketClosed(bar, now, options) {
 /**
  * Attempts to load a complete block
  */
-async function fetchCompleteBlock(fetch, options, collection, store_ver, block, latest) {
+async function fetchCompleteBlock(fetch, options, collection, store_ver, now, block, latest) {
     const records = await fetch(blockOptions(block, options));
     await collection.replaceWith(records, block);
     await collection.propertyOf(block, 'complete', !latest);
@@ -813,12 +815,13 @@ async function fetchCompleteBlock(fetch, options, collection, store_ver, block, 
     await collection.propertyOf(block, 'tz', options.tz);
     await collection.propertyOf(block, 'salt', options.salt);
     await collection.propertyOf(block, 'ending_format', options.ending_format);
+    await collection.propertyOf(block, 'asof', now.format(options.ending_format));
 }
 
 /**
  * Attempts to add additional bars to a block
  */
-function fetchPartialBlock(fetch, fields, options, collection, block, begin, latest) {
+function fetchPartialBlock(fetch, fields, options, collection, now, block, begin, latest) {
     return fetch(_.defaults({
         begin: begin
     }, blockOptions(block, options))).then(new_records => {
@@ -832,6 +835,7 @@ function fetchPartialBlock(fetch, fields, options, collection, block, begin, lat
                 return 'incompatible';
             }
             await collection.propertyOf(block, 'complete', !latest);
+            await collection.propertyOf(block, 'asof', now.format(options.ending_format));
             const warmUps = collection.columnsOf(block).filter(col => col.match(/\W/));
             if (warmUps.length) {
                 const warmUps_promises = warmUps.map(expr => createParser(fields, {}, options).parse(expr));
