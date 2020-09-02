@@ -374,7 +374,7 @@ function iqfeed_symbol(markets, options) {
 }
 
 function isIEOption(security_types, options) {
-    return options.symbol.length == 21 && security_types && ~security_types.indexOf('IEOPTION');
+    return options.symbol.length == 21 && (!security_types || ~security_types.indexOf('IEOPTION'));
 }
 
 const right_month_alpha = {

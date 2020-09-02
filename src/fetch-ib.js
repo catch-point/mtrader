@@ -438,18 +438,35 @@ function isNotEquity(markets, options) {
 async function lookup(markets, client, options) {
     const details = await listContractDetails(markets, client, options);
     const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
-    return conIds.map(details => flattenContractDetails(details)).map(contract => _.omit({
-        symbol: toSymbol(markets[options.market] || markets[contract.primaryExch], contract),
-        market: options.market || _.findKey(markets, mkt => {
-            if (contract.primaryExch)
-                return ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch);
-            else
-                return ~(mkt.exchange||[mkt.exchanges]).indexOf(contract.exchange)
-        }),
-        security_type: contract.secType,
-        name: contract.longName,
-        currency: contract.currency
-    }, v => !v));
+    return conIds.map(details => flattenContractDetails(details)).map(contract => {
+        const market = options.market || _.findKey(markets, mkt => isContractInMarket(contract, mkt));
+        const symbol = toSymbol(markets[market], contract);
+        return _.omit({
+            symbol, market,
+            security_type: contract.secType,
+            name: contract.longName,
+            currency: contract.currency
+        }, v => !v);
+    });
+}
+
+function isContractInMarket(contract, market) {
+    if (contract.primaryExch && market.primaryExch && contract.primaryExch != market.primaryExch)
+        return false;
+    else if (contract.primaryExch && market.primaryExchs && !~market.primaryExchs.indexOf(contract.primaryExch))
+        return false;
+    else if (contract.exchange && market.exchange && contract.exchange != market.exchange)
+        return false;
+    else if (contract.exchange && market.exchanges && !~market.exchanges.indexOf(contract.exchange))
+        return false;
+    else if (contract.currency && market.currency && contract.currency != market.currency)
+        return false;
+    else if (contract.secType && market.secType && contract.secType != market.secType)
+        return false;
+    else if (contract.secType && market.secTypes && !~market.secTypes.indexOf(contract.secType))
+        return false;
+    else
+        return true;
 }
 
 async function contract(market_tz, markets, client, options) {

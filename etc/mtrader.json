@@ -778,6 +778,9 @@
           "whatToShow": "TRADES",
           "secType": "OPT",
           "exchange": "SMART"
+        },
+        "collective2": {
+          "instrument": "option"
         }
       }
     },

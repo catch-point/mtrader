@@ -33,6 +33,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
+const d3 = require('d3-format');
 const merge = require('./merge.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
@@ -322,7 +323,7 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
         options.asof ? moment(options.asof).subtract(5, 'days') : null;
     const filter_date_time_start = start && start.tz('America/New_York').format('YYYY-MM-DD HH:mm:ss');
     const signals = filter_date_time_start ?
-        [].concat(...await Promise.all(['time_traded', 'time_expired', 'time_canceled'].map(async(filter_type) => {
+        [].concat(...await Promise.all(['time_posted', 'time_traded', 'time_expired', 'time_canceled'].map(async(filter_type) => {
             return collective2.retrieveSignalsAll({filter_type, filter_date_time_start});
         }))).reduce((unique, signal) => {
             if (unique.some(s => _.isEqual(s, signal))) return unique;
@@ -657,6 +658,7 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
 function c2symbol(markets, symbol, market) {
     expect(market).to.be.oneOf(Object.keys(markets));
     const m = markets[market];
+    if (m.instrument == 'option') return iqfeed_ieoption(symbol);
     if (!m.c2_map && !m.c2_prefix) return symbol;
     const sym = m.c2_map[symbol];
     if (sym) return sym;
@@ -668,8 +670,11 @@ function c2symbol(markets, symbol, market) {
 
 async function lookup(fetch, markets, signal) {
     const instrument = signal.typeofsymbol || signal.instrument;
-    const fullSymbol = signal.fullSymbol ||
-        (instrument == 'future' ? fromFutureSymbol(signal.symbol) : signal.symbol);
+    const fullSymbol = signal.fullSymbol || (
+        instrument == 'future' ? fromFutureSymbol(signal.symbol) :
+        instrument == 'option' ? occ_symbol(signal.symbol) :
+        signal.symbol
+    );
     const symbols = _.uniq(_.map(_.pick(markets, m => {
         return m.instrument == instrument;
     }), m => {
@@ -685,7 +690,9 @@ async function lookup(fetch, markets, signal) {
             interval:'lookup',
             symbol,
             currency: 'USD',
-            security_type: instrument == 'stock' ? 'STK' : instrument == 'future' ? 'FUT' : undefined
+            security_type: instrument == 'stock' ? 'STK' :
+                instrument == 'future' ? 'FUT' :
+                instrument == 'option' ? 'OPT' : undefined
         }).then(matches => matches.filter(match => match.symbol == symbol), err => []);
     }));
     const list = _.flatten(matches);
@@ -711,5 +718,45 @@ function fromFutureSymbol(symbol) {
         (now.year() - 2).toString().substring(2, 3) :
         (now.year() + 8).toString().substring(2, 3);
     return `${root}${month}${decade}${y}`;
+}
+
+const right_month_alpha = {
+    'C': {
+        '01': 'A', '02': 'B', '03': 'C', '04': 'D', '05': 'E', '06': 'F',
+        '07': 'G', '08': 'H', '09': 'I', '10': 'J', '11': 'K', '12': 'L'
+    },
+    'P': {
+        '01': 'M', '02': 'N', '03': 'O', '04': 'P', '05': 'Q', '06': 'R',
+        '07': 'S', '08': 'T', '09': 'U', '10': 'V', '11': 'W', '12': 'X'
+    }
+};
+function iqfeed_ieoption(symbol) {
+    if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);
+    const underlying = symbol.substring(0, 6);
+    const year = symbol.substring(6, 8);
+    const month = symbol.substring(8, 10);
+    const day = symbol.substring(10, 12);
+    const right = symbol.charAt(12);
+    const dollar = symbol.substring(13, 18);
+    const decimal = symbol.substring(18, 21);
+    const mo = right_month_alpha[right][month];
+    const strike = +dollar + +decimal / 1000;
+    return `${underlying.substring(0,5).trim()}${year}${day}${mo}${strike}`;
+}
+const months = {
+    A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
+    G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
+    M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
+    S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
+};
+const strike_format = d3.format("08d");
+function occ_symbol(symbol) {
+    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return symbol;
+    const [, underlying, year, day, mo, strike] = m;
+    const space = '      '.substring(0, 6 - underlying.length);
+    const right = mo < 'M' ? 'C' : 'P';
+    const dollar_decimal = strike_format(strike * 1000);
+    return `${underlying}${space}${year}${months[mo]}${day}${right}${dollar_decimal}`;
 }
 
