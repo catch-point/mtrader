@@ -1069,6 +1069,7 @@ function requestWithId(ib, time_limit) {
                 reqId,
                 cmd: cmd,
                 args: args,
+                ticks: 0,
                 contractDetails: [],
                 historicalData: [],
                 tickData: {},
@@ -1082,6 +1083,7 @@ function requestWithId(ib, time_limit) {
                     logger.warn(cmd, err.message, ...args.map(arg => {
                         return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip) || arg;
                     }));
+                    if (cmd == 'reqMktData') ib.cancelMktData(reqId);
                     fail(err);
                     setImmediate(() => {
                         delete req_queue[reqId];
@@ -1274,7 +1276,7 @@ function isTickComplete(ib, req) {
     const genericTickList = req.args[1];
     if (!genericTickList) return false;
     const genericTickNameArray = genericTickList.split(',').map(getTickTypeName);
-    if (_.difference(genericTickNameArray, _.keys(req.tickData)).length) return false;
+    if (req.ticks++ < 100 && _.difference(genericTickNameArray, _.keys(req.tickData)).length) return false;
     if (!req.cancelled) {
         ib.cancelMktData(req.reqId);
         req.cancelled = true;
