@@ -35,6 +35,7 @@
 #
 
 NAME=mtrader
+IBC_VERSION=3.8.3
 
 # Read configuration variable file if it is present
 [ -r "/etc/default/$NAME" ] && . "/etc/default/$NAME"
@@ -187,7 +188,7 @@ if [ "$INSTALL_IBG" = "Y" ] && ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/nu
   IBC_JAR="$PREFIX/lib/IBC.jar"
   if [ ! -e "$IBC_JAR" ]; then
     mkdir -p "$PREFIX/lib"
-    IBC_URL="https://github.com/IbcAlpha/IBC/releases/download/3.8.1/IBCLinux-3.8.1.zip"
+    IBC_URL="https://github.com/IbcAlpha/IBC/releases/download/$IBC_VERSION/IBCLinux-$IBC_VERSION.zip"
     wget "$IBC_URL" -O "/tmp/ibclinux.zip"
     unzip "/tmp/ibclinux.zip" $(basename "$IBC_JAR") -d $(dirname "$IBC_JAR")
     rm "/tmp/ibclinux.zip"

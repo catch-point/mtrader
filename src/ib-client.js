@@ -50,18 +50,17 @@ module.exports = function(settings) {
     const host = settings && settings.host || 'localhost';
     const port = settings && settings.port || 7496;
     const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : nextval();
-    const lib_dir = settings && settings.lib_dir;
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const timeout = settings && settings.timeout || 600000;
     const self = new.target ? this : {};
-    let opened_client = createClient(host, port, clientId, lib_dir, ib_tz, timeout);
+    let opened_client = createClient(host, port, clientId, ib_tz, timeout, settings);
     let promise_ib, closed = false;
     const open = () => {
         if (opened_client && !opened_client.disconnected) return opened_client.open();
         else return promise_ib = (promise_ib || Promise.reject())
           .catch(err => ({disconnected: true})).then(client => {
             if (!client.disconnected) return client;
-            opened_client = createClient(host, port, clientId, lib_dir, ib_tz, timeout);
+            opened_client = createClient(host, port, clientId, ib_tz, timeout, settings);
             return opened_client.open();
         });
     };
@@ -87,7 +86,7 @@ module.exports = function(settings) {
 };
 
 
-function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
+function createClient(host, port, clientId, ib_tz, timeout, settings) {
     const ib = new IB({host, port, clientId});
     ib.setMaxListeners(20);
     ib.on('error', (err, info) => {
@@ -145,8 +144,10 @@ function createClient(host, port, clientId, lib_dir, ib_tz, timeout) {
         ib.once('server', version => ready(version))
           .once('disconnected', () => fail());
     });
+    once_connected.then(() => ib.reqMarketDataType(settings.reqMarketDataType || 4));
     const time_limit = new TimeLimit(timeout);
     const self = new.target ? this : {};
+    const lib_dir = settings && settings.lib_dir;
     const store = lib_dir && storage(lib_dir);
     const modules = [
         reqPositions.call(self, ib),
@@ -1053,6 +1054,7 @@ function isGeneralError(info) {
     if (code == 1101) return false; // Connectivity restored
     else if (code == 1102) return false; // Connectivity restored
     else if (code == 202) return false; // Order Canceled
+    else if (code == 10167) return false; // Displaying delayed market data...
     else if (code >= 2000 && code < 3000) return false; // Warnings
     else return true;
 }
@@ -1101,7 +1103,8 @@ function requestWithId(ib, time_limit) {
     }, (cmd) => `ib-client ${cmd}`), 50);
     ib.on('error', function (err, info) {
         if (info && info.id && req_queue[info.id]) {
-            _.delay(() => {
+            // E10167: Displaying delayed market data...
+            if (info.code != 10167) _.delay(() => {
                 const req = req_queue[info.id] || {};
                 // E10197: connectivity problems or No market data during competing live session
                 const fn = info.code == 10197 && req.retry || req.reject || _.noop;

@@ -191,7 +191,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "AEB",
-          "exchange": "SMART"
+          "exchanges": ["AEB", "SMART"]
         }
       }
     },
@@ -214,7 +214,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "ASX",
-          "exchange": "SMART"
+          "exchanges": ["ASX", "SMART"]
         }
       }
     },
@@ -237,7 +237,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "BM",
-          "exchange": "SMART"
+          "exchanges": ["BM", "SMART"]
         }
       }
     },
@@ -260,7 +260,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "BVME",
-          "exchange": "SMART"
+          "exchanges": ["BVME", "SMART"]
         }
       }
     },
@@ -499,7 +499,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExchs": ["IBIS", "FWB"],
-          "exchange": "SMART"
+          "exchanges": ["IBIS", "SMART"]
         }
       }
     },
@@ -552,7 +552,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "LSE",
-          "exchange": "SMART"
+          "exchanges": ["LSE", "SMART"]
         }
       }
     },
@@ -575,7 +575,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "LSEIOB1",
-          "exchange": "SMART"
+          "exchanges": ["LSEIOB1", "SMART"]
         }
       }
     },
@@ -681,7 +681,7 @@
           "whatToShow": "TRADES",
           "secTypes": ["STK", "IND"],
           "primaryExchs": ["NASDAQ", ""],
-          "exchanges": ["SMART", "NASDAQ"],
+          "exchanges": ["NASDAQ", "SMART"],
           "tradingClasses": ["NAS", "NCM", "NGM", "NMS", "NIM"]
         },
         "collective2": {
@@ -754,7 +754,7 @@
           "secType": "STK",
           "primaryExchs": ["NYSE", "AMEX", "ARCA", "BATS"],
           "secondaryToExchs": ["NASDAQ"],
-          "exchanges": ["SMART"]
+          "exchanges": ["NYSE", "SMART"]
         },
         "collective2": {
           "instrument": "stock"
@@ -803,7 +803,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "SBF",
-          "exchange": "SMART"
+          "exchanges": ["SBF", "SMART"]
         }
       }
     },
@@ -879,7 +879,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "TSE",
-          "exchange": "SMART"
+          "exchanges": ["TSE", "SMART"]
         }
       }
     },
@@ -902,7 +902,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "TSEJ",
-          "exchange": "SMART"
+          "exchanges": ["TSEJ", "SMART"]
         }
       }
     },
@@ -930,7 +930,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "VENTURE",
-          "exchange": "SMART"
+          "exchanges": ["VENTURE", "SMART"]
         }
       }
     },
@@ -953,7 +953,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "VIRTX",
-          "exchange": "SMART"
+          "exchanges": ["VIRTX", "SMART"]
         }
       }
     },
