@@ -681,7 +681,7 @@
           "whatToShow": "TRADES",
           "secTypes": ["STK", "IND"],
           "primaryExchs": ["NASDAQ", ""],
-          "exchanges": ["NASDAQ", "SMART"],
+          "exchange": "SMART",
           "tradingClasses": ["NAS", "NCM", "NGM", "NMS", "NIM"]
         },
         "collective2": {
