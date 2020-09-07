@@ -169,6 +169,10 @@ function helpInfo(broker, collect) {
             exclude_working_orders: {
                 usage: 'true',
                 description: "Only update positions sizes, don't submit/update working orders"
+            },
+            ignore_errors: {
+                usage: 'true',
+                description: "Return the orders even if some failed to submit or validate"
             }
         }
     })).then(help => [help]);
@@ -928,8 +932,12 @@ async function submitOrders(broker, orders, options) {
     }));
     const posted = [].concat(..._.compact(submitted.map(item => item.posted)));
     const posted_orders = logOrders(logger.info, posted);
-    const errors = _.values(_.groupBy(submitted.filter(item => !item.posted), item => item.error.message));
-    if (errors.length) {
+    const failed_orders = [].concat(..._.compact(
+        submitted.filter(item => !item.posted)
+            .map(item => item.orders.map(ord => ({...ord, error: item.error.message})))
+    ));
+    if (!options.ignore_errors && failed_orders.length) {
+        const errors = _.values(_.groupBy(submitted.filter(item => !item.posted), item => item.error.message));
         const message = errors.map(group => {
             const orders = [].concat(...group.map(item => item.orders));
             const first_message = _.first(group).error.message;
@@ -940,7 +948,7 @@ async function submitOrders(broker, orders, options) {
         }).join('\n\n');
         throw Error(message);
     }
-    return posted_orders;
+    return posted_orders.concat(failed_orders);
 }
 
 function logOrders(log, orders) {

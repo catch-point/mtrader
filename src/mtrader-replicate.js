@@ -81,6 +81,7 @@ function usage(command) {
         .option('-f, --force', "Change live position even if it was changed more recently then model")
         .option('-w, --working-orders-only', "Don't try to align positions sizes, only submit working orders")
         .option('-W, --exclude-working-orders', "Only update positions sizes, don't submit/update working orders")
+        .option('--ignore-errors', "Return the orders even if some failed to submit or validate")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
