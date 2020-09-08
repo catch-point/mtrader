@@ -208,13 +208,13 @@ async function replicate(broker, collect, lookup, options) {
         now: options.now
     }) || options.now;
     const desired = await getDesiredPositions(broker, collect, lookup, begin, options);
-    const working_refs = _.reduce(desired, (refs, pos) => _.union(refs, Object.keys(pos.working), Object.keys(pos.realized.working||{})), []);
+    const des_working = _.reduce(desired, (refs, pos) => Object.assign(refs, pos.working, pos.realized.working||{}), {});
     const [broker_balances, broker_positions, broker_orders] = await Promise.all([
         broker({action: 'balances', now: options.now}),
         broker({action: 'positions', now: options.now}),
         broker({action: 'orders', now: options.now})
     ]);
-    const actual = getActualPositions(broker_positions, broker_orders, working_refs, begin, options);
+    const actual = getActualPositions(broker_positions, broker_orders, des_working, begin, options);
     logger.debug("replicate actual", ...Object.keys(actual));
     const portfolio = _.uniq(Object.keys(desired).concat(getPortfolio(options.markets, options))).sort();
     logger.trace("replicate portfolio", ...portfolio);
@@ -503,7 +503,7 @@ function getTotalCash(balances, options) {
 /**
  * Retrieves the open positions and working orders from broker
  */
-function getActualPositions(broker_positions, broker_orders, working_refs, begin, options) {
+function getActualPositions(broker_positions, broker_orders, des_working, begin, options) {
     const all_positions = _.groupBy(broker_positions, pos => `${pos.symbol}.${pos.market}`);
     const positions = _.mapObject(all_positions, positions => positions.reduce((net, pos) => {
         return {...net, position: +net.position + +pos.position};
@@ -513,7 +513,7 @@ function getActualPositions(broker_positions, broker_orders, working_refs, begin
     const assets = _.union(Object.keys(positions), Object.keys(working_orders));
     return _.object(assets, assets.map(asset => {
         const position = positions[asset] ? positions[asset].position : 0;
-        const other = sortOrders((working_orders[asset]||[]).filter(ord => !~working_refs.indexOf(ord.order_ref)));
+        const other = sortOrders((working_orders[asset]||[]).filter(ord => !existingOrderRef(des_working, ord)));
         const adjustment = _.first(other.filter(ord => ord.order_type != 'STP'));
         const stoploss = _.first(other.filter(ord => ord.order_type == 'STP'));
         const asof = _.last(_.sortBy((working_orders[asset]||[])
@@ -529,10 +529,20 @@ function getActualPositions(broker_positions, broker_orders, working_refs, begin
             traded_at,
             adjustment,
             stoploss,
-            working: _.indexBy(working, ord => ord.order_ref),
+            working: _.indexBy(working, ord => existingOrderRef(des_working, ord) || ord.order_ref),
             ..._.pick(_.first(working_orders[asset]) || positions[asset], 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick')
         };
     }));
+}
+
+function existingOrderRef(orders, order) {
+    if (orders[order.order_ref]) return order.order_ref;
+    const m = _.matcher(_.pick(order,
+        'symbol', 'market',
+        'action', 'quant', 'order_type',
+        'limit', 'offset', 'stop'
+    ));
+    return (_.values(orders).find(m)||{}).order_ref;
 }
 
 function getPortfolio(markets, options, portfolio = []) {

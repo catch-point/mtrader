@@ -670,11 +670,10 @@ function c2symbol(markets, symbol, market) {
 
 async function lookup(fetch, markets, signal) {
     const instrument = signal.typeofsymbol || signal.instrument;
-    const fullSymbol = signal.fullSymbol || (
+    const fullSymbol =
         instrument == 'future' ? fromFutureSymbol(signal.symbol) :
         instrument == 'option' ? occ_symbol(signal.symbol) :
-        signal.symbol
-    );
+        signal.fullSymbol || signal.symbol;
     const symbols = _.uniq(_.map(_.pick(markets, m => {
         return m.instrument == instrument;
     }), m => {
