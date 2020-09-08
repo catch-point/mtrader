@@ -617,8 +617,9 @@ async function listSymbolPositions(contract, multiplier, bars, position, trades,
 }
 
 function changePosition(multiplier, prev_bar, details, bar, position) {
-    const adj = Big(bar.close).div(bar.adj_close);
-    const dividend = +Big(prev_bar.close).minus(Big(prev_bar.adj_close).times(adj)).toFixed(8);
+    const adj = bar.adj_close ? Big(bar.close).div(bar.adj_close) : 1;
+    const dividend = prev_bar.adj_close ?
+        +Big(prev_bar.close).minus(Big(prev_bar.adj_close).times(adj)).toFixed(8) : 0;
     const ending_value = Big(position).times(bar.close).times(multiplier);
     const quant = details.reduce((shares, trade) => shares + +trade.quant, 0);
     const shares = details.reduce((shares, trade) => shares + +trade.quant * (trade.action.charAt(0) == 'S' ? -1 : 1), 0);
