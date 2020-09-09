@@ -85,7 +85,7 @@ function createInstance(settings = {}) {
         async version() {
             const workers = queue.getWorkers();
             const versions = await queue.all('collect', {info:'version'})
-              .catch(err => workers.map(worker => ({message:err.message})));
+              .catch(err => workers.map(worker => [{message:err.message}]));
             return versions.reduce((versions, version, i) => {
                 const location = workers[i].process.pid;
                 return versions.concat(version.map(ver => ({...ver, location, ...ver})));

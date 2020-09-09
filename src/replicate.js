@@ -537,12 +537,23 @@ function getActualPositions(broker_positions, broker_orders, des_working, begin,
 
 function existingOrderRef(orders, order) {
     if (orders[order.order_ref]) return order.order_ref;
-    const m = _.matcher(_.pick(order,
+    const attrs = _.pick(order,
         'symbol', 'market',
         'action', 'quant', 'order_type',
         'limit', 'offset', 'stop'
-    ));
-    return (_.values(orders).find(m)||{}).order_ref;
+    );
+    return (_.values(orders).find(ord => isMatch(ord, attrs))||{}).order_ref;
+}
+
+function isMatch(object, attrs) {
+    var _keys = keys(attrs), length = _keys.length;
+    if (object == null) return !length;
+    var obj = Object(object);
+    for (var i = 0; i < length; i++) {
+        var key = _keys[i];
+        if (attrs[key] != obj[key] || !(key in obj)) return false;
+    }
+    return true;
 }
 
 function getPortfolio(markets, options, portfolio = []) {
