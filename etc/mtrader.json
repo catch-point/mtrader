@@ -754,7 +754,7 @@
           "secType": "STK",
           "primaryExchs": ["NYSE", "AMEX", "ARCA", "BATS"],
           "secondaryToExchs": ["NASDAQ"],
-          "exchanges": ["NYSE", "SMART"]
+          "exchange": "SMART"
         },
         "collective2": {
           "instrument": "stock"
