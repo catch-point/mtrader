@@ -345,9 +345,9 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
                 signal.status == 'working' ? 'working' : signal.status == 'traded' ? 'filled' : 'cancelled';
             return _.omit({
                 asof: (time ? moment(time, 'X') : moment(options.now)).format(),
-                posted_at: signal.posted_time_unix || signal.postedwhen ?
+                posted_at: +signal.posted_time_unix || +signal.postedwhen ?
                     moment(signal.posted_time_unix || signal.postedwhen, 'X').format() : null,
-                traded_at: signal.traded_time_unix || signal.tradedwhen ?
+                traded_at: +signal.traded_time_unix || +signal.tradedwhen ?
                     moment(signal.traded_time_unix || signal.tradedwhen, 'X').format() : null,
                 action: signal.action.charAt(0) == 'B' ? 'BUY' :
                     signal.action.charAt(0) == 'S' ? 'SELL' : sign.action,
@@ -391,9 +391,9 @@ async function cancelOrder(c2_multipliers, collective2, markets, lookup, options
     ].map(key => +resp[key] || +signal[key] || 0));
     return [_.omit({
         asof: time ? moment(time, 'X').format() : moment(options.now).format(),
-        posted_at: resp.posted_time_unix || resp.postedwhen ?
+        posted_at: +resp.posted_time_unix || +resp.postedwhen ?
             moment(resp.posted_time_unix || resp.postedwhen, 'X').format() : null,
-        traded_at: resp.traded_time_unix || resp.tradedwhen ?
+        traded_at: +resp.traded_time_unix || +resp.tradedwhen ?
             moment(resp.traded_time_unix || resp.tradedwhen, 'X').format() : null,
         action: resp.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
         quant: resp.quant,
@@ -404,7 +404,7 @@ async function cancelOrder(c2_multipliers, collective2, markets, lookup, options
         stop: +signal.isStopOrder ? signal.isStopOrder : +signal.stop ? signal.stop : null,
         traded_price: signal.traded_price,
         tif: +resp.day ? 'DAY' : +resp.gtc ? 'GTC' : resp.tif || resp.duration,
-        status: resp.tradedwhen ? 'filled' : 'cancelled',
+        status: +resp.tradedwhen ? 'filled' : 'cancelled',
         order_ref: resp.localsignalid || resp.signalid,
         symbol: contract.symbol,
         market: contract.market,
@@ -512,9 +512,9 @@ function signalToOrder(working, signal, options) {
     ].map(key => +signal[key] || 0));
     return _.omit({
         asof: time ? moment(time, 'X').format() : moment(options.now).format(),
-        posted_at: signal.posted_time_unix || signal.postedwhen ?
+        posted_at: +signal.posted_time_unix || +signal.postedwhen ?
             moment(signal.posted_time_unix || signal.postedwhen, 'X').format() : null,
-        traded_at: signal.traded_time_unix || signal.tradedwhen ?
+        traded_at: +signal.traded_time_unix || +signal.tradedwhen ?
             moment(signal.traded_time_unix || signal.tradedwhen, 'X').format() : null,
         action: signal.action.charAt(0) == 'B' ? 'BUY' : 'SELL',
         quant: signal.quant,
@@ -523,8 +523,8 @@ function signalToOrder(working, signal, options) {
         stop: signal.stop,
         traded_price: signal.traded_price,
         tif: +signal.day ? 'DAY' : +signal.gtc ? 'GTC' : signal.tif || signal.duration,
-        status: signal.postedwhen ? 'working' : signal.tradedwhen ? 'filled' :
-            signal.killedwhen ? 'cancelled' : 'pending',
+        status: +signal.postedwhen ? 'working' : +signal.tradedwhen ? 'filled' :
+            +signal.killedwhen ? 'cancelled' : 'pending',
         order_ref: signal.localsignalid || signal.signalid,
         symbol: options.symbol,
         market: options.market,
