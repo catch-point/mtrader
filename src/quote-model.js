@@ -297,12 +297,12 @@ async function readModel(asset, model, parameters, options) {
     if (model.bars) {
         const begin = maxDate(model.begin, _.first(model.bars).ending);
         const end = minDate(model.end, _.last(model.bars).ending);
-        return {...model, parameters, begin, end};
+        return merge(model, {parameters, begin, end});
     } else if (model.file_csv_gz) {
         const bars = await readTable(config.resolve(asset.base, model.file_csv_gz));
         const begin = maxDate(model.begin, _.first(bars).ending);
         const end = minDate(model.end, _.last(bars).ending);
-        return {...model, parameters, bars, begin, end};
+        return merge(model, {parameters, bars, begin, end});
     } else if (model.eval) {
         const parser = new Parser({
             constant(value) {
@@ -328,16 +328,15 @@ async function readModel(asset, model, parameters, options) {
         const end = revised_params.end && moment.tz(revised_params.end, options.tz);
         if (begin && !begin.isValid()) throw Error(`Invalid begin ${revised_params.begin}`);
         if (end && !end.isValid()) throw Error(`Invalid begin ${revised_params.end}`);
-        return {
-            ...model,
+        return merge(model, {
             parameters: revised_params,
             begin: begin ? begin.format(options.ending_format) : model.begin,
             end: end ? end.format(options.ending_format) : model.end,
             pad_begin: revised_params.pad_begin || model.pad_begin,
             pad_end: revised_params.pad_end || model.pad_end
-        };
+        });
     } else {
-        return {...model, parameters};
+        return merge(model, {parameters});
     }
 }
 
