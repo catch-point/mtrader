@@ -879,7 +879,7 @@
           "whatToShow": "TRADES",
           "secType": "STK",
           "primaryExch": "TSE",
-          "exchanges": ["TSE", "SMART"]
+          "exchange": "SMART"
         }
       }
     },
