@@ -165,7 +165,7 @@ const functions = module.exports.functions = {
         };
     }, {
         args: "symbol, market, [reference-date,] exdate",
-        description: "Ratio of shares on reference date for every share on exdate (X-to-1 split)"
+        description: "Number of shares on exdate for every share on reference date (X-for-1 split)"
     }),
     DIVIDEND: _.extend(async(fetch, quote, assets, options, expr, symbol_fn, market_fn, refdate_fn, exdate_fn, rate_fn) => {
         const tz = options.tz || (moment.defaultZone||{}).name || moment.tz.guess();
@@ -201,22 +201,22 @@ const functions = module.exports.functions = {
             if (data[start] && data[start].exdate == ref.format("Y-MM-DD")) start++;
             if (data[stop] && data[stop].exdate == exdate.format("Y-MM-DD")) stop++;
             if (start <= stop) {
-                return +data.slice(start, stop).reduce((dividend, datum) => {
-                    const days_to_dividend = datum.dividend ? -ref.diff(datum.exdate, 'days') : 0;
-                    const value = Big(datum.dividend).times(Math.exp(-rate*days_to_dividend/365));
-                    return dividend.add(value).div(datum.split||1);
+                return +data.slice(start, stop).reduceRight((dividend, datum) => {
+                    const days_to_dividend = datum.dividend ? ref.diff(datum.exdate, 'days') : 0;
+                    const value = Big(datum.dividend).times(Math.exp(rate*days_to_dividend/365));
+                    return dividend.add(value).times(datum.split||1);
                 }, Big(0));
             } else {
-                return +data.slice(stop, start).reduceRight((dividend, datum) => {
-                    const days_to_dividend = datum.dividend ? -ref.diff(datum.exdate, 'days') : 0;
-                    const value = Big(datum.dividend).times(Math.exp(-rate*days_to_dividend/365));
-                    return dividend.minus(value).times(datum.split||1);
+                return +data.slice(stop, start).reduce((dividend, datum) => {
+                    const days_to_dividend = datum.dividend ? ref.diff(datum.exdate, 'days') : 0;
+                    const value = Big(datum.dividend).times(Math.exp(rate*days_to_dividend/365));
+                    return dividend.div(datum.split||1).minus(value);
                 }, Big(0));
             }
         };
     }, {
         args: "symbol, market, [reference-date,] exdate [, risk-free-rate]",
-        description: "Dividend value per share for shareholders who owned the stock on reference date until exdate"
+        description: "Dividend value per share for shareholders who owned one stock on reference date and held until exdate"
     })
 };
 
