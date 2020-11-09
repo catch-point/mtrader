@@ -397,6 +397,7 @@ function iqfeed_ieoption(markets, options) {
     const right = symbol.charAt(12);
     const dollar = symbol.substring(13, 18);
     const decimal = symbol.substring(18, 21);
+    if (!right_month_alpha[right]) throw Error(`Option symbol must have right '${symbol}'`);
     const mo = right_month_alpha[right][month];
     const strike = +dollar + +decimal / 1000;
     return `${underlying.substring(0,5).trim()}${year}${day}${mo}${strike}`;
