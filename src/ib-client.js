@@ -144,7 +144,7 @@ function createClient(host, port, clientId, ib_tz, timeout, settings) {
         ib.once('server', version => ready(version))
           .once('disconnected', () => fail());
     });
-    once_connected.then(() => ib.reqMarketDataType(settings.reqMarketDataType || 4));
+    once_connected.then(() => ib.reqMarketDataType(settings.reqMarketDataType || 4), _.noop);
     const time_limit = new TimeLimit(timeout);
     const self = new.target ? this : {};
     const lib_dir = settings && settings.lib_dir;

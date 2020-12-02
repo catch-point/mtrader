@@ -153,7 +153,7 @@ function helpOptions() {
             description: "The order_ref of the parent order that must be filled before this order or a common identifier for orders in the same one-cancels-all (OCA) group."
         },
         attached: {
-            usage: '[...orders]',
+            usage: '[{order},...]',
             description: "Submit attached parent/child orders together or OCA group of orders"
         },
         symbol: {
