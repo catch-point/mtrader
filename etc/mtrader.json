@@ -32,7 +32,7 @@
         "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"
       ],
       "markets": [
-        "AEB","ASX","BM","CBOE","CBOT","CFE","CME","IBIS","ICE","LSE",
+        "AEB","ASX","BE","BM","CBOE","CBOT","CFE","CME","IBIS","ICE","LSE",
         "NASDAQ","NYMEX","NYSE","OPRA","SBF","TSE","TSEJ","VENTURE","VIRTX","X",
         "AUD","CAD","CHF","CNH","GBP","JPY","NOK","NZD","SEK","USD"
       ]
@@ -40,7 +40,7 @@
     "yahoo": {
       "intervals": ["adjustments", "lookup", "contract", "day"],
       "markets": [
-        "AEB","ASX","BM","IBIS","LSE",
+        "AEB","ASX","BE","BM","IBIS","LSE",
         "NASDAQ","NYMEX","NYSE","SBF","TSE","TSEJ","VENTURE","VIRTX"
       ]
     },
@@ -215,6 +215,29 @@
           "secType": "STK",
           "primaryExch": "ASX",
           "exchanges": ["ASX", "SMART"]
+        }
+      }
+    },
+    "BE": {
+      "description": "Euronext Brussels Stocks",
+      "label": "Euronext Brussels Stocks",
+      "trading_hours": "09:00:00 - 17:40:00",
+      "liquid_hours": "09:00:00 - 17:30:00",
+      "open_time": "09:00:00",
+      "security_tz": "Europe/Brussels",
+      "currency": "EUR",
+      "default_security_type": "STK",
+      "datasources": {
+        "yahoo": {
+          "exchs": ["BRU"],
+          "marketLang": "nl-BE",
+          "yahooSuffix": ".BR"
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secType": "STK",
+          "primaryExch": "ENEXT.BE",
+          "exchanges": ["ENEXT.BE", "SMART"]
         }
       }
     },
