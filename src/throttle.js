@@ -52,7 +52,7 @@ module.exports = function(fn, limit) {
             queue.push(() => {
                 const idx = pending.indexOf(abort);
                 if (idx < 0) return next();
-                delete pending[idx];
+                pending.splice(idx, 1);
                 callback();
             });
             pending.push(abort);
