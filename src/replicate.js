@@ -825,7 +825,6 @@ function combineOrders(broker_orders, orders, options) {
     return combined.reduce((orders, ord) => {
         if (_.isEmpty(ord.attached)) return orders;
         if (ord.attached.some(ord => ord.order_type == 'LEG')) return orders;
-        if (ord.action != 'BUY' && ord.action != 'SELL') return orders;
         const idx = orders.indexOf(ord);
         expect(idx).to.be.at.least(0);
         const other = orders.filter(other => other != ord);

@@ -2680,6 +2680,125 @@ describe("replicate-simulation", function() {
                 currency: 'USD'
             }]);
         });
+        it("should combine orders with attached", async() => {
+            await broker({
+                asof: '2020-11-27T16:00:00-05:00',
+                now: '2020-11-27T16:00:00-05:00',
+                action: 'BUY',
+                quant: '2',
+                tif: 'DAY',
+                order_type: 'MKT',
+                symbol: 'FDX   220121C00280000',
+                market: 'OPRA',
+                currency: 'USD',
+                security_type: 'OPT',
+                multiplier: '100',
+                status: 'working'
+            });
+            return replicate(function(options) {
+                if (options.info=='help') return quote(options);
+                else return Promise.resolve([{
+                    position: 0,
+                    buy_action: 'BUY',
+                    buy_quant: 2,
+                    buy_order_type: 'MKT',
+                    traded_at: '2020-11-27T16:00:00-05:00',
+                    buy_tif: 'DAY',
+                    buy_order_ref: 'MID.FDX.mkleaps',
+                    symbol: 'FDX   220121C00280000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    multiplier: '100',
+                    minTick: '0.1'
+                }, {
+                    position: 2,
+                    buy_action: 'BUY',
+                    buy_quant: 1,
+                    buy_order_type: 'LMT',
+                    buy_limit: 47,
+                    buy_order_ref: 'below.FDX.mkleaps',
+                    buy_tif: 'DAY',
+                    sell_action: 'SELL',
+                    sell_quant: 2,
+                    sell_position: 0,
+                    sell_order_type: 'LMT',
+                    sell_limit: 58,
+                    sell_order_ref: 'above.FDX.mkleaps',
+                    sell_tif: 'DAY',
+                    symbol: 'FDX   220121C00280000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    multiplier: '100',
+                    minTick: '0.1'
+                }, {
+                    position: 0,
+                    buy_action: 'BUY',
+                    buy_quant: 3,
+                    buy_order_type: 'LMT',
+                    buy_limit: 47.2,
+                    buy_order_ref: 'above.FDX.mkleaps',
+                    buy_tif: 'DAY',
+                    symbol: 'FDX   220121C00300000',
+                    market: 'OPRA',
+                    currency: 'USD',
+                    security_type: 'OPT',
+                    multiplier: '100',
+                    minTick: '0.1'
+                }]);
+            })({
+                label: 'fdxorders',
+                now: '2020-12-01T09:30:00-05:00',
+                currency: 'USD',
+                markets: ['OPRA'],
+                combo_order_types: ['MKT']
+            }).should.eventually.be.like([{
+                action: 'BUY',
+                quant: '1',
+                order_type: 'LMT',
+                limit: 47,
+                order_ref: 'below.FDX.mkleaps',
+                tif: 'DAY',
+                symbol: 'FDX   220121C00280000',
+                market: 'OPRA',
+                currency: 'USD',
+                security_type: 'OPT',
+                multiplier: '100'
+            }, {
+                action: 'BUY',
+                quant: '1',
+                order_type: 'LMT',
+                limit: Math.round((47.2*3-58*2)*100)/100,
+                order_ref: 'above.FDX.mkleaps',
+                tif: 'DAY',
+                symbol: 'FDX   220121C00280000',
+                market: 'OPRA',
+                currency: 'USD',
+                security_type: 'OPT',
+                multiplier: '100'
+            }, {
+                action: 'SELL',
+                quant: '2',
+                order_type: 'LEG',
+                attach_ref: 'above.FDX.mkleaps',
+                symbol: 'FDX   220121C00280000',
+                market: 'OPRA',
+                currency: 'USD',
+                security_type: 'OPT',
+                multiplier: '100'
+            }, {
+                action: 'BUY',
+                quant: '3',
+                order_type: 'LEG',
+                attach_ref: 'above.FDX.mkleaps',
+                symbol: 'FDX   220121C00300000',
+                market: 'OPRA',
+                currency: 'USD',
+                security_type: 'OPT',
+                multiplier: '100'
+            }]);
+        });
     });
 });
 
