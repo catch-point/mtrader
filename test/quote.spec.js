@@ -279,7 +279,8 @@ describe("quote", function() {
             symbol: 'DIS',
             market: 'NYSE',
             begin: moment.tz('2016-12-01', tz),
-            end: moment.tz('2016-12-08', tz).endOf('day')
+            end: moment.tz('2016-12-08', tz).endOf('day'),
+            now: '2016-12-08'
         }).then(wrong => {
             _.last(wrong).should.be.like(
                 {Date:"2016-12-08",Close:103.38,Change:1.36}
@@ -748,7 +749,8 @@ describe("quote", function() {
             symbol: 'USD',
             market: 'CAD',
             begin: '2016-02-15',
-            end: '2016-02-16'
+            end: '2016-02-16',
+            now: '2016-02-16'
         }).then(async() => {
             await fetch.close();
             await quote.close();

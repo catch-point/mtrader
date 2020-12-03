@@ -564,7 +564,7 @@ function createAndAlignIterators(input, options) {
     const iterators = _.mapObject(input, array => createIterator(array));
     _.forEach(iterators, (iter, i) => {
         if (!iter.hasNext())
-            logger.warn(`fetch-model no ${i} input in ${options.symbol}.${options.market} as of`, options.end);
+            logger.warn(`quote-model no ${i} input in ${options.symbol}.${options.market} as of`, options.end);
     });
     const peeks = Object.values(iterators).filter(iter => iter.hasNext()).map(iter => iter.peek().ending);
     const earliest = _.last(peeks.sort());

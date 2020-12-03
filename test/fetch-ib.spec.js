@@ -234,7 +234,7 @@ describe("fetch-ib", function() {
                 });
             });
         });
-        describe("should lookup CME futures symbols", function() {
+        describe.skip("should lookup CME futures symbols", function() {
             _.range((moment().year()-1)%100,(moment().year()+5)%100).map(year => ['H','M','U','Z'].map(mo => {
                 it(`6E${mo}${year}`, function() {
                     return client({
@@ -577,7 +577,7 @@ describe("fetch-ib", function() {
         });
     });
     describe("intraday", function() {
-        it("should adjust splits and dividends on intraday", function() {
+        it.skip("should adjust splits and dividends on intraday", function() {
             return client({
                 interval: 'm30',
                 symbol: 'AAPL',
