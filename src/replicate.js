@@ -822,22 +822,36 @@ function updateComboOrders(broker_orders, actual, replicateContract, order_chang
 
 function combineOrders(broker_orders, orders, options) {
     const combined = combineSimpleOrders(broker_orders, orders, options);
-    return combined.reduce((orders, ord) => {
-        if (_.isEmpty(ord.attached)) return orders;
-        if (ord.attached.some(ord => ord.order_type == 'LEG')) return orders;
-        const idx = orders.indexOf(ord);
-        expect(idx).to.be.at.least(0);
-        const other = orders.filter(other => other != ord);
-        const combined = combineSimpleOrders(broker_orders, ord.attached.concat(other), options);
-        const attached = _.uniq(ord.attached.map(ord => !ord.order_ref || ~combined.indexOf(ord) ? ord :
-            combined.find(o => o.order_ref == ord.order_ref)));
-        const replacement = {...ord, attached};
-        return combined.filter(ord => !~attached.indexOf(ord)).concat(replacement);
+    return combined.reduceRight((orders, ord) => {
+        if (!~orders.indexOf(ord)) return orders;
+        const pool = orders.filter(other => other != ord);
+        return combineAttachedOrders(broker_orders, ord, pool, options);
     }, combined);
+}
+
+function combineAttachedOrders(broker_orders, order, pool, options) {
+    if (_.isEmpty(order.attached)) return [order].concat(pool);
+    const order_pool = order.attached.reduce((pool, ord, i) => {
+        const rev = combineAttachedOrders(broker_orders, ord, pool.slice(1), options);
+        if (ord == rev) return pool;
+        const attached = pool[0].attached.slice();
+        attached[i] = rev[0];
+        return [{...pool[0], attached}].concat(rev.slice(1));
+    }, [order].concat(pool));
+    const attached_pool = order_pool[0].attached.concat(order_pool.slice(1));
+    const combined = combineSimpleOrders(broker_orders, attached_pool, options);
+    if (combined.length == attached_pool.length) return order_pool;
+    const attached = _.uniq(order_pool[0].attached.map(ord => !ord.order_ref || ~combined.indexOf(ord) ? ord :
+        combined.find(o => o.order_ref == ord.order_ref)));
+    return [{...order, attached}].concat(combined.filter(ord => !~attached.indexOf(ord)));
 }
 
 function combineSimpleOrders(broker_orders, orders, options) {
     return reduceComboPairs(orders, (combined_orders, legs) => {
+        if (legs.some(ord => ord.order_type == 'LEG')) {
+            // already combined
+            return combined_orders.concat(legs);
+        }
         if (!legs.every(ord => ord.order_type == legs[0].order_type && ord.tif == legs[0].tif)) {
             logger.warn("Cannot combine orders", ...legs);
             return combined_orders.concat(legs);
@@ -882,18 +896,18 @@ function combineSimpleOrders(broker_orders, orders, options) {
             offset: _.first(legs).offset,
             order_ref,
             attached: legs.map(leg => ({
-                ..._.omit(leg, 'order_type', 'limit', 'offset', 'stop', 'tif'),
+                ..._.omit(leg, 'order_type', 'limit', 'offset', 'stop', 'tif', 'attached'),
                 action: action == 'SELL' && leg.action == 'BUY' ? 'SELL' :
                     action == 'SELL' && leg.action == 'SELL' ? 'BUY' : leg.action,
                 quant: Big(leg.quant).div(quant).toString(),
                 order_type: 'LEG'
-            }))
+            })).concat(...legs.map(leg => leg.attached||[]))
         });
     });
 }
 
 function reduceComboPairs(orders, cb, initial) {
-    const {ineligible, buy_sell} = _.groupBy(orders, ord => ord.action != 'BUY' && ord.action != 'SELL' || !ord.order_ref || !_.isEmpty(ord.attached) ? 'ineligible' : 'buy_sell');
+    const {ineligible, buy_sell} = _.groupBy(orders, ord => ord.action != 'BUY' && ord.action != 'SELL' || !ord.order_ref ? 'ineligible' : 'buy_sell');
     const grouped = Object.values(_.groupBy(buy_sell || [], ord => ord.order_ref));
     const single_legs = grouped.filter(group => group.length == 1).map(group => group[0]);
     const combo_legs = grouped.filter(group => group.length > 1).map(group => group.sort(sortByHigherPrice));
