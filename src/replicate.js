@@ -234,7 +234,8 @@ async function replicate(broker, collect, lookup, options) {
     await check();
     logger.trace("replicate", options.label || '', "submit orders", ...order_changes);
     const updated_orders = updateComboOrders(broker_orders, actual, replicateContract, order_changes, options);
-    const pending_orders = combineOrders(broker_orders, updated_orders, options);
+    const attached_orders = attachOrders(broker_orders, updated_orders, options);
+    const pending_orders = combineOrders(broker_orders, attached_orders, options);
     return submitOrders(broker, pending_orders, options);
 }
 
@@ -789,18 +790,18 @@ function inlineComboOrders(orders, options) {
 function updateComboOrders(broker_orders, actual, replicateContract, order_changes, options) {
     const changed_combo_orders = broker_orders
         .filter(combo => broker_orders.some(leg => leg.order_type == 'LEG' && leg.attach_ref == combo.order_ref))
-        .filter(combo => order_changes.some(ord => ord.attach_ref == combo.order_ref));
+        .filter(combo => order_changes.some(ord => ord.order_ref == combo.order_ref));
     const cancel_combo_orders = changed_combo_orders.filter(combo => {
-        if (!order_changes.some(ord => ord.attach_ref == combo.order_ref)) return false;
+        if (!order_changes.some(ord => ord.order_ref == combo.order_ref)) return false;
         const legs = broker_orders.filter(leg => leg.order_type == 'LEG' && leg.attach_ref == combo.order_ref);
-        const updated_legs = order_changes.filter(ord => ord.action != 'cancel' && ord.attach_ref == combo.order_ref);
+        const updated_legs = order_changes.filter(ord => ord.action != 'cancel' && ord.order_ref == combo.order_ref);
         return legs.length != updated_legs.length;
     }).map(combo => ({...combo, action: 'cancel'}));
     const cancel_combo_order_refs = cancel_combo_orders.map(combo => combo.order_ref);
     const obsolete_legs = cancel_combo_orders.reduce((obsolete_legs, combo) => {
         return obsolete_legs.concat(broker_orders
             .filter(leg => leg.order_type == 'LEG' && leg.attach_ref == combo.order_ref)
-            .filter(leg => !order_changes.some(upd => upd.symbol == leg.symbol && upd.market == leg.market && upd.attach_ref == leg.attach_ref)));
+            .filter(leg => !order_changes.some(upd => upd.symbol == leg.symbol && upd.market == leg.market && upd.order_ref == leg.attach_ref)));
     }, []).map(leg => `${leg.symbol}.${leg.market}`);
     const updated_legs = obsolete_legs.reduce((updated_legs, contract) => {
         if (!actual[contract]) logger.error("No actual position or orders for cancelling combo with", contract);
@@ -816,8 +817,30 @@ function updateComboOrders(broker_orders, actual, replicateContract, order_chang
         // these contracts were updated
         .filter(ord => !~obsolete_legs.indexOf(`${ord.symbol}.${ord.market}`))
         // these legs are cancelled via cancel_combo_orders
-        .filter(ord => ord.action != 'cancel' || !~cancel_combo_order_refs.indexOf(ord.attach_ref))
+        .filter(ord => ord.action != 'cancel' || !~cancel_combo_order_refs.indexOf(ord.order_ref))
         .concat(cancel_combo_orders, updated_legs);
+}
+
+function attachOrders(broker_orders, orders, options) {
+    const broker_order_refs = broker_orders.map(ord => ord.order_ref);
+    return orders.reduce((orders, ord) => {
+        if (!ord.attach_ref || ord.attach_ref == ord.order_ref || ord.action == 'cancel') return orders;
+        return attachOrder(ord, orders.filter(o => o != ord), options) || orders;
+    }, orders);
+}
+
+function attachOrder(order, orders, options) {
+    return orders.reduce((result, ord) => {
+        if (result) return result;
+        const idx = ~orders.indexOf(ord) ? orders.indexOf(ord) : orders.length;
+        if (ord.order_ref == order.attach_ref) {
+            const attached = (ord.attached||[]).concat(order);
+            return orders.slice(0, idx).concat({...ord, attached}, orders.slice(idx+1));
+        } else if (!_.isEmpty(ord.attached)) {
+            const attached = attachOrder(order, ord.attached, options);
+            if (attached) return orders.slice(0, idx).concat({...ord, attached}, orders.slice(idx+1));
+        }
+    }, null);
 }
 
 function combineOrders(broker_orders, orders, options) {
