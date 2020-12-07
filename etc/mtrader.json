@@ -32,16 +32,16 @@
         "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"
       ],
       "markets": [
-        "AEB","ASX","BE","BM","CBOE","CBOT","CFE","CME","IBIS","ICE","LSE",
-        "NASDAQ","NYMEX","NYSE","OPRA","SBF","TSE","TSEJ","VENTURE","VIRTX","X",
+        "AEB","ASX","BE","BM","CBOE","CBOT","CFE","CME","EBS","IBIS","ICE","LSE",
+        "NASDAQ","NYMEX","NYSE","OPRA","SBF","TSE","TSEJ","VENTURE","X",
         "AUD","CAD","CHF","CNH","GBP","JPY","NOK","NZD","SEK","USD"
       ]
     },
     "yahoo": {
       "intervals": ["adjustments", "lookup", "contract", "day"],
       "markets": [
-        "AEB","ASX","BE","BM","IBIS","LSE",
-        "NASDAQ","NYMEX","NYSE","SBF","TSE","TSEJ","VENTURE","VIRTX"
+        "AEB","ASX","BE","BM","EBS","IBIS","LSE",
+        "NASDAQ","NYMEX","NYSE","SBF","TSE","TSEJ","VENTURE"
       ]
     },
     "remote": {
@@ -957,9 +957,9 @@
         }
       }
     },
-    "VIRTX": {
-      "description": "VIRT-X (VIRTX)",
-      "label": "VIRT-X",
+    "EBS": {
+      "description": "SIX Swiss Exchange",
+      "label": "EBS",
       "trading_hours": "09:00:00 - 17:32:00",
       "liquid_hours": "09:00:00 - 17:30:00",
       "open_time": "09:00:00",
@@ -975,8 +975,8 @@
         "ib": {
           "whatToShow": "TRADES",
           "secType": "STK",
-          "primaryExch": "VIRTX",
-          "exchanges": ["VIRTX", "SMART"]
+          "primaryExch": "EBS",
+          "exchanges": ["EBS", "VIRTX", "SMART"]
         }
       }
     },
