@@ -2549,11 +2549,11 @@ describe("replicate-simulation", function() {
                 combo_order_types: ['MOC']
             }).should.eventually.be.like([{
                 order_type: 'LOC',
-                action: 'BUY',
-                limit: (8140-6620)/100
+                action: 'BUY'
             }, {
                 action: 'BUY',
                 order_type: 'LEG',
+                limit: 81.4,
                 symbol: 'SPX   200320C03200000',
                 market: 'OPRA',
                 security_type: 'OPT',
@@ -2561,6 +2561,7 @@ describe("replicate-simulation", function() {
             }, {
                 action: 'SELL',
                 order_type: 'LEG',
+                limit: 66.2,
                 symbol: 'SPX   200320C03225000',
                 market: 'OPRA',
                 security_type: 'OPT',
@@ -2607,11 +2608,11 @@ describe("replicate-simulation", function() {
                 combo_order_types: ['MOC']
             }).should.eventually.be.like([{
                 order_type: 'LOC',
-                action: 'BUY',
-                limit: (8140-6620)/100
+                action: 'BUY'
             }, {
                 action: 'BUY',
                 order_type: 'LEG',
+                limit: 81.4,
                 symbol: 'SPX   200320C03200000',
                 market: 'OPRA',
                 security_type: 'OPT',
@@ -2619,6 +2620,7 @@ describe("replicate-simulation", function() {
             }, {
                 action: 'SELL',
                 order_type: 'LEG',
+                limit: 66.2,
                 symbol: 'SPX   200221C03225000',
                 market: 'OPRA',
                 security_type: 'OPT',
@@ -2666,11 +2668,11 @@ describe("replicate-simulation", function() {
             }).should.eventually.be.like([{
                 order_type: 'LOC',
                 action: 'BUY',
-                quant: '3',
-                limit: (2*8140-6620)/100
+                quant: '3'
             }, {
                 action: 'BUY',
                 order_type: 'LEG',
+                limit: 81.4,
                 quant: '2',
                 symbol: 'SPX   200320C03200000',
                 market: 'OPRA',
@@ -2679,6 +2681,7 @@ describe("replicate-simulation", function() {
             }, {
                 action: 'SELL',
                 order_type: 'LEG',
+                limit: 66.2,
                 quant: '1',
                 symbol: 'SPX   200320C03225000',
                 market: 'OPRA',
@@ -2775,7 +2778,6 @@ describe("replicate-simulation", function() {
                 action: 'BUY',
                 quant: '1',
                 order_type: 'LMT',
-                limit: Math.round((47.2*3-58*2)*100)/100,
                 order_ref: 'above.FDX.mkleaps',
                 tif: 'DAY',
                 symbol: 'FDX   220121C00280000',
@@ -2787,6 +2789,7 @@ describe("replicate-simulation", function() {
                 action: 'SELL',
                 quant: '2',
                 order_type: 'LEG',
+                limit: 58,
                 attach_ref: 'above.FDX.mkleaps',
                 symbol: 'FDX   220121C00280000',
                 market: 'OPRA',
@@ -2797,6 +2800,7 @@ describe("replicate-simulation", function() {
                 action: 'BUY',
                 quant: '3',
                 order_type: 'LEG',
+                limit: 47.2,
                 attach_ref: 'above.FDX.mkleaps',
                 symbol: 'FDX   220121C00300000',
                 market: 'OPRA',

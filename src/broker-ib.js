@@ -509,15 +509,18 @@ async function submitOrder(root_ref, markets, ib, fetch, settings, options, pare
         settings.transmit || false;
     const existing_orders = await Promise.all(attached.map(ord => orderByRef(ib, ord.order_ref)));
     const new_orders = attached.filter((ord, i) => !existing_orders[i]);
+    const legs = attached.filter(ord => ord.order_type == 'LEG');
     const last_new_order = existing_orders.reduce((last, ord, i) => !existing_orders[i] ? i : last, 0);
     const posted_order = await reqId(async(order_id) => {
         const order_ref = orderRef(root_ref, order_id, options);
         const submit_order = {
             ...ib_order,
             orderId: order_id, orderRef: order_ref,
+            orderType: ib_order.orderType == 'MKT' && legs.every(ord => ord.limit) ? 'LMT' : ib_order.orderType,
             transmit: (contract.secType == 'BAG' || _.isEmpty(new_orders)) && transmit,
             parentId: parentId || (attach_order ? attach_order.orderId : null),
             ocaGroup: oca_group, ocaType: oca_group ? 1 : 0,
+            orderComboLegs: legs.map(leg => ({price: leg.limit})),
             smartComboRoutingParams: contract.secType == 'BAG' && contract.exchange == 'SMART' ?
                 [{tag:'NonGuaranteed',value:'1'}] : []
         };
