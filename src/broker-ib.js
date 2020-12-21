@@ -818,8 +818,17 @@ async function ibToOrder(markets, ib, settings, order, options) {
 function orderTypeFromIB(order) {
     if (order.orderRef && order.orderRef.indexOf('SNAPSTK') === 0) return 'SNAP STK';
     if (!order.algoStrategy) return order.orderType;
-    const algoParams = (order.algoParams||[]).map(tv => `${tv.tag}=${tv.value}`).join(';');
+    const algoParams = (order.algoParams||[])
+      .filter(tv => !isDefaultAlgoParam(tv.tag, tv.value))
+      .map(tv => `${tv.tag}=${tv.value}`).join(';');
     return (`${order.algoStrategy} (IBALGO) ${algoParams}`).trim();
+}
+
+function isDefaultAlgoParam(name, value) {
+    if (name == 'adaptivePriority')
+        return value == 'Normal';
+    else
+        return false;
 }
 
 async function listAccounts(ib, account) {
