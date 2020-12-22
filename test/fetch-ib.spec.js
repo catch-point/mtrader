@@ -858,7 +858,7 @@ describe("fetch-ib", function() {
     });
     it.skip("should use summary info for OPRA intraday", function() {
         return client({
-            conId: 347347237,
+            conid: 347347237,
             interval: 'm60',
             symbol: 'SPX   190418C02900000',
             market: 'OPRA',

@@ -626,8 +626,8 @@ async function snapStockLimit(markets, ib, fetch, contract, order, options) {
     if (_.isEmpty(order.attached)) {
         expect(contract.secType).to.be.oneOf(['FUT', 'OPT','FOP']);
         const detail = _.first(await ib.reqContractDetails(contract));
-        const under_contract = await ib.reqContract(detail.underConId);
-        const right = detail.summary.right;
+        const under_contract = await ib.reqContract(detail.underConid);
+        const right = detail.contract.right;
         expect(right).is.oneOf(['C', 'P']);
         const minTick = Math.max(order.minTick||0, detail.minTick||0.000001);
         const [bar, under_bar] = await Promise.all([
@@ -656,13 +656,13 @@ async function snapStockLimit(markets, ib, fetch, contract, order, options) {
                 return toContractWithId(markets, ib, leg);
             }))
         ]);
-        const under_contract = await ib.reqContract(detail.underConId);
+        const under_contract = await ib.reqContract(detail.underConid);
         const detail_minTick = detail.minTick||0.000001;
         const leg_minTick = order.attached.reduce((minTick, leg) => {
             return Math.min(minTick, leg.minTick||detail_minTick);
         }, Infinity);
         const minTick = Math.max(detail_minTick, leg_minTick, order.minTick||0);
-        const right = detail.summary.right;
+        const right = detail.contract.right;
         contracts.forEach(contract => {
             expect(contract.secType).to.be.oneOf(['FUT', 'OPT','FOP']);
             expect(contract.right).is.oneOf(['C', 'P']);
@@ -859,21 +859,21 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
     // TODO don't assume conIds in executions mean the same in positions
     const conIds = _.union(Object.keys(positions).map(i => parseInt(i)), collectConIds(executions));
     const listChanges = listContractPositions.bind(this, markets, ib, fetch);
-    const changes = await Promise.all(conIds.sort().map(async(conId) => {
-        const con_pos = positions[conId];
-        const con_exe = executions.filter(exe => exe.conId == conId).map(exe => ({
+    const changes = await Promise.all(conIds.sort().map(async(conid) => {
+        const con_pos = positions[conid];
+        const con_exe = executions.filter(exe => exe.conid == conid || exe.conId == conid).map(exe => ({
             asof: parseTime(exe.time, ib_tz).format(),
             ...exe
         })).filter(exe => exe.asof <= asof_format);
-        const details = con_pos ? await ib.reqContractDetails({conId}) : [];
-        const contract = con_pos ? await ib.reqContract(conId) : _.first(con_exe);
+        const details = con_pos ? await ib.reqContractDetails({conid}) : [];
+        const contract = con_pos ? await ib.reqContract(conid) : _.first(con_exe);
         if (contract.secType == 'BAG') return [];
         const detail = _.first(details)||{};
-        const under_contract = !detail.underConId ? contract :
-            await ib.reqContract(detail.underConId).catch(err => {
-                logger.warn(`${err.message.replace(/\n[\S\s]*$/,'')} ${contract.localSymbol||contract.symbol} underConId ${detail.underConId}`);
+        const under_contract = !detail.underConid ? contract :
+            await ib.reqContract(detail.underConid).catch(err => {
+                logger.warn(`${err.message.replace(/\n[\S\s]*$/,'')} ${contract.localSymbol||contract.symbol} underConId ${detail.underConid}`);
                 return {
-                    conId: detail.underConId,
+                    conid: detail.underConid,
                     symbol: detail.underSymbol || contract.symbol,
                     secType: detail.underSecType
                 };
@@ -883,7 +883,7 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
         const change_list = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options);
         const changes = change_list.map(change => ({
             ...change,
-            trading_class: ((_.first(details)||{}).summary||{}).tradingClass,
+            trading_class: ((_.first(details)||{}).contract||{}).tradingClass,
             ..._.pick(_.first(details), ['industry', 'category', 'subcategory']),
             under_symbol, under_market
         }));
@@ -904,7 +904,7 @@ async function listContractPositions(markets, ib, fetch, contract, pos, executio
     const market = await asMarket(markets, ib, contract);
     const now = moment().format();
     const earliest = moment(options.asof || options.now).subtract(5, 'days').startOf('day').format();
-    const key = `${contract.conId} ${earliest}`;
+    const key = `${contract.conid || contract.conId} ${earliest}`;
     const promise = historical[key] = historical[key] ||
         loadHistoricalData(fetch, symbol, market, earliest, options);
     const bars = await promise;
@@ -998,8 +998,8 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
 function collectConIds(executions) {
     return executions.reduce((conIds, execution) => {
         if (execution.secType == 'BAG') return conIds;
-        const idx = _.sortedIndex(conIds, execution.conId);
-        conIds.splice(idx, 0, execution.conId);
+        const idx = _.sortedIndex(conIds, execution.conid || execution.conId);
+        conIds.splice(idx, 0, execution.conid || execution.conId);
         return conIds;
     }, []);
 }
@@ -1044,7 +1044,7 @@ async function toContract(markets, ib, options) {
         expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
         const market = markets[options.market];
         return _.omit({
-            conId: options.conId,
+            conid: options.conid || options.conId,
             localSymbol: toLocalSymbol(market, options.symbol),
             secType: options.security_type || market.secType,
             primaryExch: market.primaryExch || _.first(market.primaryExchs),
@@ -1070,7 +1070,7 @@ async function toContract(markets, ib, options) {
                 return {
                     action: leg.action,
                     ratio: leg.quant,
-                    conId: contract.conId,
+                    conid: contract.conid,
                     exchange: contract.exchange
                 };
             })
@@ -1084,9 +1084,9 @@ async function toContract(markets, ib, options) {
 
 async function toContractWithId(markets, ib, options) {
     const contract = await toContract(markets, null, options);
-    if (contract.conId) return contract;
+    if (contract.conid) return contract;
     const details = await ib.reqContractDetails(contract);
-    if (details.length) return _.first(details).summary;
+    if (details.length) return _.first(details).contract;
     else throw Error(`Could not determin contract from ${util.inspect(contract, {breakLength:Infinity})}`);
 }
 
@@ -1124,12 +1124,13 @@ async function asMarket(markets, ib, contract) {
       .concat(Object.keys(markets))
       .find(name => inMarket(contract, markets[name]));
     if (market) return market;
-    const details = ib ? await ib.reqContractDetails(contract.conId ? {conId: contract.conId} : contract)
+    const details = ib ? await ib.reqContractDetails(
+        contract.conid || contract.conId ? {conid: contract.conid || contract.conId} : contract)
       .catch(err => []): [];
     return details.reduce(async(promise, detail) => {
         const prior = await promise.catch(err => err);
         if (!(prior instanceof Error)) return prior;
-        else return asMarket(markets, null, {...detail, ...detail.summary}).catch(err => Promise.reject(prior));
+        else return asMarket(markets, null, {...detail, ...detail.contract}).catch(err => Promise.reject(prior));
     }, Promise.reject(Error(`Could not determine market for ${util.inspect(contract, {breakLength:Infinity})}`)));
 }
 

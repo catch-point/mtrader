@@ -44,7 +44,7 @@ const expect = require('chai').use(like).expect;
 
 describe("broker-ib", function() {
     this.timeout(120000);
-    var client, ib = new IB();
+    var client, ib;
     const settings = {
         account: 'test',
         fetch: {
@@ -54,7 +54,8 @@ describe("broker-ib", function() {
             }
         }
     };
-    before(function() {
+    before(async function() {
+        ib = await IB();
         return ib.open().catch(err => {
             ib = null;
         });
@@ -134,7 +135,7 @@ describe("broker-ib", function() {
                  currency: 'USD',
                  multiplier: '' })
             }},
-          reqContractDetails: (arg) => {switch(arg.conId) {
+          reqContractDetails: (arg) => {switch(arg.conid) {
             case 4215235: return Promise.resolve({ secType: 'STK',
                  localSymbol: 'XLU',
                  exchange: 'NYSE',
@@ -179,7 +180,7 @@ describe("broker-ib", function() {
             localSymbol: 'SPY',
             exchange: 'SMART',
             currency: 'USD',
-            conId: 756733,
+            conid: 756733,
             status: 'PreSubmitted',
             time: '20190601 14:48:27',
             action: 'BUY',
@@ -200,10 +201,10 @@ describe("broker-ib", function() {
              localSymbol: 'SPY',
              exchange: 'SMART',
              currency: 'USD',
-             conId: 756733,
+             conid: 756733,
              multiplier: '' });},
-          reqContractDetails: (...args) => {expect(args).to.be.like([ { conId: 756733 } ]);
-          return Promise.resolve([ { summary: { exchange: 'SMART',
+          reqContractDetails: (...args) => {expect(args).to.be.like([ { conid: 756733 } ]);
+          return Promise.resolve([ { contract: { exchange: 'SMART',
                   currency: 'USD',
                   secType: 'STK',
                   primaryExch: 'NYSE' } } ]);},
@@ -789,18 +790,18 @@ describe("broker-ib", function() {
                secType: 'OPT',
                exchange: 'SMART',
                currency: 'USD' } ]);
-               return Promise.resolve([ { summary: { currency: 'USD',
+               return Promise.resolve([ { contract: { currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
-                  conId: 354278083 } } ])
+                  conid: 354278083 } } ])
         case 1: expect(args).to.be.like([ { localSymbol: 'SPX   190719P02450000',
                secType: 'OPT',
                exchange: 'SMART',
                currency: 'USD' } ]);
-               return Promise.resolve([ { summary: { currency: 'USD',
+               return Promise.resolve([ { contract: { currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
-                  conId: 354278089 } } ])
+                  conid: 354278089 } } ])
         default: throw Error("Too many times")
         }}})(),
           reqManagedAccts: () => Promise.resolve([ 'test' ]),
@@ -811,8 +812,8 @@ describe("broker-ib", function() {
                currency: 'USD',
                exchange: 'SMART',
                comboLegs: 
-                [ { action: 'SELL', ratio: 1, conId: 354278083, exchange: 'SMART' },
-                  { action: 'BUY', ratio: 1, conId: 354278089, exchange: 'SMART' } ] },
+                [ { action: 'SELL', ratio: 1, conid: 354278083, exchange: 'SMART' },
+                  { action: 'BUY', ratio: 1, conid: 354278089, exchange: 'SMART' } ] },
              { action: 'SELL',
                totalQuantity: 1,
                orderType: 'LMT',
@@ -832,10 +833,10 @@ describe("broker-ib", function() {
                currency: 'USD',
                exchange: 'SMART',
                comboLegs: 
-                [ { action: 'SELL', ratio: 1, conId: 354278083, currency: 'USD',
+                [ { action: 'SELL', ratio: 1, conid: 354278083, currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX', },
-                  { action: 'BUY', ratio: 1, conId: 354278089, currency: 'USD',
+                  { action: 'BUY', ratio: 1, conid: 354278089, currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX', } ],
              action: 'SELL',
@@ -908,18 +909,18 @@ describe("broker-ib", function() {
                secType: 'OPT',
                exchange: 'SMART',
                currency: 'USD' } ]);
-               return Promise.resolve([ { summary: { currency: 'USD',
+               return Promise.resolve([ { contract: { currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
-                  conId: 304784993 } } ])
+                  conid: 304784993 } } ])
         case 1: expect(args).to.be.like([ { localSymbol: 'SPX   190621C03125000',
                secType: 'OPT',
                exchange: 'SMART',
                currency: 'USD' } ]);
-               return Promise.resolve([ { summary: { currency: 'USD',
+               return Promise.resolve([ { contract: { currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
-                  conId: 304784996 } } ])
+                  conid: 304784996 } } ])
         default: throw Error("Too many times")
         }}})(),
           reqManagedAccts: () => Promise.resolve([ 'test' ]),
@@ -930,8 +931,8 @@ describe("broker-ib", function() {
                currency: 'USD',
                exchange: 'SMART',
                comboLegs: 
-                [ { action: 'BUY', ratio: 1, conId: 304784993, exchange: 'SMART' },
-                  { action: 'SELL', ratio: 1, conId: 304784996, exchange: 'SMART' } ] },
+                [ { action: 'BUY', ratio: 1, conid: 304784993, exchange: 'SMART' },
+                  { action: 'SELL', ratio: 1, conid: 304784996, exchange: 'SMART' } ] },
              { action: 'BUY',
                totalQuantity: 1,
                orderType: 'SNAP MID',
@@ -954,11 +955,11 @@ describe("broker-ib", function() {
                 [ { action: 'BUY', ratio: 1, currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
-                  conId: 304784993 },
+                  conid: 304784993 },
                   { action: 'SELL', ratio: 1, currency: 'USD',
                   exchange: 'SMART',
                   symbol: 'SPX',
-                  conId: 304784996 } ],
+                  conid: 304784996 } ],
              action: 'BUY',
              totalQuantity: 1,
              orderType: 'SNAP MID',
@@ -1071,7 +1072,7 @@ describe("broker-ib", function() {
                faGroup: '',
                faProfile: '',
                account: 'test',
-               conId: 362699310,
+               conid: 362699310,
                secType: 'FUT',
                localSymbol: 'MESM9',
                exchange: 'GLOBEX',
@@ -1164,17 +1165,17 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'GLOBEX' },
                                 minTick: 0.05,
-                                underConId: 310629209
+                                underConid: 310629209
                             }]);
                         case 1:
                             expect(args).to.be.like([{
-                                conId: 310629209
+                                conid: 310629209
                             }]);
                             return Promise.resolve([{
-                                summary: {
-                                    conId: 310629209,
+                                contract: {
+                                    conid: 310629209,
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
@@ -1189,7 +1190,7 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209,
+                    conid: 310629209,
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
@@ -1215,7 +1216,7 @@ describe("broker-ib", function() {
                                 ask: 17
                             })
                         case 1:
-                            expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1306,17 +1307,17 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'GLOBEX' },
                                 minTick: 0.05,
-                                underConId: 310629209
+                                underConid: 310629209
                             }]);
                         case 1:
                             expect(args).to.be.like([{
-                                conId: 310629209
+                                conid: 310629209
                             }]);
                             return Promise.resolve([{
-                                summary: {
-                                    conId: 310629209,
+                                contract: {
+                                    conid: 310629209,
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
@@ -1331,7 +1332,7 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209,
+                    conid: 310629209,
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
@@ -1362,7 +1363,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 1:
-                            expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1467,17 +1468,17 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'GLOBEX' },
                                 minTick: 0.05,
-                                underConId: 310629209
+                                underConid: 310629209
                             }]);
                         case 1:
                             expect(args).to.be.like([{
-                                conId: 310629209
+                                conid: 310629209
                             }]);
                             return Promise.resolve([{
-                                summary: {
-                                    conId: 310629209,
+                                contract: {
+                                    conid: 310629209,
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
@@ -1492,7 +1493,7 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209,
+                    conid: 310629209,
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
@@ -1523,7 +1524,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 1:
-                            expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1627,17 +1628,17 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'GLOBEX' },
                                 minTick: 0.05,
-                                underConId: 310629209
+                                underConid: 310629209
                             }]);
                         case 1:
                             expect(args).to.be.like([{
-                                conId: 310629209
+                                conid: 310629209
                             }]);
                             return Promise.resolve([{
-                                summary: {
-                                    conId: 310629209,
+                                contract: {
+                                    conid: 310629209,
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
@@ -1652,7 +1653,7 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209,
+                    conid: 310629209,
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
@@ -1683,7 +1684,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 1:
-                            expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1788,17 +1789,17 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                summary: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'GLOBEX' },
                                 minTick: 0.05,
-                                underConId: 310629209
+                                underConid: 310629209
                             }]);
                         case 1:
                             expect(args).to.be.like([{
-                                conId: 310629209
+                                conid: 310629209
                             }]);
                             return Promise.resolve([{
-                                summary: {
-                                    conId: 310629209,
+                                contract: {
+                                    conid: 310629209,
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
@@ -1813,7 +1814,7 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209,
+                    conid: 310629209,
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
@@ -1844,7 +1845,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 1:
-                            expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1948,17 +1949,17 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                summary: { right: 'P', exchange: 'GLOBEX' },
+                                contract: { right: 'P', exchange: 'GLOBEX' },
                                 minTick: 0.05,
-                                underConId: 310629209
+                                underConid: 310629209
                             }]);
                         case 1:
                             expect(args).to.be.like([{
-                                conId: 310629209
+                                conid: 310629209
                             }]);
                             return Promise.resolve([{
-                                summary: {
-                                    conId: 310629209,
+                                contract: {
+                                    conid: 310629209,
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
@@ -1973,7 +1974,7 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209,
+                    conid: 310629209,
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
@@ -2004,7 +2005,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 1:
-                            expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -2108,17 +2109,17 @@ describe("broker-ib", function() {
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                summary: { right: 'P', exchange: 'GLOBEX' },
+                                contract: { right: 'P', exchange: 'GLOBEX' },
                                 minTick: 0.05,
-                                underConId: 310629209
+                                underConid: 310629209
                             }]);
                         case 1:
                             expect(args).to.be.like([{
-                                conId: 310629209
+                                conid: 310629209
                             }]);
                             return Promise.resolve([{
-                                summary: {
-                                    conId: 310629209,
+                                contract: {
+                                    conid: 310629209,
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
@@ -2133,7 +2134,7 @@ describe("broker-ib", function() {
             reqContract: (...args) => {
                 expect(args).to.be.like([310629209]);
                 return Promise.resolve({
-                    conId: 310629209,
+                    conid: 310629209,
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
@@ -2164,7 +2165,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 1:
-                            expect(args).to.be.like([{ conId: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738,
@@ -2255,7 +2256,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(1),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -2265,11 +2266,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2281,7 +2282,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719C03075000':
                         expect(args).to.be.like([{
@@ -2292,11 +2293,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2308,18 +2309,18 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'CBOE',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -2334,7 +2335,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -2347,7 +2348,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2367,7 +2368,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2384,7 +2385,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -2404,8 +2405,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'BUY', ratio: 1, conId: 354277718, exchange: 'SMART' },
-                        { action: 'SELL', ratio: 1, conId: 354277733, exchange: 'SMART' }
+                    comboLegs: [{ action: 'BUY', ratio: 1, conid: 354277718, exchange: 'SMART' },
+                        { action: 'SELL', ratio: 1, conid: 354277733, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -2427,8 +2428,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'BUY', ratio: 1, conId: 354277718, exchange: 'SMART' },
-                        { action: 'SELL', ratio: 1, conId: 354277733, exchange: 'SMART' }
+                    comboLegs: [{ action: 'BUY', ratio: 1, conid: 354277718, exchange: 'SMART' },
+                        { action: 'SELL', ratio: 1, conid: 354277733, exchange: 'SMART' }
                     ],
                     status: 'ApiPending',
                     action: 'BUY',
@@ -2497,7 +2498,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(2),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -2507,11 +2508,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2523,7 +2524,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719C03075000':
                         expect(args).to.be.like([{
@@ -2534,11 +2535,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2551,14 +2552,14 @@ describe("broker-ib", function() {
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -2573,7 +2574,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -2586,7 +2587,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2611,7 +2612,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2633,7 +2634,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -2654,7 +2655,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354277718,
+                                    conid: 354277718,
                                     right: 'C',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -2673,7 +2674,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354277733,
+                                    conid: 354277733,
                                     right: 'C',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -2700,8 +2701,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'BUY', ratio: 1, conId: 354277718, exchange: 'SMART' },
-                        { action: 'SELL', ratio: 1, conId: 354277733, exchange: 'SMART' }
+                    comboLegs: [{ action: 'BUY', ratio: 1, conid: 354277718, exchange: 'SMART' },
+                        { action: 'SELL', ratio: 1, conid: 354277733, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -2727,7 +2728,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719C03025000',
                                 multiplier: '100' },
@@ -2735,7 +2736,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354277733,
+                                    conid: 354277733,
                                     secType: 'OPT',
                                     localSymbol: 'SPX   190719C03075000',
                                     multiplier: '100', }
@@ -2807,7 +2808,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(3),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -2817,11 +2818,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2833,7 +2834,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719C03075000':
                         expect(args).to.be.like([{
@@ -2844,11 +2845,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2861,14 +2862,14 @@ describe("broker-ib", function() {
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -2883,7 +2884,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -2896,7 +2897,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2921,7 +2922,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -2943,7 +2944,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -2962,7 +2963,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354277718,
+                                    conid: 354277718,
                                     right: 'C',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -2981,7 +2982,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354277733,
+                                    conid: 354277733,
                                     right: 'C',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -3008,8 +3009,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'BUY', ratio: 1, conId: 354277718, exchange: 'SMART' },
-                        { action: 'SELL', ratio: 1, conId: 354277733, exchange: 'SMART' }
+                    comboLegs: [{ action: 'BUY', ratio: 1, conid: 354277718, exchange: 'SMART' },
+                        { action: 'SELL', ratio: 1, conid: 354277733, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -3035,7 +3036,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719C03025000',
                                 multiplier: '100', },
@@ -3043,7 +3044,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719C03075000',
                                 multiplier: '100', }
@@ -3116,7 +3117,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(4),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -3126,11 +3127,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3142,7 +3143,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719P02400000':
                         expect(args).to.be.like([{
@@ -3153,11 +3154,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3170,14 +3171,14 @@ describe("broker-ib", function() {
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -3192,7 +3193,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -3205,7 +3206,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3225,7 +3226,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3242,7 +3243,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -3262,8 +3263,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'BUY', ratio: 1, conId: 354278089, exchange: 'SMART' },
-                        { action: 'SELL', ratio: 1, conId: 354278083, exchange: 'SMART' }
+                    comboLegs: [{ action: 'BUY', ratio: 1, conid: 354278089, exchange: 'SMART' },
+                        { action: 'SELL', ratio: 1, conid: 354278083, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -3289,7 +3290,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02450000',
                                 multiplier: '100', },
@@ -3297,7 +3298,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02400000',
                                 multiplier: '100', }
@@ -3370,7 +3371,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(5),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -3380,11 +3381,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3396,7 +3397,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719P02400000':
                         expect(args).to.be.like([{
@@ -3407,11 +3408,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3424,14 +3425,14 @@ describe("broker-ib", function() {
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -3446,7 +3447,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -3459,7 +3460,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3484,7 +3485,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3506,7 +3507,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -3527,7 +3528,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354278089,
+                                    conid: 354278089,
                                     right: 'P',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -3546,7 +3547,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354278083,
+                                    conid: 354278083,
                                     right: 'P',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -3573,8 +3574,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'BUY', ratio: 1, conId: 354278089, exchange: 'SMART' },
-                        { action: 'SELL', ratio: 1, conId: 354278083, exchange: 'SMART' }
+                    comboLegs: [{ action: 'BUY', ratio: 1, conid: 354278089, exchange: 'SMART' },
+                        { action: 'SELL', ratio: 1, conid: 354278083, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -3600,7 +3601,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02450000',
                                 multiplier: '100', },
@@ -3608,7 +3609,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02400000',
                                 multiplier: '100', }
@@ -3681,7 +3682,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(6),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -3691,11 +3692,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3707,7 +3708,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719P02400000':
                         expect(args).to.be.like([{
@@ -3718,11 +3719,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3735,14 +3736,14 @@ describe("broker-ib", function() {
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -3757,7 +3758,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -3770,7 +3771,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3795,7 +3796,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -3817,7 +3818,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -3838,7 +3839,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354278089,
+                                    conid: 354278089,
                                     right: 'P',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -3857,7 +3858,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354278083,
+                                    conid: 354278083,
                                     right: 'P',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -3884,8 +3885,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'BUY', ratio: 1, conId: 354278089, exchange: 'SMART' },
-                        { action: 'SELL', ratio: 1, conId: 354278083, exchange: 'SMART' }
+                    comboLegs: [{ action: 'BUY', ratio: 1, conid: 354278089, exchange: 'SMART' },
+                        { action: 'SELL', ratio: 1, conid: 354278083, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -3913,7 +3914,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02450000',
                                 multiplier: '100' },
@@ -3921,7 +3922,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02400000',
                                 multiplier: '100', }
@@ -3994,7 +3995,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(7),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -4004,11 +4005,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4020,7 +4021,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719C03075000':
                         expect(args).to.be.like([{
@@ -4031,11 +4032,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4048,14 +4049,14 @@ describe("broker-ib", function() {
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -4070,7 +4071,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -4083,7 +4084,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4108,7 +4109,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4130,7 +4131,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -4151,7 +4152,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354277718,
+                                    conid: 354277718,
                                     right: 'C',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -4170,7 +4171,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354277733,
+                                    conid: 354277733,
                                     right: 'C',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -4197,8 +4198,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'SELL', ratio: 1, conId: 354277718, exchange: 'SMART' },
-                        { action: 'BUY', ratio: 1, conId: 354277733, exchange: 'SMART' }
+                    comboLegs: [{ action: 'SELL', ratio: 1, conid: 354277718, exchange: 'SMART' },
+                        { action: 'BUY', ratio: 1, conid: 354277733, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -4224,7 +4225,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719C03025000',
                                 multiplier: '100' },
@@ -4232,7 +4233,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719C03075000',
                                 multiplier: '100' }
@@ -4305,7 +4306,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(8),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719C03025000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719C03025000',
@@ -4315,11 +4316,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4331,7 +4332,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719C03075000':
                         expect(args).to.be.like([{
@@ -4342,11 +4343,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4359,14 +4360,14 @@ describe("broker-ib", function() {
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -4381,7 +4382,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -4394,7 +4395,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4419,7 +4420,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 right: 'C',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4441,7 +4442,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -4462,7 +4463,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354277718,
+                                    conid: 354277718,
                                     right: 'C',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -4481,7 +4482,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354277733,
+                                    conid: 354277733,
                                     right: 'C',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -4508,8 +4509,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'SELL', ratio: 1, conId: 354277718, exchange: 'SMART' },
-                        { action: 'BUY', ratio: 1, conId: 354277733, exchange: 'SMART' }
+                    comboLegs: [{ action: 'SELL', ratio: 1, conid: 354277718, exchange: 'SMART' },
+                        { action: 'BUY', ratio: 1, conid: 354277733, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -4535,7 +4536,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277718,
+                                conid: 354277718,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719C03025000',
                                 multiplier: '100', },
@@ -4543,7 +4544,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354277733,
+                                conid: 354277733,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719C03075000',
                                 multiplier: '100' }
@@ -4616,7 +4617,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(9),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -4626,11 +4627,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4642,7 +4643,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719P02400000':
                         expect(args).to.be.like([{
@@ -4653,11 +4654,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4670,14 +4671,14 @@ describe("broker-ib", function() {
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -4692,7 +4693,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -4705,7 +4706,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4730,7 +4731,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4752,7 +4753,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -4773,7 +4774,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354278089,
+                                    conid: 354278089,
                                     right: 'P',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -4792,7 +4793,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354278083,
+                                    conid: 354278083,
                                     right: 'P',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -4825,8 +4826,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'SELL', ratio: 1, conId: 354278089, exchange: 'SMART' },
-                        { action: 'BUY', ratio: 1, conId: 354278083, exchange: 'SMART' }
+                    comboLegs: [{ action: 'SELL', ratio: 1, conid: 354278089, exchange: 'SMART' },
+                        { action: 'BUY', ratio: 1, conid: 354278083, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -4852,7 +4853,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02450000',
                                 multiplier: '100' },
@@ -4860,7 +4861,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02400000',
                                 multiplier: '100' }
@@ -4932,7 +4933,7 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(10),
             reqContractDetails: (...args) => {
-                switch (args[0].localSymbol || args[0].conId) {
+                switch (args[0].localSymbol || args[0].conid) {
                     case 'SPX   190719P02450000':
                         expect(args).to.be.like([{
                             localSymbol: 'SPX   190719P02450000',
@@ -4942,11 +4943,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4958,7 +4959,7 @@ describe("broker-ib", function() {
                             },
                             minTick: 0.05,
                             validExchanges: 'SMART,CBOE',
-                            underConId: 416904
+                            underConid: 416904
                         }])
                     case 'SPX   190719P02400000':
                         expect(args).to.be.like([{
@@ -4969,11 +4970,11 @@ describe("broker-ib", function() {
                             multiplier: 100
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -4986,14 +4987,14 @@ describe("broker-ib", function() {
                         }])
                     case 416904:
                         expect(args).to.be.like([{
-                            conId: 416904
+                            conid: 416904
                         }]);
                         return Promise.resolve([{
-                            summary: {
+                            contract: {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 416904,
+                                conid: 416904,
                                 secType: 'IND'
                             },
                             validExchanges: 'SMART,CBOE'
@@ -5008,7 +5009,7 @@ describe("broker-ib", function() {
                     currency: 'USD',
                     exchange: 'CBOE',
                     symbol: 'SPX',
-                    conId: 416904,
+                    conid: 416904,
                     secType: 'IND'
                 });
             },
@@ -5021,7 +5022,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -5046,7 +5047,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 right: 'P',
                                 secType: 'OPT',
                                 expiry: '20190718',
@@ -5068,7 +5069,7 @@ describe("broker-ib", function() {
                             })
                         case 2:
                             expect(args).to.be.like([{
-                                conId: 416904
+                                conid: 416904
                             }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -5089,7 +5090,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354278089,
+                                    conid: 354278089,
                                     right: 'P',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -5108,7 +5109,7 @@ describe("broker-ib", function() {
                                     currency: 'USD',
                                     exchange: 'SMART',
                                     symbol: 'SPX',
-                                    conId: 354278083,
+                                    conid: 354278083,
                                     right: 'P',
                                     secType: 'OPT',
                                     expiry: '20190718',
@@ -5141,8 +5142,8 @@ describe("broker-ib", function() {
                     symbol: 'SPX',
                     currency: 'USD',
                     exchange: 'SMART',
-                    comboLegs: [{ action: 'SELL', ratio: 1, conId: 354278089, exchange: 'SMART' },
-                        { action: 'BUY', ratio: 1, conId: 354278083, exchange: 'SMART' }
+                    comboLegs: [{ action: 'SELL', ratio: 1, conid: 354278089, exchange: 'SMART' },
+                        { action: 'BUY', ratio: 1, conid: 354278083, exchange: 'SMART' }
                     ]
                 },
                 {
@@ -5168,7 +5169,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278089,
+                                conid: 354278089,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02450000',
                                 multiplier: '100' },
@@ -5176,7 +5177,7 @@ describe("broker-ib", function() {
                                 currency: 'USD',
                                 exchange: 'SMART',
                                 symbol: 'SPX',
-                                conId: 354278083,
+                                conid: 354278083,
                                 secType: 'OPT',
                                 localSymbol: 'SPX   190719P02400000',
                                 multiplier: '100' }
@@ -5256,15 +5257,15 @@ describe("broker-ib", function() {
                     multiplier: 100
                 }]);
                 return Promise.resolve([{
-                    summary: { right: 'C', exchange: 'SMART' },
+                    contract: { right: 'C', exchange: 'SMART' },
                     minTick: 0.01,
-                    underConId: 4815747
+                    underConid: 4815747
                 }]);
             },
             reqContract: (...args) => {
                 expect(args).to.be.like([4815747]);
                 return Promise.resolve({
-                    conId: 4815747, exchange: 'SMART'
+                    conid: 4815747, exchange: 'SMART'
                 });
             },
             reqMktData: (() => {
@@ -5292,7 +5293,7 @@ describe("broker-ib", function() {
                                 halted: 0
                             })
                         case 1:
-                            expect(args).to.be.like([{ conId: 4815747, exchange: 'SMART' }]);
+                            expect(args).to.be.like([{ conid: 4815747, exchange: 'SMART' }]);
                             return Promise.resolve({ close: 321.22 })
                         default:
                             throw Error("Too many times")

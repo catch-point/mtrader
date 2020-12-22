@@ -37,8 +37,9 @@ const IB = require('../src/ib-client.js');
 describe("ib-client", function() {
     this.timeout(60000);
     var tz = 'America/New_York';
-    var client = new IB();
-    before(function() {
+    var client;
+    before(async function() {
+        client = await IB();
         return client.open().catch(err => {
             client = null;
             this.skip();
@@ -47,18 +48,19 @@ describe("ib-client", function() {
     after(function() {
         if (client) return client.close();
     });
-    it("options SPY lookup", function() {
-        return client.reqContractDetails({
+    it("options SPY lookup", async() => {
+        const details = await client.reqContractDetails({
             localSymbol:'SPY   211217C00280000',
             currency:'USD',
             secType:'OPT',
             exchange:'SMART'
-        }).should.eventually.be.like(results => _.some(results, like({
-            summary: {
+        });
+        details.should.be.like(results => _.some(results, like({
+            contract: {
                 symbol: 'SPY',
                 secType: 'OPT',
-                strike: 280,
-                right: 'C',
+                strike: '280.0',
+                right: 'Call',
                 exchange: 'SMART',
                 currency: 'USD',
                 localSymbol: 'SPY   211217C00280000',
@@ -78,11 +80,11 @@ describe("ib-client", function() {
             secType:'OPT',
             exchange:'SMART'
         }).should.eventually.be.like(results => _.some(results, like({
-            summary: {
+            contract: {
                 symbol: 'SPX',
                 secType: 'OPT',
-                strike: 2800,
-                right: 'C',
+                strike: '2800.0',
+                right: 'Call',
                 exchange: 'SMART',
                 currency: 'USD',
                 localSymbol: 'SPX   211217C02800000',
@@ -100,7 +102,7 @@ describe("ib-client", function() {
             currency:'USD',
             secType:'IND'
         }).should.eventually.be.like([{
-            summary: {
+            contract: {
                 symbol: 'NDX',
                 secType: 'IND',
                 currency: 'USD',
@@ -128,7 +130,7 @@ describe("ib-client", function() {
             secType:'STK',
             exchange:'SMART'
         }).should.eventually.be.like(results => _.some(results, like({
-            summary: {
+            contract: {
                 symbol: 'IBM',
                 secType: 'STK',
                 currency: 'USD',
@@ -147,7 +149,7 @@ describe("ib-client", function() {
             localSymbol: 'USD.CAD',
             secType: 'CASH'
         }).should.eventually.be.like(results => _.some(results, like({
-            summary: {
+            contract: {
                 symbol: 'USD',
                 secType: 'CASH',
                 exchange: 'IDEALPRO',
@@ -162,7 +164,7 @@ describe("ib-client", function() {
     it("should find USD.CAD contract", async function() {
         const conId = 15016062;
         return client.reqContract(conId).should.eventually.be.like({
-            conId: conId,
+            conid: conId,
             symbol: 'USD',
             secType: 'CASH',
             exchange: 'IDEALPRO',
@@ -236,7 +238,7 @@ describe("ib-client", function() {
             secType:'STK',
             exchange:'SMART'
         }).should.eventually.be.like(results => _.some(results, like({
-            summary: {
+            contract: {
                 symbol: 'BRK A',
                 secType: 'STK',
                 currency: 'USD',
@@ -378,8 +380,9 @@ describe("ib-client", function() {
     it("should reqExecutions", function() {
         return client.reqExecutions();
     });
-    it("should reqCurrentTime", function() {
-        return client.reqCurrentTime().should.eventually.be.closeTo(Math.round(new Date().getTime()/1000),5);
+    it("should reqCurrentTime", async() => {
+        const time = await client.reqCurrentTime();
+        (+time).should.be.closeTo(Math.round(new Date().getTime()/1000),5);
     });
     it.skip("should reqFundamentalData", function() {
         return client.reqFundamentalData({

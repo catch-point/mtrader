@@ -33,7 +33,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const xml = require('fast-xml-parser');
-const IB = require('ib');
+const IB = require('ib-tws-node');
 const logger = require('./logger.js');
 const promiseThrottle = require('./throttle.js');
 const TimeLimit = require('./time-limit.js');
@@ -46,21 +46,21 @@ function nextval() {
     return ++sequence_counter;
 }
 
-module.exports = function(settings) {
+module.exports = async function(settings = {}) {
     const host = settings && settings.host || 'localhost';
     const port = settings && settings.port || 7496;
     const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : nextval();
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const timeout = settings && settings.timeout || 600000;
     const self = new.target ? this : {};
-    let opened_client = createClient(host, port, clientId, ib_tz, timeout, settings);
+    let opened_client = await createClient(host, port, clientId, ib_tz, timeout, settings);
     let promise_ib, closed = false;
     const open = () => {
         if (opened_client && !opened_client.disconnected) return opened_client.open();
         else return promise_ib = (promise_ib || Promise.reject())
-          .catch(err => ({disconnected: true})).then(client => {
+          .catch(err => ({disconnected: true})).then(async(client) => {
             if (!client.disconnected) return client;
-            opened_client = createClient(host, port, clientId, ib_tz, timeout, settings);
+            opened_client = await createClient(host, port, clientId, ib_tz, timeout, settings);
             return opened_client.open();
         });
     };
@@ -86,45 +86,49 @@ module.exports = function(settings) {
 };
 
 
-function createClient(host, port, clientId, ib_tz, timeout, settings) {
-    const ib = new IB({host, port, clientId});
+async function createClient(host, port, clientId, ib_tz, timeout, settings = {}) {
+    const ib = await IB(settings);
     ib.setMaxListeners(20);
-    ib.on('error', (err, info) => {
+    ib.on('error', (id_or_str, err_code, err_msg) => {
         // Some error messages might just be warnings
         // @see https://groups.io/g/twsapi/message/40551
-        if (info && info.code == 1101) {
-            logger.log("ib-client", clientId, err.message);
-        } else if (info && info.code == 1102) {
-            logger.log("ib-client", clientId, err.message);
-        } else if (info && ~[2104, 2106, 2107, 2108].indexOf(info.code)) {
-            logger.debug("ib-client", clientId, err.message);
-        } else if (info && info.code >= 2000 && info.code < 3000) {
-            logger.info("ib-client", clientId, info || '', err.message);
+        if (err_code == 1101) {
+            logger.log("ib-client", clientId, err_msg);
+        } else if (err_code == 1102) {
+            logger.log("ib-client", clientId, err_msg);
+        } else if (~[2104, 2106, 2107, 2108].indexOf(err_code)) {
+            logger.debug("ib-client", clientId, err_msg);
+        } else if (err_code >= 2000 && err_code < 3000) {
+            logger.info("ib-client", clientId, err_msg || id_or_str || '');
         } else {
-            logger.warn("ib-client", clientId, info || '', err.message);
+            logger.warn("ib-client", clientId, err_msg || id_or_str || '');
         }
+        ib.isConnected().catch(logger.error); // check if the error caused a disconnection
+    }).on('isConnected', connected => {
+        if (!connected) ib.exit().catch(logger.error); // exit on disconnection
     }).on('result', (event, args) => {
         logger.trace("ib", clientId, event, ...args);
     });
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
-        ib.once('connected', () => {
+        ib.once('connectAck', () => {
             self.connecting = false;
             self.connected = true;
             self.disconnected = false;
             logger.debug("ib-client connected", host, port, clientId);
-        }).once('error', (err, info) => {
-            first_error = err;
+        }).once('error', (id_or_str, err_code, err_msg) => {
+            const msg = err_msg || id_or_str;
+            first_error = msg;
             if (!self.connected) {
                 self.connecting = false;
                 self.connected = false;
                 self.disconnected = true;
-                fail(err);
+                fail(msg);
             }
         }).once('nextValidId', order_id => {
             logger.log("ib-client connected to", host, port, "as", clientId);
             ready();
-        }).once('disconnected', () => {
+        }).once('exit', () => {
             fail(first_error || Error("disconnected"));
         });
     });
@@ -132,7 +136,7 @@ function createClient(host, port, clientId, ib_tz, timeout, settings) {
         once_connected.catch(err => {
             ready();
         });
-        ib.once('disconnected', () => {
+        ib.once('exit', () => {
             self.connecting = false;
             self.connected = false;
             self.disconnected = true;
@@ -140,11 +144,12 @@ function createClient(host, port, clientId, ib_tz, timeout, settings) {
             ready();
         });
     });
-    const version_promise = new Promise((ready, fail) => {
-        ib.once('server', version => ready(version))
-          .once('disconnected', () => fail());
+    const version_promise = new Promise((ready, abort) => {
+        ib.once('serverVersion', version => ready(version))
+          .once('exit', () => abort());
+        ib.serverVersion().catch(abort);
     });
-    once_connected.then(() => ib.reqMarketDataType(settings.reqMarketDataType || 4), _.noop);
+    once_connected.then(() => ib.reqMarketDataType(settings.reqMarketDataType || 4), _.noop).catch(logger.error);
     const time_limit = new TimeLimit(timeout);
     const self = new.target ? this : {};
     const lib_dir = settings && settings.lib_dir;
@@ -172,7 +177,7 @@ function createClient(host, port, clientId, ib_tz, timeout, settings) {
                 if (module.close) return module.close().catch(err => error = error || err);
             }));
             if (self.connecting || self.connected) {
-                _.defer(() => !self.disconnected && ib.disconnect());
+                _.defer(() => !self.disconnected && ib.eDisconnect().catch(logger.error));
                 await once_disconnected;
             }
             if (store) await store.close();
@@ -181,7 +186,7 @@ function createClient(host, port, clientId, ib_tz, timeout, settings) {
         async open() {
             if (!self.connecting && !self.connected && !self.disconnected) {
                 self.connecting = true;
-                ib.connect();
+                await ib.eConnect(host, port, clientId, false);
             }
             return once_connected.then(() => self);
         },
@@ -195,19 +200,19 @@ function reqPositions(ib) {
     const positions = {};
     let positions_end, positions_fail;
     let promise_positions = Promise.resolve();
-    ib.on('error', function (err, info) {
-        if (isGeneralError(info)) {
-            if (positions_fail) positions_fail(err);
+    ib.on('error', function (id_or_str, err_code, err_msg) {
+        if (isGeneralError(id_or_str, err_code, err_msg)) {
+            if (positions_fail) positions_fail(err_msg || id_or_str);
         }
-    }).on('disconnected', () => {
+    }).on('exit', () => {
         if (positions_fail) positions_fail(Error("TWS has disconnected"));
     }).on('position', function(account, contract, position, averageCost) {
         const acct = positions[account] = positions[account] || {};
-        acct[contract.conId] = {position, averageCost};
+        acct[contract.conid] = {position, averageCost};
     }).on('positionEnd', function() {
         const ready = positions_end;
         _.defer(() => {
-            ib.cancelPositions();
+            ib.cancelPositions().catch(logger.error);
             if (ready) ready(positions);
         });
     });
@@ -218,7 +223,7 @@ function reqPositions(ib) {
                 positions_end = ready;
                 positions_fail = fail;
                 logger.log('reqPositions');
-                ib.reqPositions();
+                ib.reqPositions().catch(fail);
             }));
         }
     };
@@ -226,11 +231,11 @@ function reqPositions(ib) {
 
 function currentTime(ib) {
     let received, fail, promise = Promise.resolve();
-    ib.on('error', function (err, info) {
-        if (isGeneralError(info)) {
-            if (fail) fail(err);
+    ib.on('error', function (id_or_str, err_code, err_msg) {
+        if (isGeneralError(id_or_str, err_code, err_msg)) {
+            if (fail) fail(err_msg || id_or_str);
         }
-    }).on('disconnected', () => {
+    }).on('exit', () => {
         if (fail) fail(Error("TWS has disconnected"));
     }).on('currentTime', function(time) {
         received(time);
@@ -241,7 +246,7 @@ function currentTime(ib) {
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
                 fail = reject;
-                ib.reqCurrentTime();
+                ib.reqCurrentTime().catch(reject);
             }));
         }
     };
@@ -250,17 +255,17 @@ function currentTime(ib) {
 function requestFA(ib) {
     let fa_disabled;
     let received, fail, promise = Promise.resolve();
-    ib.on('error', function (err, info) {
-        if (info && info.code == 321) {
+    ib.on('error', function (id_or_str, err_code, err_msg) {
+        if (err_code == 321) {
             // Server error when validating an API client request.
-            fa_disabled = err;
-            if (fail) fail(err);
-        } else if (isGeneralError(info)) {
+            fa_disabled = err_msg;
+            if (fail) fail(err_msg);
+        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
             // Error validating request: FA data operations ignored for non FA customers.
-            if (info && info.code == 321 && received) received([]);
-            else if (fail) fail(err);
+            if (err_code == 321 && received) received([]);
+            else if (fail) fail(err_msg || id_or_str);
         }
-    }).on('disconnected', () => {
+    }).on('exit', () => {
         if (fail) fail(Error("TWS has disconnected"));
     }).on('receiveFA', function(faDataType, faXmlData) {
         received(_.flatten(_.values(parseXml(faXmlData)).map(_.values)).map(entry => {
@@ -278,7 +283,7 @@ function requestFA(ib) {
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
                 fail = reject;
-                return ib.requestFA(IB.FA_DATA_TYPE.GROUPS);
+                return ib.requestFA(getFaDataType('GROUPS')).catch(reject);
             }));
         },
         requestProfiles() {
@@ -287,7 +292,7 @@ function requestFA(ib) {
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
                 fail = reject;
-                return ib.requestFA(IB.FA_DATA_TYPE.PROFILES);
+                return ib.requestFA(getFaDataType('PROFILES')).catch(reject);
             }));
         },
         requestAliases() {
@@ -296,7 +301,7 @@ function requestFA(ib) {
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
                 fail = reject;
-                return ib.requestFA(IB.FA_DATA_TYPE.ALIASES);
+                return ib.requestFA(getFaDataType('ALIASES')).catch(reject);
             }));
         }
     };
@@ -336,13 +341,13 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
                 return save(summary.AccountCode, month, summary);
         })).catch(err => logger.error("Could not flush IB balances", err));
     }, 60*1000); // 1m
-    ib.on('error', function (err, info) {
-        if (info && info.id && req_queue[info.id]) {
-            req_queue[info.id].fail(err);
-        } else if (isGeneralError(info)) {
-            Object.keys(req_queue).forEach(id => req_queue[id].fail(err));
+    ib.on('error', function (id_or_str, err_code, err_msg) {
+        if (req_queue[id_or_str]) {
+            req_queue[id_or_str].fail(err_msg || id_or_str);
+        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
+            Object.keys(req_queue).forEach(id => req_queue[id].fail(err_msg || id_or_str));
         }
-    }).on('disconnected', () => {
+    }).on('exit', () => {
         const err = Error("TWS has disconnected");
         Object.keys(req_queue).forEach(reqId => {
             req_queue[reqId].fail(err);
@@ -373,11 +378,11 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
     }).on('accountUpdateMultiEnd', function(reqId) {
         const item = req_queue[reqId];
         if (item) {
-            new Promise(ready => {
+            new Promise((ready, abort) => {
                 if (closed) throw Error("TWS has disconnected");
                 const summary = item.summary;
                 if (!~_.values(subscriptions).indexOf(+reqId)) {
-                    ib.cancelAccountUpdatesMulti(+reqId);
+                    ib.cancelAccountUpdatesMulti(+reqId).catch(abort);
                     delete req_queue[reqId];
                 }
                 return ready(summary);
@@ -393,7 +398,7 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
             if (~managed_accounts.indexOf(acctCode) && !modelCode)
                 subscriptions[acctCode] = +reqId;
             logger.log('reqAccountUpdates', acctCode, modelCode || '', false);
-            ib.reqAccountUpdatesMulti(+reqId, acctCode, modelCode || '', false);
+            ib.reqAccountUpdatesMulti(+reqId, acctCode, modelCode || '', false).catch(fail);
         });
     }, "ib-client reqAccountUpdatesMulti");
     return {
@@ -419,7 +424,7 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
             });
         },
         async close() {
-            _.values(subscriptions).forEach(reqId => ib.cancelAccountUpdatesMulti(+reqId));
+            await Promise.all(_.values(subscriptions).map(reqId => ib.cancelAccountUpdatesMulti(+reqId)));
             _.values(req_queue).forEach(item => item.fail(Error("IB client is closing")));
             return flush.flush().then(() => closed = true, err => {
                 closed = true;
@@ -498,29 +503,30 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
             });
         }, Promise.resolve()).catch(err => logger.error("Could not flush IB orders", err));
     }, 10*60*1000); // 10m
-    ib.on('error', function (err, info) {
-        if (info && info.id && placing_orders[info.id]) {
-            if (info.code == 481) { // Order size was reduced warning
-                logger.debug('placeOrder', placing_orders[info.id].contract, placing_orders[info.id].order, err.message);
-            } else if (info && info.code >= 2000 && info.code < 3000) { // warning
-                logger.debug('placeOrder', placing_orders[info.id].contract, placing_orders[info.id].order, err.message);
+    ib.on('error', function (id_or_str, err_code, err_msg) {
+        if (placing_orders[id_or_str]) {
+            const id = id_or_str;
+            if (err_code == 481) { // Order size was reduced warning
+                logger.debug('placeOrder', placing_orders[id].contract, placing_orders[id].order, err_msg);
+            } else if (err_code >= 2000 && err_code < 3000) { // warning
+                logger.debug('placeOrder', placing_orders[id].contract, placing_orders[id].order, err_msg);
             } else {
-                placing_orders[info.id].fail(err);
-                delete placing_orders[info.id];
+                placing_orders[id_or_str].fail(err_msg);
+                delete placing_orders[id_or_str];
             }
-        } else if (info && info.id && (info.code == 202 || cancelling_orders[info.id])) {
-            if (info.code == 202 && cancelling_orders[info.id]) {
-                cancelling_orders[info.id].ready({...orders[info.id], status: 'ApiCancelled'});
-                delete cancelling_orders[info.id];
-            } else if (cancelling_orders[info.id]) {
-                cancelling_orders[info.id].fail(err);
-                delete cancelling_orders[info.id];
+        } else if (err_code == 202 || cancelling_orders[id_or_str]) {
+            if (err_code == 202 && cancelling_orders[id_or_str]) {
+                cancelling_orders[id_or_str].ready({...orders[id_or_str], status: 'ApiCancelled'});
+                delete cancelling_orders[id_or_str];
+            } else if (cancelling_orders[id_or_str]) {
+                cancelling_orders[id_or_str].fail(err_msg);
+                delete cancelling_orders[id_or_str];
             }
-        } else if (info && info.id && info.code == 201) {
+        } else if (err_code == 201) {
             // Order rejected
-            const order = orders[info.id];
+            const order = orders[id_or_str];
             if (order) {
-                const m = ((err||{}).message||'')
+                const m = (err_msg||'')
                   .match(/CASH AVAILABLE: (\d+\.\d+); CASH NEEDED FOR THIS ORDER AND OTHER PENDING ORDERS: (\d+\.\d+)/);
                 // Only reduce quant if quant is whole number
                 const whole = +order.totalQuantity == Math.round(order.totalQuantity);
@@ -528,7 +534,7 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
                     const [, avail, needed] = m;
                     const totalQuantity = Math.floor(order.totalQuantity * avail / needed);
                     if (+totalQuantity != +order.totalQuantity) {
-                        const contract = _.pick(order, 'conId', 'exchange', 'currency');
+                        const contract = _.pick(order, 'conid', 'exchange', 'currency');
                         const update = {
                             ..._.omit(order, v => Number.isNaN(v) || v == Number.MAX_VALUE),
                             totalQuantity,
@@ -536,36 +542,36 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
                         };
                         self.reqId(orderId => {
                             logger.log('placeOrder', orderId, contract, update);
-                            ib.placeOrder(orderId, contract, update);
-                        }).catch(err => logger.error("update order quant error", err));
+                            return ib.placeOrder(orderId, contract, update);
+                        }).catch(err => logger.error("update order quant error", err_msg));
                     }
                 }
             }
-        } else if (info && info.id && info.code == 103 && orders[info.id]) {
+        } else if (err_code == 103 && orders[id_or_str]) {
             // An order was placed with an order ID that is less than or
             // equal to the order ID of a previous order from this client
-            orders[info.id].status = 'Duplicate';
-        } else if (info && info.id && info.code == 104 && orders[info.id]) {
+            orders[id_or_str].status = 'Duplicate';
+        } else if (err_code == 104 && orders[id_or_str]) {
             // An attempt was made to modify an order which has already been filled by the system.
-            orders[info.id].status = 'Filled';
-        } else if (info && info.code >= 2000 && info.code < 3000) {
+            orders[id_or_str].status = 'Filled';
+        } else if (err_code >= 2000 && err_code < 3000) {
             // warning
-        } else if (isGeneralError(info)) {
+        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
             Object.entries(placing_orders).forEach(([orderId, req]) => {
-                req.fail(err);
+                req.fail(err_msg || id_or_str);
                 delete placing_orders[orderId];
             });
             Object.entries(cancelling_orders).forEach(([orderId, req]) => {
-                req.fail(err);
+                req.fail(err_msg || id_or_str);
                 delete cancelling_orders[orderId];
             });
             Object.entries(watching_orders).forEach(([orderId, req]) => {
-                req.fail(err);
+                req.fail(err_msg || id_or_str);
                 delete watching_orders[orderId];
             });
-            if (orders_fail) orders_fail(err);
+            if (orders_fail) orders_fail(err_msg || id_or_str);
         }
-    }).on('disconnected', () => {
+    }).on('exit', () => {
         const err = Error("TWS has disconnected");
         Object.entries(placing_orders).forEach(([orderId, req]) => {
             req.fail(err);
@@ -594,7 +600,7 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
         expandComboLegs(self, contract).then(comboLegs => {
             orders[orderId] = Object.assign({
                     orderId,
-                    conId: contract.conId,
+                    conid: contract.conid,
                     comboLegsDescrip: contract.comboLegsDescrip,
                     symbol: contract.symbol,
                     localSymbol: contract.localSymbol,
@@ -660,28 +666,28 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
             return status != 'Filled' && status != 'Cancelled' &&
                 status != 'Inactive' && status != 'Duplicate';
         })).then(orders => {
-            if (orders.every(ord => ord.conId)) return orders;
+            if (orders.every(ord => ord.conid)) return orders;
             // give the system 1s for orderStatus, otherwise continue without those orders
-            else return new Promise(ready => setTimeout(ready, 1000)).then(() => orders.filter(ord => ord.conId));
+            else return new Promise(ready => setTimeout(ready, 1000)).then(() => orders.filter(ord => ord.conid));
         }).then(orders_end, orders_fail);
     });
     return {
         async reqId(cb) {
             // IB requires orderIds to be used in sequence
             return order_id_lock = order_id_lock.catch(err => {}).then(() => {
-                return new Promise(ready => {
+                return new Promise((ready, abort) => {
                     next_valid_id_queue.push(ready);
-                    ib.reqIds(1);
+                    return ib.reqIds(1).catch(abort);
                 });
             }).then(cb);
         },
         placeOrder: time_limit(async(orderId, contract, order) => {
             logger.log('placeOrder', orderId, contract, order);
-            ib.placeOrder(orderId, contract, order);
+            await ib.placeOrder(orderId, contract, order);
             if (!order.transmit) {
                 const placed = orders[orderId] = _.omit({
                     orderId,
-                    conId: contract.conId,
+                    conid: contract.conid,
                     symbol: contract.symbol,
                     localSymbol: contract.localSymbol,
                     secType: contract.secType,
@@ -703,7 +709,7 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
                     if (placing_orders[orderId] === hdlr) {
                         // Paper accounts don't change order status until filled
                         logger.log('reqOpenOrders');
-                        ib.reqOpenOrders();
+                        ib.reqOpenOrders().catch(logger.error);
                         setTimeout(check_order.bind(this, Math.min(timeout*2,60000)), timeout).unref();
                     }
                 };
@@ -712,14 +718,14 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
         }, "ib-client placeOrder"),
         cancelOrder: time_limit(async(orderId) => {
             logger.log('cancelOrder', orderId);
-            ib.cancelOrder(orderId);
+            await ib.cancelOrder(orderId);
             return new Promise((ready, fail) => {
                 const hdlr = combineListeners(cancelling_orders, orderId, {ready, fail});
                 const check_order = timeout => {
                     if (cancelling_orders[orderId] === hdlr) {
                         // ApiCancelled does not trigger a notification, such as when market is closed
                         logger.log('reqOpenOrders');
-                        ib.reqOpenOrders();
+                        ib.reqOpenOrders().catch(logger.error);
                         setTimeout(check_order.bind(this, Math.min(timeout*2,60000)), timeout).unref();
                     }
                 };
@@ -753,7 +759,7 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
                 orders_end = ready;
                 orders_fail = fail;
                 logger.log('reqOpenOrders');
-                ib.reqOpenOrders();
+                ib.reqOpenOrders().catch(fail);
             })).then(orders => orders.filter(order => order.clientId == clientId));
         },
         reqAllOpenOrders() {
@@ -762,7 +768,7 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
                 orders_end = ready;
                 orders_fail = fail;
                 logger.log('reqAllOpenOrders');
-                ib.reqAllOpenOrders();
+                ib.reqAllOpenOrders().catch(fail);
             }));
         },
         async reqCompletedOrders(filter) {
@@ -877,13 +883,13 @@ function execDetails(ib, time_limit, store, ib_tz) {
             return store && !closed && reduce_details({time: min_month}, (nil, exe) => {}, null);
         })).catch(err => logger.error("Could not flush IB executions", err));
     }, 10000); // 10s
-    ib.on('error', function (err, info) {
-        if (info && info.id && req_queue[info.id]) {
-            req_queue[info.id].reject(err);
-        } else if (isGeneralError(info)) {
+    ib.on('error', function (id_or_str, err_code, err_msg) {
+        if (req_queue[id_or_str]) {
+            req_queue[id_or_str].reject(err);
+        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
-    }).on('disconnected', () => {
+    }).on('exit', () => {
         const err = Error("TWS has disconnected");
         _.keys(req_queue).forEach(reqId => {
             req_queue[reqId].reject(err);
@@ -902,7 +908,7 @@ function execDetails(ib, time_limit, store, ib_tz) {
         const acct = details[exe.acctNumber] = details[exe.acctNumber] || {};
         const recent = acct[month] = acct[month] || {};
         recent[key] = Object.assign({}, {
-            conId: contract.conId,
+            conid: contract.conid,
             comboLegsDescrip: contract.comboLegsDescrip,
             symbol: contract.symbol,
             localSymbol: contract.localSymbol,
@@ -968,7 +974,7 @@ function execDetails(ib, time_limit, store, ib_tz) {
                     }
                 };
                 logger.log('reqExecutions', filter || '');
-                ib.reqExecutions(reqId, filter || {});
+                ib.reqExecutions(reqId, filter || {}).catch(fail);
             });
         }, "ib-client reqExecutions"),
         close() {
@@ -983,7 +989,7 @@ function execDetails(ib, time_limit, store, ib_tz) {
 
 function reqContract(ib, time_limit) {
     const req_queue = {};
-    const reqContract = promiseThrottle(time_limit(function(conId) {
+    const reqContract = promiseThrottle(time_limit(function(conid) {
         return new Promise((ready, fail) => {
             const reqId = nextval();
             req_queue[reqId] = {
@@ -995,46 +1001,46 @@ function reqContract(ib, time_limit) {
                     });
                 },
                 reject(err) {
-                    logger.warn('reqContractDetails', conId, err.message);
+                    logger.warn('reqContractDetails', conid, err.message);
                     fail(err);
                     setImmediate(() => {
                         delete req_queue[reqId];
                     });
                 }
             };
-            logger.log('reqContractDetails', conId);
-            ib.reqContractDetails(reqId, {conId});
+            logger.log('reqContractDetails', conid);
+            ib.reqContractDetails(reqId, {conid}).catch(fail);
         });
     }, "ib-client reqContractDetails"), 1);
     const replaceEntry = contract => {
         if (contract.secType != 'BAG') {
-            reqCachedContract.replaceEntry(contract.conId, contract);
+            reqCachedContract.replaceEntry(contract.conid, contract);
         }
     };
-    ib.on('error', function (err, info) {
-        if (info && info.id && req_queue[info.id]) {
-            req_queue[info.id].reject(err);
-        } else if (isGeneralError(info)) {
+    ib.on('error', function (id_or_str, err_code, err_msg) {
+        if (req_queue[id_or_str]) {
+            req_queue[id_or_str].reject(err_msg);
+        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
-    }).on('disconnected', () => {
+    }).on('exit', () => {
         const err = Error("TWS has disconnected");
         _.keys(req_queue).forEach(reqId => {
             req_queue[reqId].reject(err);
         });
         reqCachedContract.close();
-    }).on('updatePortfolio', function(contract) {
+    }).on('updatePortfolio', function(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, realizedPNL, accountName) {
         replaceEntry(contract);
     }).on('position', function(account, contract, position, averageCost) {
         replaceEntry(contract);
     }).on('openOrder', function(orderId, contract, order, orderStatus) {
         replaceEntry(contract);
     }).on('contractDetails', (reqId, detail) => {
-        if (req_queue[reqId]) req_queue[reqId].contract = detail.summary;
-        replaceEntry(detail.summary);
+        if (req_queue[reqId]) req_queue[reqId].contract = detail.contract;
+        replaceEntry(detail.contract);
     }).on('bondContractDetails', (reqId, detail) => {
-        if (req_queue[reqId]) req_queue[reqId].contract = detail.summary;
-        replaceEntry(detail.summary);
+        if (req_queue[reqId]) req_queue[reqId].contract = detail.contract;
+        replaceEntry(detail.contract);
     }).on('contractDetailsEnd', reqId => {
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].contract);
     }).on('positionMulti', function(reqId, account, modelCode, contract, position, averageCost) {
@@ -1046,11 +1052,10 @@ function reqContract(ib, time_limit) {
     return {reqContract: reqCachedContract};
 }
 
-function isGeneralError(info) {
-    if (!info) return false;
-    else if (info.id && info.id > 0) return false;
-    else if (!info.code) return true;
-    const code = info.code;
+function isGeneralError(id_or_str, err_code, err_msg) {
+    if (id_or_str > 0) return false;
+    else if (!err_code) return true;
+    const code = err_code;
     if (code == 1101) return false; // Connectivity restored
     else if (code == 1102) return false; // Connectivity restored
     else if (code == 202) return false; // Order Canceled
@@ -1083,7 +1088,7 @@ function requestWithId(ib, time_limit) {
                     logger.warn(cmd, err.message, ...args.map(arg => {
                         return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip) || arg;
                     }));
-                    if (cmd == 'reqMktData') ib.cancelMktData(reqId);
+                    if (cmd == 'reqMktData') ib.cancelMktData(reqId).catch(logger.error);
                     fail(err);
                     setImmediate(() => {
                         delete req_queue[reqId];
@@ -1094,28 +1099,28 @@ function requestWithId(ib, time_limit) {
                     logger.log(cmd, err.message, ...args.map(arg => {
                         return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip) || arg;
                     }));
-                    ib[cmd].call(ib, reqId, ...args);
+                    ib[cmd].call(ib, reqId, ...args).catch(fail);
                 }
             };
             logger.log(cmd, ...args.map(arg => {
                 return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip) || arg;
             }));
-            ib[cmd].call(ib, reqId, ...args);
+            ib[cmd].call(ib, reqId, ...args).catch(fail);
         });
     }, (cmd) => `ib-client ${cmd}`), 50);
-    ib.on('error', function (err, info) {
-        if (info && info.id && req_queue[info.id]) {
+    ib.on('error', function (id_or_str, err_code, err_msg) {
+        if (req_queue[id_or_str]) {
             // E10167: Displaying delayed market data...
-            if (info.code != 10167) _.delay(() => {
-                const req = req_queue[info.id] || {};
+            if (err_code != 10167) _.delay(() => {
+                const req = req_queue[id_or_str] || {};
                 // E10197: connectivity problems or No market data during competing live session
-                const fn = info.code == 10197 && req.retry || req.reject || _.noop;
-                return fn(err);
-            }, info.code == 10197 ? 10000 : 0);
-        } else if (isGeneralError(info)) {
-            Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
+                const fn = err_code == 10197 && req.retry || req.reject || _.noop;
+                return fn(err_msg);
+            }, err_code == 10197 ? 10000 : 0);
+        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
+            Object.keys(req_queue).forEach(id => req_queue[id].reject(err_msg || id_or_str));
         }
-    }).on('disconnected', () => {
+    }).on('exit', () => {
         const err = Error("TWS has disconnected");
         _.keys(req_queue).forEach(reqId => {
             req_queue[reqId].reject(err);
@@ -1126,12 +1131,11 @@ function requestWithId(ib, time_limit) {
         if (req_queue[reqId]) req_queue[reqId].contractDetails.push(contract);
     }).on('contractDetailsEnd', reqId => {
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].contractDetails);
-    }).on('historicalData', (reqId, time, open, high, low, close, volume, count, wap, hasGaps) => {
+    }).on('historicalData', (reqId, bar) => {
         const completedIndicator = 'finished';
-        if (req_queue[reqId] && time.substring(0, completedIndicator.length) == completedIndicator)
+        if (req_queue[reqId] && bar.time.substring(0, completedIndicator.length) == completedIndicator)
             return req_queue[reqId].resolve(req_queue[reqId].historicalData);
-        const bar = _.omit({time, open, high, low, close, volume, wap, count}, value => value < 0);
-        if (req_queue[reqId]) req_queue[reqId].historicalData.push(bar);
+        if (req_queue[reqId]) req_queue[reqId].historicalData.push(_.omit(bar, v => v < 0));
     }).on('historicalDataEnd', (reqId, start, end) => {
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].historicalData);
     }).on('fundamentalData', (reqId, data) => {
@@ -1158,7 +1162,7 @@ function requestWithId(ib, time_limit) {
         else if (req_queue[tickerId])
             req_queue[tickerId].tickData[getTickTypeName(tickType)] = tick;
         if (isTickComplete(ib, req_queue[tickerId])) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
-    }).on('tickPrice', function (tickerId, tickType, price) {
+    }).on('tickPrice', function (tickerId, tickType, price, attrib) {
         if (req_queue[tickerId] && price >= 0) req_queue[tickerId].tickData[getTickTypeName(tickType)] = price;
         else if (req_queue[tickerId]) delete req_queue[tickerId].tickData[getTickTypeName(tickType)];
         if (isTickComplete(ib, req_queue[tickerId])) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
@@ -1171,7 +1175,7 @@ function requestWithId(ib, time_limit) {
     }).on('tickSnapshotEnd', function(tickerId) {
         if (req_queue[tickerId]) req_queue[tickerId].resolve(req_queue[tickerId].tickData);
     }).on('realtimeBar', function(tickerId, time, open, high, low, close, volume, wap, count) {
-        ib.cancelRealTimeBars(tickerId);
+        ib.cancelRealTimeBars(tickerId).catch(logger.error);
         if (req_queue[tickerId]) req_queue[tickerId].resolve(_.omit({
             time, open, high, low, close, volume, wap, count
         }, value => value == -1));
@@ -1182,16 +1186,16 @@ function requestWithId(ib, time_limit) {
         acct[tag] = currency ? acct[tag] || (currency == value ? [] : {}) : value;
         if (currency && !_.isArray(acct[tag])) acct[tag][currency] = value;
         else if (_.isArray(acct[tag]) && !~acct[tag].indexOf(value)) acct[tag].push(value);
-    }).on('accountSummaryEnd', function(tickerId, account, tag, value, currency) {
+    }).on('accountSummaryEnd', function(tickerId) {
         if (req_queue[tickerId]) req_queue[tickerId].resolve(req_queue[tickerId].accountSummary);
     }).on('positionMulti', function(reqId, account, modelCode, contract, position, averageCost) {
         if (!req_queue[reqId]) return;
         const sum = req_queue[reqId].positionMulti = req_queue[reqId].positionMulti || {};
         const model = modelCode ? sum[modelCode] = sum[modelCode] || {} : sum;
         const acct = account ? model[account] = model[account] || {} : model;
-        acct[contract.conId] = {position, averageCost};
+        acct[contract.conid] = {position, averageCost};
     }).on('positionMultiEnd', function(reqId) {
-        ib.cancelPositionsMulti(+reqId);
+        ib.cancelPositionsMulti(+reqId).catch(logger.error);
         if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].positionMulti);
     });
     const reqContractDetails_cached = cache(
@@ -1208,7 +1212,7 @@ function requestWithId(ib, time_limit) {
         },
         reqHistoricalData: promiseThrottle((contract, endDateTime, durationString, barSizeSetting, whatToShow, useRTH, formatDate) => {
             return request('reqHistoricalData', contract, endDateTime, durationString,
-                barSizeSetting, whatToShow, useRTH, formatDate, false);
+                barSizeSetting, whatToShow, useRTH, formatDate, false, []);
         }, 50),
         reqMktData: promiseThrottle((contract, genericTickNameArray, snapshot, regulatorySnapshot, mktDataOptions) => {
             const genericTickList = (genericTickNameArray||[]).map(getTickTypeId).join(',');
@@ -1246,16 +1250,16 @@ function combineListeners(hash, key, handlers) {
 async function expandComboLegs(self, contract) {
     const legs = !_.isEmpty(contract.comboLegs) ? contract.comboLegs :
             (contract.comboLegsDescrip||'').split(',').filter(item => item).map(descrip => {
-        const [conId, ratio] = descrip.split('|', 2);
+        const [conid, ratio] = descrip.split('|', 2);
         const action = ratio > 0 ? 'BUY' : 'SELL';
-        return {conId, ratio: Math.abs(ratio), action};
+        return {conid, ratio: Math.abs(ratio), action};
     });
     if (_.isEmpty(legs)) return {};
     const comboLegsDescrip = contract.comboLegsDescrip ? contract.comboLegsDescrip :
         legs.map(leg => {
-            return `${leg.conId}|${leg.action == 'SELL' ? '-' : ''}${leg.ratio}`;
+            return `${leg.conid}|${leg.action == 'SELL' ? '-' : ''}${leg.ratio}`;
         }).join(',');
-    const leg_contracts = await Promise.all(legs.map(async(leg) => self.reqContract(leg.conId)));
+    const leg_contracts = await Promise.all(legs.map(async(leg) => self.reqContract(leg.conid)));
     const symbols = _.uniq(leg_contracts.map(leg => leg.symbol));
     const currencies = _.uniq(leg_contracts.map(leg => leg.currency));
     const exchanges = _.uniq(leg_contracts.map(leg => leg.exchange));
@@ -1278,7 +1282,7 @@ function isTickComplete(ib, req) {
     const genericTickNameArray = genericTickList.split(',').map(getTickTypeName);
     if (req.ticks++ < 100 && _.difference(genericTickNameArray, _.keys(req.tickData)).length) return false;
     if (!req.cancelled) {
-        ib.cancelMktData(req.reqId);
+        ib.cancelMktData(req.reqId).catch(logger.error);
         req.cancelled = true;
     }
     return true;
@@ -1292,13 +1296,103 @@ function parseXml(data) {
     });
 }
 
-const tick_type_names = _.object(_.values(IB.TICK_TYPE), _.keys(IB.TICK_TYPE).map(name => name.toLowerCase()));
+const TICK_TYPE = {
+   BID_SIZE:0,
+   BID:1,
+   ASK:2,
+   ASK_SIZE:3,
+   LAST:4,
+   LAST_SIZE:5,
+   HIGH:6,
+   LOW:7,
+   VOLUME:8,
+   CLOSE:9,
+   BID_OPTION:10,
+   ASK_OPTION:11,
+   LAST_OPTION:12,
+   MODEL_OPTION:13,
+   OPEN:14,
+   LOW_13_WEEK:15,
+   HIGH_13_WEEK:16,
+   LOW_26_WEEK:17,
+   HIGH_26_WEEK:18,
+   LOW_52_WEEK:19,
+   HIGH_52_WEEK:20,
+   AVG_VOLUME:21,
+   OPEN_INTEREST:22,
+   OPTION_HISTORICAL_VOL:23,
+   OPTION_IMPLIED_VOL:24,
+   OPTION_BID_EXCH:25,
+   OPTION_ASK_EXCH:26,
+   OPTION_CALL_OPEN_INTEREST:27,
+   OPTION_PUT_OPEN_INTEREST:28,
+   OPTION_CALL_VOLUME:29,
+   OPTION_PUT_VOLUME:30,
+   INDEX_FUTURE_PREMIUM:31,
+   BID_EXCH:32,
+   ASK_EXCH:33,
+   AUCTION_VOLUME:34,
+   AUCTION_PRICE:35,
+   AUCTION_IMBALANCE:36,
+   MARK_PRICE:37,
+   BID_EFP_COMPUTATION:38,
+   ASK_EFP_COMPUTATION:39,
+   LAST_EFP_COMPUTATION:40,
+   OPEN_EFP_COMPUTATION:41,
+   HIGH_EFP_COMPUTATION:42,
+   LOW_EFP_COMPUTATION:43,
+   CLOSE_EFP_COMPUTATION:44,
+   LAST_TIMESTAMP:45,
+   SHORTABLE:46,
+   FUNDAMENTAL_RATIOS:47,
+   RT_VOLUME:48,
+   HALTED:49,
+   BID_YIELD:50,
+   ASK_YIELD:51,
+   LAST_YIELD:52,
+   CUST_OPTION_COMPUTATION:53,
+   TRADE_COUNT:54,
+   TRADE_RATE:55,
+   VOLUME_RATE:56,
+   LAST_RTH_TRADE:57,
+   RT_HISTORICAL_VOL:58,
+   IB_DIVIDENDS:59,
+   BOND_FACTOR_MULTIPLIER:60,
+   REGULATORY_IMBALANCE:61,
+   NEWS_TICK:62,
+   SHORT_TERM_VOLUME_3_MIN:63,
+   SHORT_TERM_VOLUME_5_MIN:64,
+   SHORT_TERM_VOLUME_10_MIN:65,
+   DELAYED_BID:66,
+   DELAYED_ASK:67,
+   DELAYED_LAST:68,
+   DELAYED_BID_SIZE:69,
+   DELAYED_ASK_SIZE:70,
+   DELAYED_LAST_SIZE:71,
+   DELAYED_HIGH:72,
+   DELAYED_LOW:73,
+   DELAYED_VOLUME:74,
+   DELAYED_CLOSE:75,
+   DELAYED_OPEN:76,
+   RT_TRD_VOLUME:77,
+   CREDITMAN_MARK_PRICE:78,
+   CREDITMAN_SLOW_MARK_PRICE:79,
+   DELAYED_BID_OPTION:80,
+   DELAYED_ASK_OPTION:81,
+   DELAYED_LAST_OPTION:82,
+   DELAYED_MODEL_OPTION:83,
+   LAST_EXCH:84,
+   LAST_REG_TIME:85,
+   FUTURES_OPEN_INTEREST:86,
+   UNKNOWN:2147483647
+};
+const tick_type_names = _.object(_.values(TICK_TYPE), _.keys(TICK_TYPE).map(name => name.toLowerCase()));
 function getTickTypeName(tickType) {
     return tick_type_names[tickType] || tickType;
 }
 
 function getTickTypeId(tickTypeName) {
-    return IB.TICK_TYPE[tickTypeName.toUpperCase()] || tickTypeName;
+    return TICK_TYPE[tickTypeName.toUpperCase()] || tickTypeName;
 }
 
 function getAllTags() {
@@ -1336,3 +1430,11 @@ function getAllTags() {
     ];
 }
 
+function getFaDataType(name) {
+    const FA_DATA_TYPE = {
+      GROUPS: 1,
+      PROFILES: 2,
+      ALIASES: 3
+    };
+    return FA_DATA_TYPE[name];
+}

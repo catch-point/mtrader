@@ -437,7 +437,7 @@ function isNotEquity(markets, options) {
 
 async function lookup(markets, client, options) {
     const details = await listContractDetails(markets, client, options);
-    const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
+    const conIds = _.values(_.groupBy(details, detail => detail.contract.conid));
     return conIds.map(details => flattenContractDetails(details)).map(contract => {
         const market = options.market || _.findKey(markets, mkt => isContractInMarket(contract, mkt));
         const symbol = toSymbol(markets[market], contract);
@@ -471,7 +471,7 @@ function isContractInMarket(contract, market) {
 
 async function contract(market_tz, markets, client, options) {
     const details = await listContractDetails(markets, client, options);
-    const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
+    const conIds = _.values(_.groupBy(details, detail => detail.contract.conid));
     const contracts = conIds.map(details => flattenContractDetails(details));
     return contracts.map((contract, i) => {
         const market = markets[options.market] || markets[contract.primaryExch] || {};
@@ -498,11 +498,11 @@ async function contract(market_tz, markets, client, options) {
 
 async function fundamental(market_tz, markets, client, options) {
     const details = await listContractDetails(markets, client, options);
-    const conIds = _.values(_.groupBy(details, detail => detail.summary.conId));
+    const conIds = _.values(_.groupBy(details, detail => detail.contract.conid));
     const contracts = conIds.map(details => flattenContractDetails(details));
     const under_contracts = await Promise.all(contracts.map(async(contract) => {
-        if (!contract.underConId) return contract;
-        const under_details = await client.reqContractDetails({conId: contract.underConId});
+        if (!contract.underConid) return contract;
+        const under_details = await client.reqContractDetails({conid: contract.underConid});
         if (!under_details.length) return contract;
         else return flattenContractDetails(under_details);
     }));
@@ -528,7 +528,7 @@ async function fundamental(market_tz, markets, client, options) {
                 `${market_open(contract.tradingHours)} - ${market_close(contract.tradingHours)}`,
             liquid_hours: !contract.liquidHours ? market.liquid_hours :
                 `${market_open(contract.liquidHours)} - ${market_close(contract.liquidHours)}`,
-            ..._.omit(contract, 'symbol', 'market', 'security_type', 'name', 'conId', 'underConId', 'priceMagnifier'),
+            ..._.omit(contract, 'symbol', 'market', 'security_type', 'name', 'conid', 'underConid', 'priceMagnifier'),
             under_symbol: toSymbol(_.find(markets,
                 mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(under.primaryExch)
             ), under),
@@ -742,7 +742,7 @@ async function lookupContract(markets, client, options) {
     const market = markets[options.market];
     const contract = toContract(market, options);
     const details = await listContractDetails(markets, client, options);
-    const found = details.map(detail => detail.summary).find(_.matcher(contract));
+    const found = details.map(detail => detail.contract).find(_.matcher(contract));
     return found || contract;
 }
 
@@ -771,19 +771,19 @@ async function listContractDetails(markets, client, options) {
                 localSymbol: contract.localSymbol.replace('.', ' ')
             })).catch(err => []);
         return details.filter(detail => {
-            if (primaryExchs && !~primaryExchs.indexOf(detail.summary.primaryExch)) return false;
-            if (exchanges && !~exchanges.indexOf(detail.summary.exchange)) return false;
-            if (currencies && !~currencies.indexOf(detail.summary.currency)) return false;
+            if (primaryExchs && !~primaryExchs.indexOf(detail.contract.primaryExch)) return false;
+            if (exchanges && !~exchanges.indexOf(detail.contract.exchange)) return false;
+            if (currencies && !~currencies.indexOf(detail.contract.currency)) return false;
             else return market_set.some(market => {
-                if (market.currency != detail.summary.currency)
+                if (market.currency != detail.contract.currency)
                     return false;
-                else if (market.primaryExch && market.primaryExch != detail.summary.primaryExch)
+                else if (market.primaryExch && market.primaryExch != detail.contract.primaryExch)
                     return false;
-                else if (market.primaryExchs && !~market.primaryExchs.indexOf(detail.summary.primaryExch))
+                else if (market.primaryExchs && !~market.primaryExchs.indexOf(detail.contract.primaryExch))
                     return false;
-                else if (market.exchange && market.exchange != detail.summary.exchange)
+                else if (market.exchange && market.exchange != detail.contract.exchange)
                     return false;
-                else if (market.exchanges && !~market.exchanges.indexOf(detail.summary.exchange))
+                else if (market.exchanges && !~market.exchanges.indexOf(detail.contract.exchange))
                     return false;
                 else return true;
             });
@@ -893,7 +893,7 @@ function toBarSizeSetting(interval) {
 
 function flattenContractDetails(details) {
     const picked = details
-      .map(detail => Object.assign({}, detail.summary, _.omit(detail, ['summary', 'secIdList'])));
+      .map(detail => Object.assign({}, detail.contract, _.omit(detail, ['contract', 'secIdList'])));
     return joinCommon(picked);
 }
 
