@@ -74,7 +74,11 @@ module.exports = function(limit_ms) { // new TimeLimit
         },
         close() {
             if (pulse_timeout) clearTimeout(pulse_timeout);
-            active.splice(0, active.length);
+            return Promise.all(active.splice(0, active.length).map(entry => {
+                return Promise.resolve()
+                  .then(() => entry.ontimeout.apply(entry.self, entry.args))
+                  .then(entry.ready, entry.abort);
+            }));
         }
     });
     function pulse() {

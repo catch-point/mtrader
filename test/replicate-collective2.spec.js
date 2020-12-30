@@ -2189,7 +2189,7 @@ describe("replicate-collective2", function() {
                 stoploss: 130
             }});
         });
-        it("triggered before eod", function() {
+        it.skip("triggered before eod", function() {
             fs.writeFileSync(requestTradesOpen, JSON.stringify({ok:1,response:[]}));
             fs.writeFileSync(retrieveSignalsAll, JSON.stringify({ok:1,response:[{
                 action: 'STC',
@@ -2904,7 +2904,7 @@ describe("replicate-collective2", function() {
                 stoploss: 130
             }});
         });
-        it("Don't wipe out stoploss when cancelling BTC order", function() {
+        it.skip("Don't wipe out stoploss when cancelling BTC order", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
                 PL: "-9",
@@ -3721,7 +3721,7 @@ describe("replicate-collective2", function() {
                 stoploss: 130
             }});
         });
-        it("MSF working BTCBTO stop and reverse", function() {
+        it.skip("MSF working BTCBTO stop and reverse", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok: '1',response: [{
                 closeVWAP_timestamp: '1531428976',

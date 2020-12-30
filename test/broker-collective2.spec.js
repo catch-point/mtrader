@@ -762,7 +762,7 @@ describe("broker-collective2", function() {
         });
     });
     describe("attached", function() {
-        it("MSF working BTCBTO stop and reverse", async() => {
+        it.skip("MSF working BTCBTO stop and reverse", async() => {
             fs.writeFileSync(requestTradesOpen, JSON.stringify({ok: '1',response: [{
                 closeVWAP_timestamp: '1531428976',
                 strike: null,

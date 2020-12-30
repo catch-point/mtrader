@@ -183,10 +183,10 @@ function help(settings) {
     ]);
 }
 
-module.exports = function(settings = {}) {
+module.exports = async function(settings = {}) {
     const fetch = new Fetch(merge(config('fetch'), {ib:{enabled:false}}, settings.fetch));
     const adjustments = options => fetch({...options, interval: 'adjustments'});
-    const fetch_ib = createInstance(adjustments, settings);
+    const fetch_ib = await createInstance(adjustments, settings);
     const client = fetch_ib.client;
     const markets = fetch_ib.markets;
     const findContract = fetch_ib.findContract;
@@ -377,8 +377,8 @@ async function combineHistoricalLiveFeeds(historical_promise, live_promise, opti
     }, historical_bars);
 }
 
-function createInstance(adjustments, settings = {}) {
-    const client = new IB(settings);
+async function createInstance(adjustments, settings = {}) {
+    const client = await IB(settings);
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);

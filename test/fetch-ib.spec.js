@@ -40,11 +40,11 @@ const version = require('../src/version.js').toString();
 describe("fetch-ib", function() {
     this.timeout(100000);
     var tz = 'America/New_York';
-    var client = new IB(config('fetch.ib'));
-    before(function() {
-        return client.open().catch(err => {
-            client = null;
+    var client;
+    before(async function() {
+        client = await IB({port: 7496, silence: true, ...config('fetch.ib')}).catch(err => {
             this.skip();
+            return null;
         });
     });
     beforeEach(function() {

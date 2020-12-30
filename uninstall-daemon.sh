@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Portions Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+# Portions Copyright (c) 2017-2020 James Leigh, Some Rights Reserved
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are met:
@@ -111,9 +111,9 @@ if ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/null 2>/dev/null; then
     yes |sudo -iu "$DAEMON_USER" sh $(dirname "$IBG_LATEST")/uninstall -c -q
   fi
 fi
-IBC_JAR="$PREFIX/lib/IBC.jar"
-if [ -e "$IBC_JAR" ]; then
-  rm "$IBC_JAR"
+API_JAR="$PREFIX/lib/TwsApi.jar"
+if [ -e "$API_JAR" ]; then
+  rm "$API_JAR"
 fi
 
 # Check if certbot was installed

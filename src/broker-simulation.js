@@ -1,4 +1,4 @@
-// broker-ib.js
+// broker-simulation.js
 /*
  *  Copyright (c) 2019 James Leigh, Some Rights Reserved
  *

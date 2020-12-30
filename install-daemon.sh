@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Portions Copyright (c) 2017-2018 James Leigh, Some Rights Reserved
+# Portions Copyright (c) 2017-2020 James Leigh, Some Rights Reserved
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are met:
@@ -35,7 +35,7 @@
 #
 
 NAME=mtrader
-IBC_VERSION=3.8.3
+API_VERSION=981.01
 
 # Read configuration variable file if it is present
 [ -r "/etc/default/$NAME" ] && . "/etc/default/$NAME"
@@ -185,20 +185,14 @@ if [ "$INSTALL_IBG" = "Y" ] && ls "$BASEDIR/Jts/ibgateway"/*/ibgateway > /dev/nu
       yes |sudo -iu "$DAEMON_USER" sh $(dirname "$IBG_LATEST")/uninstall -c -q
     fi
   fi
-  IBC_JAR="$PREFIX/lib/IBC.jar"
-  if [ ! -e "$IBC_JAR" ]; then
+  API_JAR="$PREFIX/lib/TwsApi.jar"
+  if [ ! -e "$API_JAR" ]; then
     mkdir -p "$PREFIX/lib"
-    IBC_URL="https://github.com/IbcAlpha/IBC/releases/download/$IBC_VERSION/IBCLinux-$IBC_VERSION.zip"
-    wget "$IBC_URL" -O "/tmp/ibclinux.zip"
-    unzip "/tmp/ibclinux.zip" $(basename "$IBC_JAR") -d $(dirname "$IBC_JAR")
-    rm "/tmp/ibclinux.zip"
+    API_URL="http://interactivebrokers.github.io/downloads/twsapi_macunix.$API_VERSION.zip"
+    wget "$API_URL" -O "/tmp/twsapi.zip"
+    unzip "/tmp/twsapi.zip" $(basename "$API_JAR") -d $(dirname "$API_JAR")
+    rm "/tmp/twsapi.zip"
   fi
-  IBG_NAME=$(grep Name "$(dirname "$IBG_EXE")"/*.desktop | awk -F= '{print $2}')
-  IBG_VERSION=$(basename "$(dirname "$IBG_EXE")")
-  JAVA_EXE="$(cat "$(dirname "$IBG_EXE")/.install4j/inst_jre.cfg")/bin/java"
-  IBG_JARS="$(dirname "$IBG_EXE")/jars/*:$IBC_JAR"
-  IBG_VMARGS_FILE="$IBG_EXE.vmoptions"
-  IBC_ENTRY_POINT="ibcalpha.ibc.IbcGateway"
 fi
 
 # Setup configuration
@@ -437,80 +431,6 @@ if [ ! -f "$PREFIX/etc/mtrader.json" ]; then
     "listen": "ws://$USERINFO@$HOST:$PORT"
   }
 }
-EOF
-fi
-
-# Update IB Gateway lanucher
-if [ -n "$JAVA_EXE" -a -n "$IBG_JARS" -a -n "$IBG_VMARGS_FILE" -a -n "$IBC_ENTRY_POINT" ]; then
-  node << EOF
-    var fs = require('fs');
-    var json = JSON.parse(fs.readFileSync('$PREFIX/etc/mtrader.json',{encoding:'utf-8'}));
-    var vmargs = fs.readFileSync('$IBG_VMARGS_FILE',{encoding:'utf-8'})
-      .split(/\s*(\r|\n)\s*/).filter(line => line.trim() && line.charAt(0) != '#');
-    var clientId = '$RANDOM';
-    var timeout = 300000;
-    var ibg_version = '$IBG_VERSION';
-    var ibg_name = '$IBG_NAME' || ibg_version;
-    var ibg_previous = '$IBG_PREVIOUS';
-    var installs = json.ibgateway_installs||[];
-    var previous = installs.find(ibg => ibg.ibg_version == ibg_previous)||{};
-    var existing = installs.find(ibg => ibg.ibg_version == ibg_version)||{};
-    var pre_ibc_command = (existing.ibc_command || previous.ibc_command || []);
-    var pre_java = pre_ibc_command.slice(0, pre_ibc_command.findIndex(cmd => ~cmd.indexOf('bin/java'))+1).slice(0,-1);
-    var ibc_command = pre_java.concat(['$JAVA_EXE', '-cp', '$IBG_JARS'], vmargs, ['$IBC_ENTRY_POINT']);
-    var broker_ibg = (((json||{}).broker||{}).ib||{}).ibg_version||'';
-    if (broker_ibg == ibg_previous) {
-      Object.assign(json, {
-        broker: Object.assign((json||{}).broker||{}, {
-          ib: Object.assign(((json||{}).broker||{}).ib||{clientId, timeout}, {ibg_name, ibg_version})
-        })
-      });
-    }
-    var fetch_ibg = (((json||{}).fetch||{}).ib||{}).ibg_version||'';
-    if (fetch_ibg == ibg_previous) {
-      Object.assign(json, {
-        fetch: Object.assign((json||{}).fetch||{}, {
-          ib: Object.assign(((json||{}).fetch||{}).ib||{clientId, timeout}, {ibg_name, ibg_version})
-        })
-      });
-    }
-    var ivolatility_ibg = ((((json||{}).fetch||{}).ivolatility||{}).ib||{}).ibg_version;
-    if (ivolatility_ibg == ibg_previous) {
-      Object.assign(json.fetch.ivolatility.ib, {ibg_name, ibg_version});
-    }
-    if (!existing.ibc_command || existing.ibc_command[0] == ibc_command[0]) {
-      var default_ibgateway = existing.ibc_command ? existing : previous.ibc_command ? previous : {
-        ibg_name,
-        ibg_version,
-        StoreSettingsOnServer: '',
-        MinimizeMainWindow: 'no',
-        ExistingSessionDetectedAction: 'manual',
-        AcceptIncomingConnectionAction: 'manual',
-        ReadOnlyLogin: 'no',
-        ReadOnlyApi: '',
-        AcceptNonBrokerageAccountWarning: 'yes',
-        IbAutoClosedown: 'yes',
-        AllowBlindTrading: 'no',
-        DismissPasswordExpiryWarning: 'no',
-        DismissNSEComplianceNotice: 'yes',
-        BindAddress: '',
-        CommandPrompt: '',
-        SuppressInfoMessages: 'yes',
-        LogComponents: 'never'
-      };
-      var ibgateway = {
-        ...default_ibgateway,
-        ibg_name,
-        ibg_version,
-        ibc_command
-      };
-      Object.assign(json, {
-        ibgateway_installs: installs
-          .filter(ibg => ibg.ibg_version != ibg_previous || ibg.ibc_command[0] != '$JAVA_LATEST')
-          .filter(ibg => ibg.ibg_version != ibg_version).concat(ibgateway)
-      });
-    }
-    fs.writeFileSync('$PREFIX/etc/mtrader.json', JSON.stringify(json, null, 2));
 EOF
 fi
 

@@ -45,28 +45,49 @@ const config = require('./config.js');
 const logger = require('./logger.js');
 
 const private_settings = [
-    'ibg_name', 'ibg_version', 'TradingMode', 'IbLoginId', 'IbPassword',
+    'TradingMode', 'IbLoginId', 'IbPassword',
     'auth_base64', 'auth_file', 'auth_salt', 'auth_sha256'
 ];
 const client_settings = ['host', 'port', 'clientId'].concat(private_settings);
-const gateway_instances = {};
+const active_instances = {};
 const client_instances = {};
 
-module.exports = function(settings) {
+module.exports = async function(settings) {
     const json = _.object(client_settings.filter(key => key in settings).map(key => [key, settings[key]]));
     const key = crypto.createHash('sha256').update(JSON.stringify(json)).digest('hex');
-    const shared = client_instances[key] = client_instances[key] || share(createClientInstance, async() => {
-        delete client_instances[key];
-        if (_.isEmpty(client_instances)) {
-            // all clients are closed, so close all gateways
-            await Promise.all(Object.keys(gateway_instances).map(gateway_key => {
-                const gateway = gateway_instances[gateway_key];
-                delete gateway_instances[gateway_key];
-                if (gateway) return gateway.close();
+    const shared = active_instances[key] = client_instances[key] =
+      client_instances[key] || share(createClientInstance, async(closedBy) => {
+        const active = active_instances[key];
+        delete active_instances[key];
+        const connected = active.instance && await active.instance.isConnected().catch(err => false);
+        if (!connected && active.instance) {
+            if (active == client_instances[key]) {
+                delete client_instances[key];
+            }
+            await active.instance.force_close();
+        }
+        if (_.isEmpty(active_instances)) {
+            // all clients are inactive, so close all of them
+            await Promise.all(Object.keys(client_instances).map(key => {
+                const client = client_instances[key];
+                delete client_instances[key];
+                if (client && client.instance) return client.instance.force_close();
             }));
         }
     });
-    return shared({label: key, ...settings});
+    const old_instance = shared.instance;
+    const shared_instance = shared({label: key, ...settings});
+    if (old_instance != shared_instance) {
+        return shared_instance.open();
+    } else if (await shared_instance.isConnected().catch(err => false)) {
+        return shared_instance;
+    } else {
+        if (shared == client_instances[key]) {
+            delete client_instances[key];
+        }
+        await shared_instance.force_close();
+        return module.exports(settings);
+    }
 };
 
 function createClientInstance(settings) {
@@ -76,17 +97,23 @@ function createClientInstance(settings) {
             const client = await assignClient(self, settings);
             return client.open();
         }),
+        async isConnected() {
+            await self.open();
+            return self.isConnected();
+        },
         close(closedBy) {
-            return self.force_close(closedBy);
+            // released from active_instance pool
         },
         async force_close(closedBy) {
-            // don't do anything unless instance is initialized
+            // don't do anything unless instance is initialized below
             return Promise.resolve();
         }
     });
 }
 
-async function assignClient(self, settings) {
+async function assignClient(self, options) {
+    const install = config('ib') || {};
+    const settings = await setDefaultSettings({...options, ...install});
     const market_functions = [
         'reqHistoricalData', 'reqMktData', 'reqRealTimeBars',
         'calculateImpliedVolatility', 'calculateOptionPrice'
@@ -99,25 +126,14 @@ async function assignClient(self, settings) {
     } else {
         delete settings.lib_dir;
     }
-    const install = (config('ibgateway_installs')||[])
-      .find(inst => inst.ibg_version == settings.ibg_version && inst.ibg_name == settings.ibg_name);
-    if (settings.ibg_name && !install)
-        throw Error(`IB Gateway ${settings.ibg_name}/${settings.ibg_version} is not installed or configured correctly`);
-    const timeout = Date.now() + (install && install.login_timeout || 300) * 1000;
-    let gateway = await getSharedGateway(install, settings);
-    let client = await ib({
-        ..._.omit(settings, private_settings),
-        host: settings.host || gateway.host,
-        port: gateway.port
-    });
+    let client = await ib(settings);
     const market_client = settings.market_data && module.exports(settings.market_data);
     const locks = new ReadWriteLock();
     return Object.assign(self, _.mapObject(client, (fn, name) => {
-        if (name == 'close') return self.close; // this was overriden by share.js already
+        if (name == 'close') return self.close; // already a noop
         else if (name == 'open') return async function(openedBy) {
             const current_client = client;
             return locks.readLock(async() => {
-                await gateway.open();
                 await client.open();
                 return self;
             }).catch(err => {
@@ -126,18 +142,9 @@ async function assignClient(self, settings) {
                     if (current_client == client) {
                         // current_client could not open, try creating anew
                         await current_client.close();
-                        if (timeout < Date.now()) {
-                            await gateway.close();
-                            gateway = await getSharedGateway(install, settings);
-                        }
-                        client = await ib({
-                            ..._.omit(settings, private_settings),
-                            host: settings.host || gateway.host,
-                            port: gateway.port
-                        });
+                        client = await ib(settings);
                     }
                     // try again
-                    await gateway.open();
                     await client.open();
                     return self;
                 });
@@ -156,95 +163,14 @@ async function assignClient(self, settings) {
         async force_close(closedBy) {
             if (market_client) await market_client.close(closedBy);
             await client.close(closedBy);
-            // all gateways are kept open until all clients are closed
         }
     });
 }
 
-function getSharedGateway(install, settings) {
-    const json = _.object(private_settings.filter(key => key in settings).map(key => [key, settings[key]]));
-    const key = crypto.createHash('sha256').update(JSON.stringify(json)).digest('hex');
-    let gateway = gateway_instances[key] = gateway_instances[key] ||
-        createGatewayInstance(install, {label: key, ...settings});
-    return gateway.open().catch(async(err) => {
-        logger.debug("IB Gateway", err);
-        await gateway.close();
-        if (gateway == gateway_instances[key]) {
-            // replace gateway (if not already replaced)
-            gateway = gateway_instances[key] = createGatewayInstance(install, {label: key, ...settings});
-        }
-        // try again
-        return gateway_instances[key].open();
-    });
-};
-
-function createGatewayInstance(install, settings) {
-    if (!settings || !settings.ibg_version || !settings.ibg_name) return {
-        host: settings.host,
-        port: settings.port,
-        async open() {return this;},
-        async close() {}
-    };
-    const self = new.target ? this : {};
-    return Object.assign(self, {
-        open: _.memoize(async() => {
-            const gateway = await promiseInitializedInstance(self, install, settings);
-            return gateway.open();
-        }),
-        close(closedBy) {
-            return self.force_close(closedBy);
-        },
-        async force_close(closedBy) {
-            // don't do anything unless instance is initialized
-            return Promise.resolve();
-        }
-    });
-}
-
-let initialization_lock = Promise.resolve();
-
-async function promiseInitializedInstance(self, install, settings) {
-    return initialization_lock = initialization_lock.catch(err => logger.trace).then(() => {
-        return promiseInstance(self, install, settings);
-    });
-}
-
-async function promiseInstance(self, install, settings) {
-    if (install.ibg_name) logger.info(`Launching ${install.ibg_name} ${settings.label||''}`);
-    const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port ||
-        await findAvailablePort(settings.TradingMode == 'paper' ? 4002 : 4001);
-    const commandServerPort = settings.CommandServerPort ||
-        await findAvailablePort(settings.TradingMode == 'paper' ? 7462 : 7461);
-    const ibc = await spawn(install.ibc_command, overrideTwsApiPort, commandServerPort, {...install, ...settings});
-    const ibc_exit = ibc.connected ? new Promise(exit => ibc.on('exit', exit)) : Promise.resolve();
-    const timeout = (install.login_timeout || 300) * 1000;
-    const host = settings.BindAddress || install.BindAddress || 'localhost';
-    const ibc_socket = await createSocket(commandServerPort, host, Date.now() + timeout);
-    return Object.assign(self, {
-        host: 'localhost',
-        port: overrideTwsApiPort,
-        async open() {
-            if (!ibc_socket.destroyed) return self;
-            else throw Error("IBC connection already destroyed");
-        },
-        // close was overriden by share.js already
-        async force_close(closedBy) {
-            const force_quit = setTimeout(() => {
-                if (!ibc_socket.destroyed) ibc_socket.destroy();
-                if (!ibc.killed) ibc.kill();
-            }, timeout).unref();
-            await new Promise(closed => {
-                if (ibc_socket.destroyed) closed();
-                ibc_socket.once('close', closed);
-                ibc_socket.write('STOP\n', 'utf8');
-            });
-            await ibc_exit;
-            clearTimeout(force_quit);
-        }
-    });
-}
-
+const black_listed_ports = [];
 async function findAvailablePort(startFrom) {
+    if (~black_listed_ports.indexOf(startFrom))
+        return findAvailablePort(startFrom+1);
     return new Promise((ready, fail) => {
         const server = net.createServer()
           .once('error', function(err) {
@@ -254,79 +180,26 @@ async function findAvailablePort(startFrom) {
                 fail(err);
             }
         }).once('listening', () => server.close())
-          .once('close', () => ready(startFrom))
+          .once('close', () => {
+            black_listed_ports.push(startFrom);
+            ready(startFrom);
+        })
           .listen(startFrom);
     });
 }
 
-async function spawn(ibc_command, overrideTwsApiPort, commandServerPort, settings) {
-    const ini_file = await createIniFile(overrideTwsApiPort, commandServerPort, settings);
-    return new Promise((ready, fail) => {
-        const args = _.rest(ibc_command).concat(ini_file, settings.TradingMode || 'live');
-        logger.debug(_.first(ibc_command), ...args);
-        const ibc = child_process.spawn(_.first(ibc_command), args, {
-            env: _.extend({}, process.env, settings.env)
-        });
-        ibc.once('exit', (code, signal) => fail(Error(`IBC exited with code ${code} ${signal}`)));
-        ibc.once('error', fail);
-        const regex = /\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d:\d\d\d IBC: |\s+$/g;
-        ibc.stdout.setEncoding('utf8').on('data', txt => {
-            const entry = txt.replace(regex,'');
-            if (entry) logger.log(entry);
-        });
-        ibc.stderr.setEncoding('utf8').on('data', txt => {
-            const entry = txt.replace(regex,'');
-            if (entry) logger.error(entry);
-        });
-        const timer = setTimeout(() => {
-            ibc.kill();
-            fail(Error("IBC login timed out"));
-        }, (settings.login_timeout || 300) * 1000).unref();
-        let port_config = false
-        const onlogin = data => {
-            if (data && ~data.indexOf('Performing port configuration')) {
-                port_config = true;
-            }
-            if (port_config && data && ~data.indexOf('Configuration') && ~data.indexOf('event=Closed')) {
-                clearTimeout(timer);
-                pipe.removeListener('data', onlogin);
-                ready(ibc);
-            }
-        };
-        const pipe = ibc.stdout.setEncoding('utf8').on('data', onlogin);
-    }).then(ibc => {
-        return util.promisify(fs.unlink)(ini_file).then(() => ibc);
-    }, err => {
-        return util.promisify(fs.unlink)(ini_file).then(() => Promise.reject(err));
-    });
-}
-
-async function createIniFile(overrideTwsApiPort, commandServerPort, settings) {
-    const values = await setDefaultSettings(overrideTwsApiPort, commandServerPort, settings);
-    const content = Object.keys(values).map(key => {
-        return `${key}=${JSON.stringify(values[key]).replace(/^"|"$/g, '')}`;
-    }).join('\r\n');
-    const dir = os.tmpdir();
-    const name = `ibc_${Date.now().toString(16)}.ini`;
-    var file = path.resolve(dir, name);
-    await util.promisify(fs.writeFile)(file, '', 'utf8');
-    await util.promisify(fs.chmod)(file, fs.constants.S_IRUSR | fs.constants.S_IWUSR);
-    await util.promisify(fs.writeFile)(file, content, 'utf8');
-    return file;
-}
-
-async function setDefaultSettings(overrideTwsApiPort, commandServerPort, settings) {
+async function setDefaultSettings(settings) {
+    const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port ||
+            await findAvailablePort(settings.TradingMode == 'paper' ? 4002 : 4001)
     const {username, password} = await readAuthentication(settings);
     const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     const default_dir = path.resolve(lib_dir, settings.IbLoginId || username || '');
     return {
         ...settings,
-        IbLoginId: username || '',
-        IbPassword: password || '',
-        OverrideTwsApiPort: overrideTwsApiPort,
-        CommandServerPort: commandServerPort,
-        BindAddress: settings.BindAddress || '127.0.0.1',
-        IbDir: path.resolve(settings.IbDir || default_dir)
+        IBAPIBase64UserName: username ? new Buffer(username).toString('base64') : null,
+        IBAPIBase64Password: password ? new Buffer(password).toString('base64') : null,
+        port: overrideTwsApiPort,
+        "tws-settings-path": path.resolve(settings.IbDir || default_dir)
     };
 }
 
@@ -346,21 +219,4 @@ async function readAuthentication(settings) {
     } else {
         return {username: settings.IbLoginId};
     }
-}
-
-async function createSocket(port, timeout) {
-    return new Promise((connection, failure) => {
-        const socket = net.connect(port)
-          .once('connect', () => connection(socket))
-          .once('error', err => {
-            if (err.code != 'ECONNREFUSED') failure(err);
-            else if (timeout < Date.now()) failure(err);
-            else connection(delay(() => createSocket(port, timeout)));
-        }).once('close', () => failure(Error("Connection closed")))
-          .on('data', logger.log);
-    });
-}
-
-async function delay(fn) {
-    return new Promise(ready => setTimeout(ready, 500)).then(fn);
 }

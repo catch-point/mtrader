@@ -80,10 +80,10 @@ async function helpWithSettings(Brokers) {
 async function createBroker(promiseHelpWithSettings, Brokers, settings, quote) {
     const help = await promiseHelpWithSettings;
     let error;
-    const broker = chooseBroker(help, settings).reduce((broker, key) => {
-        if (broker) return broker; // already found one
+    const broker = await chooseBroker(help, settings).reduce(async(broker, key) => {
+        if (await broker) return broker; // already found one
         try {
-            return new Brokers[key](settings[key], quote);
+            return Brokers[key](settings[key], quote);
         } catch (err) {
             if (error) logger.debug("Could not created broker", error);
             error = err;

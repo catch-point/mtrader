@@ -78,7 +78,7 @@ module.exports = async function(settings = {}) {
             return client[cmd].apply(client, arguments).catch(err => {
                 logger.trace(err);
                 const stack = (caller_error.stack || caller_error).toString();
-                const msg = stack.replace(/(Error: )?Called from/, err.message);
+                const msg = stack.replace(/(Error: )?Called from/, err.message || err);
                 throw Error(msg);
             });
         }
@@ -87,6 +87,7 @@ module.exports = async function(settings = {}) {
 
 
 async function createClient(host, port, clientId, ib_tz, timeout, settings = {}) {
+    const self = new.target ? this : {};
     const ib = await IB(settings);
     ib.setMaxListeners(20);
     ib.on('error', (id_or_str, err_code, err_msg) => {
@@ -105,32 +106,36 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         }
         ib.isConnected().catch(logger.error); // check if the error caused a disconnection
     }).on('isConnected', connected => {
-        if (!connected) ib.exit().catch(logger.error); // exit on disconnection
+        if (self.connected && !connected) ib.exit().catch(logger.error); // exit on disconnection
     }).on('result', (event, args) => {
         logger.trace("ib", clientId, event, ...args);
     });
+    const login_timeout = Date.now() + (settings.login_timeout || (settings.TradingMode ? 300 : 0)) * 1000;
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
+        const on_error = (id_or_str, err_code, err_msg) => {
+            first_error = first_error || Error(err_msg || id_or_str);
+            if (login_timeout < Date.now()) {
+                fail(Error(err_msg || id_or_str));
+                ib.removeListener('error', on_error);
+            } else if (self.connecting && !self.connected) {
+                // keep trying
+                ib.sleep(500).catch(fail);
+                ib.eConnect(host, port, clientId, false).catch(fail);
+            }
+        };
         ib.once('connectAck', () => {
             self.connecting = false;
             self.connected = true;
             self.disconnected = false;
             logger.debug("ib-client connected", host, port, clientId);
-        }).once('error', (id_or_str, err_code, err_msg) => {
-            const msg = err_msg || id_or_str;
-            first_error = msg;
-            if (!self.connected) {
-                self.connecting = false;
-                self.connected = false;
-                self.disconnected = true;
-                fail(msg);
-            }
         }).once('nextValidId', order_id => {
             logger.log("ib-client connected to", host, port, "as", clientId);
             ready();
+            ib.removeListener('error', on_error);
         }).once('exit', () => {
             fail(first_error || Error("disconnected"));
-        });
+        }).on('error', on_error);
     });
     const once_disconnected = new Promise(ready => {
         once_connected.catch(err => {
@@ -149,9 +154,16 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
           .once('exit', () => abort());
         ib.serverVersion().catch(abort);
     });
+    if (settings.TradingMode) {
+        await ib.login(settings.TradingMode, _.pick(settings, [
+            'IBAPIBase64UserName', 'IBAPIBase64Password'
+        ]), _.pick(settings, [
+            'AcceptIncomingConnectionAction', 'AcceptNonBrokerageAccountWarning', 'AllowBlindTrading', 'DismissNSEComplianceNotice', 'ExistingSessionDetectedAction', 'LogComponents', 'MinimizeMainWindow', 'ReadOnlyLogin', 'StoreSettingsOnServer', 'SuppressInfoMessages'
+        ]));
+        await ib.enableAPI(settings.port, settings.ReadOnlyLogin);
+    }
     once_connected.then(() => ib.reqMarketDataType(settings.reqMarketDataType || 4), _.noop).catch(logger.error);
     const time_limit = new TimeLimit(timeout);
-    const self = new.target ? this : {};
     const lib_dir = settings && settings.lib_dir;
     const store = lib_dir && storage(lib_dir);
     const modules = [
@@ -170,17 +182,25 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         connected: false,
         disconnected: false,
         version: () => version_promise,
+        async isConnected() {
+            if (self.disconnected) return false;
+            return new Promise((ready, abort) => {
+                if (self.disconnected) return ready(false);
+                ib.once('isConnected', ready);
+                ib.isConnected().catch(abort);
+            });
+        },
         async close() {
             let error;
-            await time_limit.close();
             await Promise.all(modules.map(module => {
                 if (module.close) return module.close().catch(err => error = error || err);
             }));
             if (self.connecting || self.connected) {
-                _.defer(() => !self.disconnected && ib.eDisconnect().catch(logger.error));
-                await once_disconnected;
+                _.defer(() => !self.disconnected && ib.exit().catch(logger.error));
+                await once_disconnected.catch(err => error = error || err);
             }
-            if (store) await store.close();
+            if (store) await store.close().catch(err => error = error || err);
+            await time_limit.close().catch(err => error = error || err);
             if (error) throw error;
         },
         async open() {

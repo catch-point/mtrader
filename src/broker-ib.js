@@ -43,14 +43,14 @@ const IB = require('./ib-gateway.js');
 const Fetch = require('./fetch.js');
 const expect = require('chai').expect;
 
-module.exports = function(settings = {}, mock_ib_client = null) {
+module.exports = async function(settings = {}, mock_ib_client = null) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
     if (settings.local_accounts) expect(settings.account).to.be.oneOf(settings.local_accounts);
-    const ib = mock_ib_client && mock_ib_client.open ? mock_ib_client : new IB(settings);
+    const ib = mock_ib_client && mock_ib_client.open ? mock_ib_client : await IB(settings);
     const fetch = new Fetch(merge(config('fetch'), settings.fetch));
     const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
     return _.extend(async function(options) {
