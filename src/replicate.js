@@ -154,6 +154,10 @@ function helpInfo(broker, collect) {
                 usage: '<number>',
                 description: "Maximum amount that should be allocated to this strategy"
             },
+            close_unknown: {
+                usage: 'true',
+                description: "Close unknown positions in known markets"
+            },
             dry_run: {
                 usage: 'true',
                 description: "If working orders should not be changed, only reported"
@@ -217,15 +221,26 @@ async function replicate(broker, collect, lookup, options) {
     const actual = getActualPositions(broker_positions, broker_orders, des_working, begin, options);
     logger.debug("replicate actual", ...Object.keys(actual));
     const portfolio = _.uniq(Object.keys(desired).concat(getPortfolio(options.markets, options))).sort();
-    logger.trace("replicate portfolio", ...portfolio);
     const margin_acct = !broker_balances.every(bal => bal.margin == null);
     _.forEach(actual, (w, contract) => {
         if (!desired[contract] && +w.position && !~portfolio.indexOf(contract) &&
                 (!options.markets || ~options.markets.indexOf(w.market)) &&
                 (w.currency == options.currency || margin_acct)) {
             logger.warn("Unknown position", options.label || '', w.position, w.symbol, w.market);
+            if (options.close_unknown) {
+                portfolio.push(contract);
+                desired[contract] = {
+                    position:0, asof: begin,
+                    ..._.pick(w,
+                        'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick'
+                    ),
+                    working: {},
+                    realized: {}
+                };
+            }
         }
     });
+    logger.trace("replicate portfolio", ...portfolio);
     const replicateContract = replicateContracts(desired, begin, options);
     const order_changes = portfolio.reduce((order_changes, contract) => {
         const [, symbol, market] = contract.match(/^(.+)\W(\w+)$/);
