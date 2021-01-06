@@ -394,7 +394,7 @@ async function createInstance(adjustments, settings = {}) {
     const self = async(options) => {
         if (options.info=='help') return help(settings);
         if (options.info=='version') {
-            return client.open().then(client => client.version()).then(client_version => {
+            return client.version().then(client_version => {
                 return [{version: client_version, name: 'TWS API'}];
             }, err => {
                 return [{version: null, name: 'TWS API', message: err.message}];
@@ -406,7 +406,6 @@ async function createInstance(adjustments, settings = {}) {
             return pending.map(item => ({cmd: 'fetch', ...item}));
         }
         if (options.info) return [];
-        await client.open();
         const adj = isNotEquity(markets, options) ? null :
             pastAndFutureAdjustments.bind(this, fetchDividendInfo_cache, markets, client, adjustments);
         if (options.interval == 'lookup') return lookup(markets, client, options);

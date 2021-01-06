@@ -58,7 +58,6 @@ module.exports = async function(settings = {}, mock_ib_client = null) {
         if (options.info=='version') return [{version}];
         if (options.info) return [];
         expect(settings).to.have.property('account').that.is.ok;
-        await ib.open();
         switch(options.action) {
             case 'balances': return listBalances(markets, ib, fetch, settings, options);
             case 'positions': return listPositions(markets, ib, fetch, settings, options);

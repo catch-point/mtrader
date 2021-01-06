@@ -53,29 +53,31 @@ module.exports = async function(settings = {}) {
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const timeout = settings && settings.timeout || 600000;
     const self = new.target ? this : {};
-    let opened_client = await createClient(host, port, clientId, ib_tz, timeout, settings);
-    let promise_ib, closed = false;
-    const open = () => {
-        if (opened_client && !opened_client.disconnected) return opened_client.open();
-        else return promise_ib = (promise_ib || Promise.reject())
-          .catch(err => ({disconnected: true})).then(async(client) => {
-            if (!client.disconnected) return client;
-            opened_client = await createClient(host, port, clientId, ib_tz, timeout, settings);
-            return opened_client.open();
-        });
-    };
-    return Object.assign(self, _.mapObject(_.pick(opened_client, _.isFunction), (fn, cmd) => async function() {
+    let promise_client = createClient(host, port, clientId, ib_tz, timeout, settings);
+    let closed = false;
+    const first_client = await promise_client;
+    return Object.assign(self, _.mapObject(_.pick(first_client, _.isFunction), (fn, cmd) => async function() {
         if (cmd == 'close') {
             closed = true;
-            return opened_client.close();
+            const client = await promise_client;
+            return client.close();
         } else if (closed) {
             throw Error(`IB API has been closed to ${clientId}`);
-        } else if (cmd == 'open') {
-            return open();
         } else {
             const caller_error = new Error("Called from");
-            const client = await open();
-            return client[cmd].apply(client, arguments).catch(err => {
+            const client = await promise_client;
+            return client[cmd].apply(client, arguments).catch(async(err) => {
+                if (closed || !client.disconnected) throw err;
+                promise_client = promise_client.then(client => client.open()).catch(async(disconnected) => {
+                    if (closed) return client;
+                    await client.close().catch(logger.error);
+                    logger.log("ib-client reconnecting client to", host, port, "as", clientId);
+                    return createClient(host, port, clientId, ib_tz, timeout, settings);
+                });
+                const new_client = await promise_client;
+                if (closed || new_client.disconnected) throw err;
+                return new_client[cmd].apply(client, arguments);
+            }).catch(err => {
                 logger.trace(err);
                 const stack = (caller_error.stack || caller_error).toString();
                 const msg = stack.replace(/(Error: )?Called from/, err.message || err);
@@ -105,8 +107,6 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
             logger.warn("ib-client", clientId, err_msg || id_or_str || '');
         }
         ib.isConnected().catch(logger.error); // check if the error caused a disconnection
-    }).on('isConnected', connected => {
-        if (self.connected && !connected) ib.exit().catch(logger.error); // exit on disconnection
     }).on('result', (event, args) => {
         logger.trace("ib", clientId, event, ...args);
     });
@@ -115,13 +115,18 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         let first_error = null;
         const on_error = (id_or_str, err_code, err_msg) => {
             first_error = first_error || Error(err_msg || id_or_str);
-            if (login_timeout < Date.now()) {
-                fail(Error(err_msg || id_or_str));
+            if (self.connecting && !self.connected) {
+                if (login_timeout < Date.now()) {
+                    fail(Error(err_msg || id_or_str));
+                    logger.log("ib-client could not login quick enough to", host, port, "as", clientId);
+                    ib.exit();
+                } else {
+                    // keep trying
+                    ib.sleep(500).catch(fail);
+                    ib.eConnect(host, port, clientId, false).catch(fail);
+                }
+            } else {
                 ib.removeListener('error', on_error);
-            } else if (self.connecting && !self.connected) {
-                // keep trying
-                ib.sleep(500).catch(fail);
-                ib.eConnect(host, port, clientId, false).catch(fail);
             }
         };
         ib.once('connectAck', () => {
@@ -141,17 +146,17 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         once_connected.catch(err => {
             ready();
         });
-        ib.once('exit', () => {
+        ib.once('exit', code => {
             self.connecting = false;
             self.connected = false;
             self.disconnected = true;
-            logger.log("ib-client disconnected from", host, port, "as", clientId);
+            logger.log("ib-client", ib.pid, "exited", code, "from", host, port, "as", clientId);
             ready();
         });
     });
     const version_promise = new Promise((ready, abort) => {
-        ib.once('serverVersion', version => ready(version))
-          .once('exit', () => abort());
+        ib.once('serverVersion', version => ready(version));
+        once_disconnected.then(abort);
         ib.serverVersion().catch(abort);
     });
     if (settings.TradingMode) {
@@ -162,7 +167,15 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         ]));
         await ib.enableAPI(settings.port, settings.ReadOnlyLogin);
     }
-    once_connected.then(() => ib.reqMarketDataType(settings.reqMarketDataType || 4), _.noop).catch(logger.error);
+    once_connected.then(() => {
+        ib.on('isConnected', connected => {
+            if (!connected) {
+                logger.log("ib-client disconnected from", host, port, "as", clientId);
+                ib.exit().catch(logger.error); // exit on disconnection
+            }
+        });
+        ib.reqMarketDataType(settings.reqMarketDataType || 4);
+    }, _.noop).catch(logger.error);
     const time_limit = new TimeLimit(timeout);
     const lib_dir = settings && settings.lib_dir;
     const store = lib_dir && storage(lib_dir);
@@ -177,17 +190,23 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         requestWithId.call(self, ib, time_limit)
     ];
     const methods = Object.assign({}, ...modules);
-    return Object.assign(self, methods, {
+    let open_promise;
+    Object.assign(self, methods, {
         connecting: false,
         connected: false,
         disconnected: false,
         version: () => version_promise,
-        async isConnected() {
-            if (self.disconnected) return false;
-            return new Promise((ready, abort) => {
-                if (self.disconnected) return ready(false);
-                ib.once('isConnected', ready);
+        async open() {
+            await once_connected;
+            if (self.disconnected) throw Error("disconnected");
+            return open_promise = open_promise || new Promise((ready, abort) => {
+                if (self.disconnected) return abort(Error("disconnected"));
+                ib.once('isConnected', connected => connected ? ready() : abort(Error("disconnected")));
+                once_disconnected.then(() => abort(Error("disconnected")), abort);
                 ib.isConnected().catch(abort);
+            }).then(() => {
+                open_promise = null;
+                return self;
             });
         },
         async close() {
@@ -203,17 +222,13 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
             await time_limit.close().catch(err => error = error || err);
             if (error) throw error;
         },
-        async open() {
-            if (!self.connecting && !self.connected && !self.disconnected) {
-                self.connecting = true;
-                await ib.eConnect(host, port, clientId, false);
-            }
-            return once_connected.then(() => self);
-        },
         async pending() {
             return time_limit.pending();
         }
     });
+    self.connecting = true;
+    await ib.eConnect(host, port, clientId, false);
+    return self;
 }
 
 function reqPositions(ib) {
