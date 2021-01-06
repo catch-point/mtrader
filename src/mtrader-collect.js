@@ -95,6 +95,7 @@ function usage(command) {
         .option('--launch <program>', "Program used to open the output file")
         .option('--reverse', "Reverse the order of the rows")
         .option('-a, --append', "Append the new rows to the end of the file")
+        .option('-c, --csv', "Use comma delimited output")
         .option('-z, --gzip', "Compress the output file")
         .option('-t, --transpose', "Swap the columns and rows");
 }

@@ -38,7 +38,7 @@ const zlib = require('zlib');
 const _ = require('underscore');
 const spawn = require('child_process').spawn;
 const Writable = require('stream').Writable;
-const csv = require('fast-csv');
+const {fromStream, createWriteStream} = require('fast-csv');
 const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
 
@@ -48,7 +48,8 @@ module.exports = function(data, options) {
     const transpose = options.transpose && options.transpose.toString() != 'false';
     const reverse = options.reverse && options.reverse.toString() != 'false';
     const append = filename && options.append && options.append.toString() != 'false';
-    const gzip = filename && options.gzip && options.gzip.toString() != 'false';
+    const gzip = filename && (options.gzip && options.gzip.toString() != 'false' || filename.endsWith('.gz'));
+    const csv = options.csv || filename && (filename.endsWith('.csv') || filename.endsWith('.csv.gz'));
     if (transpose && append) throw Error("Cannot append to a transposed file");
     return Promise.resolve(append ? new Promise(cb => {
         fs.access(filename, fs.R_OK, err => err ? cb(false) : cb(true));
@@ -57,25 +58,38 @@ module.exports = function(data, options) {
         if (!present) return ready(objects);
         const stream = fs.createReadStream(filename).on('error', error);
         const pipe = gzip ? stream.pipe(zlib.createGunzip().on('error', error)) : stream;
-        csv.fromStream(pipe, {headers : true, ignoreEmpty: true})
+        fromStream(pipe, csv ?
+            {headers : true, ignoreEmpty: true, delimiter: ',', quote: '"', escape: '"'} :
+            {headers : true, ignoreEmpty: true, delimiter: '\t', quote: null, comment: '#'}
+        )
             .on('error', error)
             .on('data', data => objects.push(_.mapObject(data, parseValue)))
             .on('end', () => ready(objects));
     })).then(existing => reverse ? existing.reverse().concat(data) : existing.concat(data)) : data)
       .then(data => {
-        if (filename) return awriter(filename => writeData(transpose, reverse, gzip, filename, data), filename);
-        else return writeData(transpose, reverse, false, null, data);
+        if (filename) return awriter(filename => writeData(transpose, reverse, csv, gzip, filename, data), filename);
+        else return writeData(transpose, reverse, false, false, null, data);
     }).then(() => launchOutput(filename, options));
 };
 
-function writeData(transpose, reverse, gzip, filename, data) {
+function writeData(transpose, reverse, csv, gzip, filename, data) {
     return new Promise((finished, error) => {
-        const output = createWriteStream(filename).on('error', error);
+        const output = createOutputStream(filename).on('error', error);
         output.on('finish', finished);
         if (transpose) {
-            const writer = csv.createWriteStream({
+            const writer = createWriteStream(csv ? {
                 headers: false,
+                quote: '"',
+                escape: '"',
+                delimiter: ',',
                 rowDelimiter: '\r\n',
+                includeEndRowDelimiter: true
+            } : {
+                headers: false,
+                quote: '\t',
+                escape: '\\',
+                delimiter: '\t',
+                rowDelimiter: '\n',
                 includeEndRowDelimiter: true
             }).on('error', error);
             if (gzip) {
@@ -94,11 +108,11 @@ function writeData(transpose, reverse, gzip, filename, data) {
                 const rows = keys.map(key => {
                     const values = _.pluck(data, key);
                     if (reverse) values.reverse();
-                    return [key].concat(values);
+                    return [key].concat(values).map(formatValue);
                 });
                 rows.forEach(row => writer.write(row));
             } else {
-                _.pairs(data).forEach(datum => writer.write(datum));
+                _.pairs(data).forEach(datum => writer.write(datum.map(formatValue)));
             }
             writer.end();
         } else {
@@ -108,10 +122,20 @@ function writeData(transpose, reverse, gzip, filename, data) {
                     return keys;
                 else
                     return _.union(all_keys, keys);
-            }, []);
-            const writer = csv.createWriteStream({
+            }, []).map(formatValue);
+            const writer = createWriteStream(csv ? {
                 headers,
+                quote: '"',
+                escape: '"',
+                delimiter: ',',
                 rowDelimiter: '\r\n',
+                includeEndRowDelimiter: true
+            } : {
+                headers,
+                quote: '\t',
+                escape: '\\',
+                delimiter: '\t',
+                rowDelimiter: '\n',
                 includeEndRowDelimiter: true
             }).transform(obj => _.mapObject(obj, formatValue)).on('error', error);
             if (gzip) {
@@ -132,11 +156,11 @@ function getOutputFile(options) {
     if (output) return output;
     else if (!options.launch) return null;
     const name = process.title.replace(/.*\//,'').replace(/\W/g,'') +
-        process.pid + Date.now().toString(16) + '.csv';
+        process.pid + Date.now().toString(16) + '.tsv';
     return path.resolve(os.tmpdir(), name);
 }
 
-function createWriteStream(outputFile) {
+function createOutputStream(outputFile) {
     if (outputFile) return fs.createWriteStream(outputFile);
     const delegate = process.stdout;
     const output = Object.create(Writable.prototype);
@@ -170,12 +194,13 @@ function launchOutput(outputFile, options) {
 }
 
 function parseValue(value) {
-    if (value == '') return null;
     if (!_.isString(value)) return value;
+    else if (value == '' || value == 'null') return null;
+    else if (value == 'true' || value == 'false') return value == 'true';
     const chr = value.charAt(0);
     if (chr == '"' || chr == '[' || chr == '{') return JSON.parse(value);
     const number = Number(value);
-    if (!Number.isNaN(number) || value == 'NaN') return number;
+    if (value == 'NaN' || number.toString() === value) return number;
     else return value;
 }
 
@@ -183,8 +208,6 @@ function formatValue(value) {
     if (value == null) return '';
     if (_.isObject(value) && typeof value.toJSON == 'function') return formatValue(value.toJSON());
     if (_.isObject(value)) return JSON.stringify(value);
-    if (!_.isString(value)) return value;
-    const chr = value.charAt(0);
-    if (chr == '"' || chr == '[' || chr == '{') return JSON.stringify(value);
+    if (_.isString(value) && value.match(/[^/:\w\-\.\+]/)) return JSON.stringify(value);
     else return value;
 }
