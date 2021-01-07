@@ -128,7 +128,6 @@ if (require.main === module) {
         const app = new shell({isShell: true});
         const settings = {shell: app, introduction: true};
         app.configure(function(){
-            app.use(shell.history(settings));
             app.use(shell.completer(settings));
             app.use(shell.router(settings));
             app.use(shell.help(settings));
