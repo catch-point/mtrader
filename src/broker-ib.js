@@ -143,6 +143,10 @@ function helpOptions() {
             values: ['true'],
             description: "If set, Allows orders to also trigger or fill outside of regular trading hours."
         },
+        condition: {
+            usage: 'symbol=<sym>;market=<mkt>;isMore=<true|false>;price=<number>;type=Price',
+            description: "TWS API OrderCondition objects with symbol/market instead of conId"
+        },
         order_ref: {
             usage: '<string>',
             description: "The order identifier that is unique among working orders"
@@ -244,7 +248,9 @@ function helpOptions() {
         properties: [
             'posted_at', 'asof', 'traded_at', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset',
             'traded_price', 'tif', 'extended_hours', 'status',
-            'order_ref', 'attach_ref', 'acctNumber', 'symbol', 'market', 'currency', 'security_type', 'multiplier'
+            'order_ref', 'attach_ref', 'acctNumber',
+            'symbol', 'market', 'currency', 'security_type', 'multiplier',
+            'condition'
         ],
         options: {
             action: {
@@ -273,7 +279,8 @@ function helpOptions() {
         properties: [
             'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset',
             'tif', 'extended_hours', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier',
+            'condition'
         ],
         options: {
             action: {
@@ -289,7 +296,8 @@ function helpOptions() {
         properties: [
             'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset',
             'tif', 'extended_hours', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier',
+            'condition'
         ],
         options: {
             action: {
@@ -305,7 +313,8 @@ function helpOptions() {
         properties: [
             'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset',
             'tif', 'extended_hours', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier',
+            'condition'
         ],
         options: {
             action: {
@@ -576,7 +585,8 @@ async function orderToIbOrder(markets, ib, fetch, settings, contract, order, opt
     expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
     expect(order).to.have.property('quant').that.is.ok;
     expect(order).to.have.property('order_type').that.is.ok;
-    expect(order).to.have.property('tif').that.is.oneOf(['DAY', 'GTC', 'IOC', 'OPG', 'FOK', 'DTC']);
+    if (order.tip)
+        expect(order).to.have.property('tif').that.is.oneOf(['DAY', 'GTC', 'IOC', 'OPG', 'FOK', 'DTC']);
     const ibalgo = order.order_type.indexOf(' (IBALGO)');
     if (~ibalgo) {
         const algoParams = order.order_type.substring(ibalgo + ' (IBALGO)'.length).split(';')
@@ -592,6 +602,7 @@ async function orderToIbOrder(markets, ib, fetch, settings, contract, order, opt
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
+            conditions: await buildOrderConditions(markets, ib, order.condition),
             ...await ibAccountOrderProperties(ib, settings)
         };
     } else if (order.order_type == 'SNAP STK') {
@@ -603,6 +614,7 @@ async function orderToIbOrder(markets, ib, fetch, settings, contract, order, opt
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
+            conditions: await buildOrderConditions(markets, ib, order.condition),
             ...await ibAccountOrderProperties(ib, settings)
         };
     } else {
@@ -615,6 +627,7 @@ async function orderToIbOrder(markets, ib, fetch, settings, contract, order, opt
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
+            conditions: await buildOrderConditions(markets, ib, order.condition),
             ...await ibAccountOrderProperties(ib, settings)
         };
     }
@@ -761,6 +774,62 @@ function netPrice(legs, leg_prices) {
     }, Big(0));
 }
 
+const order_condition_properties = [
+    'changePercent', 'exchange', 'isMore', 'percent', 'price',
+    'secType', 'symbol', 'time', 'triggerMethod', 'type', 'volume'
+];
+
+async function buildOrderConditions(markets, ib, condition_string) {
+    if (!condition_string) return [];
+    const disjunctions = condition_string.split('|').map(string => {
+        const conjunctions = string.split('&').map(string => {
+            return _.mapObject(_.object(string.split(';').map(pair => pair.split('=', 2))), value => {
+                if (value == 'true' || value == 'false') return value == 'true';
+                else return value;
+            })
+        });
+        return conjunctions.map(ord_cond => ({...ord_cond, conjunctionConnection: true}));
+    });
+    disjunctions.forEach(conjunctions => _.last(conjunctions).conjunctionConnection = false);
+    const conditions = [].concat(...disjunctions);
+    return Promise.all(conditions.map(async(ord_cond) => {
+        if (!ord_cond.symbol || !ord_cond.market)
+            return _.pick(ord_cond, ['conId', 'conjunctionConnection'].concat(order_condition_properties));
+        const contract = await toContractWithId(markets, ib, ord_cond);
+        return {
+            ..._.pick(ord_cond, order_condition_properties),
+            conId: contract.conid,
+            conjunctionConnection: ord_cond.conjunctionConnection
+        };
+    }));
+}
+
+async function formatOrderCondition(markets, ib, conditions) {
+    if (_.isEmpty(conditions)) return null;
+    const ord_conds = await await Promise.all(conditions.map(async(condition) => {
+        if (!condition.conId) return condition;
+        const contract = await ib.reqContract(condition.conId);
+        return {
+            ...condition,
+            symbol: asSymbol(contract),
+            market: await asMarket(markets, ib, contract)
+        };
+    }));
+    const disjunctions = ord_conds.reduce((disjunctions, condition, c, conditions) => {
+        _.last(disjunctions).push(condition);
+        if (!condition.conjunctionConnection && c < conditions.length -1) {
+            disjunctions.push([]);
+        }
+        return disjunctions;
+    }, [[]]);
+    return disjunctions.map(conjuctions => {
+        return conjuctions.map(condition => {
+            const obj = _.pick(condition, ['symbol', 'market'].concat(order_condition_properties));
+            return _.pairs(obj).map(pair => pair.join('=')).join(';');
+        }).join('&');
+    }).join('|');
+}
+
 async function ibAccountOrderProperties(ib, settings) {
     const account = settings.account;
     const managed_accts = await ib.reqManagedAccts();
@@ -810,7 +879,8 @@ async function ibToOrder(markets, ib, settings, order, options) {
             order.secType != 'BAG' ? await asMarket(markets, ib, order) : null,
         currency: order.currency,
         security_type: order.secType,
-        multiplier: order.multiplier
+        multiplier: order.multiplier,
+        condition: await formatOrderCondition(markets, ib, order.conditions)
     };
 }
 

@@ -157,7 +157,8 @@ function helpOptions() {
         description: "List a summary of open orders",
         properties: [
             'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'traded_price', 'tif', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier',
+            'condition'
         ],
         options: {
             action: {
@@ -207,7 +208,8 @@ function helpOptions() {
         description: "Transmit order for trading",
         properties: [
             'posted_at', 'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'tif', 'status',
-            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier'
+            'order_ref', 'attach_ref', 'symbol', 'market', 'security_type', 'currency', 'multiplier',
+            'condition'
         ],
         options: {
             action: {
@@ -238,6 +240,7 @@ function helpOptions() {
                 usage: '<price-offset>',
                 description: "Pegged and snap order offset"
             },
+            condition: {},
             tif: {
                 usage: '<time-in-forced>',
                 values: ['GTC', 'DAY', 'IOC']
@@ -455,7 +458,8 @@ async function cancelOrder(db, options) {
         const order = _.pick(options, [
             'asof', 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'tif', 'status',
             'order_ref', 'attach_ref',
-            'symbol', 'market', 'security_type', 'currency', 'multiplier'
+            'symbol', 'market', 'security_type', 'currency', 'multiplier',
+            'condition'
         ]);
         const cancelling = working.find(sameOrder(order));
         if (!cancelling) {
@@ -546,7 +550,8 @@ async function appendOrders(lookup, coll, recent_month, current_month, options) 
     const order = _.extend(_.pick(options, [
         'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'tif',
         'order_ref', 'attach_ref',
-        'symbol', 'market', 'security_type', 'currency', 'multiplier'
+        'symbol', 'market', 'security_type', 'currency', 'multiplier',
+        'condition'
     ]), {
         multiplier: options.multiplier || 1
     }, _.pick(contract, 'symbol', 'market', 'currency', 'security_type', 'multiplier'));
@@ -563,7 +568,7 @@ async function appendOrders(lookup, coll, recent_month, current_month, options) 
     return (options.attached||[]).reduce(async(promise, attached_order) => {
         const result = await promise;
         const attached = await appendOrders(lookup, coll, current_month, current_month, {
-            ..._.omit(options, 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'tif', 'order_ref'),
+            ..._.omit(options, 'action', 'quant', 'order_type', 'limit', 'stop', 'offset', 'tif', 'order_ref', 'condition'),
             attached: [],
             ...attached_order,
             attach_ref: order_ref

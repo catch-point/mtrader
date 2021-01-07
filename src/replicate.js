@@ -294,7 +294,7 @@ function getDesiredPosition(lookup, position, order, options) {
     const attach_ref = ref(`${order.symbol}.${options.label}`);
     const order_prefix = `${order.order_type || options.default_order_type || (order.limit ? 'LMT' : 'MKT')}.`;
     const adjustment = {
-        ..._.pick(order, 'action', 'order_type', 'limit', 'offset', 'stop', 'tif', 'order_ref', 'attach_ref', 'traded_at', 'traded_price'),
+        ..._.pick(order, 'action', 'order_type', 'limit', 'offset', 'stop', 'tif', 'order_ref', 'attach_ref', 'traded_at', 'traded_price', 'condition'),
         order_ref: order.order_ref || ref(`${order_prefix}${attach_ref}`),
         ...common
     };
@@ -311,7 +311,7 @@ function getDesiredPosition(lookup, position, order, options) {
         .filter(col => col.indexOf('action') > 0 && col.indexOf('action') == col.length - 'action'.length)
         .map(col => col.replace('action', ''))
         .filter(prefix => prefix != 'stoploss.' && prefix != order_prefix);
-    const order_attributes = ['action', 'quant', 'order_type', 'limit', 'offset', 'stop', 'tif', 'order_ref', 'attach_ref'];
+    const order_attributes = ['action', 'quant', 'order_type', 'limit', 'offset', 'stop', 'tif', 'order_ref', 'attach_ref', 'condition'];
     const working = _.indexBy(prefixes.map(prefix => {
         const working_order = _.omit(_.object(
             order_attributes,
@@ -394,7 +394,8 @@ async function normalize(lookup, row, options) {
             posted_at && moment(posted_at).isAfter(options.now) ? 'pending' : null,
         posted_at: posted_at,
         traded_at: traded_at,
-        traded_price: row.traded_price
+        traded_price: row.traded_price,
+        condition: row.condition
     };
     return _.defaults(_.mapObject(_.omit(order, v => v == null), v => v.toString()), row);
 }
@@ -556,7 +557,8 @@ function existingOrderRef(orders, order) {
     const attrs = _.pick(order,
         'symbol', 'market',
         'action', 'quant', 'order_type',
-        'limit', 'offset', 'stop'
+        'limit', 'offset', 'stop',
+        'condition'
     );
     return (_.values(orders).find(ord => isMatch(ord, attrs))||{}).order_ref;
 }
@@ -727,6 +729,7 @@ function sameSignal(a, b, threshold) {
     else if (a.limit && b.limit && a.limit != b.limit || !+a.limit != !+b.limit) return false;
     else if (a.offset && b.offset && a.offset != b.offset || !+a.offset != !+b.offset) return false;
     else if (a.stop && b.stop && a.stop != b.stop || !+a.stop != !+b.stop) return false;
+    else if (a.condition && b.condition && a.condition != b.condition || !+a.condition != !+b.condition) return false;
     else return true;
 }
 
@@ -790,7 +793,7 @@ function inlineComboOrders(orders, options) {
         const combo = orders.find(combo => combo.order_ref == leg.attach_ref);
         return {
             ...leg,
-            ..._.pick(combo, 'order_type', 'limit', 'offset', 'stop', 'tif', 'status'),
+            ..._.pick(combo, 'order_type', 'limit', 'offset', 'stop', 'tif', 'status', 'condition'),
             action: combo.action == 'BUY' ? leg.action : leg.action == 'BUY' ? 'SELL' : 'BUY',
             quant: Big(combo.quant).times(leg.quant).toString(),
             order_ref: leg.order_ref || combo.order_ref
@@ -898,6 +901,10 @@ function combineSimpleOrders(broker_orders, orders, options) {
             logger.warn("Cannot combine orders with different offsets", ...legs);
             return combined_orders.concat(legs);
         }
+        if (!legs.every(ord => ord.condition == legs[0].condition)) {
+            logger.warn("Cannot combine orders with different conditions", ...legs);
+            return combined_orders.concat(legs);
+        }
         const stk_order = legs.every(ord => ord.order_type == 'SNAP STK');
         if (stk_order && !legs.every(ord => ord.limit == legs[0].limit && ord.stop == legs[0].stop)) {
             logger.warn("Cannot combine STK orders", ...legs);
@@ -931,6 +938,7 @@ function combineSimpleOrders(broker_orders, orders, options) {
             limit, stop,
             offset: _.first(legs).offset,
             order_ref,
+            condition: _.first(legs).condition,
             attached: legs.map(leg => ({
                 ..._.omit(leg, 'order_type', 'offset', 'stop', 'tif', 'attached'),
                 action: action == 'SELL' && leg.action == 'BUY' ? 'SELL' :

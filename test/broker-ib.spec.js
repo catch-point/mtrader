@@ -5359,4 +5359,331 @@ describe("broker-ib", function() {
             security_type: 'OPT',
             multiplier: 100 } ]);
     });
+    it("should list order conditions", async() => {
+        const broker = await Broker(settings, {
+          async open() { return this; },
+          reqManagedAccts: () => Promise.resolve([ 'test' ]),
+          requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
+          reqOpenOrders: () => Promise.resolve([ {
+                "orderId":497,
+                "conid": 429461158,
+                "currency":"USD",
+                "exchange":"SMART",
+                "localSymbol":"NVDA  220121C00560000",
+                "multiplier":"100",
+                "secType":"OPT",
+                "symbol":"NVDA",
+                "account": 'test',
+                "action":"SELL",
+                "adjustedOrderType":"None",
+                "algoParams":[{"tag":"adaptivePriority","value":"Normal"}],
+                "algoStrategy":"Adaptive",
+                "auxPrice":"0.0",
+                "cashQty":"0.0",
+                "clearingIntent":"IB",
+                "deltaNeutralOpenClose":"?",
+                "discretionaryAmt":"0.0",
+                "dontUseAutoPriceForHedge":true,
+                "lmtPrice":"88.5",
+                "ocaType":3,
+                "orderRef":"sell.NVDA.mkleaps",
+                "orderType":"LMT",
+                "referencePriceType":"None",
+                "softDollarTier":{},
+                "remaining":"2.0",
+                "totalQuantity":"2.0",
+                "usePriceMgmtAlgo":true,
+                "status":"Submitted",
+                "conditions": [{
+                    "conId":4815747,
+                    "conjunctionConnection": true,
+                    "isMore": true,
+                    "price": 550,
+                    "type": "Price"
+                }]
+            }]),
+          reqContract: (...args) => {
+                switch (args[0]) {
+                    case 429461158:
+                        expect(args).to.be.like([ 429461158 ]);
+                      return Promise.resolve({
+                            "conid": 429461158,
+                            "currency": "USD",
+                            "exchange": "SMART",
+                            "lastTradeDateOrContractMonth": "20220121",
+                            "localSymbol": "NVDA  220121C00560000",
+                            "multiplier": "100",
+                            "right": "Call",
+                            "secType": "OPT",
+                            "strike": "560.0",
+                            "symbol": "NVDA",
+                            "tradingClass": "NVDA"
+                        });
+                    case 4815747:
+                        expect(args).to.be.like([ 4815747 ]);
+                      return Promise.resolve({
+                            "conid": 4815747,
+                            "currency": "USD",
+                            "exchange": "SMART",
+                            "localSymbol": "NVDA",
+                            "primaryExch": "NASDAQ",
+                            "secType": "STK",
+                            "symbol": "NVDA",
+                            "tradingClass": "NMS"
+                      });
+                    default:
+                        throw Error("Too many times")
+                }
+            },
+          reqContractDetails: (...args) => {
+                switch (args[0].localSymbol || args[0].conid) {
+                    case 429461158:
+                        expect(args).to.be.like([ { conid: 429461158 } ]);
+                      return Promise.resolve([ {
+                            "aggGroup": 2,
+                            "category": "Semiconductors",
+                            "contract": {
+                                "conid": 429461158,
+                                "currency": "USD",
+                                "exchange": "SMART",
+                                "lastTradeDateOrContractMonth": "20220121",
+                                "localSymbol": "NVDA  220121C00560000",
+                                "multiplier": "100",
+                                "right": "Call",
+                                "secType": "OPT",
+                                "strike": "560.0",
+                                "symbol": "NVDA",
+                                "tradingClass": "NVDA"
+                            },
+                            "contractMonth": "202201",
+                            "industry": "Technology",
+                            "longName": "NVIDIA CORP",
+                            "marketName": "NVDA",
+                            "mdSizeMultiplier": 1,
+                            "minTick": "0.01",
+                            "priceMagnifier": 1,
+                            "realExpirationDate": "20220121",
+                            "subcategory": "Electronic Compo-Semicon",
+                            "timeZoneId": "EST (Eastern Standard Time)",
+                            "underConid": 4815747,
+                            "underSecType": "STK",
+                            "underSymbol": "NVDA"
+                            } ]);
+                    case 4815747:
+                        expect(args).to.be.like([ { conid: 4815747 } ]);
+                      return Promise.resolve([{
+                        "aggGroup": 1,
+                        "category": "Semiconductors",
+                        "contract": {
+                            "conid": 4815747,
+                            "currency": "USD",
+                            "exchange": "SMART",
+                            "localSymbol": "NVDA",
+                            "primaryExch": "NASDAQ",
+                            "secType": "STK",
+                            "symbol": "NVDA",
+                            "tradingClass": "NMS"
+                        },
+                        "industry": "Technology",
+                        "longName": "NVIDIA CORP",
+                        "marketName": "NMS",
+                        "mdSizeMultiplier": 100,
+                        "minTick": "0.01",
+                        "priceMagnifier": 1,
+                        "secIdList": [{"tag": "ISIN","value": "US67066G1040"}],
+                        "subcategory": "Electronic Compo-Semicon",
+                        "timeZoneId": "US/Eastern"
+                        }]);
+                    default:
+                        throw Error("Too many times")
+                }
+            },
+          close: () => Promise.resolve() });
+        const orders = await broker({action: 'orders'});
+        orders.should.be.like([{
+            action: 'SELL',
+            quant: '2.0',
+            order_type: 'Adaptive (IBALGO)',
+            limit: '88.5',
+            status: 'working',
+            order_ref: 'sell.NVDA.mkleaps',
+            condition: 'symbol=NVDA;market=NASDAQ;isMore=true;price=550;type=Price',
+            account: 'test',
+            symbol: 'NVDA  220121C00560000',
+            market: 'OPRA',
+            currency: 'USD',
+            security_type: 'OPT',
+            multiplier: '100'
+        }]);
+        await broker.close();
+    });
+    it("should submit conditional order", async() => {
+        const broker = await Broker(settings, {
+          async open() { return this; },
+          reqId: cb => cb(1),
+          reqManagedAccts: () => Promise.resolve([ 'test' ]),
+          requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
+          reqRecentOrders: () => Promise.resolve([ { orderRef: 'LMT.32f027a8.1', orderId: 1 }, {} ]),
+          reqOpenOrders: () => Promise.resolve([]),
+          placeOrder: (...args) => {expect(args).to.be.like([ 1,
+             { 
+                "currency": "USD",
+                "localSymbol": "NVDA  220121C00560000",
+                "secType": "OPT"
+             },
+             {
+                "account": 'test',
+                "action":"SELL",
+                "algoStrategy":"Adaptive",
+                "lmtPrice":"88.5",
+                "orderType":"LMT",
+                "totalQuantity":"2.0",
+                "orderRef":"sell.NVDA.mkleaps",
+                "conditions": [{
+                    "conId": 4815747,
+                    "isMore": true,
+                    "price": '550',
+                    "type": "Price"
+                }]
+               } ]);
+           return Promise.resolve({ status: 'ApiPending',
+            "localSymbol": "NVDA  220121C00560000",
+            "secType": "OPT",
+            "orderRef":"sell.NVDA.mkleaps",
+            "conditions": [{
+                "conId": 4815747,
+                "isMore": true,
+                "price": '550',
+                "type": "Price"
+            }],
+             exchange: 'SMART',
+             currency: 'USD',
+             action: 'SELL',
+             totalQuantity: 2,
+             orderType: 'LMT',
+             lmtPrice: '88.5',
+             account: 'test' });},
+          reqContract: (...args) => {
+                switch (args[0]) {
+                    case 429461158:
+                        expect(args).to.be.like([ 429461158 ]);
+                      return Promise.resolve({
+                            "conid": 429461158,
+                            "currency": "USD",
+                            "exchange": "SMART",
+                            "lastTradeDateOrContractMonth": "20220121",
+                            "localSymbol": "NVDA  220121C00560000",
+                            "multiplier": "100",
+                            "right": "Call",
+                            "secType": "OPT",
+                            "strike": "560.0",
+                            "symbol": "NVDA",
+                            "tradingClass": "NVDA"
+                        });
+                    case 4815747:
+                        expect(args).to.be.like([ 4815747 ]);
+                      return Promise.resolve({
+                            "conid": 4815747,
+                            "currency": "USD",
+                            "exchange": "SMART",
+                            "localSymbol": "NVDA",
+                            "primaryExch": "NASDAQ",
+                            "secType": "STK",
+                            "symbol": "NVDA",
+                            "tradingClass": "NMS"
+                      });
+                    default:
+                        console.log(...args);
+                        throw Error("Too many times")
+                }
+            },
+          reqContractDetails: (...args) => {
+                switch (args[0].localSymbol || args[0].conid) {
+                    case "NVDA  220121C00560000":
+                      return Promise.resolve([ {
+                            "aggGroup": 2,
+                            "category": "Semiconductors",
+                            "contract": {
+                                "conid": 429461158,
+                                "currency": "USD",
+                                "exchange": "SMART",
+                                "lastTradeDateOrContractMonth": "20220121",
+                                "localSymbol": "NVDA  220121C00560000",
+                                "multiplier": "100",
+                                "right": "Call",
+                                "secType": "OPT",
+                                "strike": "560.0",
+                                "symbol": "NVDA",
+                                "tradingClass": "NVDA"
+                            },
+                            "contractMonth": "202201",
+                            "industry": "Technology",
+                            "longName": "NVIDIA CORP",
+                            "marketName": "NVDA",
+                            "mdSizeMultiplier": 1,
+                            "minTick": "0.01",
+                            "priceMagnifier": 1,
+                            "realExpirationDate": "20220121",
+                            "subcategory": "Electronic Compo-Semicon",
+                            "timeZoneId": "EST (Eastern Standard Time)",
+                            "underConid": 4815747,
+                            "underSecType": "STK",
+                            "underSymbol": "NVDA"
+                            } ]);
+                    case 'NVDA':
+                      return Promise.resolve([{
+                        "aggGroup": 1,
+                        "category": "Semiconductors",
+                        "contract": {
+                            "conid": 4815747,
+                            "currency": "USD",
+                            "exchange": "SMART",
+                            "localSymbol": "NVDA",
+                            "primaryExch": "NASDAQ",
+                            "secType": "STK",
+                            "symbol": "NVDA",
+                            "tradingClass": "NMS"
+                        },
+                        "industry": "Technology",
+                        "longName": "NVIDIA CORP",
+                        "marketName": "NMS",
+                        "mdSizeMultiplier": 100,
+                        "minTick": "0.01",
+                        "priceMagnifier": 1,
+                        "secIdList": [{"tag": "ISIN","value": "US67066G1040"}],
+                        "subcategory": "Electronic Compo-Semicon",
+                        "timeZoneId": "US/Eastern"
+                        }]);
+                    default:
+                        console.log(...args);
+                        throw Error("Too many times")
+                }
+            },
+          close: () => Promise.resolve() });
+        const order = await broker({
+            action: 'SELL',
+            quant: '2.0',
+            order_type: 'Adaptive (IBALGO)',
+            limit: '88.5',
+            status: 'working',
+            order_ref: 'sell.NVDA.mkleaps',
+            condition: 'symbol=NVDA;market=NASDAQ;isMore=true;price=550;type=Price',
+            account: 'test',
+            symbol: 'NVDA  220121C00560000',
+            market: 'OPRA',
+            currency: 'USD',
+            security_type: 'OPT',
+            multiplier: '100'
+        });
+        order.should.be.like([ {
+            status: 'pending',
+            order_ref: "sell.NVDA.mkleaps",
+            condition: 'symbol=NVDA;market=NASDAQ;isMore=true;price=550;type=Price',
+            symbol: 'NVDA  220121C00560000',
+            market: 'OPRA',
+            limit: '88.5',
+            currency: 'USD',
+            security_type: 'OPT' } ]);
+        await broker.close();
+    });
 });
