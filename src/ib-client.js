@@ -120,21 +120,18 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
                     fail(Error(err_msg || id_or_str));
                     logger.log("ib-client could not login quick enough to", host, port, "as", clientId);
                     ib.exit();
+                    ib.removeListener('error', on_error);
                 } else {
                     // keep trying
                     ib.sleep(500).catch(fail);
                     ib.eConnect(host, port, clientId, false).catch(fail);
                 }
-            } else {
-                ib.removeListener('error', on_error);
             }
         };
-        ib.once('connectAck', () => {
+        ib.once('nextValidId', order_id => {
             self.connecting = false;
             self.connected = true;
             self.disconnected = false;
-            logger.debug("ib-client connected", host, port, clientId);
-        }).once('nextValidId', order_id => {
             logger.log("ib-client connected to", host, port, "as", clientId);
             ready();
             ib.removeListener('error', on_error);
@@ -167,6 +164,10 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         ]));
         await ib.enableAPI(settings.port, settings.ReadOnlyLogin);
     }
+    self.connecting = true;
+    self.connected = false;
+    self.disconnected = false;
+    await ib.eConnect(host, port, clientId, false);
     once_connected.then(() => {
         ib.on('isConnected', connected => {
             if (!connected) {
@@ -191,10 +192,7 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
     ];
     const methods = Object.assign({}, ...modules);
     let open_promise;
-    Object.assign(self, methods, {
-        connecting: false,
-        connected: false,
-        disconnected: false,
+    return Object.assign(self, methods, {
         version: () => version_promise,
         async open() {
             await once_connected;
@@ -226,9 +224,6 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
             return time_limit.pending();
         }
     });
-    self.connecting = true;
-    await ib.eConnect(host, port, clientId, false);
-    return self;
 }
 
 function reqPositions(ib) {
@@ -1054,7 +1049,7 @@ function reqContract(ib, time_limit) {
     };
     ib.on('error', function (id_or_str, err_code, err_msg) {
         if (req_queue[id_or_str]) {
-            req_queue[id_or_str].reject(err_msg);
+            req_queue[id_or_str].reject(Error(err_msg));
         } else if (isGeneralError(id_or_str, err_code, err_msg)) {
             Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
         }
@@ -1120,7 +1115,7 @@ function requestWithId(ib, time_limit) {
                     });
                 },
                 reject(err) {
-                    logger.warn(cmd, err.message, ...args.map(arg => {
+                    logger.warn(cmd, err.message || err, ...args.map(arg => {
                         return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip) || arg;
                     }));
                     if (cmd == 'reqMktData') ib.cancelMktData(reqId).catch(logger.error);
@@ -1131,7 +1126,7 @@ function requestWithId(ib, time_limit) {
                 },
                 retry(err) {
                     req.retry = req.reject;
-                    logger.log(cmd, err.message, ...args.map(arg => {
+                    logger.log(cmd, err.message || err, ...args.map(arg => {
                         return arg && (arg.localSymbol || arg.symbol || arg.comboLegsDescrip) || arg;
                     }));
                     ib[cmd].call(ib, reqId, ...args).catch(fail);
@@ -1153,7 +1148,7 @@ function requestWithId(ib, time_limit) {
                 return fn(err_msg);
             }, err_code == 10197 ? 10000 : 0);
         } else if (isGeneralError(id_or_str, err_code, err_msg)) {
-            Object.keys(req_queue).forEach(id => req_queue[id].reject(err_msg || id_or_str));
+            Object.keys(req_queue).forEach(id => req_queue[id].reject(Error(err_msg || id_or_str)));
         }
     }).on('exit', () => {
         const err = Error("TWS has disconnected");
