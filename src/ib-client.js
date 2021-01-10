@@ -147,7 +147,7 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
             self.connecting = false;
             self.connected = false;
             self.disconnected = true;
-            logger.log("ib-client", ib.pid, "exited", code, "from", host, port, "as", clientId);
+            logger.log("ib-client", ib.pid, "exited", code || '', "from", host, port, "as", clientId);
             ready();
         });
     });

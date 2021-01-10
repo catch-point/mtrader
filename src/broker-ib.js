@@ -775,8 +775,9 @@ function netPrice(legs, leg_prices) {
 }
 
 const order_condition_properties = [
-    'changePercent', 'exchange', 'isMore', 'percent', 'price',
-    'secType', 'symbol', 'time', 'triggerMethod', 'type', 'volume'
+    'changePercent', 'price', 'triggerMethod', 'volume',
+    'percent', 'time', 'isMore',
+    'exchange', 'symbol', 'secType', 'type'
 ];
 
 async function buildOrderConditions(markets, ib, condition_string) {
@@ -793,12 +794,20 @@ async function buildOrderConditions(markets, ib, condition_string) {
     disjunctions.forEach(conjunctions => _.last(conjunctions).conjunctionConnection = false);
     const conditions = [].concat(...disjunctions);
     return Promise.all(conditions.map(async(ord_cond) => {
-        if (!ord_cond.symbol || !ord_cond.market)
-            return _.pick(ord_cond, ['conId', 'conjunctionConnection'].concat(order_condition_properties));
-        const contract = await toContractWithId(markets, ib, ord_cond);
+        const contract = ord_cond.market ? await toContractWithId(markets, ib, ord_cond) : {};
+        const triggerMethod = ord_cond.triggerMethod || 0;
+        const exchange = ord_cond.exchange || 'SMART';
+        const type = ord_cond.type || (
+            ord_cond.price ? 'Price' :
+            ord_cond.volume ? 'Volume' :
+            ord_cond.time ? 'Time' :
+            ord_cond.changePercent ? 'PercentChange' :
+            ord_cond.percent ? 'Margin' : 'Execution'
+        );
         return {
             ..._.pick(ord_cond, order_condition_properties),
-            conId: contract.conid,
+            triggerMethod, exchange, type,
+            conId: ord_cond.conId || contract.conid,
             conjunctionConnection: ord_cond.conjunctionConnection
         };
     }));
@@ -812,7 +821,8 @@ async function formatOrderCondition(markets, ib, conditions) {
         return {
             ...condition,
             symbol: asSymbol(contract),
-            market: await asMarket(markets, ib, contract)
+            market: await asMarket(markets, ib, contract),
+            security_type: contract.secType
         };
     }));
     const disjunctions = ord_conds.reduce((disjunctions, condition, c, conditions) => {
@@ -824,8 +834,13 @@ async function formatOrderCondition(markets, ib, conditions) {
     }, [[]]);
     return disjunctions.map(conjuctions => {
         return conjuctions.map(condition => {
-            const obj = _.pick(condition, ['symbol', 'market'].concat(order_condition_properties));
-            return _.pairs(obj).map(pair => pair.join('=')).join(';');
+            const pairs = order_condition_properties.concat('market', 'security_type')
+              .reduce((pairs, p) => {
+                return p == 'type' || p == 'exchange' && condition[p] == 'SMART' ||
+                    p == 'triggerMethod' && !condition[p] ||
+                    condition[p] == null ? pairs : pairs.concat([[p, condition[p]]]);
+            }, []);
+            return pairs.map(pair => pair.join('=')).join(';');
         }).join('&');
     }).join('|');
 }
