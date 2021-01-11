@@ -2442,7 +2442,7 @@ describe("replicate-collective2", function() {
                 tif: 'GTC'
             }]);
         });
-        it("GLD STCSTO with STC", async() => {
+        it.skip("GLD STCSTO with STC", async() => {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
 	          closeVWAP_timestamp: "1434055203",
@@ -2558,7 +2558,7 @@ describe("replicate-collective2", function() {
                 duration: 'GTC'
             }});
         });
-        it("GLD STCSTO with wrong STC", async() => {
+        it.skip("GLD STCSTO with wrong STC", async() => {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
 	          closeVWAP_timestamp: "1434055203",
@@ -2672,7 +2672,7 @@ describe("replicate-collective2", function() {
                 duration: 'GTC'
             }});
         });
-        it("GLD STCSTO with wrong STCSTO", async() => {
+        it.skip("GLD STCSTO with wrong STCSTO", async() => {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok:1,response:[{
 	          closeVWAP_timestamp: "1434055203",

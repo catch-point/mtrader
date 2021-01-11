@@ -56,7 +56,7 @@ const Lookup = require('./lookup.js');
  * orders, iff no adjustment order was necessary, otherwise working orders are
  * cancelled. The column stoploss is short hand to create a working
  * STP GTC order to close current position and is not cancelled during an
- * adjustment order. All working and stoploss orders are OCA.
+ * adjustment order.
  */
 module.exports = function(broker, fetch, collect, settings) {
     let promiseHelp, brokerHelp;
@@ -642,7 +642,7 @@ function updateActual(desired, actual, options) {
         return orders.concat(orderReplacements(actual.working[ref], desired.working[ref], pos_offset, options));
     }, stoplosses);
     const cancelled = adjustments.concat(working).filter(ord => ord.action == 'cancel');
-    const oca_orders = groupIntoOCAOrder(working.filter(ord => ord.action != 'cancel'), options);
+    const pending = working.filter(ord => ord.action != 'cancel');
     const adjustment_order = _.first(adjustments.filter(ord => ord.action != 'cancel'));
     const realized_offset = actual.position - desired.realized.position;
     const transition_stoploss = adjustment_order && desired.realized.stoploss ?
@@ -671,33 +671,17 @@ function updateActual(desired, actual, options) {
         return adjustments;
     } else if (adjustment_pending && (desired.realized.stoploss || !_.isEmpty(desired.realized.working))) {
         // keep existing transition orders (i.e. stoploss), and don't submit new working orders
-        return groupIntoOCAOrder(transition.concat(adjustments), options);
-    } else if (adjustment_order && oca_orders.length) {
+        return transition.concat(adjustments);
+    } else if (adjustment_order && pending.length) {
         // submit new orders attached as child orders to the adjustment order
-        return cancelled.concat({...adjustment_order, attached:oca_orders});
+        return cancelled.concat({...adjustment_order, attached:pending});
     } else if (adjustment_order) {
         return cancelled.concat(adjustment_order);
-    } else if (oca_orders.length) {
-        return cancelled.concat(oca_orders);
+    } else if (pending.length) {
+        return cancelled.concat(pending);
     } else {
         return cancelled;
     }
-}
-
-function groupIntoOCAOrder(orders, options) {
-    if (!orders.length) return [];
-    const attach_ref = ref(`${orders[0].symbol}.${options.label}`)
-    const cancelled = orders.filter(ord => ord.action == 'cancel');
-    const working = orders.filter(ord => ord.action != 'cancel');
-    const oca_orders = working.filter(ord => !ord.attach_ref || ord.attach_ref == attach_ref);
-    const leg_orders = working.filter(ord => ord.attach_ref && ord.attach_ref != attach_ref);
-    const oca_order = _.isEmpty(oca_orders) ? null : oca_orders.length == 1 ? _.first(oca_orders) : {
-        action: 'OCA',
-        order_ref: attach_ref,
-        attached: oca_orders,
-        ..._.pick(_.first(oca_orders), 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick')
-    };
-    return _.compact(cancelled.concat(leg_orders, oca_order));
 }
 
 function orderReplacements(working_order, desired_order, pos_offset, options) {
@@ -933,12 +917,9 @@ function combineSimpleOrders(broker_orders, orders, options) {
         return combined_orders.concat({
             action,
             quant,
-            order_type: _.first(legs).order_type,
-            tif: _.first(legs).tif,
             limit, stop,
-            offset: _.first(legs).offset,
             order_ref,
-            condition: _.first(legs).condition,
+            ..._.pick(_.first(legs), 'symbol', 'market', 'currency', 'security_type', 'multiplier', 'minTick', 'order_type', 'tif', 'offset', 'condition'),
             attached: legs.map(leg => ({
                 ..._.omit(leg, 'order_type', 'offset', 'stop', 'tif', 'attached'),
                 action: action == 'SELL' && leg.action == 'BUY' ? 'SELL' :
