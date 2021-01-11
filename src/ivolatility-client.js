@@ -341,7 +341,7 @@ function explodeZip(file, reduce, initial) {
 function parseZipEntry(entryStream, reduce, initial) {
     let result = initial;
     return new Promise((ready, error) => {
-        csv.fromStream(entryStream, {headers : true, ignoreEmpty: true})
+        csv.parseStream(entryStream, {headers : true, ignoreEmpty: true})
             .on('error', error)
             .on('data', function(data) {
                 try {

@@ -392,7 +392,7 @@ function writePendingEntryResult(cache, entry, opts, result) {
                 const output = fs.createWriteStream(file + '.result.csv');
                 output.on('finish', finished);
                 output.on('error', error);
-                const writer = csv.createWriteStream({
+                const writer = csv.format({
                     headers: _.union(_.keys(_.first(result)), _.keys(_.last(result))),
                     rowDelimiter: '\r\n',
                     includeEndRowDelimiter: true
@@ -448,7 +448,7 @@ function readEntryResult(baseDir, entry) {
     if (entry.type == 'csv') {
         return new Promise((ready, error) => {
             const objects = [];
-            csv.fromStream(fs.createReadStream(file).on('error', error), {headers : true, ignoreEmpty: true})
+            csv.parseStream(fs.createReadStream(file).on('error', error), {headers : true, ignoreEmpty: true})
                 .on('error', error)
                 .on('data', function(data) {
                     try {

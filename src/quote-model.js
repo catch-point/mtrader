@@ -654,7 +654,7 @@ function readTable(filename, size) {
         objects.length = 0;
         const stream = fs.createReadStream(filename).on('error', error);
         const pipe = stream.pipe(zlib.createGunzip().on('error', error));
-        csv.fromStream(pipe, {headers : true, ignoreEmpty: true})
+        csv.parseStream(pipe, {headers : true, ignoreEmpty: true})
             .on('error', error)
             .on('data', function(data) {
                 try {

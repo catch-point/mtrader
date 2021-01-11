@@ -38,7 +38,7 @@ const zlib = require('zlib');
 const _ = require('underscore');
 const spawn = require('child_process').spawn;
 const Writable = require('stream').Writable;
-const {fromStream, createWriteStream} = require('fast-csv');
+const {parseStream, format} = require('fast-csv');
 const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
 
@@ -58,7 +58,7 @@ module.exports = function(data, options) {
         if (!present) return ready(objects);
         const stream = fs.createReadStream(filename).on('error', error);
         const pipe = gzip ? stream.pipe(zlib.createGunzip().on('error', error)) : stream;
-        fromStream(pipe, csv ?
+        parseStream(pipe, csv ?
             {headers : true, ignoreEmpty: true, delimiter: ',', quote: '"', escape: '"'} :
             {headers : true, ignoreEmpty: true, delimiter: '\t', quote: null, comment: '#'}
         )
@@ -77,7 +77,7 @@ function writeData(transpose, reverse, csv, gzip, filename, data) {
         const output = createOutputStream(filename).on('error', error);
         output.on('finish', finished);
         if (transpose) {
-            const writer = createWriteStream(csv ? {
+            const writer = format(csv ? {
                 headers: false,
                 quote: '"',
                 escape: '"',
@@ -86,7 +86,7 @@ function writeData(transpose, reverse, csv, gzip, filename, data) {
                 includeEndRowDelimiter: true
             } : {
                 headers: false,
-                quote: '\t',
+                quote: false,
                 escape: '\\',
                 delimiter: '\t',
                 rowDelimiter: '\n',
@@ -123,7 +123,7 @@ function writeData(transpose, reverse, csv, gzip, filename, data) {
                 else
                     return _.union(all_keys, keys);
             }, []).map(formatValue);
-            const writer = createWriteStream(csv ? {
+            const writer = format(csv ? {
                 headers,
                 quote: '"',
                 escape: '"',
@@ -132,7 +132,7 @@ function writeData(transpose, reverse, csv, gzip, filename, data) {
                 includeEndRowDelimiter: true
             } : {
                 headers,
-                quote: '\t',
+                quote: false,
                 escape: '\\',
                 delimiter: '\t',
                 rowDelimiter: '\n',

@@ -371,7 +371,7 @@ function readTable(filename, size) {
         objects.length = 0;
         const stream = fs.createReadStream(filename).on('error', error);
         const pipe = stream.pipe(zlib.createGunzip().on('error', error));
-        csv.fromStream(pipe, {headers : true, ignoreEmpty: true})
+        csv.parseStream(pipe, {headers : true, ignoreEmpty: true})
             .on('error', error)
             .on('data', function(data) {
                 try {
@@ -390,7 +390,7 @@ function writeTable(filename, table) {
         const headers = _.union(_.keys(_.first(table)), _.keys(_.last(table)));
         const output = fs.createWriteStream(filename).on('error', error);
         output.on('finish', finished);
-        const writer = csv.createWriteStream({
+        const writer = csv.format({
             headers: headers,
             rowDelimiter: '\r\n',
             includeEndRowDelimiter: true
