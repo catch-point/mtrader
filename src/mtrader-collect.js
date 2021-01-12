@@ -37,7 +37,9 @@ const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const commander = require('commander');
+const Big = require('big.js');
 const debounce = require('./debounce.js');
+const merge = require('./merge.js');
 const share = require('./share.js');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
@@ -51,12 +53,14 @@ const config = require('./config.js');
 const version = require('./version.js').version;
 const Fetch = require('./mtrader-fetch.js');
 const Quote = require('./mtrader-quote.js');
+const Broker = require('./mtrader-broker.js');
 const Model = require('./quote-model.js');
 const SlaveQuote = require('./quote.js');
 const Collect = require('./collect.js');
 const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const Quoting = require('./quoting-functions.js');
+const formatDate = new require('./mtrader-date.js')();
 const readCallSave = require('./read-call-save.js');
 
 const WORKER_COUNT = require('os').cpus().length;
@@ -106,7 +110,8 @@ if (require.main === module) {
     const program = usage(commander).parse(process.argv);
     if (program.args.length || !process.send) {
         const runInBand = ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand');
-        const collect = createInstance(program, runInBand);
+        const shared = settings => createSharedInstance(program, runInBand);
+        const collect = createInstance(shared, config.options());
         process.on('SIGHUP', () => collect.reload());
         process.on('SIGINT', () => collect.close());
         process.on('SIGTERM', () => collect.close());
@@ -121,11 +126,44 @@ if (require.main === module) {
     }
 } else {
     const prog = usage(new commander.Command());
-    const shared = module.exports = share(settings => createInstance(prog, settings.runInBand));
+    const shared = share(settings => createSharedInstance(prog, settings.runInBand));
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
+    module.exports = function(settings = {}) {
+        return createInstance(shared, settings);
+    };
 }
 
-function createInstance(program, runInBand = false) {
+function createInstance(createSharedInstance, settings) {
+    const broker = settings.mock_broker || new Broker(settings);
+    const shared = settings.mock_collect || createSharedInstance(settings);
+    let broker_help;
+    const instance = async function(options) {
+        const begin = options.begin || options.working_duration && formatDate(moment.defaultFormat, {
+            duration: options.working_duration,
+            negative_duration: true,
+            now: options.now
+        }) || options.now;
+        broker_help = broker_help || broker({info:'help'});
+        const desired_parameters = _.isEmpty(await broker_help) ? {} :
+            await getDesiredParameters(broker, begin, options);
+        const parameters = {
+            ...desired_parameters,
+            ...(options.parameters || {})
+        };
+        logger.debug("collect", options.label || '', begin, "parameters", parameters);
+        return shared(merge(options, {begin, parameters}));
+    };
+    return Object.assign(instance, _.pick(shared, 'shell', 'reload', 'reset'), {
+        close() {
+            return Promise.all([
+                shared.close(),
+                broker.close()
+            ]);
+        }
+    });
+}
+
+function createSharedInstance(program, runInBand = false) {
     const settings = config('collect');
     let promiseKeys, closed;
     const fetch = new Fetch();
@@ -199,6 +237,160 @@ function createInstance(program, runInBand = false) {
     let remote = new Remote(settings);
     let cache = createCache(direct, local, remote, settings);
     return instance;
+}
+
+async function getDesiredParameters(broker, begin, options) {
+    const [current_balances, past_positions] = await Promise.all([
+        broker({action: 'balances', now: options.now}),
+        broker({action: 'positions', begin, now: options.now})
+    ]);
+    const first_traded_at = getFirstTradedAt(past_positions, begin, options);
+    const initial_balances = await broker({action: 'balances', asof: first_traded_at, now: options.now});
+    const peak_balances = options.allocation_peak_pct || options.reserve_peak_allocation ? await broker({
+        action: 'balances',
+        begin: moment(first_traded_at).subtract(1,'year').format(),
+        now: options.now
+    }) : initial_balances;
+    const peak_initial_balances = peak_balances.filter(bal => !moment(bal.asof).isAfter(first_traded_at));
+    const initial_deposit = getAllocation(peak_initial_balances, initial_balances, options);
+    const net_allocation = getAllocation(peak_balances, current_balances, options);
+    const net_deposit = getNetDeposit(peak_balances, current_balances, past_positions, options);
+    const settled_cash = getSettledCash(current_balances, options);
+    const accrued_cash = getAccruedCash(current_balances, options);
+    const total_cash = getTotalCash(current_balances, options);
+    return { initial_deposit, net_deposit, net_allocation, settled_cash, accrued_cash, total_cash };
+}
+
+function getAllocation(peak_balances, balances, options) {
+    const initial_balance = getBalance(balances, options);
+    const peak_balance = !options.allocation_peak_pct && !options.reserve_peak_allocation ?
+        initial_balance : getPeakBalance(peak_balances, options);
+    const reserve_alloc = +options.reserve_allocation || 0;
+    const reserve_peak_alloc = +options.reserve_peak_allocation || 0;
+    const alloc_peak_pct = +options.allocation_peak_pct || 0;
+    const alloc_pct = +options.allocation_pct || !reserve_alloc && 100;
+    return Math.min(
+        Math.max(
+            Math.min(
+                reserve_alloc ? initial_balance.minus(reserve_alloc) : Infinity,
+                reserve_peak_alloc ? peak_balance.minus(reserve_peak_alloc) : Infinity,
+                alloc_peak_pct ? peak_balance.times(alloc_peak_pct).div(100) : Infinity,
+                alloc_pct ? initial_balance.times(alloc_pct).div(100) : Infinity
+            ),
+            options.allocation_min||0
+        ),
+        options.allocation_max||Infinity
+    );
+}
+
+function getNetDeposit(peak_balances, balances, positions, options) {
+    const portfolio = getPortfolio(options.markets, options).reduce((hash, item) => {
+        const [, symbol, market] = item.match(/^(.+)\W(\w+)$/);
+        (hash[symbol] = hash[symbol] || []).push(market);
+        return hash;
+    }, {});
+    const relevant = _.isEmpty(portfolio) ? positions :
+        positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
+    const mtm = relevant.map(pos => Big(pos.mtm||0)).reduce((a,b) => a.add(b), Big(0));
+    const balance = getAllocation(peak_balances, balances, options);
+    return Math.min(Math.max(
+        +Big(balance).minus(mtm),
+        options.allocation_min||0), options.allocation_max||Infinity);
+}
+
+function getBalance(balances, options) {
+    const cash_acct = balances.every(bal => bal.margin == null);
+    const local_balances = balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
+    const local_rate = local_balances.length ? _.last(local_balances).rate : 1;
+    return cash_acct ? Big(local_balance_net) : balances.map(bal => {
+        return Big(bal.net).times(bal.rate).div(local_rate);
+    }).reduce((a,b) => a.add(b), Big(0));
+}
+
+function getPeakBalance(balances, options) {
+    const group_by_date = balances.reduce((group, bal) => {
+        const last = group.last = group[bal.asof] = group[bal.asof] || [].concat(group.last);
+        const found_idx = last.findIndex(_.matcher(_.pick(bal, 'acctNumber', 'currency')));
+        if (found_idx >= 0) last.splice(found_idx, 1);
+        last.push(bal); // preserve the original order of balances
+        return group;
+    }, {last:[]});
+    return _.max(Object.values(group_by_date).map(balances => getBalance(balances, options)));
+}
+
+function getSettledCash(current_balances, options) {
+    const local_balances = current_balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    return +local_balances.map(bal => Big(bal.settled||0)).reduce((a,b) => a.add(b), Big(0));
+}
+
+function getAccruedCash(current_balances, options) {
+    const local_balances = current_balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    return +local_balances.map(bal => Big(bal.accrued||0)).reduce((a,b) => a.add(b), Big(0));
+}
+
+function getTotalCash(balances, options) {
+    const cash_acct = balances.every(bal => bal.margin == null);
+    const local_balances = balances.filter(options.currency ?
+        bal => bal.currency == options.currency : bal => +bal.rate == 1
+    );
+    const local_cash = local_balances.reduce((total, bal) => {
+        return total.add(bal.settled||0).add(bal.accrued||0);
+    }, Big(0));
+    const local_rate = local_balances.length ? local_balances[0].rate : 1;
+    const total_cash = cash_acct ? Big(local_cash) : balances.map(bal => {
+        return Big(bal.settled||0).add(bal.accrued||0).times(bal.rate).div(local_rate);
+    }).reduce((a,b) => a.add(b), Big(0));
+    return total_cash.toString();
+}
+
+function getFirstTradedAt(positions, begin, options) {
+    const portfolio = getPortfolio(options.markets, options).reduce((hash, item) => {
+        const [, symbol, market] = item.match(/^(.+)\W(\w+)$/);
+        (hash[symbol] = hash[symbol] || []).push(market);
+        return hash;
+    }, {});
+    const relevant = _.isEmpty(portfolio) ? positions :
+        positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
+    if (!relevant.length) return options.asof;
+    const initial_positions = _.flatten(_.values(_.groupBy(relevant, pos => {
+        return `${pos.symbol}.${pos.market}`;
+    })).map(positions => {
+        return positions.reduce((earliest, pos) => {
+            if (!earliest.length) return earliest.concat(pos);
+            else if (pos.asof == earliest[0].asof) return earliest.concat(pos);
+            else if (pos.asof < earliest[0].asof) return [pos];
+            else return earliest;
+        }, []);
+    }));
+    // check if there was an open initial position
+    if (initial_positions.some(pos => pos.position != pos.quant)) return begin;
+    const eod = initial_positions.reduce((earliest, pos) => {
+        if (!earliest || pos.traded_at < earliest.traded_at) return pos;
+        else return earliest;
+    }, null).asof;
+    return moment(eod).subtract(1, 'days').format();
+}
+
+function getPortfolio(markets, options, portfolio = []) {
+    return [].concat(options.portfolio||[]).reduce((portfolio,item) => {
+        if (item && typeof item == 'object')
+            return getPortfolio(markets, item, portfolio);
+        else if (typeof item == 'string' && !markets)
+            return ~portfolio.indexOf(item) ? portfolio : portfolio.concat(item);
+        const [, symbol, market] = (item||'').toString().match(/^(.+)\W(\w+)$/) || [];
+        if (!market) throw Error(`Unknown contract syntax ${item} in portfolio ${portfolio}`);
+        else if (~markets.indexOf(market) && !~portfolio.indexOf(item))
+            return portfolio.concat(item);
+        else
+            return portfolio;
+    }, portfolio);
 }
 
 function trimOptions(keys, options) {

@@ -258,13 +258,7 @@ async function replicate(broker, collect, lookup, options) {
  * Collects the options results and converts the orders into positions
  */
 async function getDesiredPositions(broker, collect, lookup, begin, options) {
-    const desired_parameters = await getDesiredParameters(broker, begin, options);
-    const parameters = {
-        ...desired_parameters,
-        ...(options.parameters || {})
-    };
-    logger.debug("replicate", options.label || '', begin, "parameters", parameters);
-    const orders = await collect(merge(options, {begin, parameters}));
+    const orders = await collect(merge(options, {begin}));
     const normalized_orders = await Promise.all(orders.map(row => normalize(lookup, row, options)));
     const indexed = _.indexBy(normalized_orders, ord => `${ord.symbol}.${ord.market}`);
     return _.object(Object.keys(indexed), await Promise.all(Object.values(indexed).map(async(order) => {
@@ -342,28 +336,6 @@ function ref(long_ref) {
     return long_ref.replace(/[^\w.\+\-]+/g,'');
 }
 
-async function getDesiredParameters(broker, begin, options) {
-    const [current_balances, past_positions] = await Promise.all([
-        broker({action: 'balances', now: options.now}),
-        broker({action: 'positions', begin, now: options.now})
-    ]);
-    const first_traded_at = getFirstTradedAt(past_positions, begin, options);
-    const initial_balances = await broker({action: 'balances', asof: first_traded_at, now: options.now});
-    const peak_balances = options.allocation_peak_pct || options.reserve_peak_allocation ? await broker({
-        action: 'balances',
-        begin: moment(first_traded_at).subtract(1,'year').format(),
-        now: options.now
-    }) : initial_balances;
-    const peak_initial_balances = peak_balances.filter(bal => !moment(bal.asof).isAfter(first_traded_at));
-    const initial_deposit = getAllocation(peak_initial_balances, initial_balances, options);
-    const net_allocation = getAllocation(peak_balances, current_balances, options);
-    const net_deposit = getNetDeposit(peak_balances, current_balances, past_positions, options);
-    const settled_cash = getSettledCash(current_balances, options);
-    const accrued_cash = getAccruedCash(current_balances, options);
-    const total_cash = getTotalCash(current_balances, options);
-    return { initial_deposit, net_deposit, net_allocation, settled_cash, accrued_cash, total_cash };
-}
-
 /**
  * Normalize the order row
  */
@@ -398,123 +370,6 @@ async function normalize(lookup, row, options) {
         condition: row.condition
     };
     return _.defaults(_.mapObject(_.omit(order, v => v == null), v => v.toString()), row);
-}
-
-function getFirstTradedAt(positions, begin, options) {
-    const portfolio = getPortfolio(options.markets, options).reduce((hash, item) => {
-        const [, symbol, market] = item.match(/^(.+)\W(\w+)$/);
-        (hash[symbol] = hash[symbol] || []).push(market);
-        return hash;
-    }, {});
-    const relevant = _.isEmpty(portfolio) ? positions :
-        positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
-    if (!relevant.length) return options.asof;
-    const initial_positions = _.flatten(_.values(_.groupBy(relevant, pos => {
-        return `${pos.symbol}.${pos.market}`;
-    })).map(positions => {
-        return positions.reduce((earliest, pos) => {
-            if (!earliest.length) return earliest.concat(pos);
-            else if (pos.asof == earliest[0].asof) return earliest.concat(pos);
-            else if (pos.asof < earliest[0].asof) return [pos];
-            else return earliest;
-        }, []);
-    }));
-    // check if there was an open initial position
-    if (initial_positions.some(pos => pos.position != pos.quant)) return begin;
-    const eod = initial_positions.reduce((earliest, pos) => {
-        if (!earliest || pos.traded_at < earliest.traded_at) return pos;
-        else return earliest;
-    }, null).asof;
-    return moment(eod).subtract(1, 'days').format();
-}
-
-function getAllocation(peak_balances, balances, options) {
-    const initial_balance = getBalance(balances, options);
-    const peak_balance = !options.allocation_peak_pct && !options.reserve_peak_allocation ?
-        initial_balance : getPeakBalance(peak_balances, options);
-    const reserve_alloc = +options.reserve_allocation || 0;
-    const reserve_peak_alloc = +options.reserve_peak_allocation || 0;
-    const alloc_peak_pct = +options.allocation_peak_pct || 0;
-    const alloc_pct = +options.allocation_pct || !reserve_alloc && 100;
-    return Math.min(
-        Math.max(
-            Math.min(
-                reserve_alloc ? initial_balance.minus(reserve_alloc) : Infinity,
-                reserve_peak_alloc ? peak_balance.minus(reserve_peak_alloc) : Infinity,
-                alloc_peak_pct ? peak_balance.times(alloc_peak_pct).div(100) : Infinity,
-                alloc_pct ? initial_balance.times(alloc_pct).div(100) : Infinity
-            ),
-            options.allocation_min||0
-        ),
-        options.allocation_max||Infinity
-    );
-}
-
-function getNetDeposit(peak_balances, balances, positions, options) {
-    const portfolio = getPortfolio(options.markets, options).reduce((hash, item) => {
-        const [, symbol, market] = item.match(/^(.+)\W(\w+)$/);
-        (hash[symbol] = hash[symbol] || []).push(market);
-        return hash;
-    }, {});
-    const relevant = _.isEmpty(portfolio) ? positions :
-        positions.filter(pos => ~(portfolio[pos.symbol]||[]).indexOf(pos.market));
-    const mtm = relevant.map(pos => Big(pos.mtm||0)).reduce((a,b) => a.add(b), Big(0));
-    const balance = getAllocation(peak_balances, balances, options);
-    return Math.min(Math.max(
-        +Big(balance).minus(mtm),
-        options.allocation_min||0), options.allocation_max||Infinity);
-}
-
-function getBalance(balances, options) {
-    const cash_acct = balances.every(bal => bal.margin == null);
-    const local_balances = balances.filter(options.currency ?
-        bal => bal.currency == options.currency : bal => +bal.rate == 1
-    );
-    const local_balance_net = local_balances.reduce((net, bal) => net.add(bal.net), Big(0));
-    const local_rate = local_balances.length ? _.last(local_balances).rate : 1;
-    return cash_acct ? Big(local_balance_net) : balances.map(bal => {
-        return Big(bal.net).times(bal.rate).div(local_rate);
-    }).reduce((a,b) => a.add(b), Big(0));
-}
-
-function getPeakBalance(balances, options) {
-    const group_by_date = balances.reduce((group, bal) => {
-        const last = group.last = group[bal.asof] = group[bal.asof] || [].concat(group.last);
-        const found_idx = last.findIndex(_.matcher(_.pick(bal, 'acctNumber', 'currency')));
-        if (found_idx >= 0) last.splice(found_idx, 1);
-        last.push(bal); // preserve the original order of balances
-        return group;
-    }, {last:[]});
-    return _.max(Object.values(group_by_date).map(balances => getBalance(balances, options)));
-}
-
-function getSettledCash(current_balances, options) {
-    const local_balances = current_balances.filter(options.currency ?
-        bal => bal.currency == options.currency : bal => +bal.rate == 1
-    );
-    return +local_balances.map(bal => Big(bal.settled||0)).reduce((a,b) => a.add(b), Big(0));
-}
-
-function getAccruedCash(current_balances, options) {
-    const local_balances = current_balances.filter(options.currency ?
-        bal => bal.currency == options.currency : bal => +bal.rate == 1
-    );
-    return +local_balances.map(bal => Big(bal.accrued||0)).reduce((a,b) => a.add(b), Big(0));
-}
-
-function getTotalCash(balances, options) {
-    const cash_acct = balances.every(bal => bal.margin == null);
-    const local_balances = balances.filter(options.currency ?
-        bal => bal.currency == options.currency : bal => +bal.rate == 1
-    );
-    const local_cash = local_balances.reduce((total, bal) => {
-        return total.add(bal.settled||0).add(bal.accrued||0);
-    }, Big(0));
-    const local_rate = local_balances.length ? local_balances[0].rate : 1;
-    const total_cash = cash_acct ? Big(local_cash) : balances.map(bal => {
-        return Big(bal.settled||0).add(bal.accrued||0).times(bal.rate).div(local_rate);
-    }).reduce((a,b) => a.add(b), Big(0));
-    return total_cash.toString();
 }
 
 /**

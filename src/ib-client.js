@@ -103,8 +103,10 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
             logger.debug("ib-client", clientId, err_msg);
         } else if (err_code >= 2000 && err_code < 3000) {
             logger.info("ib-client", clientId, err_msg || id_or_str || '');
+        } else if (err_msg) {
+            logger.warn("ib-client", clientId, err_msg, id_or_str);
         } else {
-            logger.warn("ib-client", clientId, err_msg || id_or_str || '');
+            logger.warn("ib-client", clientId, id_or_str);
         }
         ib.isConnected().catch(logger.error); // check if the error caused a disconnection
     }).on('result', (event, args) => {
