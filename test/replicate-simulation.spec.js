@@ -56,13 +56,7 @@ describe("replicate-simulation", function() {
         fetch = Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
-                fetch: {
-                    remote: {
-                        enabled: true,
-                        location: "wss://WildDog:1ooewjc@merritt.catchpointcapital.ca:443"
-                    }
-                }
+                dirname: path.resolve(__dirname, 'data')
             }
         }));
         quote = new Quote(fetch);
