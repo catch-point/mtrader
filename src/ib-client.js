@@ -696,7 +696,8 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
         flusher.flush().then(() => _.values(orders).filter(order => {
             const status = order.status;
             return status != 'Filled' && status != 'Cancelled' &&
-                status != 'Inactive' && status != 'Duplicate';
+                status != 'Inactive' && status != 'Duplicate' &&
+                status != 'Untransmitted';
         })).then(orders => {
             if (orders.every(ord => ord.conid)) return orders;
             // give the system 1s for orderStatus, otherwise continue without those orders
@@ -727,7 +728,7 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
                     primaryExch: contract.primaryExch,
                     currency: contract.currency,
                     multiplier: contract.multiplier,
-                    status: 'ApiPending',
+                    status: 'Untransmitted',
                     ...await expandComboLegs(self, contract),
                     ...order
                 }, v => v == null);

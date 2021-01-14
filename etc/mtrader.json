@@ -58,7 +58,6 @@
   },
   "broker": {
     "ib": {
-      "enabled": false
     },
     "simulation": {
       "enabled": false,
