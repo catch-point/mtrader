@@ -48,8 +48,9 @@ function nextval() {
 
 module.exports = async function(settings = {}) {
     const host = settings && settings.host || 'localhost';
-    const port = settings && settings.port || 7496;
-    const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : nextval();
+    const port = settings && settings.port;
+    if (!port) throw Error("Port is required to start IB TWS");
+    const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : 0;
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const timeout = settings && settings.timeout || 600000;
     const self = new.target ? this : {};

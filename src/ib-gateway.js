@@ -68,14 +68,15 @@ module.exports = async function(remote_settings) {
     } else {
         delete settings.lib_dir;
     }
-    const promise_market_client = settings.market_data && borrow({
-        ...settings.market_data,
-        ..._.omit(local_settings, 'market_data')
-    });
+    let promise_market_client;
     const client = await borrow(settings);
     return Object.assign({}, _.mapObject(client, (fn, name) => {
-        if (promise_market_client && ~market_functions.indexOf(name)) {
+        if (settings.market_data && ~market_functions.indexOf(name)) {
             return async function() {
+                promise_market_client = promise_market_client || borrow({
+                    ...settings.market_data,
+                    ..._.omit(local_settings, 'market_data')
+                });
                 const market_client = await promise_market_client;
                 return market_client[name].apply(market_client, arguments);
             };
@@ -184,7 +185,7 @@ async function assignClient(self, settings) {
 
 async function setDefaultSettings(settings) {
     const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port ||
-            await findAvailablePort(settings.TradingMode == 'paper' ? 4002 : 4001)
+            settings.TradingMode && await findAvailablePort(settings.TradingMode == 'paper' ? 4002 : 4001) || 0;
     const {username, password} = await readAuthentication(settings);
     const parent_lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
     const default_dir = path.resolve(parent_lib_dir, settings.IbLoginId || username || '');

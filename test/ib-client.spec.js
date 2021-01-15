@@ -39,7 +39,7 @@ describe("ib-client", function() {
     var tz = 'America/New_York';
     var client;
     before(async function() {
-        client = await IB();
+        client = await IB({port:7496});
         return client.open().catch(err => {
             client = null;
             this.skip();
