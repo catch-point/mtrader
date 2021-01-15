@@ -44,7 +44,7 @@ const version = require('./version.js');
 
 const EOM = '\r\n\r\n';
 
-const DEFAULT_PATH = `/mtrader/${version.minor_version}/remote`;
+const DEFAULT_PATH = `/mtrader/${version.major_version}/remote`;
 
 const remote = module.exports = function(settings = {}, socket = null) {
     if (_.isEmpty(settings) && !socket) throw Error("No remote location given");

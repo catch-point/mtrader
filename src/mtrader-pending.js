@@ -46,7 +46,7 @@ const shellError = require('./shell-error.js');
 const version = require('./version.js');
 const MTrader = require('./mtrader.js');
 
-const DEFAULT_PATH = `/mtrader/${version.minor_version}/remote`;
+const DEFAULT_PATH = `/mtrader/${version.major_version}/remote`;
 const WORKER_COUNT = require('os').cpus().length;
 
 function usage(command) {

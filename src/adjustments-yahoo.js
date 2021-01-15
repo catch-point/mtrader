@@ -155,7 +155,7 @@ async function yahoo_adjustments(yahoo, db, salt, symbol, options) {
             const data = _.sortBy(splits.concat(divs), 'Date');
             return writeAdjPrice(yahoo, salt, symbol, col, since, data, options);
         }).then(data => {
-            col.propertyOf(since, 'version', version.minor_version);
+            col.propertyOf(since, 'version', version.major_version);
             col.propertyOf(since, 'salt', salt);
             col.propertyOf(since, 'tz', options.tz);
             col.propertyOf(since, 'asof', asof);
@@ -195,7 +195,7 @@ function compatible(collection, salt, since, options) {
     if (!collection.exists(since)) return false;
     if (salt != collection.propertyOf(since, 'salt')) return false;
     if (options.tz != collection.propertyOf(since, 'tz')) return false;
-    return collection.propertyOf(since, 'version') == version.minor_version;
+    return collection.propertyOf(since, 'version') == version.major_version;
 }
 
 async function adjustments(yahoo, db, salt, symbol, options) {

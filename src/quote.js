@@ -742,7 +742,7 @@ function getStorageVersion(collection) {
     const blocks = collection.listNames();
     const versions = blocks
         .map(block => collection.propertyOf(block, 'version'))
-        .filter(ver => ver && ver.indexOf(version.minor_version) === 0);
+        .filter(ver => ver && ver.indexOf(version.major_version) === 0);
     const len = _.max(_.map(versions, 'length'));
     const store_ver = _.last(versions.filter(ver => ver.length==len).sort());
     if (store_ver) return store_ver;
@@ -753,7 +753,7 @@ function getStorageVersion(collection) {
  * Returns a new version that must match among compatible blocks
  */
 function createStorageVersion() {
-    return version.minor_version + '+' + new Date().valueOf().toString(36);
+    return version.major_version + '+' + new Date().valueOf().toString(36);
 }
 
 /**

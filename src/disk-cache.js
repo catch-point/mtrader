@@ -39,7 +39,7 @@ const moment = require('moment-timezone');
 const csv = require('fast-csv');
 const expect = require('chai').expect;
 const awriter = require('./atomic-write.js');
-const minor_version = require('./version.js').minor_version;
+const major_version = require('./version.js').major_version;
 const config = require('./config.js');
 const debounce = require('./debounce.js');
 const logger = require('./logger.js');
@@ -123,7 +123,7 @@ function readHash(opts) {
  */
 function getResult(cache, hash, opts, fn, options, cb) {
     const memhit = cache.pending[hash] && cache.pending[hash].find(entry => {
-        return entry.version == minor_version && _.isEqual(entry.opts, opts);
+        return entry.version == major_version && _.isEqual(entry.opts, opts);
     });
     if (memhit) return memhit.promise;
     const cacheMiss = {};
@@ -313,7 +313,7 @@ function getEntry(cache, hash, opts) {
       .then(files => files.map(file => path.resolve(dir, file)))
       .then(files => Promise.all(files.map(file => readEntryMetadata(file))))
       .then(metas => metas.filter(entry => {
-        return entry && entry.version == minor_version && entry.hash == hash && entry.result;
+        return entry && entry.version == major_version && entry.hash == hash && entry.result;
     })).then(entries => Promise.all(entries.map(entry => readEntryOptions(cache.baseDir, entry)))
       .then(options => entries.filter((entry, i) => _.isEqual(opts, options[i]))))
       .then(_.first).then(entry => {
@@ -331,7 +331,7 @@ function createCacheEntry(cache, hash, fn, options, cb) {
         hash: hash,
         age: 0,
         marked: false,
-        version: minor_version,
+        version: major_version,
         label: options.label,
         promise: new Promise(cb => cb(fn(options))).then(result => {
             const opts = _.omit(options, _.isUndefined);
@@ -406,7 +406,7 @@ function writePendingEntryResult(cache, entry, opts, result) {
                 label: entry.label,
                 age: 0,
                 marked: false,
-                version: minor_version,
+                version: major_version,
                 type: 'csv',
                 result: filename + '.result.csv',
                 options: filename + '.options.json',
@@ -420,7 +420,7 @@ function writePendingEntryResult(cache, entry, opts, result) {
                 label: entry.label,
                 age: 0,
                 marked: false,
-                version: minor_version,
+                version: major_version,
                 type: 'json',
                 result: filename + '.result.json',
                 options: filename + '.options.json',
