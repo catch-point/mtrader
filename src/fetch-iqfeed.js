@@ -431,9 +431,9 @@ const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
 function weekOfYearToWeekOfMonth(symbol) {
     const [, root, week, month, yy] = symbol.match(/^(\w+)([0-5]\d)([A-Z])(\d\d)$/);
     const mm = (101 + month_code.indexOf(month)).toString().substring(1);
-    const year = moment(`20${yy}-01-01`);
+    const year = yy < '80' ? moment(`20${yy}-01-01`) : moment(`19${yy}-01-01`);
     const one = year.add((10 - year.isoWeekday()) % 7, 'days');
-    const first = moment(`20${yy}-${mm}-01`);
+    const first = moment(`${year.year()}-${mm}-01`);
     const wednesday = first.add((10 - first.isoWeekday()) % 7, 'days');
     const expiry = one.add(+week - 1, 'weeks');
     const w = expiry.isoWeek() - wednesday.isoWeek() + 1;
@@ -443,9 +443,9 @@ function weekOfYearToWeekOfMonth(symbol) {
 function weekOfMonthToWeekOfYear(symbol) {
     const [, root, w, month, yy] = symbol.match(/^@(\w+)([0-5])([A-Z])(\d\d)$/);
     const mm = (101 + month_code.indexOf(month)).toString().substring(1);
-    const year = moment(`20${yy}-01-01`);
+    const year = yy < '80' ? moment(`20${yy}-01-01`) : moment(`19${yy}-01-01`);
     const one = year.add((10 - year.isoWeekday()) % 7, 'days');
-    const first = moment(`20${yy}-${mm}-01`);
+    const first = moment(`${year.year()}-${mm}-01`);
     const wednesday = first.add((10 - first.isoWeekday()) % 7, 'days');
     const expiry = wednesday.add(+w - 1, 'weeks');
     const ww = expiry.isoWeek() - one.isoWeek() + 1;
@@ -464,10 +464,10 @@ function isNotEquity(markets, options) {
 function isOptionExpired(symbol) {
     const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return null;
-    const year = m[2];
+    const yy = m[2];
     const day = m[3];
     const mo = months[m[4]];
-    const expiration_date = `20${year}-${mo}-${day}`;
+    const expiration_date = yy < '80' ? `20${yy}-${mo}-${day}` : `19${yy}-${mo}-${day}`;
     const exdate = moment(expiration_date).endOf('day');
     return exdate.isValid() && exdate.isBefore();
 }
@@ -692,7 +692,7 @@ async function mostRecentTrade(iqclient, adjustments, symbol, options) {
             high: Math.max(today.high || 0, bar.high),
             low: today.low && today.low < bar.low ? today.low : bar.low,
             close: today.close,
-            volume: today.total_volume || bar.total_volume,
+            volume: today.total_volume || bar.total_volume || bar.volume,
             asof: today.asof
         }));
     }

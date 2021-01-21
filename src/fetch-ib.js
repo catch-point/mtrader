@@ -1,6 +1,6 @@
 // fetch-ib.js
 /*
- *  Copyright (c) 2019 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2019-2021 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -292,11 +292,11 @@ function isContractExpired(markets, client, now, options) {
     if (secTypes.length && !_.intersection(secTypes, ['FUT', 'OPT', 'FOP']).length) return false;
     const opt = options.symbol.length == 21 &&
         options.symbol.match(/^(\w+)\s*([0-9]{6})([CP])([0-9]{5})([0-9]{3})$/);
-    if (opt) return moment(`20${opt[2]}`).isBefore(now);
+    if (opt) return moment(`${opt[2]<'80'?'20':'19'}${opt[2]}`).isBefore(now);
     const fut = options.symbol.match(/^(.+)([FGHJKMNQUVXZ])(\d\d)$/);
-    if (fut) return now.diff(`20${fut[3]}${fmonth[fut[2]]}22`, 'days') > 365*2;
+    if (fut) return now.diff(`${fut[3]<'80'?'20':'19'}${fut[3]}${fmonth[fut[2]]}22`, 'days') > 365*2;
     const fop = options.symbol.match(/^(.+)([FGHJKMNQUVXZ])(\d\d) [CP](\d+)$/);
-    if (fop) return moment(`20${fop[3]}${fmonth[fop[2]]}22`).isBefore(now);
+    if (fop) return moment(`${fop[3]<'80'?'20':'19'}${fop[3]}${fmonth[fop[2]]}22`).isBefore(now);
     if (secType || secTypes.length) logger.warn(`Unexpected contract symbol format ${options.symbol}`);
 }
 

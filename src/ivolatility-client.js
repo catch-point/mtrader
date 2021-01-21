@@ -1,6 +1,6 @@
 // ivolatility-client.js
 /*
- *  Copyright (c) 2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018-2021 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -95,7 +95,8 @@ module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
             const year = symbol.substring(6, 8);
             const month = symbol.substring(8, 10);
             const day = symbol.substring(10, 12);
-            const expiry_date = `20${year}-${month}-${day}`;
+            const century = year < '80' ? '20' : '19';
+            const expiry_date = `${century}${year}-${month}-${day}`;
             const filename = underlying + symbol.substring(6);
             return processing.then(() => store.open(underlying, (err, db) => {
                 if (err) throw err;

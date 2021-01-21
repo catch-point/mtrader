@@ -1,6 +1,6 @@
 // fetch-ivolatility.js
 /*
- *  Copyright (c) 2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2018-2021 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -164,7 +164,8 @@ async function contract(markets, options) {
     const dollar = symbol.substring(13, 18);
     const decimal = symbol.substring(18, 21);
     const strike = +Big(dollar).add(Big(decimal).div(1000));
-    const exdate = `20${year}-${month}-${day}`;
+    const century = year < '80' ? '20' : '19';
+    const exdate = `${century}${year}-${month}-${day}`;
     const expiry = moment.tz(exdate, options.tz);
     return [{
         symbol: symbol,
@@ -188,7 +189,8 @@ function isOptionActive(symbol, begin, end) {
     const right = symbol.charAt(12);
     const dollar = symbol.substring(13, 18);
     const decimal = symbol.substring(18, 21);
-    const exdate = `20${year}-${month}-${day}`;
+    const century = year < '80' ? '20' : '19';
+    const exdate = `${centry}${year}-${month}-${day}`;
     const expiry = moment(exdate).endOf('day');
     const issued = month == '01' ?
         moment(expiry).subtract(3, 'years') :

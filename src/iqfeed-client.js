@@ -1,6 +1,6 @@
 // iqfeed-client.js
 /*
- *  Copyright (c) 2014-2018 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2014-2021 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -252,7 +252,7 @@ function lookupOptions(symbol) {
         symbol: symbol,
         listed_market: 'OPRA',
         security_type: 'IEOPTION',
-        name: `${underlying} ${month} 20${year} ${pc} ${strike}`
+        name: `${underlying} ${month} '${year} ${pc} ${strike}`
     };
 }
 
@@ -262,7 +262,8 @@ function isOptionExpired(symbol, begin, end, tz) {
     const year = m[2];
     const mo = months[m[4]];
     const day = m[3];
-    const exdate = moment.tz(`20${year}-${mo}-${day}`,tz);
+    const century = year < '80' ? '20' : '19';
+    const exdate = moment.tz(`${century}${year}-${mo}-${day}`,tz);
     const issued = mo == '01' ?
         moment(exdate).subtract(3, 'years') :
         moment(exdate).subtract(9, 'months');
