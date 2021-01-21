@@ -56,6 +56,8 @@ process.on('SIGTERM', () => closeAllClients('SIGTERM').catch(logger.error));
 module.exports = async function(remote_settings) {
     const local_settings = config('ib') || {};
     const settings = {...remote_settings, ...local_settings};
+    if (!settings.OverrideTwsApiPort && !settings.port && !settings.TradingMode)
+        throw Error("TradingMode or port is required to start IB TWS");
     const market_functions = [
         'reqHistoricalData', 'reqMktData', 'reqRealTimeBars',
         'calculateImpliedVolatility', 'calculateOptionPrice'
@@ -124,7 +126,10 @@ async function borrow(settings) {
             }
         };
         return shared.open().then(() => shared);
-    } else if (await shared.open().then(() => true, err => false)) {
+    } else if (await shared.open().then(() => true, err => {
+        logger.warn("ib-gateway client closed unexpectedly", settings.clientId || '', key, err);
+        return false;
+    })) {
         shared.leased++;
         return shared;
     } else {
