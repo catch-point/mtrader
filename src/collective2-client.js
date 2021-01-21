@@ -144,9 +144,9 @@ async function retrieve(agent, name, posted, systemid, settings) {
     });
     const res = JSON.parse(body);
     if (!res.equity_data && parsed.protocol != 'file:')
-        logger.debug("collective2", name, JSON.stringify(res));
+        logger.trace("collective2", name, JSON.stringify(res));
     else if (parsed.protocol != 'file:')
-        logger.debug("collective2", name, JSON.stringify(Object.assign(_.omit(res,'equity_data'), {
+        logger.trace("collective2", name, JSON.stringify(Object.assign(_.omit(res,'equity_data'), {
             equity_data: res.equity_data.slice(Math.max(res.equity_data.length-20,0))
         })));
     else
