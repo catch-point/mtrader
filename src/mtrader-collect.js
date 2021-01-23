@@ -65,6 +65,8 @@ const readCallSave = require('./read-call-save.js');
 
 const WORKER_COUNT = require('os').cpus().length;
 
+process.setMaxListeners(process.getMaxListeners()+1);
+
 function usage(command) {
     return command.version(version)
         .description("Collects historic portfolio data")
@@ -94,6 +96,12 @@ function usage(command) {
         .option('--tail <number>', "Include the given last few rows in the result")
         .option('-o, --offline', "Disable data updates")
         .option('-u, --update', "Update the last bar of assets")
+        .option('--allocation-pct <percent>', "Percentage 0-100 of the balance that should be allocated to this strategy")
+        .option('--allocation-peak-pct <percent>', "Percentage 0-100 of the maximum balance in the past 12 months to allocate")
+        .option('--reserve-peak-allocation <number>', "Amount to exclude from allocation at peak balance in the past 12 month")
+        .option('--reserve-allocation <number>', "Monetary amount to exclude from allocation")
+        .option('--allocation-min <number>', "Minimum monetary amount that should be allocated to this strategy")
+        .option('--allocation-max <number>', "Maximum monetary amount that should be allocated to this strategy")
         .option('--set <name=value>', "Name=Value pairs to be used in session")
         .option('--output <file>', "CSV file to write the result into")
         .option('--launch <program>', "Program used to open the output file")
@@ -104,7 +112,40 @@ function usage(command) {
         .option('-t, --transpose', "Swap the columns and rows");
 }
 
-process.setMaxListeners(process.getMaxListeners()+1);
+function collect_help(info) {
+    return info.map(help => ({
+        name: 'collect',
+        usage: 'collect(options)',
+        description: "Evaluates columns using historic security data",
+        properties: help.properties,
+        options: _.extend({}, help.options, {
+            allocation_pct: {
+                usage: '<number>',
+                description: "Percentage 0-100 of the balance that should be allocated to this strategy"
+            },
+            allocation_peak_pct: {
+                usage: '<number>',
+                description: "Percentage 0-100 of the maximum balance in the past 12 months to allocate"
+            },
+            reserve_peak_allocation: {
+                usage: '<number>',
+                description: "Amount to exclude from allocation at peak balance in the past 12 months"
+           },
+            reserve_allocation: {
+                usage: '<number>',
+                description: "Amount to exclude from allocation to this strategy"
+            },
+            allocation_min: {
+                usage: '<number>',
+                description: "Minimum amount that should be allocated to this strategy"
+            },
+            allocation_max: {
+                usage: '<number>',
+                description: "Maximum amount that should be allocated to this strategy"
+            }
+        })
+    }));
+}
 
 if (require.main === module) {
     const program = usage(commander).parse(process.argv);
@@ -178,7 +219,7 @@ function createSharedInstance(program, runInBand = false) {
         return promiseKeys.then(keys => trimOptions(keys, options))
           .then(options => {
             const remote_tier = remote.getWorkerTier() || local_tier;
-            if (options.info=='help' || isSplitting(options)) return direct(options);
+            if (options.info=='help') return direct(options).then(info => collect_help(info));
             else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
             else if (options.info=='version')
                 return Promise.all([direct(options), remote.version()]).then(_.flatten);
@@ -188,6 +229,7 @@ function createSharedInstance(program, runInBand = false) {
                     local.countConnectedWorkers() ? local(options) : [],
                     remote.hasWorkers() ? remote.collect(options) : []
                 ]).then(_.flatten);
+            else if (isSplitting(options)) return direct(options);
             else if (cache) return cache(options);
             else if (config('runInBand') || runInBand) return direct(options);
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);

@@ -121,38 +121,13 @@ function helpInfo(broker, collect) {
                 usage: '<decimal>',
                 description: "The default minimun increment passed to broker"
             },
-            extended_hours: {
-                usage: 'true',
-                values: ['true'],
-                description: "If set, Allows orders to also trigger or fill outside of regular trading hours."
+            input_orders: {
+                usage: '[{orders}...]',
+                descirption: "History of orders to use instead of strategy"
             },
             working_duration: {
                 usage: '<duration>,..',
                 description: "Offset of now to begin by these comma separated durations or to values"
-            },
-            allocation_pct: {
-                usage: '<number>',
-                description: "Percentage 0-100 of the balance that should be allocated to this strategy"
-            },
-            allocation_peak_pct: {
-                usage: '<number>',
-                description: "Percentage 0-100 of the maximum balance in the past 12 months to allocate"
-            },
-            reserve_peak_allocation: {
-                usage: '<number>',
-                description: "Amount to exclude from allocation at peak balance in the past 12 months"
-            },
-            reserve_allocation: {
-                usage: '<number>',
-                description: "Amount to exclude from allocation to this strategy"
-            },
-            allocation_min: {
-                usage: '<number>',
-                description: "Minimum amount that should be allocated to this strategy"
-            },
-            allocation_max: {
-                usage: '<number>',
-                description: "Maximum amount that should be allocated to this strategy"
             },
             close_unknown: {
                 usage: 'true',
@@ -218,7 +193,7 @@ async function replicate(broker, collect, lookup, options) {
         broker({action: 'positions', now: options.now}),
         broker({action: 'orders', now: options.now})
     ]);
-    const actual = getActualPositions(broker_positions, broker_orders, des_working, begin, options);
+    const actual = getActualPositions(broker_positions, broker_orders, des_working, begin);
     logger.debug("replicate actual", ...Object.keys(actual));
     const portfolio = _.uniq(Object.keys(desired).concat(getPortfolio(options.markets, options))).sort();
     const margin_acct = !broker_balances.every(bal => bal.margin == null);
@@ -258,7 +233,7 @@ async function replicate(broker, collect, lookup, options) {
  * Collects the options results and converts the orders into positions
  */
 async function getDesiredPositions(broker, collect, lookup, begin, options) {
-    const orders = await collect(merge(options, {begin}));
+    const orders = options.input_orders || await collect(merge(options, {begin}));
     const normalized_orders = await Promise.all(orders.map(row => normalize(lookup, row, options)));
     const indexed = _.indexBy(normalized_orders, ord => `${ord.symbol}.${ord.market}`);
     return _.object(Object.keys(indexed), await Promise.all(Object.values(indexed).map(async(order) => {
@@ -375,12 +350,12 @@ async function normalize(lookup, row, options) {
 /**
  * Retrieves the open positions and working orders from broker
  */
-function getActualPositions(broker_positions, broker_orders, des_working, begin, options) {
+function getActualPositions(broker_positions, broker_orders, des_working, begin) {
     const all_positions = _.groupBy(broker_positions, pos => `${pos.symbol}.${pos.market}`);
     const positions = _.mapObject(all_positions, positions => positions.reduce((net, pos) => {
         return {...net, position: +net.position + +pos.position};
     }));
-    const inline_orders = inlineComboOrders(broker_orders, options);
+    const inline_orders = inlineComboOrders(broker_orders);
     const working_orders = _.groupBy(inline_orders, ord => `${ord.symbol}.${ord.market}`);
     const assets = _.union(Object.keys(positions), Object.keys(working_orders));
     return _.object(assets, assets.map(asset => {
@@ -626,7 +601,7 @@ function replicateContracts(desired, begin, options) {
     };
 }
 
-function inlineComboOrders(orders, options) {
+function inlineComboOrders(orders) {
     const inline_legs = orders.map(leg => {
         if (leg.order_type != 'LEG') return leg;
         const combo = orders.find(combo => combo.order_ref == leg.attach_ref);

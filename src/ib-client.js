@@ -72,6 +72,7 @@ module.exports = async function(settings = {}) {
                 promise_client = promise_client.then(client => client.open()).catch(async(disconnected) => {
                     if (closed) return client;
                     await client.close().catch(logger.error);
+                    if (closed) throw Error(`IB API has been closed to ${clientId}`);
                     logger.log("ib-client reconnecting client to", host, port, "as", clientId);
                     return createClient(host, port, clientId, ib_tz, timeout, settings);
                 });

@@ -1,6 +1,6 @@
 // tabular.js
 /*
- *  Copyright (c) 2016-2019 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2016-2021 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -43,6 +43,11 @@ const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
 
 module.exports = function(data, options) {
+    if(_.isString(data)) return read(data, options);
+    else return write(data, options);
+};
+
+function write(data, options) {
     if (_.isEmpty(data)) return logger.info("Empty result, not writing", options.output || '');
     const filename = getOutputFile(options);
     const transpose = options.transpose && options.transpose.toString() != 'false';
@@ -70,7 +75,25 @@ module.exports = function(data, options) {
         if (filename) return awriter(filename => writeData(transpose, reverse, csv, gzip, filename, data), filename);
         else return writeData(transpose, reverse, false, false, null, data);
     }).then(() => launchOutput(filename, options));
-};
+}
+
+function read(filename, options) {
+    const reverse = options.reverse && options.reverse.toString() != 'false';
+    const gzip = filename && (options.gzip && options.gzip.toString() != 'false' || filename.endsWith('.gz'));
+    const csv = options.csv || filename && (filename.endsWith('.csv') || filename.endsWith('.csv.gz'));
+    return new Promise((ready, error) => {
+        const objects = [];
+        const stream = fs.createReadStream(filename).on('error', error);
+        const pipe = gzip ? stream.pipe(zlib.createGunzip().on('error', error)) : stream;
+        parseStream(pipe, csv ?
+            {headers : true, ignoreEmpty: true, delimiter: ',', quote: '"', escape: '"'} :
+            {headers : true, ignoreEmpty: true, delimiter: '\t', quote: null, comment: '#'}
+        )
+            .on('error', error)
+            .on('data', data => objects.push(_.mapObject(data, parseValue)))
+            .on('end', () => ready(objects));
+    }).then(existing => reverse ? existing.reverse() : existing);
+}
 
 function writeData(transpose, reverse, csv, gzip, filename, data) {
     return new Promise((finished, error) => {
@@ -205,9 +228,10 @@ function parseValue(value) {
 }
 
 function formatValue(value) {
-    if (value == null) return '';
+    if (value == null) return JSON.stringify(null);
     if (_.isObject(value) && typeof value.toJSON == 'function') return formatValue(value.toJSON());
     if (_.isObject(value)) return JSON.stringify(value);
+    if (_.isString(value) && !value) return JSON.stringify(value);
     if (_.isString(value) && value.match(/[^/:\w\-\.\+]/)) return JSON.stringify(value);
     else return value;
 }

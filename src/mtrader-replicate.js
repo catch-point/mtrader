@@ -78,6 +78,7 @@ function usage(command) {
         .option('--reserve-allocation <number>', "Monetary amount to exclude from allocation")
         .option('--allocation-min <number>', "Minimum monetary amount that should be allocated to this strategy")
         .option('--allocation-max <number>', "Maximum monetary amount that should be allocated to this strategy")
+        .option('--input <file>', "History of orders for this strategy")
         .option('--close-unknown', "Close unknown positions in known markets")
         .option('-f, --force', "Change live position even if it was changed more recently then model")
         .option('-w, --working-orders-only', "Don't try to align positions sizes, only submit working orders")
@@ -102,7 +103,10 @@ if (require.main === module) {
         process.on('SIGINT', () => replicate.close());
         process.on('SIGTERM', () => replicate.close());
         Promise.all(program.args.map(name => {
-            return readCallSave(name, replicate).catch(err => {
+            return readCallSave(name, async(options) => {
+                const input_orders = _.isString(options.input) ? await tabular(options.input, options) : null;
+                return replicate({input_orders, ...options});
+            }).catch(err => {
                 logger.error(err, err.stack);
                 process.exitCode = 1;
             });
