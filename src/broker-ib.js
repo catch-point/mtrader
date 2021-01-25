@@ -503,8 +503,9 @@ async function submitOrder(root_ref, markets, ib, fetch, settings, options, pare
     const attach_order = options.attach_ref ? await orderByRef(ib, options.attach_ref) : null;
     const oca_group = ocaGroup || (options.attach_ref && !attach_order ? options.attach_ref : null);
     const replacing_order = await orderByRef(ib, options.order_ref);
-    const replacing_id = replacing_order && !~replacing_order.status.indexOf('Cancel') ?
-        replacing_order.orderId : null; // not PendingCancel nor ApiCancelled nor Cancelled
+    const replacing_id = replacing_order && !~replacing_order.status.indexOf('Cancel') &&
+            !~replacing_order.status.indexOf('Untransmitted') ?
+        replacing_order.orderId : null; // not PendingCancel nor ApiCancelled nor Cancelled nor Untransmitted
     const reqId = replacing_id ? async(fn) => fn(replacing_id).catch(err => {
         logger.warn("Could not replace order: ", err);
         return ib.reqId(fn);

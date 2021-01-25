@@ -785,7 +785,8 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
             return _.values(orders).filter(order => {
                 const status = order.status;
                 return status != 'Filled' && status != 'Cancelled' &&
-                    status != 'Inactive' && status != 'Duplicate';
+                    status != 'Inactive' && status != 'Duplicate' &&
+                    status != 'Untransmitted';
             });
         },
         reqOpenOrders() {
