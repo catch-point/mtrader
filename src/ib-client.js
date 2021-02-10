@@ -110,7 +110,9 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         } else {
             logger.warn("ib-client", clientId, id_or_str);
         }
-        ib.isConnected().catch(logger.error); // check if the error caused a disconnection
+        if (self.connected) {
+            ib.isConnected().catch(logger.error); // check if the error caused a disconnection
+        }
     }).on('result', (event, args) => {
         logger.trace("ib", clientId, event, ...args);
     });
@@ -123,8 +125,8 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
                 if (login_timeout < Date.now()) {
                     fail(Error(err_msg || id_or_str));
                     logger.log("ib-client could not login quick enough to", host, port, "as", clientId);
-                    ib.exit();
                     ib.removeListener('error', on_error);
+                    ib.exit().catch(logger.error);
                 } else {
                     // keep trying
                     ib.sleep(500).catch(fail);
