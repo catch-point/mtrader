@@ -67,7 +67,7 @@ describe("adjustments", function() {
             {exdate:'2017-12-15',dividend:1.35,adj:0.9949}
         ]);
     });
-    it("should handle ignore peudo split entry", function() {
+    it.skip("should handle ignore peudo split entry", function() {
         return adjustments({
             symbol: 'XLF',
             market: 'NYSE',
