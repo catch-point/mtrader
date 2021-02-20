@@ -73,21 +73,19 @@ describe("storage", function() {
         actual.should.be.like(expected);
     });
     it("renameMetadata", async() => {
-        const data0 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'earlier'},{id:'b'}]};
+        const data0 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'earlier'}]};
         const data1 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'earlier'},{id:'c'}]};
-        const data2 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'today'},{id:'b'},{id:'d'}]};
+        const data2 = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'today'},{id:'d'}]};
         const data = JSON.parse(JSON.stringify(data2));
         const expected = {tables:[{id:'a',file:'a.csv.gz',updatedAt:'today'},{id:'c'},{id:'d'}]};
         const index = path.resolve(dir, 'index.json.gz');
         const part = path.resolve(dir, 'part.json.gz');
         const a = path.resolve(dir, 'a.csv.gz');
-        const b = path.resolve(dir, 'b.csv.gz');
         const c = path.resolve(dir, 'c.csv.gz');
         const d = path.resolve(dir, 'd.csv.gz');
-        await writeFile(a, '');
-        // b is absent
-        await writeFile(c, '');
-        await writeFile(d, '');
+        await writeFile(a, await gzip(''));
+        await writeFile(c, await gzip(''));
+        await writeFile(d, await gzip(''));
         await writeFile(index, await gzip(JSON.stringify(data0)));
         const metadata = await storage._readMetadata(dir);
         _.extend(data, metadata, JSON.parse(JSON.stringify(data2)));

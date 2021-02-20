@@ -99,7 +99,7 @@ function openCollection(dirname, name) {
     const failIfClosed = () => {
         if (closed) throw Error(`Collection ${collpath} already closed in ${process.pid} ${closed}`);
     };
-    return readMetadata(collpath).then(metadata => ({
+    return readMetadata(collpath).then(metadata => updateMetadata(collpath, metadata)).then(metadata => ({
         close(closedBy) {
             closed = closedBy || true;
             return Promise.all([
@@ -305,6 +305,28 @@ function readMetadata(dirname) {
     }).catch(error => logger.error("Could not read", dirname, error.message) || {tables:[]});
 }
 
+async function updateMetadata(dirname, metadata) {
+    const tables = await Promise.all(metadata.tables.map(async(entry) => {
+        if (!entry.file) return entry; // legacy format
+        const filename = path.resolve(dirname, entry.file);
+        const stat = await util.promisify(fs.stat)(filename);
+        if (!metadata.mtime || stat.mtime.valueOf() < metadata.mtime.valueOf()) return entry;
+        const records = await readTable(filename, entry.size)
+            .catch(err => logger.error(`storage ${filename} is missing`, err.message));
+        if (!records) return null;
+        return {
+            ...entry,
+            size: records.length,
+            head: records.slice(0, 2),
+            tail: records.slice(-2)
+        };
+    }));
+    return {
+        ...metadata,
+        tables: tables.filter(entry => entry)
+    };
+}
+
 async function writeMetadata(dirname, metadata) {
     const filename = path.resolve(dirname, 'index.json.gz');
     const part = awriter.partFor(filename);
@@ -315,18 +337,11 @@ async function writeMetadata(dirname, metadata) {
     return renameMetadata(part, filename, metadata);
 }
 
-function renameMetadata(part, filename, metadata) {
-    return new Promise(cb => {
-        fs.stat(filename, (err, stats) => err ? cb() : cb(stats))
-    }).then(stats => {
-        if (stats && metadata.mtime && stats.mtime.valueOf() > metadata.mtime.valueOf())
-            return mergeMetadata(part, filename, metadata);
-    }).then(() => new Promise((ready, error) => {
-        fs.rename(part, filename, err => {
-            if (err) error(err);
-            else ready();
-        });
-    }));
+async function renameMetadata(part, filename, metadata) {
+    const stats = await util.promisify(fs.stat)(filename).catch(err => null);
+    if (stats && metadata.mtime && stats.mtime.valueOf() > metadata.mtime.valueOf())
+        await mergeMetadata(part, filename, metadata);
+    return util.promisify(fs.rename)(part, filename);
 }
 
 async function mergeMetadata(part, filename, metadata) {
@@ -357,9 +372,7 @@ async function mergeMetadata(part, filename, metadata) {
             tables.splice(idx, 1);
         }
     });
-    const merged = _.extend(metadata, target, {
-        tables: tables
-    });
+    const merged = {...metadata, ...target, tables};
     const decompressed = JSON.stringify(merged, null, ' ');
     const compressed = await util.promisify(zlib.gzip)(decompressed);
     await util.promisify(fs.writeFile)(part, compressed);
