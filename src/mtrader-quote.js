@@ -131,7 +131,9 @@ if (require.main === module) {
 function createInstance(program) {
     const fetch = new Fetch();
     let promiseKeys, closed;
-    const instance = function(options) {
+    const instance = async function(options) {
+        if (options.info=='pending')
+            return queue.pending();
         if (!promiseKeys) {
             promiseKeys = direct({info:'help'})
                 .then(_.first).then(info => ['info'].concat(_.keys(info.options)));

@@ -53,9 +53,13 @@ module.exports = function(settings = {}) {
     });
 
     async function fetch(options, interrupted, delayed) {
+        const client = await Fetch();
+        if (options && options.info == 'version')
+            return [];
+        else if (options && options.info == 'pending')
+            return client.pending().map(item => ({cmd: 'fetch', ...item}));
         const check = interrupted || interrupt(true);
         const delay = (delayed || 500) *2;
-        const client = await Fetch();
         return client.request('fetch', options).then(result => {
             if (options.info == 'pending')
                 return client.pending().map(item => ({cmd: 'fetch', ...item})).concat(result);

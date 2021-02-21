@@ -53,11 +53,12 @@ module.exports = function(process) {
     process.setMaxListeners(0);
     process.on('disconnect', () => {
         try {
-            queue.close();
-            onquit(Error("Disconnecting " + process.pid));
+            queue.abort(Error("Disconnecting " + process.pid));
         } finally {
             ondisconnect.forEach(fn => fn());
         }
+    }).on('error', err => {
+        queue.abort(err);
     }).on('message', msg => {
         if (msg.cmd && msg.cmd.indexOf('reply_to_') === 0 && queue.has(msg.in_reply_to)) {
             inc(stats, msg.cmd.substring('reply_to_'.length), 'replies_rec');
@@ -182,7 +183,7 @@ module.exports = function(process) {
             return true;
         },
         pending() {
-            return queue.pending().map(item => ({label: item.cmd, payload: item.payload}));
+            return queue.pending().map(item => ({cmd: item.cmd, label: item.payload.label, location: process.pid, options: item.payload}));
         },
         process: process
     };
@@ -275,6 +276,7 @@ function createQueue(onquit, pid) {
             return _.values(outstanding);
         },
         abort(err) {
+            queue.close();
             return onquit(err);
         },
         reload() {

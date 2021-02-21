@@ -2,7 +2,7 @@
 // vim: set filetype=javascript:
 // mtrader-pending.js
 /*
- *  Copyright (c) 2020 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2020-2021 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -40,18 +40,17 @@ const commander = require('commander');
 const merge = require('./merge.js');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
+const remote = require('./remote-process.js');
+const replyTo = require('./promise-reply.js');
 const Config = require('./mtrader-config.js');
 const config = require('./config.js');
 const shellError = require('./shell-error.js');
 const version = require('./version.js');
 const MTrader = require('./mtrader.js');
 
-const DEFAULT_PATH = `/mtrader/${version.major_version}/remote`;
-const WORKER_COUNT = require('os').cpus().length;
-
 function usage(command) {
     return command.version(version.version)
-    .description("Lists pending queues in remote system(s)")
+    .description("Lists pending queues in the hosting service")
     .option('-V, --version', "Output the version number(s)")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-q, --quiet', "Include less information about what the system is doing")
@@ -66,21 +65,31 @@ function usage(command) {
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-if (require.main === module) {
-    const program = usage(commander).parse(process.argv);
-    const instance = new Pending({...config.options(), ...config('pending')});
-    process.on('SIGINT', () => instance.close());
-    process.on('SIGTERM', () => instance.close());
-    Promise.resolve().then(() => instance.pending())
-    .then(result => tabular(result, config()))
-    .catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
-    .then(() => instance.close());
-} else {
-    module.exports = function(settings = {}) {
-        return new Pending({...settings, ...config('pending')});
+module.exports = function(settings = {}) {
+    settings = {...settings, ...config('remote')};
+    const address = settings.listen;
+    if (!address) throw Error("Service listen address is required to connect to service");
+    const worker = replyTo(remote({...settings, location: settings.listen, checkServerIdentity: _.noop}))
+        .on('error', err => logger.debug(err, err.stack))
+        .on('error', () => worker.disconnect());
+    return function(options = {}) {
+        return new Promise((ready, abort) => {
+            process.on('SIGINT', abort);
+            process.on('SIGTERM', abort);
+            worker.request('pending').then(ready, abort);
+        }).then(result => {
+            worker.disconnect();
+            return result;
+        }, err => {
+            worker.disconnect();
+            throw err;
+        }).then(result => tabular(result, config()))
+        .catch(err => logger.error(err, err.stack) || (process.exitCode = 1));
     };
 }
 
-function Pending(settings = {}) {
-    return new MTrader(settings);
+if (require.main === module) {
+    const program = usage(commander).parse(process.argv);
+    const agent = new module.exports();
+    agent().catch(err => err && err.stack && logger.debug(err, err.stack));
 }

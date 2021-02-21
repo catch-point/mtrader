@@ -95,6 +95,7 @@ if (require.main === module) {
 
 function listen(settings) {
     const connections = [];
+    const traders = [];
     const address = settings.listen;
     const timeout = settings.timeout;
     const addr = parseLocation(address, false);
@@ -167,6 +168,7 @@ function listen(settings) {
             return name.split('.').reduceRight((obj, path) => ({[path]: obj}), val);
         }));
         const mtrader = new MTrader({...options, ...settings});
+        traders.push(mtrader);
         const process = remote({label}, ws).on('error', err => {
             logger.error(err, err.stack);
             ws.close();
@@ -174,6 +176,8 @@ function listen(settings) {
         connections.push(new Promise(closed => {
             process.on('disconnect', () => {
                 logger.log("Client", label, "disconnected");
+                const idx = traders.indexOf(mtrader);
+                if (~idx) traders.splice(idx, 1);
                 mtrader.close()
                   .catch(err => logger.debug("remote mtrader client disconnected", err))
                   .then(closed);
@@ -195,6 +199,9 @@ function listen(settings) {
             .handle('ending_format', p => moment.defaultFormat)
             .handle('version', () => version.toString())
             .handle('worker_count', () => config('collect.workers') != null ? config('collect.workers') : WORKER_COUNT)
+            .handle('pending', () => {
+                return Promise.all(traders.map(mtrader => mtrader.pending())).then(ar => [].concat(...ar));
+            })
             .handle('stop', () => {
                 try {
                     const stop = JSON.stringify({cmd:'stop'}) + '\r\n\r\n';

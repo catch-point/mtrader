@@ -211,6 +211,8 @@ function createSharedInstance(program, runInBand = false) {
     const quote = new Quote();
     const instance = function(options) {
         if (closed) throw Error("Collect is closed");
+        else if (options.info=='pending')
+            return direct(options).then(result => result.concat(local.pending(), remote.pending()));
         if (!promiseKeys) {
             promiseKeys = direct({info:'help'})
                 .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
@@ -220,14 +222,12 @@ function createSharedInstance(program, runInBand = false) {
           .then(options => {
             const remote_tier = remote.getWorkerTier() || local_tier;
             if (options.info=='help') return direct(options).then(info => collect_help(info));
-            else if (options.info=='version' && !remote.hasWorkers()) return direct(options);
-            else if (options.info=='version')
-                return Promise.all([direct(options), remote.version()]).then(_.flatten);
+            else if (options.info=='version') return direct(options);
             else if (options.info)
                 return Promise.all([
                     direct(options),
                     local.countConnectedWorkers() ? local(options) : [],
-                    remote.hasWorkers() ? remote.collect(options) : []
+                    remote.hasWorkers() ? remote(options) : []
                 ]).then(_.flatten);
             else if (isSplitting(options)) return direct(options);
             else if (cache) return cache(options);
@@ -235,9 +235,9 @@ function createSharedInstance(program, runInBand = false) {
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (!remote.hasWorkers()) return local(options);
             else if (local.hasWorkers() && local_tier < remote_tier) return local(options);
-            else if (options.reset_every || isQuoting(options)) return remote.collect(options);
-            else if (!local.hasWorkers()) return remote.collect(options);
-            else if (remote.hasWorkers() && remote_tier < local_tier) return remote.collect(options);
+            else if (options.reset_every || isQuoting(options)) return remote(options);
+            else if (!local.hasWorkers()) return remote(options);
+            else if (remote.hasWorkers() && remote_tier < local_tier) return remote(options);
             else return local(options);
         });
     };
@@ -459,9 +459,9 @@ function createCache(direct, local, remote, settings) {
         else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
         else if (!remote.hasWorkers()) return local(options);
         else if (local.hasWorkers() && local_tier < remote_tier) return local(options);
-        else if (options.reset_every || isQuoting(options)) return remote.collect(options);
-        else if (!local.hasWorkers()) return remote.collect(options);
-        else if (remote.hasWorkers() && remote_tier < local_tier) return remote.collect(options);
+        else if (options.reset_every || isQuoting(options)) return remote(options);
+        else if (!local.hasWorkers()) return remote(options);
+        else if (remote.hasWorkers() && remote_tier < local_tier) return remote(options);
         else return local(options);
     }, collect_cache_size);
 }

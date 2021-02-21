@@ -227,7 +227,7 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
             if (error) throw error;
         },
         async pending() {
-            return time_limit.pending();
+            return time_limit.pending().map(item => ({label: item.label, options: item.args}));
         }
     });
 }

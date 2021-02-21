@@ -115,6 +115,12 @@ module.exports = function(createWorkers, execTask) {
                 stoppedWorkers.push(worker);
             }
         },
+        pending() {
+            const pending_tasks = queue.map(item => item.args[0]);
+            const connected = self.getConnectedWorkers();
+            const working_on = connected.map(worker => worker.pending());
+            return pending_tasks.concat(...working_on);
+        },
         all: function() {
             const self = this;
             const args = _.toArray(arguments);

@@ -158,9 +158,20 @@ function help(settings = {}) {
 }
 
 module.exports = function(settings = {}) {
-    const self = options => {
+    const pending = [];
+    const self = async(options) => {
         if (self.closed) throw Error("IQFeed has closed");
-        else return sharedInstance(options, settings);
+        else if (options.info=='pending') return pending.map(opt => ({cmd:'fetch',label:opt.label,options:opt}));
+        pending.push(options);
+        return sharedInstance(options, settings).then(result => {
+            const idx = pending.indexOf(options);
+            if (~idx) pending.splice(idx, 1);
+            return result;
+        }, err => {
+            const idx = pending.indexOf(options);
+            if (~idx) pending.splice(idx, 1);
+            throw err;
+        });
     };
     self.open = () => sharedInstance({open:true}, settings);
     self.close = () => unregister(self);

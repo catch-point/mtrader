@@ -58,11 +58,13 @@ module.exports = function(fetch, quote, collectFn) {
     );
     const fetch_with_cache = options =>
         options.interval == 'adjustments' ? adjustments(options) : fetch(options);
+    const pending = [];
     return self = Object.assign(async function(options) {
         if (!promiseHelp) promiseHelp = help(quote);
         expect(options).to.be.an('object');
         if (options.info=='help') return promiseHelp;
         if (options.info=='version') return [{version:version.toString()}];
+        if (options.info=='pending') return pending.map(opt => ({cmd:'collect',label:opt.label,options:opt}));
         if (options.info) return [];
         const keys = _.keys(_.first(await promiseHelp).options);
         const fields = _.first(await promiseHelp).properties;
@@ -72,7 +74,16 @@ module.exports = function(fetch, quote, collectFn) {
             marketCol: '$market',
             temporalCol: '$temporal'
         });
-        return collect(fetch_with_cache, quote, collectFn || self, fields, opts);
+        pending.push(options);
+        return collect(fetch_with_cache, quote, collectFn || self, fields, opts).then(result => {
+            const idx = pending.indexOf(options);
+            if (~idx) pending.splice(idx, 1);
+            return result;
+        }, err => {
+            const idx = pending.indexOf(options);
+            if (~idx) pending.splice(idx, 1);
+            throw err;
+        });
     }, {
         close() {
             return adjustments.close();
@@ -167,12 +178,15 @@ async function collect(fetch, quote, callCollect, fields, options) {
     }
     const optionset = segments.map((segment, i, segments) => {
         if (i === 0) return _.defaults({
+            label: `${options.label}/${options.begin}`,
             begin: options.begin, end: segments[i+1]
         }, compacted);
         else if (i < segments.length -1) return _.defaults({
+            label: `${options.label}/${segment}`,
             begin: segment, end: segments[i+1]
         }, compacted);
         else return _.defaults({
+            label: `${options.label}/${segment}`,
             begin: segment, end: options.end
         }, compacted);
     }).map(opts => compactPortfolio(fields, opts.begin, opts.end, opts));
@@ -406,9 +420,10 @@ function getPortfolio(portfolio, options) {
         if (send && !send.isAfter(mbegin) || sbegin && sbegin.isAfter(mend))
             throw Error(`Expected ${subcollect.label} to be removed in compactPortfolio`);
         const id = subcollect.id == null ? 'q' + idx : subcollect.id;
+        const label = subcollect.label || `${options.label}/${id}`;
         const begin = sbegin && mbegin.isBefore(sbegin) ? sbegin.format() : mbegin.format();
         const end = send && mend.isAfter(send) ? send.format() : options.end ? mend.format() : undefined;
-        return _.defaults({id, begin, end}, subcollect, opts);
+        return _.defaults({id, label, begin, end}, subcollect, opts);
     }));
 }
 

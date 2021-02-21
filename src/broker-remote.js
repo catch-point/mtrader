@@ -56,9 +56,13 @@ module.exports = function(settings) {
     });
 
     async function broker(options, interrupted, delayed) {
+        const client = await Broker(settings);
+        if (options && options.info == 'version')
+            return [];
+        else if (options && options.info == 'pending')
+            return client.pending().map(item => ({cmd: 'broker', ...item}));
         const check = interrupted || interrupt(true);
         const delay = (delayed || 500) *2;
-        const client = await Broker(settings);
         return client.request('broker', options).then(result => {
             if (options.info == 'pending')
                 return client.pending().map(item => ({cmd: 'broker', ...item})).concat(result);

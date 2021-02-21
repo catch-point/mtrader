@@ -45,8 +45,8 @@ module.exports = createInstance;
 
 function createInstance(settings = {}) {
     let check = interrupt(true);
-    const queue = workerQueue(_.partial(createRemoteWorkers, settings), (worker, cmd, options) => {
-        return worker.request(cmd, options).catch(async err => {
+    const queue = workerQueue(_.partial(createRemoteWorkers, settings), (worker, options) => {
+        return worker.request('collect', options).catch(async err => {
             if (await check() || queue.isClosed() || !err || !err.message) throw err;
             else if (options && options.remote_failed) throw err;
             const stillConnected = !!worker.connected && !~err.message.indexOf('Disconnecting');
@@ -61,7 +61,7 @@ function createInstance(settings = {}) {
             } else {
                 logger.trace("Worker failed to process ", options && options.label || '\b', worker.process.pid, err);
             }
-            return queue(cmd, _.defaults({remote_failed: stillConnected}, options));
+            return queue(_.defaults({remote_failed: stillConnected}, options));
         });
     });
     const disconnectStoppedWorkers = _.debounce(() => {
@@ -79,12 +79,9 @@ function createInstance(settings = {}) {
                 }
             }
         }, 100),
-        collect(options) {
-            return queue('collect', options);
-        },
         async version() {
             const workers = queue.getWorkers();
-            const versions = await queue.all('collect', {info:'version'})
+            const versions = await queue.all({info:'version'})
               .catch(err => workers.map(worker => [{message:err.message}]));
             return versions.reduce((versions, version, i) => {
                 const location = workers[i].process.pid;
