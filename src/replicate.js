@@ -734,7 +734,9 @@ function combineSimpleOrders(broker_orders, orders, options) {
         if (existing_order) logger.trace("existing_order", traded_price, existing_order);
         const action = existing_order ? existing_order.action :
             traded_price < 0 ? 'SELL' : traded_price > 0 ? 'BUY' : _.first(legs).action;
-        const limit = stk_order ? _.first(legs).limit : 0;
+        const limit = stk_order ? _.first(legs).limit : +legs.reduce((net, leg) => {
+                return net.add(Big(leg.limit || 0).times(leg.action == action ? 1 : -1).times(leg.quant));
+            }, Big(0)).div(quant);
         const stop = stk_order ? _.first(legs).stop : +legs.reduce((net, leg) => {
                 return net.add(Big(leg.stop || 0).times(leg.action == action ? 1 : -1).times(leg.quant));
             }, Big(0)).div(quant);
