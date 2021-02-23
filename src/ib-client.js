@@ -381,12 +381,18 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
         if (req_queue[id_or_str]) {
             req_queue[id_or_str].fail(err_msg || id_or_str);
         } else if (isGeneralError(id_or_str, err_code, err_msg)) {
-            Object.keys(req_queue).forEach(id => req_queue[id].fail(err_msg || id_or_str));
+            Object.keys(req_queue).forEach(reqId => {
+                const task = req_queue[reqId];
+                delete req_queue[reqId];
+                task.fail(err_msg || id_or_str);
+            });
         }
     }).on('exit', () => {
         const err = Error("TWS has disconnected");
         Object.keys(req_queue).forEach(reqId => {
-            req_queue[reqId].fail(err);
+            const task = req_queue[reqId];
+            delete req_queue[reqId];
+            task.fail(err);
         });
     }).on('managedAccounts', accountsList => {
         _.compact(accountsList.split(',')).forEach(account => {
@@ -594,16 +600,16 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
             // warning
         } else if (isGeneralError(id_or_str, err_code, err_msg)) {
             Object.entries(placing_orders).forEach(([orderId, req]) => {
-                req.fail(err_msg || id_or_str);
                 delete placing_orders[orderId];
+                req.fail(err_msg || id_or_str);
             });
             Object.entries(cancelling_orders).forEach(([orderId, req]) => {
-                req.fail(err_msg || id_or_str);
                 delete cancelling_orders[orderId];
+                req.fail(err_msg || id_or_str);
             });
             Object.entries(watching_orders).forEach(([orderId, req]) => {
-                req.fail(err_msg || id_or_str);
                 delete watching_orders[orderId];
+                req.fail(err_msg || id_or_str);
             });
             if (orders_fail) orders_fail(err_msg || id_or_str);
         }
@@ -925,12 +931,18 @@ function execDetails(ib, time_limit, store, ib_tz) {
         if (req_queue[id_or_str]) {
             req_queue[id_or_str].reject(err);
         } else if (isGeneralError(id_or_str, err_code, err_msg)) {
-            Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
+            Object.keys(req_queue).forEach(reqId => {
+                const task = req_queue[reqId];
+                delete req_queue[reqId];
+                task.reject(err_msg || id_or_str);
+            });
         }
     }).on('exit', () => {
         const err = Error("TWS has disconnected");
-        _.keys(req_queue).forEach(reqId => {
-            req_queue[reqId].reject(err);
+        Object.keys(req_queue).forEach(reqId => {
+            const task = req_queue[reqId];
+            delete req_queue[reqId];
+            task.reject(err);
         });
     }).on('managedAccounts', accountsList => {
         _.compact(accountsList.split(',')).forEach(account => {
@@ -1059,12 +1071,18 @@ function reqContract(ib, time_limit) {
         if (req_queue[id_or_str]) {
             req_queue[id_or_str].reject(Error(err_msg));
         } else if (isGeneralError(id_or_str, err_code, err_msg)) {
-            Object.keys(req_queue).forEach(id => req_queue[id].reject(err));
+            Object.keys(req_queue).forEach(reqId => {
+                const task = req_queue[reqId];
+                delete req_queue[reqId];
+                task.reject(err_msg || id_or_str);
+            });
         }
     }).on('exit', () => {
         const err = Error("TWS has disconnected");
-        _.keys(req_queue).forEach(reqId => {
-            req_queue[reqId].reject(err);
+        Object.keys(req_queue).forEach(reqId => {
+            const task = req_queue[reqId];
+            delete req_queue[reqId];
+            task.reject(err);
         });
         reqCachedContract.close();
     }).on('updatePortfolio', function(contract, position, marketPrice, marketValue, averageCost, unrealizedPNL, realizedPNL, accountName) {
@@ -1156,12 +1174,18 @@ function requestWithId(ib, time_limit) {
                 return fn(err_msg);
             }, err_code == 10197 ? 10000 : 0);
         } else if (isGeneralError(id_or_str, err_code, err_msg)) {
-            Object.keys(req_queue).forEach(id => req_queue[id].reject(Error(err_msg || id_or_str)));
+            Object.keys(req_queue).forEach(reqId => {
+                const task = req_queue[reqId];
+                delete req_queue[reqId];
+                task.reject(err_msg || id_or_str);
+            });
         }
     }).on('exit', () => {
         const err = Error("TWS has disconnected");
-        _.keys(req_queue).forEach(reqId => {
-            req_queue[reqId].reject(err);
+        Object.keys(req_queue).forEach(reqId => {
+            const task = req_queue[reqId];
+            delete req_queue[reqId];
+            task.reject(err);
         });
     }).on('contractDetails', (reqId, contract) => {
         if (req_queue[reqId]) req_queue[reqId].contractDetails.push(contract);
