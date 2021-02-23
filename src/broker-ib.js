@@ -709,28 +709,44 @@ async function snapStockLimit(markets, ib, fetch, contract, order, options) {
 }
 
 async function reqMktData(markets, client, fetch, contract, now, options) {
-    const bar = await client.reqMktData(contract);
-    if (bar && bar.last_timestamp) {
-        if (await isWithinLiquidHours(markets, client, fetch, contract, bar.last_timestamp, options)) {
-            if (bar.bid && bar.ask) return {...bar, midpoint: +Big(bar.bid).add(bar.ask).div(2)};
-            else return bar; // use bar.last
-        }
-    }
-    if (bar && bar.close) // bar is pre-market or after-hours
-        return _.omit(bar, 'last', 'bid', 'ask', 'bid_option', 'ask_option');
-    const endDateTime = moment(now).utc().startOf('day').format('YYYYMMDD HH:mm:ss z');
-    const last = await client.reqHistoricalData(contract, endDateTime, '1 D', '30 mins', 'MIDPOINT', 1, 1).catch(err => []);
-    if (last.length) return last[last.length-1];
-    else return bar;
-}
-
-async function isWithinLiquidHours(markets, client, fetch, contract, timestamp, options) {
     const hours = _.first(await fetch({
         ...options,
         interval: 'contract',
         symbol: asSymbol(contract),
         market: await asMarket(markets, client, contract)
     }));
+    if (isWithinMarketHours(markets, client, hours, now, options)) {
+        const bar = await client.reqMktData(contract);
+        if (bar && bar.last_timestamp) {
+            if (isWithinLiquidHours(markets, client, hours, bar.last_timestamp, options)) {
+                if (bar.bid && bar.ask) return {...bar, midpoint: +Big(bar.bid).add(bar.ask).div(2)};
+                else return bar; // use bar.last
+            }
+        }
+        if (bar && bar.close) // bar is pre-market or after-hours
+            return _.omit(bar, 'last', 'bid', 'ask', 'bid_option', 'ask_option');
+    }
+    const last = await client.reqHistoricalData(contract, '', '1 D', '30 mins', 'MIDPOINT', 1, 1).catch(err => []);
+    if (last.length) return last[last.length-1];
+    else return {};
+}
+
+function isWithinMarketHours(markets, client, hours, now, options) {
+    const open_time = hours.trading_hours.substring(0, 8);
+    const close_time = hours.trading_hours.substring(hours.trading_hours.length - 8);
+    if (open_time == close_time) return true; // last must be within trading_hours
+    const last_moment = moment.tz(now, hours.security_tz);
+    const opens_at = moment.tz(`${last_moment.format('YYYY-MM-DD')}T${open_time}`, hours.security_tz);
+    const closes_at = moment.tz(`${last_moment.format('YYYY-MM-DD')}T${close_time}`, hours.security_tz);
+    if (opens_at.isBefore(closes_at)) {
+        if (!opens_at.isAfter(last_moment) && !last_moment.isAfter(closes_at)) return true;
+    } else { // trading_hours cross midnight
+        if (!opens_at.isAfter(last_moment) || !last_moment.isAfter(closes_at)) return true;
+    }
+    return false;
+}
+
+function isWithinLiquidHours(markets, client, hours, timestamp, options) {
     const open_time = hours.liquid_hours.substring(0, 8);
     const close_time = hours.liquid_hours.substring(hours.liquid_hours.length - 8);
     if (open_time == close_time) return true; // last must be within liquid_hours

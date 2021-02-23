@@ -371,9 +371,9 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
     const flush = debounce(async() => {
         if (!store || closed) return;
         return Promise.all(_.values(subscriptions).map(reqId => {
-            const summary = req_queue[reqId].summary;
+            const summary = req_queue[reqId] && req_queue[reqId].summary;
             const month = moment().tz(ib_tz).format('YYYYMM');
-            if (summary.AccountCode && summary.time)
+            if (summary && summary.AccountCode && summary.time)
                 return save(summary.AccountCode, month, summary);
         })).catch(err => logger.error("Could not flush IB balances", err));
     }, 60*1000); // 1m
