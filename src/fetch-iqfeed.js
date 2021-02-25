@@ -161,7 +161,11 @@ module.exports = function(settings = {}) {
     const pending = [];
     const self = async(options) => {
         if (self.closed) throw Error("IQFeed has closed");
-        else if (options.info=='pending') return pending.map(opt => ({cmd:'fetch',label:opt.label,options:opt}));
+        else if (options.info=='pending') return pending.map(opt => ({
+            cmd: 'fetch',
+            label: `iqfeed ${opt.symbol}`,
+            options: opt
+        }));
         pending.push(options);
         return sharedInstance(options, settings).then(result => {
             const idx = pending.indexOf(options);
@@ -239,7 +243,12 @@ function createInstance(settings = {}) {
         config('version')
     );
     const fetch = new Fetch(merge(config('fetch'), {iqfeed:{enabled:false}}, settings.fetch));
-    const adjustments = options => fetch({...options, interval: 'adjustments'});
+    const adjustments = options => {
+        const opt_now = moment.tz(options.now, options.tz).format(options.ending_format);
+        const opt_end = moment.tz(options.end || opt_now, options.tz).format(options.ending_format);
+        const end = opt_now < opt_end ? opt_now : opt_end;
+        return fetch({...options, interval: 'adjustments', end});
+    };
     const contract_cached = cache(contract.bind(this, iqclient, symbol), (exchs, listed_markets, options) => {
         return `${options.symbol} ${options.market}`;
     }, 10);

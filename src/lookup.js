@@ -49,8 +49,14 @@ module.exports = function(fetch) {
     const fetchReadOnly = fetchOptionsFactory(fetch, false, true);
     const fetchOffline = fetchOptionsFactory(fetch, true, true);
     const self = function(options) {
-        return options.offline ? fetchOffline(options) :
-            options.read_only ? fetchReadOnly(options) : fetchOnline(options);
+        if (options.offline) return fetchOffline(options);
+        const fn = options.read_only ? fetchReadOnly : fetchOnline;
+        return fn(options).catch(err => fetchOffline(options).then(result => {
+            logger.warn("fetch", err);
+            return result;
+        }, err2 => {
+            throw err;
+        }));
     };
     self.close = () => Promise.resolve();
     return self;
@@ -105,7 +111,7 @@ function guessSecurityOptions(markets, symbol, market, e) {
 }
 
 async function readInfo(dir, symbol, market, offline) {
-    const yesterday = offline ? 0 : Date.now() - 24 *60 * 60 *1000;
+    const yesterday = offline ? 0 : Date.now() - 37 *60 * 60 *1000;
     const file = getInfoFileName(dir, symbol, market);
     const stats = await util.promisify(fs.stat)(file);
     if (!offline && stats.mtime.valueOf() <= yesterday)
