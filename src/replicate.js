@@ -393,17 +393,6 @@ function existingOrderRef(orders, order) {
     return (_.values(orders).find(ord => isMatch(ord, attrs))||{}).order_ref;
 }
 
-function isMatch(object, attrs) {
-    var _keys = keys(attrs), length = _keys.length;
-    if (object == null) return !length;
-    var obj = Object(object);
-    for (var i = 0; i < length; i++) {
-        var key = _keys[i];
-        if (attrs[key] != obj[key] || !(key in obj)) return false;
-    }
-    return true;
-}
-
 function getPortfolio(markets, options, portfolio = []) {
     return [].concat(options.portfolio||[]).reduce((portfolio,item) => {
         if (item && typeof item == 'object')
@@ -517,7 +506,8 @@ function updateActual(desired, actual, options) {
 function orderReplacements(working_order, desired_order, pos_offset, options) {
     const cancel_order = !working_order ? null :
         !desired_order && working_order || desired_order.action != working_order.action ||
-            desired_order.order_type != working_order.order_type ?
+            desired_order.order_type != working_order.order_type ||
+            desired_order.condition != working_order.condition ?
         {...working_order, action: 'cancel'} : null;
     const quant = desired_order && (desired_order.action == 'BUY' ? +desired_order.quant - pos_offset :
         +desired_order.quant + + pos_offset).toString();
