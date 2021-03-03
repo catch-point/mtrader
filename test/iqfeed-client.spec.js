@@ -47,7 +47,7 @@ describe("iqfeed-client", function() {
     after(function() {
         if (client) return client.close();
     });
-    it("options lookup", function() {
+    it.skip("options lookup", function() {
         return client.lookup('SPY1819V280', 'OPRA')
           .should.eventually.be.like(results => _.some(results, like({
             symbol: 'SPY1819V280',

@@ -35,6 +35,7 @@ const moment = require('moment-timezone');
 const Big = require('big.js');
 const d3 = require('d3-format');
 const merge = require('./merge.js');
+const TimeLimit = require('./time-limit.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
@@ -158,24 +159,9 @@ function help(settings = {}) {
 }
 
 module.exports = function(settings = {}) {
-    const pending = [];
     const self = async(options) => {
         if (self.closed) throw Error("IQFeed has closed");
-        else if (options.info=='pending') return pending.map(opt => ({
-            cmd: 'fetch',
-            label: `iqfeed ${opt.symbol}`,
-            options: opt
-        }));
-        pending.push(options);
-        return sharedInstance(options, settings).then(result => {
-            const idx = pending.indexOf(options);
-            if (~idx) pending.splice(idx, 1);
-            return result;
-        }, err => {
-            const idx = pending.indexOf(options);
-            if (~idx) pending.splice(idx, 1);
-            throw err;
-        });
+        return sharedInstance(options, settings);
     };
     self.open = () => sharedInstance({open:true}, settings);
     self.close = () => unregister(self);
@@ -236,6 +222,8 @@ function createInstance(settings = {}) {
     const markets = _.pick(config('markets'), settings.markets);
     const symbol = iqfeed_symbol.bind(this, markets);
     const launch = settings.command;
+    const timeout = settings && settings.timeout || 600000;
+    const time_limit = new TimeLimit(timeout);
     const iqclient = iqfeed(
         _.isArray(launch) ? launch : launch && launch.split(' '),
         settings.env,
@@ -252,11 +240,13 @@ function createInstance(settings = {}) {
     const contract_cached = cache(contract.bind(this, iqclient, symbol), (exchs, listed_markets, options) => {
         return `${options.symbol} ${options.market}`;
     }, 10);
-    return Object.assign(async(options) => {
+    return Object.assign(time_limit(async(options) => {
         if (options.open) {
             return iqclient.open();
         } else if (options.info=='help') {
             return helpInfo;
+        } else if (options.info=='pending') {
+            return time_limit.pending().map(item => ({cmd: 'fetch', label: item.label, options: item.args[0]}));
         } else if (options.info=='version') {
             return iqclient.version().then(client_version => {
                 return [{version: client_version, name: 'IQFeed'}];
@@ -341,12 +331,13 @@ function createInstance(settings = {}) {
             const adj = isNotEquity(markets, options) ? null : adjustments;
             return intraday(iqclient, adj, symbol(options), options);
         }
-    }, {
+    }, opt => `iqfeed ${opt.symbol || opt.info}`), {
         close() {
             return Promise.all([
                 contract_cached.close(),
                 iqclient.close(),
-                fetch.close()
+                fetch.close(),
+                time_limit.close()
             ]);
         }
     });
@@ -556,7 +547,7 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
         const startsWith = prefix && sym.indexOf(prefix) === 0;
         const endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
         const symbol = map[sym] ? map[sym] :
-            row.security_type == 'EIOPTION' ? occ_symbol(row.symbol) :
+            row.security_type == 'IEOPTION' ? occ_symbol(row.symbol) :
             ds && ds.week_of_month && row.security_type == 'FUTURE' && isWeekOfMonthExpiration(row.symbol) ?
                 weekOfMonthToWeekOfYear(row.symbol) :
             map[sym] ? map[sym] :

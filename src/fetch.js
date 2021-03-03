@@ -48,7 +48,9 @@ module.exports = function(settings = {}) {
             if (options.info=='help' || options.interval == 'help')
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
             if (options.info) {
-                const sources = _.uniq(_.flatten(_.values(datasources).map(_.values)));
+                const sources = _.flatten(_.values(datasources).map(_.values)).filter((fn,f,a) => {
+                    return fn.id && f <= a.findIndex(i => i.id == fn.id);
+                });
                 return _.flatten(await Promise.all(sources.map(ds => {
                     return ds(options).catch(err => {
                         return [{cmd: 'fetch', label: ds.id, message:err.message}];
