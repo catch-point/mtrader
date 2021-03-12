@@ -76,7 +76,7 @@ module.exports = async function(settings = {}) {
                     logger.log("ib-client reconnecting client to", host, port, "as", clientId);
                     return createClient(host, port, clientId, ib_tz, timeout, settings);
                 });
-                const new_client = await promise_client;
+                const new_client = await promise_client.then(client => client.open());
                 if (closed || new_client.disconnected) throw err;
                 return new_client[cmd].apply(client, arguments);
             }).catch(err => {
