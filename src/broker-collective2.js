@@ -282,7 +282,7 @@ async function listPositions(c2_multipliers, collective2, fetch, lookup, options
     const asof = moment(options.asof || options.now).format();
     const asof_time_unix = moment(asof).format('X');
     const begin = moment(options.begin || asof);
-    const earliest = moment(begin).subtract(5, 'days').startOf('day');
+    const earliest = moment(begin).subtract(14, 'days').startOf('day');
     const positions = _.indexBy(await collective2.requestTradesOpen(), s => s.fullSymbol || s.symbol);
     const filter = {
         filter_type: 'time_traded',
