@@ -1069,9 +1069,9 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
     const starting_value = Big(starting_position).times(prev_bar.close).times(multiplier);
     const net_dividend = Big(starting_position).times(dividend).times(multiplier);
     const purchase = details.filter(exe => exe.side == 'BOT')
-        .reduce((net, exe) => net.add(Big(exe.price).times(exe.shares).times(multiplier)), Big(0));
+        .reduce((net, exe) => net.add(Big(exe.price||0).times(exe.shares||0).times(multiplier)), Big(0));
     const sold = details.filter(exe => exe.side == 'SLD')
-        .reduce((net, exe) => net.add(Big(exe.price).times(exe.shares).times(multiplier)), Big(0));
+        .reduce((net, exe) => net.add(Big(exe.price||0).times(exe.shares||0).times(multiplier)), Big(0));
     const commission = details.reduce((net, exe) => net.add(exe.commission || 0), Big(0));
     const mtm = Big(ending_value).minus(starting_value)
         .add(sold).minus(purchase).add(net_dividend).minus(commission);
