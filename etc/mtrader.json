@@ -775,7 +775,7 @@
         "ib": {
           "whatToShow": "TRADES",
           "secType": "STK",
-          "primaryExchs": ["NYSE", "AMEX", "ARCA", "BATS"],
+          "primaryExchs": ["NYSE", "AMEX", "ARCA", "BATS", "DARK", "DRCTEDGE", "EDGEA"],
           "secondaryToExchs": ["NASDAQ"],
           "exchange": "SMART"
         },
