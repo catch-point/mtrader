@@ -33,6 +33,8 @@
 const fs = require('graceful-fs');
 const path = require('path');
 const url = require('url');
+const http = require('http');
+const https = require('https');
 const querystring = require('querystring');
 const ws = require('ws');
 const EventEmitter = require('events');
@@ -50,30 +52,37 @@ const remote = module.exports = function(settings = {}, socket = null) {
     if (_.isEmpty(settings) && !socket) throw Error("No remote location given");
     if (typeof settings == 'string' || typeof settings == 'number')
         return remote({label: settings, location: settings}, socket);
-    if (!socket) return remote(
-        _.extend({label: settings.location}, settings),
-        new ws(getSocketUrl(settings), _.extend({
-            key: readFileSync(config('remote.key_pem')),
-            passphrase: readBase64FileSync(config('remote.passphrase_base64')),
-            cert: readFileSync(config('remote.cert_pem')),
-            ca: readFileSync(config('remote.ca_pem')),
-            crl: readFileSync(config('remote.crl_pem')),
-            ciphers: config('remote.ciphers'),
-            honorCipherOrder: config('remote.honorCipherOrder'),
-            ecdhCurve: config('remote.ecdhCurve'),
-            dhparam: readFileSync(config('remote.dhparam_pem')),
-            secureProtocol: config('remote.secureProtocol'),
-            secureOptions: config('remote.secureOptions'),
-            handshakeTimeout: config('remote.handshakeTimeout'),
-            requestCert: config('remote.requestCert'),
-            rejectUnauthorized: config('remote.rejectUnauthorized'),
-            NPNProtocols: config('remote.NPNProtocols'),
-            ALPNProtocols: config('remote.ALPNProtocols'),
-            perMessageDeflate: config('remote.perMessageDeflate')!=null ? config('remote.perMessageDeflate') : true,
-            headers: {'User-Agent': 'mtrader/' + version},
-            agent: false
-        }, settings))
-    );
+    if (!socket) {
+        const agent_options = config('remote.agent') || false;
+        const url_string = getSocketUrl(settings);
+        const parsed = url.parse(url_string);
+        const secure = parsed.protocol == 'wss:' || parsed.protocol == 'https:';
+        const Agent = secure ? https.Agent : http.Agent;
+        return remote(
+            _.extend({label: settings.location}, settings),
+            new ws(url_string, _.extend({
+                key: readFileSync(config('remote.key_pem')),
+                passphrase: readBase64FileSync(config('remote.passphrase_base64')),
+                cert: readFileSync(config('remote.cert_pem')),
+                ca: readFileSync(config('remote.ca_pem')),
+                crl: readFileSync(config('remote.crl_pem')),
+                ciphers: config('remote.ciphers'),
+                honorCipherOrder: config('remote.honorCipherOrder'),
+                ecdhCurve: config('remote.ecdhCurve'),
+                dhparam: readFileSync(config('remote.dhparam_pem')),
+                secureProtocol: config('remote.secureProtocol'),
+                secureOptions: config('remote.secureOptions'),
+                handshakeTimeout: config('remote.handshakeTimeout'),
+                requestCert: config('remote.requestCert'),
+                rejectUnauthorized: config('remote.rejectUnauthorized'),
+                NPNProtocols: config('remote.NPNProtocols'),
+                ALPNProtocols: config('remote.ALPNProtocols'),
+                perMessageDeflate: config('remote.perMessageDeflate')!=null ? config('remote.perMessageDeflate') : true,
+                headers: {'User-Agent': 'mtrader/' + version},
+                agent: agent_options && new Agent(agent_options)
+            }, settings))
+        );
+    }
     let buf = '';
     const label = settings.label;
     const timeout = config('remote.timeout');
