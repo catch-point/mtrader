@@ -1010,7 +1010,10 @@ async function listContractPositions(markets, ib, fetch, contract, pos, executio
     const key = `${contract.conid || contract.conId} ${earliest}`;
     const promise = historical[key] = historical[key] ||
         loadHistoricalData(fetch, symbol, market, earliest, options);
-    const bars = await promise;
+    const bars = await promise.catch(err => {
+        logger.warn(`Could not load ${symbol} prices`, err);
+        return [];
+    });
     if (!bars.length && !(pos && +pos.position)) return [];
     else if (!bars.length) return [{
         asof: now,
