@@ -901,7 +901,7 @@
           "transmit": false,
           "whatToShow": "TRADES",
           "secType": "STK",
-          "primaryExch": "TSE",
+          "primaryExchs": ["TSE", "VALUE"],
           "exchange": "SMART"
         }
       }

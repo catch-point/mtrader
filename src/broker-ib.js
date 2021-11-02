@@ -1210,7 +1210,10 @@ async function toContract(markets, ib, options) {
 async function toContractWithId(markets, ib, options) {
     const contract = await toContract(markets, null, options);
     if (contract.conid) return contract;
-    const details = await ib.reqContractDetails(contract);
+    const details = await ib.reqContractDetails(contract).catch(err => {
+        if (options.symbol) throw Error(`${err.message} for ${options.symbol}`);
+        else throw Error(`${err.message} from ${util.inspect(contract, {breakLength:Infinity})}`);
+    });
     if (details.length) return _.first(details).contract;
     else throw Error(`Could not determin contract from ${util.inspect(contract, {breakLength:Infinity})}`);
 }
