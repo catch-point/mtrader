@@ -411,6 +411,7 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
         });
     }).on('accountUpdateMulti', function(reqId, account, modelCode, key, value, currency) {
         if (req_queue[reqId]) {
+            logger.debug('accountUpdateMulti', reqId, account, modelCode);
             const acct = req_queue[reqId].summary;
             acct[key] = currency ? acct[key] || (currency == value ? [] : {}) : value;
             if (currency && !_.isArray(acct[key])) acct[key][currency] = value;
@@ -418,29 +419,42 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
         }
         if (!closed) flush();
     }).on('accountUpdateMultiEnd', function(reqId) {
-        const item = req_queue[reqId];
-        if (item) {
+        // TWS only returns one accountUpdateMultiEnd signal for each account
+        logger.debug('accountUpdateMultiEnd', reqId);
+        _.values(req_queue).filter(item => {
+            return item.acctCode == req_queue[reqId].acctCode
+                && item.modelCode == req_queue[reqId].modelCode;
+        }).forEach(item => {
+            item.complete = true;
             new Promise((ready, abort) => {
                 if (closed) throw Error("TWS has disconnected");
-                const summary = item.summary;
-                if (!~_.values(subscriptions).indexOf(+reqId)) {
-                    ib.cancelAccountUpdatesMulti(+reqId).catch(abort);
-                    delete req_queue[reqId];
+                const summary = req_queue[reqId].summary;
+                if (!~_.values(subscriptions).indexOf(+item.reqId)) {
+                    logger.log('cancelAccountUpdatesMulti', item.acctCode);
+                    logger.debug('cancelAccountUpdatesMulti', item.reqId, item.acctCode);
+                    ib.cancelAccountUpdatesMulti(+item.reqId).catch(abort);
+                    delete req_queue[item.reqId];
                 }
                 return ready(summary);
             }).then(item.ready, item.fail);
-        }
+        });
     });
     const reqAccountUpdate = time_limit(async(acctCode, modelCode) => {
         const now = moment().tz(ib_tz).millisecond(0).seconds(0).subtract(1,'minutes');
         return new Promise((ready, fail) => {
             if (closed) throw Error("TWS has disconnected");
-            const reqId = nextval();
-            req_queue[reqId] = {reqId, acctCode, modelCode, summary:{}, ready, fail};
-            if (~managed_accounts.indexOf(acctCode) && !modelCode)
-                subscriptions[acctCode] = +reqId;
-            logger.log('reqAccountUpdates', acctCode, modelCode || '', false);
-            ib.reqAccountUpdatesMulti(+reqId, acctCode, modelCode || '', false).catch(fail);
+            const sub = req_queue[subscriptions[acctCode]];
+            if (sub && sub.complete && sub.acctCode == acctCode && !modelCode) {
+                ready(sub.summary);
+            } else {
+                const reqId = nextval();
+                req_queue[reqId] = {reqId, acctCode, modelCode, summary:{}, ready, fail};
+                if (~managed_accounts.indexOf(acctCode) && !modelCode)
+                    subscriptions[acctCode] = +reqId;
+                logger.log('reqAccountUpdatesMulti', acctCode, modelCode || '', false);
+                logger.debug('reqAccountUpdatesMulti', +reqId, acctCode, modelCode || '', false);
+                ib.reqAccountUpdatesMulti(+reqId, acctCode, modelCode || '', false).catch(fail);
+            }
         });
     }, "ib-client reqAccountUpdatesMulti");
     return {
