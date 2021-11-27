@@ -157,10 +157,17 @@ module.exports = function(fetch, quote, settings = {}) {
             case 'adjustments': return cached_fetch(options);
             default:
             const asset = findAsset(assets, options);
-            if (!asset || !asset.models) return fetch(options);
+            if (!asset || !asset.models) return fetch(options).catch(err => {
+                logger.trace(err);
+                throw Error(`No model nor fetch ${err.message}`);
+            });
             const contract_key = `${options.symbol}.${options.market}/${options.interval}`;
-            if (options.processed_symbols && ~options.processed_symbols.indexOf(contract_key))
-                return fetch(options);
+            if (options.processed_symbols && ~options.processed_symbols.indexOf(contract_key)) {
+                return fetch(options).catch(err => {
+                    logger.trace(err);
+                    throw Error(`Recursive call to model ${err.message}`);
+                });
+            }
             const processed_symbols = (options.processed_symbols||[]).concat(contract_key);
             const blend_fn = blendCall.bind(this, markets, cached_fetch, quote, asset);
             return trim(await blend_fn({...options, processed_symbols}), options);
