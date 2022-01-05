@@ -219,7 +219,8 @@ function helpOptions() {
             'asof', 'acctNumber', 'action', 'quant', 'position', 'traded_at', 'traded_price', 'price',
             'sales', 'purchases', 'dividend', 'commission', 'mtm', 'value',
             'symbol', 'market', 'currency', 'security_type', 'multiplier',
-            'trading_class', 'industry', 'category', 'subcategory', 'under_symbol', 'under_market'
+            'trading_class', 'under_symbol', 'under_market',
+            'name', 'industry', 'category', 'subcategory'
         ],
         options: {
             action: {
@@ -970,24 +971,28 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
         const details = con_pos ? await ib.reqContractDetails({conid}) : [];
         const contract = con_pos ? await ib.reqContract(conid) : _.first(con_exe);
         if (contract.secType == 'BAG') return [];
-        const detail = _.first(details)||{};
-        const under_contract = !detail.underConid ? contract :
-            await ib.reqContract(detail.underConid).catch(err => {
+        const detail = _.first(details)||{contract};
+        const under_details = !detail.underConid ? [detail] :
+            await ib.reqContractDetails({conid:detail.underConid}).catch(async(err) => {
                 logger.warn(`${err.message.replace(/\n[\S\s]*$/,'')} ${contract.localSymbol||contract.symbol} underConId ${detail.underConid}`);
-                return {
-                    conid: detail.underConid,
-                    symbol: detail.underSymbol || contract.symbol,
-                    secType: detail.underSecType
-                };
+                const contract = await ib.reqContract(detail.underConid).catch(err => {
+                    return {
+                        conid: detail.underConid,
+                        symbol: detail.underSymbol || contract.symbol,
+                        secType: detail.underSecType
+                    };
+                });
+                return [{contract}];
             });
-        const under_symbol = asSymbol(under_contract);
-        const under_market = await asMarket(markets, ib, under_contract).catch(err => null);
+        const under_detail = _.first(under_details)||detail;
+        const under_symbol = asSymbol(under_detail.contract);
+        const under_market = await asMarket(markets, ib, under_detail.contract).catch(err => null);
         const change_list = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options);
         const changes = change_list.map(change => ({
             ...change,
             trading_class: ((_.first(details)||{}).contract||{}).tradingClass,
-            ..._.pick(_.first(details), ['industry', 'category', 'subcategory']),
-            under_symbol, under_market
+            under_symbol, under_market, name: under_detail.longName,
+            ..._.pick(under_detail, ['industry', 'category', 'subcategory'])
         }));
         if (options.begin) return changes.filter((p,i,a) => {
             return begin_format < p.asof || i == a.length-1 && p.position;
