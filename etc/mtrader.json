@@ -334,7 +334,7 @@
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "FUT",
+          "secTypes": ["FUT", "FOP"],
           "exchange": "ECBOT",
           "month_abbreviation": true
         },
