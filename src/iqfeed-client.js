@@ -415,7 +415,7 @@ function historical(nextval, ready) {
             });
         }
         _.forEach(pending, item => item.marked = true);
-        return marker = setTimeout(mark, 90000).unref();
+        return marker = setTimeout(mark, 180000).unref();
     };
     marker = mark();
     const lookup = function(){
@@ -566,23 +566,23 @@ function promiseNewLookupSocket(blacklist, pending, port, retry) {
             });
             onreceive(socket, function(line) {
                 const id = line.substring(0, line.indexOf(','));
-                if (line.indexOf(id + ',!ENDMSG!,') === 0) {
-                    if (pending[id]) {
-                        pending[id].callback(pending[id].buffer);
+                const item = pending[id];
+                if (item) {
+                    if (item.marked) item.marked = false;
+                    if (line.indexOf(id + ',!ENDMSG!,') === 0) {
+                        item.callback(item.buffer);
                         return false;
-                    }
-                } else if (line.indexOf(id + ',E,') === 0) {
-                    if (pending[id]) {
+                    } else if (line.indexOf(id + ',E,') === 0) {
                         const error = line.replace(/\w+,E,!?/,'').replace(/!?,*$/,'');
                         if ("NO_DATA" != error) {
-                            blacklist[pending[id].symbol] = error;
-                            pending[id].error(Error(error + " for " + pending[id].cmd));
+                            blacklist[item.symbol] = error;
+                            item.error(Error(error + " for " + item.cmd));
                             return false;
                         }
+                    } else {
+                        item.buffer.push(line);
+                        return false;
                     }
-                } else if (pending[id]) {
-                    pending[id].buffer.push(line);
-                    return false;
                 }
             });
             // on reconnect, resend pending messages
@@ -764,7 +764,7 @@ function onreceive(socket, listener) {
             buffer = buffer.substring(idx);
             try {
                 const ret = listener(line);
-                if (ret !== false) {
+                if (ret !== false && !line.match(/^\d+,/)) {
                     logger.log(line);
                 }
             } catch (e) {
