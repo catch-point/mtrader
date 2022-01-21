@@ -48,7 +48,7 @@ describe("ib-client", function() {
     after(function() {
         if (client) return client.close();
     });
-    it("options SPY lookup", async() => {
+    it.skip("options SPY lookup", async() => {
         const details = await client.reqContractDetails({
             localSymbol:'SPY   211217C00280000',
             currency:'USD',
@@ -73,7 +73,7 @@ describe("ib-client", function() {
             contractMonth: '202112'
         })));
     });
-    it("options SPX lookup", function() {
+    it.skip("options SPX lookup", function() {
         return client.reqContractDetails({
             localSymbol:'SPX   211217C02800000',
             currency:'USD',

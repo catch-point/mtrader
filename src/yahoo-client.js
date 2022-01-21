@@ -40,7 +40,7 @@ const expect = require('chai').expect;
 
 const quote = "https://finance.yahoo.com/lookup?s={symbol}";
 const download = "https://query1.finance.yahoo.com/v7/finance/download/{symbol}?period1={period1}&period2={period2}&interval={interval}&events={events}&crumb={crumb}"
-const autoc = "http://d.yimg.com/aq/autoc";
+const search = "https://query1.finance.yahoo.com/v1/finance/search";
 
 module.exports = function() {
     const agent = promiseHistoryAgent();
@@ -138,23 +138,27 @@ function periods(interval, begin, tz) {
 function lookupSymbol(listSymbols, symbol, marketLang) {
     const root = symbol.replace(/^\W+/, '').replace(/\W.*$/, '');
     const url = [
-        autoc,
-        "?callback=YAHOO.util.ScriptNodeDataSource.callbacks",
+        search,
+        "?q=", encodeURIComponent(root),
         "&lang=", marketLang || 'en-US',
         "&region=", marketLang ? marketLang.replace(/.*-/,'') : 'US',
-        "&query=", encodeURIComponent(root)
+        "&quotesCount=6&newsCount=0&listsCount=1&enableFuzzyQuery=false",
+        "&quotesQueryId=tss_match_phrase_query&multiQuoteQueryId=multi_quote_single_token_query",
+        "&newsQueryId=news_cie_vespa&enableCb=true&enableNavLinks=false",
+        "&enableEnhancedTrivialQuery=true&enableResearchReports=false&researchReportsCount=0"
     ].join('');
     return listSymbols(url);
 }
 
 function listSymbols(url) {
-    return promiseText(url).then(function(jsonp) {
-        if (!jsonp) throw Error(`Empty response from ${url}`);
-        return jsonp.replace(/^\s*YAHOO.util.ScriptNodeDataSource.callbacks\((.*)\);?\s*$/, '$1');
+    return promiseText(url).then(function(json) {
+        if (!json) throw Error(`Empty response from ${url}`);
+        return json;
     }).then(parseJSON).then(function(json) {
-        return json.ResultSet.Result.map(function(object){
+        return json.quotes.map(function(object){
             return _.mapObject(object, function(value) {
-                return value.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+                return !value || !value.replace ? value :
+                    value.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
             });
         });
     });

@@ -1197,10 +1197,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'ESM9 C2800':
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
@@ -1213,16 +1212,16 @@ describe("broker-ib", function() {
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 16.25,
                                 ask: 17
-                            })
-                        case 1:
+                            });
+                        case 'ESM9':
                             expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
                                 ask: 2738.5
-                            })
+                            });
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -1339,10 +1338,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'ESM9 C2800':
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
@@ -1361,7 +1359,7 @@ describe("broker-ib", function() {
                                     iv: 0.1602330880202159
                                 }
                             })
-                        case 1:
+                        case 'ESM9':
                             expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -1369,7 +1367,7 @@ describe("broker-ib", function() {
                                 ask: 2738.5
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -1454,10 +1452,9 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(2),
             reqContractDetails: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'ESM9 C2800':
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
@@ -1471,7 +1468,7 @@ describe("broker-ib", function() {
                                 minTick: 0.05,
                                 underConid: 310629209
                             }]);
-                        case 1:
+                        case 'ESM9':
                             expect(args).to.be.like([{
                                 conid: 310629209
                             }]);
@@ -1500,10 +1497,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'ESM9 C2800':
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
@@ -1522,7 +1518,7 @@ describe("broker-ib", function() {
                                     iv: 0.1596098191933759
                                 }
                             })
-                        case 1:
+                        case 'ESM9':
                             expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -1530,7 +1526,7 @@ describe("broker-ib", function() {
                                 ask: 2738.5
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -1660,10 +1656,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'ESM9 C2800':
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
@@ -1682,7 +1677,7 @@ describe("broker-ib", function() {
                                     iv: 0.1602330880202159
                                 }
                             })
-                        case 1:
+                        case 'ESM9':
                             expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -1690,7 +1685,7 @@ describe("broker-ib", function() {
                                 ask: 2738.5
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -1821,10 +1816,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'ESM9 C2800':
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
@@ -1843,7 +1837,7 @@ describe("broker-ib", function() {
                                     iv: 0.1596098191933759
                                 }
                             })
-                        case 1:
+                        case 'ESM9':
                             expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -1851,7 +1845,7 @@ describe("broker-ib", function() {
                                 ask: 2738.5
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -1983,8 +1977,8 @@ describe("broker-ib", function() {
             reqMktData: (() => {
                 let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'ESM9 P2625':
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 P2625',
                                 secType: 'FOP',
@@ -2003,7 +1997,7 @@ describe("broker-ib", function() {
                                     iv: (0.21510238654276234+0.2105016705605929)/2
                                 }
                             })
-                        case 1:
+                        case 'ESM9':
                             expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -2011,7 +2005,7 @@ describe("broker-ib", function() {
                                 ask: 2738.5
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -2141,10 +2135,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'ESM9 P2625':
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 P2625',
                                 secType: 'FOP',
@@ -2163,7 +2156,7 @@ describe("broker-ib", function() {
                                     iv: (0.21510238654276234+0.2105016705605929)/2
                                 }
                             })
-                        case 1:
+                        case 'ESM9':
                             expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
@@ -2171,7 +2164,7 @@ describe("broker-ib", function() {
                                 ask: 2738.25
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -2339,10 +2332,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719C03025000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -2362,7 +2354,7 @@ describe("broker-ib", function() {
                                 bid: 0.65,
                                 ask: 0.8
                             })
-                        case 1:
+                        case 'SPX   190719C03075000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -2382,7 +2374,7 @@ describe("broker-ib", function() {
                                 bid: 0.25,
                                 ask: 0.4
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -2392,7 +2384,7 @@ describe("broker-ib", function() {
                                 ask: 1
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -2578,10 +2570,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719C03025000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -2606,7 +2597,7 @@ describe("broker-ib", function() {
                                     iv: (0.13006607892009805+0.1262915111028727)/2
                                 }
                             })
-                        case 1:
+                        case 'SPX   190719C03075000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -2631,7 +2622,7 @@ describe("broker-ib", function() {
                                     iv: (0.13551392396412848+0.12820479340292215)/2
                                 }
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -2641,7 +2632,7 @@ describe("broker-ib", function() {
                                 ask: 1
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -2888,10 +2879,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719C03025000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -2916,7 +2906,7 @@ describe("broker-ib", function() {
                                     iv: (0.13006607892009805+0.1262915111028727)/2
                                 }
                             })
-                        case 1:
+                        case 'SPX   190719C03075000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -2941,7 +2931,7 @@ describe("broker-ib", function() {
                                     iv: (0.13551392396412848+0.12820479340292215)/2
                                 }
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -2949,7 +2939,7 @@ describe("broker-ib", function() {
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 1, ask: 1 })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -3197,10 +3187,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719P02450000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -3220,7 +3209,7 @@ describe("broker-ib", function() {
                                 bid: 8.6,
                                 ask: 8.9
                             })
-                        case 1:
+                        case 'SPX   190719P02400000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -3240,7 +3229,7 @@ describe("broker-ib", function() {
                                 bid: 6.1,
                                 ask: 6.3
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -3250,7 +3239,7 @@ describe("broker-ib", function() {
                                 ask: 1
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -3451,10 +3440,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719P02450000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -3479,7 +3467,7 @@ describe("broker-ib", function() {
                                     iv: (0.2389572882162499+0.2369029900679141)/2
                                 }
                             })
-                        case 1:
+                        case 'SPX   190719P02400000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -3504,7 +3492,7 @@ describe("broker-ib", function() {
                                     iv: (0.2506591242473686+0.24800008651105912)/2
                                 }
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -3514,7 +3502,7 @@ describe("broker-ib", function() {
                                 ask: 1
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -3762,10 +3750,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719P02450000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -3790,7 +3777,7 @@ describe("broker-ib", function() {
                                     iv: (0.2389572882162499+0.2369029900679141)/2
                                 }
                             })
-                        case 1:
+                        case 'SPX   190719P02400000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -3815,7 +3802,7 @@ describe("broker-ib", function() {
                                     iv: (0.2506591242473686+0.24800008651105912)/2
                                 }
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -3825,7 +3812,7 @@ describe("broker-ib", function() {
                                 ask: 1
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -4075,10 +4062,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719C03025000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -4103,7 +4089,7 @@ describe("broker-ib", function() {
                                     iv: (0.12955905702544818+0.12579601226956683)/2
                                 }
                             })
-                        case 1:
+                        case 'SPX   190719C03075000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -4128,7 +4114,7 @@ describe("broker-ib", function() {
                                     iv: (0.13505035428115236+0.12776162661981025)/2
                                 }
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -4138,7 +4124,7 @@ describe("broker-ib", function() {
                                 ask: 1
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -4386,10 +4372,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719C03025000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -4414,7 +4399,7 @@ describe("broker-ib", function() {
                                     iv: (0.12955905702544818+0.12579601226956683)/2
                                 }
                             })
-                        case 1:
+                        case 'SPX   190719C03075000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -4439,7 +4424,7 @@ describe("broker-ib", function() {
                                     iv: (0.13505035428115236+0.12776162661981025)/2
                                 }
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -4449,7 +4434,7 @@ describe("broker-ib", function() {
                                 ask: 1
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -4697,10 +4682,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719P02450000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -4725,7 +4709,7 @@ describe("broker-ib", function() {
                                     iv: (0.2389572882162499+0.2369029900679141)/2
                                 }
                             })
-                        case 1:
+                        case 'SPX   190719P02400000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -4750,7 +4734,7 @@ describe("broker-ib", function() {
                                     iv: (0.2506591242473686+0.24800008651105912)/2
                                 }
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -4760,7 +4744,7 @@ describe("broker-ib", function() {
                                 ask: 1
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -5013,10 +4997,9 @@ describe("broker-ib", function() {
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'SPX   190719P02450000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -5041,7 +5024,7 @@ describe("broker-ib", function() {
                                     iv: (0.2389572882162499+0.2369029900679141)/2
                                 }
                             })
-                        case 1:
+                        case 'SPX   190719P02400000':
                             expect(args).to.be.like([{
                                 currency: 'USD',
                                 exchange: 'SMART',
@@ -5066,7 +5049,7 @@ describe("broker-ib", function() {
                                     iv: (0.2506591242473686+0.24800008651105912)/2
                                 }
                             })
-                        case 2:
+                        case 'SPX':
                             expect(args).to.be.like([{
                                 conid: 416904
                             }]);
@@ -5076,7 +5059,7 @@ describe("broker-ib", function() {
                                 ask: 1
                             })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),
@@ -5248,30 +5231,54 @@ describe("broker-ib", function() {
             async open() { return this; },
             reqId: cb => cb(1),
             reqContractDetails: (...args) => {
-                expect(args).to.be.like([{
-                    localSymbol: 'NVDA  210115C00300000',
-                    secType: 'OPT',
-                    exchange: 'SMART',
-                    currency: 'USD',
-                    multiplier: 100
-                }]);
-                return Promise.resolve([{
-                    contract: { right: 'C', exchange: 'SMART' },
-                    minTick: 0.01,
-                    underConid: 4815747
-                }]);
+                    switch (args[0].conid || args[0].localSymbol) {
+                        case 'NVDA  210115C00300000':
+                            expect(args).to.be.like([{
+                                localSymbol: 'NVDA  210115C00300000',
+                                secType: 'OPT',
+                                exchange: 'SMART',
+                                currency: 'USD',
+                                multiplier: 100
+                            }]);
+                            return Promise.resolve([{
+                                contract: { right: 'C', exchange: 'SMART' },
+                                minTick: 0.01,
+                                underConid: 4815747
+                            }]);
+                        case 4815747:
+                            return Promise.resolve([{
+                                contract: {
+                                    "conid": 4815747,
+                                    "currency": "USD",
+                                    "exchange": "SMART",
+                                    "localSymbol": "NVDA",
+                                    "primaryExch": "NASDAQ",
+                                    "secType": "STK",
+                                    "symbol": "NVDA",
+                                    "tradingClass": "NMS"
+                                }
+                            }]);
+                        default:
+                            throw Error("Unexpected reqContractDetails " + JSON.stringify(args));
+                    }
             },
             reqContract: (...args) => {
                 expect(args).to.be.like([4815747]);
                 return Promise.resolve({
-                    conid: 4815747, exchange: 'SMART'
+                    "conid": 4815747,
+                    "currency": "USD",
+                    "exchange": "SMART",
+                    "localSymbol": "NVDA",
+                    "primaryExch": "NASDAQ",
+                    "secType": "STK",
+                    "symbol": "NVDA",
+                    "tradingClass": "NMS"
                 });
             },
             reqMktData: (() => {
-                let count = 0;
                 return (...args) => {
-                    switch (count++) {
-                        case 0:
+                    switch (args[0].localSymbol || args[0].symbol) {
+                        case 'NVDA  210115C00300000':
                             expect(args).to.be.like([{
                                 localSymbol: 'NVDA  210115C00300000',
                                 secType: 'OPT',
@@ -5291,11 +5298,11 @@ describe("broker-ib", function() {
                                 last_timestamp: '1589572644',
                                 halted: 0
                             })
-                        case 1:
+                        case 'NVDA':
                             expect(args).to.be.like([{ conid: 4815747, exchange: 'SMART' }]);
                             return Promise.resolve({ close: 321.22 })
                         default:
-                            throw Error("Too many times")
+                            throw Error("Unexpected reqMktData " + JSON.stringify(args));
                     }
                 }
             })(),

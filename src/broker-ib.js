@@ -1154,9 +1154,9 @@ function fromFutSymbol(symbol) {
     if (m = symbol.match(/^(\w*)([A-Z])(\d)( [CP]\d+)?$/)) {
         const [, root, month, y, strike] = m;
         const now = moment();
-        const decade = y >= (now.year() - 2) % 10 ?
-            (now.year() - 2).toString().substring(2, 3) :
-            (now.year() + 8).toString().substring(2, 3);
+        const decade = y >= (now.year() - 5) % 10 ?
+            (now.year() - 5).toString().substring(2, 3) :
+            (now.year() + 5).toString().substring(2, 3);
         return `${root}${month}${decade}${y}${strike||''}`;
     } else if (n = symbol.match(/^(\w*) +([A-Z]+) (\d\d)( [CP]\d+)?$/)) {
         const codes = {JAN: 'F', FEB: 'G', MAR: 'H', APR: 'J', MAY: 'K', JUN: 'M', JUL: 'N', AUG: 'Q', SEP: 'U', OCT: 'V', NOV: 'X', DEC: 'Z'};

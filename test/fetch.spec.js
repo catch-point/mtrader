@@ -66,7 +66,6 @@ describe("fetch", function() {
             symbol: 'IBM', market: 'NYSE', tz
         }).then(_.first).should.eventually.be.like({
             symbol: 'IBM',
-            yahoo_symbol: 'IBM',
             name: /International Business Machine/i
         });
     });
@@ -84,7 +83,6 @@ describe("fetch", function() {
             symbol: 'BRK.A', market: 'NYSE'
         }).should.eventually.be.like(results => _.some(results, like({
             symbol: /^BRK.A/,
-            yahoo_symbol: /^BRK.A/,
             name: name => name.toLowerCase().indexOf("berkshire hathaway") === 0
         })));
     });

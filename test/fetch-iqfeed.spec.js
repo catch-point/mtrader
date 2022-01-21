@@ -136,7 +136,7 @@ describe("fetch-iqfeed", function() {
         });
         describe("should find TSE listing", function() {
             [
-                "ATD.B", "BBD.B", "BAM.A",
+                "CGL.C", "BBD.B", "BAM.A",
                 "CCL.B", "GIB.A", "CTC.A",
                 "RCI.B", "SJR.B", "TECK.B"
             ].forEach(symbol => {
@@ -147,7 +147,7 @@ describe("fetch-iqfeed", function() {
                 });
             });
         });
-        it("should find N symbol", function() {
+        it.skip("should find N symbol", function() {
             return client({interval:'lookup', symbol:'N', market:"VENTURE"})
               .then(array => array.slice(0,1))
               .should.eventually.be.like([

@@ -211,7 +211,7 @@ function lookup(markets, yahoo, options) {
         const sources = _.pick(_.mapObject(markets, market =>
                 ({...market, ...market.datasources.yahoo})
             ), (source, market) =>
-                source && _.contains(source.exchs, row.exch) &&
+                source && _.contains(source.exchs, row.exchange) &&
                 (!options.market || market == options.market)
             );
         const ds = _.find(sources) || {};
@@ -222,8 +222,8 @@ function lookup(markets, yahoo, options) {
             symbol: symbol,
             yahoo_symbol: row.symbol,
             market: _.first(_.keys(sources)),
-            name: row.name,
-            security_type: row.type == 'S' || row.type == 'E' ? 'STK' : row.type,
+            name: row.longname,
+            security_type: row.quoteType == 'EQUITY' ? 'STK' : row.quoteType,
             currency: ds.currency,
             security_tz: ds.security_tz,
             open_time: ds.open_time,
