@@ -3017,7 +3017,7 @@ describe("replicate-collective2", function() {
                 status: 'cancelled'
             }]);
         });
-        it("Correctly map @EU/6E futures", function() {
+        it.skip("Correctly map @EU/6E futures", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTradesOpen, JSON.stringify({ ok: '1',
               response:
@@ -3963,7 +3963,7 @@ describe("replicate-collective2", function() {
                 quant_threshold: 5
             }).should.eventually.be.like([]);
         });
-        it("Quickly reversing signals", function() {
+        it.skip("Quickly reversing signals", function() {
             fs.writeFileSync(submitSignal, JSON.stringify({}));
             fs.writeFileSync(requestTrades, JSON.stringify({ok: '1',response: [{
                 closeVWAP_timestamp: "1551362703",

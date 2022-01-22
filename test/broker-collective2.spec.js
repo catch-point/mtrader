@@ -372,7 +372,7 @@ describe("broker-collective2", function() {
                 position: 28,
                 traded_at: null,
                 traded_price: null,
-                price: 218.059998,
+                price: 218.06,
                 dividend: '0.00',
                 mtm: -129.08,
                 value: '6105.68'
@@ -577,7 +577,7 @@ describe("broker-collective2", function() {
                 position: 28,
                 traded_at: null,
                 traded_price: null,
-                price: 218.059998,
+                price: 218.06,
                 dividend: '0.00',
                 mtm: -129.08,
                 value: '6105.68'
@@ -703,7 +703,7 @@ describe("broker-collective2", function() {
                 position: 28,
                 traded_at: null,
                 traded_price: null,
-                price: 220.360001,
+                price: 220.36,
                 dividend: '0.00',
                 mtm: 64.4,
                 value: '6170.08'
