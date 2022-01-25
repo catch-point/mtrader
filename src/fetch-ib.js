@@ -92,7 +92,7 @@ function help(settings) {
         options: _.extend({}, commonOptions, {
             interval: {
                 values: ["lookup"]
-            },
+            }
         })
     };
     const contract = {
@@ -760,6 +760,8 @@ async function listContractDetails(markets, client, options) {
         const exchanges = _.every(market_set, 'exchange') && market_set.map(market => market.exchange);
         const currencies = _.every(market_set, 'currency') && market_set.map(market => market.currency);
         const contract = joinCommon(market_set.map(market => toContract(market, options)));
+        if (contract.secType == 'FUT' && options.symbol.match(/ [PC]/)) return [];
+        if (contract.secType == 'FOP' && !options.symbol.match(/ [PC]/)) return [];
         const as_is = await client.reqContractDetails(contract).catch(err => {
             logger.debug(`TWS IB Could not find ${options.symbol} as ${_.first(market_set).currency} ${_.first(market_set).secType}: ${err.message}`);
             return [];
@@ -920,12 +922,14 @@ function toContract(market, options) {
         primaryExch: market.primaryExch || _.first(market.primaryExchs),
         exchange: market.exchange,
         currency: market.currency,
-        includeExpired: market.secType == 'FUT' || ~(market.secTypes||[]).indexOf('FUT')
+        includeExpired: market.secType == 'FUT' || !!~(market.secTypes||[]).indexOf('FUT')
     }, v => !v);
 }
 
 function toLocalSymbol(market, symbol) {
-    if (market.secType == 'FUT' || ~(market.secTypes||[]).indexOf('FUT'))
+    if ((market.secType == 'FOP' || ~(market.secTypes||[]).indexOf('FOP')) && symbol.match(/ [CP]/))
+        return toFopSymbol(market, symbol);
+    else if (market.secType == 'FUT' || ~(market.secTypes||[]).indexOf('FUT'))
         return toFutSymbol(market, symbol);
     else if (market.secType == 'CASH' || ~(market.secTypes||[]).indexOf('CASH'))
         return toCashSymbol(market, symbol);
@@ -940,7 +944,8 @@ function toLocalSymbol(market, symbol) {
 }
 
 function toSymbol(market, detail) {
-    if (detail.secType == 'FUT' || detail.secType == 'FOP') return fromFutSymbol(market, detail.localSymbol);
+    if (detail.secType == 'FUT') return fromFutSymbol(market, detail);
+    else if (detail.secType == 'FOP') return fromFopSymbol(market, detail);
     else if (detail.secType == 'CASH') return detail.symbol;
     else if (detail.secType == 'OPT') return detail.localSymbol;
     else return ~detail.localSymbol.indexOf(' ') ? detail.localSymbol.replace(' ', '.') : detail.localSymbol;
@@ -949,28 +954,72 @@ function toSymbol(market, detail) {
 function toFutSymbol(market, symbol) {
     if ((market||{}).month_abbreviation) {
         const abbreviations = {F: 'JAN', G: 'FEB', H: 'MAR', J: 'APR', K: 'MAY', M: 'JUN', N: 'JUL', Q: 'AUG', U: 'SEP', V: 'OCT', X: 'NOV', Z: 'DEC'};
-        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)( [CP]\d+)?$/);
+        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)$/);
         if (!m) return symbol;
-        const [, tradingClass, code, decade, year, strike] = m;
-        const space = '    '.substring(tradingClass.length);
-        return `${tradingClass}${space} ${abbreviations[code]} ${decade}${year}${strike||''}`;
+        const [, underlying, code, decade, year] = m;
+        const space = '    '.substring(underlying.length);
+        return `${underlying}${space} ${abbreviations[code]} ${decade}${year}`;
     } else {
-        return symbol.replace(/^(.*)([A-Z])(\d)(\d)( [CP]\d+|$)$/,'$1$2$4$5');
+        const m = symbol.match(/^(.*)([A-Z])(\d)(\d)$/);
+        if (!m) return symbol;
+        const [, underlying, code, decade, year] = m;
+        return `${underlying}${code}${year}`;
     }
 }
 
-function fromFutSymbol(market, symbol) {
+function toFopSymbol(market, symbol) {
     if ((market||{}).month_abbreviation) {
-        const codes = {JAN: 'F', FEB: 'G', MAR: 'H', APR: 'J', MAY: 'K', JUN: 'M', JUL: 'N', AUG: 'Q', SEP: 'U', OCT: 'V', NOV: 'X', DEC: 'Z'};
-        const [, root, month, year, strike] = symbol.match(/^(\w*) +([A-Z]+) (\d\d)( [CP]\d+)?$/);
-        return `${root}${codes[month]}${year}${strike||''}`;
+        const abbreviations = {F: 'JAN', G: 'FEB', H: 'MAR', J: 'APR', K: 'MAY', M: 'JUN', N: 'JUL', Q: 'AUG', U: 'SEP', V: 'OCT', X: 'NOV', Z: 'DEC'};
+        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d) ([CP])(\d+)$/);
+        if (!m) return symbol;
+        const [, underlying, code, decade, year, right, strike] = m;
+        const tradingClass = ((market||{}).tradingClasses||{})[underlying] || underlying;
+        const space = '    '.substring(tradingClass.length);
+        const k = d3.format('6')(strike);
+        return `${right} ${tradingClass}${space} ${abbreviations[code]} ${decade}${year} ${k}`;
     } else {
-        const [, root, month, y, strike] = symbol.match(/^(\w*)([A-Z])(\d)( [CP]\d+)?$/);
+        const m = symbol.match(/^(.*)([A-Z])(\d)(\d) ([CP])(\d+)$/);
+        if (!m) return symbol;
+        const [, underlying, code, decade, year, right, strike] = m;
+        const tradingClass = ((market||{}).tradingClasses||{})[underlying] || underlying;
+        return `${tradingClass}${code}${year} ${right}${strike}`;
+    }
+}
+
+function fromFutSymbol(market, detail) {
+    const symbol = detail.localSymbol;
+    if ((market||{}).month_abbreviation) {
+        const codes = {JAN: 'F', FEB: 'G', MAR: 'H', APR: 'J', MAY: 'K', JUN: 'M',
+            JUL: 'N', AUG: 'Q', SEP: 'U', OCT: 'V', NOV: 'X', DEC: 'Z'};
+        const [, underlying, month, year] = symbol.match(/^(\w*) +([A-Z]+) (\d\d)$/);
+        return `${underlying}${codes[month]}${year}`;
+    } else {
+        const [, underlying, month, y] = symbol.match(/^(\w*)([A-Z])(\d)$/);
         const now = moment();
         const decade = y >= (now.year() - 5) % 10 ?
             (now.year() - 5).toString().substring(2, 3) :
             (now.year() + 5).toString().substring(2, 3);
-        return `${root}${month}${decade}${y}${strike||''}`;
+        return `${underlying}${month}${decade}${y}`;
+    }
+}
+
+function fromFopSymbol(market, detail) {
+    const symbol = detail.localSymbol;
+    if ((market||{}).month_abbreviation) {
+        const codes = {JAN: 'F', FEB: 'G', MAR: 'H', APR: 'J', MAY: 'K', JUN: 'M',
+            JUL: 'N', AUG: 'Q', SEP: 'U', OCT: 'V', NOV: 'X', DEC: 'Z'};
+        const [, right, tradingClass, month, year, strike] =
+            symbol.match(/^([CP]) (\w*) +([A-Z]+) (\d\d) +(\d+)$/);
+        const underlying = ((market||{}).tradingClasses||{})[detail.symbol] && detail.symbol || tradingClass;
+        return `${underlying}${codes[month]}${year} ${right}${strike}`;
+    } else {
+        const [, tradingClass, month, y, right, strike] = symbol.match(/^(\w*)([A-Z])(\d) ([CP])(\d+)$/);
+        const underlying = ((market||{}).tradingClasses||{})[detail.symbol] && detail.symbol || tradingClass;
+        const now = moment();
+        const decade = y >= (now.year() - 5) % 10 ?
+            (now.year() - 5).toString().substring(2, 3) :
+            (now.year() + 5).toString().substring(2, 3);
+        return `${underlying}${month}${decade}${y} ${right}${strike}`;
     }
 }
 

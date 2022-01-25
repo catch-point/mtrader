@@ -1180,7 +1180,7 @@ async function toContract(markets, ib, options) {
             primaryExch: market.primaryExch || _.first(market.primaryExchs),
             exchange: market.exchange || _.first(market.exchanges),
             currency: market.currency,
-            includeExpired: market.secType == 'FUT' || ~(market.secTypes||[]).indexOf('FUT') && true,
+            includeExpired: market.secType == 'FUT' || !!~(market.secTypes||[]).indexOf('FUT'),
             multiplier: options.multiplier
         }, v => !v);
     } else if (ib != null && options.attached && options.attached.length) {
@@ -1224,26 +1224,54 @@ async function toContractWithId(markets, ib, options) {
 }
 
 function toLocalSymbol(market, symbol) {
-    if (market.secType == 'FUT') return toFutSymbol(market, symbol);
-    else if (market.secType == 'CASH') return toCashSymbol(market, symbol);
-    else if (market.secType == 'OPT') return symbol;
-    else if (market.secTypes && market.secTypes.length &&
-        !_.difference(market.secTypes, ['FUT', 'FOP']).length) return toFutSymbol(market, symbol);
-    else if (market.secType) return symbol;
-    else if (symbol.match(/^(.*)([A-Z])(\d)(\d)$/)) return toFutSymbol(market, symbol);
-    else return symbol;
+    if ((market.secType == 'FOP' || ~(market.secTypes||[]).indexOf('FOP')) && symbol.match(/ [CP]/))
+        return toFopSymbol(market, symbol);
+    else if (market.secType == 'FUT' || ~(market.secTypes||[]).indexOf('FUT'))
+        return toFutSymbol(market, symbol);
+    else if (market.secType == 'CASH' || ~(market.secTypes||[]).indexOf('CASH'))
+        return toCashSymbol(market, symbol);
+    else if (market.secType == 'OPT' || ~(market.secTypes||[]).indexOf('OPT'))
+        return symbol;
+    else if (market.secType || (market.secTypes||[]).length)
+        return symbol;
+    else if (symbol.match(/^(.*)([A-Z])(\d)(\d)$/))
+        return toFutSymbol(market, symbol);
+    else
+        return symbol;
 }
 
 function toFutSymbol(market, symbol) {
     if ((market||{}).month_abbreviation) {
         const abbreviations = {F: 'JAN', G: 'FEB', H: 'MAR', J: 'APR', K: 'MAY', M: 'JUN', N: 'JUL', Q: 'AUG', U: 'SEP', V: 'OCT', X: 'NOV', Z: 'DEC'};
-        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)( [CP]\d+)?$/);
+        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d)$/);
         if (!m) return symbol;
-        const [, root, code, decade, year, strike] = m;
-        const space = '    '.substring(root.length);
-        return `${root}${space} ${abbreviations[code]} ${decade}${year}${strike||''}`;
+        const [, underlying, code, decade, year] = m;
+        const space = '    '.substring(underlying.length);
+        return `${underlying}${space} ${abbreviations[code]} ${decade}${year}`;
     } else {
-        return symbol.replace(/^(.*)([A-Z])(\d)(\d)( [CP]\d+|$)$/,'$1$2$4$5');
+        const m = symbol.match(/^(.*)([A-Z])(\d)(\d)$/);
+        if (!m) return symbol;
+        const [, underlying, code, decade, year] = m;
+        return `${underlying}${code}${year}`;
+    }
+}
+
+function toFopSymbol(market, symbol) {
+    if ((market||{}).month_abbreviation) {
+        const abbreviations = {F: 'JAN', G: 'FEB', H: 'MAR', J: 'APR', K: 'MAY', M: 'JUN', N: 'JUL', Q: 'AUG', U: 'SEP', V: 'OCT', X: 'NOV', Z: 'DEC'};
+        const m = symbol.match(/^(\w*)([A-Z])(\d)(\d) ([CP])(\d+)$/);
+        if (!m) return symbol;
+        const [, underlying, code, decade, year, right, strike] = m;
+        const tradingClass = ((market||{}).tradingClasses||{})[underlying] || underlying;
+        const space = '    '.substring(tradingClass.length);
+        const k = d3.format('6')(strike);
+        return `${right} ${tradingClass}${space} ${abbreviations[code]} ${decade}${year} ${k}`;
+    } else {
+        const m = symbol.match(/^(.*)([A-Z])(\d)(\d) ([CP])(\d+)$/);
+        if (!m) return symbol;
+        const [, underlying, code, decade, year, right, strike] = m;
+        const tradingClass = ((market||{}).tradingClasses||{})[underlying] || underlying;
+        return `${tradingClass}${code}${year} ${right}${strike}`;
     }
 }
 
@@ -1273,7 +1301,7 @@ function inMarket(contract, market) {
     if (market.currency && market.currency != contract.currency) return false;
     if (market.secType && market.secType != contract.secType) return false;
     if (market.secTypes && !~market.secTypes.indexOf(contract.secType)) return false;
-    if (market.tradingClasses && ~market.tradingClasses.indexOf(contract.tradingClass)) return true;
+    if (market.tradingClasses && ~_.values(market.tradingClasses).indexOf(contract.tradingClass)) return true;
     const exchanges = [].concat(market.primaryExch, market.primaryExchs, market.exchange, market.exchanges);
     const unique = _.compact(exchanges).filter(ex => ex != 'SMART' && ex != 'IDEALPRO');
     const secondaryTo = market.secondaryToExchs || [];

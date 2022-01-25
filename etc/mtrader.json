@@ -319,7 +319,7 @@
       "datasources": {
         "iqfeed": {
           "security_types": ["FUTURE", "FOPTION", "COMBINED_FUTURE", "COMBINED_FOPTION", "ICSPREAD", "SPREAD", "STRATSPREAD"],
-          "listed_markets": ["CBOT", "CBOTMINI", "CBOT_GBX"],
+          "listed_markets": ["CBOT", "CBOTMINI", "CBOT_GBX", "KCBOT", "KCBOT_GBX", "CBOT_GBX"],
           "dtnPrefix": "@",
           "dtnPrefixMap": {
             "ZT": "@TU",
@@ -329,14 +329,30 @@
             "UB": "@UB",
             "ZC": "@C",
             "ZS": "@S",
-            "ZW": "@W"
+            "ZW": "@W",
+            "ZW": "@W",
+            "KE": "@KW",
+            "ZO": "@O",
+            "ZN": "@TY",
+            "ZR": "@RR"
           }
         },
         "ib": {
           "whatToShow": "TRADES",
           "secTypes": ["FUT", "FOP"],
           "exchange": "ECBOT",
-          "month_abbreviation": true
+          "month_abbreviation": true,
+          "tradingClasses": {
+            "ZS": "OZS",
+            "ZR": "OZR",
+            "ZW": "OZW",
+            "KE": "OKE",
+            "ZO": "OZO",
+            "ZT": "OZT",
+            "ZN": "OZN",
+            "ZB": "OZB",
+            "UB": "OUB"
+          }
         },
         "collective2": {
           "c2_prefix": "@",
@@ -387,6 +403,25 @@
       "default_security_type": "FUT",
       "datasources": {
         "iqfeed": {
+          "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
+          "listed_markets": ["CMEMINI", "CME_GBX"],
+          "right_pad_foptions": {
+            "GF": 2,
+            "LE": 2,
+            "HE": 2,
+            "NQ": 3,
+            "ES": 2,
+            "EUU": 1,
+            "6M": 2,
+            "ADU": 1,
+            "CHU": 1,
+            "CAU": 1,
+            "6N": 1,
+            "JPU": 1,
+            "GE": 2,
+            "CB": 2,
+            "DY": 3
+          },
           "dtnPrefix": "@",
           "dtnPrefixMap": {
             "6A": "@AD",
@@ -437,9 +472,7 @@
             "XBT": "@XMT",
             "XRT": "@XTT",
             "XVT": "@XCT"
-          },
-          "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
-          "listed_markets": ["CMEMINI", "CME_GBX"]
+          }
         },
         "ib": {
           "whatToShow": "TRADES",
@@ -705,7 +738,13 @@
           "secTypes": ["STK", "IND"],
           "primaryExchs": ["NASDAQ", ""],
           "exchange": "SMART",
-          "tradingClasses": ["NAS", "NCM", "NGM", "NMS", "NIM"]
+          "tradingClasses": {
+            "NAS": "NAS",
+            "NCM": "NCM",
+            "NGM": "NGM",
+            "NMS": "NMS",
+            "NIM": "NIM"
+          }
         },
         "collective2": {
             "instrument": "stock"
@@ -724,6 +763,7 @@
         "iqfeed": {
           "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPOT", "SPREAD", "STRATSPREAD", "IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
           "listed_markets": ["CLEARPORT", "NYMEX", "NYMEX_GBX", "NYMEXMINI", "COMEX_GBX"],
+          "left_pad_foptions": false,
           "dtnPrefix": "@",
           "dtnPrefixMap": {
             "HG": "QHG",
@@ -732,13 +772,23 @@
             "MGC": "QMGC",
             "SI": "QSI",
             "CL": "QCL",
-            "PA": "QPA"
+            "PA": "QPA",
+            "BZ": "QBZ",
+            "NG": "QNG",
+            "RB": "QRB"
           }
         },
         "ib": {
           "whatToShow": "TRADES",
-          "secType": "FUT",
-          "exchange":"NYMEX"
+          "secTypes": ["FUT", "FOP"],
+          "exchange":"NYMEX",
+          "tradingClasses": {
+            "GC": "OG",
+            "HG": "HXE",
+            "BZ": "BE",
+            "NG": "ON",
+            "RB": "OB"
+          }
         },
         "collective2": {
           "c2_prefix": "@",

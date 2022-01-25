@@ -237,7 +237,8 @@ function createInstance(settings = {}) {
         const end = opt_now < opt_end ? opt_now : opt_end;
         return fetch({...options, interval: 'adjustments', end});
     };
-    const contract_cached = cache(contract.bind(this, iqclient, symbol), (exchs, listed_markets, options) => {
+    const call_contract_cached = function() {return contract_cached.apply(this, arguments);};
+    const contract_cached = cache(contract.bind(this, iqclient, symbol, call_contract_cached), (exchs, listed_markets, options) => {
         return `${options.symbol} ${options.market}`;
     }, 10);
     return Object.assign(time_limit(async(options) => {
@@ -355,8 +356,14 @@ function iqfeed_symbol(markets, options) {
         return source.dtnSymbolMap[options.symbol];
     } else if (isIEOption(security_types, options)) {
         return iqfeed_ieoption(markets, options);
+    } else if (isFOption(security_types, options)) {
+        return iqfeed_foption(markets, options);
+    } else if (isFuture(security_types, options)) {
+        return iqfeed_future(markets, options);
+    } else if (isFutureAdjusted(security_types, options)) {
+        return iqfeed_backadj(markets, options);
     } else if (source && source.week_of_month && isWeekOfYearExpiration(options.symbol)) {
-        return weekOfYearToWeekOfMonth(options.symbol);
+        return weekOfYearToWeekOfMonth(markets, options);
     } else if (source) {
         expect(options).to.be.like({
             symbol: /^\S+$/
@@ -364,18 +371,16 @@ function iqfeed_symbol(markets, options) {
         const prefix = source.dtnPrefix || '';
         const suffix = source.dtnSuffix || '';
         const map = source.dtnPrefixMap || {};
-        const three = options.symbol.substring(0, 3);
-        const two = options.symbol.substring(0, 2);
-        if (map[options.symbol])
-            return map[options.symbol];
+        const symbol = options.symbol;
+        const three = symbol.substring(0, 3);
+        if (map[symbol])
+            return map[symbol];
         else if (map[three])
-            return map[three] + options.symbol.substring(3);
-        else if (map[two])
-            return map[two] + options.symbol.substring(2);
+            return map[three] + symbol.substring(3);
         else if (prefix || suffix)
-            return prefix + options.symbol + suffix;
+            return prefix + symbol + suffix;
         else
-            return options.symbol;
+            return symbol;
     } else {
         expect(options).to.be.like({
             symbol: /^\S+$/
@@ -386,6 +391,18 @@ function iqfeed_symbol(markets, options) {
 
 function isIEOption(security_types, options) {
     return options.symbol.length == 21 && (!security_types || ~security_types.indexOf('IEOPTION'));
+}
+
+function isFOption(security_types, options) {
+    return (!security_types || ~security_types.indexOf('FOPTION')) && options.symbol.match(/[F-Z]\d\d [CP]\d+$/);
+}
+
+function isFuture(security_types, options) {
+    return (!security_types || ~security_types.indexOf('FUTURE')) && options.symbol.match(/([F-Z])(\d\d)$/);
+}
+
+function isFutureAdjusted(security_types, options) {
+    return (!security_types || ~security_types.indexOf('FUTURE')) && options.symbol.match(/#C?$/);
 }
 
 const right_month_alpha = {
@@ -413,21 +430,85 @@ function iqfeed_ieoption(markets, options) {
     const strike = +dollar + +decimal / 1000;
     return `${underlying.substring(0,5).trim()}${year}${day}${mo}${strike}`;
 }
+
+function iqfeed_foption(markets, options) {
+    const symbol = options.symbol;
+    const source = ((markets[options.market]||{}).datasources||{}).iqfeed||{};
+    const right_pad = (source.right_pad_foptions||{});
+    const [, root, month, yy, right, strike] = symbol.match(/^(.*)([F-Z])(\d\d) ([CP])(\d+)$/);
+    const k = strike * Math.pow(10, right_pad[root]||0);
+    return `${iqfeed_symbol(markets, {...options, symbol: root})}${month}${yy}${right}${k}`;
+}
+
+function iqfeed_future(markets, options) {
+    const symbol = options.symbol;
+    const [, root, month, yy] = symbol.match(/^(.*)([F-Z])(\d\d)$/);
+    return `${iqfeed_symbol(markets, {...options, symbol: root})}${month}${yy}`;
+}
+
+function iqfeed_backadj(markets, options) {
+    const symbol = options.symbol;
+    const [, root, suffix] = symbol.match(/^(.*)(#C?)$/);
+    return `${iqfeed_symbol(markets, {...options, symbol: root})}${suffix}`;
+}
+
 const months = {
     A: '01', B: '02', C: '03', D: '04', E: '05', F: '06',
     G: '07', H: '08', I: '09', J: '10', K: '11', L: '12',
     M: '01', N: '02', O: '03', P: '04', Q: '05', R: '06',
     S: '07', T: '08', U: '09', V: '10', W: '11', X: '12'
 };
-const strike_format = d3.format("08d");
+const occ_strike_format = d3.format("08d");
 function occ_symbol(symbol) {
     const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
     if (!m) return symbol;
     const [, underlying, year, day, mo, strike] = m;
     const space = '      '.substring(0, 6 - underlying.length);
     const right = mo < 'M' ? 'C' : 'P';
-    const dollar_decimal = strike_format(strike * 1000);
+    const dollar_decimal = ooc_strike_format(strike * 1000);
     return `${underlying}${space}${year}${months[mo]}${day}${right}${dollar_decimal}`;
+}
+
+const d4 = d3.format('04');
+function fop_symbol(ds, symbol) {
+    const m = symbol.match(/^(.*)([PC])(\d+)$/);
+    if (!m) return symbol;
+    const right_pad = (ds.right_pad_foptions||{});
+    const [, fut, right, strike] = m;
+    const future = fut_symbol(ds, fut);
+    const [, root, month, yy] = future.match(/^(.+)([F-Z])(\d\d)$/);
+    const k = strike / Math.pow(10, right_pad[root]||0);
+    const suffix = ds.left_pad_foptions == false ? k : d4(k);
+    return `${future} ${right}${suffix}`;
+}
+
+function fut_symbol(ds, symbol) {
+    if (ds && ds.week_of_month && isWeekOfMonthExpiration(symbol))
+        return weekOfMonthToWeekOfYear(ds, symbol);
+    const [, root, month, yy] = symbol.match(/^(@?\w+)([F-Z])(\d\d)$/);
+    return `${map_symbol(ds, root)}${month}${yy}`;
+}
+
+function backadj_symbol(ds, symbol) {
+    if (ds && ds.week_of_month && isWeekOfMonthExpiration(symbol))
+        return weekOfMonthToWeekOfYear(ds, symbol);
+    const [, root, suffix] = symbol.match(/^(@?\w+)(#C?)$/);
+    return `${map_symbol(ds, root)}${suffix}`;
+}
+
+function map_symbol(ds, sym) {
+    const prefix = ds && ds.dtnPrefix || '';
+    const suffix = ds && ds.dtnSuffix || '';
+    const four = sym.substring(0, 4);
+    const startsWith = prefix && sym.indexOf(prefix) === 0;
+    const endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
+    const map = _.invert(ds && ds.dtnPrefixMap || {});
+    return map[sym] ? map[sym] :
+        map[four] ? map[four] + sym.substring(4) :
+        startsWith && endsWith ?
+            sym.substring(prefix.length, sym.length - prefix.length - suffix.length) :
+        startsWith ? sym.substring(prefix.length) :
+        endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
 }
 
 function isWeekOfYearExpiration(symbol) {
@@ -439,8 +520,9 @@ function isWeekOfMonthExpiration(symbol) {
 }
 
 const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-function weekOfYearToWeekOfMonth(symbol) {
-    const [, root, week, month, yy] = symbol.match(/^(\w+)([0-5]\d)([A-Z])(\d\d)$/);
+function weekOfYearToWeekOfMonth(markets, options) {
+    const symbol = options.symbol;
+    const [, root, week, month, yy] = symbol.match(/^(\w+)([0-5]\d)([F-Z])(\d\d)$/);
     const mm = (101 + month_code.indexOf(month)).toString().substring(1);
     const year = yy < '80' ? moment(`20${yy}-01-01`) : moment(`19${yy}-01-01`);
     const one = year.add((10 - year.isoWeekday()) % 7, 'days');
@@ -448,11 +530,11 @@ function weekOfYearToWeekOfMonth(symbol) {
     const wednesday = first.add((10 - first.isoWeekday()) % 7, 'days');
     const expiry = one.add(+week - 1, 'weeks');
     const w = expiry.isoWeek() - wednesday.isoWeek() + 1;
-    return `@${root}${w}${month}${yy}`;
+    return `${iqfeed_symbol(markets, {...options, symbol:root})}${w}${month}${yy}`;
 }
 
-function weekOfMonthToWeekOfYear(symbol) {
-    const [, root, w, month, yy] = symbol.match(/^@(\w+)([0-5])([A-Z])(\d\d)$/);
+function weekOfMonthToWeekOfYear(ds, symbol) {
+    const [, root, w, month, yy] = symbol.match(/^(@\w+)([0-5])([F-Z])(\d\d)$/);
     const mm = (101 + month_code.indexOf(month)).toString().substring(1);
     const year = yy < '80' ? moment(`20${yy}-01-01`) : moment(`19${yy}-01-01`);
     const one = year.add((10 - year.isoWeekday()) % 7, 'days');
@@ -460,7 +542,7 @@ function weekOfMonthToWeekOfYear(symbol) {
     const wednesday = first.add((10 - first.isoWeekday()) % 7, 'days');
     const expiry = wednesday.add(+w - 1, 'weeks');
     const ww = expiry.isoWeek() - one.isoWeek() + 1;
-    return `${root}${ww}${month}${yy}`;
+    return `${map_symbol(ds,root)}${ww}${month}${yy}`;
 }
 
 function isNotEquity(markets, options) {
@@ -497,33 +579,31 @@ const security_types_map = {
     PRECMTL: "CMDTY"
 };
 
-async function contract(iqclient, symbol_fn, exchs, listed_markets, options) {
-    const market = exchs[options.market] || {};
-    const rows = await lookup(iqclient, exchs, symbol_fn(options), listed_markets);
+async function contract(iqclient, symbol_fn, cache, exchs, listed_markets, options) {
+    const source = exchs[options.market] || {};
+    const security_types = source.security_types;
+    const listed_markets_ar = _.compact(_.flatten([listed_markets]));
+    const listed_market = listed_markets_ar.length == 1 ? listed_markets_ar[0] : null;
+    const cache_fn = cache.bind(this, exchs, listed_markets);
+    const rows = isIEOption(security_types, options) ? await contractForOption(source, cache_fn, options) :
+        isFuture(security_types, options) ? await contractForFutures(source, cache_fn, options) :
+        isFOption(security_types, options) ? await contractForFOption(iqclient, symbol_fn, cache, exchs, listed_markets, options) :
+        await lookup(iqclient, exchs, symbol_fn(options), listed_markets);
     return rows.filter(row => {
         return row.symbol == options.symbol && row.market == options.market;
     }).map(row => _.omit({
         ...row,
-        currency: market.currency,
-        security_tz: market.security_tz,
-        open_time: market.open_time,
-        trading_hours: market.trading_hours,
-        liquid_hours: market.liquid_hours
+        currency: source.currency,
+        security_tz: source.security_tz,
+        open_time: source.open_time,
+        trading_hours: source.trading_hours,
+        liquid_hours: source.liquid_hours
     }, v => !v));
 }
 
-function lookup(iqclient, exchs, symbol, listed_markets) {
-    const map = _.reduce(exchs, (map, ds) => {
-        if (!_.isEmpty(listed_markets) && !_.intersection(ds.listed_markets, listed_markets).length)
-            return map;
-        return _.extend(ds && ds.dtnPrefixMap || ds && ds.dtnSymbolMap || {}, map);
-    }, {});
-    const three = symbol.substring(0, 3);
-    const two = symbol.substring(0, 2);
-    const mapped_symbol = map[symbol] ? map[symbol] :
-        map[three] ? map[three] + symbol.substring(3) :
-        map[two] ? map[two] + symbol.substring(2) : symbol;
-    return iqclient.lookup(mapped_symbol, listed_markets).then(rows => rows.map(row => {
+async function lookup(iqclient, exchs, symbol, listed_markets) {
+    const rows = await iqclient.lookup(symbol, listed_markets);
+    return rows.map(row => {
         const sym = row.symbol;
         const sources = _.pick(exchs, ds => {
             if (!ds.listed_markets) return false;
@@ -539,24 +619,12 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
             return startsWith && endsWith;
         });
         const ds = _.find(sources);
-        const prefix = ds && ds.dtnPrefix || '';
-        const suffix = ds && ds.dtnSuffix || '';
-        const map = _.invert(ds && ds.dtnPrefixMap || {});
-        const four = sym.substring(0, 4);
-        const three = sym.substring(0, 3);
-        const startsWith = prefix && sym.indexOf(prefix) === 0;
-        const endsWith = suffix && sym.indexOf(suffix) == sym.length - suffix.length;
-        const symbol = map[sym] ? map[sym] :
+        const symbol =
             row.security_type == 'IEOPTION' ? occ_symbol(row.symbol) :
-            ds && ds.week_of_month && row.security_type == 'FUTURE' && isWeekOfMonthExpiration(row.symbol) ?
-                weekOfMonthToWeekOfYear(row.symbol) :
-            map[sym] ? map[sym] :
-            map[four] ? map[four] + sym.substring(4) :
-            map[three] ? map[three] + sym.substring(3) :
-            startsWith && endsWith ?
-                sym.substring(prefix.length, sym.length - prefix.length - suffix.length) :
-            startsWith ? sym.substring(prefix.length) :
-            endsWith ? sym.substring(0, sym.length - suffix.length) : sym;
+            row.security_type == 'FOPTION' && row.symbol.match(/^@?\w+[F-Z]\d\d[CP]\d+$/) ? fop_symbol(ds, row.symbol) :
+            row.security_type == 'FUTURE' && row.symbol.match(/^@?\w+[F-Z]\d\d$/) ? fut_symbol(ds, row.symbol) :
+            row.security_type == 'FUTURE' && row.symbol.match(/^@?\w+#C?$/) ? backadj_symbol(ds, row.symbol) :
+            map_symbol(ds, row.symbol);
         return {
             symbol: symbol,
             iqfeed_symbol: row.symbol,
@@ -565,10 +633,74 @@ function lookup(iqclient, exchs, symbol, listed_markets) {
             security_type: security_types_map[row.security_type],
             currency: (ds||{}).currency
         };
-    })).then(rows => rows.filter(row => row.market));
+    }).filter(row => row.market);
+}
+
+const month_names = [
+    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
+];
+function contractForOption(source, cache, options) {
+    const symbol = options.symbol;
+    if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);
+    const underlying = symbol.substring(0, 6);
+    const year = symbol.substring(6, 8);
+    const month = symbol.substring(8, 10);
+    const day = symbol.substring(10, 12);
+    const right = symbol.charAt(12);
+    const dollar = symbol.substring(13, 18);
+    const decimal = symbol.substring(18, 21);
+    const pc = right == 'C' ? 'Call' : 'Put';
+    const strike = +dollar + +decimal / 1000;
+    return [{
+        symbol,
+        market: options.market,
+        name: `${underlying} ${month_names[month - 1]} '${year} ${pc} ${strike}`,
+        security_type: 'OPT',
+        currency: source.currency
+    }];
+}
+
+async function contractForFOption(iqclient, symbol_fn, cache, exchs, listed_markets, options) {
+    const now = moment.tz(options.now, options.tz);
+    const symbol = options.symbol;
+    const source = exchs[options.market] || {};
+    const right_pad = (source.right_pad_foptions||{});
+    const [, root, month, yy, right, strike] = symbol.match(/^(.*)([F-Z])(\d\d) ([CP])(\d+)$/);
+    const midx = month_code.indexOf(month);
+    const pc = right == 'C' ? 'Call' : 'Put';
+    const k = strike * Math.pow(10, right_pad[root]||0);
+    const next = (100+Math.max((now.year()%100)+(now.month() < midx ? 0 : 1),+yy)).toString().substring(1);
+    const opt = {...options, symbol: `${root}${month}${next} ${right}${strike}`};
+    const iqfeed_symbol = symbol_fn(opt);
+    const current = await lookup(iqclient, exchs, iqfeed_symbol, listed_markets);
+    return current.filter(cur => cur.symbol == symbol).map(cur => ({
+        symbol,
+        market: cur.market,
+        name: `${root} ${month_names[month_code.indexOf(month)]} '${yy} ${pc}`,
+        security_type: 'FOP',
+        currency: cur.currency
+    }));
+}
+
+async function contractForFutures(source, cache, options) {
+    const symbol = options.symbol;
+    const right_pad = (source.right_pad_foptions||{});
+    const [, root, month, yy] = symbol.match(/^(.*)([F-Z])(\d\d)$/);
+    const back = await cache({...options, symbol: `${root}#C`});
+    return back.map(fut => ({
+        symbol,
+        market: options.market,
+        name: `${root} ${month_names[month_code.indexOf(month)]} '${yy}`,
+        security_type: 'FUT',
+        currency: source.currency
+    }));
 }
 
 async function interday(iqclient, adjustments, symbol, options) {
+    if (options.end) expect(options.begin).not.to.be.above(options.end);
+    expect(options.tz).to.be.a('string').and.match(/^\S+\/\S+$/);
+    if (isOptionExpired(symbol, options.begin, options.end, options.tz)) return [];
     const periods = new Periods(options);
     const now = moment().tz(options.tz);
     const [prices, adjusts] = await Promise.all([
@@ -606,6 +738,9 @@ async function interday(iqclient, adjustments, symbol, options) {
 }
 
 async function intraday(iqclient, adjustments, symbol, options) {
+    if (options.end) expect(options.begin).not.to.be.above(options.end);
+    expect(options.tz).to.be.a('string').and.match(/^\S+\/\S+$/);
+    if (isOptionExpired(symbol, options.begin, options.end, options.tz)) return [];
     const periods = new Periods(options);
     const minutes = +options.interval.substring(1);
     expect(minutes).to.be.finite;
@@ -640,6 +775,25 @@ async function intraday(iqclient, adjustments, symbol, options) {
         latest.asof = now.format(options.ending_format);
     }
     return results;
+}
+
+function isOptionExpired(symbol, begin, end, tz) {
+    const m = symbol.match(/^(.*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
+    if (!m) return false;
+    const year = m[2];
+    const mo = months[m[4]];
+    const day = m[3];
+    const century = year < '80' ? '20' : '19';
+    const exdate = moment.tz(`${century}${year}-${mo}-${day}`,tz);
+    const issued = mo == '01' ?
+        moment(exdate).subtract(3, 'years') :
+        moment(exdate).subtract(9, 'months');
+    if (exdate.endOf('day').isBefore(begin))
+        return true;
+    else if (end && issued.isAfter(end))
+        return true;
+    else
+        return false;
 }
 
 async function includeIntraday(iqclient, adjustments, bars, symbol, options) {
