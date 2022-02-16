@@ -426,7 +426,7 @@ async function listOrders(markets, ib, settings, options) {
             quant: working ? order.remaining : order.totalQuantity,
             attach_ref: bag ? order.orderRef || order.permId :
                 parent ? parent.orderRef|| parent.permId : order.ocaGroup,
-            symbol: bag ? null : asSymbol(order),
+            symbol: bag ? null : await asSymbol(markets, ib, order),
             market: bag ? null : await asMarket(markets, ib, order)
         });
         if (!bag) return result;
@@ -445,7 +445,7 @@ async function listOrders(markets, ib, settings, options) {
                 order_ref: null,
                 attach_ref: ord.order_ref,
                 account: ord.account,
-                symbol: asSymbol(leg),
+                symbol: await asSymbol(markets, ib, leg),
                 market: await asMarket(markets, ib, leg),
                 currency: leg.currency,
                 security_type: leg.secType,
@@ -714,7 +714,7 @@ async function reqMktData(markets, client, fetch, contract, now, options) {
     const hours = _.first(await fetch({
         ...options,
         interval: 'contract',
-        symbol: asSymbol(contract),
+        symbol: await asSymbol(markets, client, contract),
         market: await asMarket(markets, client, contract)
     }));
     if (isWithinMarketHours(markets, client, hours, now, options)) {
@@ -840,7 +840,7 @@ async function formatOrderCondition(markets, ib, conditions) {
         const contract = await ib.reqContract(condition.conId);
         return {
             ...condition,
-            symbol: asSymbol(contract),
+            symbol: await asSymbol(markets, ib, contract),
             market: await asMarket(markets, ib, contract),
             security_type: contract.secType
         };
@@ -909,7 +909,7 @@ async function ibToOrder(markets, ib, settings, order, options) {
         order_ref: order.orderRef || order.permId || order.orderId,
         attach_ref: options.attach_ref,
         account: order.faGroup || order.faProfile || order.account,
-        symbol: asSymbol(order),
+        symbol: await asSymbol(markets, ib, order),
         market: options.market ? options.market :
             order.secType != 'BAG' ? await asMarket(markets, ib, order) : null,
         currency: order.currency,
@@ -986,7 +986,7 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
                 return [{contract}];
             });
         const under_detail = _.first(under_details)||detail;
-        const under_symbol = asSymbol(under_detail.contract);
+        const under_symbol = await asSymbol(markets, ib, under_detail.contract);
         const under_market = await asMarket(markets, ib, under_detail.contract).catch(err => null);
         const change_list = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options);
         const changes = change_list.map(change => ({
@@ -1008,7 +1008,7 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
 }
 
 async function listContractPositions(markets, ib, fetch, contract, pos, executions, historical, ib_tz, options) {
-    const symbol = asSymbol(contract);
+    const symbol = await asSymbol(markets, ib, contract);
     const market = await asMarket(markets, ib, contract);
     const now = moment().format();
     const earliest = moment(options.begin || options.asof || options.now)
@@ -1114,7 +1114,7 @@ async function executionsWithConIds(markets, ib, executions) {
         if (execution.conId) return {...execution, conid:execution.conId};
         const market = await asMarket(markets, ib, execution);
         const contract = await toContractWithId(markets, ib, {
-                symbol: asSymbol(execution),
+                symbol: await asSymbol(markets, ib, execution),
                 market: market,
                 security_type: execution.secType,
                 multiplier: execution.multiplier
@@ -1142,8 +1142,9 @@ async function loadHistoricalData(fetch, symbol, market, begin, options) {
     return bars.filter(bar => bar.ending <= asof);
 }
 
-function asSymbol(contract) {
-    if (contract.secType == 'FUT' || contract.secType == 'FOP') return fromFutSymbol(contract.localSymbol);
+async function asSymbol(markets, ib, contract) {
+    if (contract.secType == 'FUT') return fromFutSymbol(contract.localSymbol);
+    else if (contract.secType == 'FOP') return fromFopSymbol(markets, ib, contract);
     else if (contract.secType == 'CASH') return contract.symbol;
     else if (contract.secType == 'OPT') return contract.localSymbol;
     else if (!contract.localSymbol) return contract.symbol;
@@ -1152,17 +1153,42 @@ function asSymbol(contract) {
 
 function fromFutSymbol(symbol) {
     let m, n;
-    if (m = symbol.match(/^(\w*)([A-Z])(\d)( [CP]\d+)?$/)) {
-        const [, root, month, y, strike] = m;
+    if (m = symbol.match(/^(\w*)([A-Z])(\d)$/)) {
+        const [, underlying, month, y] = m;
         const now = moment();
         const decade = y >= (now.year() - 5) % 10 ?
             (now.year() - 5).toString().substring(2, 3) :
             (now.year() + 5).toString().substring(2, 3);
-        return `${root}${month}${decade}${y}${strike||''}`;
-    } else if (n = symbol.match(/^(\w*) +([A-Z]+) (\d\d)( [CP]\d+)?$/)) {
-        const codes = {JAN: 'F', FEB: 'G', MAR: 'H', APR: 'J', MAY: 'K', JUN: 'M', JUL: 'N', AUG: 'Q', SEP: 'U', OCT: 'V', NOV: 'X', DEC: 'Z'};
-        const [, root, month, year, strike] = n;
-        return `${root}${codes[month]}${year}${strike||''}`;
+        return `${underlying}${month}${decade}${y}`;
+    } else if (n = symbol.match(/^(\w*) +([A-Z]+) (\d\d)$/)) {
+        const codes = {JAN: 'F', FEB: 'G', MAR: 'H', APR: 'J', MAY: 'K', JUN: 'M',
+            JUL: 'N', AUG: 'Q', SEP: 'U', OCT: 'V', NOV: 'X', DEC: 'Z'};
+        const [, underlying, month, year] = n;
+        return `${underlying}${codes[month]}${year}`;
+    } else {
+        return symbol;
+    }
+}
+
+async function fromFopSymbol(markets, ib, contract) {
+    const symbol = contract.localSymbol;
+    const market = markets[await asMarket(markets, ib, contract)];
+    const m = symbol.match(/^([CP]) (\w*) +([A-Z]+) (\d\d) +(\d+)$/);
+    let n;
+    if (m) {
+        const codes = {JAN: 'F', FEB: 'G', MAR: 'H', APR: 'J', MAY: 'K', JUN: 'M',
+            JUL: 'N', AUG: 'Q', SEP: 'U', OCT: 'V', NOV: 'X', DEC: 'Z'};
+        const [, right, tradingClass, month, year, strike] = m;
+        const underlying = ((market||{}).tradingClasses||{})[contract.symbol] && contract.symbol || tradingClass;
+        return `${underlying}${codes[month]}${year} ${right}${strike}`;
+    } else if (n = symbol.match(/^(\w*)([A-Z])(\d) ([CP])(\d+)$/)) {
+        const [, tradingClass, month, y, right, strike] = n;
+        const underlying = ((market||{}).tradingClasses||{})[contract.symbol] && contract.symbol || tradingClass;
+        const now = moment();
+        const decade = y >= (now.year() - 5) % 10 ?
+            (now.year() - 5).toString().substring(2, 3) :
+            (now.year() + 5).toString().substring(2, 3);
+        return `${underlying}${month}${decade}${y} ${right}${strike}`;
     } else {
         return symbol;
     }
