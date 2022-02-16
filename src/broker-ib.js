@@ -34,6 +34,7 @@ const util = require('util');
 const path = require('path');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const d3 = require('d3-format');
 const Big = require('big.js');
 const merge = require('./merge.js');
 const logger = require('./logger.js');
