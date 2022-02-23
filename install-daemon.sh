@@ -435,7 +435,7 @@ EOF
 fi
 
 if [ "$(id -u)" = "0" ]; then
-  chown -R "$DAEMON_USER:$DAEMON_GROUP" "$CONFIG_DIR" "$CACHE_DIR" "$LIB_DIR" "$PREFIX/etc/mtrader.json"
+  chown "$DAEMON_USER:$DAEMON_GROUP" "$CONFIG_DIR" "$CACHE_DIR" "$LIB_DIR" "$PREFIX/etc/mtrader.json"
 fi
 
 # install daemon
