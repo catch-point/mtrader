@@ -422,7 +422,8 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
         // TWS only returns one accountUpdateMultiEnd signal for each account
         logger.debug('accountUpdateMultiEnd', reqId);
         _.values(req_queue).filter(item => {
-            return item.acctCode == req_queue[reqId].acctCode
+            return req_queue[reqId]
+                && item.acctCode == req_queue[reqId].acctCode
                 && item.modelCode == req_queue[reqId].modelCode;
         }).forEach(item => {
             item.complete = true;
