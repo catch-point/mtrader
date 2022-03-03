@@ -592,6 +592,8 @@ async function orderToIbOrder(markets, ib, fetch, settings, contract, order, opt
     if (order.tip)
         expect(order).to.have.property('tif').that.is.oneOf(['DAY', 'GTC', 'IOC', 'OPG', 'FOK', 'DTC']);
     const ibalgo = order.order_type.indexOf(' (IBALGO)');
+    const conditions = await buildOrderConditions(markets, ib, order.condition);
+    const conditionsIgnoreRth = !!(order.condition && order.condition.match(/conditionsIgnoreRth=true/));
     if (~ibalgo) {
         const algoParams = order.order_type.substring(ibalgo + ' (IBALGO)'.length).split(';')
             .filter(a=>a.length).map(pair => _.object(['tag', 'value'], pair.trim().split('=', 2)));
@@ -606,7 +608,7 @@ async function orderToIbOrder(markets, ib, fetch, settings, contract, order, opt
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
-            conditions: await buildOrderConditions(markets, ib, order.condition),
+            conditions, conditionsIgnoreRth,
             ...await ibAccountOrderProperties(ib, settings)
         };
     } else if (order.order_type == 'SNAP STK') {
@@ -618,7 +620,7 @@ async function orderToIbOrder(markets, ib, fetch, settings, contract, order, opt
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
-            conditions: await buildOrderConditions(markets, ib, order.condition),
+            conditions, conditionsIgnoreRth,
             ...await ibAccountOrderProperties(ib, settings)
         };
     } else {
@@ -631,7 +633,7 @@ async function orderToIbOrder(markets, ib, fetch, settings, contract, order, opt
             tif: order.tif,
             outsideRth: !!order.extended_hours,
             orderRef: order.order_ref,
-            conditions: await buildOrderConditions(markets, ib, order.condition),
+            conditions, conditionsIgnoreRth,
             ...await ibAccountOrderProperties(ib, settings)
         };
     }
