@@ -835,7 +835,9 @@ async function buildOrderConditions(markets, ib, condition_string) {
     }));
 }
 
-async function formatOrderCondition(markets, ib, conditions) {
+async function formatOrderCondition(markets, ib, order) {
+    const conditions = order.conditions;
+    const conditionsIgnoreRth = !!order.conditionsIgnoreRth;
     if (_.isEmpty(conditions)) return null;
     const ord_conds = await await Promise.all(conditions.map(async(condition) => {
         if (!condition.conId) return condition;
@@ -854,7 +856,7 @@ async function formatOrderCondition(markets, ib, conditions) {
         }
         return disjunctions;
     }, [[]]);
-    return disjunctions.map(conjuctions => {
+    const str = disjunctions.map(conjuctions => {
         return conjuctions.map(condition => {
             const pairs = order_condition_properties.concat('market', 'security_type')
               .reduce((pairs, p) => {
@@ -865,6 +867,8 @@ async function formatOrderCondition(markets, ib, conditions) {
             return pairs.map(pair => pair.join('=')).join(';');
         }).join('&');
     }).join('|');
+    if (!conditionsIgnoreRth || !str.length) return str;
+    else return `${str};conditionsIgnoreRth=true`;
 }
 
 async function ibAccountOrderProperties(ib, settings) {
@@ -917,7 +921,7 @@ async function ibToOrder(markets, ib, settings, order, options) {
         currency: order.currency,
         security_type: order.secType,
         multiplier: order.multiplier,
-        condition: await formatOrderCondition(markets, ib, order.conditions)
+        condition: await formatOrderCondition(markets, ib, order)
     };
 }
 
