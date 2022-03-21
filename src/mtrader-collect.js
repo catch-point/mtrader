@@ -177,6 +177,7 @@ if (require.main === module) {
 function createInstance(createSharedInstance, settings) {
     const broker = settings.mock_broker || new Broker(settings);
     const shared = settings.mock_collect || createSharedInstance(settings);
+    const remoteAddress = settings.remoteAddress;
     let broker_help;
     const instance = async function(options) {
         const begin = options.begin || options.working_duration && formatDate(moment.defaultFormat, {
@@ -192,7 +193,7 @@ function createInstance(createSharedInstance, settings) {
             ...(options.parameters || {})
         };
         logger.debug("collect", options.label || '', begin, "parameters", parameters);
-        return shared(merge(options, {begin, parameters}));
+        return shared(merge(options, {begin, parameters, remoteAddress}));
     };
     return Object.assign(instance, _.pick(shared, 'shell', 'reload', 'reset'), {
         close() {
@@ -218,6 +219,7 @@ function createSharedInstance(program, runInBand = false) {
                 .then(_.first).then(info => ['info'].concat(_.keys(info.options)));
         }
         const local_tier = settings.tier || 0;
+        const remoteAddress = options.remoteAddress;
         return promiseKeys.then(keys => trimOptions(keys, options))
           .then(options => {
             const remote_tier = remote.getWorkerTier() || local_tier;
@@ -235,7 +237,7 @@ function createSharedInstance(program, runInBand = false) {
             else if (!local.hasWorkers() && !remote.hasWorkers()) return direct(options);
             else if (!remote.hasWorkers()) return local(options);
             else if (local.hasWorkers() && local_tier < remote_tier) return local(options);
-            else if (options.reset_every || isQuoting(options)) return remote(options);
+            else if (!remoteAddress && (options.reset_every || isQuoting(options))) return remote(options);
             else if (!local.hasWorkers()) return remote(options);
             else if (remote.hasWorkers() && remote_tier < local_tier) return remote(options);
             else return local(options);
@@ -459,7 +461,6 @@ function createCache(direct, local, remote, settings) {
         else if (options.info=='version') return Promise.all([direct(options), remote.version()]).then(_.flatten);
         else if (!remote.hasWorkers()) return local(options);
         else if (local.hasWorkers() && local_tier < remote_tier) return local(options);
-        else if (options.reset_every || isQuoting(options)) return remote(options);
         else if (!local.hasWorkers()) return remote(options);
         else if (remote.hasWorkers() && remote_tier < local_tier) return remote(options);
         else return local(options);

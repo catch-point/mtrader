@@ -167,7 +167,7 @@ function listen(settings) {
                 typeof value == 'string' && _.isFinite(value) || value == 'NaN' ? +value : value;
             return name.split('.').reduceRight((obj, path) => ({[path]: obj}), val);
         }));
-        const mtrader = new MTrader({...options, ...settings});
+        const mtrader = new MTrader({...options, ...settings, remoteAddress: socket.remoteAddress});
         traders.push(mtrader);
         const process = remote({label}, ws).on('error', err => {
             logger.error(err, err.stack);
