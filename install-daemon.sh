@@ -51,7 +51,7 @@ fi
 if [ ! -x "$(which npm)" ]; then
   echo "node.js/npm is not installed" 1>&2
   if [ -x "$(which apt-get)" -a -x "$(which curl)" -a "$(id -u)" = "0" ]; then
-    curl -sL https://deb.nodesource.com/setup_8.x | bash -
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
     apt-get install -y nodejs
   fi
 fi
