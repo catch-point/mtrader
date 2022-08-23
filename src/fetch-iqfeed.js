@@ -35,7 +35,7 @@ const moment = require('moment-timezone');
 const Big = require('big.js');
 const d3 = require('d3-format');
 const merge = require('./merge.js');
-const TimeLimit = require('./time-limit.js');
+const autoRestart = require('./auto-restart.js');
 const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const config = require('./config.js');
@@ -223,8 +223,8 @@ function createInstance(settings = {}) {
     const symbol = iqfeed_symbol.bind(this, markets);
     const launch = settings.command;
     const timeout = settings && settings.timeout || 600000;
-    const time_limit = new TimeLimit(timeout);
-    const iqclient = iqfeed(
+    const Client = autoRestart(iqfeed, timeout, 'iqfeed');
+    const iqclient = new Client(
         _.isArray(launch) ? launch : launch && launch.split(' '),
         settings.env,
         settings.productId,
@@ -241,13 +241,13 @@ function createInstance(settings = {}) {
     const contract_cached = cache(contract.bind(this, iqclient, symbol, call_contract_cached), (exchs, listed_markets, options) => {
         return `${options.symbol} ${options.market}`;
     }, 10);
-    return Object.assign(time_limit(async(options) => {
+    return Object.assign(async(options) => {
         if (options.open) {
             return iqclient.open();
         } else if (options.info=='help') {
             return helpInfo;
         } else if (options.info=='pending') {
-            return time_limit.pending().map(item => ({cmd: 'fetch', label: item.label, options: item.args[0]}));
+            return iqclient.pending().map(item => ({cmd: 'fetch', label: item.label, options: item.args[0]}));
         } else if (options.info=='version') {
             return iqclient.version().then(client_version => {
                 return [{version: client_version, name: 'IQFeed'}];
@@ -332,13 +332,12 @@ function createInstance(settings = {}) {
             const adj = isNotEquity(markets, options) ? null : adjustments;
             return intraday(iqclient, adj, symbol(options), options);
         }
-    }, opt => `iqfeed ${opt.symbol || opt.info}`), {
+    }, {
         close() {
             return Promise.all([
                 contract_cached.close(),
                 iqclient.close(),
-                fetch.close(),
-                time_limit.close()
+                fetch.close()
             ]);
         }
     });
