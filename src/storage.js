@@ -113,25 +113,27 @@ function openCollection(dirname, name) {
         },
         lockWith(names, cb) {
             failIfClosed();
-            let expired;
             const promise = new Promise(aquired => _.defer(() => {
-                const priorLocks = names.reduce((priorLocks, name) => {
+                const new_entry = {names, promise, aquired, unlocked: false};
+                const uniq_names = _.uniq(names.map(n => n.toString()).sort(), true);
+                const priorLocks = uniq_names.reduce((priorLocks, name) => {
                     if (locks[name]) {
                         const prior = _.union(priorLocks, locks[name]);
-                        locks[name].push(promise);
+                        locks[name].push(new_entry);
                         return prior;
                     } else {
-                        locks[name] = [promise];
+                        locks[name] = [new_entry];
                         return priorLocks;
                     }
                 }, []);
-                Promise.all(priorLocks).then(aquired, aquired).then(() => {
-                    expired = priorLocks.concat(promise);
-                });
+                new_entry.priorLocks = priorLocks.filter(entry => entry !== new_entry);
+                Promise.all(new_entry.priorLocks.map(entry => entry.promise))
+                  .then(aquired, aquired)
+                  .then(() => _.defer(() => {
+                    new_entry.unlocked = true;
+                    locks = _.omit(_.mapObject(locks, es => es.filter(e => !e.unlocked)), _.isEmpty);
+                }));
             })).then(unlocked => cb(names));
-            promise.catch(err => {}).then(result => {
-                locks = _.omit(_.mapObject(locks, values => _.without(values, expired)), _.isEmpty);
-            });
             return promise;
         },
         propertyOf(block, name, value) {
