@@ -41,11 +41,12 @@ process.setMaxListeners(process.getMaxListeners()+1);
 module.exports = function(url) {
     const pending = _.isString(url) ? {url: url} : _.clone(url);
     return new Promise(function(resolve, reject) {
+        pending.requested_at = _.now();
         pending.onerror = reject;
         outstanding.push(pending);
         logger.log(url.path || url);
         const protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
-        protocol.get({...parse_url(url), timeout: 10*1000}, res => {
+        const req = protocol.get({...parse_url(url), timeout: 10*1000}, res => {
             const buffer = [];
             saveCookies(url.headers, res.headers);
             res.setEncoding('utf8');
@@ -64,7 +65,23 @@ module.exports = function(url) {
                     resolve(body);
                 }
             });
-        }).on('error', error => clear(pending) && reject(error));
+        }).on('error', error => {
+            clear(pending);
+            reject(error);
+        }).on('timeout', () => {
+            req.abort();
+            clear(pending);
+            reject(Error(`timeout on ${url.path || url}`));
+        }).on('abort', () => pending.abort = true)
+          .on('connect', connect => pending.connect = connect || true)
+          .on('continue', () => pending.continue = true)
+          .on('information', () => pending.information = true)
+          .on('response', response => pending.response = response || true)
+          .on('socket', socket => pending.socket = socket)
+          .on('timeout', () => pending.timeout = true)
+          .on('upgrade', upgrade => pending.upgrade = upgrade || true)
+          .on('close', () => pending.close = true)
+          .on('error', error => pending.error = error || true);
     });
 }
 

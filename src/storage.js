@@ -113,6 +113,7 @@ function openCollection(dirname, name) {
         },
         lockWith(names, cb) {
             failIfClosed();
+            let expired;
             const promise = new Promise(aquired => _.defer(() => {
                 const new_entry = {names, promise, aquired, unlocked: false};
                 const uniq_names = _.uniq(names.map(n => n.toString()).sort(), true);
@@ -126,14 +127,14 @@ function openCollection(dirname, name) {
                         return priorLocks;
                     }
                 }, []);
-                new_entry.priorLocks = priorLocks.filter(entry => entry !== new_entry);
-                Promise.all(new_entry.priorLocks.map(entry => entry.promise))
-                  .then(aquired, aquired)
-                  .then(() => _.defer(() => {
-                    new_entry.unlocked = true;
-                    locks = _.omit(_.mapObject(locks, es => es.filter(e => !e.unlocked)), _.isEmpty);
-                }));
+                new_entry.priorLocks = priorLocks;
+                Promise.all(priorLocks.map(entry => entry.promise)).then(aquired, aquired).then(() => {
+                    expired = priorLocks.concat(promise);
+                });
             })).then(unlocked => cb(names));
+            promise.catch(err => {}).then(result => {
+                locks = _.omit(_.mapObject(locks, values => _.without(values, expired)), _.isEmpty);
+            });
             return promise;
         },
         propertyOf(block, name, value) {
