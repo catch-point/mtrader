@@ -88,8 +88,8 @@ function promiseHistoryAgent() {
             .then(fn => fn(url)
             .catch(error => {
                 if (error.message == 'Bad Request') return ""; // no data in period
-                if (error.message == 'Unauthorized') return fn(url); // try again?
-                else throw error;
+                agent.close();
+                return agent(query.symbol)(url); // try again?
             }))
             .then(parseCSV)
             .then(rows2objects);
@@ -99,15 +99,19 @@ function promiseHistoryAgent() {
 function expire(func, after) {
     let result;
     let previous = 0;
-    return function() {
+    return Object.assign(function() {
         const now = _.now();
         const remaining = after - (now - previous);
-        if (remaining <= 0 || remaining > after) {
+        if (!result || remaining <= 0 || remaining > after) {
             previous = now;
             result = func.apply(this, arguments);
         }
         return result;
-    };
+    }, {
+        close() {
+            result = null;
+        }
+    });
   }
 
 function loadTable(loadCSV, interval, events, symbol, begin, tz) {
