@@ -427,9 +427,9 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
                 && item.modelCode == req_queue[reqId].modelCode;
         }).forEach(item => {
             item.complete = true;
+            const summary = req_queue[reqId].summary;
             new Promise((ready, abort) => {
                 if (closed) throw Error("TWS has disconnected");
-                const summary = req_queue[reqId].summary;
                 if (!~_.values(subscriptions).indexOf(+item.reqId)) {
                     logger.log('cancelAccountUpdatesMulti', item.acctCode);
                     logger.debug('cancelAccountUpdatesMulti', item.reqId, item.acctCode);
