@@ -89,7 +89,7 @@ function promiseHistoryAgent() {
             .catch(error => {
                 if (error.message == 'Bad Request') return ""; // no data in period
                 agent.close();
-                return agent(query.symbol)(url); // try again?
+                return agent(query.symbol).then(fn => fn(url)); // try again?
             }))
             .then(parseCSV)
             .then(rows2objects);
