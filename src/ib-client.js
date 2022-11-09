@@ -434,7 +434,7 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
                     logger.log('cancelAccountUpdatesMulti', item.acctCode);
                     logger.debug('cancelAccountUpdatesMulti', item.reqId, item.acctCode);
                     ib.cancelAccountUpdatesMulti(+item.reqId).catch(abort);
-                    delete req_queue[item.reqId];
+                    _.delay(() => {delete req_queue[item.reqId];}, 0);
                 }
                 return ready(summary);
             }).then(item.ready, item.fail);
