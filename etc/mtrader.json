@@ -477,7 +477,7 @@
         "ib": {
           "whatToShow": "TRADES",
           "secTypes": ["FUT", "FOP"],
-          "exchange": "GLOBEX"
+          "exchange": "CME"
         },
         "collective2": {
           "c2_prefix": "@",
