@@ -20,7 +20,7 @@
         "m240", "m120", "m60", "m30", "m15", "m10", "m5", "m2", "m1"
       ],
       "markets": [
-        "CBOE","CBOT","CFE","CME","ICE","LSE",
+        "CBOE","CBOT","CFE","CME","ICE","LSE", "COMEX",
         "NASDAQ","NYMEX","NYSE","OPRA","TSE","VENTURE","X",
         "AUD","CAD","CHF","CNH","GBP","JPY","NOK","NZD","SEK","USD"
       ]
@@ -33,7 +33,7 @@
       ],
       "markets": [
         "AEB","ASX","BE","BM","CBOE","CBOT","CFE","CME","EBS","IBIS","ICE","LSE",
-        "NASDAQ","NYMEX","NYSE","OPRA","SBF","TSE","TSEJ","VENTURE","X",
+        "NASDAQ","COMEX", "NYMEX","NYSE","OPRA","SBF","TSE","TSEJ","VENTURE","X",
         "AUD","CAD","CHF","CNH","GBP","JPY","NOK","NZD","SEK","USD"
       ]
     },
@@ -41,7 +41,7 @@
       "intervals": ["adjustments", "lookup", "contract", "day"],
       "markets": [
         "AEB","ASX","BE","BM","EBS","IBIS","LSE",
-        "NASDAQ","NYMEX","NYSE","SBF","TSE","TSEJ","VENTURE"
+        "NASDAQ","COMEX", "NYMEX","NYSE","SBF","TSE","TSEJ","VENTURE"
       ]
     },
     "remote": {
@@ -404,7 +404,7 @@
       "datasources": {
         "iqfeed": {
           "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
-          "listed_markets": ["CMEMINI", "CME_GBX"],
+          "listed_markets": ["CMEMINI", "CME_GBX", "CLEARPORT"],
           "right_pad_foptions": {
             "GF": 2,
             "LE": 2,
@@ -531,6 +531,48 @@
             "XBT": "@XMT",
             "XRT": "@XTT",
             "XVT": "@XCT"
+          },
+          "instrument": "future"
+        }
+      }
+    },
+    "COMEX": {
+      "description": "Commodity Exchange, Inc",
+      "trading_hours": "17:00:00 - 17:00:00",
+      "liquid_hours": "18:00:00 - 17:00:00",
+      "open_time": "18:00:00",
+      "security_tz": "America/New_York",
+      "currency": "USD",
+      "default_security_type": "FUT",
+      "datasources": {
+        "iqfeed": {
+          "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPOT", "SPREAD", "STRATSPREAD", "IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
+          "listed_markets": ["COMEX_GBX"],
+          "left_pad_foptions": false,
+          "dtnPrefix": "@",
+          "dtnPrefixMap": {
+            "HG": "QHG",
+            "GC": "QGC",
+            "MGC": "QMGC",
+            "SI": "QSI"
+          }
+        },
+        "ib": {
+          "whatToShow": "TRADES",
+          "secTypes": ["FUT", "FOP"],
+          "exchange":"COMEX",
+          "tradingClasses": {
+            "GC": "OG",
+            "HG": "HXE"
+          }
+        },
+        "collective2": {
+          "c2_prefix": "@",
+          "c2_map": {
+            "HG": "QHG",
+            "GC": "QGC",
+            "MGC": "QMGC",
+            "SI": "QSI"
           },
           "instrument": "future"
         }
@@ -762,15 +804,11 @@
       "datasources": {
         "iqfeed": {
           "security_types": ["COMBINED_FOPTION", "COMBINED_FUTURE", "FOPTION", "FUTURE", "ICSPREAD", "INDEX", "SPOT", "SPREAD", "STRATSPREAD", "IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
-          "listed_markets": ["CLEARPORT", "NYMEX", "NYMEX_GBX", "NYMEXMINI", "COMEX_GBX"],
+          "listed_markets": ["NYMEX", "NYMEX_GBX", "NYMEXMINI"],
           "left_pad_foptions": false,
           "dtnPrefix": "@",
           "dtnPrefixMap": {
-            "HG": "QHG",
-            "GC": "QGC",
             "NG": "QNG",
-            "MGC": "QMGC",
-            "SI": "QSI",
             "CL": "QCL",
             "PA": "QPA",
             "BZ": "QBZ",
@@ -783,8 +821,6 @@
           "secTypes": ["FUT", "FOP"],
           "exchange":"NYMEX",
           "tradingClasses": {
-            "GC": "OG",
-            "HG": "HXE",
             "BZ": "BE",
             "NG": "ON",
             "RB": "OB"
@@ -793,10 +829,6 @@
         "collective2": {
           "c2_prefix": "@",
           "c2_map": {
-            "HG": "QHG",
-            "GC": "QGC",
-            "MGC": "QMGC",
-            "SI": "QSI",
             "CL": "QCL",
             "PA": "QPA"
           },

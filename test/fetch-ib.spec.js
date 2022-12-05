@@ -250,13 +250,13 @@ describe("fetch-ib", function() {
                 });
             }));
         });
-        describe("should lookup NYMEX futures symbols", function() {
+        describe("should lookup COMEX futures symbols", function() {
             _.range((moment().year()-1)%100,(moment().year()+5)%100).map(year => ['M','Z'].map(mo => {
                 it(`GC${mo}${year}`, function() {
                     return client({
                         interval:'lookup',
                         symbol: `GC${mo}${year}`,
-                        market: "NYMEX"
+                        market: "COMEX"
                     }).should.eventually.be.like([{symbol: `GC${mo}${year}`}]);
                 });
             }));
@@ -393,7 +393,7 @@ describe("fetch-ib", function() {
                     return client({
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
-                        market: "NYMEX"
+                        market: "COMEX"
                     }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
                 });
             });
@@ -426,7 +426,7 @@ describe("fetch-ib", function() {
                 });
             });
         });
-        describe("should lookup Mar NYMEX future options symbols", function() {
+        describe("should lookup Mar COMEX future options symbols", function() {
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
             const year = (moment().year())%100;
             const mo = ['H', 'M', 'U', 'Z'].find(mo => month_code.indexOf(mo) > moment().month()) || 'Z';
@@ -438,7 +438,7 @@ describe("fetch-ib", function() {
                     return client({
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
-                        market: "NYMEX"
+                        market: "COMEX"
                     }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
                 });
             });
