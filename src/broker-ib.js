@@ -982,19 +982,22 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
         const under_details = !detail.underConid ? [detail] :
             await ib.reqContractDetails({conid:detail.underConid}).catch(async(err) => {
                 logger.warn(`${err.message.replace(/\n[\S\s]*$/,'')} ${contract.localSymbol||contract.symbol} underConId ${detail.underConid}`);
-                const contract = await ib.reqContract(detail.underConid).catch(err => {
+                const under_contract = await ib.reqContract(detail.underConid).catch(err => {
                     return {
                         conid: detail.underConid,
                         symbol: detail.underSymbol || contract.symbol,
                         secType: detail.underSecType
                     };
                 });
-                return [{contract}];
+                return [{contract: under_contract}];
             });
         const under_detail = _.first(under_details)||detail;
         const under_symbol = await asSymbol(markets, ib, under_detail.contract);
         const under_market = await asMarket(markets, ib, under_detail.contract).catch(err => null);
-        const change_list = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options);
+        const change_list = await listChanges(contract, con_pos, con_exe, historical, ib_tz, options).catch(e => {
+                logger.warn(`Could not determine position ${under_symbol}`, e);
+                return [];
+            });
         const changes = change_list.map(change => ({
             ...change,
             trading_class: ((_.first(details)||{}).contract||{}).tradingClass,
@@ -1118,8 +1121,8 @@ async function executionsWithConIds(markets, ib, executions) {
         if (execution.secType == 'BAG') return execution;
         if (execution.conid) return execution;
         if (execution.conId) return {...execution, conid:execution.conId};
-        const market = await asMarket(markets, ib, execution);
-        const contract = await toContractWithId(markets, ib, {
+        const market = await asMarket(markets, ib, execution).catch(e => null);
+        const contract = market && await toContractWithId(markets, ib, {
                 symbol: await asSymbol(markets, ib, execution),
                 market: market,
                 security_type: execution.secType,
