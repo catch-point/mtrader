@@ -1031,7 +1031,7 @@ describe("broker-ib", function() {
           reqManagedAccts: () => Promise.resolve([ 'test' ]),
           placeOrder: (...args) => {expect(args).to.be.like([ 1,
              { localSymbol: 'MESM9',
-               exchange: 'GLOBEX',
+               exchange: 'CME',
                currency: 'USD',
                includeExpired: true },
              { action: 'BUY',
@@ -1052,7 +1052,7 @@ describe("broker-ib", function() {
              return Promise.resolve({ status: 'PreSubmitted',
                localSymbol: 'MESM9',
                secType: 'FUT',
-               exchange: 'GLOBEX',
+               exchange: 'CME',
                currency: 'USD',
              posted_time: '20190601 15:57:41',
              time: '20190601 15:57:41',
@@ -1074,7 +1074,7 @@ describe("broker-ib", function() {
                conid: 362699310,
                secType: 'FUT',
                localSymbol: 'MESM9',
-               exchange: 'GLOBEX',
+               exchange: 'CME',
                currency: 'USD',
                multiplier: '5',
                status: 'PreSubmitted',
@@ -1095,7 +1095,7 @@ describe("broker-ib", function() {
           reqContract: (...args) => {expect(args).to.be.like([ 362699310 ]);
           return Promise.resolve({ secType: 'FUT',
              localSymbol: 'MESM9',
-             exchange: 'GLOBEX',
+             exchange: 'CME',
              currency: 'USD',
              multiplier: '5' });},
           close: () => Promise.resolve() });
@@ -1158,13 +1158,13 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                contract: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'CME' },
                                 minTick: 0.05,
                                 underConid: 310629209
                             }]);
@@ -1178,7 +1178,7 @@ describe("broker-ib", function() {
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
-                                    exchange:'GLOBEX'
+                                    exchange:'CME'
                                 }
                             }]);
                         default:
@@ -1193,7 +1193,7 @@ describe("broker-ib", function() {
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
-                    exchange:'GLOBEX'
+                    exchange:'CME'
                 });
             },
             reqMktData: (() => {
@@ -1203,7 +1203,7 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
@@ -1214,7 +1214,7 @@ describe("broker-ib", function() {
                                 ask: 17
                             });
                         case 'ESM9':
-                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'CME' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1231,7 +1231,7 @@ describe("broker-ib", function() {
                 {
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     includeExpired: true,
                     multiplier: 50
@@ -1253,7 +1253,7 @@ describe("broker-ib", function() {
                 return Promise.resolve({
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50,
                     status: 'ApiPending',
@@ -1299,13 +1299,13 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                contract: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'CME' },
                                 minTick: 0.05,
                                 underConid: 310629209
                             }]);
@@ -1319,7 +1319,7 @@ describe("broker-ib", function() {
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
-                                    exchange:'GLOBEX'
+                                    exchange:'CME'
                                 }
                             }]);
                         default:
@@ -1334,7 +1334,7 @@ describe("broker-ib", function() {
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
-                    exchange:'GLOBEX'
+                    exchange:'CME'
                 });
             },
             reqMktData: (() => {
@@ -1344,7 +1344,7 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
@@ -1360,7 +1360,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 'ESM9':
-                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'CME' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1375,7 +1375,7 @@ describe("broker-ib", function() {
                 expect(args).to.be.like([{
                         localSymbol: 'ESM9 C2800',
                         secType: 'FOP',
-                        exchange: 'GLOBEX',
+                        exchange: 'CME',
                         currency: 'USD',
                         includeExpired: true,
                         multiplier: 50
@@ -1391,7 +1391,7 @@ describe("broker-ib", function() {
                 {
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     includeExpired: true,
                     multiplier: 50
@@ -1413,7 +1413,7 @@ describe("broker-ib", function() {
                 return Promise.resolve({
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50,
                     status: 'ApiPending',
@@ -1458,13 +1458,13 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                contract: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'CME' },
                                 minTick: 0.05,
                                 underConid: 310629209
                             }]);
@@ -1478,7 +1478,7 @@ describe("broker-ib", function() {
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
-                                    exchange:'GLOBEX'
+                                    exchange:'CME'
                                 }
                             }]);
                         default:
@@ -1493,7 +1493,7 @@ describe("broker-ib", function() {
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
-                    exchange:'GLOBEX'
+                    exchange:'CME'
                 });
             },
             reqMktData: (() => {
@@ -1503,7 +1503,7 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
@@ -1519,7 +1519,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 'ESM9':
-                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'CME' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1534,7 +1534,7 @@ describe("broker-ib", function() {
                 expect(args).to.be.like([{
                         localSymbol: 'ESM9 C2800',
                         secType: 'FOP',
-                        exchange: 'GLOBEX',
+                        exchange: 'CME',
                         currency: 'USD',
                         includeExpired: true,
                         multiplier: 50
@@ -1550,7 +1550,7 @@ describe("broker-ib", function() {
                 {
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50
                 },
@@ -1571,7 +1571,7 @@ describe("broker-ib", function() {
                 return Promise.resolve({
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50,
                     status: 'ApiPending',
@@ -1617,13 +1617,13 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                contract: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'CME' },
                                 minTick: 0.05,
                                 underConid: 310629209
                             }]);
@@ -1637,7 +1637,7 @@ describe("broker-ib", function() {
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
-                                    exchange:'GLOBEX'
+                                    exchange:'CME'
                                 }
                             }]);
                         default:
@@ -1652,7 +1652,7 @@ describe("broker-ib", function() {
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
-                    exchange:'GLOBEX'
+                    exchange:'CME'
                 });
             },
             reqMktData: (() => {
@@ -1662,7 +1662,7 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
@@ -1678,7 +1678,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 'ESM9':
-                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'CME' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1693,7 +1693,7 @@ describe("broker-ib", function() {
                 expect(args).to.be.like([{
                         localSymbol: 'ESM9 C2800',
                         secType: 'FOP',
-                        exchange: 'GLOBEX',
+                        exchange: 'CME',
                         currency: 'USD',
                         includeExpired: true,
                         multiplier: 50
@@ -1709,7 +1709,7 @@ describe("broker-ib", function() {
                 {
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     includeExpired: true,
                     multiplier: 50
@@ -1731,7 +1731,7 @@ describe("broker-ib", function() {
                 return Promise.resolve({
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50,
                     status: 'ApiPending',
@@ -1777,13 +1777,13 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                contract: { right: 'C', exchange: 'GLOBEX' },
+                                contract: { right: 'C', exchange: 'CME' },
                                 minTick: 0.05,
                                 underConid: 310629209
                             }]);
@@ -1797,7 +1797,7 @@ describe("broker-ib", function() {
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
-                                    exchange:'GLOBEX'
+                                    exchange:'CME'
                                 }
                             }]);
                         default:
@@ -1812,7 +1812,7 @@ describe("broker-ib", function() {
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
-                    exchange:'GLOBEX'
+                    exchange:'CME'
                 });
             },
             reqMktData: (() => {
@@ -1822,7 +1822,7 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 C2800',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
@@ -1838,7 +1838,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 'ESM9':
-                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'CME' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -1853,7 +1853,7 @@ describe("broker-ib", function() {
                 expect(args).to.be.like([{
                         localSymbol: 'ESM9 C2800',
                         secType: 'FOP',
-                        exchange: 'GLOBEX',
+                        exchange: 'CME',
                         currency: 'USD',
                         includeExpired: true,
                         multiplier: 50
@@ -1869,7 +1869,7 @@ describe("broker-ib", function() {
                 {
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50
                 },
@@ -1890,7 +1890,7 @@ describe("broker-ib", function() {
                 return Promise.resolve({
                     localSymbol: 'ESM9 C2800',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50,
                     status: 'ApiPending',
@@ -1936,13 +1936,13 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 P2625',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                contract: { right: 'P', exchange: 'GLOBEX' },
+                                contract: { right: 'P', exchange: 'CME' },
                                 minTick: 0.05,
                                 underConid: 310629209
                             }]);
@@ -1956,7 +1956,7 @@ describe("broker-ib", function() {
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
-                                    exchange:'GLOBEX'
+                                    exchange:'CME'
                                 }
                             }]);
                         default:
@@ -1971,7 +1971,7 @@ describe("broker-ib", function() {
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
-                    exchange:'GLOBEX'
+                    exchange:'CME'
                 });
             },
             reqMktData: (() => {
@@ -1982,7 +1982,7 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 P2625',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
@@ -1998,7 +1998,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 'ESM9':
-                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'CME' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738.25,
@@ -2013,7 +2013,7 @@ describe("broker-ib", function() {
                 expect(args).to.be.like([{
                         localSymbol: 'ESM9 P2625',
                         secType: 'FOP',
-                        exchange: 'GLOBEX',
+                        exchange: 'CME',
                         currency: 'USD',
                         includeExpired: true,
                         multiplier: 50
@@ -2029,7 +2029,7 @@ describe("broker-ib", function() {
                 {
                     localSymbol: 'ESM9 P2625',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50
                 },
@@ -2050,7 +2050,7 @@ describe("broker-ib", function() {
                 return Promise.resolve({
                     localSymbol: 'ESM9 P2625',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50,
                     status: 'ApiPending',
@@ -2096,13 +2096,13 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 P2625',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
                             }]);
                             return Promise.resolve([{
-                                contract: { right: 'P', exchange: 'GLOBEX' },
+                                contract: { right: 'P', exchange: 'CME' },
                                 minTick: 0.05,
                                 underConid: 310629209
                             }]);
@@ -2116,7 +2116,7 @@ describe("broker-ib", function() {
                                     localSymbol:'ESM9',
                                     currency:'USD',
                                     secType:'FUT',
-                                    exchange:'GLOBEX'
+                                    exchange:'CME'
                                 }
                             }]);
                         default:
@@ -2131,7 +2131,7 @@ describe("broker-ib", function() {
                     localSymbol:'ESM9',
                     currency:'USD',
                     secType:'FUT',
-                    exchange:'GLOBEX'
+                    exchange:'CME'
                 });
             },
             reqMktData: (() => {
@@ -2141,7 +2141,7 @@ describe("broker-ib", function() {
                             expect(args).to.be.like([{
                                 localSymbol: 'ESM9 P2625',
                                 secType: 'FOP',
-                                exchange: 'GLOBEX',
+                                exchange: 'CME',
                                 currency: 'USD',
                                 includeExpired: true,
                                 multiplier: 50
@@ -2157,7 +2157,7 @@ describe("broker-ib", function() {
                                 }
                             })
                         case 'ESM9':
-                            expect(args).to.be.like([{ conid: 310629209, exchange: 'GLOBEX' }]);
+                            expect(args).to.be.like([{ conid: 310629209, exchange: 'CME' }]);
                             return Promise.resolve({
                                 last_timestamp: moment('2019-06-01T12:00:00').format('X'),
                                 bid: 2738,
@@ -2172,7 +2172,7 @@ describe("broker-ib", function() {
                 expect(args).to.be.like([{
                         localSymbol: 'ESM9 P2625',
                         secType: 'FOP',
-                        exchange: 'GLOBEX',
+                        exchange: 'CME',
                         currency: 'USD',
                         includeExpired: true,
                         multiplier: 50
@@ -2188,7 +2188,7 @@ describe("broker-ib", function() {
                 {
                     localSymbol: 'ESM9 P2625',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50
                 },
@@ -2209,7 +2209,7 @@ describe("broker-ib", function() {
                 return Promise.resolve({
                     localSymbol: 'ESM9 P2625',
                     secType: 'FOP',
-                    exchange: 'GLOBEX',
+                    exchange: 'CME',
                     currency: 'USD',
                     multiplier: 50,
                     status: 'ApiPending',

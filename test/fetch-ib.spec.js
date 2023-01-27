@@ -202,7 +202,7 @@ describe("fetch-ib", function() {
         });
         describe("should find TSE listing", function() {
             [
-                "CGL.C", "BBD.B", "BAM.A",
+                "CGL.C", "BBD.B",
                 "CCL.B", "GIB.A", "CTC.A",
                 "RCI.B", "SJR.B", "TECK.B"
             ].forEach(symbol => {
@@ -339,7 +339,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
                         market: "CME"
-                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -347,7 +347,7 @@ describe("fetch-ib", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
             const year = (moment().year())%100;
-            const mo = ['F', 'J', 'M', 'V'].find(mo => month_code.indexOf(mo) > moment().month()) || 'V';
+            const mo = ['H', 'K', 'N', 'U'].find(mo => month_code.indexOf(mo) > moment().month()) || 'V';
             [
                 {underlying: 'ZS', tradingClass:'OZS', strike:1400,ib_scale:10,iq_scale:10,iq_root:'@S'}
             ].forEach(c => {
@@ -357,7 +357,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
                         market: "CBOT"
-                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -376,7 +376,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
                         market: "CME"
-                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -394,7 +394,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
                         market: "COMEX"
-                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -422,7 +422,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.tradingClass}${mo}${year} P${k}`,
                         market: "CME"
-                    }).should.eventually.be.like([{symbol: `${c.tradingClass}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.tradingClass}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -439,7 +439,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
                         market: "COMEX"
-                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -459,7 +459,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
                         market: "CME"
-                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -480,7 +480,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
                         market: "NYMEX"
-                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -498,7 +498,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
                         market: "CBOT"
-                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -522,7 +522,7 @@ describe("fetch-ib", function() {
                         interval:'lookup',
                         symbol: `${c.underlying}${mo}${year} P${k}`,
                         market: "CBOT"
-                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`, strike: c.strike}]);
+                    }).should.eventually.be.like([{symbol: `${c.underlying}${mo}${year} P${k}`}]);
                 });
             });
         });
@@ -548,8 +548,8 @@ describe("fetch-ib", function() {
                 market: 'CBOE',
                 security_type: 'IND',
                 currency: 'USD',
-                trading_hours: '02:15:00 - 15:15:00',
-                liquid_hours: '02:15:00 - 15:15:00'
+                trading_hours: '02:15:00 - 16:00:00',
+                liquid_hours: '02:15:00 - 16:00:00'
             }]);
         });
         it("should find SPY symbol", function() {

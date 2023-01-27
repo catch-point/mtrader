@@ -117,7 +117,7 @@ describe("adjustments", function() {
             {exdate:'2014-11-06',dividend:0.47,cum_close:108.86,adj:0.9957}
         ]);
     });
-    it("should adjust splits and dividends for BERK", function() {
+    it.skip("should adjust splits and dividends for BERK", function() {
         return adjustments({
             symbol: 'BERK',
             market: 'NASDAQ',

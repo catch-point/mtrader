@@ -473,14 +473,14 @@ async function contract(market_tz, markets, client, options) {
     const conIds = _.values(_.groupBy(details, detail => detail.contract.conid));
     const contracts = conIds.map(details => flattenContractDetails(details));
     return contracts.map((contract, i) => {
-        const market = markets[options.market] || markets[contract.primaryExch] || {};
+        const market = markets[options.market] || markets[contract.primaryExch || contract.exchange] || {};
         const security_tz = contract.timeZoneId && market_tz(contract.timeZoneId, market.security_tz);
         const open_time = security_tz == market.security_tz && market.open_time ||
             contract.liquidHours && market_open(contract.liquidHours) || null;
         return _.omit({
             symbol: toSymbol(market, contract),
             market: options.market || _.findKey(markets,
-                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch)
+                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch || contract.exchange)
             ),
             security_type: contract.secType || market.default_security_type,
             name: contract.longName,
@@ -508,7 +508,7 @@ async function fundamental(market_tz, markets, client, options) {
     return contracts.map((contract, i) => {
         const under = under_contracts[i] || contract;
         const market = markets[options.market] || _.find(markets,
-            mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch)
+            mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch || contract.exchange)
         ) || {};
         const security_tz = contract.timeZoneId && market_tz(contract.timeZoneId, market.security_tz);
         const open_time = security_tz == market.security_tz && market.open_time ||
@@ -516,7 +516,7 @@ async function fundamental(market_tz, markets, client, options) {
         return _.omit({
             symbol: toSymbol(market, contract),
             market: options.market || _.findKey(markets,
-                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch)
+                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(contract.primaryExch || contract.exchange)
             ),
             security_type: contract.secType || market.default_security_type,
             name: contract.longName,
@@ -529,11 +529,11 @@ async function fundamental(market_tz, markets, client, options) {
                 `${market_open(contract.liquidHours)} - ${market_close(contract.liquidHours)}`,
             ..._.omit(contract, 'symbol', 'market', 'security_type', 'name', 'conid', 'underConid', 'priceMagnifier'),
             under_symbol: toSymbol(_.find(markets,
-                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(under.primaryExch)
+                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(under.primaryExch || under.exchange)
             ), under),
             under_market: _.findKey(markets,
-                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(under.primaryExch)
-            ) || under.primaryExch
+                mkt => ~(mkt.primaryExchs||[mkt.primaryExch]).indexOf(under.primaryExch || under.exchange)
+            ) || under.primaryExch || under.exchange
         }, v => !v);
     });
 }
@@ -772,15 +772,16 @@ async function listContractDetails(markets, client, options) {
                 localSymbol: contract.localSymbol.replace('.', ' ')
             })).catch(err => []);
         return details.filter(detail => {
-            if (primaryExchs && !~primaryExchs.indexOf(detail.contract.primaryExch)) return false;
+            const primaryExch = detail.contract.primaryExch || detail.contract.exchange;
+            if (primaryExchs && !~primaryExchs.indexOf(primaryExch)) return false;
             if (exchanges && !~exchanges.indexOf(detail.contract.exchange)) return false;
             if (currencies && !~currencies.indexOf(detail.contract.currency)) return false;
             else return market_set.some(market => {
                 if (market.currency != detail.contract.currency)
                     return false;
-                else if (market.primaryExch && market.primaryExch != detail.contract.primaryExch)
+                else if (market.primaryExch && market.primaryExch != primaryExch)
                     return false;
-                else if (market.primaryExchs && !~market.primaryExchs.indexOf(detail.contract.primaryExch))
+                else if (market.primaryExchs && !~market.primaryExchs.indexOf(primaryExch))
                     return false;
                 else if (market.exchange && market.exchange != detail.contract.exchange)
                     return false;

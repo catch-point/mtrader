@@ -340,7 +340,7 @@
         "ib": {
           "whatToShow": "TRADES",
           "secTypes": ["FUT", "FOP"],
-          "exchange": "ECBOT",
+          "exchange": "CBOT",
           "month_abbreviation": true,
           "tradingClasses": {
             "ZS": "OZS",
