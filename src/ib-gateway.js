@@ -42,12 +42,11 @@ const ib = require('./ib-client.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 
-const private_settings = [
-    'TradingMode', 'IbLoginId', 'IbPassword',
-    'auth_base64', 'auth_file', 'auth_salt', 'auth_sha256'
+const key_client_settings = [
+    'clientId',
+    'twsApiPort', 'twsApiHost',
+    'jsonApiPort', 'jsonApiHost',
 ];
-const client_settings = ['host', 'port', 'clientId'].concat(private_settings);
-const active_instances = {};
 const client_instances = {};
 
 process.on('SIGINT', () => closeAllClients('SIGINT').catch(logger.error));
@@ -56,19 +55,16 @@ process.on('SIGTERM', () => closeAllClients('SIGTERM').catch(logger.error));
 module.exports = async function(remote_settings) {
     const local_settings = config('ib') || {};
     const settings = {...remote_settings, ...local_settings};
-    if (!settings.OverrideTwsApiPort && !settings.port && !settings.TradingMode)
-        throw Error("TradingMode or port is required to start IB TWS");
     const market_functions = [
         'reqHistoricalData', 'reqMktData', 'reqRealTimeBars',
         'calculateImpliedVolatility', 'calculateOptionPrice'
     ];
+    const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
+    const port = settings.twsApiPort || settings.jsonApiPort || '';
     if ('clientId' in settings) {
-        const {username} = await readAuthentication(settings);
-        const lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
-        const default_dir = path.resolve(lib_dir, username || '.');
-        settings.lib_dir = path.resolve(default_dir, `${settings.TradingMode || 'live'}${settings.clientId}`);
+        settings.lib_dir = path.resolve(lib_dir, `ib${port}_${settings.clientId}`);
     } else {
-        delete settings.lib_dir;
+        settings.lib_dir = path.resolve(lib_dir, `ib${port}`);
     }
     let promise_market_client;
     const client = await borrow(settings);
@@ -99,10 +95,10 @@ module.exports = async function(remote_settings) {
 
 
 async function borrow(settings) {
-    const json = _.object(client_settings.filter(key => key in settings).map(key => [key, settings[key]]));
+    const json = _.object(key_client_settings.filter(key => key in settings).map(key => [key, settings[key]]));
     const key = crypto.createHash('sha256').update(JSON.stringify(json)).digest('hex');
     const used = client_instances[key];
-    const shared = active_instances[key] = client_instances[key] = client_instances[key] || (s => {
+    const shared = client_instances[key] = client_instances[key] || (s => {
         logger.log("ib-gateway opening client", settings.clientId || '', key);
         return createClientInstance(s);
     })({label: key, ...settings});
@@ -110,19 +106,9 @@ async function borrow(settings) {
         shared.leased = 1;
         shared.close = async(closedBy, force) => {
             if (--shared.leased && !force) return; // still in use
-            if (shared == active_instances[key]) {
-                delete active_instances[key];
-            }
-            const connected = await shared.open().then(() => true, err => false);
-            if (!connected) {
-                if (shared == client_instances[key]) {
-                    delete client_instances[key];
-                }
-                logger.log("ib-gateway closing disconnected client", settings.clientId || '', key);
-                await shared.destroy('ib-gateway');
-            }
-            if (_.isEmpty(active_instances) && !_.isEmpty(client_instances)) {
-                await closeAllClients('ib-gateway');
+            if (shared == client_instances[key]) {
+                delete client_instances[key];
+                return shared.destroy(closedBy);
             }
         };
         return shared.open().then(() => shared);
@@ -189,58 +175,15 @@ async function assignClient(self, settings) {
 }
 
 async function setDefaultSettings(settings) {
-    const overrideTwsApiPort = settings.OverrideTwsApiPort || settings.port ||
-            settings.TradingMode && await findAvailablePort(settings.TradingMode == 'paper' ? 4002 : 4001) || 0;
-    const {username, password} = await readAuthentication(settings);
-    const parent_lib_dir = config('lib_dir') || path.resolve(config('prefix'), config('default_lib_dir'));
-    const default_dir = path.resolve(parent_lib_dir, settings.IbLoginId || username || '');
-    const lib_dir = 'clientId' in settings ?
-        path.resolve(default_dir, `${settings.TradingMode || 'live'}${settings.clientId}`) : undefined;
+    const keys = [
+        'clientId', 'tz', 'timeout', 'login_timeout', 'reqMarketDataType', 'lib_dir',
+        'jtsExeName', 'jtsInstallDir', 'jtsConfigDir', 'javaHome', 'launcher',
+        'twsApiPath', 'twsApiJar', 'twsApiPort', 'twsApiHost',
+        'jsonApiPort', 'jsonApiPortOffset', 'jsonApiInet', 'jsonApiHost',
+    ];
     return {
-        ...settings,
-        IBAPIBase64UserName: username ? new Buffer(username).toString('base64') : null,
-        IBAPIBase64Password: password ? new Buffer(password).toString('base64') : null,
-        port: overrideTwsApiPort,
-        lib_dir,
-        "tws-settings-path": path.resolve(settings.IbDir || default_dir)
+        twsApiHost: settings.host,
+        twsApiPort: settings.port,
+        ..._.pick(settings, keys)
     };
-}
-
-const black_listed_ports = [];
-async function findAvailablePort(startFrom) {
-    if (~black_listed_ports.indexOf(startFrom))
-        return findAvailablePort(startFrom+1);
-    return new Promise((ready, fail) => {
-        const server = net.createServer()
-          .once('error', function(err) {
-            if (err.code === 'EADDRINUSE') {
-                ready(findAvailablePort(startFrom+1));
-            } else {
-                fail(err);
-            }
-        }).once('listening', () => server.close())
-          .once('close', () => {
-            black_listed_ports.push(startFrom);
-            ready(startFrom);
-        })
-          .listen(startFrom);
-    });
-}
-
-async function readAuthentication(settings) {
-    if (settings.IbLoginId && settings.IbPassword)
-        return {username: settings.IbLoginId, password: settings.IbPassword};
-    const readFile = util.promisify(fs.readFile);
-    const auth_file = settings.auth_file && path.resolve(config('prefix'), 'etc', settings.auth_file);
-    const token = settings.auth_base64 ? settings.auth_base64 :
-        auth_file ? (await readFile(auth_file, 'utf8')||'').trim() : '';
-    const [username, password] = new Buffer.from(token, 'base64').toString().split(/:/, 2);
-    if (auth_file && username) {
-        const string = `${username}:${settings.auth_salt||''}:${password}`;
-        const hash = crypto.createHash('sha256').update(string).digest('hex');
-        if (hash == settings.auth_sha256) return {username, password};
-        else throw Error("auth_sha256 of username:auth_salt:password is required when using auth_file");
-    } else {
-        return {username: settings.IbLoginId};
-    }
 }

@@ -1,6 +1,6 @@
 // ib-client.js
 /*
- *  Copyright (c) 2019 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2019-2023 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -47,14 +47,11 @@ function nextval() {
 }
 
 module.exports = async function(settings = {}) {
-    const host = settings && settings.host || 'localhost';
-    const port = settings && settings.port;
-    if (!port) throw Error("Port is required to start IB TWS");
     const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : 0;
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const timeout = settings && settings.timeout || 600000;
     const self = new.target ? this : {};
-    let promise_client = createClient(host, port, clientId, ib_tz, timeout, settings);
+    let promise_client = createClient(clientId, ib_tz, timeout, settings);
     let closed = false;
     const first_client = await promise_client;
     return Object.assign(self, _.mapObject(_.pick(first_client, _.isFunction), (fn, cmd) => async function() {
@@ -73,8 +70,8 @@ module.exports = async function(settings = {}) {
                     if (closed) return client;
                     await client.close().catch(logger.error);
                     if (closed) throw Error(`IB API has been closed to ${clientId}`);
-                    logger.log("ib-client reconnecting client to", host, port, "as", clientId);
-                    return createClient(host, port, clientId, ib_tz, timeout, settings);
+                    logger.log("ib-client reconnecting client as", clientId);
+                    return createClient(clientId, ib_tz, timeout, settings);
                 });
                 const new_client = await promise_client.then(client => client.open());
                 if (closed || new_client.disconnected) throw err;
@@ -90,7 +87,7 @@ module.exports = async function(settings = {}) {
 };
 
 
-async function createClient(host, port, clientId, ib_tz, timeout, settings = {}) {
+async function createClient(clientId, ib_tz, timeout, settings = {}) {
     const self = new.target ? this : {};
     const ib = await IB(settings);
     ib.setMaxListeners(20);
@@ -110,13 +107,13 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         } else {
             logger.warn("ib-client", clientId, id_or_str);
         }
-        if (self.connected) {
+        if (self.connected && !ib.destroyed && !ib.killed) {
             ib.isConnected().catch(logger.error); // check if the error caused a disconnection
         }
     }).on('result', (event, args) => {
         logger.trace("ib", clientId, event, ...args);
     });
-    const login_timeout = Date.now() + (settings.login_timeout || (settings.TradingMode ? 300 : 0)) * 1000;
+    const login_timeout = Date.now() + (settings.login_timeout || 300) * 1000;
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
         const on_error = (id_or_str, err_code, err_msg) => {
@@ -124,13 +121,13 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
             if (self.connecting && !self.connected) {
                 if (login_timeout < Date.now()) {
                     fail(Error(err_msg || id_or_str));
-                    logger.log("ib-client could not login quick enough to", host, port, "as", clientId);
+                    logger.log("ib-client could not login quick enough for client", clientId);
                     ib.removeListener('error', on_error);
                     ib.exit().catch(logger.error);
                 } else {
                     // keep trying
                     ib.sleep(500).catch(fail);
-                    ib.eConnect(host, port, clientId, false).catch(fail);
+                    ib.eConnect(clientId, false).catch(fail);
                 }
             }
         };
@@ -138,7 +135,7 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
             self.connecting = false;
             self.connected = true;
             self.disconnected = false;
-            logger.log("ib-client connected to", host, port, "as", clientId);
+            logger.log("ib-client connected as", clientId);
             ready();
             ib.removeListener('error', on_error);
         }).once('exit', () => {
@@ -149,35 +146,27 @@ async function createClient(host, port, clientId, ib_tz, timeout, settings = {})
         once_connected.catch(err => {
             ready();
         });
-        ib.once('exit', code => {
+        ib.once('exit', () => {
             self.connecting = false;
             self.connected = false;
             self.disconnected = true;
-            logger.log("ib-client", ib.pid, "exited", code || '', "from", host, port, "as", clientId);
+            logger.log("ib-client client", clientId, "exited");
             ready();
         });
     });
-    const version_promise = new Promise((ready, abort) => {
+    const version_promise = once_connected.then(() => new Promise((ready, abort) => {
         ib.once('serverVersion', version => ready(version));
         once_disconnected.then(abort);
         ib.serverVersion().catch(abort);
-    });
-    if (settings.TradingMode) {
-        await ib.login(settings.TradingMode, _.pick(settings, [
-            'IBAPIBase64UserName', 'IBAPIBase64Password'
-        ]), _.pick(settings, [
-            'AcceptIncomingConnectionAction', 'AcceptNonBrokerageAccountWarning', 'AllowBlindTrading', 'DismissNSEComplianceNotice', 'ExistingSessionDetectedAction', 'LogComponents', 'MinimizeMainWindow', 'ReadOnlyLogin', 'StoreSettingsOnServer', 'SuppressInfoMessages'
-        ]));
-        await ib.enableAPI(settings.port, settings.ReadOnlyLogin);
-    }
+    }));
     self.connecting = true;
     self.connected = false;
     self.disconnected = false;
-    await ib.eConnect(host, port, clientId, false);
+    await ib.eConnect(clientId, false);
     once_connected.then(() => {
         ib.on('isConnected', connected => {
             if (!connected) {
-                logger.log("ib-client disconnected from", host, port, "as", clientId);
+                logger.log("ib-client disconnected client", clientId);
                 ib.exit().catch(logger.error); // exit on disconnection
             }
         });

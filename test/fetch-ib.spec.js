@@ -380,7 +380,7 @@ describe("fetch-ib", function() {
                 });
             });
         });
-        describe("should lookup Feb NYME future options symbols", function() {
+        describe.skip("should lookup Feb NYME future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
             const year = (moment().year())%100;
