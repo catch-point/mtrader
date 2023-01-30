@@ -344,8 +344,8 @@ async function listBalances(markets, ib, fetch, settings, options) {
     const asof = moment(options.asof || options.now).tz(ib_tz);
     const begin = options.begin ? moment(options.begin).tz(ib_tz) :
         moment(asof).subtract(5,'days');
-    const begin_format = begin.format('YYYYMMDD HH:mm:ss');
-    const asof_format = asof.format('YYYYMMDD HH:mm:ss');
+    const begin_format = begin.utc().format('YYYYMMDD-HH:mm:ss');
+    const asof_format = asof.utc().format('YYYYMMDD-HH:mm:ss');
     const balances = await Promise.all(accounts.map(async(acctNumber) => {
         const previously = begin ? await ib.reqAccountHistory(acctNumber, begin_format) : [];
         const currently = await ib.reqAccountUpdate(acctNumber);
@@ -402,8 +402,8 @@ async function listOrders(markets, ib, settings, options) {
     const account = settings.account;
     const accounts = await listAccounts(ib, account);
     const open_orders = await ib.reqOpenOrders();
-    const begin = moment(options.begin || options.asof).tz(ib_tz).format('YYYYMMDD HH:mm:ss');
-    const asof = options.asof && moment(options.asof).tz(ib_tz).format('YYYYMMDD HH:mm:ss');
+    const begin = moment(options.begin || options.asof).utc().format('YYYYMMDD-HH:mm:ss');
+    const asof = options.asof && moment(options.asof).utc().format('YYYYMMDD-HH:mm:ss');
     const completed_orders = options.begin || options.asof ? await ib.reqCompletedOrders({
         acctCode: accounts.length == 1 ? _.first(accounts) : null,
         time: asof
@@ -964,7 +964,7 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
         moment(options.asof).tz(ib_tz).subtract(5,'days');
     const executions = await executionsWithConIds(markets, ib, await ib.reqExecutions({
         acctCode: account,
-        time: begin ? begin.format('YYYYMMDD HH:mm:ss') : null
+        time: begin ? begin.utc().format('YYYYMMDD-HH:mm:ss') : null
     }));
     // TODO don't assume conIds in executions mean the same in positions
     const conIds = _.union(Object.keys(positions).map(i => parseInt(i)), collectConIds(executions));

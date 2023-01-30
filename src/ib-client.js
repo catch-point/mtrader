@@ -933,7 +933,7 @@ function execDetails(ib, time_limit, store, ib_tz) {
     }, 10000); // 10s
     ib.on('error', function (id_or_str, err_code, err_msg) {
         if (req_queue[id_or_str]) {
-            req_queue[id_or_str].reject(err);
+            req_queue[id_or_str].reject(Error(err_msg));
         } else if (isGeneralError(id_or_str, err_code, err_msg)) {
             Object.keys(req_queue).forEach(reqId => {
                 const task = req_queue[reqId];

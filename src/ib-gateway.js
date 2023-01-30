@@ -43,11 +43,13 @@ const config = require('./config.js');
 const logger = require('./logger.js');
 
 const key_client_settings = [
-    'clientId',
+    'clientId', 'jtsConfigDir',
     'twsApiPort', 'twsApiHost',
     'jsonApiPort', 'jsonApiHost',
 ];
 const client_instances = {};
+
+let close_all_clients = false;
 
 process.on('SIGINT', () => closeAllClients('SIGINT').catch(logger.error));
 process.on('SIGTERM', () => closeAllClients('SIGTERM').catch(logger.error));
@@ -99,6 +101,7 @@ async function borrow(settings) {
     const key = crypto.createHash('sha256').update(JSON.stringify(json)).digest('hex');
     const used = client_instances[key];
     const shared = client_instances[key] = client_instances[key] || (s => {
+        if (close_all_clients) throw Error("Shutting down IB clients");
         logger.log("ib-gateway opening client", settings.clientId || '', key);
         return createClientInstance(s);
     })({label: key, ...settings});
@@ -149,6 +152,7 @@ function createClientInstance(settings) {
 
 async function closeAllClients(closedBy) {
     // all clients are inactive, so close all of them
+    close_all_clients = true;
     logger.log("ib-gateway closing all", Object.keys(client_instances).length, "client(s) by", closedBy);
     await Promise.all(Object.keys(client_instances).map(key => {
         const client = client_instances[key];
