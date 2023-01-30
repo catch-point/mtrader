@@ -180,6 +180,7 @@ async function setDefaultSettings(settings) {
         'jtsExeName', 'jtsInstallDir', 'jtsConfigDir', 'javaHome', 'launcher',
         'twsApiPath', 'twsApiJar', 'twsApiPort', 'twsApiHost',
         'jsonApiPort', 'jsonApiPortOffset', 'jsonApiInet', 'jsonApiHost',
+        'env'
     ];
     return {
         twsApiHost: settings.host,
