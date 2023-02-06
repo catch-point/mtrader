@@ -1,6 +1,6 @@
 // ib-gateway.js
 /*
- *  Copyright (c) 2019 James Leigh, Some Rights Reserved
+ *  Copyright (c) 2019-2023 James Leigh, Some Rights Reserved
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -56,7 +56,12 @@ process.on('SIGTERM', () => closeAllClients('SIGTERM').catch(logger.error));
 
 module.exports = async function(remote_settings) {
     const local_settings = config('ib') || {};
-    const settings = {...remote_settings, ...local_settings};
+    const clientId = remote_settings.clientId || local_settings.clientId;
+    const client_settings = (local_settings.clients||[]).find(client => client.clientId == clientId) || {};
+    if (local_settings.clients && !client_settings.clientId) {
+        throw Error(`ib-gateway clientId ${clientId} is not one of the available clients`);
+    }
+    const settings = {...remote_settings, ...client_settings, ...local_settings};
     const market_functions = [
         'reqHistoricalData', 'reqMktData', 'reqRealTimeBars',
         'calculateImpliedVolatility', 'calculateOptionPrice'
@@ -116,7 +121,7 @@ async function borrow(settings) {
         };
         return shared.open().then(() => shared);
     } else if (await shared.open().then(() => true, err => {
-        logger.warn("ib-gateway client closed unexpectedly", settings.clientId || '', key, err);
+        logger.warn("ib-gateway client closed unexpectedly", settings.clientId || '', err);
         return false;
     })) {
         shared.leased++;
