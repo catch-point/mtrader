@@ -200,7 +200,11 @@ function sharedInstance(options, settings) {
         shared_instance = createInstance(settings);
         instance_timer = setInterval(() => {
             if (last_used < elapsed_time++) {
-                releaseInstance().catch(logger.error);
+                instance_lock = instance_lock.catch(_.noop).then(() => {
+                    if (last_used < elapsed_time) {
+                        return releaseInstance().catch(logger.error);
+                    }
+                });
             }
         }, settings.timeout || 600000).unref();
         return shared_instance(options);
