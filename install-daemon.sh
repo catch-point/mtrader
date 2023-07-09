@@ -110,14 +110,14 @@ fi
 PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
 if [ "$PREFIX" = "$BASEDIR" ]; then
   sudo -iu "$DAEMON_USER" npm install jamesrdf/mtrader -g
-  sudo -iu "$DAEMON_USER" npm --depth 9999 update jamesrdf/mtrader -g
+  sudo -iu "$DAEMON_USER" npm update jamesrdf/mtrader -g
 elif [ "$(id -u)" = "0" ]; then
   npm install jamesrdf/mtrader -g
-  npm --depth 9999 update jamesrdf/mtrader -g
+  npm update jamesrdf/mtrader -g
 elif [ ! -x "$(which mtrader)" ]; then
   PREFIX=$(npm prefix)
   npm install jamesrdf/mtrader
-  npm --depth 9999 update jamesrdf/mtrader
+  npm update jamesrdf/mtrader
 fi
 
 if [ ! -x "$PREFIX/bin/uninstall-$NAME" ]; then
