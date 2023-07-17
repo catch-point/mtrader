@@ -60,22 +60,22 @@ function promiseHistoryAgent() {
         const options = url.parse(quote.replace('{symbol}', encodeURIComponent(symbol)));
         const headers = options.headers = {};
         const body = await promiseText(options);
-        const keyword = '{"crumb":"';
+        const keyword = '"crumb":';
         let start = 0, end = 0;
         do {
-            start = body.indexOf(keyword, start) + keyword.length;
-            end = body.indexOf('"', start);
-        } while (start > 0 && body.substring(start-1, end+1)=='"{crumb}"');
-        if (start < 0 && end < 0) return promiseText;
+            start = body.indexOf('"', body.indexOf(keyword, start) + keyword.length);
+            end = body.indexOf('"', start+1)+1;
+        } while (start > 0 && body.substring(start, end)=='"{crumb}"');
+        if (start < 0) return promiseText;
         try {
-            const crumb = encodeURIComponent(JSON.parse(body.substring(start-1, end+1)));
+            const crumb = encodeURIComponent(JSON.parse(body.substring(start, end)));
             return query => {
                 const options = url.parse(query.replace('{crumb}', crumb));
                 options.headers = headers;
                 return promiseText(options);
             };
         } catch(err) {
-            logger.error("Could not find yahoo crumb", symbol, body.substring(start-1, end+1));
+            logger.error("Could not find yahoo crumb", symbol, body.substring(start, end));
             throw err;
         }
     };
