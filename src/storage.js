@@ -113,9 +113,10 @@ function openCollection(dirname, name) {
         },
         lockWith(names, cb) {
             failIfClosed();
-            let expired;
+            const new_entry = {names, cb, unlocked: false};
             const promise = new Promise(aquired => _.defer(() => {
-                const new_entry = {names, promise, aquired, unlocked: false};
+                new_entry.promise = promise;
+                new_entry.aquired = aquired;
                 const uniq_names = _.uniq(names.map(n => n.toString()).sort(), true);
                 const priorLocks = uniq_names.reduce((priorLocks, name) => {
                     if (locks[name]) {
@@ -128,12 +129,12 @@ function openCollection(dirname, name) {
                     }
                 }, []);
                 new_entry.priorLocks = priorLocks;
-                Promise.all(priorLocks.map(entry => entry.promise)).then(aquired, aquired).then(() => {
-                    expired = priorLocks.concat(promise);
+                Promise.all(new_entry.priorLocks.map(entry => entry.promise)).then(aquired, aquired).then(() => {
+                    new_entry.expired = new_entry.priorLocks.concat(promise);
                 });
-            })).then(unlocked => cb(names));
+            })).then(unlocked => new_entry.process = cb(names));
             promise.catch(err => {}).then(result => {
-                locks = _.omit(_.mapObject(locks, values => _.without(values, expired)), _.isEmpty);
+                locks = _.omit(_.mapObject(locks, values => _.without(values, new_entry.expired)), _.isEmpty);
             });
             return promise;
         },
