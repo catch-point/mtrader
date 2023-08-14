@@ -630,6 +630,7 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
                     logger.error("IQFeed", error, error.stack);
                     abort(error);
                 });
+                let first = true;
                 onreceive(socket, function(line) {
                     if (line && line.indexOf("S,STATS,") >= 0) {
                         if (line.indexOf("Not Connected") > 0) {
@@ -643,7 +644,8 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
                             }
                         } else {
                             callback(socket);
-                            return false;
+                            if (first) first = false;
+                            else return false;
                         }
                     } else if (line && line.indexOf("S,REGISTER CLIENT APP COMPLETED") === 0) {
                         send('S,CONNECT', socket);
@@ -658,8 +660,10 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
 
 function openSocket(port) {
     return new Promise(function(callback, abort) {
-        logger.debug("Opening TCP Socket", port);
-        const socket = net.connect(port, () => callback(socket)).on('error', abort);
+        logger.debug("IQFeed opening TCP Socket", port);
+        const socket = net.connect(port, () => callback(socket))
+            .on('error', abort)
+            .on('timeout', () => socket.destroy(Error(`IQFeed socket ${port} timeout`)));
     });
 }
 
