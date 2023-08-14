@@ -47,15 +47,16 @@ module.exports = function(url) {
         logger.log(url.path || url);
         const protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
         const req = protocol.get({...parse_url(url), timeout: 10*1000}, res => {
-            const buffer = [];
+            pending.buffer = [];
             saveCookies(url.headers, res.headers);
             res.setEncoding('utf8');
             res.on('data', data => {
-                buffer.push(data);
+                pending.buffer.push(data);
             }).on('end', () => {
+                pending.end = true;
                 clear(pending);
                 const code = res.statusCode;
-                const body = buffer.join('');
+                const body = pending.buffer.join('');
                 if (code == 404 || code == 410) {
                     resolve();
                 } else if (code != 200 && code != 203) {
@@ -66,9 +67,11 @@ module.exports = function(url) {
                 }
             });
         }).on('error', error => {
+            pending.error = error;
             clear(pending);
             reject(error);
         }).on('timeout', () => {
+            pending.timeout = true;
             req.abort();
             clear(pending);
             reject(Error(`timeout on ${url.path || url}`));
