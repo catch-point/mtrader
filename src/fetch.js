@@ -43,7 +43,8 @@ module.exports = function(settings = {}) {
     let datasources;
     const markets = config('markets');
     const self = function(options) {
-        datasources = datasources || promiseDatasources(settings||{});
+        datasources = datasources && datasources.catch(err=>promiseDatasources(settings||{}))
+            || promiseDatasources(settings||{});
         return datasources.then(async(datasources) => {
             if (options.info=='help' || options.interval == 'help')
                 return help(_.uniq(_.flatten(_.values(datasources).map(_.values))));
