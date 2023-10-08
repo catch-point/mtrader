@@ -899,7 +899,8 @@ async function summarize(iqclient, symbol, options) {
     const now = moment();
     const asof = moment(now).tz(options.tz).format(options.ending_foramt);
     const summary = await iqclient.summary(symbol).catch(err => ({}));
-    const use_mid = summary.decimal_precision && summary.ask && summary.bid;
+    const use_mid = summary.decimal_precision && summary.ask && summary.bid &&
+        summary.bid_timems && summary.ask_timems;
     if (!use_mid && !summary.most_recent_trade_date) return [];
     const date = use_mid ? now.tz('America/New_York') :
         moment.tz(summary.most_recent_trade_date, 'MM/DD/YYYY', 'America/New_York');
