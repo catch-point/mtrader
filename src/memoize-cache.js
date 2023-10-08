@@ -68,6 +68,7 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             const entry = cache[key] = {
                 id: key,
                 heap_before: size > 1 ? process.memoryUsage().heapUsed : null,
+                args: args,
                 result: func.apply(cached, args),
                 registered: 0,
                 locks: []
@@ -80,7 +81,8 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             const entry = cache[key] = {
                 id: key,
                 heap_before: size > 1 ? process.memoryUsage().heapUsed : null,
-                result: func.apply(this, args),
+                args: args,
+                result: func.apply(cached, args),
                 registered: 0,
                 locks: []
             };
@@ -92,7 +94,6 @@ module.exports = function(func, hashFn, poolSize, loadFactor) {
             id: key,
             heap_before: size > 1 ? process.memoryUsage().heapUsed : null,
             result: result,
-            error: null,
             registered: 0,
             locks: [],
             age: 0,
@@ -124,8 +125,9 @@ function aquireEntry(releaseEntry, entry, cb) {
         const next = entry.result && _.isFunction(entry.result.then) ?
             entry.result.then(
                 result => cb.call(this, null, result),
-                err => cb.call(this, err)
-            ) : cb.call(this, entry.error, entry.result);
+                // marked failed cache entry for deletion (might be network issue)
+                err => {entry.marked = true; return cb.call(this, err);}
+            ) : cb.call(this, null, entry.result);
         if (next && _.isFunction(next.catch)) entry.locks.push(next);
         if (next && _.isFunction(next.then)) return next.then(result => {
             releaseEntry(entry, next);
