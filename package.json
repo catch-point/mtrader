@@ -1,6 +1,6 @@
 {
   "name": "mtrader",
-  "version": "15.2.2",
+  "version": "16.0.0",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
   "dependencies": {
@@ -14,7 +14,7 @@
     "fast-csv": "^4.3.6",
     "fast-xml-parser": "^3.12.16",
     "graceful-fs": "^4.1.11",
-    "ib-tws-node": "github:jamesrdf/ib-tws-node#v0.1.6",
+    "ib-tws-node": "github:jamesrdf/ib-tws-node#v1.0.0",
     "implied-volatility": "^1.0.0",
     "moment-timezone": "^0.5.25",
     "shell": "0.5.0",
