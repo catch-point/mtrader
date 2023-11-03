@@ -40,7 +40,7 @@ process.setMaxListeners(process.getMaxListeners()+1);
 
 module.exports = function(url) {
     const pending = _.isString(url) ? {url: url} : _.clone(url);
-    return new Promise(function(resolve, reject) {
+    return pending.promise = new Promise(function(resolve, reject) {
         pending.requested_at = _.now();
         pending.onerror = reject;
         outstanding.push(pending);
@@ -81,7 +81,6 @@ module.exports = function(url) {
           .on('information', () => pending.information = true)
           .on('response', response => pending.response = response || true)
           .on('socket', socket => pending.socket = socket)
-          .on('timeout', () => pending.timeout = true)
           .on('upgrade', upgrade => pending.upgrade = upgrade || true)
           .on('close', () => pending.close = true)
           .on('error', error => pending.error = error || true);
@@ -105,7 +104,7 @@ process.on('SIGINT', () => {
 function clear(pending) {
     const idx = outstanding.indexOf(pending);
     if (idx >= 0) {
-        outstanding.splice(1, idx);
+        outstanding.splice(idx, 1);
     }
 }
 
