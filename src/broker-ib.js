@@ -977,7 +977,7 @@ async function listAccountPositions(markets, ib, fetch, account, positions, hist
         })).filter(exe => exe.asof <= asof_format);
         const details = con_pos && await ib.reqContractDetails({conid}).catch(err => null) || [];
         const contract = con_pos && await ib.reqContract(conid).catch(err => null) || _.first(con_exe);
-        if (contract.secType == 'BAG') return [];
+        if (!contract || contract.secType == 'BAG') return [];
         const detail = _.first(details)||{contract};
         const under_details = !detail.underConid ? [detail] :
             await ib.reqContractDetails({conid:detail.underConid}).catch(async(err) => {
