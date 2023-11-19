@@ -195,8 +195,8 @@ function unregister(self) {
 function sharedInstance(options, settings) {
     last_used = elapsed_time;
     if (shared_instance) return shared_instance(options);
-    else return instance_lock = instance_lock.catch(_.noop).then(() => {
-        if (shared_instance) return shared_instance(options);
+    instance_lock = instance_lock.catch(_.noop).then(() => {
+        if (shared_instance) return shared_instance;
         shared_instance = createInstance(settings);
         instance_timer = setInterval(() => {
             if (last_used < elapsed_time++) {
@@ -207,8 +207,9 @@ function sharedInstance(options, settings) {
                 });
             }
         }, settings.timeout || 600000).unref();
-        return shared_instance(options);
+        return shared_instance;
     });
+    return instance_lock.then(instance => instance(options));
 }
 
 /** Free up shared instance */
