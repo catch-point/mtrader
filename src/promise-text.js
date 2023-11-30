@@ -42,11 +42,12 @@ module.exports = function(url) {
     const pending = _.isString(url) ? {url: url} : _.clone(url);
     return pending.promise = new Promise(function(resolve, reject) {
         pending.requested_at = _.now();
+        pending.onend = resolve;
         pending.onerror = reject;
         outstanding.push(pending);
         logger.log(url.path || url);
         const protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
-        const req = protocol.get({...parse_url(url), timeout: 10*1000}, res => {
+        pending.request = protocol.get({...parse_url(url), timeout: 10*1000}, res => {
             pending.buffer = [];
             saveCookies(url.headers, res.headers);
             res.setEncoding('utf8');
@@ -72,7 +73,7 @@ module.exports = function(url) {
             reject(error);
         }).on('timeout', () => {
             pending.timeout = true;
-            req.abort();
+            pending.request.abort();
             clear(pending);
             reject(Error(`timeout on ${url.path || url}`));
         }).on('abort', () => pending.abort = true)
@@ -82,8 +83,12 @@ module.exports = function(url) {
           .on('response', response => pending.response = response || true)
           .on('socket', socket => pending.socket = socket)
           .on('upgrade', upgrade => pending.upgrade = upgrade || true)
-          .on('close', () => pending.close = true)
-          .on('error', error => pending.error = error || true);
+          .on('finish', () => pending.finish = true)
+          .on('error', error => pending.error = error || true)
+          .on('close', () => {
+            pending.close = true;
+            if (!pending.end && pending.response) pending.response.emit('end');
+        });
     });
 }
 
