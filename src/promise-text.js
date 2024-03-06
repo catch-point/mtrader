@@ -35,7 +35,10 @@ const https = require('https');
 const parse_url = require('url').parse;
 const _ = require('underscore');
 const logger = require('./logger.js');
+const version = require('./version.js');
+const merge = require('./merge.js');
 
+const default_headers = {'user-agent': 'mtrader/'+version};
 process.setMaxListeners(process.getMaxListeners()+1);
 
 module.exports = function(url) {
@@ -47,7 +50,7 @@ module.exports = function(url) {
         outstanding.push(pending);
         logger.log(url.path || url);
         const protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
-        pending.request = protocol.get({...parse_url(url), timeout: 10*1000}, res => {
+        pending.request = protocol.get(merge({headers:default_headers}, {...parse_url(url), timeout: 10*1000}), res => {
             pending.buffer = [];
             saveCookies(url.headers, res.headers);
             res.setEncoding('utf8');

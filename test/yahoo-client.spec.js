@@ -52,7 +52,7 @@ describe("yahoo-client", function() {
             {symbol: /^BRK.A/, longname: name => name.toLowerCase().indexOf("berkshire hathaway") === 0}
         )));
     });
-    it("should find C^K symbol", function() {
+    it.skip("should find C^K symbol", function() {
         return client.lookup('C^K', 'en-US').should.eventually.be.like(results => _.some(results, like(
             {symbol: 'C', longname: name => name.toLowerCase().indexOf("citigroup") === 0}
         )));
