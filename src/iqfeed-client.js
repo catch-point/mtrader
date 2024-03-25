@@ -673,6 +673,7 @@ function closeSocket(socket) {
         socket.on('close', cb).end();
         // wait 1s for remote to ACK FIN
         destroy = setTimeout(() => socket.destroy(), 1000);
+        if (socket.closed) cb(socket.errored);
     }).then(() => clearTimeout(destroy));
 }
 
