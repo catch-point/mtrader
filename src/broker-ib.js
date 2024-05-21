@@ -366,7 +366,7 @@ async function listBalances(markets, ib, fetch, settings, options) {
                     acctNumber, currency,
                     rate: summary.ExchangeRate[currency],
                     net: summary.NetLiquidationByCurrency[currency],
-                    settled: Big(summary.CashBalance[currency])
+                    settled: Big(summary.CashBalance[currency]||0)
                         .minus((summary.FuturesPNL||{})[currency]||0).toString(),
                     accrued: Big((summary.AccruedCash||{})[currency]||0)
                         .add((summary.AccruedDividend||{})[currency]||0)
