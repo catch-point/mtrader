@@ -69,6 +69,15 @@ describe("yahoo-client", function() {
             { Date: '2019-12-20', Dividends: 1.57 }
         ]);
     });
+    it("should find splits for NVDA", function() {
+        return client.split('NVDA', '2024-01-01', 'America/New_York')
+          .then(data => data.filter(d => d.Date < '2025'))
+          .then(data => _.sortBy(data, 'Date'))
+          .then(data => data.slice(data.length-4,data.length))
+          .should.eventually.be.like([
+            { Date: '2024-06-10', "Stock Splits": '10:1' }
+        ]);
+    });
     it("should find dividends for XLK", function() {
         return client.dividend('XLK', '2010-01-01', 'America/New_York')
           .then(data => data.filter(d => d.Date < '2015'))

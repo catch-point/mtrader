@@ -39,7 +39,7 @@ const logger = require('./logger.js');
 const expect = require('chai').expect;
 
 const quote = "https://finance.yahoo.com/lookup?s={symbol}";
-const download = "https://query1.finance.yahoo.com/v7/finance/download/{symbol}?period1={period1}&period2={period2}&interval={interval}&events={events}&crumb={crumb}"
+const download = "https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?period1={period1}&period2={period2}&interval={interval}&events={events}&crumb={crumb}"
 const search = "https://query1.finance.yahoo.com/v1/finance/search";
 
 module.exports = function() {
@@ -48,10 +48,38 @@ module.exports = function() {
     return {
         close() {},
         lookup: lookupSymbol.bind(this, _.memoize(throttlePromise(listSymbols, 2))),
-        month: loadTable.bind(this, throttled, '1mo', 'history'),
-        day: loadTable.bind(this, throttled, '1d', 'history'),
-        dividend: loadTable.bind(this, throttled, '1d', 'div'),
-        split: loadTable.bind(this, throttled, '1d', 'split')
+        day: async(symbol, begin, tz) => {
+            var result = await loadResult(throttled, '1d', 'history', symbol, begin, tz);
+            var quote = result.indicators.quote[0];
+            return result.timestamp.map((timestamp, i) => ({
+                "Date": moment.unix(timestamp).tz(tz).format('YYYY-MM-DD'),
+                "Open": quote.open[i],
+                "High": quote.high[i],
+                "Low": quote.low[i],
+                "Close": quote.close[i],
+                "Volume": quote.volume[i]
+            }));
+        },
+        dividend: async(symbol, begin, tz) => {
+            var result = await loadResult(throttled, '1d', 'div', symbol, begin, tz);
+            var dividends = result.events && result.events.dividends || {};
+            return result.timestamp
+              .filter(timestamp => dividends[timestamp])
+              .map(timestamp => ({
+                "Date": moment.unix(timestamp).tz(tz).format('YYYY-MM-DD'),
+                "Dividends": dividends[timestamp].amount
+            }));
+        },
+        split: async(symbol, begin, tz) => {
+            var result = await loadResult(throttled, '1d', 'split', symbol, begin, tz);
+            var splits = result.events && result.events.splits || {};
+            return result.timestamp
+              .filter(timestamp => splits[timestamp])
+              .map(timestamp => ({
+                "Date": moment.unix(timestamp).tz(tz).format('YYYY-MM-DD'),
+                "Stock Splits": splits[timestamp].splitRatio
+            }));
+        }
     };
 };
 
@@ -90,9 +118,9 @@ function promiseHistoryAgent() {
                 if (error.message == 'Bad Request') return ""; // no data in period
                 agent.close();
                 return agent(query.symbol).then(fn => fn(url)); // try again?
-            }))
-            .then(parseCSV)
-            .then(rows2objects);
+            })).then(json => {
+                return JSON.parse(json).chart.result[0];
+            });
     };
 }
 
@@ -114,15 +142,15 @@ function expire(func, after) {
     });
   }
 
-function loadTable(loadCSV, interval, events, symbol, begin, tz) {
-    expect(loadCSV).to.be.a('function');
+function loadResult(query_chart, interval, events, symbol, begin, tz) {
+    expect(query_chart).to.be.a('function');
     expect(interval).to.be.oneOf(['1mo','1wk','1d']);
     expect(symbol).to.be.a('string').and.match(/^\S+$/);
     const options = _.extend({
         symbol: symbol,
         events: events
     }, periods(interval, begin, tz));
-    return loadCSV(options);
+    return query_chart(options);
 }
 
 function periods(interval, begin, tz) {
@@ -189,34 +217,4 @@ function parseJSON(text) {
         }
         return {ResultSet:{Result:result}};
     }
-}
-
-function parseCSV(text) {
-    if (!text) return [];
-    return _.compact(text.split(/\r?\n/)).map(function(line) {
-        if (line.indexOf(',') < 0) return [line];
-        let m;
-        const row = [];
-        const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
-        if (line.charAt(0) == ',') {
-            row.push('');
-        }
-        while (m = regex.exec(line)) {
-            const string = m[1] || m[2] || '';
-            row.push(string.trim());
-        }
-        return row;
-    });
-}
-
-function rows2objects(rows) {
-    let headers = [];
-    return rows.reduce(function(points, row){
-        if (headers.length && headers.length == row.length) {
-            points.push(_.object(headers, row));
-        } else {
-            headers = row;
-        }
-        return points;
-    }, []);
 }
