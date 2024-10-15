@@ -32,27 +32,30 @@
 
 const http = require('http');
 const https = require('https');
+const URL = require('url').URL;
 const parse_url = require('url').parse;
 const _ = require('underscore');
 const logger = require('./logger.js');
 const version = require('./version.js');
 const merge = require('./merge.js');
 
-const default_headers = {'user-agent': 'mtrader/'+version};
+const default_headers = {'user-agent': 'mtrader/'+version, 'Accept': 'text/html,*/*'};
 process.setMaxListeners(process.getMaxListeners()+1);
 
-module.exports = function(url) {
-    const pending = _.isString(url) ? {url: url} : _.clone(url);
+const promise_text = module.exports = function(url, redirect_counter) {
+    const req = _.isString(url) ? {url: url, ...parse_url(url)} : url;
+    const pending = _.clone(req);
     return pending.promise = new Promise(function(resolve, reject) {
         pending.requested_at = _.now();
         pending.onend = resolve;
         pending.onerror = reject;
         outstanding.push(pending);
-        logger.log(url.path || url);
-        const protocol = (url.protocol || url).indexOf('https') === 0 ? https : http;
-        pending.request = protocol.get(merge({headers:default_headers}, {...parse_url(url), timeout: 10*1000}), res => {
+        logger.log(req.href);
+        const protocol = req.protocol.indexOf('https') === 0 ? https : http;
+        const request = merge({headers:default_headers}, {...req, timeout: 10*1000});
+        pending.request = protocol.get(request, res => {
             pending.buffer = [];
-            saveCookies(url.headers, res.headers);
+            saveCookies(req.headers, res.headers);
             res.setEncoding('utf8');
             res.on('data', data => {
                 pending.buffer.push(data);
@@ -63,8 +66,16 @@ module.exports = function(url) {
                 const body = pending.buffer.join('');
                 if (code == 404 || code == 410) {
                     resolve();
+                } else if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+                    const target = new URL(res.headers.location, req.href).href;
+                    const target_obj = {...req, ...parse_url(target)};
+                    if (redirect_counter > 9) {
+                        reject(Error("Too many redirects in " + req.href));
+                    } else {
+                        resolve(promise_text(target_obj, 1 + (redirect_counter || 0)));
+                    }
                 } else if (code != 200 && code != 203) {
-                    logger.warn(res.statusMessage, code, url.path || url);
+                    logger.warn(res.statusMessage, code, req.href);
                     reject(Error(titleOf(body, res.statusMessage)));
                 } else {
                     resolve(body);
@@ -78,7 +89,7 @@ module.exports = function(url) {
             pending.timeout = true;
             pending.request.abort();
             clear(pending);
-            reject(Error(`timeout on ${url.path || url}`));
+            reject(Error(`timeout on ${req.href}`));
         }).on('abort', () => pending.abort = true)
           .on('connect', connect => pending.connect = connect || true)
           .on('continue', () => pending.continue = true)

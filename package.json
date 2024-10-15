@@ -1,6 +1,6 @@
 {
   "name": "mtrader",
-  "version": "16.0.4",
+  "version": "16.0.5",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
   "dependencies": {
@@ -28,11 +28,11 @@
     "chai": "^3.5.0",
     "chai-as-promised": "^6.0.0",
     "js-beautify": "^1.10.0",
-    "mocha": "^8.2.1"
+    "mocha": "^9.2.2"
   },
   "scripts": {
-    "test": "mocha",
-    "inspect": "mocha --inspect-brk"
+    "test": "mocha --node-option max-http-header-size=65536",
+    "inspect": "mocha --node-option max-http-header-size=65536 --inspect-brk"
   },
   "nyc": {
     "require": [

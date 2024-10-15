@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --max-http-header-size=65536
 // vim: set filetype=javascript:
 // mtrader-bestsignals.js
 /*
