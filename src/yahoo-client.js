@@ -51,7 +51,8 @@ module.exports = function() {
         day: async(symbol, begin, tz) => {
             var result = await loadResult(throttled, '1d', 'history', symbol, begin, tz);
             var quote = result.indicators.quote[0];
-            return result.timestamp.map((timestamp, i) => ({
+            if (!result.timestamp) return [];
+            else return result.timestamp.map((timestamp, i) => ({
                 "Date": moment.unix(timestamp).tz(tz).format('YYYY-MM-DD'),
                 "Open": quote.open[i],
                 "High": quote.high[i],
@@ -63,7 +64,8 @@ module.exports = function() {
         dividend: async(symbol, begin, tz) => {
             var result = await loadResult(throttled, '1d', 'div', symbol, begin, tz);
             var dividends = result.events && result.events.dividends || {};
-            return result.timestamp
+            if (!result.timestamp) return [];
+            else return result.timestamp
               .filter(timestamp => dividends[timestamp])
               .map(timestamp => ({
                 "Date": moment.unix(timestamp).tz(tz).format('YYYY-MM-DD'),
@@ -73,7 +75,8 @@ module.exports = function() {
         split: async(symbol, begin, tz) => {
             var result = await loadResult(throttled, '1d', 'split', symbol, begin, tz);
             var splits = result.events && result.events.splits || {};
-            return result.timestamp
+            if (!result.timestamp) return [];
+            else return result.timestamp
               .filter(timestamp => splits[timestamp])
               .map(timestamp => ({
                 "Date": moment.unix(timestamp).tz(tz).format('YYYY-MM-DD'),
