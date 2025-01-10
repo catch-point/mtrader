@@ -765,7 +765,7 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
         }, "ib-client placeOrder"),
         cancelOrder: time_limit(async(orderId) => {
             logger.log('cancelOrder', orderId);
-            await ib.cancelOrder(orderId);
+            await ib.cancelOrder(orderId, "");
             return new Promise((ready, fail) => {
                 const hdlr = combineListeners(cancelling_orders, orderId, {ready, fail});
                 const check_order = timeout => {
