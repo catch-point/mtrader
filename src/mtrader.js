@@ -150,7 +150,8 @@ if (require.main === module) {
 } else {
     module.exports = Object.assign(createInstance, {
         date: new Dater(),
-        config: new Config()
+        config: new Config(),
+        version: version
     });
 }
 
