@@ -362,7 +362,8 @@ function getPeakBalance(balances, options) {
         last.push(bal); // preserve the original order of balances
         return group;
     }, {last:[]});
-    return _.max(Object.values(group_by_date).map(balances => getBalance(balances, options)));
+    const bigs = Object.values(group_by_date).map(balances => getBalance(balances, options));
+    return _.reduce(bigs, (m,n) => m.cmp(n) >=0 ? m : n, Big(0));
 }
 
 function getSettledCash(current_balances, options) {
