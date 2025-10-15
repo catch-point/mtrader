@@ -122,7 +122,11 @@ function promiseHistoryAgent() {
                 agent.close();
                 return agent(query.symbol).then(fn => fn(url)); // try again?
             })).then(json => {
-                return JSON.parse(json).chart.result[0];
+                return JSON.parse(json);
+            }).then(parsed => {
+                return parsed.chart.result[0];
+            }, error => {
+                throw Error(`Could not parse response from ${url}`);
             });
     };
 }

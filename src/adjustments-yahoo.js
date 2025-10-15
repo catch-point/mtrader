@@ -122,9 +122,9 @@ function yahoo_symbol(markets, options) {
         else
             return options.symbol
                 .replace(/\^/, '-P')
+                .replace(/\.$/g, '')
                 .replace(/[\.\-\/]/, '-')
-                .replace(/-PR./, '-P')
-                .replace(/\./g, '') +
+                .replace(/-PR./, '-P') +
                 suffix;
     } else {
         expect(options).to.be.like({
