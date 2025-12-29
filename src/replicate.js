@@ -453,7 +453,7 @@ function updateActual(desired, actual, options) {
     const adjust_position = !adjusting_order ? 0 :
         adjusting_order.action == 'BUY' ? +adjusting_order.quant :
         adjusting_order.action == 'SELL' ? -adjusting_order.quant : 0;
-    const target_position = actual.position + + adjust_position;
+    const target_position = +actual.position + +adjust_position;
     const pos_offset = target_position - desired.position;
     const stoplosses = orderReplacements(actual.stoploss, desired.stoploss, pos_offset, options);
     const working_refs = _.union(Object.keys(desired.working), Object.keys(actual.working));
