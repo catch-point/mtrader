@@ -1,6 +1,6 @@
 {
   "name": "mtrader",
-  "version": "16.0.10",
+  "version": "16.1.0",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
   "dependencies": {
@@ -14,7 +14,7 @@
     "fast-csv": "^4.3.6",
     "fast-xml-parser": "^3.12.16",
     "graceful-fs": "^4.1.11",
-    "ib-tws-node": "github:jamesrdf/ib-tws-node#v1.0.0",
+    "ib-tws-node": "github:catch-point/ib-tws-node#v1.1.0",
     "implied-volatility": "^1.0.0",
     "moment-timezone": "^0.5.25",
     "shell": "0.5.0",
@@ -32,7 +32,7 @@
   },
   "scripts": {
     "test": "mocha --node-option max-http-header-size=65536",
-    "inspect": "mocha --node-option max-http-header-size=65536 --inspect-brk"
+    "inspect": "mocha --node-option max-http-header-size=65536 --node-option inspect-brk"
   },
   "nyc": {
     "require": [
@@ -43,7 +43,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jamesrdf/mtrader.git"
+    "url": "git+https://github.com/catch-point/mtrader.git"
   },
   "keywords": [
     "trading",
@@ -54,9 +54,9 @@
   "author": "James Leigh",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jamesrdf/mtrader/issues"
+    "url": "https://github.com/catch-point/mtrader/issues"
   },
-  "homepage": "https://github.com/jamesrdf/mtrader#readme",
+  "homepage": "https://github.com/catch-point/mtrader#readme",
   "bin": {
     "mtrader": "src/mtrader.js"
   }

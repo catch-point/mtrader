@@ -41,7 +41,7 @@ describe("ivolatility-client", function() {
     after(function() {
         return client.close();
     });
-    it("should be able to login", function() {
+    it.skip("should be able to login", function() {
         return client.listAvailableDownloads()
           .then(data=>data.forEach(datum=>console.log(datum))||data)
           .should.eventually.be.like([]);

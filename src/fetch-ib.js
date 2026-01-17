@@ -684,7 +684,7 @@ async function interday(findContract, markets, adjustments, client, options) {
     const adjust =
         market.whatToShow == 'ADJUSTED_LAST' || market.whatToShow == 'TRADES' ? fromTrades :
         ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
-        withoutAdjClase;
+        withoutAdjClose;
     const result = adjust(prices, adjusts, options);
     const start = moment.tz(options.begin, options.tz).format(options.ending_format);
     const finish = moment.tz(options.end || options.now, options.tz).format(options.ending_format);
@@ -713,7 +713,7 @@ async function intraday(findContract, markets, adjustments, client, options) {
     const adjust =
         market.whatToShow == 'ADJUSTED_LAST' || market.whatToShow == 'TRADES' ? fromTrades :
         ~['MIDPOINT', 'ASK', 'BID', 'BID_ASK'].indexOf(market.whatToShow) ? fromMidpoint :
-        withoutAdjClase;
+        withoutAdjClose;
     const result = adjust(prices, adjusts, options);
     const start = moment.tz(options.begin, options.tz).format(options.ending_format);
     const finish = moment.tz(options.end || options.now, options.tz).format(options.ending_format);

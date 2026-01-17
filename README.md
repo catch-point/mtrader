@@ -4,7 +4,7 @@ sources to retreive and manipulate data locally for personal use.
 
 ## Instalation
 
-> npm install jamesrdf/mtrader -g
+> npm install catch-point/mtrader -g
 
 ## Usage
 

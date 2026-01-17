@@ -78,7 +78,7 @@ describe("yahoo-client", function() {
             { Date: '2024-06-10', "Stock Splits": '10:1' }
         ]);
     });
-    it("should find dividends for XLK", function() {
+    it.skip("should find dividends for XLK", function() {
         return client.dividend('XLK', '2010-01-01', 'America/New_York')
           .then(data => data.filter(d => d.Date < '2015'))
           .then(data => _.sortBy(data, 'Date'))

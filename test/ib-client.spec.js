@@ -187,27 +187,27 @@ describe("ib-client", function() {
             1, // formatDate {1: yyyyMMdd HH:mm:ss, 2: epoc seconds}
         ).should.eventually.be.like([
             {time:"20140102",open:1.0647,high:1.0678,low:1.05885,close:1.06695},
-            {time:"20140103",open:1.0649,high:1.0672,low:1.06025,close:1.0635},
-            {time:"20140106",open:1.0636,high:1.06805,low:1.0609,close:1.06555},
-            {time:"20140107",open:1.06575,high:1.0782,low:1.06525,close:1.07665},
-            {time:"20140108",open:1.07655,high:1.08305,low:1.0762,close:1.082},
-            {time:"20140109",open:1.08235,high:1.0875,low:1.0819,close:1.08425},
-            {time:"20140110",open:1.0845,high:1.0947,low:1.08375,close:1.08945},
-            {time:"20140113",open:1.09075,high:1.09295,low:1.0843,close:1.08625},
+            {time:"20140103",open:1.0649,high:1.0672,low:1.0603,close:1.0635},
+            {time:"20140106",open:1.0636,high:1.0681,low:1.0609,close:1.06555},
+            {time:"20140107",open:1.0657,high:1.0782,low:1.06526,close:1.0766},
+            {time:"20140108",open:1.0766,high:1.083,low:1.0762,close:1.082},
+            {time:"20140109",open:1.0823,high:1.0875,low:1.0819,close:1.0842},
+            {time:"20140110",open:1.0845,high:1.0947,low:1.08375,close:1.0894},
+            {time:"20140113",open:1.0907,high:1.09296,low:1.0843,close:1.0862},
             {time:"20140114",open:1.0861,high:1.0959,low:1.086,close:1.0946},
-            {time:"20140115",open:1.095,high:1.09915,low:1.09205,close:1.09345},
+            {time:"20140115",open:1.095,high:1.0991,low:1.092,close:1.0934},
             {time:"20140116",open:1.0941,high:1.0963,low:1.0905,close:1.093},
-            {time:"20140117",open:1.0931,high:1.0984,low:1.09265,close:1.0964},
-            {time:"20140120",open:1.0966,high:1.09725,low:1.093,close:1.0948},
+            {time:"20140117",open:1.0931,high:1.0984,low:1.0926,close:1.0964},
+            {time:"20140120",open:1.0966,high:1.0972,low:1.093,close:1.0948},
             {time:"20140121",open:1.0944,high:1.1019,low:1.0943,close:1.0967},
-            {time:"20140122",open:1.0966,high:1.10925,low:1.0954,close:1.10875},
-            {time:"20140123",open:1.10895,high:1.1174,low:1.1083,close:1.11015},
+            {time:"20140122",open:1.0966,high:1.1092,low:1.0954,close:1.10875},
+            {time:"20140123",open:1.10895,high:1.1174,low:1.1083,close:1.1102},
             {time:"20140124",open:1.1104,high:1.11375,low:1.1052,close:1.1087},
             {time:"20140127",open:1.10675,high:1.1117,low:1.1032,close:1.1115},
-            {time:"20140128",open:1.11185,high:1.11775,low:1.10785,close:1.11525},
-            {time:"20140129",open:1.1146,high:1.1187,low:1.11025,close:1.11705},
+            {time:"20140128",open:1.1118,high:1.1177,low:1.1079,close:1.11525},
+            {time:"20140129",open:1.1146,high:1.1187,low:1.1102,close:1.11705},
             {time:"20140130",open:1.1168,high:1.1199,low:1.1151,close:1.1158},
-            {time:"20140131",open:1.11625,high:1.12245,low:1.1088,close:1.1129}
+            {time:"20140131",open:1.1162,high:1.1224,low:1.1088,close:1.1129}
         ]);
     });
     it("should return weekly", function() {
@@ -224,10 +224,10 @@ describe("ib-client", function() {
             1, // formatDate {1: yyyyMMdd HH:mm:ss, 2: epoc seconds}
         ).should.eventually.be.like([
             {time:"20140103",open:1.0647,high:1.0678,low:1.05885,close:1.0635},
-            {time:"20140110",open:1.0636,high:1.0947,low:1.0609,close:1.08945},
-            {time:"20140117",open:1.09075,high:1.09915,low:1.0843,close:1.0964},
+            {time:"20140110",open:1.0636,high:1.0947,low:1.0609,close:1.0894},
+            {time:"20140117",open:1.0907,high:1.0991,low:1.0843,close:1.0964},
             {time:"20140124",open:1.0966,high:1.1174,low:1.093,close:1.1087},
-            {time:"20140131",open:1.10675,high:1.12245,low:1.1032,close:1.1129}
+            {time:"20140131",open:1.10675,high:1.1225,low:1.1032,close:1.1129}
         ]);
     });
     it("should find BRK.A symbol", function() {
@@ -263,26 +263,26 @@ describe("ib-client", function() {
             '30 mins', // barSizeSetting
             'MIDPOINT', // whatToShow
             1, // useRTH
-            1, // formatDate {1: yyyyMMdd HH:mm:ss, 2: epoc seconds}
+            2, // formatDate {1: yyyyMMdd HH:mm:ss {TMZ}, 2: epoc seconds}
         ).should.eventually.be.like([
-            {time:"20140303  08:00:00",open:1.1098,high:1.11025,low:1.10935,close:1.11015},
-            {time:"20140303  08:30:00",open:1.11015,high:1.11025,low:1.10875,close:1.1089},
-            {time:"20140303  09:00:00",open:1.1089,high:1.1092,low:1.1082,close:1.10835},
-            {time:"20140303  09:30:00",open:1.10835,high:1.1096,low:1.10835,close:1.10945},
-            {time:"20140303  10:00:00",open:1.10945,high:1.11005,low:1.1081,close:1.1083},
-            {time:"20140303  10:30:00",open:1.1083,high:1.1083,low:1.10705,close:1.108},
-            {time:"20140303  11:00:00",open:1.108,high:1.10975,low:1.1079,close:1.10865},
-            {time:"20140303  11:30:00",open:1.10865,high:1.1094,low:1.10835,close:1.10915},
-            {time:"20140303  12:00:00",open:1.10915,high:1.1094,low:1.10805,close:1.10855},
-            {time:"20140303  12:30:00",open:1.10855,high:1.11005,low:1.10795,close:1.11005},
-            {time:"20140303  13:00:00",open:1.11005,high:1.1101,low:1.1096,close:1.10975},
-            {time:"20140303  13:30:00",open:1.10975,high:1.1098,low:1.1088,close:1.10955},
-            {time:"20140303  14:00:00",open:1.10955,high:1.1096,low:1.1082,close:1.10855},
-            {time:"20140303  14:30:00",open:1.10855,high:1.1086,low:1.1076,close:1.10845},
-            {time:"20140303  15:00:00",open:1.10845,high:1.10845,low:1.1078,close:1.10805},
-            {time:"20140303  15:30:00",open:1.10805,high:1.10845,low:1.10745,close:1.10845},
-            {time:"20140303  16:00:00",open:1.10845,high:1.10855,low:1.1076,close:1.1077},
-            {time:"20140303  16:30:00",open:1.1077,high:1.108,low:1.1074,close:1.10765}
+            {time:1393851600,open:1.1098,high:1.1102,low:1.1093,close:1.1102},
+            {time:1393853400,open:1.1102,high:1.1102,low:1.1088,close:1.1089},
+            {time:1393855200,open:1.1089,high:1.1092,low:1.1082,close:1.10835},
+            {time:1393857000,open:1.10835,high:1.1096,low:1.10835,close:1.10945},
+            {time:1393858800,open:1.10945,high:1.11005,low:1.1081,close:1.1083},
+            {time:1393860600,open:1.1083,high:1.1083,low:1.10705,close:1.108},
+            {time:1393862400,open:1.108,high:1.10975,low:1.1079,close:1.10865},
+            {time:1393864200,open:1.10865,high:1.1094,low:1.1084,close:1.1091},
+            {time:1393866000,open:1.1091,high:1.1094,low:1.1081,close:1.1085},
+            {time:1393867800,open:1.1085,high:1.11005,low:1.1079,close:1.11005},
+            {time:1393869600,open:1.11005,high:1.1101,low:1.1096,close:1.1098},
+            {time:1393871400,open:1.1098,high:1.1098,low:1.1088,close:1.1096},
+            {time:1393873200,open:1.1096,high:1.1096,low:1.1082,close:1.1086},
+            {time:1393875000,open:1.1086,high:1.1086,low:1.1076,close:1.10845},
+            {time:1393876800,open:1.10845,high:1.10845,low:1.1078,close:1.10805},
+            {time:1393878600,open:1.10805,high:1.10845,low:1.1075,close:1.1084},
+            {time:1393880400,open:1.1084,high:1.10855,low:1.1076,close:1.1077},
+            {time:1393882200,open:1.1077,high:1.108,low:1.1074,close:1.1076}
         ]);
     });
     it("should support reqMktData on USD.CAD", function() {

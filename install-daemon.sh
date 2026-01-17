@@ -31,7 +31,7 @@
 
 #
 # Usage:
-# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/jamesrdf/mtrader/master/install-daemon.sh)'
+# sudo bash -c 'bash <(curl -sL https://raw.githubusercontent.com/catch-point/mtrader/master/install-daemon.sh)'
 #
 
 NAME=mtrader
@@ -109,15 +109,15 @@ fi
 # Install/upgrade software
 PREFIX=$(sudo -iu "$DAEMON_USER" npm prefix -g)
 if [ "$PREFIX" = "$BASEDIR" ]; then
-  sudo -iu "$DAEMON_USER" npm install jamesrdf/mtrader -g
-  sudo -iu "$DAEMON_USER" npm update jamesrdf/mtrader -g
+  sudo -iu "$DAEMON_USER" npm install catch-point/mtrader -g
+  sudo -iu "$DAEMON_USER" npm update catch-point/mtrader -g
 elif [ "$(id -u)" = "0" ]; then
-  npm install jamesrdf/mtrader -g
-  npm update jamesrdf/mtrader -g
+  npm install catch-point/mtrader -g
+  npm update catch-point/mtrader -g
 elif [ ! -x "$(which mtrader)" ]; then
   PREFIX=$(npm prefix)
-  npm install jamesrdf/mtrader
-  npm update jamesrdf/mtrader
+  npm install catch-point/mtrader
+  npm update catch-point/mtrader
 fi
 
 if [ ! -x "$PREFIX/bin/uninstall-$NAME" ]; then

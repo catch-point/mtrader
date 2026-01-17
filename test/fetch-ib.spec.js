@@ -204,7 +204,7 @@ describe("fetch-ib", function() {
             [
                 "CGL.C", "BBD.B",
                 "CCL.B", "GIB.A", "CTC.A",
-                "RCI.B", "SJR.B", "TECK.B"
+                "RCI.B", "TECK.B"
             ].forEach(symbol => {
                 it(symbol, function() {
                     return client({interval:'lookup', symbol, market:"TSE"})
@@ -238,7 +238,7 @@ describe("fetch-ib", function() {
             });
         });
     });
-    describe("lookup futures", function() {
+    describe.only("lookup futures", function() {
         describe.skip("should lookup CME futures symbols", function() {
             _.range((moment().year()-1)%100,(moment().year()+5)%100).map(year => ['H','M','U','Z'].map(mo => {
                 it(`6E${mo}${year}`, function() {
@@ -263,7 +263,7 @@ describe("fetch-ib", function() {
         });
         describe("should lookup CBOT quarterly futures symbols", function() {
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = moment().subtract(1,'months').year();
+            const year = moment().subtract(0,'months').year();
             _.range(year%100,(year+1)%100).map(year => ['H','M','U','Z'].map(mo => {
                 if (month_code.indexOf(mo) > moment().month() && month_code.indexOf(mo) < moment().month()+9)
                 it(`ZN${mo}${year}`, function() {

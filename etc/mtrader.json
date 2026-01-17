@@ -341,7 +341,7 @@
           "whatToShow": "TRADES",
           "secTypes": ["FUT", "FOP"],
           "exchange": "CBOT",
-          "month_abbreviation": true,
+          "month_abbreviation": false,
           "tradingClasses": {
             "ZS": "OZS",
             "ZR": "OZR",

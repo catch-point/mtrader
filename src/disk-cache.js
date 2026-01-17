@@ -281,7 +281,7 @@ function aquireLock(cache, lock_file) {
  */
 function attemptLock(lock_file) {
     return new Promise((locked, notlocked) => {
-        fs.writeFile(lock_file, process.pid, {flag:'wx'}, err => err ? notlocked(err) : locked());
+        fs.writeFile(lock_file, `${process.pid}`, {flag:'wx'}, err => err ? notlocked(err) : locked());
     }).catch(werr => new Promise((ready, error) => {
         logger.trace("Could not aquire lock", werr);
         fs.readFile(lock_file, 'utf8', (err, data) => err ? error(err) : ready(data));
