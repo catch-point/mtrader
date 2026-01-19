@@ -396,9 +396,6 @@ describe("ib-client", function() {
     it.skip("should requestFA Groups", function() {
         return client.requestGroups().should.eventually.be.an('array');
     });
-    it.skip("should requestFA Profiles", function() {
-        return client.requestProfiles().should.eventually.be.an('array');
-    });
     it.skip("should requestFA Aliases", function() {
         return client.requestAliases().should.eventually.be.an('array');
     });

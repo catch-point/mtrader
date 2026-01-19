@@ -91,7 +91,7 @@ async function createClient(clientId, ib_tz, timeout, settings = {}) {
     const self = new.target ? this : {};
     const ib = await IB(settings);
     ib.setMaxListeners(20);
-    ib.on('error', (id_or_str, err_code, err_msg) => {
+    ib.on('error', (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) => {
         // Some error messages might just be warnings
         // @see https://groups.io/g/twsapi/message/40551
         if (err_code == 1101) {
@@ -116,7 +116,7 @@ async function createClient(clientId, ib_tz, timeout, settings = {}) {
     const login_timeout = Date.now() + (settings.login_timeout || 300) * 1000;
     const once_connected = new Promise((ready, fail) => {
         let first_error = null;
-        const on_error = (id_or_str, err_code, err_msg) => {
+        const on_error = (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) => {
             first_error = first_error || Error(err_msg || id_or_str);
             if (self.connecting && !self.connected) {
                 if (login_timeout < Date.now()) {
@@ -225,8 +225,8 @@ function reqPositions(ib) {
     const positions = {};
     let positions_end, positions_fail;
     let promise_positions = Promise.resolve();
-    ib.on('error', function (id_or_str, err_code, err_msg) {
-        if (isGeneralError(id_or_str, err_code, err_msg)) {
+    ib.on('error', function (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) {
+        if (isGeneralError(id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson)) {
             if (positions_fail) positions_fail(err_msg || id_or_str);
         }
     }).on('exit', () => {
@@ -256,8 +256,8 @@ function reqPositions(ib) {
 
 function currentTime(ib) {
     let received, fail, promise = Promise.resolve();
-    ib.on('error', function (id_or_str, err_code, err_msg) {
-        if (isGeneralError(id_or_str, err_code, err_msg)) {
+    ib.on('error', function (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) {
+        if (isGeneralError(id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson)) {
             if (fail) fail(err_msg || id_or_str);
         }
     }).on('exit', () => {
@@ -280,12 +280,12 @@ function currentTime(ib) {
 function requestFA(ib) {
     let fa_disabled;
     let received, fail, promise = Promise.resolve();
-    ib.on('error', function (id_or_str, err_code, err_msg) {
+    ib.on('error', function (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) {
         if (err_code == 321) {
             // Server error when validating an API client request.
             fa_disabled = err_msg;
             if (fail) fail(err_msg);
-        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
+        } else if (isGeneralError(id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson)) {
             // Error validating request: FA data operations ignored for non FA customers.
             if (err_code == 321 && received) received([]);
             else if (fail) fail(err_msg || id_or_str);
@@ -308,16 +308,7 @@ function requestFA(ib) {
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
                 fail = reject;
-                return ib.requestFA(getFaDataType('GROUPS')).catch(reject);
-            }));
-        },
-        requestProfiles() {
-            if (fa_disabled) throw fa_disabled;
-            return promise = promise.catch(err => {})
-              .then(() => new Promise((resolve, reject) => {
-                received = resolve;
-                fail = reject;
-                return ib.requestFA(getFaDataType('PROFILES')).catch(reject);
+                return ib.requestFA('GROUPS').catch(reject);
             }));
         },
         requestAliases() {
@@ -326,7 +317,7 @@ function requestFA(ib) {
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
                 fail = reject;
-                return ib.requestFA(getFaDataType('ALIASES')).catch(reject);
+                return ib.requestFA('ALIASES').catch(reject);
             }));
         }
     };
@@ -366,10 +357,10 @@ function accountUpdates(ib, time_limit, store, ib_tz) {
                 return save(summary.AccountCode, month, summary);
         })).catch(err => logger.error("Could not flush IB balances", err));
     }, 60*1000); // 1m
-    ib.on('error', function (id_or_str, err_code, err_msg) {
+    ib.on('error', function (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) {
         if (req_queue[id_or_str]) {
             req_queue[id_or_str].fail(err_msg || id_or_str);
-        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
+        } else if (isGeneralError(id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson)) {
             Object.keys(req_queue).forEach(reqId => {
                 const task = req_queue[reqId];
                 delete req_queue[reqId];
@@ -549,7 +540,7 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
             });
         }, Promise.resolve()).catch(err => logger.error("Could not flush IB orders", err));
     }, 10*60*1000); // 10m
-    ib.on('error', function (id_or_str, err_code, err_msg) {
+    ib.on('error', function (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) {
         if (placing_orders[id_or_str]) {
             const id = id_or_str;
             if (err_code == 481) { // Order size was reduced warning
@@ -602,7 +593,7 @@ function openOrders(ib, time_limit, store, ib_tz, clientId) {
             orders[id_or_str].status = 'Filled';
         } else if (err_code >= 2000 && err_code < 3000) {
             // warning
-        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
+        } else if (isGeneralError(id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson)) {
             Object.entries(placing_orders).forEach(([orderId, req]) => {
                 delete placing_orders[orderId];
                 req.fail(err_msg || id_or_str);
@@ -931,10 +922,10 @@ function execDetails(ib, time_limit, store, ib_tz) {
             return store && !closed && reduce_details({time: min_month}, (nil, exe) => {}, null);
         })).catch(err => logger.error("Could not flush IB executions", err));
     }, 10000); // 10s
-    ib.on('error', function (id_or_str, err_code, err_msg) {
+    ib.on('error', function (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) {
         if (req_queue[id_or_str]) {
             req_queue[id_or_str].reject(Error(err_msg));
-        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
+        } else if (isGeneralError(id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson)) {
             Object.keys(req_queue).forEach(reqId => {
                 const task = req_queue[reqId];
                 delete req_queue[reqId];
@@ -1071,10 +1062,10 @@ function reqContract(ib, time_limit) {
             reqCachedContract.replaceEntry(contract.conid, contract);
         }
     };
-    ib.on('error', function (id_or_str, err_code, err_msg) {
+    ib.on('error', function (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) {
         if (req_queue[id_or_str]) {
             req_queue[id_or_str].reject(Error(err_msg));
-        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
+        } else if (isGeneralError(id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson)) {
             Object.keys(req_queue).forEach(reqId => {
                 const task = req_queue[reqId];
                 delete req_queue[reqId];
@@ -1112,7 +1103,7 @@ function reqContract(ib, time_limit) {
     return {reqContract: reqCachedContract};
 }
 
-function isGeneralError(id_or_str, err_code, err_msg) {
+function isGeneralError(id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) {
     if (id_or_str > 0) return false;
     else if (!err_code) return true;
     const code = err_code;
@@ -1168,7 +1159,7 @@ function requestWithId(ib, time_limit) {
             ib[cmd].call(ib, reqId, ...args).catch(fail);
         });
     }, (cmd) => `ib-client ${cmd}`), 50);
-    ib.on('error', function (id_or_str, err_code, err_msg) {
+    ib.on('error', function (id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson) {
         if (req_queue[id_or_str]) {
             // E10167: Displaying delayed market data...
             if (err_code != 10167) _.delay(() => {
@@ -1177,7 +1168,7 @@ function requestWithId(ib, time_limit) {
                 const fn = err_code == 10197 && req.retry || req.reject || _.noop;
                 return fn(err_msg);
             }, err_code == 10197 ? 10000 : 0);
-        } else if (isGeneralError(id_or_str, err_code, err_msg)) {
+        } else if (isGeneralError(id_or_str, err_time, err_code, err_msg, advancedOrderRejectJson)) {
             Object.keys(req_queue).forEach(reqId => {
                 const task = req_queue[reqId];
                 delete req_queue[reqId];
@@ -1494,13 +1485,4 @@ function getAllTags() {
         'Leverage',
         '$LEDGER:ALL'
     ];
-}
-
-function getFaDataType(name) {
-    const FA_DATA_TYPE = {
-      GROUPS: 1,
-      PROFILES: 2,
-      ALIASES: 3
-    };
-    return FA_DATA_TYPE[name];
 }

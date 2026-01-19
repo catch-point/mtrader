@@ -512,7 +512,7 @@ async function submitOrder(root_ref, markets, ib, fetch, settings, options, pare
         logger.warn("Could not replace order: ", err);
         return ib.reqId(fn);
     }) : ib.reqId;
-    const contract = await toContract(markets, ib, options);
+    const contract = await toContractWithId(markets, ib, options);
     const ib_order = await orderToIbOrder(markets, ib, fetch, settings, contract, options, options);
     const attached = flattenOCA(options.attached);
     const transmit = 'transmit' in markets[options.market || (attached[0]||{}).market] ?
@@ -951,9 +951,6 @@ async function listAccounts(ib, account) {
     const groups = await ib.requestGroups();
     const group = groups.find(g => account == g.name);
     if (group) return group.ListOfAccts;
-    const profiles = await ib.requestProfiles();
-    const profile = profiles.find(p => account == p.name);
-    if (profile) return profile.ListOfAllocations.map(a => a.acct);
     return [account]; // maybe a model?
 }
 

@@ -399,7 +399,6 @@ describe("broker-ib", function() {
             reqManagedAccts: () => Promise.resolve([ 'test' ]),
             requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
             requestGroups: () => Promise.resolve([ ]),
-            requestProfiles: () => Promise.resolve([ ]),
             placeOrder: (...args) => {expect(args).to.be.like([ 3,
              { localSymbol: 'SPY',
                secType: 'STK',
