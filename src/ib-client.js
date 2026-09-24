@@ -308,7 +308,7 @@ function requestFA(ib) {
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
                 fail = reject;
-                return ib.requestFA('GROUPS').catch(reject);
+                return ib.requestFA(1/*'GROUPS'*/).catch(reject);
             }));
         },
         requestAliases() {
@@ -317,7 +317,7 @@ function requestFA(ib) {
               .then(() => new Promise((resolve, reject) => {
                 received = resolve;
                 fail = reject;
-                return ib.requestFA('ALIASES').catch(reject);
+                return ib.requestFA(3/*'ALIASES'*/).catch(reject);
             }));
         }
     };
