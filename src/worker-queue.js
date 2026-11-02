@@ -33,6 +33,12 @@
 const _ = require('underscore');
 const logger = require('./logger.js');
 
+/**
+ * Load-balancing task queue over a pool of workers (forked children or remote
+ * services). Tasks go to the least-loaded worker in the lowest tier; workers
+ * are created lazily with createWorkers and execTask(worker, ...args) runs a
+ * task on the chosen worker.
+ */
 module.exports = function(createWorkers, execTask) {
     const queue = [];
     const workers = [];

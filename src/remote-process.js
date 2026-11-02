@@ -48,6 +48,11 @@ const EOM = '\r\n\r\n';
 
 const DEFAULT_PATH = `/mtrader/${version.major_version}/remote`;
 
+/**
+ * Wraps a (optionally mutual-TLS) WebSocket to an `mtrader start` service so it
+ * looks like a forked child process, letting promise-reply.js and
+ * worker-queue.js treat remote services and local workers the same.
+ */
 const remote = module.exports = function(settings = {}, socket = null) {
     if (_.isEmpty(settings) && !socket) throw Error("No remote location given");
     if (typeof settings == 'string' || typeof settings == 'number')

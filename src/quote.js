@@ -48,6 +48,9 @@ const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
 /**
+ * Quote layer: evaluates columns/criteria expressions over one security's bars
+ * (across any mix of intervals) using common, lookback and indicator functions,
+ * persisting fetched bars and computed columns in storage.js under cache_dir.
  * @returns a function that returns array of row objects based on given options
  */
 module.exports = function(fetch, settings = {}) {

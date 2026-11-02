@@ -36,6 +36,12 @@ const AssertionError = require('chai').AssertionError;
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
+/**
+ * Promise-based request/response over a child process or remote socket
+ * (anything with send/on('message')). Callers use request(cmd, payload) and
+ * the other side registers handle(cmd, fn); pending requests are rejected if
+ * the connection is lost. This is how mtrader-*.js workers are driven.
+ */
 module.exports = function(process) {
     let seq = 0;
     const handlers = {};

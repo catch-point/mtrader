@@ -41,6 +41,10 @@ const config = require('./config.js');
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
+/**
+ * Worker queue whose workers are remote mtrader services (collect.remote),
+ * retrying a failed task on another worker when more than one is available.
+ */
 module.exports = createInstance;
 
 function createInstance(settings = {}) {

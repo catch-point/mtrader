@@ -32,14 +32,8 @@
   },
   "scripts": {
     "test": "mocha --node-option max-http-header-size=65536",
-    "inspect": "mocha --node-option max-http-header-size=65536 --node-option inspect-brk"
-  },
-  "nyc": {
-    "require": [
-      "babel-register"
-    ],
-    "sourceMap": false,
-    "instrument": false
+    "inspect": "mocha --node-option max-http-header-size=65536 --node-option inspect-brk",
+    "docs": "node scripts/generate-reference.js"
   },
   "repository": {
     "type": "git",
@@ -52,7 +46,7 @@
     "finance"
   ],
   "author": "James Leigh",
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "bugs": {
     "url": "https://github.com/catch-point/mtrader/issues"
   },

@@ -42,6 +42,11 @@ const logger = require('./logger.js');
 const debounce = require('./debounce.js');
 const cache = require('./memoize-cache.js');
 
+/**
+ * Persistent store used by quote: a database per symbol under dirname,
+ * holding named collections saved as gzipped CSV files with metadata,
+ * written atomically and cached open in memory.
+ */
 module.exports = _.extend(function(dirname) {
     const cachedDatabases = cache(openDatabase.bind(this, dirname));
     return {

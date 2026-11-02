@@ -39,6 +39,13 @@ const logger = require('./logger.js');
 const like = require('./like.js');
 const expect = require('chai').use(like).expect;
 
+/**
+ * Fetch layer (bottom of the stack, see docs/architecture.md). Builds an
+ * interval -> market -> datasource table from the {info:'help'} metadata of
+ * each enabled fetch-*.js adapter (yahoo is always the fallback) and routes
+ * lookup, contract, fundamental, adjustments and bar requests to it.
+ * @returns a function that returns array of row objects based on given options
+ */
 module.exports = function(settings = {}) {
     let datasources;
     const markets = config('markets');

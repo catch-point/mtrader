@@ -40,6 +40,13 @@ const Simulation = require('./broker-simulation.js');
 const Remote = require('./broker-remote.js');
 const expect = require('chai').expect;
 
+/**
+ * Broker layer: exposes the first enabled broker-*.js adapter (ib,
+ * collective2, simulation or remote) that accepts the given settings, behind
+ * the common action interface
+ * (balances, positions, orders, BUY/SELL/OCA/cancel, ...), filtering options
+ * to those declared in the adapter's {info:'help'}.
+ */
 module.exports = function(settings, quote) {
     const Brokers = _.object(_.compact([
         (settings.ib||{}).enabled && ['ib', IB],

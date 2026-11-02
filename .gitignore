@@ -39,3 +39,6 @@ jspm_packages
 # temp files
 tmp
 *.swp
+
+# Runtime cache and state (default cache_dir and lib_dir)
+var
