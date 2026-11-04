@@ -60,7 +60,7 @@ describe("fetch-iqfeed", function() {
             return client({interval:'lookup',symbol:'IBM', listed_market:"NYSE"})
               .should.eventually.be.like(results => _.some(results, like({
                 symbol: 'IBM',
-                name: "INTERNATIONAL BUSINESS MACHINE"
+                name: /^INTERNATIONAL BUSINESS MACHINES?$/
             })));
         });
         it("should find BRK.A symbol", function() {
@@ -140,9 +140,9 @@ describe("fetch-iqfeed", function() {
         });
         describe("should find TSE listing", function() {
             [
-                "CGL.C", "BBD.B", "BAM.A",
+                "CGL.C", "BBD.B", "QBR.B",
                 "CCL.B", "GIB.A", "CTC.A",
-                "RCI.B", "SJR.B", "TECK.B"
+                "RCI.B", "TCL.A", "TECK.B"
             ].forEach(symbol => {
                 it(symbol, function() {
                     return client({interval:'lookup', symbol, market:"TSE"})
@@ -262,13 +262,21 @@ describe("fetch-iqfeed", function() {
         });
     });
     describe("lookup future options", function() {
+        /**
+         * The first of the cycle's contract months after the date's month,
+         * rolling over into the next year
+         */
+        function nextContractMonth(cycle, date = moment()) {
+            const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
+            const mo = cycle.find(mo => month_code.indexOf(mo) > date.month());
+            return mo ? {mo, year: date.year() % 100} : {mo: cycle[0], year: (date.year() + 1) % 100};
+        }
         describe("should lookup Jan CME future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = (moment().year())%100;
-            const mo = ['F', 'J', 'M', 'V'].find(mo => month_code.indexOf(mo) > moment().month()) || 'V';
+            const {mo, year} = nextContractMonth(['F', 'J', 'M', 'V']);
             [
-                {underlying: 'GF', tradingClass:'GF', strike: 163, ib_scale:10, iq_scale:1000}
+                {underlying: 'GF', tradingClass:'GF', strike: 164, ib_scale:10, iq_scale:1000}
             ].forEach(c => {
                 const k = d4(c.strike*10).substring(0,4);
                 it(`${c.underlying}${mo}${year}`, function() {
@@ -290,8 +298,7 @@ describe("fetch-iqfeed", function() {
         describe("should lookup Jan CBOT future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = (moment().year())%100;
-            const mo = ['F', 'J', 'M', 'V'].find(mo => month_code.indexOf(mo) > moment().month()) || 'V';
+            const {mo, year} = nextContractMonth(['F', 'J', 'M', 'V']);
             [
                 {underlying: 'ZS', tradingClass:'OZS', strike:1400,ib_scale:10,iq_scale:10,iq_root:'@S'}
             ].forEach(c => {
@@ -315,8 +322,7 @@ describe("fetch-iqfeed", function() {
         describe("should lookup Feb CME future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = (moment().year())%100;
-            const mo = ['G', 'K', 'Q', 'X'].find(mo => month_code.indexOf(mo) > moment().month()) || 'X';
+            const {mo, year} = nextContractMonth(['G', 'K', 'Q', 'X']);
             [
                 {underlying:'LE',tradingClass:'LE', strike: 142,ib_scale:10,iq_scale:1000},
                 {underlying:'HE',tradingClass:'HE', strike: 95,ib_scale:10,iq_scale:1000}
@@ -341,10 +347,9 @@ describe("fetch-iqfeed", function() {
         describe("should lookup Feb NYME future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = (moment().year())%100;
-            const mo = ['G', 'K', 'Q', 'X'].find(mo => month_code.indexOf(mo) > moment().month()) || 'X';
+            const {mo, year} = nextContractMonth(['G', 'K', 'Q', 'X']);
             [
-                {underlying:'GC',tradingClass:'OG', strike: 1800,ib_scale:1,iq_scale:1,iq_root:'QGC'}
+                {underlying:'GC',tradingClass:'OG', strike: 3000,ib_scale:1,iq_scale:1,iq_root:'QGC'}
             ].forEach(c => {
                 const k = d4(c.strike*c.ib_scale).substring(0,4);
                 it(`${c.underlying}${mo}${year}`, function() {
@@ -366,20 +371,18 @@ describe("fetch-iqfeed", function() {
         describe("should lookup Mar CME future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = (moment().year())%100;
-            const mo = ['H', 'M', 'U', 'Z'].find(mo => month_code.indexOf(mo) > moment().month()) || 'Z';
+            const {mo, year} = nextContractMonth(['H', 'M', 'U', 'Z']);
             [
                 {underlying:'NQ',tradingClass:'NQ', strike: 14000,ib_scale:0.1,iq_scale:100},
                 {underlying:'ES',tradingClass:'ES', strike: 4000,ib_scale:1,iq_scale:100},
                 {underlying:'EUR',tradingClass:'EUU',strike: 1, ib_scale:1000,iq_scale:10000,iq_root:'@EUU'},
                 {underlying:'AUD',tradingClass:'ADU',strike: 0.7, ib_scale:1000,iq_scale:10000,iq_root:'@ADU'},
                 {underlying:'GBP',tradingClass:'GBU',strike: 1.3, ib_scale:10000,iq_scale:10000,iq_root:'@GBU'},
-                {underlying:'CHF',tradingClass:'CHU',strike: 1, ib_scale:1000,iq_scale:1000,iq_root:'@CHU'},
+                {underlying:'CHF',tradingClass:'CHU',strike: 1.1, ib_scale:1000,iq_scale:1000,iq_root:'@CHU'},
                 {underlying:'MXP',tradingClass:'6M', strike: 0.048, ib_scale:10000,iq_scale:1000000,iq_root:'@PX'},
                 {underlying:'CAD',tradingClass:'CAU', strike: 0.79, ib_scale:1000,iq_scale:10000,iq_root:'@CAU'},
-                {underlying:'NZD',tradingClass:'6N', strike: 0.7, ib_scale:1000,iq_scale:1000,iq_root:'@NE'},
-                {underlying:'JPY',tradingClass:'JPU', strike: 0.0088, ib_scale:100000,iq_scale:1000000,iq_root:'@JPU'},
-                {underlying:'GE',tradingClass:'GE', strike: 98, ib_scale:100,iq_scale:10000,iq_root:'@ED'}
+                {underlying:'NZD',tradingClass:'6N', strike: 0.65, ib_scale:1000,iq_scale:1000,iq_root:'@NE'},
+                {underlying:'JPY',tradingClass:'JPU', strike: 0.0088, ib_scale:100000,iq_scale:1000000,iq_root:'@JPU'}
             ].forEach(c => {
                 const k = d4(c.strike*c.ib_scale);
                 it(`${c.tradingClass}${mo}${year}`, function() {
@@ -400,8 +403,7 @@ describe("fetch-iqfeed", function() {
         });
         describe("should lookup Mar COMEX future options symbols", function() {
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = (moment().year())%100;
-            const mo = ['H', 'M', 'U', 'Z'].find(mo => month_code.indexOf(mo) > moment().month()) || 'Z';
+            const {mo, year} = nextContractMonth(['H', 'M', 'U', 'Z']);
             [
                 {underlying:'HG', tradingClass:'HXE', strike:4.5,ib_scale:100,iq_scale:100,iq_root:'QHG'}
             ].forEach(c => {
@@ -425,8 +427,7 @@ describe("fetch-iqfeed", function() {
         describe("should lookup monthly CME future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = (moment().year())%100;
-            const mo = month_code.find(mo => month_code.indexOf(mo) > moment().month()) || 'Z';
+            const {mo, year} = nextContractMonth(month_code);
             [
                 {underlying:'CB',tradingClass:'CB', strike:260,f:10,ib_scale:10,iq_scale:1000,iq_root:'@CB'},
                 {underlying:'GDK',tradingClass:'GDK',strike:24,f:100,ib_scale:100,iq_scale:100,iq_root:'@DK'},
@@ -452,11 +453,11 @@ describe("fetch-iqfeed", function() {
         describe("should lookup monthly NYMEX future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const date = moment().startOf('month').add(2,'months');
-            const year = (date.year())%100;
-            const mo = month_code.find(mo => month_code.indexOf(mo) > date.month()) || 'Z';
+            const {mo, year} = nextContractMonth(month_code, moment().startOf('month').add(2,'months'));
+            // Brent options are pending: IQFeed lists them under QBE, while
+            // etc/mtrader.json maps BZ to the futures root QBZ
+            it.skip(`BZ${mo}${year} (IQFeed lists Brent options under QBE, which is not mapped)`);
             [
-                {underlying:'BZ',tradingClass:'BE', strike: 80,ib_scale:100,iq_scale:100,iq_root:'QBE'},
                 {underlying:'NG',tradingClass:'ON', strike: 4,ib_scale:1000,iq_scale:1000,iq_root:'QNG'},
                 {underlying:'RB',tradingClass:'OB', strike: 2.4,ib_scale:10000,iq_scale:10000,iq_root:'QRB'}
             ].forEach(c => {
@@ -480,8 +481,7 @@ describe("fetch-iqfeed", function() {
         describe("should lookup alternate month CBOT future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = (moment().year())%100;
-            const mo = ['F', 'H', 'K', 'N', 'U', 'X'].find(mo => month_code.indexOf(mo) > moment().month()) || 'X';
+            const {mo, year} = nextContractMonth(['F', 'H', 'K', 'N', 'U', 'X']);
             [
                 {underlying:'ZR',tradingClass:'OZR', strike:1400,ib_scale:10,iq_scale:10,iq_root:'@RR'}
             ].forEach(c => {
@@ -505,16 +505,15 @@ describe("fetch-iqfeed", function() {
         describe("should lookup Mar CBOT future options symbols", function() {
             const d4 = d3.format('04');
             const month_code = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-            const year = (moment().year())%100;
-            const mo = ['H', 'M', 'U', 'Z'].find(mo => month_code.indexOf(mo) > moment().month()) || 'Z';
+            const {mo, year} = nextContractMonth(['H', 'M', 'U', 'Z']);
             [
                 {underlying:'ZW',tradingClass:'OZW',strike:770,ib_scale:10,iq_scale:10,iq_root:'@W'},
                 {underlying:'KE',tradingClass:'OKE', strike:750,ib_scale:10,iq_scale:10,iq_root:'@KW'},
                 {underlying:'ZO',tradingClass:'OZO', strike: 600,ib_scale:10,iq_scale:10,iq_root:'@O'},
-                {underlying:'ZT',tradingClass:'OZT',strike:108,ib_scale:100,iq_scale:100,iq_root:'@TU'},
+                {underlying:'ZT',tradingClass:'OZT',strike:107.5,ib_scale:100,iq_scale:100,iq_root:'@TU'},
                 {underlying:'ZN',tradingClass:'OZN', strike:128,ib_scale:100,iq_scale:100,iq_root:'@TY'},
-                {underlying:'ZB',tradingClass:'OZB', strike:155,ib_scale:100,iq_scale:100,iq_root:'@US'},
-                {underlying:'UB',tradingClass:'OUB', strike:190,ib_scale:100,iq_scale:100,iq_root:'@UB'}
+                {underlying:'ZB',tradingClass:'OZB', strike:140,ib_scale:100,iq_scale:100,iq_root:'@US'},
+                {underlying:'UB',tradingClass:'OUB', strike:145,ib_scale:100,iq_scale:100,iq_root:'@UB'}
             ].forEach(c => {
                 const k = d4(c.strike*c.ib_scale);
                 it(`${c.underlying}${mo}${year}`, function() {

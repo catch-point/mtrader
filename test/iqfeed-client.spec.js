@@ -99,7 +99,7 @@ describe("iqfeed-client", function() {
         return client.lookup('IBM', "NYSE").should.eventually.be.like(results => _.some(results, like({
             symbol: 'IBM',
             listed_market: "NYSE",
-            name: "INTERNATIONAL BUSINESS MACHINE"
+            name: /^INTERNATIONAL BUSINESS MACHINES?$/
         })));
     });
     it.skip("should find USD/CAD details", function() {

@@ -30,16 +30,21 @@
  */
 
 import _ from 'underscore';
+import logger from './logger.js';
 
 /**
  * Given a factory function and time limit, where the factory function
  * returns an object of async functions, this factory function returns a wrapped
  * object and recreates it (and calls again) when time limit is reached on a
- * async response.
+ * async response. A call that reaches the time limit again after max_restarts
+ * restarts fails instead. Closing an object (to restart it or on close) waits
+ * at most limit_ms, up to 30 seconds, so a close that never finishes cannot
+ * block the restart.
  */
-export default function(factory, limit_ms, label_fn) { // new AutoRestart factory
+export default function(factory, limit_ms, label_fn, max_restarts = Infinity) { // new AutoRestart factory
     return function() { // new object wrapper instance
         const interval = Math.min(limit_ms, 1000), active = [];
+        const close_limit = Math.min(limit_ms, 30000);
         const factory_this = this, factory_args = Array.from(arguments);
         const object = factory.apply(factory_this, factory_args), self = new.target ? this : {};
         let closed = false, restarting = false, pulse_timeout, pulse_counter = 0;
@@ -52,6 +57,7 @@ export default function(factory, limit_ms, label_fn) { // new AutoRestart factor
                     label,
                     cmd, args: Array.from(arguments),
                     expires: pulse_counter +limit_ms,
+                    restarts: 0,
                     ready, abort
                 };
                 active.push(entry);
@@ -66,7 +72,7 @@ export default function(factory, limit_ms, label_fn) { // new AutoRestart factor
                 closed = true;
                 if (pulse_timeout) clearTimeout(pulse_timeout);
                 const object = await promise_object;
-                if (_.isFunction(object.close)) await object.close.apply(object, arguments);
+                if (_.isFunction(object.close)) await closeWithin(object, arguments);
                 return Promise.all(active.splice(0, active.length).map(entry => {
                     return Promise.reject(Error(`${entry.label} is being closed`))
                       .then(entry.ready, entry.abort);
@@ -92,16 +98,38 @@ export default function(factory, limit_ms, label_fn) { // new AutoRestart factor
             });
         }
 
+        async function closeWithin(object, args) {
+            let timer;
+            const timeout = new Promise(cb => timer = setTimeout(cb, close_limit, 'timeout'));
+            const result = await Promise.race([
+                Promise.resolve().then(() => object.close.apply(object, args || [])),
+                timeout
+            ]).finally(() => clearTimeout(timer));
+            if (result == 'timeout') {
+                const label = typeof label_fn == 'string' ? label_fn : 'object';
+                logger.warn(`${label} did not close within ${close_limit} ms`);
+            }
+        }
+
         function pulse() {
             pulse_counter+= interval;
             _.defer(() => {
+                const expired = active.filter(entry => entry.expires < pulse_counter);
+                if (expired.length && !closed) {
+                    // calls that have been restarted enough times fail
+                    expired.filter(entry => entry.restarts >= max_restarts).forEach(entry => {
+                        active.splice(active.indexOf(entry), 1);
+                        entry.abort(Error(`${entry.label} did not respond within ${limit_ms} ms`));
+                    });
+                }
                 if (active.some(entry => entry.expires < pulse_counter) && !closed) {
                     promise_object = promise_object.then(async(object) => {
-                        if (!closed && _.isFunction(object.close)) await object.close();
+                        if (!closed && _.isFunction(object.close)) await closeWithin(object).catch(_.noop);
                         if (!closed) return factory.apply(factory_this, factory_args);
                         else return object;
                     });
                     active.forEach(entry => {
+                        if (entry.expires < pulse_counter) entry.restarts++;
                         entry.expires = pulse_counter +limit_ms;
                         ignite(entry); // call again on new object
                     });

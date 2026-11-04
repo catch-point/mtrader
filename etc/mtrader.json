@@ -404,7 +404,7 @@
       "datasources": {
         "iqfeed": {
           "security_types": ["IEOPTION", "MUTUAL", "MONEY", "BONDS", "INDEX", "MKTSTATS", "FUTURE", "FOPTION", "SPREAD", "FORWARD", "CALC", "STRIP", "SSFUTURE", "MKTDEPTH", "PRECMTL"],
-          "listed_markets": ["CMEMINI", "CME_GBX", "CLEARPORT"],
+          "listed_markets": ["CMEMINI", "CME_GBX"],
           "right_pad_foptions": {
             "GF": 2,
             "LE": 2,

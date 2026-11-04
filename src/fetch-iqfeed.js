@@ -228,12 +228,14 @@ function createInstance(settings = {}) {
     const symbol = iqfeed_symbol.bind(this, markets);
     const launch = settings.command;
     const timeout = settings && settings.timeout || 600000;
-    const Client = autoRestart(iqfeed, timeout, 'iqfeed');
+    // a call still unanswered after a restart fails rather than restarting forever
+    const Client = autoRestart(iqfeed, timeout, 'iqfeed', 1);
     const iqclient = new Client(
         _.isArray(launch) ? launch : launch && launch.split(' '),
         settings.env,
         settings.productId,
-        config('version')
+        config('version'),
+        _.pick(settings, 'connect_timeout', 'request_timeout', 'max_resends')
     );
     const fetch = new Fetch(merge(config('fetch'), {iqfeed:{enabled:false}}, settings.fetch));
     const adjustments = options => {

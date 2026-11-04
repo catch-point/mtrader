@@ -40,34 +40,63 @@ import like from './like.js';
 import assert from 'node:assert';
 const spawn = childProcess.spawn;
 
-export default function(command, env, productId, productVersion) {
+/** Milliseconds to wait for IQConnect to accept a connection and report it is connected */
+export const DEFAULT_CONNECT_TIMEOUT = 60000;
+/**
+ * Milliseconds a request may go without any response from IQFeed before it is
+ * re-sent (history) or fails (lists and level 1)
+ */
+export const DEFAULT_REQUEST_TIMEOUT = 60000;
+/** Times a history request with no response is re-sent before it fails */
+export const DEFAULT_MAX_RESENDS = 1;
+
+/**
+ * Client for the IQConnect admin (9300), lookup (9100) and level 1 (5009)
+ * ports. options may set connect_timeout, request_timeout and max_resends, so
+ * a request IQFeed never answers fails instead of waiting forever, and ports
+ * ({admin, lookup, level1}) to connect elsewhere.
+ */
+export default function(command, env, productId, productVersion, options = {}) {
     if (command) assert.ok(Array.isArray(command), `Expected command to be an array`);
-    let adminPromise;
+    const ctx = {
+        sockets: new Set(), // every socket this client has open
+        closing: null,
+        connect_timeout: options.connect_timeout || DEFAULT_CONNECT_TIMEOUT,
+        request_timeout: options.request_timeout || DEFAULT_REQUEST_TIMEOUT,
+        max_resends: options.max_resends != null ? options.max_resends : DEFAULT_MAX_RESENDS,
+        ports: {admin: 9300, lookup: 9100, level1: 5009, ...options.ports}
+    };
+    let adminPromise, closed;
     const admin = function(){
         return adminPromise = promiseSocket(adminPromise,
-            promiseNewAdminSocket.bind(this, 9300, command, env, productId, productVersion));
+            promiseNewAdminSocket.bind(this, ctx, ctx.ports.admin, command, env, productId, productVersion));
     };
-    const lookup = historical(nextval, admin);
+    const lookup = historical(ctx, nextval, admin);
     const throttled = promiseThrottle(lookup, 100);
-    const level1 = watch(admin);
+    const level1 = watch(ctx, admin);
     let promised_markets, promised_types;
     const promiseMarkets = function() {
-        return promised_markets = (promised_markets || Promise.reject()).catch(err => slm(admin));
+        return promised_markets = (promised_markets || Promise.reject()).catch(err => slm(ctx, admin));
     };
     const promiseTypes = function() {
-        return promised_types = (promised_types || Promise.reject()).catch(err => sst(admin));
+        return promised_types = (promised_types || Promise.reject()).catch(err => sst(ctx, admin));
     };
     return {
         open() {
             return admin();
         },
         close() {
-            return Promise.all([
-                !adminPromise ? Promise.resolve() : adminPromise.then(closeSocket)
-                  .then(() => adminPromise = null, () => adminPromise = null),
+            if (closed) return closed;
+            ctx.closing = Error("IQFeed is closing");
+            // Closing every socket also settles any connection still being
+            // established, so this never waits on IQFeed to respond.
+            return closed = Promise.all([
                 lookup('close'),
-                level1('close')
-            ]);
+                level1('close'),
+                ...Array.from(ctx.sockets).map(closeSocket)
+            ]).then(() => {
+                adminPromise = null;
+            });
         },
         version: _.memoize(() => {
             return admin().then(socket => {
@@ -288,19 +317,23 @@ function sbf(lookup, options) {
     ]);
 }
 
-function slm(ready) {
-    return listOf('SLM', ready);
+function slm(ctx, ready) {
+    return listOf(ctx, 'SLM', ready);
 }
 
-function sst(ready) {
-    return listOf('SST', ready);
+function sst(ctx, ready) {
+    return listOf(ctx, 'SST', ready);
 }
 
-function listOf(cmd, ready) {
-    return (ready() || Promise.resolve()).then(() => openSocket(9100))
+function listOf(ctx, cmd, ready) {
+    let deadline;
+    return (ready() || Promise.resolve()).then(() => openSocket(ctx, ctx.ports.lookup))
       .then(socket => promiseSend('S,SET PROTOCOL,5.1', socket)
       .then(socket => new Promise((ready, error) => {
-        socket.on('close', err => err && error(err));
+        deadline = setTimeout(() => {
+            error(Error(`IQFeed did not finish ${cmd} within ${ctx.request_timeout} ms`));
+        }, ctx.request_timeout);
+        socket.on('close', () => error(Error(`IQFeed closed the connection before finishing ${cmd}`)));
         const listed = [];
         onreceive(socket, function(line) {
             const values = line.split(',');
@@ -318,13 +351,15 @@ function listOf(cmd, ready) {
         });
         send(cmd, socket);
     })).then(listed => {
+        clearTimeout(deadline);
         return closeSocket(socket).then(() => listed);
     }).catch(function(error) {
+        clearTimeout(deadline);
         return closeSocket(socket).then(() => Promise.reject(error));
     }));
 }
 
-function historical(nextval, ready) {
+function historical(ctx, nextval, ready) {
     const blacklist = {};
     let pending = {};
     let lookupPromise;
@@ -332,13 +367,19 @@ function historical(nextval, ready) {
     const mark = () => {
         const marked = _.pick(pending, _.property('marked'));
         if (!closing && !_.isEmpty(marked)) {
+            // a request that was already re-sent and still has no response fails
+            _.map(marked, (item, id) => {
+                if (pending[id] && item.resends >= ctx.max_resends) {
+                    item.error(Error(`IQFeed did not respond to ${item.cmd} within ${ctx.request_timeout} ms`));
+                }
+            });
             lookup().then(function(socketId){
                 _.map(marked, (item, id) => {
                     if (pending[id]) {
                         const adj = item.socketId == socketId ? "same" : "new";
                         logger.warn(`Resending ${item.symbol} ${item.cmd} on ${adj} socket ${socketId}`);
                         delete pending[id];
-                        submit(nextval, pending, socketId, item);
+                        submit(nextval, pending, socketId, {...item, resends: item.resends + 1});
                     }
                 });
             }).catch(err => {
@@ -351,14 +392,14 @@ function historical(nextval, ready) {
             });
         }
         _.forEach(pending, item => item.marked = true);
-        return marker = setTimeout(mark, 180000).unref();
+        return marker = setTimeout(mark, ctx.request_timeout).unref();
     };
     marker = mark();
     const lookup = function(){
         if (closing) throw closing;
         return lookupPromise = promiseSocket(lookupPromise, function(){
             return ready().then(function(){
-                return promiseNewLookupSocket(blacklist, pending, 9100, lookup);
+                return promiseNewLookupSocket(ctx, blacklist, pending, ctx.ports.lookup, lookup);
             }, err => { // not ready, aborting
                 const deleted = pending;
                 pending = {};
@@ -397,6 +438,7 @@ function submit(nextval, pending, socketId, item) {
         symbol: item.symbol,
         cmd: item.args.join(',').replace('[RequestID]', id),
         args: item.args,
+        resends: item.resends || 0,
         buffer:[],
         socketId: socketId,
         callback: function(result) {
@@ -411,26 +453,40 @@ function submit(nextval, pending, socketId, item) {
     send(pending[id].cmd, socketId);
 }
 
-function watch(ready) {
+function watch(ctx, ready) {
     const blacklist = {};
     const watching = {};
+    const errors = {last: null}; // the most recent E message on the level 1 socket
     let level1Promise;
     const level1 = function(){
         return level1Promise = promiseSocket(level1Promise, function(){
             return ready().then(function(){
-                return promiseNewLevel1Socket(blacklist, watching, 5009, level1);
+                return promiseNewLevel1Socket(ctx, blacklist, watching, errors, ctx.ports.level1, level1);
             });
         });
     };
     return function(options) {
         return Promise.resolve(options).then(function(options){
-            if ('close' == options)
-                return level1Promise && level1().then(closeSocket).then(() => level1Promise = null);;
+            if ('close' == options) {
+                const err = ctx.closing || Error("IQFeed is closing");
+                _.each(_.flatten(_.values(watching)), item => item.error(err));
+                return level1Promise && level1Promise.then(closeSocket)
+                  .then(() => level1Promise = null, () => level1Promise = null);
+            }
             if (!options || !options.symbol)
                 throw Error("Missing symbol in " + JSON.stringify(options));
             return level1().then(function(socketId){
                 return new Promise(function(callback, onerror){
                     const symbol = options.symbol;
+                    // fail if IQFeed does not respond in time, with its last error if any
+                    const deadline = setTimeout(() => {
+                        const reason = errors.last ? `: ${errors.last}` : '';
+                        pending.error(Error(`IQFeed did not respond to ${symbol} within ${ctx.request_timeout} ms${reason}`));
+                    }, ctx.request_timeout);
+                    const settle = result => {
+                        clearTimeout(deadline);
+                        return callback(result);
+                    };
                     const pending = {
                         symbol: symbol,
                         socketId: socketId,
@@ -438,13 +494,13 @@ function watch(ready) {
                             if (!options.summary)
                                 deregister(watching, socketId, symbol, pending);
                             if (options.fundamental)
-                                return callback(result);
+                                return settle(result);
                         },
                         summary: function(result) {
                             if (!options.update)
                                 deregister(watching, socketId, symbol, pending);
                             if (options.summary)
-                                return callback(result);
+                                return settle(result);
                         },
                         update: function(result) {
                             try {
@@ -458,6 +514,7 @@ function watch(ready) {
                             deregister(watching, socketId, symbol, pending);
                         },
                         error: function(e) {
+                            clearTimeout(deadline);
                             deregister(watching, socketId, symbol, pending);
                             return onerror(e);
                         }
@@ -475,11 +532,26 @@ function watch(ready) {
 }
 
 function deregister(watching, socketId, symbol, pending) {
+    if (!watching[symbol]) return;
     watching[symbol] = _.without(watching[symbol], pending);
     if (_.isEmpty(watching[symbol])) {
         delete watching[symbol];
-        send('r' + symbol, socketId);
+        if (socketId.writable) send('r' + symbol, socketId);
     }
+}
+
+/**
+ * Called when a lookup or level 1 socket closes: if requests are still pending
+ * and the client is not closing, reconnect in a second, which re-sends them.
+ * With nothing pending, the next request reconnects. Connection failures are
+ * left to the pending requests' own errors and deadlines.
+ */
+function reconnectLater(ctx, isPending, retry) {
+    if (ctx.closing || !isPending()) return;
+    _.delay(() => {
+        if (ctx.closing || !isPending()) return;
+        Promise.resolve().then(retry).catch(err => logger.debug("IQFeed could not reconnect", err.message));
+    }, 1000);
 }
 
 function promiseSocket(previous, createNewSocket) {
@@ -493,13 +565,10 @@ function promiseSocket(previous, createNewSocket) {
     });
 }
 
-function promiseNewLookupSocket(blacklist, pending, port, retry) {
-    return openSocket(port).then(function(socket) {
+function promiseNewLookupSocket(ctx, blacklist, pending, port, retry) {
+    return openSocket(ctx, port).then(function(socket) {
         return promiseSend('S,SET PROTOCOL,5.1', socket).then(function(socket) {
-            socket.on('close', error => {
-                // close and reconnect in a second
-                if (error) _.delay(retry, 1000);
-            });
+            socket.on('close', () => reconnectLater(ctx, () => !_.isEmpty(pending), retry));
             onreceive(socket, function(line) {
                 const id = line.substring(0, line.indexOf(','));
                 const item = pending[id];
@@ -532,17 +601,14 @@ function promiseNewLookupSocket(blacklist, pending, port, retry) {
     });
 }
 
-function promiseNewLevel1Socket(blacklist, watching, port, retry) {
+function promiseNewLevel1Socket(ctx, blacklist, watching, errors, port, retry) {
     const fundamentalFormat = ['type', 'symbol', 'market_id', 'pe', 'average_volume', '52_week_high', '52_week_low', 'calendar_year_high', 'calendar_year_low', 'dividend_yield', 'dividend_amount', 'dividend_rate', 'pay_date', 'exdividend_date', 'reserved', 'reserved', 'reserved', 'short_interest', 'reserved', 'current_year_earnings_per_share', 'next_year_earnings_per_share', 'five_year_growth_percentage', 'fiscal_year_end', 'reserved', 'company_name', 'root_option_symbol', 'percent_held_by_institutions', 'beta', 'leaps', 'current_assets', 'current_liabilities', 'balance_sheet_date', 'long_term_debt', 'common_shares_outstanding', 'reserved', 'split_factor_1', 'split_factor_2', 'reserved', 'reserved', 'format_code', 'precision', 'sic', 'historical_volatility', 'security_type', 'listed_market', '52_week_high_date', '52_week_low_date', 'calendar_year_high_date', 'calendar_year_low_date', 'year_end_close', 'maturity_date', 'coupon_rate', 'expiration_date', 'strike_price', 'naics', 'market_root'];
     const summaryFormat = ['type', 'symbol', 'close', 'most_recent_trade_date', 'open', 'high', 'low', 'most_recent_trade_timems', 'most_recent_trade', 'bid_timems', 'bid', 'ask_timems', 'ask', 'total_volume', 'decimal_precision'];
-    return openSocket(port).then(function(socket) {
+    return openSocket(ctx, port).then(function(socket) {
         return promiseSend('S,SET PROTOCOL,5.1', socket)
           .then(send.bind(this, 'S,SELECT UPDATE FIELDS,Close,Most Recent Trade Date,Open,High,Low,Most Recent Trade TimeMS,Most Recent Trade,Bid TimeMS,Bid,Ask TimeMS,Ask,Total Volume,Decimal Precision'))
           .then(function(socket){
-            socket.on('close', error => {
-                // close and reconnect in a second
-                if (error) _.delay(retry, 1000);
-            });
+            socket.on('close', () => reconnectLater(ctx, () => !_.isEmpty(watching), retry));
             onreceive(socket, function(line) {
                 const row = line.split(',');
                 if ('T' == row[0]) { // Time
@@ -572,8 +638,9 @@ function promiseNewLevel1Socket(blacklist, watching, port, retry) {
                         item.update(object);
                     });
                     return false;
-                } else if ('E' == row[0]) { // Update
-                    logger.error("IQFeed", row[1]);
+                } else if ('E' == row[0]) { // Error, not tied to a symbol
+                    errors.last = row.slice(1).join(',').replace(/^!|!?,*$/g, '');
+                    logger.error("IQFeed", errors.last);
                     return false;
                 }
             });
@@ -588,9 +655,9 @@ function promiseNewLevel1Socket(blacklist, watching, port, retry) {
     });
 }
 
-function promiseNewAdminSocket(port, command, env, productId, productVersion) {
+function promiseNewAdminSocket(ctx, port, command, env, productId, productVersion) {
     const check = interrupt(true);
-    return openSocket(port).catch(async(err) => {
+    return openSocket(ctx, port).catch(async(err) => {
         if (await check()) throw err;
         if (command && err.code == 'ECONNREFUSED') {
             // try launching command first
@@ -605,15 +672,15 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
                     else ready();
                 }).unref();
                 ready();
-            }).then(() => openSocket(port)).catch(async(err) => {
+            }).then(() => openSocket(ctx, port)).catch(async(err) => {
                 if (await check()) throw err;
                 if (err.code == 'ECONNREFUSED')
                     return new Promise(cb => _.delay(cb, 1000))
-                        .then(() => openSocket(port)).catch(async(err) => {
+                        .then(() => openSocket(ctx, port)).catch(async(err) => {
                             if (await check()) throw err;
                             if (err.code == 'ECONNREFUSED')
                                 return new Promise(cb => _.delay(cb, 4000))
-                                    .then(() => openSocket(port));
+                                    .then(() => openSocket(ctx, port));
                             else throw err;
                         });
                 else throw err;
@@ -623,16 +690,32 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
         }
     }).then(function(socket) {
         return promiseSend('S,CONNECT', socket).then(function(socket){
-            return new Promise(function(callback, abort) {
-                let registration;
+            return new Promise(function(connected, failed) {
+                let registration, status = 'no status received';
+                // IQConnect may never connect (not logged in, or DTN unreachable)
+                const deadline = setTimeout(() => {
+                    abort(Error(`IQFeed did not connect within ${ctx.connect_timeout} ms (${status})`));
+                }, ctx.connect_timeout);
+                const callback = socket => {
+                    clearTimeout(deadline);
+                    connected(socket);
+                };
+                const abort = error => {
+                    clearTimeout(deadline);
+                    failed(error);
+                };
                 const warning = _.throttle(msg => logger.warn(msg), 10000, {trailing: false});
                 socket.on('error', error => {
                     logger.error("IQFeed", error, error.stack);
                     abort(error);
                 });
+                socket.on('close', () => {
+                    abort(Error(`IQFeed closed the admin connection before connecting (${status})`));
+                });
                 let first = true;
                 onreceive(socket, function(line) {
                     if (line && line.indexOf("S,STATS,") >= 0) {
+                        status = line.substring(line.indexOf("S,STATS,")).split(',')[12] || status;
                         if (line.indexOf("Not Connected") > 0) {
                             const msg = "S,REGISTER CLIENT APP," + productId + "," + productVersion;
                             if (productId && registration != msg) {
@@ -658,12 +741,22 @@ function promiseNewAdminSocket(port, command, env, productId, productVersion) {
     });
 }
 
-function openSocket(port) {
+function openSocket(ctx, port) {
+    if (ctx.closing) return Promise.reject(ctx.closing);
     return new Promise(function(callback, abort) {
         logger.debug("IQFeed opening TCP Socket", port);
-        const socket = net.connect(port, () => callback(socket))
+        const socket = net.connect(port, () => {
+            socket.setTimeout(0); // the timeout only applies to connecting
+            callback(socket);
+        })
             .on('error', abort)
-            .on('timeout', () => socket.destroy(Error(`IQFeed socket ${port} timeout`)));
+            .on('timeout', () => socket.destroy(Error(`IQFeed socket ${port} timeout`)))
+            .on('close', () => {
+                ctx.sockets.delete(socket);
+                abort(Error(`IQFeed socket ${port} closed`));
+            });
+        socket.setTimeout(ctx.connect_timeout);
+        ctx.sockets.add(socket);
     });
 }
 

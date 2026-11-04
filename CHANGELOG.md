@@ -4,6 +4,51 @@ All notable changes to mtrader since 1.0. Entries before 16.2.0 were
 generated from the git history and are grouped by minor version; each lists
 the commit subjects included in that series, newest first.
 
+## 17.0.2 — 2026-11-04
+
+### Fixed
+
+- IQFeed requests no longer wait forever when IQConnect does not respond as
+  expected. New `fetch.iqfeed` settings `connect_timeout`, `request_timeout`
+  and `max_resends` bound each step (see
+  [data sources](docs/data-sources.md#iqfeed-timeouts)):
+  - Opening fails if IQConnect closes the admin connection, or does not
+    report it is connected within `connect_timeout` (for example when it is
+    not logged in), instead of waiting with a warning every 10 seconds.
+  - Lists of markets and security types fail if IQConnect closes the
+    connection or does not finish within `request_timeout`. A failure
+    rejected with `true` instead of an `Error`.
+  - History requests with no response are re-sent `max_resends` times, then
+    fail, instead of being re-sent every 3 minutes forever.
+  - Level 1 requests (`fundamental`, and the summary used for today's bar)
+    fail after `request_timeout`, with IQFeed's last error message, which was
+    previously only logged. They are rejected when the client closes.
+  - The lookup and level 1 connections reconnect after any close, not only
+    after an error, while requests are pending and the client is not closing.
+    Reconnecting while closing could throw an uncaught exception or reopen
+    connections that kept the process from exiting.
+  - Closing no longer waits on connections that are still being made, which
+    could make it, and so mtrader's own shutdown, wait forever.
+- `auto-restart.js` takes a maximum number of restarts, after which a call
+  that times out fails; the IQFeed client allows one. Closing an object, to
+  restart it or on close, waits at most the time limit (up to 30 seconds), so
+  a close that never finishes can no longer block every later call.
+- `iqfeed-client.js` takes a `ports` option (`admin`, `lookup`, `level1`).
+  New `iqfeed-client-faults` and `auto-restart` specs simulate an IQConnect
+  that misbehaves, using a fake IQFeed on free local ports, so they run even
+  when a real IQConnect is.
+- The live IQFeed specs pass again. Future option lookups roll over to the
+  next year's contract month once this year's have passed (they used to pick
+  an expired month late in the year), and use strikes that are listed today.
+  Lookups expect IBM's current name and current TSE class shares (`QBR.B` and
+  `TCL.A` in place of the renamed `BAM.A` and the delisted `SJR.B`). The
+  Eurodollar (`GE`) case is removed, as CME delisted them in 2023, and the
+  Brent (`BZ`) case is pending, as IQFeed lists Brent options under `QBE`,
+  which `etc/mtrader.json` does not map.
+- Removed `CLEARPORT` from the CME IQFeed `listed_markets`. IQFeed no longer
+  lists it, so every CME lookup began with an error row from DTN's server
+  (`Argument "CLEARPORT" isn't numeric`); the results are otherwise the same.
+
 ## 17.0.1 — 2026-11-04
 
 ### Fixed

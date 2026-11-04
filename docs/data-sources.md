@@ -14,6 +14,21 @@ Yahoo is always loaded as the fallback. Every other source has to be enabled.
 | files | `fetch-files.js` | Record/replay cache in front of the other sources, for fixtures and offline work | `dirname` |
 | remote | `fetch-remote.js` | Use another mtrader service's data sources | `location` of an `mtrader start` service |
 
+## IQFeed timeouts
+
+`fetch.iqfeed` takes these settings, in milliseconds unless noted, so that a
+request IQConnect never answers fails rather than waiting forever:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `connect_timeout` | 60000 | How long IQConnect has to accept a connection and report that it is connected to DTN. Opening fails with the last status it reported, such as `Not Connected`. |
+| `request_timeout` | 60000 | How long a request may go without any response. Lists of markets and security types, and level 1 requests (`fundamental`, and the summary used for today's bar), fail. History requests are re-sent. |
+| `max_resends` | 1 | How many times a history request with no response is re-sent before it fails. |
+| `timeout` | 600000 | How long any IQFeed call may take before the client is restarted and the call is tried again, once. A call that times out again fails. It is also how long an idle client is kept before it is closed. |
+
+When IQConnect closes the lookup or level 1 connection while requests are
+pending, the client reconnects a second later and re-sends them.
+
 ## Intervals
 
 | Interval | Returns |
