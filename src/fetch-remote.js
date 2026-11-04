@@ -37,8 +37,6 @@ const logger = require('./logger.js');
 const config = require('./config.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
-const like = require('./like.js');
-const expect = require('chai').use(like).expect;
 
 module.exports = function(settings = {}) {
     let promiseFetch, closing;

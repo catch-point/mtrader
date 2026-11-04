@@ -39,14 +39,13 @@ const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
 const Bestsignals = require('./bestsignals.js');
-const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
 const version = require('./version.js').version;
 const Optimize = require('./mtrader-optimize.js');
 
 function usage(command) {
-    return command.version(version)
+    return command.version(version.toString())
         .description("Determines the best signals for the given portfolio")
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -75,7 +74,6 @@ function usage(command) {
         .option('--solution-count <number>', "Number of solutions to include in result")
         .option('-o, --offline', "Disable data updates")
         .option('-u, --update', "Update the last bar of assets")
-        .option('--solution-count <number>', "Number of solutions to include in result")
         .option('--termination <Duration>', "Amount of time spent searching for a solution before the best yet is used")
         .option('--signalset <identifier,..>', "Comma separated signal set names")
         .option('--amend', "If the result should include option properties from the input")
@@ -86,7 +84,7 @@ function usage(command) {
 process.setMaxListeners(process.getMaxListeners()+1);
 
 if (require.main === module) {
-    const program = usage(commander).parse(process.argv);
+    const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const bestsignals = createInstance(program);
         process.on('SIGINT', () => bestsignals.close());

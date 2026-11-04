@@ -33,11 +33,11 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const assert = require('node:assert');
 
 module.exports = function(options) {
-    expect(options).to.be.like({
-        interval: int => expect(int).to.be.oneOf(module.exports.values),
+    like.assert(options, {
+        interval: int => module.exports.values.includes(int),
         open_time: /\d\d:\d\d(:00)?/,
         liquid_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
         trading_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
@@ -465,31 +465,37 @@ function marketHours(ex, point, priorIfOutsideTrading) {
     const rth = ex.interval.charAt(0) != 'm' || ex.interval == 'month';
     const open_time = rth ? ex.open_time || ex.liquid_hours.substring(0, 8) : ex.trading_hours.substring(0, 8);
     const end_time = rth ? ex.liquid_hours.substring(11) : ex.trading_hours.substring(11);
-    const opens = parseTime(point, open_time);
-    const ends = open_time == end_time ? moment(opens) : parseTime(point, end_time);
+    // Session bounds are clock times on calendar days, so each shift moves the
+    // day and then sets the clock time again. Shifting the moment alone keeps
+    // the clock time it had, which is wrong when that day's time fell in a
+    // daylight saving gap (02:00 on a spring-forward day is really 03:00).
+    let opens = parseTime(point, open_time);
+    let ends = parseTime(point, end_time);
+    const shiftOpens = days => opens = parseTime(moment(opens).add(days, 'days'), open_time);
+    const shiftEnds = days => ends = parseTime(moment(ends).add(days, 'days'), end_time);
     if (!opens.isBefore(ends) && !opens.isAfter(point) && ends.day() < 5) {
-        ends.add(1, 'days');
+        shiftEnds(1);
     } else if (!opens.isBefore(ends) && !point.isAfter(ends) && opens.day() > 0) {
-        opens.subtract(1, 'days');
+        shiftOpens(-1);
     } else if (!opens.isBefore(ends) && priorIfOutsideTrading) {
-        opens.subtract(1, 'days');
+        shiftOpens(-1);
     } else if (!opens.isBefore(ends) && !priorIfOutsideTrading) {
-        ends.add(1, 'days');
+        shiftEnds(1);
     }
     if (priorIfOutsideTrading && point.isBefore(opens)) {
-        opens.subtract(1, 'days');
-        ends.subtract(1, 'days');
+        shiftOpens(-1);
+        shiftEnds(-1);
     } else if (!priorIfOutsideTrading && ends.isBefore(point)) {
-        opens.add(1, 'days');
-        ends.add(1, 'days');
+        shiftOpens(1);
+        shiftEnds(1);
     }
     const wd = ends.isoWeekday() > 5 ? moment(ends).subtract(1,'ms').isoWeekday() : ends.isoWeekday();
     if (wd > 5 && priorIfOutsideTrading) {
-        opens.subtract(wd - 5, 'days');
-        ends.subtract(wd - 5, 'days');
+        shiftOpens(5 - wd);
+        shiftEnds(5 - wd);
     } else if (wd > 5) {
-        opens.add(8 - wd, 'days');
-        ends.add(8 - wd, 'days');
+        shiftOpens(8 - wd);
+        shiftEnds(8 - wd);
     }
     const minInDay = ends.diff(opens, 'minutes');
     const hoursInDay = Math.ceil(ends.diff(opens, 'hours', true));

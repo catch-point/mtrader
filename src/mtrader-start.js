@@ -41,8 +41,6 @@ const https = require('https');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const ws = require('ws');
-const shell = require('shell');
-const expect = require('chai').expect;
 const commander = require('commander');
 const merge = require('./merge.js');
 const logger = require('./logger.js');
@@ -61,7 +59,6 @@ const WORKER_COUNT = require('os').cpus().length;
 function usage(command) {
     return command.version(version.version)
     .description("Start a headless service on the listen interface")
-    .option('-V, --version', "Output the version number(s)")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-q, --quiet', "Include less information about what the system is doing")
     .option('-x, --debug', "Include details about what the system is working on")

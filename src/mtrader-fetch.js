@@ -46,7 +46,7 @@ const version = require('./version.js').version;
 const tz = (moment.defaultZone||{}).name || moment.tz.guess();
 
 function usage(command) {
-    return command.version(version)
+    return command.version(version.toString())
         .description("Fetches remote data for the given symbol")
         .usage('<interval> <symbol.market> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -73,7 +73,7 @@ function usage(command) {
 process.setMaxListeners(process.getMaxListeners()+1);
 
 if (require.main === module) {
-    const program = usage(commander).parse(process.argv);
+    const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const interval = program.args.length > 1 ? program.args[0] : 'day';
         let symbol = program.args[1] || program.args[0];

@@ -32,15 +32,15 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
-const statkit = require("statkit");
-const Alea = require('alea');
+const statistics = require('./statistics.js');
+const alea = require('seedrandom').alea;
 const version = require('./version.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const lookback = require('./lookback-functions.js');
 const logger = require('./logger.js');
 const interrupt = require('./interrupt.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 const MIN_POPULATION = 2;
 const MAX_POPULATION = 8;
@@ -51,7 +51,7 @@ const MAX_POPULATION = 8;
  */
 module.exports = function(collect) {
     let promiseHelp;
-    let prng = new Alea();
+    let prng = alea(+new Date);
     return _.extend(async function(options) {
         if (!promiseHelp) promiseHelp = help(collect);
         if (options.info=='help') return promiseHelp;
@@ -67,7 +67,7 @@ module.exports = function(collect) {
         });
     }, {
         seed(number) {
-            prng = new Alea(number);
+            prng = alea(number);
         },
         close() {
             return Promise.resolve();
@@ -145,8 +145,8 @@ function help(collect) {
  * Searches possible parameter values to determine a higher score for a date range
  */
 async function optimize(collect, prng, options) {
-    expect(options).to.have.property('parameter_values');
-    expect(options).to.have.property('eval_score');
+    assert.ok(options != null && 'parameter_values' in Object(options), `Expected options to have property 'parameter_values'`);
+    assert.ok(options != null && 'eval_score' in Object(options), `Expected options to have property 'eval_score'`);
     const started = Date.now();
     const count = options.solution_count || 1;
     const pnames = _.keys(options.parameter_values);
@@ -427,11 +427,11 @@ function mutation(prng, pvalues, space, solutions, strength) {
     const mutations = pvalues.map((values,i) => {
         const vals = empty || one ? _.range(values.length) : _.map(solutions, sol => sol.pindex[i]);
         const avg = one ? solutions[0].pindex[i] : vals.reduce((a,b) => a + b) / vals.length;
-        const stdev = vals.length>1 ? statkit.std(vals) : 0;
+        const stdev = vals.length>1 ? statistics.std(vals) : 0;
         const window = Math.min(stdev + (strength || 0), Math.ceil(values.length/2));
         return function(value) {
             const val = arguments.length ? value : avg;
-            const target = statkit.norminv(prng()) * window + val;
+            const target = statistics.norminv(prng()) * window + val;
             const abs = Math.abs(target % (values.length * 2));
             return abs >= values.length ?
                 Math.ceil(values.length * 2 - abs) - 1 : Math.floor(abs);

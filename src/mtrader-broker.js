@@ -42,7 +42,6 @@ const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
 const Broker = require('./broker.js');
 const Quote = require('./mtrader-quote.js');
-const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 
 function usage(command) {
@@ -75,7 +74,7 @@ function usage(command) {
 process.setMaxListeners(process.getMaxListeners()+1);
 
 if (require.main === module) {
-    const program = usage(commander).parse(process.argv);
+    const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const broker = createInstance(program, config.options());
         process.on('SIGINT', () => broker.close());

@@ -32,7 +32,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
-const xml = require('fast-xml-parser');
+const {XMLParser} = require('fast-xml-parser');
 const IB = require('ib-tws-node');
 const logger = require('./logger.js');
 const promiseThrottle = require('./throttle.js');
@@ -1348,11 +1348,11 @@ function isTickComplete(ib, req) {
 }
 
 function parseXml(data) {
-    return xml.parse(data, {
+    return new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: '',
         textNodeName: 'value'
-    });
+    }).parse(data);
 }
 
 const TICK_TYPE = {

@@ -32,15 +32,13 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
-const statkit = require("statkit");
-const Alea = require('alea');
 const merge = require('./merge.js');
 const version = require('./version.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
 const logger = require('./logger.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 /**
  * Given signals and possible parameter_values, returns the best signals
@@ -97,8 +95,8 @@ async function bestsignals(optimize, options) {
     const signals = _.flatten(await Promise.all(getSignalSets(options).map(async(options, set) => {
         const signals = _.isString(options.signals) ? options.signals.split(',') :
             _.isEmpty(options.signals) ? ['signal'] :options.signals;
-        expect(options).to.have.property('parameter_values');
-        expect(options).to.have.property('signals');
+        assert.ok(options != null && 'parameter_values' in Object(options), `Expected options to have property 'parameter_values'`);
+        assert.ok(options != null && 'signals' in Object(options), `Expected options to have property 'signals'`);
         const all_signals = _.flatten(await Promise.all(signals.map(signal => {
             return bestsignal(optimize, signal, options);
         })));

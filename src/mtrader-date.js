@@ -69,7 +69,7 @@ const days = _.once(function() {
 });
 
 if (require.main === module) {
-    const program = require('commander').version(version)
+    const program = require('commander').program.version(version.toString())
         .description("Date manipulation")
         .usage('<format> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -82,6 +82,7 @@ if (require.main === module) {
         .option('--load <filename>', "Read the given session settings")
         .option('--now <date>', "Use this date value as the base timestamp")
         .option('-d, --duration <durationOrValue>', "Advance or reverse the date by these comma separated durations or to values")
+        .allowExcessArguments()
         .parse(process.argv);
     if (program.args.length) {
         try {

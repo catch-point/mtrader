@@ -32,8 +32,7 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
-const statkit = require("statkit");
-const Alea = require('alea');
+const alea = require('seedrandom').alea;
 const merge = require('./merge.js');
 const interrupt = require('./interrupt.js');
 const version = require('./version.js');
@@ -41,14 +40,14 @@ const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
 const logger = require('./logger.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 /**
  * Iteratively improves a strategy by adding and substituting signals from given signalsets
  */
 module.exports = function(bestsignals) {
     let promiseHelp;
-    let prng = new Alea();
+    let prng = alea(+new Date);
     return _.extend(async function(options) {
         if (!promiseHelp) promiseHelp = help(bestsignals);
         if (options.info=='help') return promiseHelp;
@@ -68,7 +67,7 @@ module.exports = function(bestsignals) {
         });
     }, {
         seed(number) {
-            prng = new Alea(number);
+            prng = alea(number);
         },
         close() {
             return Promise.resolve();
@@ -504,8 +503,8 @@ async function moreStrategies(prng, evaluate, parser, max_operands, latest) {
         if (latest.follow_signals_only) return Promise.resolve([signal_var]);
         else return Promise.resolve(invert(signal_var));
     }
-    expect(latest).to.have.property('score');
-    expect(strategy.legs).to.have.lengthOf(1);
+    assert.ok(latest != null && 'score' in Object(latest), `Expected latest to have property 'score'`);
+    assert.ok(strategy.legs.length == 1, `Expected strategy.legs to have length 1`);
     const leg = _.last(strategy.legs);
     const comparisons = leg.comparisons;
     const signal = leg.signal;

@@ -44,7 +44,7 @@ const logger = require('./logger.js');
 const share = require('./share.js');
 const iqfeed = require('./fetch-iqfeed.js');
 const Ivolatility = require('./ivolatility-client.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 function help(settings = {}) {
     const commonOptions = {
@@ -130,7 +130,7 @@ module.exports = function(settings = {}) {
     const auth_file = settings.auth_file &&
         path.resolve(config('prefix'), 'etc', settings.auth_file);
     const downloadType = settings.downloadType;
-    if (downloadType) expect(downloadType).to.be.oneOf(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL']);
+    if (downloadType) assert.ok(['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL'].includes(downloadType), `Expected downloadType to be one of ['DAILY_ONLY', 'EXCEPT_DAILY', 'ALL'], got ${JSON.stringify(downloadType)}`);
     const shared = shared_clients[cacheDir] = shared_clients[cacheDir] || share(Ivolatility, () => {
         delete shared_clients[cacheDir];
     });
@@ -142,7 +142,7 @@ module.exports = function(settings = {}) {
         switch(options.interval) {
             case 'contract': return contract(markets, options);
             case 'day': return interday(ivolatility, options);
-            default: expect(options.interval).to.be.oneOf(['contract', 'day']);
+            default: assert.ok(['contract', 'day'].includes(options.interval), `Expected options.interval to be one of ['contract', 'day'], got ${JSON.stringify(options.interval)}`);
         }
     }, {
         close() {
@@ -199,8 +199,8 @@ function isOptionActive(symbol, begin, end) {
 }
 
 function interday(ivolatility, options) {
-    expect(options).to.have.property('symbol');
-    expect(options.interval).to.be.oneOf(['day']);
+    assert.ok(options != null && 'symbol' in Object(options), `Expected options to have property 'symbol'`);
+    assert.ok(['day'].includes(options.interval), `Expected options.interval to be one of ['day'], got ${JSON.stringify(options.interval)}`);
     const readTable = loadIvolatility.bind(this, ivolatility.interday);
     const now = moment.tz(options.now, options.tz);
     const begin = moment.tz(options.begin, options.tz);

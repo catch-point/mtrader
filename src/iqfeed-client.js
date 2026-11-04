@@ -38,10 +38,10 @@ const logger = require('./logger.js');
 const promiseThrottle = require('./throttle.js');
 const interrupt = require('./interrupt.js');
 const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const assert = require('node:assert');
 
 module.exports = function(command, env, productId, productVersion) {
-    if (command) expect(command).to.be.an('array');
+    if (command) assert.ok(Array.isArray(command), `Expected command to be an array`);
     let adminPromise;
     const admin = function(){
         return adminPromise = promiseSocket(adminPromise,
@@ -85,7 +85,7 @@ module.exports = function(command, env, productId, productVersion) {
             });
         }),
         lookup(symbol, listed_markets) {
-            expect(symbol).to.be.a('string').and.match(/^\S+$/);
+            assert.ok(typeof symbol == 'string' && /^\S+$/.test(symbol), `Expected symbol to be a string and match /^\\S+$/, got ${JSON.stringify(symbol)}`);
             const listed_markets_ar = _.compact(_.flatten([listed_markets]));
             return promiseMarkets().then(markets => {
                 return promiseTypes().then(types => {
@@ -112,7 +112,7 @@ module.exports = function(command, env, productId, productVersion) {
             });
         },
         fundamental: promiseThrottle(symbol => {
-            expect(symbol).to.be.a('string').and.match(/^\S+$/);
+            assert.ok(typeof symbol == 'string' && /^\S+$/.test(symbol), `Expected symbol to be a string and match /^\\S+$/, got ${JSON.stringify(symbol)}`);
             return promiseMarkets().then(markets => {
                 return promiseTypes().then(types => {
                     return level1({
@@ -126,8 +126,8 @@ module.exports = function(command, env, productId, productVersion) {
             });
         }, 10),
         summary(symbol, update){
-            expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            if (update) expect(update).to.be.a('function');
+            assert.ok(typeof symbol == 'string' && /^\S+$/.test(symbol), `Expected symbol to be a string and match /^\\S+$/, got ${JSON.stringify(symbol)}`);
+            if (update) assert.ok(typeof update == 'function', `Expected update to be a function`);
             return level1({
                 summary: true,
                 symbol: symbol,
@@ -135,9 +135,9 @@ module.exports = function(command, env, productId, productVersion) {
             });
         },
         month(symbol, begin, end, tz) {
-            expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            if (end) expect(begin).not.to.be.above(end);
-            expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
+            assert.ok(typeof symbol == 'string' && /^\S+$/.test(symbol), `Expected symbol to be a string and match /^\\S+$/, got ${JSON.stringify(symbol)}`);
+            if (end) assert.ok(!(begin > end), `Expected begin to not be above end, got ${JSON.stringify(begin)}`);
+            assert.ok(typeof tz == 'string' && /^\S+\/\S+$/.test(tz), `Expected tz to be a string and match /^\\S+\\/\\S+$/, got ${JSON.stringify(tz)}`);
             const now = moment().tz(tz);
             const earliest = moment.tz(begin, tz);
             if (!earliest.isValid()) throw Error("Invalid begin date " + begin);
@@ -151,9 +151,9 @@ module.exports = function(command, env, productId, productVersion) {
             });
         },
         week(symbol, begin, end, tz) {
-            expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            if (end) expect(begin).not.to.be.above(end);
-            expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
+            assert.ok(typeof symbol == 'string' && /^\S+$/.test(symbol), `Expected symbol to be a string and match /^\\S+$/, got ${JSON.stringify(symbol)}`);
+            if (end) assert.ok(!(begin > end), `Expected begin to not be above end, got ${JSON.stringify(begin)}`);
+            assert.ok(typeof tz == 'string' && /^\S+\/\S+$/.test(tz), `Expected tz to be a string and match /^\\S+\\/\\S+$/, got ${JSON.stringify(tz)}`);
             const now = moment().tz(tz);
             const earliest = moment.tz(begin, tz);
             if (!earliest.isValid()) throw Error("Invalid begin date " + begin);
@@ -167,9 +167,9 @@ module.exports = function(command, env, productId, productVersion) {
             });
         },
         day(symbol, begin, end, tz) {
-            expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            if (end) expect(begin).not.to.be.above(end);
-            expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
+            assert.ok(typeof symbol == 'string' && /^\S+$/.test(symbol), `Expected symbol to be a string and match /^\\S+$/, got ${JSON.stringify(symbol)}`);
+            if (end) assert.ok(!(begin > end), `Expected begin to not be above end, got ${JSON.stringify(begin)}`);
+            assert.ok(typeof tz == 'string' && /^\S+\/\S+$/.test(tz), `Expected tz to be a string and match /^\\S+\\/\\S+$/, got ${JSON.stringify(tz)}`);
             const b = moment.tz(begin, tz);
             const e = end && moment.tz(end, tz);
             if (!b.isValid()) throw Error("Invalid begin date " + begin);
@@ -183,10 +183,10 @@ module.exports = function(command, env, productId, productVersion) {
             }).then(parseDailyResults);
         },
         minute(minutes, symbol, begin, end, tz) {
-            expect(minutes).to.be.like(_.isFinite);
-            expect(symbol).to.be.a('string').and.match(/^\S+$/);
-            if (end) expect(begin).not.to.be.above(end);
-            expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
+            like.assert(minutes, _.isFinite);
+            assert.ok(typeof symbol == 'string' && /^\S+$/.test(symbol), `Expected symbol to be a string and match /^\\S+$/, got ${JSON.stringify(symbol)}`);
+            if (end) assert.ok(!(begin > end), `Expected begin to not be above end, got ${JSON.stringify(begin)}`);
+            assert.ok(typeof tz == 'string' && /^\S+\/\S+$/.test(tz), `Expected tz to be a string and match /^\\S+\\/\\S+$/, got ${JSON.stringify(tz)}`);
             const now = moment().tz('America/New_York');
             const b = moment.tz(begin, 'America/New_York');
             if (!b.isValid()) throw Error("Invalid begin date " + begin);

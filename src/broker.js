@@ -38,7 +38,6 @@ const Collective2 = require('./broker-collective2.js');
 const IB = require('./broker-ib.js');
 const Simulation = require('./broker-simulation.js');
 const Remote = require('./broker-remote.js');
-const expect = require('chai').expect;
 
 /**
  * Broker layer: exposes the first enabled broker-*.js adapter (ib,

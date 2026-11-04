@@ -36,7 +36,7 @@ const moment = require('moment-timezone');
 const throttlePromise = require('./throttle.js');
 const promiseText = require('./promise-text.js');
 const logger = require('./logger.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 const quote = "https://finance.yahoo.com/lookup?s={symbol}";
 const download = "https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?period1={period1}&period2={period2}&interval={interval}&events={events}&crumb={crumb}"
@@ -150,9 +150,9 @@ function expire(func, after) {
   }
 
 function loadResult(query_chart, interval, events, symbol, begin, tz) {
-    expect(query_chart).to.be.a('function');
-    expect(interval).to.be.oneOf(['1mo','1wk','1d']);
-    expect(symbol).to.be.a('string').and.match(/^\S+$/);
+    assert.ok(typeof query_chart == 'function', `Expected query_chart to be a function`);
+    assert.ok(['1mo','1wk','1d'].includes(interval), `Expected interval to be one of ['1mo','1wk','1d'], got ${JSON.stringify(interval)}`);
+    assert.ok(typeof symbol == 'string' && /^\S+$/.test(symbol), `Expected symbol to be a string and match /^\\S+$/, got ${JSON.stringify(symbol)}`);
     const options = _.extend({
         symbol: symbol,
         events: events
@@ -161,7 +161,7 @@ function loadResult(query_chart, interval, events, symbol, begin, tz) {
 }
 
 function periods(interval, begin, tz) {
-    expect(tz).to.be.a('string').and.match(/^\S+\/\S+$/);
+    assert.ok(typeof tz == 'string' && /^\S+\/\S+$/.test(tz), `Expected tz to be a string and match /^\\S+\\/\\S+$/, got ${JSON.stringify(tz)}`);
     const mb = moment.tz(begin, tz);
     if (!mb.isValid()) throw Error("Invalid begin date " + begin);
     const start = interval == '1mo' ? mb.startOf('month') :

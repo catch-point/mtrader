@@ -33,10 +33,10 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
-const statkit = require("statkit");
+const statistics = require('./statistics.js');
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 /**
  * These functions operate of an array of securities at the same point in time.
@@ -47,10 +47,10 @@ module.exports = function(fetch, quote, dataset, options) {
     return _.memoize(function(expr, name, args, options) {
         const fetch_cached = _.memoize(fetch, options => JSON.stringify(_.pick(options, cache_keys)));
         if (dataset.length) {
-            expect(options).to.have.property('indexCol').that.is.a('string');
-            expect(options).to.have.property('symbolCol').that.is.a('string');
-            expect(options).to.have.property('marketCol').that.is.a('string');
-            expect(options).to.have.property('temporalCol').that.is.a('string');
+            assert.ok(typeof options.indexCol == 'string', `Expected options.indexCol to be a string`);
+            assert.ok(typeof options.symbolCol == 'string', `Expected options.symbolCol to be a string`);
+            assert.ok(typeof options.marketCol == 'string', `Expected options.marketCol to be a string`);
+            assert.ok(typeof options.temporalCol == 'string', `Expected options.temporalCol to be a string`);
         }
         if (functions[name]) {
             return functions[name].apply(this, [fetch_cached, quote, assets, options, expr].concat(args));
@@ -114,7 +114,7 @@ const functions = module.exports.functions = {
             });
             const last = matrix.pop();
             const correlations = _.compact(matrix).map(m => {
-                return statkit.corr(m, last);
+                return statistics.corr(m, last);
             });
             if (!correlations.length) return 0;
             const ret = _.max(correlations);

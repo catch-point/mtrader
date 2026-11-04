@@ -39,7 +39,7 @@ const querystring = require('querystring');
 const ws = require('ws');
 const EventEmitter = require('events');
 const _ = require('underscore');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 const logger = require('./logger.js');
 const config = require('./config.js');
 const version = require('./version.js');
@@ -104,8 +104,9 @@ const remote = module.exports = function(settings = {}, socket = null) {
         emitter.connecting = false;
         emitter.connected = true;
         emitter.emit('connect');
-    }).on('message', data => {
+    }).on('message', message => {
         try {
+            const data = message.toString(); // ws 8 delivers a Buffer
             let chunks = data.split('\r\n\r\n');
             if (buf) chunks[0] = buf + chunks[0];
             buf = chunks.pop();
@@ -167,7 +168,7 @@ function readFileSync(filename) {
 }
 
 function getSocketUrl(settings) {
-    expect(settings).to.have.property('location').that.is.ok;
+    assert.ok(settings.location, `Expected settings.location to be set`);
     const base = parseLocation(settings.location, false).href;
     const params = flattenObjectPaths(_.omit(settings, 'location', 'enabled'));
     const qs = querystring.stringify(params);

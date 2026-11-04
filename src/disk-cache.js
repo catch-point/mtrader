@@ -37,7 +37,7 @@ const EventEmitter = require('events');
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const csv = require('fast-csv');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 const awriter = require('./atomic-write.js');
 const major_version = require('./version.js').major_version;
 const config = require('./config.js');
@@ -72,7 +72,7 @@ module.exports = function(baseDir, fn, poolSize, loadFactor) {
     return _.extend(function(options) {
         const opts = _.omit(options, _.isUndefined);
         const hash = readHash(opts);
-        expect(hash).to.be.a('string');
+        assert.ok(typeof hash == 'string', `Expected hash to be a string`);
         return getResult(cache, hash, opts, fn, options, result => {
             promiseInitialCount.then(initialCount => {
                 if (maxPoolSize && initialCount + cache.added - cache.removed > maxPoolSize) {
@@ -326,7 +326,7 @@ function getEntry(cache, hash, opts) {
  * Create a new (pending) cache entry in memory
  */
 function createCacheEntry(cache, hash, fn, options, cb) {
-    expect(hash).to.be.a('string');
+    assert.ok(typeof hash == 'string', `Expected hash to be a string`);
     const miss = {
         hash: hash,
         age: 0,

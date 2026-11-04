@@ -42,7 +42,7 @@ const version = require('./version.js').toString();
 const config = require('./config.js');
 const IB = require('./ib-gateway.js');
 const Fetch = require('./fetch.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 module.exports = async function(settings = {}, mock_ib_client = null) {
     if (settings.info=='help') return helpSettings();
@@ -50,7 +50,7 @@ module.exports = async function(settings = {}, mock_ib_client = null) {
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).ib
     )), v => !v);
-    if (settings.local_accounts) expect(settings.account).to.be.oneOf(settings.local_accounts);
+    if (settings.local_accounts) assert.ok(settings.local_accounts.includes(settings.account), `Expected settings.account to be one of ${JSON.stringify(settings.local_accounts)}, got ${JSON.stringify(settings.account)}`);
     const ib = mock_ib_client && mock_ib_client.open ? mock_ib_client : await IB(settings);
     const fetch = new Fetch(merge(config('fetch'), settings.fetch));
     const root_ref = ((Date.now() * process.pid) % 8589869056).toString(16);
@@ -58,7 +58,7 @@ module.exports = async function(settings = {}, mock_ib_client = null) {
         if (options.info=='help') return helpOptions();
         if (options.info=='version') return [{version}];
         if (options.info) return [];
-        expect(settings).to.have.property('account').that.is.ok;
+        assert.ok(settings.account, `Expected settings.account to be set`);
         switch(options.action) {
             case 'balances': return listBalances(markets, ib, fetch, settings, options);
             case 'positions': return listPositions(markets, ib, fetch, settings, options);
@@ -68,9 +68,11 @@ module.exports = async function(settings = {}, mock_ib_client = null) {
             case 'OCA': return oneCancelsAllOrders(root_ref, markets, ib, fetch, settings, options);
             case 'BUY':
             case 'SELL': return submitOrder(root_ref, markets, ib, fetch, settings, options);
-            default: expect(options).to.have.property('action').to.be.oneOf([
+            default: assert.ok([
                 'balances', 'positions', 'orders', 'cancel', 'OCA', 'BUY', 'SELL'
-            ]);
+            ].includes(options.action), `Expected options.action to be one of [
+                'balances', 'positions', 'orders', 'cancel', 'OCA', 'BUY', 'SELL'
+            ], got ${JSON.stringify(options.action)}`);
         }
     }, {
         open() {
@@ -359,7 +361,7 @@ async function listBalances(markets, ib, fetch, settings, options) {
         }) : latest ? [latest] : [];
         return [].concat(...range.map(summary => {
             const time = summary.time ? parseTime(summary.time, ib_tz) : now;
-            expect(summary).to.have.property('Currency').that.is.an('array');
+            assert.ok(Array.isArray(summary.Currency), `Expected summary.Currency to be an array`);
             return _.uniq(summary.Currency).filter(currency => currency != 'BASE').map(currency => {
                 return {
                     asof: time.isValid() ? time.format() : now.format(),
@@ -457,7 +459,7 @@ async function listOrders(markets, ib, settings, options) {
 }
 
 async function cancelOrder(markets, ib, settings, options) {
-    expect(options).to.have.property('order_ref').that.is.ok;
+    assert.ok(options.order_ref, `Expected options.order_ref to be set`);
     const ib_order = await orderByRef(ib, options.order_ref);
     if (!ib_order) throw Error(`Unknown order_ref ${options.order_ref}`);
     const cancelled_order = await ib.cancelOrder(ib_order.orderId);
@@ -469,7 +471,7 @@ async function cancelOrder(markets, ib, settings, options) {
 }
 
 async function watchOrder(markets, ib, settings, options) {
-    expect(options).to.have.property('order_ref').that.is.ok;
+    assert.ok(options.order_ref, `Expected options.order_ref to be set`);
     const started_at = Date.now();
     const matches = _.matcher(_.pick(options, 'order_ref', 'status', 'quant', 'limit', 'stop', 'offset', 'tif'));
     const ib_order = await orderByRef(ib, options.order_ref);
@@ -491,7 +493,7 @@ async function watchOrder(markets, ib, settings, options) {
 }
 
 async function oneCancelsAllOrders(root_ref, markets, ib, fetch, settings, options) {
-    expect(options).to.have.property('attached').that.is.an('array');
+    assert.ok(Array.isArray(options.attached), `Expected options.attached to be an array`);
     const order_ref = orderRef(root_ref, await ib.reqId(), options);
     return await options.attached.reduce(async(promise, order, i, orders) => {
         const posted_orders = await submitOrder(root_ref, markets, ib, fetch, settings, {
@@ -586,11 +588,11 @@ async function orderByRef(ib, order_ref) {
 }
 
 async function orderToIbOrder(markets, ib, fetch, settings, contract, order, options) {
-    expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
-    expect(order).to.have.property('quant').that.is.ok;
-    expect(order).to.have.property('order_type').that.is.ok;
+    assert.ok(['BUY', 'SELL'].includes(order.action), `Expected order.action to be one of ['BUY', 'SELL'], got ${JSON.stringify(order.action)}`);
+    assert.ok(order.quant, `Expected order.quant to be set`);
+    assert.ok(order.order_type, `Expected order.order_type to be set`);
     if (order.tip)
-        expect(order).to.have.property('tif').that.is.oneOf(['DAY', 'GTC', 'IOC', 'OPG', 'FOK', 'DTC']);
+        assert.ok(['DAY', 'GTC', 'IOC', 'OPG', 'FOK', 'DTC'].includes(order.tif), `Expected order.tif to be one of ['DAY', 'GTC', 'IOC', 'OPG', 'FOK', 'DTC'], got ${JSON.stringify(order.tif)}`);
     const ibalgo = order.order_type.indexOf(' (IBALGO)');
     const conditions = await buildOrderConditions(markets, ib, order.condition);
     const conditionsIgnoreRth = !!(order.condition && order.condition.match(/conditionsIgnoreRth=true/));
@@ -642,11 +644,11 @@ async function orderToIbOrder(markets, ib, fetch, settings, contract, order, opt
 async function snapStockLimit(markets, ib, fetch, contract, order, options) {
     const now = moment(options.now);
     if (_.isEmpty(order.attached)) {
-        expect(contract.secType).to.be.oneOf(['FUT', 'OPT','FOP']);
+        assert.ok(['FUT', 'OPT','FOP'].includes(contract.secType), `Expected contract.secType to be one of ['FUT', 'OPT','FOP'], got ${JSON.stringify(contract.secType)}`);
         const detail = _.first(await ib.reqContractDetails(contract));
         const under_contract = await ib.reqContract(detail.underConid);
         const right = detail.contract.right;
-        expect(right).is.oneOf(['C', 'P']);
+        assert.ok(['C', 'P'].includes(right), `Expected right to be one of ['C', 'P'], got ${JSON.stringify(right)}`);
         const minTick = Math.max(order.minTick||0, detail.minTick||0.000001);
         const [bar, under_bar] = await Promise.all([
             reqMktData(markets, ib, fetch, contract, now, options),
@@ -661,10 +663,10 @@ async function snapStockLimit(markets, ib, fetch, contract, order, options) {
         return +Big(price).div(minTick).round(0, order.action == 'BUY' ? 0 : 3).times(minTick);
     } else {
         order.attached.forEach(leg => {
-            expect(leg).to.have.property('symbol').that.is.a('string');
-            expect(leg).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
-            expect(leg).to.have.property('order_type').that.eql('LEG');
-            expect(leg).to.have.property('security_type').that.is.oneOf(['FUT', 'OPT','FOP']);
+            assert.ok(typeof leg.symbol == 'string', `Expected leg.symbol to be a string`);
+            assert.ok(['BUY', 'SELL'].includes(leg.action), `Expected leg.action to be one of ['BUY', 'SELL'], got ${JSON.stringify(leg.action)}`);
+            assert.ok(_.isEqual(leg.order_type, 'LEG'), `Expected leg.order_type to equal 'LEG', got ${JSON.stringify(leg.order_type)}`);
+            assert.ok(['FUT', 'OPT','FOP'].includes(leg.security_type), `Expected leg.security_type to be one of ['FUT', 'OPT','FOP'], got ${JSON.stringify(leg.security_type)}`);
         });
         const [detail, contracts] = await Promise.all([
             toContract(markets, ib, _.first(order.attached)).then(contract => {
@@ -682,9 +684,9 @@ async function snapStockLimit(markets, ib, fetch, contract, order, options) {
         const minTick = Math.max(detail_minTick, leg_minTick, order.minTick||0);
         const right = detail.contract.right;
         contracts.forEach(contract => {
-            expect(contract.secType).to.be.oneOf(['FUT', 'OPT','FOP']);
-            expect(contract.right).is.oneOf(['C', 'P']);
-            expect(contract.right).to.eql(right);
+            assert.ok(['FUT', 'OPT','FOP'].includes(contract.secType), `Expected contract.secType to be one of ['FUT', 'OPT','FOP'], got ${JSON.stringify(contract.secType)}`);
+            assert.ok(['C', 'P'].includes(contract.right), `Expected contract.right to be one of ['C', 'P'], got ${JSON.stringify(contract.right)}`);
+            assert.ok(_.isEqual(contract.right, right), `Expected contract.right to equal right, got ${JSON.stringify(contract.right)}`);
         });
         const [bars, under_bar] = await Promise.all([
             Promise.all(contracts.map(async(contract) => {
@@ -1204,8 +1206,8 @@ async function fromFopSymbol(markets, ib, contract) {
 async function toContract(markets, ib, options) {
     const has_legs = !_.isEmpty(options.attached) && options.attached.some(ord => ord.order_type == 'LEG');
     if (options.symbol && !has_legs) {
-        expect(options).to.have.property('symbol').that.is.ok;
-        expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
+        assert.ok(options.symbol, `Expected options.symbol to be set`);
+        assert.ok(_.keys(markets).includes(options.market), `Expected options.market to be one of ${JSON.stringify(_.keys(markets))}, got ${JSON.stringify(options.market)}`);
         const market = markets[options.market];
         return _.omit({
             conid: options.conid || options.conId,
@@ -1240,8 +1242,8 @@ async function toContract(markets, ib, options) {
             })
         };
     } else {
-        expect(options).to.have.property('symbol').that.is.ok;
-        expect(options).to.have.property('attached').that.is.an('array');
+        assert.ok(options.symbol, `Expected options.symbol to be set`);
+        assert.ok(Array.isArray(options.attached), `Expected options.attached to be an array`);
         throw Error(`Could not create contract from ${util.inspect(contract, {breakLength:Infinity})}`);
     }
 }

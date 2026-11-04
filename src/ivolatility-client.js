@@ -48,7 +48,7 @@ const interrupt = require('./interrupt.js');
 const awriter = require('./atomic-write.js');
 const cache = require('./memoize-cache.js');
 const storage = require('./storage.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
     const store = storage(cacheDir);
@@ -87,10 +87,10 @@ module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
             }).then(() => store.close());
         },
         interday(options) {
-            expect(options).to.have.property('symbol');
+            assert.ok(options != null && 'symbol' in Object(options), `Expected options to have property 'symbol'`);
             const symbol = options.symbol;
             if (symbol.length != 21) throw Error(`Option symbol must have 21 bytes ${symbol}`);
-            expect(symbol).to.be.like(/^(\w(?:\w| )*)(\d\d)(\d\d)(\d\d)([CP])(\d{8})$/);
+            like.assert(symbol, /^(\w(?:\w| )*)(\d\d)(\d\d)(\d\d)([CP])(\d{8})$/);
             const underlying = symbol.substring(0, 6).trim();
             const year = symbol.substring(6, 8);
             const month = symbol.substring(8, 10);

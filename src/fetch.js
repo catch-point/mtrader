@@ -37,7 +37,7 @@ const version = require('./version.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const assert = require('node:assert');
 
 /**
  * Fetch layer (bottom of the stack, see ARCHITECTURE.md). Builds an
@@ -68,8 +68,7 @@ module.exports = function(settings = {}) {
             const market = options.market;
             if (market && !markets[market]) {
                 const others = _.uniq(_.flatten(_.map(datasources, _.keys)));
-                expect(market, options.symbol)
-                    .to.be.oneOf(_.uniq(_.union(_.keys(markets), others)));
+                assert.ok(_.uniq(_.union(_.keys(markets), others)).includes(market), `Expected market to be one of ${JSON.stringify(_.uniq(_.union(_.keys(markets), others)))}, got ${JSON.stringify(market)}`);
             }
             const opt = options.security_tz || options.interval == 'contract' || options.interval == 'lookup' ?
                 {...options, ending_format: moment.defaultFormat} :
@@ -78,15 +77,15 @@ module.exports = function(settings = {}) {
                     ...options,
                     ending_format: moment.defaultFormat
                 };
-            expect(options).to.have.property('symbol').that.is.ok;
+            assert.ok(options.symbol, `Expected options.symbol to be set`);
             const interval = options.interval;
             if (interval == 'lookup') return lookup(markets, datasources.lookup, opt);
             if (interval == 'contract') return contract(markets, datasources.contract, opt);
             if (interval == 'fundamental') return fundamental(datasources.fundamental, opt);
             if (interval == 'adjustments') return adjustments(datasources.adjustments, opt);
-            expect(options).to.have.property('tz').that.is.a('string');
-            if (options.end) expect(options).to.have.property('begin');
-            if (options.end) expect(options.begin).not.to.be.above(options.end);
+            assert.ok(typeof options.tz == 'string', `Expected options.tz to be a string`);
+            if (options.end) assert.ok(options != null && 'begin' in Object(options), `Expected options to have property 'begin'`);
+            if (options.end) assert.ok(!(options.begin > options.end), `Expected options.begin to not be above options.end, got ${JSON.stringify(options.begin)}`);
             switch(interval) {
                 case 'year':
                 case 'quarter':
@@ -223,7 +222,7 @@ function help(datasources) {
 }
 
 function lookup(markets, datasources, options) {
-    expect(options).to.be.like({
+    like.assert(options, {
         symbol: /^\S(\S| )*$/
     });
     const market = options.market;
@@ -289,7 +288,7 @@ function lookup(markets, datasources, options) {
 }
 
 async function contract(markets, datasources, options) {
-    expect(options).to.be.like({
+    like.assert(options, {
         symbol: /^\S(\S| )*$/,
         market: /^\w+$/
     });
@@ -330,7 +329,7 @@ async function contract(markets, datasources, options) {
 }
 
 function fundamental(datasources, options) {
-    expect(options).to.be.like({
+    like.assert(options, {
         symbol: /^\S(\S| )*$/,
         market: /^\w+$/
     });
@@ -363,7 +362,7 @@ function fundamental(datasources, options) {
 }
 
 function adjustments(datasources, options) {
-    expect(options).to.be.like({
+    like.assert(options, {
         symbol: /^\S(\S| )*$/,
         market: /^\w+$/
     });
@@ -490,10 +489,10 @@ async function week(day, options) {
 }
 
 function interday(datasources, options) {
-    expect(options).to.be.like({
+    like.assert(options, {
         interval: /^\S+$/,
         symbol: /^\S(\S| )*$/,
-        market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
+        market: ex => _.keys(datasources).includes(ex),
         tz: _.isString
     });
     const begin = options.begin ? moment.tz(options.begin, options.tz) :
@@ -522,9 +521,9 @@ function interday(datasources, options) {
 }
 
 function intraday(datasources, options) {
-    expect(options).to.be.like({
+    like.assert(options, {
         symbol: /^\S(\S| )*$/,
-        market: ex => expect(ex).to.be.oneOf(_.keys(datasources)),
+        market: ex => _.keys(datasources).includes(ex),
         tz: _.isString
     });
     const opts = options.begin ? options : _.defaults({

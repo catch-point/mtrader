@@ -42,7 +42,7 @@ const config = require('./config.js');
 const Periods = require('./periods.js');
 const IB = require('./ib-gateway.js');
 const Fetch = require('./fetch.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 function help(settings) {
     const commonOptions = {
@@ -284,7 +284,7 @@ module.exports = async function(settings = {}) {
 
 const fmonth = {F:'01', G:'02', H:'03', J:'04', K:'05', M:'06', N:'07', Q:'08', U:'09', V:'10', X:'11', Z:'12'};
 function isContractExpired(markets, client, now, options) {
-    expect(options).to.have.property('symbol');
+    assert.ok(options != null && 'symbol' in Object(options), `Expected options to have property 'symbol'`);
     const market = markets[options.market] || {};
     const secType = market.secType;
     const secTypes = market.secTypes || [];
@@ -301,16 +301,16 @@ function isContractExpired(markets, client, now, options) {
 }
 
 function isHistorical(next_open, now, options) {
-    expect(options).to.have.property('begin');
+    assert.ok(options != null && 'begin' in Object(options), `Expected options to have property 'begin'`);
     if (now.diff(options.begin, 'days') < 365) return false;
     const end = moment(options.end || now);
     return next_open.diff(end, 'days') > 4;
 }
 
 function isTimeFrameAvailable(markets, client, now, options) {
-    expect(options).to.have.property('begin');
-    expect(options).to.have.property('interval');
-    expect(options).to.have.property('market');
+    assert.ok(options != null && 'begin' in Object(options), `Expected options to have property 'begin'`);
+    assert.ok(options != null && 'interval' in Object(options), `Expected options to have property 'interval'`);
+    assert.ok(options != null && 'market' in Object(options), `Expected options to have property 'market'`);
     const market = markets[options.market];
     const begin = moment(options.begin);
     const m = options.interval.charAt(0) == 'm' && +options.interval.substring(1);
@@ -327,10 +327,10 @@ function isTimeFrameAvailable(markets, client, now, options) {
 }
 
 function marketOpensAt(now, options) {
-    expect(options).to.have.property('tz');
-    expect(options).to.have.property('security_tz');
-    expect(options).to.have.property('open_time');
-    expect(options).to.have.property('liquid_hours');
+    assert.ok(options != null && 'tz' in Object(options), `Expected options to have property 'tz'`);
+    assert.ok(options != null && 'security_tz' in Object(options), `Expected options to have property 'security_tz'`);
+    assert.ok(options != null && 'open_time' in Object(options), `Expected options to have property 'open_time'`);
+    assert.ok(options != null && 'liquid_hours' in Object(options), `Expected options to have property 'liquid_hours'`);
     const tz = options.security_tz;
     const weekday = moment.tz(now, options.tz).tz(tz);
     if (weekday.days() === 0) weekday.add(1, 'days');
@@ -672,8 +672,8 @@ function market_close(hours) {
 }
 
 async function interday(findContract, markets, adjustments, client, options) {
-    expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
-    expect(options).to.have.property('tz').that.is.ok;
+    assert.ok(_.keys(markets).includes(options.market), `Expected options.market to be one of ${JSON.stringify(_.keys(markets))}, got ${JSON.stringify(options.market)}`);
+    assert.ok(options.tz, `Expected options.tz to be set`);
     const now = moment().tz(options.tz);
     if (now.isBefore(options.begin)) throw Error(`Cannot fetch future data: ${options.symbol} ${options.begin}`);
     const adjusts = adjustments && await adjustments(options);
@@ -701,8 +701,8 @@ async function interday(findContract, markets, adjustments, client, options) {
 }
 
 async function intraday(findContract, markets, adjustments, client, options) {
-    expect(options).to.have.property('market').that.is.oneOf(_.keys(markets));
-    expect(options).to.have.property('tz').that.is.ok;
+    assert.ok(_.keys(markets).includes(options.market), `Expected options.market to be one of ${JSON.stringify(_.keys(markets))}, got ${JSON.stringify(options.market)}`);
+    assert.ok(options.tz, `Expected options.tz to be set`);
     const now = moment().tz(options.tz);
     if (now.isBefore(options.begin)) throw Error(`Cannot fetch future data: ${options.symbol} ${options.begin}`);
     const adjusts = adjustments && await adjustments(options);
@@ -766,7 +766,7 @@ async function listContractDetails(markets, client, options) {
             logger.debug(`TWS IB Could not find ${options.symbol} as ${_.first(market_set).currency} ${_.first(market_set).secType}: ${err.message}`);
             return [];
         });
-        expect(contract).to.have.property('localSymbol');
+        assert.ok(contract != null && 'localSymbol' in Object(contract), `Expected contract to have property 'localSymbol'`);
         const details = as_is.length || !~contract.localSymbol.indexOf('.') ? as_is :
             await client.reqContractDetails(Object.assign({}, contract, {
                 localSymbol: contract.localSymbol.replace('.', ' ')
@@ -848,7 +848,7 @@ function withoutAdjClose(prices, adjusts, options) {
 }
 
 function toDurationString(end, options) {
-    expect(options).to.have.property('begin').that.is.ok;
+    assert.ok(options.begin, `Expected options.begin to be set`);
     const periods = new Periods(options);
     const ending = periods.ceil(options.begin);
     const start_of_day = moment(ending).startOf('day');

@@ -40,14 +40,14 @@ const moment = require('moment-timezone');
 const merge = require('./merge.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 const version = require('../package.json').version;
 
 /**
  * Aligns the working signals on collective2 with the signal rows from the collect result
  */
 module.exports = function(settings) {
-    expect(settings).to.have.property('systemid').that.is.ok;
+    assert.ok(settings.systemid, `Expected settings.systemid to be set`);
     const systemid = settings.systemid;
     const agent = new https.Agent({
         keepAlive: settings.keepAlive || false,
@@ -65,7 +65,7 @@ module.exports = function(settings) {
         NPNProtocols: settings.NPNProtocols,
         ALPNProtocols: settings.ALPNProtocols
     });
-    expect(settings).to.have.property('apikey').that.is.a('string');
+    assert.ok(typeof settings.apikey == 'string', `Expected settings.apikey to be a string`);
     return ({
         submitSignal(signal) {
             return submit(agent, 'submitSignal', systemid, signal, settings).then(_.property('signal'));
@@ -101,7 +101,7 @@ module.exports = function(settings) {
  * Retrieve the collective2 response
  */
 async function retrieve(agent, name, posted, systemid, settings) {
-    expect(settings).to.have.property('apikey').that.is.a('string');
+    assert.ok(typeof settings.apikey == 'string', `Expected settings.apikey to be a string`);
     const uri = settings[name];
     const parsed = _.isString(uri) && url.parse(uri);
     const body = await new Promise((ready, error) => {
@@ -164,7 +164,7 @@ async function retrieve(agent, name, posted, systemid, settings) {
  * Submits a new or updated signal or cancels a signal
  */
 async function submit(agent, name, systemid, signal, settings) {
-    expect(settings).to.have.property('apikey').that.is.a('string');
+    assert.ok(typeof settings.apikey == 'string', `Expected settings.apikey to be a string`);
     const signalid = typeof signal == 'string' ? signal : undefined;
     const signalobj = typeof signal == 'object' ? signal : undefined;
     const uri = settings[name];

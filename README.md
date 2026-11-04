@@ -22,7 +22,7 @@ service that other instances can send work to.
 
 ## Requirements
 
-- Node.js and npm. mtrader is currently tested with Node.js 22.
+- Node.js 22 or later, and npm.
 - Yahoo! data needs only internet access and is enabled by default. The other
   data sources and brokers are off until you configure them:
 

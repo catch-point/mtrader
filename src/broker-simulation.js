@@ -42,7 +42,7 @@ const config = require('./config.js');
 const storage = require('./storage.js');
 const Fetch = require('./fetch.js');
 const Lookup = require('./lookup.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 const majors = ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'];
 
@@ -54,7 +54,7 @@ function nextval() {
 module.exports = function(settings, quote) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
-    expect(settings).to.have.property('simulation').that.is.ok;
+    assert.ok(settings.simulation, `Expected settings.simulation to be set`);
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
         _.pick(market, v => !_.isObject(v)), (market.datasources||{}).simulation
     )), v => !v);
@@ -331,7 +331,7 @@ async function advance(barsFor, commissions, db, options) {
 }
 
 async function dispatch(barsFor_fn, db, lookup, options) {
-    expect(options).to.have.property('action');
+    assert.ok(options != null && 'action' in Object(options), `Expected options to have property 'action'`);
     switch(options.action) {
         case 'reset': return reset(db, options);
         case 'deposit': return deposit(barsFor_fn, db, options);
@@ -343,11 +343,15 @@ async function dispatch(barsFor_fn, db, lookup, options) {
         case 'OCA': return oneCancelsAllOrders(db, lookup, options);
         case 'BUY':
         case 'SELL': return submitOrder(db, lookup, options);
-        default: expect(options).to.have.property('action').to.be.oneOf([
+        default: assert.ok([
             'deposit', 'withdraw',
             'balances', 'positions', 'orders',
             'BUY', 'SELL', 'cancel'
-        ]);
+        ].includes(options.action), `Expected options.action to be one of [
+            'deposit', 'withdraw',
+            'balances', 'positions', 'orders',
+            'BUY', 'SELL', 'cancel'
+        ], got ${JSON.stringify(options.action)}`);
     }
 }
 
@@ -399,8 +403,8 @@ async function reset(db, options) {
 }
 
 async function deposit(barsFor, db, options) {
-    expect(options).to.have.property('currency').that.is.ok;
-    expect(options).to.have.property('quant').that.is.ok;
+    assert.ok(options.currency, `Expected options.currency to be set`);
+    assert.ok(options.quant, `Expected options.quant to be set`);
     const currency = options.currency;
     const now = moment(options.asof || options.now);
     const asof = now.format();
@@ -446,7 +450,7 @@ async function withdraw(barsFor, db, options) {
 }
 
 async function cancelOrder(db, options) {
-    expect(options).to.have.property('order_ref').that.is.ok;
+    assert.ok(options.order_ref, `Expected options.order_ref to be set`);
     const now = moment(options.asof || options.now);
     const orders = await db.collection('orders');
     const recent_month = _.last(orders.listNames());
@@ -527,18 +531,18 @@ async function submitOrder(db, lookup, options) {
 
 async function appendOrders(lookup, coll, recent_month, current_month, options) {
     if (options.order_type != 'LEG') {
-        expect(options).to.have.property('tif').that.is.oneOf(['GTC', 'DAY', 'IOC']);
-        expect(options).to.have.property('order_type').that.is.oneOf(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']);
+        assert.ok(['GTC', 'DAY', 'IOC'].includes(options.tif), `Expected options.tif to be one of ['GTC', 'DAY', 'IOC'], got ${JSON.stringify(options.tif)}`);
+        assert.ok(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP'].includes(options.order_type), `Expected options.order_type to be one of ['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP'], got ${JSON.stringify(options.order_type)}`);
     } else if (!_.isEmpty(options.attached)) {
-        expect(options).not.to.have.property('attached');
+        assert.ok(!('attached' in Object(options)), `Expected options to not have property 'attached'`);
     }
     const contract = options.symbol && (!options.market || !options.security_type || !options.currency) ?
         await lookup(_.pick(options, 'symbol', 'market')) : {};
     if (_.isEmpty(options.attached) || options.attached.every(leg => leg.order_type != 'LEG')) {
-        expect(options).to.have.property('symbol').that.is.a('string');
-        expect(options.market || contract.market).to.be.a('string');
-        expect(options.currency || contract.currency).to.be.a('string');
-        expect(options.security_type || contract.security_type).to.be.oneOf(['STK', 'FUT', 'OPT']);
+        assert.ok(typeof options.symbol == 'string', `Expected options.symbol to be a string`);
+        assert.ok(typeof (options.market || contract.market) == 'string', `Expected options.market || contract.market to be a string`);
+        assert.ok(typeof (options.currency || contract.currency) == 'string', `Expected options.currency || contract.currency to be a string`);
+        assert.ok(['STK', 'FUT', 'OPT'].includes((options.security_type || contract.security_type)), `Expected options.security_type || contract.security_type to be one of ['STK', 'FUT', 'OPT'], got ${JSON.stringify((options.security_type || contract.security_type))}`);
     }
     const now = moment(options.asof || options.now);
     const data = coll.exists(recent_month) ?
@@ -580,7 +584,7 @@ async function appendOrders(lookup, coll, recent_month, current_month, options) 
 async function fillOrder(barsFor, order, legs, options) {
     if (_.isEmpty(legs) || legs.every(ord => ord.order_type != 'LEG'))
         return [await fillSingleOrder(barsFor, order, options)];
-    expect(order).to.have.property('order_type').that.is.oneOf(['MKT', 'MOO', 'MOC', 'LOO', 'LOC']);
+    assert.ok(['MKT', 'MOO', 'MOC', 'LOO', 'LOC'].includes(order.order_type), `Expected order.order_type to be one of ['MKT', 'MOO', 'MOC', 'LOO', 'LOC'], got ${JSON.stringify(order.order_type)}`);
     const filled_legs = await Promise.all(legs.map(async(leg) => {
         return fillSingleOrder(barsFor, {
             ...leg,
@@ -614,10 +618,10 @@ async function fillOrder(barsFor, order, legs, options) {
 }
 
 async function fillSingleOrder(barsFor, order, options) {
-    expect(order).to.have.property('symbol').that.is.ok;
-    expect(order).to.have.property('market').that.is.ok;
-    expect(order).to.have.property('tif').that.is.oneOf(['GTC', 'DAY', 'IOC']);
-    expect(order).to.have.property('order_type').that.is.oneOf(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP']);
+    assert.ok(order.symbol, `Expected order.symbol to be set`);
+    assert.ok(order.market, `Expected order.market to be set`);
+    assert.ok(['GTC', 'DAY', 'IOC'].includes(order.tif), `Expected order.tif to be one of ['GTC', 'DAY', 'IOC'], got ${JSON.stringify(order.tif)}`);
+    assert.ok(['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP'].includes(order.order_type), `Expected order.order_type to be one of ['MKT', 'MIT', 'MOO', 'MOC', 'LMT', 'LOO', 'LOC', 'STP'], got ${JSON.stringify(order.order_type)}`);
     const all_bars = await barsFor(order.symbol, order.market, order.asof, options);
     if (!all_bars.length) return order;
     const mkt_price = all_bars[0].open;
@@ -657,8 +661,8 @@ async function fillSingleOrder(barsFor, order, options) {
 }
 
 async function rateOf(barsFor, base, quote, options) {
-    expect(base).to.be.oneOf(majors);
-    expect(quote).to.be.oneOf(majors);
+    assert.ok(majors.includes(base), `Expected base to be one of ${JSON.stringify(majors)}, got ${JSON.stringify(base)}`);
+    assert.ok(majors.includes(quote), `Expected quote to be one of ${JSON.stringify(majors)}, got ${JSON.stringify(quote)}`);
     const b = majors.indexOf(base);
     const q = majors.indexOf(quote);
     const since = moment(options.asof || options.now).subtract(1,'weeks').format();
@@ -809,5 +813,5 @@ function sameOrder(options) {
 function sameAction(a, b) {
     if (b == 'SELL' || b == 'BUY') return a == b;
     else if (b == 'cancel') return true;
-    else expect(b).to.be.oneOf(['SELL', 'BUY', 'cancel']);
+    else assert.ok(['SELL', 'BUY', 'cancel'].includes(b), `Expected b to be one of ['SELL', 'BUY', 'cancel'], got ${JSON.stringify(b)}`);
 }

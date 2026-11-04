@@ -142,7 +142,11 @@ Pass `--runInBand` (`config('runInBand', true)`) to keep everything in one proce
 The tests do this, and it's the easiest way to debug.
 
 `src/mtrader.js` puts all the wrappers together into the public API
-(`new Mtrader()`) and the interactive shell (run `mtrader` with no arguments).
+(`new Mtrader()`) and the interactive shell (run `mtrader` with no arguments,
+implemented on `node:readline` in `shell.js`). Given a command, `mtrader` runs
+`src/mtrader-<command>.js` in a child process, passing on the global options
+that came before the command. The wrappers parse their arguments with the
+shared `commander` program, which `config.js` reads its option values from.
 
 ## Distributed work
 
@@ -285,8 +289,9 @@ sent later changes over IPC. See [configuration](docs/configuration.md).
   formatted with `ending_format`. Use `moment-timezone` with an explicit zone, never
   the local zone. Markets declare `security_tz`, `trading_hours`, `liquid_hours`
   and `open_time`, which `periods.js` uses to place bars in intervals.
-- **Validation.** Code in `src/` checks its arguments with `chai`'s `expect`, so a
-  bad option fails close to where it was passed.
+- **Validation.** Code in `src/` checks its arguments with `node:assert` (and
+  `like.assert` for options patterns), so a bad option fails close to where it
+  was passed with an `AssertionError` naming the option.
 - **Money.** Prices, quantities and balances in brokers and replication use
   `big.js`, not floating point.
 - **Logging.** Use `logger.js` (`trace`/`debug`/`log`/`warn`/`error`), never
@@ -299,11 +304,11 @@ sent later changes over IPC. See [configuration](docs/configuration.md).
 
 | Area | Files |
 |---|---|
-| Entry points | `mtrader.js`, `mtrader-*.js` |
+| Entry points | `mtrader.js`, `mtrader-*.js`, `shell.js` (interactive shell) |
 | Layers | `fetch.js`, `quote.js`, `collect.js`, `optimize.js`, `bestsignals.js`, `strategize.js`, `broker.js`, `replicate.js` |
 | Data sources | `fetch-{yahoo,ib,iqfeed,ivolatility,files,remote}.js`, with their clients `*-client.js`, `ib-gateway.js`, `adjustments-yahoo.js` |
 | Brokers | `broker-{ib,collective2,simulation,remote}.js`, `collective2-client.js` |
-| Expressions | `parser.js`, `*-functions.js`, `quote-model.js`, `periods.js` |
+| Expressions | `parser.js`, `*-functions.js`, `statistics.js`, `quote-model.js`, `periods.js` |
 | Processes | `share.js`, `promise-reply.js`, `worker-queue.js`, `remote-workers.js`, `remote-process.js`, `interrupt.js`, `auto-restart.js` |
 | Storage | `storage.js`, `disk-cache.js`, `memoize-cache.js`, `atomic-write.js`, `read-write-lock.js`, `read-call-save.js` |
 | Support | `config.js`, `mtrader-config.js`, `logger.js`, `tabular.js`, `merge.js`, `lookup.js`, `like.js`, … |

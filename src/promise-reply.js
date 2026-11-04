@@ -32,7 +32,7 @@
 
 const _ = require('underscore');
 const logger = require('./logger.js');
-const AssertionError = require('chai').AssertionError;
+const {AssertionError} = require('node:assert');
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
@@ -79,7 +79,12 @@ module.exports = function(process) {
                 } else if (msg.error.name == 'AssertionError') {
                     const stack = (pending.called_from.stack || pending.called_from).toString();
                     const message = stack.replace(/(Error: )?called_from/, msg.error.stack);
-                    return pending.onerror(new AssertionError(message, msg.error));
+                    return pending.onerror(Object.assign(new AssertionError({
+                        message,
+                        actual: msg.error.actual,
+                        expected: msg.error.expected,
+                        operator: msg.error.operator
+                    }), _.omit(msg.error, 'name', 'message', 'stack', 'actual', 'expected', 'operator')));
                 } else {
                     const stack = (pending.called_from.stack || pending.called_from).toString();
                     const message = stack.replace(/(Error: )?called_from/, msg.error.stack || msg.error.message);

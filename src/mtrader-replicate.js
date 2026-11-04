@@ -41,7 +41,6 @@ const logger = require('./logger.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
 const Replicate = require('./replicate.js');
-const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const readCallSave = require('./read-call-save.js');
 const Fetch = require('./mtrader-fetch.js');
@@ -97,7 +96,7 @@ function usage(command) {
 process.setMaxListeners(process.getMaxListeners()+1);
 
 if (require.main === module) {
-    const program = usage(commander).parse(process.argv);
+    const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const replicate = createInstance(program, config.options());
         process.on('SIGINT', () => replicate.close());

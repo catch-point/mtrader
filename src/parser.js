@@ -32,7 +32,7 @@
 
 const _ = require('underscore');
 const logger = require('./logger.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 /**
  * Given a hash of methods: constant(value), variable(name),
@@ -92,7 +92,7 @@ module.exports = function(handlers) {
                 else
                     return _.object(Object.keys(expr), values);
             } else {
-                expect(expr).to.be.ok.and.a('string');
+                assert.ok(expr && typeof expr == 'string', `Expected expr to be set and be a string`);
             }
         },
         /**
@@ -101,7 +101,7 @@ module.exports = function(handlers) {
          */
         parseCriteriaList(exprs) {
             if (_.isEmpty(exprs)) return [];
-            if (!_.isArray(exprs) && !_.isString(exprs)) expect(exprs).to.be.a('string');
+            if (!_.isArray(exprs) && !_.isString(exprs)) assert.ok(typeof exprs == 'string', `Expected exprs to be a string`);
             const list = _.isArray(exprs) ?
                 _.flatten(exprs.map(val=>parseExpressions(val, subs)), true) :
                 parseExpressions(exprs, subs);

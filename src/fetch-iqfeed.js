@@ -44,7 +44,7 @@ const iqfeed = require('./iqfeed-client.js');
 const Fetch = require('./fetch.js');
 const cache = require('./memoize-cache.js');
 const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const assert = require('node:assert');
 
 function help(settings = {}) {
     const commonOptions = {
@@ -264,14 +264,14 @@ function createInstance(settings = {}) {
         }
         await iqclient.open();
         if (options.rollday) {
-            expect(options).to.be.like({
+            like.assert(options, {
                 interval: _.isString,
                 minutes: _.isFinite,
                 symbol: /^(\S| )+$/,
                 begin: Boolean,
                 tz: _.isString
             });
-            expect(options.tz).to.match(/^\S+\/\S+$/);
+            assert.ok(/^\S+\/\S+$/.test(options.tz), `Expected options.tz to match /^\\S+\\/\\S+$/, got ${JSON.stringify(options.tz)}`);
             const adj = isNotEquity(markets, options) ? null : adjustments;
             return rollday(iqclient, adj, options.interval, symbol(options), options);
         } else if (options.interval == 'lookup') {
@@ -296,7 +296,7 @@ function createInstance(settings = {}) {
             if (_.isEmpty(exchs)) return Promise.resolve([]);
             else return contract_cached(exchs, listed_markets, options);
         } else if (options.interval == 'fundamental') {
-            expect(options).to.be.like({
+            like.assert(options, {
                 symbol: /^(\S| )+$/,
                 open_time: /^\d\d:\d\d:00$/,
                 liquid_hours: /^\d\d:\d\d:00 - \d\d:\d\d:00$/,
@@ -313,7 +313,7 @@ function createInstance(settings = {}) {
                 security_type: security_types_map[fundamental.security_type]
             }]);
         } else if ('day' == options.interval) {
-            expect(options).to.be.like({
+            like.assert(options, {
                 interval: _.isString,
                 symbol: /^(\S| )+$/,
                 begin: Boolean,
@@ -323,17 +323,17 @@ function createInstance(settings = {}) {
                 security_tz: /^\S+\/\S+$/,
                 tz: /^\S+\/\S+$/
             });
-            expect(options.interval).to.be.oneOf(['day']);
+            assert.ok(['day'].includes(options.interval), `Expected options.interval to be one of ['day'], got ${JSON.stringify(options.interval)}`);
             const adj = isNotEquity(markets, options) ? null : adjustments;
             return interday(iqclient, adj, symbol(options), options);
         } else {
-            expect(options).to.be.like({
+            like.assert(options, {
                 interval: str => _.isString(str) && _.isFinite(str.substring(1)),
                 symbol: /^(\S| )+$/,
                 begin: Boolean,
                 tz: _.isString
             });
-            expect(options.tz).to.match(/^\S+\/\S+$/);
+            assert.ok(/^\S+\/\S+$/.test(options.tz), `Expected options.tz to match /^\\S+\\/\\S+$/, got ${JSON.stringify(options.tz)}`);
             const adj = isNotEquity(markets, options) ? null : adjustments;
             return intraday(iqclient, adj, symbol(options), options);
         }
@@ -352,7 +352,7 @@ function iqfeed_symbol(markets, options) {
     const source = ((markets[options.market]||{}).datasources||{}).iqfeed;
     const security_types = (source||{}).security_types;
     if (options.iqfeed_symbol) {
-        expect(options).to.be.like({
+        like.assert(options, {
             iqfeed_symbol: /^\S+$/
         });
         return options.iqfeed_symbol;
@@ -369,7 +369,7 @@ function iqfeed_symbol(markets, options) {
     } else if (source && source.week_of_month && isWeekOfYearExpiration(options.symbol)) {
         return weekOfYearToWeekOfMonth(markets, options);
     } else if (source) {
-        expect(options).to.be.like({
+        like.assert(options, {
             symbol: /^\S+$/
         });
         const prefix = source.dtnPrefix || '';
@@ -386,7 +386,7 @@ function iqfeed_symbol(markets, options) {
         else
             return symbol;
     } else {
-        expect(options).to.be.like({
+        like.assert(options, {
             symbol: /^\S+$/
         });
         return options.symbol;
@@ -702,8 +702,8 @@ async function contractForFutures(source, cache, options) {
 }
 
 async function interday(iqclient, adjustments, symbol, options) {
-    if (options.end) expect(options.begin).not.to.be.above(options.end);
-    expect(options.tz).to.be.a('string').and.match(/^\S+\/\S+$/);
+    if (options.end) assert.ok(!(options.begin > options.end), `Expected options.begin to not be above options.end, got ${JSON.stringify(options.begin)}`);
+    assert.ok(typeof options.tz == 'string' && /^\S+\/\S+$/.test(options.tz), `Expected options.tz to be a string and match /^\\S+\\/\\S+$/, got ${JSON.stringify(options.tz)}`);
     if (isOptionExpired(symbol, options.begin, options.end, options.tz)) return [];
     const periods = new Periods(options);
     const now = moment().tz(options.tz);
@@ -742,12 +742,12 @@ async function interday(iqclient, adjustments, symbol, options) {
 }
 
 async function intraday(iqclient, adjustments, symbol, options) {
-    if (options.end) expect(options.begin).not.to.be.above(options.end);
-    expect(options.tz).to.be.a('string').and.match(/^\S+\/\S+$/);
+    if (options.end) assert.ok(!(options.begin > options.end), `Expected options.begin to not be above options.end, got ${JSON.stringify(options.begin)}`);
+    assert.ok(typeof options.tz == 'string' && /^\S+\/\S+$/.test(options.tz), `Expected options.tz to be a string and match /^\\S+\\/\\S+$/, got ${JSON.stringify(options.tz)}`);
     if (isOptionExpired(symbol, options.begin, options.end, options.tz)) return [];
     const periods = new Periods(options);
     const minutes = +options.interval.substring(1);
-    expect(minutes).to.be.finite;
+    assert.ok(_.isFinite(minutes), `Expected minutes to be finite`);
     const now = moment().tz(options.tz);
     const [prices, adjusts] = await Promise.all([
         iqclient.minute(minutes, symbol, options.begin, options.end, options.tz),
@@ -868,7 +868,7 @@ async function mostRecentTrade(iqclient, adjustments, symbol, options) {
 }
 
 async function rollday(iqclient, adjustments, interval, symbol, options) {
-    expect(options).to.have.property('minutes').that.is.finite;
+    assert.ok(_.isFinite(options.minutes), `Expected options.minutes to be finite`);
     const asof = moment().tz(options.tz).format(options.ending_format);
     const bars = await intraday(iqclient, adjustments, symbol, _.defaults({
         interval: 'm' + options.minutes

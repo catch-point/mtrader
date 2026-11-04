@@ -44,7 +44,7 @@ const interrupt = require('./interrupt.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
 const formatDate = new require('./mtrader-date.js')();
-const expect = require('chai').expect;
+const assert = require('node:assert');
 const Lookup = require('./lookup.js');
 
 /**
@@ -248,10 +248,10 @@ async function getDesiredPositions(broker, collect, lookup, begin, options) {
 }
 
 function getRealizedPosition(order) {
-    expect(order).to.have.property('position');
+    assert.ok(order != null && 'position' in Object(order), `Expected order to have property 'position'`);
     if (!order.action || !+order.quant)
         return +order.position;
-    expect(order).to.have.property('action').that.is.oneOf(['BUY', 'SELL']);
+    assert.ok(['BUY', 'SELL'].includes(order.action), `Expected order.action to be one of ['BUY', 'SELL'], got ${JSON.stringify(order.action)}`);
     if (order.action == 'BUY')
         return +order.position - +order.quant;
     else

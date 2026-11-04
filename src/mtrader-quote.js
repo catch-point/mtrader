@@ -45,7 +45,7 @@ const Model = require('./quote-model.js');
 const Quote = require('./quote.js');
 const replyTo = require('./promise-reply.js');
 const config = require('./config.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 const common = require('./common-functions.js');
 const lookback = require('./lookback-functions.js');
 const indicator = require('./indicator-functions.js');
@@ -55,7 +55,7 @@ const Fetch = require('./mtrader-fetch.js');
 const WORKER_COUNT = require('os').cpus().length;
 
 function usage(command) {
-    return command.version(version)
+    return command.version(version.toString())
         .description("Quotes historical data for the given symbol")
         .usage('<symbol.market> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -90,7 +90,7 @@ function usage(command) {
 process.setMaxListeners(process.getMaxListeners()+1);
 
 if (require.main === module) {
-    const program = usage(commander).parse(process.argv);
+    const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const quote = createInstance(program);
         process.on('SIGINT', () => quote.close());
@@ -226,10 +226,10 @@ function createWorkers(program, fetch, quote) {
 };
 
 function getMasterWorker(workers, options) {
-    if (!options.info) expect(options).to.have.property('symbol');
+    if (!options.info) assert.ok(options != null && 'symbol' in Object(options), `Expected options to have property 'symbol'`);
     const name = options.info ? options.info : options.market ?
         options.symbol + '.' + options.market : options.symbol;
-    expect(workers).to.be.an('array').and.not.empty;
+    assert.ok(Array.isArray(workers) && !_.isEmpty(workers), `Expected workers to be an array and not be empty`);
     const capacity = workers.length;
     const number = (hashCode(name) % capacity + capacity) % capacity;
     return workers[number];

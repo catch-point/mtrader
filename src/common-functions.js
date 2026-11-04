@@ -33,12 +33,11 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const Big = require('big.js');
-const statkit = require("statkit");
+const statistics = require('./statistics.js');
 const bs = require('black-scholes');
 const iv = require('implied-volatility');
 const d3 = require('d3-format');
 const periods = require('./periods.js');
-const expect = require('chai').expect;
 
 module.exports = function(name, args, options) {
     if (!functions[name]) return;
@@ -706,7 +705,7 @@ const functions = module.exports.functions = {
         return context => {
             const n = number(context);
             if (!_.isFinite(n)) return null;
-            const value = statkit.normcdf(n);
+            const value = statistics.normcdf(n);
             return _.isFinite(value) ? value : null;
         };
     }, {
@@ -716,7 +715,7 @@ const functions = module.exports.functions = {
         return context => {
             const n = number(context);
             if (!_.isFinite(n)) return null;
-            const value = statkit.norminv(n);
+            const value = statistics.norminv(n);
             return _.isFinite(value) ? value : null;
         };
     }, {

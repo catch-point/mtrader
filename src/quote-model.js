@@ -37,7 +37,7 @@ const _ = require('underscore');
 const csv = require('fast-csv');
 const moment = require('moment-timezone');
 const Big = require('big.js');
-const smr = require('smr');
+const MultivariateLinearRegression = require('ml-regression-multivariate-linear');
 const merge = require('./merge.js');
 const cache = require('./memoize-cache.js');
 const interrupt = require('./interrupt.js');
@@ -50,7 +50,7 @@ const logger = require('./logger.js');
 const version = require('./version.js').toString();
 const Periods = require('./periods.js');
 const storage = require('./storage.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 function help(assets, help) {
     const all_intervals = _.uniq(_.flatten(assets.map(asset => asset.intervals)));
@@ -621,11 +621,13 @@ function createIterator(array) {
 }
 
 function calculateCoefficients(data) {
-    var reg = new smr.Regression({numX: data[0].independents.length, numY: 1});
-    data.forEach(datum => {
-        reg.push({x: datum.independents, y: [datum.dependent]});
-    });
-    return reg.calculateCoefficients().map(_.first);
+    // null counts as zero and a missing value makes every coefficient NaN
+    const x = data.map(datum => datum.independents.map(Number));
+    const y = data.map(datum => [Number(datum.dependent)]);
+    if (_.flatten(x).concat(_.flatten(y)).some(Number.isNaN))
+        return data[0].independents.map(() => NaN);
+    const reg = new MultivariateLinearRegression(x, y, {intercept: false});
+    return reg.weights.map(_.first);
 }
 
 function nextBarEnding(iterators, options) {
@@ -703,7 +705,7 @@ function maxDate(date1, date2) {
 }
 
 function trim(result, options) {
-    expect(options).to.have.property('tz').that.is.a('string');
+    assert.ok(typeof options.tz == 'string', `Expected options.tz to be a string`);
     return Promise.resolve(result).then(result => {
         const begin = moment.tz(options.begin, options.tz);
         const start = begin.format(options.ending_format);

@@ -34,8 +34,6 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
-const shell = require('shell');
-const expect = require('chai').expect;
 const commander = require('commander');
 const merge = require('./merge.js');
 const logger = require('./logger.js');
@@ -51,7 +49,6 @@ const MTrader = require('./mtrader.js');
 function usage(command) {
     return command.version(version.version)
     .description("Lists pending queues in the hosting service")
-    .option('-V, --version', "Output the version number(s)")
     .option('-v, --verbose', "Include more information about what the system is doing")
     .option('-q, --quiet', "Include less information about what the system is doing")
     .option('-x, --debug', "Include details about what the system is working on")
@@ -89,7 +86,7 @@ module.exports = function(settings = {}) {
 }
 
 if (require.main === module) {
-    const program = usage(commander).parse(process.argv);
+    const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     const agent = new module.exports();
     agent().catch(err => err && err.stack && logger.debug(err, err.stack));
 }

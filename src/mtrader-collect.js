@@ -57,7 +57,6 @@ const Broker = require('./mtrader-broker.js');
 const Model = require('./quote-model.js');
 const SlaveQuote = require('./quote.js');
 const Collect = require('./collect.js');
-const expect = require('chai').expect;
 const rolling = require('./rolling-functions.js');
 const Quoting = require('./quoting-functions.js');
 const formatDate = new require('./mtrader-date.js')();
@@ -68,7 +67,7 @@ const WORKER_COUNT = require('os').cpus().length;
 process.setMaxListeners(process.getMaxListeners()+1);
 
 function usage(command) {
-    return command.version(version)
+    return command.version(version.toString())
         .description("Collects historic portfolio data")
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -148,7 +147,7 @@ function collect_help(info) {
 }
 
 if (require.main === module) {
-    const program = usage(commander).parse(process.argv);
+    const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length || !process.send) {
         const runInBand = ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand');
         const shared = settings => createSharedInstance(program, runInBand);

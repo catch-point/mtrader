@@ -44,8 +44,7 @@ const lookback = require('../src/lookback-functions.js');
 const indicator = require('../src/indicator-functions.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
-const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const assert = require('node:assert');
 
 /**
  * Quote layer: evaluates columns/criteria expressions over one security's bars
@@ -178,16 +177,16 @@ function help(fetch) {
  */
 async function quote(fetch, store, fields, options) {
     try {
-        if (options.columns) expect(options.columns).not.to.have.property('length'); // not array like
-        if (options.variables) expect(options.variables).not.to.have.property('length'); // not array like
-        if (options.parameters) expect(options.parameters).not.to.have.property('length'); // not array like
+        if (options.columns) assert.ok(!('length' in Object(options.columns)), `Expected options.columns to not have property 'length'`); // not array like
+        if (options.variables) assert.ok(!('length' in Object(options.variables)), `Expected options.variables to not have property 'length'`); // not array like
+        if (options.parameters) assert.ok(!('length' in Object(options.parameters)), `Expected options.parameters to not have property 'length'`); // not array like
         const exprMap = await parseWarmUpMap(fields, options);
         const cached = _.mapObject(exprMap, _.keys);
         const intervals = Periods.sort(_.keys(exprMap));
         if (_.isEmpty(intervals)) throw Error("At least one column need to reference an interval fields");
         const criteria = await parseCriteriaMap(options.criteria, fields, cached, intervals, options);
         const interval = intervals[0];
-        intervals.forEach(interval => expect(interval).to.be.oneOf(Periods.values));
+        intervals.forEach(interval => assert.ok(Periods.values.includes(interval), `Expected interval to be one of ${JSON.stringify(Periods.values)}, got ${JSON.stringify(interval)}`));
         return store.open(options.symbol, (err, db) => {
             if (err) throw err;
             const quoteBars = fetchBars.bind(this, fetch, db, fields);
@@ -283,7 +282,7 @@ function createParser(fields, cached, options) {
             else if (!~name.indexOf('.'))
                 throw Error("Unknown field: " + name);
             const interval = name.substring(0, name.indexOf('.'));
-            expect(interval).to.be.oneOf(Periods.values);
+            assert.ok(Periods.values.includes(interval), `Expected interval to be one of ${JSON.stringify(Periods.values)}, got ${JSON.stringify(interval)}`);
             const lname = name.substring(name.indexOf('.')+1);
             return _.extend(ctx => {
                 if (!ctx.length) return undefined;
@@ -869,7 +868,7 @@ function fetchPartialBlock(fetch, fields, options, collection, now, block, begin
  */
 function getBlocks(warmUpLength, begin, end, within, options) {
     // FIXME begin does not consider market closures, so pad a little extra
-    expect(options).to.have.property('interval').that.is.ok.and.a('string');
+    assert.ok(options.interval && typeof options.interval == 'string', `Expected options.interval to be set and be a string`);
     const interval = options.interval;
     const periods = new Periods(options);
     const m = interval.match(/^m(\d+)$/);

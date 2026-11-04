@@ -40,7 +40,7 @@ const version = require('./version.js').version;
 const readCallSave = require('./read-call-save.js');
 
 if (require.main === module) {
-    const program = require('commander').version(version)
+    const program = require('commander').program.version(version.toString())
         .description("View or change stored options")
         .usage('<name> [value] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -52,6 +52,7 @@ if (require.main === module) {
         .option('--cache-dir <dirname>', "Directory where processed data is kept")
         .option('--load <filename>', "Read the given session settings")
         .option('--save <identifier>', "Modify the settings in the given stored session")
+        .allowExcessArguments()
         .parse(process.argv);
     if (program.args.length) {
         try {

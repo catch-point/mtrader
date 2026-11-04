@@ -39,9 +39,10 @@ const http = require('http');
 const https = require('https');
 const _ = require('underscore');
 const moment = require('moment-timezone');
+const child_process = require('child_process');
 const ws = require('ws');
-const shell = require('shell');
-const expect = require('chai').expect;
+const commander = require('commander');
+const Shell = require('./shell.js');
 const merge = require('./merge.js');
 const logger = require('./logger.js');
 const tabular = require('./tabular.js');
@@ -63,7 +64,8 @@ const Strategize = require('./mtrader-strategize.js');
 const Broker = require('./mtrader-broker.js');
 const Replicate = require('./mtrader-replicate.js');
 
-const program = require('commander')
+// the shared program, read by config.js, only when run as the mtrader command
+const program = (require.main === module ? commander.program : new commander.Command()).name('mtrader')
     .description(version.description)
     .command('config <name> [value]', "View or change stored options")
     .command('date <format>', "Formats the time now")
@@ -90,7 +92,9 @@ const program = require('commander')
     .option('--load <filename>', "Read the given session settings")
     .option('-o, --offline', "Disable data updates")
     .option('-u, --update', "Update the last bar of assets")
-    .option('--set <name=value>', "Name=Value pairs to be used in session");
+    .option('--set <name=value>', "Name=Value pairs to be used in session")
+    // with options alone, start the shell (rather than displaying help)
+    .action(() => {});
 
 let program_args_version = false;
 program.on('option:version', async function() {
@@ -109,37 +113,13 @@ program.on('option:version', async function() {
 process.setMaxListeners(process.getMaxListeners()+1);
 
 if (require.main === module) {
-    if (process.argv.length > 2) {
-        // don't call an executable if no command given
-        program.executables = false;
-        program.addImplicitHelpCommand();
-        program.executeSubCommand = _.wrap(program.executeSubCommand, (fn, argv, args, unknown) => {
-            // include known options in sub-command
-            const arg = [].concat(
-                args,
-                ['--prefix', config('prefix')],
-                parseKnownOptions(program, argv)
-            );
-            return fn.call(program, argv, arg, unknown);
-        });
-        program.parse(process.argv);
-    }
-    if (!program_args_version && _.isEmpty(program.args)) {
-        const app = new shell({isShell: true});
-        const settings = {shell: app, introduction: true};
-        app.configure(function(){
-            app.use(shell.completer(settings));
-            app.use(shell.router(settings));
-            app.use(shell.help(settings));
-            app.use(shellError(settings));
-        });
-        settings.sensitive = null; // disable case insensitivity in commands
-        const mtrader = createInstance(config.options());
-        mtrader.shell(app);
-        process.on('SIGINT', () => app.quit());
-        process.on('SIGTERM', () => app.quit());
-        app.on('quit', () => mtrader.close());
-        app.on('exit', () => mtrader.close());
+    const argv = process.argv.slice(2);
+    const index = findCommandIndex(program, argv);
+    if (index >= 0) {
+        runCommand(program, argv, index);
+    } else {
+        if (argv.length) program.parse(process.argv);
+        if (!program_args_version) startShell();
     }
     process.on('SIGTERM', () => {
         setTimeout(() => {
@@ -155,14 +135,87 @@ if (require.main === module) {
     });
 }
 
+function startShell() {
+    const app = new Shell({introduction: true});
+    app.use(shellError({shell: app}));
+    const mtrader = createInstance(config.options());
+    mtrader.shell(app);
+    process.on('SIGINT', () => app.quit());
+    process.on('SIGTERM', () => app.quit());
+    app.on('quit', () => mtrader.close());
+    app.on('exit', () => mtrader.close());
+}
+
+/**
+ * Index of the first argument that is not one of the program's options (or
+ * an option's value), which names the command to run, or -1
+ */
+function findCommandIndex(program, argv) {
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if (arg == '--') return i + 1 < argv.length ? i + 1 : -1;
+        if (arg[0] != '-' || arg == '-') return i;
+        const option = findOption(program, arg);
+        if (option && !~arg.indexOf('=') && takesValue(option, argv[i+1])) i++;
+    }
+    return -1;
+}
+
+/**
+ * Runs src/mtrader-<command>.js in a child process, passing on the program's
+ * options given before the command
+ */
+function runCommand(program, argv, index) {
+    const names = program.commands.map(cmd => cmd.name());
+    const name = argv[index];
+    if (name == 'help') {
+        const topic = argv[index+1];
+        if (!topic) return program.outputHelp();
+        else if (!~names.indexOf(topic)) return program.error(`error: unknown command '${topic}'`);
+        else return spawnCommand(topic, ['--help']);
+    } else if (!~names.indexOf(name)) {
+        return program.error(`error: unknown command '${name}'`);
+    }
+    const args = [].concat(
+        argv.slice(index + 1),
+        ['--prefix', config('prefix')],
+        parseKnownOptions(program, argv.slice(0, index))
+    );
+    return spawnCommand(name, args);
+}
+
+function spawnCommand(name, args) {
+    const file = path.resolve(__dirname, `mtrader-${name}.js`);
+    const child = child_process.spawn(process.execPath, [...process.execArgv, file, ...args], {stdio: 'inherit'});
+    const signals = ['SIGTERM', 'SIGHUP', 'SIGUSR1', 'SIGUSR2'];
+    const forward = signal => child.kill(signal);
+    signals.forEach(signal => process.on(signal, forward));
+    child.on('error', err => {
+        logger.error(`Could not run ${name}`, err);
+        process.exitCode = 1;
+    }).on('exit', (code, signal) => {
+        signals.forEach(signal => process.removeListener(signal, forward));
+        process.exitCode = code == null ? (signal ? 1 : 0) : code;
+    });
+    return child;
+}
+
+function findOption(program, arg) {
+    const flag = arg.startsWith('--') && ~arg.indexOf('=') ? arg.substring(0, arg.indexOf('=')) : arg;
+    return program.options.find(option => option.is(flag));
+}
+
+function takesValue(option, next) {
+    return option.required || option.optional && next != null && (next[0] != '-' || next == '-');
+}
+
 function parseKnownOptions(program, argv) {
     return _.filter(argv, (arg, i) => {
-        if (program.optionFor(arg)) return true;
+        if (findOption(program, arg)) return true;
         else if (i === 0) return false;
-        const prior = program.optionFor(argv[i-1]);
+        const prior = findOption(program, argv[i-1]);
         // if prior option is required or optional and not a flag
-        return prior && prior.required && arg ||
-            prior && prior.optional && ('-' != arg[0] || '-' == arg);
+        return prior && !~argv[i-1].indexOf('=') && takesValue(prior, arg);
     });
 }
 

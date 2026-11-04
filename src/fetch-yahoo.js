@@ -39,7 +39,7 @@ const yahooClient = require('./yahoo-client.js');
 const Adjustments = require('./adjustments-yahoo.js');
 const cache = require('./memoize-cache.js');
 const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const assert = require('node:assert');
 
 function help(settings = {}) {
     const commonOptions = {
@@ -235,12 +235,12 @@ function lookup(markets, yahoo, options) {
 
 function yahoo_symbol(markets, options) {
     if (options.yahoo_symbol) {
-        expect(options).to.be.like({
+        like.assert(options, {
             yahoo_symbol: /^\S+$/
         });
         return options.yahoo_symbol;
     } else if (markets[options.market] && markets[options.market].datasources.yahoo) {
-        expect(options).to.be.like({
+        like.assert(options, {
             symbol: /^\S+$/
         });
         const source = markets[options.market].datasources.yahoo;
@@ -255,7 +255,7 @@ function yahoo_symbol(markets, options) {
                 .replace(/\./g, '') +
                 suffix;
     } else {
-        expect(options).to.be.like({
+        like.assert(options, {
             symbol: /^\S+$/
         });
         return options.symbol;
@@ -263,7 +263,7 @@ function yahoo_symbol(markets, options) {
 }
 
 async function interday(yahoo, adjustments, symbol, options) {
-    expect(options).to.be.like({
+    like.assert(options, {
         interval: _.isString,
         symbol: /^\S+$/,
         begin: Boolean,

@@ -38,8 +38,7 @@ const moment = require('moment-timezone');
 const awriter = require('./atomic-write.js');
 const config = require('./config.js');
 const logger = require('./logger.js');
-const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const assert = require('node:assert');
 
 /**
  * @returns a function that returns an object about the security in the given options
@@ -87,7 +86,7 @@ function fetchOptionsFactory(fetch, offline, read_only) {
         return market ? symbol + ' ' + market : symbol;
     });
     return function(options) {
-        expect(options).to.have.property('symbol');
+        assert.ok(options != null && 'symbol' in Object(options), `Expected options to have property 'symbol'`);
         const symbol = options.symbol;
         const market = options.market;
         return memoizeFirstLookup(symbol, market).catch(e => {
@@ -132,7 +131,7 @@ function getInfoFileName(dir, symbol, market) {
 }
 
 function safe(segment) {
-    expect(segment).is.ok.and.not.be.a('object').and.not.be.a('function');
+    assert.ok(segment && (!(_.isObject(segment) && !Array.isArray(segment) && typeof segment != 'function')) && !(typeof segment == 'function'), `Expected segment to be set and not be an object and not be a function`);
     if (!_.isString(segment)) return safe('' + segment);
     else if (segment.match(/^[\w._-]+$/)) return segment;
     else return segment.replace(/[^\w.-]+/g,'_');

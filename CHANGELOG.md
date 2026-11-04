@@ -4,6 +4,45 @@ All notable changes to mtrader since 1.0. Entries before 16.2.0 were
 generated from the git history and are grouped by minor version; each lists
 the commit subjects included in that series, newest first.
 
+## 16.3.0 — 2026-11-04
+
+### Changed
+
+- Requires Node.js 22 or later (`engines.node` is `>=22`).
+- Argument checks in `src/` use `node:assert` instead of `chai`, which is now a
+  test-only dependency. Options patterns are checked with `like.assert`.
+  Failures are `AssertionError`s whose message names the option.
+- The interactive shell is implemented on `node:readline` (`src/shell.js`)
+  instead of the unmaintained `shell` package. Commands piped into `mtrader`
+  are now run in order instead of being dropped while a command is running.
+- `mtrader <command>` runs `src/mtrader-<command>.js` directly instead of
+  through commander's executable subcommands.
+- Replaced unmaintained packages: `statkit` with `simple-statistics` (through
+  `src/statistics.js`), `smr` with `ml-regression-multivariate-linear` and
+  `alea` with `seedrandom`'s identical Alea generator, so seeded optimizations
+  repeat exactly. `NORMSINV` of probabilities below about 1e-9 is now
+  accurate; `statkit` returned values that were too far into the tail.
+  Model regressions with fewer rows than independents (the first rows of a
+  `regression_length` window) now use the minimum-norm least-squares fit,
+  which can differ from `smr`'s; once there are enough rows the coefficients
+  match.
+- Upgraded, staying on CommonJS builds: `ws` 8, `fast-xml-parser` 5,
+  `commander` 14, `big.js` 7, `diff` 9, `fast-csv` 5, `yauzl` 3,
+  `moment-timezone` 0.6, `underscore` 1.13.8, `graceful-fs` 4.2.11, and for
+  development `chai` 4, `chai-as-promised` 7, `mocha` 11, `js-beautify` 2.
+
+### Fixed
+
+- Removed duplicate `--solution-count` and `--version` option declarations
+  that commander 14 rejects.
+- Market sessions whose open time falls in a daylight saving gap on the day
+  they are computed from (such as a 02:00 America/Chicago open on a
+  spring-forward Sunday) now open at that time on the following trading day.
+  Since moment-timezone 0.6.4 correctly moves 02:00 in the gap to 03:00,
+  `periods.js` carried 03:00 on to the Monday, an hour late. Each day shift
+  now sets the session's clock time on the new day. The `periods` spec is no
+  longer skipped.
+
 ## 16.2.0 — 2026-11-04
 
 ### Fixed

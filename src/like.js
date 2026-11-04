@@ -30,11 +30,37 @@
  */
 'use strict';
 
+const util = require('node:util');
+const assert = require('node:assert');
 const _ = require('underscore');
 
+/**
+ * Called with chai, registers a `like` assertion (used by the tests); otherwise
+ * returns a predicate testing whether a value is like the expected pattern.
+ */
 module.exports = function() {
     if (arguments[0].Assertion) return register.apply(this, arguments);
     else return like.apply(this, arguments);
+};
+
+/**
+ * Throws an AssertionError unless actual is like the expected pattern, naming
+ * the first property path that differs.
+ */
+module.exports.assert = function(actual, expected, message) {
+    const unexpected_path = [];
+    if (like(expected)(actual, unexpected_path)) return;
+    const act = unexpected_path.reduce((obj, prop) => obj[prop], actual);
+    const exp = unexpected_path.reduce((obj, prop) => obj[prop], expected);
+    const show = value => _.isFunction(value) || _.isRegExp(value) ? value.toString() :
+        util.inspect(value, {depth: 2, breakLength: Infinity});
+    const path = _.isEmpty(unexpected_path) ? '' : `${unexpected_path.join('.')} of `;
+    throw new assert.AssertionError({
+        message: message || `Expected ${path}${show(act)} to be like ${show(exp)}`,
+        actual: act,
+        expected: exp,
+        operator: 'like'
+    });
 };
 
 function like(expected) {

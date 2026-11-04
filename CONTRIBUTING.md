@@ -38,7 +38,11 @@ git-ignored and safe to delete.
 - Each layer, data source and broker implements the
   [layer contract](ARCHITECTURE.md#one-interface-for-every-layer). New options
   must go in the module's `help()` or they're silently dropped.
-- Use `chai`'s `expect` for argument validation inside `src/`, as the existing code does.
+- Use `node:assert` (`assert.ok(condition, message)`) for argument validation inside `src/`,
+  and `like.assert(value, pattern)` from `src/like.js` to check an options object
+  against a pattern. `chai` is a test-only dependency.
+- Keep `src/` CommonJS (`require`), and prefer dependencies that still ship a
+  CommonJS build.
 - Use `logger.js` (`trace`/`debug`/`log`/`warn`/`error`) rather than `console`.
 - Write files through `atomic-write.js`.
 - Use `big.js` for money and quantities in brokers and replication.

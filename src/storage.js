@@ -36,7 +36,7 @@ const path = require('path');
 const zlib = require('zlib');
 const _ = require('underscore');
 const csv = require('fast-csv');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 const awriter = require('./atomic-write.js');
 const logger = require('./logger.js');
 const debounce = require('./debounce.js');
@@ -89,7 +89,7 @@ function openDatabase(dir, name) {
 }
 
 function safe(segment) {
-    expect(segment).is.ok.and.not.be.a('object').and.not.be.a('function');
+    assert.ok(segment && (!(_.isObject(segment) && !Array.isArray(segment) && typeof segment != 'function')) && !(typeof segment == 'function'), `Expected segment to be set and not be an object and not be a function`);
     if (!_.isString(segment)) return safe('' + segment);
     else if (segment.match(/^[\w._-]+$/)) return segment;
     else return segment.replace(/[^\w.-]+/g,'_');
@@ -407,7 +407,7 @@ function readTable(filename, size) {
 }
 
 function writeTable(filename, table) {
-    expect(table).to.be.an('array');
+    assert.ok(Array.isArray(table), `Expected table to be an array`);
     return awriter(filename => new Promise((finished, error) => {
         const headers = _.union(_.keys(_.first(table)), _.keys(_.last(table)));
         const output = fs.createWriteStream(filename).on('error', error);

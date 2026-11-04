@@ -38,8 +38,6 @@ const version = require('./version.js').toString();
 const config = require('./config.js');
 const remote = require('./remote-process.js');
 const replyTo = require('./promise-reply.js');
-const like = require('./like.js');
-const expect = require('chai').use(like).expect;
 
 module.exports = function(settings) {
     if (settings.info=='help') return helpSettings();

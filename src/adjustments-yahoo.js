@@ -40,7 +40,7 @@ const config = require('./config.js');
 const storage = require('./storage.js');
 const Yahoo = require('./yahoo-client.js');
 const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const assert = require('node:assert');
 const version = require('./version.js');
 
 function help() {
@@ -107,12 +107,12 @@ module.exports = share(function(settings = {}, yahooClient = null) {
 
 function yahoo_symbol(markets, options) {
     if (options.yahoo_symbol) {
-        expect(options).to.be.like({
+        like.assert(options, {
             yahoo_symbol: /^\S+$/
         });
         return options.yahoo_symbol;
     } else if (markets[options.market] && markets[options.market].datasources.yahoo) {
-        expect(options).to.be.like({
+        like.assert(options, {
             symbol: /^\S+$/
         });
         const source = markets[options.market].datasources.yahoo;
@@ -127,7 +127,7 @@ function yahoo_symbol(markets, options) {
                 .replace(/-PR./, '-P') +
                 suffix;
     } else {
-        expect(options).to.be.like({
+        like.assert(options, {
             symbol: /^\S+$/
         });
         return options.symbol;
@@ -135,8 +135,8 @@ function yahoo_symbol(markets, options) {
 }
 
 async function yahoo_adjustments(yahoo, db, salt, symbol, options) {
-    expect(options).to.have.property('begin');
-    expect(options).to.have.property('tz');
+    assert.ok(options != null && 'begin' in Object(options), `Expected options to have property 'begin'`);
+    assert.ok(options != null && 'tz' in Object(options), `Expected options to have property 'tz'`);
     const mbegin = moment.tz(options.begin, options.tz);
     const since = Math.floor(mbegin.year()/10)+'0-01-01';
     const begin = mbegin.format('YYYY-MM-DD');

@@ -1,34 +1,35 @@
 {
   "name": "mtrader",
-  "version": "16.2.0",
+  "version": "16.3.0",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
-    "alea": "0.0.9",
-    "big.js": "^5.2.2",
+    "big.js": "^7.0.1",
     "black-scholes": "^1.1.0",
-    "chai": "^3.5.0",
-    "commander": "^2.14.1",
-    "d3-format": "^1.2.1",
-    "diff": "^3.1.0",
-    "fast-csv": "^4.3.6",
-    "fast-xml-parser": "^3.12.16",
-    "graceful-fs": "^4.1.11",
+    "commander": "^14.0.3",
+    "d3-format": "^1.4.5",
+    "diff": "^9.0.0",
+    "fast-csv": "^5.0.8",
+    "fast-xml-parser": "^5.12.0",
+    "graceful-fs": "^4.2.11",
     "ib-tws-node": "github:catch-point/ib-tws-node#v1.1.1",
     "implied-volatility": "^1.0.0",
-    "moment-timezone": "^0.5.25",
-    "shell": "0.5.0",
-    "smr": "^0.12.6",
-    "statkit": "^0.2.0",
-    "underscore": "^1.8.3",
-    "ws": "^3.3.2",
-    "yauzl": "^2.10.0"
+    "ml-regression-multivariate-linear": "^2.0.4",
+    "moment-timezone": "^0.6.6",
+    "seedrandom": "^3.0.5",
+    "simple-statistics": "^8.0.0",
+    "underscore": "^1.13.8",
+    "ws": "^8.22.1",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
-    "chai": "^3.5.0",
-    "chai-as-promised": "^6.0.0",
-    "js-beautify": "^1.10.0",
-    "mocha": "^9.2.2"
+    "chai": "^4.5.0",
+    "chai-as-promised": "^7.1.2",
+    "js-beautify": "^2.0.3",
+    "mocha": "^11.8.0"
   },
   "scripts": {
     "test": "mocha --forbid-only --node-option max-http-header-size=65536",

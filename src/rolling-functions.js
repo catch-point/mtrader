@@ -32,7 +32,6 @@
 
 const _ = require('underscore');
 const Big = require('big.js');
-const statkit = require("statkit");
 const Parser = require('./parser.js');
 const common = require('./common-functions.js');
 const logger = require('./logger.js');

@@ -41,7 +41,7 @@ const common = require('./common-functions.js');
 const rolling = require('./rolling-functions.js');
 const Quoting = require('./quoting-functions.js');
 const logger = require('./logger.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 /**
  * Delegates most computations to quote.js and add some functions that can compare
@@ -61,7 +61,7 @@ module.exports = function(fetch, quote, collectFn) {
     const pending = [];
     return self = Object.assign(async function(options) {
         if (!promiseHelp) promiseHelp = help(quote);
-        expect(options).to.be.an('object');
+        assert.ok((_.isObject(options) && !Array.isArray(options) && typeof options != 'function'), `Expected options to be an object`);
         if (options.info=='help') return promiseHelp;
         if (options.info=='version') return [{version:version.toString()}];
         if (options.info=='pending') return pending.map(opt => ({cmd:'collect',label:opt.label,options:opt}));
@@ -198,11 +198,11 @@ async function collect(fetch, quote, callCollect, fields, options) {
  * Computes column values given expressions and variables in options for a duration
  */
 async function collectDuration(fetch, quote, callCollect, fields, options) {
-    expect(options).to.have.property('portfolio');
-    expect(options).to.have.property('begin');
-    expect(options).to.have.property('columns').that.is.an('object');
+    assert.ok(options != null && 'portfolio' in Object(options), `Expected options to have property 'portfolio'`);
+    assert.ok(options != null && 'begin' in Object(options), `Expected options to have property 'begin'`);
+    assert.ok((_.isObject(options.columns) && !Array.isArray(options.columns) && typeof options.columns != 'function'), `Expected options.columns to be an object`);
     const illegal = _.intersection(_.keys(options.variables), fields);
-    if (illegal.length) expect(options.variables).not.to.have.property(_.first(illegal));
+    if (illegal.length) assert.ok(!(_.first(illegal) in Object(options.variables)), `Expected options.variables to not have property ${_.first(illegal)}`);
     const portfolio = getPortfolio(options.portfolio, options);
     const optional = _.difference(_.uniq(_.flatten(portfolio.map(opts => _.keys(opts.columns)), true)), fields);
     const defaults = _.object(optional, optional.map(v => null));
@@ -359,7 +359,7 @@ function compactPortfolio(fields, begin, end, options) {
     const array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :
         _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
-        expect(portfolio).to.be.a('string');
+        assert.ok(typeof portfolio == 'string', `Expected portfolio to be a string`);
     const leading = !options.pad_leading ? begin :
         common('WORKDAY', [_.constant(begin), _.constant(-options.pad_leading)])();
     const mbegin = moment(leading);
@@ -396,7 +396,7 @@ function getPortfolio(portfolio, options) {
     const array = _.isArray(portfolio) ? portfolio :
         _.isObject(portfolio) ? [portfolio] :
         _.isString(portfolio) ? portfolio.split(/\s*,\s*/) :
-        expect(portfolio).to.be.a('string');
+        assert.ok(typeof portfolio == 'string', `Expected portfolio to be a string`);
     if (_.isEmpty(_.compact(array)) && !options.portfolio) throw Error(`Missing portfolio ${options.label}`);
     else if (_.isEmpty(_.compact(array))) throw Error(`No portfolio matches this time frame ${options.label} ${options.begin} ${options.end || options.now || ''}`);
     const begin = !options.pad_leading ? options.begin :

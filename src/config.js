@@ -38,9 +38,8 @@ const child_process = require('child_process');
 const moment = require('moment-timezone');
 const merge = require('./merge.js');
 const awriter = require('./atomic-write.js');
-const commander = require('commander');
-const commander_options = commander.options;
-const commander_emit = commander.Command.prototype.emit.bind(commander);
+// the command line program shared by the src/mtrader-*.js executables
+const {program} = require('commander');
 
 const session = {};
 
@@ -263,13 +262,11 @@ function createInstance(session) {
 }
 
 function commander_opts() {
-    return commander_options.reduce((result, opt) => {
+    const values = program.opts();
+    return program.options.reduce((result, opt) => {
         const name = opt.name();
         const prop = name.replace(/-/g, '_');
-        const key = name.split('-').reduce((str, word) => {
-            return str + word[0].toUpperCase() + word.slice(1);
-        });
-        const value = name === 'version' ? commander._version : commander[key];
+        const value = name === 'version' ? program.version() : values[opt.attributeName()];
         if (value != null && !name.startsWith('add-')) {
             result[prop] = parse(value);
         }

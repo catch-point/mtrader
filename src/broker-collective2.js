@@ -40,7 +40,7 @@ const version = require('./version.js').toString();
 const config = require('./config.js');
 const Fetch = require('./fetch.js');
 const Collective2 = require('./collective2-client.js');
-const expect = require('chai').expect;
+const assert = require('node:assert');
 
 /**
  * Aligns the working signals on collective2 with the signal rows from the collect result
@@ -48,7 +48,7 @@ const expect = require('chai').expect;
 module.exports = function(settings) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
-    expect(settings).to.have.property('systemid').that.is.ok;
+    assert.ok(settings.systemid, `Expected settings.systemid to be set`);
     const client = Collective2(settings);
     const fetch = new Fetch(merge(config('fetch'), settings.fetch));
     const markets = _.mapObject(_.pick(config('markets'), market => {
@@ -251,10 +251,13 @@ function collective2(c2_multipliers, collective2, fetch, markets, lookup, option
         case 'OCA': return oneCancelsAllOrders(collective2, markets, options);
         case 'BUY':
         case 'SELL': return submitOrder(collective2, markets, options);
-        default: expect(options).to.have.property('action').to.be.oneOf([
+        default: assert.ok([
             'balances', 'positions', 'orders',
             'cancel', 'OCA', 'BUY', 'SELL'
-        ]);
+        ].includes(options.action), `Expected options.action to be one of [
+            'balances', 'positions', 'orders',
+            'cancel', 'OCA', 'BUY', 'SELL'
+        ], got ${JSON.stringify(options.action)}`);
     }
 }
 
@@ -295,7 +298,7 @@ async function listPositions(c2_multipliers, collective2, fetch, lookup, options
         const contract = await lookup(pos || _.first(signals[symbol]));
         if (!contract) throw Error(`Could not lookup contract ${symbol}`);
         const tz = (moment.defaultZone||{}).name;
-        expect(contract).to.have.property('symbol').that.is.a('string');
+        assert.ok(typeof contract.symbol == 'string', `Expected contract.symbol to be a string`);
         const all_bars = await fetch({interval:'day', begin: earliest.format(), end: asof, tz, ...contract});
         const bars = all_bars.filter(bar => bar.ending <= asof);
         if (!bars.length) throw Error(`Could not load daily bars for ${JSON.stringify(contract)}`);
@@ -378,7 +381,7 @@ async function listOrders(c2_multipliers, collective2, lookup, options) {
 }
 
 async function cancelOrder(c2_multipliers, collective2, markets, lookup, options) {
-    expect(options).to.have.property('order_ref').that.is.ok;
+    assert.ok(options.order_ref, `Expected options.order_ref to be set`);
     const working = await collective2.retrieveSignalsWorking();
     const order_ref = options.order_ref;
     const signal = working.find(sig => sig.localsignalid == order_ref || sig.signal_id == order_ref);
@@ -415,7 +418,7 @@ async function cancelOrder(c2_multipliers, collective2, markets, lookup, options
 }
 
 async function oneCancelsAllOrders(collective2, markets, options) {
-    expect(options).to.have.property('attached').that.is.an('array');
+    assert.ok(Array.isArray(options.attached), `Expected options.attached to be an array`);
     const positions = await collective2.requestTradesOpen();
     const working = await collective2.retrieveSignalsWorking();
     const signals = [].concat(...options.attached.map(order => c2signal(markets, positions, working, order, options)));
@@ -429,9 +432,9 @@ async function oneCancelsAllOrders(collective2, markets, options) {
 }
 
 async function submitOrder(collective2, markets, options) {
-    expect(options).to.have.property('symbol').that.is.ok;
-    expect(options).to.have.property('market').that.is.ok;
-    expect(options).to.have.property('quant').that.is.ok;
+    assert.ok(options.symbol, `Expected options.symbol to be set`);
+    assert.ok(options.market, `Expected options.market to be set`);
+    assert.ok(options.quant, `Expected options.quant to be set`);
     const positions = await collective2.requestTradesOpen();
     const working = await collective2.retrieveSignalsWorking();
     const signals = c2signal(markets, positions, working, options, options);
@@ -445,7 +448,7 @@ async function submitOrder(collective2, markets, options) {
 }
 
 function c2signal(markets, positions, working, order, options, conditionalUponSignal) {
-    expect(order.order_type).is.oneOf(['STP', 'LMT', 'MKT']);
+    assert.ok(['STP', 'LMT', 'MKT'].includes(order.order_type), `Expected order.order_type to be one of ['STP', 'LMT', 'MKT'], got ${JSON.stringify(order.order_type)}`);
     const symbol = c2symbol(markets, order.symbol, order.market);
     const pos = positions.find(pos => pos.symbol == symbol || pos.fullSymbol == symbol);
     const action = order.action == 'BUY' ?
@@ -657,7 +660,7 @@ function changePosition(multiplier, prev_bar, details, bar, position) {
 }
 
 function c2symbol(markets, symbol, market) {
-    expect(market).to.be.oneOf(Object.keys(markets));
+    assert.ok(Object.keys(markets).includes(market), `Expected market to be one of ${JSON.stringify(Object.keys(markets))}, got ${JSON.stringify(market)}`);
     const m = markets[market];
     if (m.instrument == 'option') return iqfeed_ieoption(symbol);
     if (!m.c2_map && !m.c2_prefix) return symbol;
@@ -682,7 +685,7 @@ async function lookup(fetch, markets, signal) {
         const symbol = sym2sig ? sym2sig[0] + fullSymbol.substring(sym2sig[1].length) :
             fullSymbol.startsWith(m.c2_prefix) ? fullSymbol.substring(m.c2_prefix.length) :
             fullSymbol;
-        expect(symbol).to.be.a('string');
+        assert.ok(typeof symbol == 'string', `Expected symbol to be a string`);
         return symbol;
     }));
     const matches = await Promise.all(symbols.map(async(symbol) => {

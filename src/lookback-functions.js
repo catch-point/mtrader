@@ -32,13 +32,13 @@
 
 const _ = require('underscore');
 const moment = require('moment-timezone');
-const statkit = require("statkit");
+const statistics = require('./statistics.js');
 const periods = require('./periods.js');
 const like = require('./like.js');
-const expect = require('chai').use(like).expect;
+const assert = require('node:assert');
 
 module.exports = function(name, args, options) {
-    expect(options).to.be.like({
+    like.assert(options, {
         open_time: /\d\d:\d\d(:00)?/,
         liquid_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
         trading_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
@@ -425,8 +425,8 @@ const functions = module.exports.functions = {
             });
             if (!change.length) return 0;
             const avg = sum(change) / change.length;
-            const stdev = statkit.std(change);
-            const cumulative = statkit.norminv(pct);
+            const stdev = statistics.std(change);
+            const cumulative = statistics.norminv(pct);
             const risk = cumulative * stdev + avg;
             if (cumulative <= 0) {
                 return -risk;
@@ -447,8 +447,8 @@ const functions = module.exports.functions = {
             });
             if (!change.length) return 0;
             const avg = sum(change) / change.length;
-            const stdev = statkit.std(change);
-            const cumulative = statkit.norminv(pct);
+            const stdev = statistics.std(change);
+            const cumulative = statistics.norminv(pct);
             const risk = cumulative * stdev + avg;
             if (cumulative <= 0) {
                 const shortfall = change.filter(chg => chg < risk);
