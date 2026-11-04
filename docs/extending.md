@@ -1,7 +1,7 @@
 # Extending mtrader
 
 Data sources and brokers are plugins that follow the
-[layer contract](architecture.md#one-interface-for-every-layer). An adapter is a
+[layer contract](../ARCHITECTURE.md#one-interface-for-every-layer). An adapter is a
 factory that takes its settings section and returns `async fn(options)` plus
 `close()`, and it describes itself when called with `{info: 'help'}`.
 

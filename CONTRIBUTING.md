@@ -1,6 +1,6 @@
 # Contributing
 
-Start with [docs/architecture.md](docs/architecture.md). Most changes touch one layer
+Start with [ARCHITECTURE.md](ARCHITECTURE.md). Most changes touch one layer
 (`src/X.js`) and maybe its CLI/worker wrapper (`src/mtrader-X.js`).
 
 ## Setup
@@ -36,7 +36,7 @@ git-ignored and safe to delete.
 ## Conventions
 
 - Each layer, data source and broker implements the
-  [layer contract](docs/architecture.md#one-interface-for-every-layer). New options
+  [layer contract](ARCHITECTURE.md#one-interface-for-every-layer). New options
   must go in the module's `help()` or they're silently dropped.
 - Use `chai`'s `expect` for argument validation inside `src/`, as the existing code does.
 - Use `logger.js` (`trace`/`debug`/`log`/`warn`/`error`) rather than `console`.

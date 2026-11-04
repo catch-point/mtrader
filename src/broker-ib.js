@@ -1187,9 +1187,10 @@ async function fromFopSymbol(markets, ib, contract) {
         const [, right, tradingClass, month, year, strike] = m;
         const underlying = ((market||{}).tradingClasses||{})[contract.symbol] && contract.symbol || tradingClass;
         return `${underlying}${codes[month]}${year} ${right}${strike}`;
-    } else if (n = symbol.match(/^(\w*)([A-Z])(\d) ([CP])(\d+)$/)) {
+    } else if (n = symbol.match(/^(\w*)([A-Z])(\d\d?) ([CP])(\d+)$/)) {
         const [, tradingClass, month, y, right, strike] = n;
         const underlying = ((market||{}).tradingClasses||{})[contract.symbol] && contract.symbol || tradingClass;
+        if (y.length == 2) return `${underlying}${month}${y} ${right}${strike}`;
         const now = moment();
         const decade = y >= (now.year() - 5) % 10 ?
             (now.year() - 5).toString().substring(2, 3) :
@@ -1246,8 +1247,8 @@ async function toContract(markets, ib, options) {
 }
 
 async function toContractWithId(markets, ib, options) {
-    const contract = await toContract(markets, null, options);
-    if (contract.conid) return contract;
+    const contract = await toContract(markets, ib, options);
+    if (contract.conid || contract.secType == 'BAG') return contract;
     const details = await ib.reqContractDetails(contract).catch(err => {
         if (options.symbol) throw Error(`${err.message} for ${options.symbol}`);
         else throw Error(`${err.message} from ${util.inspect(contract, {breakLength:Infinity})}`);
@@ -1304,7 +1305,8 @@ function toFopSymbol(market, symbol) {
         if (!m) return symbol;
         const [, underlying, code, decade, year, right, strike] = m;
         const tradingClass = ((market||{}).tradingClasses||{})[underlying] || underlying;
-        return `${tradingClass}${code}${year} ${right}${strike}`;
+        const yy = (market||{}).fop_year_digits == 2 ? `${decade}${year}` : year;
+        return `${tradingClass}${code}${yy} ${right}${strike}`;
     }
 }
 

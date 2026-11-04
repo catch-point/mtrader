@@ -74,7 +74,7 @@ function header(title) {
 function indexDoc(written) {
     return header("Reference") +
         "Generated from each layer's `{info:'help'}` metadata. See " +
-        "[architecture](../architecture.md) for how the layers fit together.\n\n" +
+        "[architecture](../../ARCHITECTURE.md) for how the layers fit together.\n\n" +
         written.map(cmd => `- [${cmd}](${cmd}.md)`).join('\n') +
         "\n- [Expression functions](functions.md)\n";
 }

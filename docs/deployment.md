@@ -2,7 +2,7 @@
 
 mtrader can run as a headless service that other mtrader instances send work to
 (collect jobs, fetch requests, broker actions) over a secure WebSocket. See
-[architecture](architecture.md#distributed-work).
+[architecture](../ARCHITECTURE.md#distributed-work).
 
 ## Running a service by hand
 

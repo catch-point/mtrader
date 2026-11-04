@@ -821,6 +821,7 @@
           "whatToShow": "TRADES",
           "secTypes": ["FUT", "FOP"],
           "exchange":"NYMEX",
+          "fop_year_digits": 2,
           "tradingClasses": {
             "BZ": "BE",
             "NG": "ON",

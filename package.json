@@ -1,6 +1,6 @@
 {
   "name": "mtrader",
-  "version": "16.1.3",
+  "version": "16.2.0",
   "description": "Retrieves technical trading data and calculates studies, producing CSV files",
   "main": "src/mtrader.js",
   "dependencies": {
@@ -31,7 +31,7 @@
     "mocha": "^9.2.2"
   },
   "scripts": {
-    "test": "mocha --node-option max-http-header-size=65536",
+    "test": "mocha --forbid-only --node-option max-http-header-size=65536",
     "inspect": "mocha --node-option max-http-header-size=65536 --node-option inspect-brk",
     "docs": "node scripts/generate-reference.js"
   },

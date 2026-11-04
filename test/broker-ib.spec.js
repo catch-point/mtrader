@@ -54,6 +54,10 @@ describe("broker-ib", function() {
             }
         }
     };
+    // submitOrder resolves each contract with reqContractDetails before placing it
+    const reqContractDetails = contract => Promise.resolve([ {
+        contract: { ...contract, conid: 1, symbol: contract.symbol || contract.localSymbol }
+    } ]);
     before(async function() {
         ib = await IB().catch(err => {
             return null;
@@ -233,6 +237,7 @@ describe("broker-ib", function() {
     it("should submit order", async() => {
         const broker = await Broker(settings, {
           async open() { return this; },
+          reqContractDetails,
           reqId: cb => cb(1),
           reqManagedAccts: () => Promise.resolve([ 'test' ]),
           requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
@@ -276,6 +281,7 @@ describe("broker-ib", function() {
     it("should submit attached order", async() => {
         const broker = await Broker(settings, {
               async open() { return this; },
+              reqContractDetails,
               reqId: cb => cb(1),
               reqManagedAccts: () => Promise.resolve([ 'test' ]),
               requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
@@ -394,6 +400,7 @@ describe("broker-ib", function() {
     it("should submit to attach an order", async() => {
         const broker = await Broker(settings, {
             async open() { return this; },
+            reqContractDetails,
             reqRecentOrders: () => Promise.resolve([ { orderRef: 'LMT.32f027a8.1', orderId: 1 }, {} ]),
             reqId: cb => cb(3),
             reqManagedAccts: () => Promise.resolve([ 'test' ]),
@@ -455,6 +462,7 @@ describe("broker-ib", function() {
     it("should submit OCA order", async() => {
         const broker = await Broker(settings, {
               async open() { return this; },
+              reqContractDetails,
               reqId: cb => (cb || _.identity)(1),
               reqManagedAccts: () => Promise.resolve([ 'test' ]),
               requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
@@ -631,6 +639,7 @@ describe("broker-ib", function() {
     it("should submit nested OCA order", async() => {
         const broker = await Broker(settings, {
             open: () => Promise.resolve({}),
+            reqContractDetails,
             reqRecentOrders: () => Promise.resolve([]),
             reqOpenOrders: () => Promise.resolve([]),
             reqId: (...args) => {

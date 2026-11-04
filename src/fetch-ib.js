@@ -983,7 +983,8 @@ function toFopSymbol(market, symbol) {
         if (!m) return symbol;
         const [, underlying, code, decade, year, right, strike] = m;
         const tradingClass = ((market||{}).tradingClasses||{})[underlying] || underlying;
-        return `${tradingClass}${code}${year} ${right}${strike}`;
+        const yy = (market||{}).fop_year_digits == 2 ? `${decade}${year}` : year;
+        return `${tradingClass}${code}${yy} ${right}${strike}`;
     }
 }
 
@@ -1014,8 +1015,9 @@ function fromFopSymbol(market, detail) {
         const underlying = ((market||{}).tradingClasses||{})[detail.symbol] && detail.symbol || tradingClass;
         return `${underlying}${codes[month]}${year} ${right}${strike}`;
     } else {
-        const [, tradingClass, month, y, right, strike] = symbol.match(/^(\w*)([A-Z])(\d) ([CP])(\d+)$/);
+        const [, tradingClass, month, y, right, strike] = symbol.match(/^(\w*)([A-Z])(\d\d?) ([CP])(\d+)$/);
         const underlying = ((market||{}).tradingClasses||{})[detail.symbol] && detail.symbol || tradingClass;
+        if (y.length == 2) return `${underlying}${month}${y} ${right}${strike}`;
         const now = moment();
         const decade = y >= (now.year() - 5) % 10 ?
             (now.year() - 5).toString().substring(2, 3) :

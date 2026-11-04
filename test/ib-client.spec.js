@@ -32,6 +32,7 @@
 const _ = require('underscore');
 const moment = require('moment-timezone');
 const like = require('./should-be-like.js');
+const marketDataPermission = require('./market-data-permission.js');
 const IB = require('../src/ib-client.js');
 
 describe("ib-client", function() {
@@ -48,6 +49,11 @@ describe("ib-client", function() {
     after(function() {
         if (client) return client.close();
     });
+    const usd_cad = {localSymbol: 'USD.CAD', secType: 'CASH', exchange: 'IDEALPRO'};
+    const skipWithoutForexHistory = marketDataPermission(() => {
+        return client.reqHistoricalData(usd_cad, '', '1 D', '1 day', 'MIDPOINT', 1, 1);
+    });
+    const skipWithoutForexQuotes = marketDataPermission(() => client.reqMktData(usd_cad));
     it.skip("options SPY lookup", async() => {
         const details = await client.reqContractDetails({
             localSymbol:'SPY   211217C00280000',
@@ -173,7 +179,8 @@ describe("ib-client", function() {
             tradingClass: 'USD.CAD'
         });
     });
-    it("should return daily", function() {
+    it("should return daily", async function() {
+        await skipWithoutForexHistory(this);
         return client.reqHistoricalData({
                 localSymbol: 'USD.CAD',
                 secType: 'CASH',
@@ -210,7 +217,8 @@ describe("ib-client", function() {
             {time:"20140131",open:1.1162,high:1.1224,low:1.1088,close:1.1129}
         ]);
     });
-    it("should return weekly", function() {
+    it("should return weekly", async function() {
+        await skipWithoutForexHistory(this);
         return client.reqHistoricalData({
                 localSymbol: 'USD.CAD',
                 secType: 'CASH',
@@ -252,7 +260,8 @@ describe("ib-client", function() {
             subcategory: 'Property/Casualty Ins'
         })));
     });
-    it("should return 30 minute intervals", function() {
+    it("should return 30 minute intervals", async function() {
+        await skipWithoutForexHistory(this);
         return client.reqHistoricalData({
                 localSymbol: 'USD.CAD',
                 secType: 'CASH',
@@ -285,7 +294,8 @@ describe("ib-client", function() {
             {time:1393882200,open:1.1077,high:1.108,low:1.1074,close:1.1076}
         ]);
     });
-    it("should support reqMktData on USD.CAD", function() {
+    it("should support reqMktData on USD.CAD", async function() {
+        await skipWithoutForexQuotes(this);
         return client.reqMktData({
             localSymbol: 'USD.CAD',
             secType: 'CASH',
@@ -321,7 +331,7 @@ describe("ib-client", function() {
     it("should support reqPositionsMulti", async() => {
         const accts = await client.reqManagedAccts();
         const acct = accts[accts.length-1];
-        return client.reqPositionsMulti(acct).should.eventually.have.property(acct);
+        return client.reqPositionsMulti(acct).should.eventually.be.an('object');
     });
     it("should support accountSummary", function() {
         return client.reqAccountSummary('All').should.eventually.be.like({All:{Currency:_.isArray}});

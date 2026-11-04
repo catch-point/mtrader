@@ -1255,7 +1255,7 @@ function requestWithId(ib, time_limit) {
         acct[contract.conid] = {position, averageCost};
     }).on('positionMultiEnd', function(reqId) {
         ib.cancelPositionsMulti(+reqId).catch(logger.error);
-        if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].positionMulti);
+        if (req_queue[reqId]) req_queue[reqId].resolve(req_queue[reqId].positionMulti || {});
     });
     const reqContractDetails_cached = cache(
         request.bind(this, 'reqContractDetails'),

@@ -1,7 +1,7 @@
 # Configuration
 
 All configuration goes through `src/config.js`, one merged JSON tree per process.
-See [architecture](architecture.md#configuration-flow) for how it reaches child
+See [architecture](../ARCHITECTURE.md#configuration-flow) for how it reaches child
 processes.
 
 ## Precedence
