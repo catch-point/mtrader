@@ -28,21 +28,21 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const Writable = require('stream').Writable;
-const _ = require('underscore');
-const merge = require('./merge.js');
-const awriter = require('./atomic-write.js');
-const logger = require('./logger.js');
-const config = require('./config.js');
+import fs from 'graceful-fs';
+import path from 'path';
+import stream from 'stream';
+import _ from 'underscore';
+import merge from './merge.js';
+import awriter from './atomic-write.js';
+import logger from './logger.js';
+import config from './config.js';
+const Writable = stream.Writable;
 
 const collections = {};
 process.on('SIGHUP', () => _.keys(collections).forEach(key=>delete collections[key]));
 
-module.exports = function(read, call, save) {
+export default function(read, call, save) {
     const file = read && _.isString(read) && config.resolve(read);
     const original = file ? config.read(file) : read ? read : {};
     if (!original) throw Error("Could not read " + read + " settings");

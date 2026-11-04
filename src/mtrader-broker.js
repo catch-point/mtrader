@@ -30,22 +30,26 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const commander = require('commander');
-const tabular = require('./tabular.js');
-const merge = require('./merge.js');
-const logger = require('./logger.js');
-const replyTo = require('./promise-reply.js');
-const config = require('./config.js');
-const Broker = require('./broker.js');
-const Quote = require('./mtrader-quote.js');
-const rolling = require('./rolling-functions.js');
+import _ from 'underscore';
+import isMainModule from './is-main-module.js';
+import moment from 'moment-timezone';
+import * as commander from 'commander';
+import tabular from './tabular.js';
+import merge from './merge.js';
+import logger from './logger.js';
+import replyTo from './promise-reply.js';
+import config from './config.js';
+import Broker from './broker.js';
+import Quote from './mtrader-quote.js';
+import rolling from './rolling-functions.js';
+import version from './version.js';
+
+// the library interface, defined unless this module runs as a command or worker
+let exported;
 
 function usage(command) {
-    return command.version(require('../package.json').version)
+    return command.version(version.version)
         .description("Retrieve or execute orders in broker account")
         .usage('<action> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -73,7 +77,7 @@ function usage(command) {
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-if (require.main === module) {
+if (isMainModule(import.meta)) {
     const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const broker = createInstance(program, config.options());
@@ -81,7 +85,7 @@ if (require.main === module) {
         process.on('SIGTERM', () => broker.close());
         const action = program.args.join(' ');
         const save = config('save');
-        return broker({...config.options(), action})
+        broker({...config.options(), action})
           .then(result => tabular(result, config()))
           .catch(err => logger.error(err, err.stack) || (process.exitCode = 1))
           .then(() => broker.close());
@@ -89,7 +93,7 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = function(settings = {}) {
+    exported = function(settings = {}) {
         return createInstance(usage(new commander.Command()), settings);
     };
 }
@@ -195,3 +199,5 @@ function help(app, cmd, usage) {
         sh.prompt();
     });
 }
+
+export default exported;

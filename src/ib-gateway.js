@@ -28,19 +28,18 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const os = require('os');
-const util = require('util');
-const net = require('net');
-const path = require('path');
-const crypto = require('crypto');
-const child_process = require('child_process');
-const fs = require('graceful-fs');
-const _ = require('underscore');
-const ib = require('./ib-client.js');
-const config = require('./config.js');
-const logger = require('./logger.js');
+import os from 'os';
+import util from 'util';
+import net from 'net';
+import path from 'path';
+import crypto from 'crypto';
+import child_process from 'child_process';
+import fs from 'graceful-fs';
+import _ from 'underscore';
+import ib from './ib-client.js';
+import config from './config.js';
+import logger from './logger.js';
 
 const key_client_settings = [
     'clientId', 'jtsConfigDir',
@@ -54,7 +53,7 @@ let close_all_clients = false;
 process.on('SIGINT', () => closeAllClients('SIGINT').catch(logger.error));
 process.on('SIGTERM', () => closeAllClients('SIGTERM').catch(logger.error));
 
-module.exports = async function(remote_settings) {
+const gateway = async function(remote_settings) {
     const local_settings = config('ib') || {};
     const clientId = remote_settings.clientId || local_settings.clientId;
     const client_settings = (local_settings.clients||[]).find(client => client.clientId == clientId) || {};
@@ -132,7 +131,7 @@ async function borrow(settings) {
         }
         logger.log("ib-gateway closing shared client", settings.clientId || '', key);
         await shared.destroy('ib-gateway');
-        return module.exports(settings);
+        return gateway(settings);
     }
 }
 
@@ -197,3 +196,5 @@ async function setDefaultSettings(settings) {
         ..._.pick(settings, keys)
     };
 }
+
+export default gateway;

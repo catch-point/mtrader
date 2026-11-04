@@ -29,10 +29,10 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const like = require('./should-be-like.js');
-const iqfeedClient = require('../src/iqfeed-client.js');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import like from './should-be-like.js';
+import iqfeedClient from '../src/iqfeed-client.js';
 
 describe("iqfeed-client", function() {
     this.timeout(10000);

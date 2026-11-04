@@ -28,21 +28,21 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const util = require('util');
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const Big = require('big.js');
-const merge = require('./merge.js');
-const logger = require('./logger.js');
-const version = require('./version.js').toString();
-const config = require('./config.js');
-const storage = require('./storage.js');
-const Fetch = require('./fetch.js');
-const Lookup = require('./lookup.js');
-const assert = require('node:assert');
+import util from 'util';
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import Big from 'big.js';
+import merge from './merge.js';
+import logger from './logger.js';
+import Version from './version.js';
+import config from './config.js';
+import storage from './storage.js';
+import Fetch from './fetch.js';
+import Lookup from './lookup.js';
+import assert from 'node:assert';
+const version = Version.toString();
 
 const majors = ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'];
 
@@ -51,7 +51,7 @@ function nextval() {
     return (++sequence_counter).toString(16);
 }
 
-module.exports = function(settings, quote) {
+export default function(settings, quote) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
     assert.ok(settings.simulation, `Expected settings.simulation to be set`);

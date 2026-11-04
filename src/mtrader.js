@@ -30,42 +30,45 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const url = require('url');
-const http = require('http');
-const https = require('https');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const child_process = require('child_process');
-const ws = require('ws');
-const commander = require('commander');
-const Shell = require('./shell.js');
-const merge = require('./merge.js');
-const logger = require('./logger.js');
-const tabular = require('./tabular.js');
-const common = require('./common-functions.js');
-const Parser = require('../src/parser.js');
-const replyTo = require('./promise-reply.js');
-const Config = require('./mtrader-config.js');
-const config = require('./config.js');
-const date = require('./mtrader-date.js');
-const shellError = require('./shell-error.js');
-const version = require('./version.js');
-const Dater = require('./mtrader-date.js');
-const Fetch = require('./mtrader-fetch.js');
-const Quote = require('./mtrader-quote.js');
-const Collect = require('./mtrader-collect.js');
-const Optimize = require('./mtrader-optimize.js');
-const Bestsignals = require('./mtrader-bestsignals.js');
-const Strategize = require('./mtrader-strategize.js');
-const Broker = require('./mtrader-broker.js');
-const Replicate = require('./mtrader-replicate.js');
+import fs from 'graceful-fs';
+import isMainModule from './is-main-module.js';
+import path from 'path';
+import url from 'url';
+import http from 'http';
+import https from 'https';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import child_process from 'child_process';
+import ws from 'ws';
+import * as commander from 'commander';
+import Shell from './shell.js';
+import merge from './merge.js';
+import logger from './logger.js';
+import tabular from './tabular.js';
+import common from './common-functions.js';
+import Parser from '../src/parser.js';
+import replyTo from './promise-reply.js';
+import Config from './mtrader-config.js';
+import config from './config.js';
+import date from './mtrader-date.js';
+import shellError from './shell-error.js';
+import version from './version.js';
+import Dater from './mtrader-date.js';
+import Fetch from './mtrader-fetch.js';
+import Quote from './mtrader-quote.js';
+import Collect from './mtrader-collect.js';
+import Optimize from './mtrader-optimize.js';
+import Bestsignals from './mtrader-bestsignals.js';
+import Strategize from './mtrader-strategize.js';
+import Broker from './mtrader-broker.js';
+import Replicate from './mtrader-replicate.js';
+
+// the library interface, defined unless this module runs as a command or worker
+let exported;
 
 // the shared program, read by config.js, only when run as the mtrader command
-const program = (require.main === module ? commander.program : new commander.Command()).name('mtrader')
+const program = (isMainModule(import.meta) ? commander.program : new commander.Command()).name('mtrader')
     .description(version.description)
     .command('config <name> [value]', "View or change stored options")
     .command('date <format>', "Formats the time now")
@@ -112,7 +115,7 @@ program.on('option:version', async function() {
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-if (require.main === module) {
+if (isMainModule(import.meta)) {
     const argv = process.argv.slice(2);
     const index = findCommandIndex(program, argv);
     if (index >= 0) {
@@ -128,7 +131,7 @@ if (require.main === module) {
         }, 10000).unref();
     });
 } else {
-    module.exports = Object.assign(createInstance, {
+    exported = Object.assign(createInstance, {
         date: new Dater(),
         config: new Config(),
         version: version
@@ -185,7 +188,7 @@ function runCommand(program, argv, index) {
 }
 
 function spawnCommand(name, args) {
-    const file = path.resolve(__dirname, `mtrader-${name}.js`);
+    const file = path.resolve(import.meta.dirname, `mtrader-${name}.js`);
     const child = child_process.spawn(process.execPath, [...process.execArgv, file, ...args], {stdio: 'inherit'});
     const signals = ['SIGTERM', 'SIGHUP', 'SIGUSR1', 'SIGUSR2'];
     const forward = signal => child.kill(signal);
@@ -346,3 +349,5 @@ function createInstance(settings = {}) {
         }
     });
 }
+
+export default exported;

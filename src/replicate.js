@@ -28,24 +28,24 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const fs = require('graceful-fs');
-const url = require('url');
-const http = require('http');
-const https = require('https');
-const path = require('path');
-const Big = require('big.js');
-const moment = require('moment-timezone');
-const merge = require('./merge.js');
-const version = require('./version.js');
-const interrupt = require('./interrupt.js');
-const config = require('./config.js');
-const logger = require('./logger.js');
-const formatDate = new require('./mtrader-date.js')();
-const assert = require('node:assert');
-const Lookup = require('./lookup.js');
+import _ from 'underscore';
+import fs from 'graceful-fs';
+import url from 'url';
+import http from 'http';
+import https from 'https';
+import path from 'path';
+import Big from 'big.js';
+import moment from 'moment-timezone';
+import merge from './merge.js';
+import version from './version.js';
+import interrupt from './interrupt.js';
+import config from './config.js';
+import logger from './logger.js';
+import MtraderDate from './mtrader-date.js';
+import assert from 'node:assert';
+import Lookup from './lookup.js';
+const formatDate = MtraderDate();
 
 /**
  * Aligns working orders on a broker with the last order row from a collect result.
@@ -58,7 +58,7 @@ const Lookup = require('./lookup.js');
  * STP GTC order to close current position and is not cancelled during an
  * adjustment order.
  */
-module.exports = function(broker, fetch, collect, settings) {
+export default function(broker, fetch, collect, settings) {
     let promiseHelp, brokerHelp;
     const lookup = new Lookup(fetch);
     return _.extend(async function(options) {

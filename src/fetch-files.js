@@ -28,20 +28,20 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const merge = require('./merge.js');
-const version = require('./version.js').toString();
-const logger = require('./logger.js');
-const config = require('./config.js');
-const storage = require('./storage.js');
-const Fetch = require('./fetch.js');
+import fs from 'graceful-fs';
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import merge from './merge.js';
+import Version from './version.js';
+import logger from './logger.js';
+import config from './config.js';
+import storage from './storage.js';
+import Fetch from './fetch.js';
+const version = Version.toString();
 
-module.exports = function(settings = {}) {
+export default function(settings = {}) {
     const fetch = new Fetch(merge(config('fetch'), {files:{enabled:false}}, settings.fetch));
     const dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const dirname = settings.dirname || dir;

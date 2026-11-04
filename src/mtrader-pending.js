@@ -30,21 +30,21 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const commander = require('commander');
-const merge = require('./merge.js');
-const logger = require('./logger.js');
-const tabular = require('./tabular.js');
-const remote = require('./remote-process.js');
-const replyTo = require('./promise-reply.js');
-const Config = require('./mtrader-config.js');
-const config = require('./config.js');
-const shellError = require('./shell-error.js');
-const version = require('./version.js');
-const MTrader = require('./mtrader.js');
+import _ from 'underscore';
+import isMainModule from './is-main-module.js';
+import moment from 'moment-timezone';
+import * as commander from 'commander';
+import merge from './merge.js';
+import logger from './logger.js';
+import tabular from './tabular.js';
+import remote from './remote-process.js';
+import replyTo from './promise-reply.js';
+import Config from './mtrader-config.js';
+import config from './config.js';
+import shellError from './shell-error.js';
+import version from './version.js';
+import MTrader from './mtrader.js';
 
 function usage(command) {
     return command.version(version.version)
@@ -62,7 +62,7 @@ function usage(command) {
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-module.exports = function(settings = {}) {
+const Pending = function(settings = {}) {
     settings = {...settings, ...config('remote')};
     const address = settings.listen;
     if (!address) throw Error("Service listen address is required to connect to service");
@@ -85,8 +85,10 @@ module.exports = function(settings = {}) {
     };
 }
 
-if (require.main === module) {
+if (isMainModule(import.meta)) {
     const program = usage(commander.program).allowExcessArguments().parse(process.argv);
-    const agent = new module.exports();
+    const agent = new Pending();
     agent().catch(err => err && err.stack && logger.debug(err, err.stack));
 }
+
+export default Pending;

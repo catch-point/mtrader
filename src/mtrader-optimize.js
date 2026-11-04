@@ -30,19 +30,23 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const commander = require('commander');
-const logger = require('./logger.js');
-const replyTo = require('./promise-reply.js');
-const config = require('./config.js');
-const Optimize = require('./optimize.js');
-const rolling = require('./rolling-functions.js');
-const readCallSave = require('./read-call-save.js');
-const version = require('./version.js').version;
-const Collect = require('./mtrader-collect.js');
+import _ from 'underscore';
+import isMainModule from './is-main-module.js';
+import moment from 'moment-timezone';
+import * as commander from 'commander';
+import logger from './logger.js';
+import replyTo from './promise-reply.js';
+import config from './config.js';
+import Optimize from './optimize.js';
+import rolling from './rolling-functions.js';
+import readCallSave from './read-call-save.js';
+import Version from './version.js';
+import Collect from './mtrader-collect.js';
+
+// the library interface, defined unless this module runs as a command or worker
+let exported;
+const version = Version.version;
 
 function usage(command) {
     return command.version(version.toString())
@@ -82,7 +86,7 @@ function usage(command) {
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-if (require.main === module) {
+if (isMainModule(import.meta)) {
     const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const optimize = createInstance(program);
@@ -97,7 +101,7 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = function() {
+    exported = function() {
         return createInstance(usage(new commander.Command()));
     };
 }
@@ -212,3 +216,5 @@ function help(app, cmd, usage) {
         sh.prompt();
     });
 }
+
+export default exported;

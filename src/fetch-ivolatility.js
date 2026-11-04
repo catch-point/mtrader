@@ -28,23 +28,23 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const Big = require('big.js');
-const d3 = require('d3-format');
-const merge = require('./merge.js');
-const interrupt = require('./interrupt.js');
-const version = require('./version.js').toString();
-const config = require('./config.js');
-const logger = require('./logger.js');
-const share = require('./share.js');
-const iqfeed = require('./fetch-iqfeed.js');
-const Ivolatility = require('./ivolatility-client.js');
-const assert = require('node:assert');
+import fs from 'graceful-fs';
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import Big from 'big.js';
+import d3 from './number-format.js';
+import merge from './merge.js';
+import interrupt from './interrupt.js';
+import Version from './version.js';
+import config from './config.js';
+import logger from './logger.js';
+import share from './share.js';
+import iqfeed from './fetch-iqfeed.js';
+import Ivolatility from './ivolatility-client.js';
+import assert from 'node:assert';
+const version = Version.toString();
 
 function help(settings = {}) {
     const commonOptions = {
@@ -121,7 +121,7 @@ function help(settings = {}) {
 
 const shared_clients = {};
 
-module.exports = function(settings = {}) {
+export default function(settings = {}) {
     const markets = _.pick(config('markets'), settings.markets);
     const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));
     const cacheDir = settings.cache || path.resolve(cache_dir, 'ivolatility');

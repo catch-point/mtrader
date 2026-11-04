@@ -28,24 +28,24 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const Big = require('big.js');
-const d3 = require('d3-format');
-const merge = require('./merge.js');
-const logger = require('./logger.js');
-const version = require('./version.js').toString();
-const config = require('./config.js');
-const Fetch = require('./fetch.js');
-const Collective2 = require('./collective2-client.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import Big from 'big.js';
+import d3 from './number-format.js';
+import merge from './merge.js';
+import logger from './logger.js';
+import Version from './version.js';
+import config from './config.js';
+import Fetch from './fetch.js';
+import Collective2 from './collective2-client.js';
+import assert from 'node:assert';
+const version = Version.toString();
 
 /**
  * Aligns the working signals on collective2 with the signal rows from the collect result
  */
-module.exports = function(settings) {
+export default function(settings) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
     assert.ok(settings.systemid, `Expected settings.systemid to be set`);

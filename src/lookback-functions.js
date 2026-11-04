@@ -28,16 +28,15 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const statistics = require('./statistics.js');
-const periods = require('./periods.js');
-const like = require('./like.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import statistics from './statistics.js';
+import periods from './periods.js';
+import like from './like.js';
+import assert from 'node:assert';
 
-module.exports = function(name, args, options) {
+const lookback = function(name, args, options) {
     like.assert(options, {
         open_time: /\d\d:\d\d(:00)?/,
         liquid_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
@@ -71,11 +70,11 @@ module.exports = function(name, args, options) {
     });
 };
 
-module.exports.has = function(name) {
+lookback.has = function(name) {
     return !!functions[name];
 };
 
-const functions = module.exports.functions = {
+const functions = lookback.functions = {
     /* Offset value N periods ago */
     OFFSET(opts, n_periods, calc) {
         const n = asPositiveInteger(n_periods, "OFFSET");
@@ -509,3 +508,5 @@ function sum(values) {
         return memo + (+value || 0);
     }, 0);
 }
+
+export default lookback;

@@ -28,9 +28,8 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
+import _ from 'underscore';
 
 /**
  * Creates and returns a new debounced version of the passed function which will
@@ -41,7 +40,7 @@ const _ = require('underscore');
  * @param wait number of milliseconds to wait before invoking
  * @param max the number of attempted invocation before giving up on waiting
  */
-module.exports = function(func, wait, max) {
+export default function(func, wait, max) {
     let timeout, args, context, timestamp, result;
     let counter = 0;
 

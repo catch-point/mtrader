@@ -28,21 +28,23 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const os = require('os');
-const path = require('path');
-const process = require('process');
-const zlib = require('zlib');
-const _ = require('underscore');
-const spawn = require('child_process').spawn;
-const Writable = require('stream').Writable;
-const {parseStream, format} = require('fast-csv');
-const awriter = require('./atomic-write.js');
-const logger = require('./logger.js');
+import fs from 'graceful-fs';
+import os from 'os';
+import path from 'path';
+import process from 'process';
+import zlib from 'zlib';
+import _ from 'underscore';
+import childProcess from 'child_process';
+import streamModule from 'stream';
+import fastCsv from 'fast-csv';
+import awriter from './atomic-write.js';
+import logger from './logger.js';
+const spawn = childProcess.spawn;
+const Writable = streamModule.Writable;
+const {parseStream, format} = fastCsv;
 
-module.exports = function(data, options) {
+export default function(data, options) {
     if(_.isString(data)) return read(data, options);
     else return write(data, options);
 };

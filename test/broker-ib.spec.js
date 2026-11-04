@@ -29,18 +29,19 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const util = require('util');
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const beautify = require('js-beautify');
-const like = require('./should-be-like.js');
-const Snapshot = require('./snapshot.js');
-const config = require('../src/config.js');
-const IB = require('../src/ib-client.js');
-const Broker = require('../src/broker-ib.js');
-const createTempDir = require('./create-temp-dir.js');
-const expect = require('chai').use(like).expect;
+import util from 'util';
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import beautify from 'js-beautify';
+import like from './should-be-like.js';
+import Snapshot from './snapshot.js';
+import config from '../src/config.js';
+import IB from '../src/ib-client.js';
+import Broker from '../src/broker-ib.js';
+import createTempDir from './create-temp-dir.js';
+import * as chai from 'chai';
+const expect = chai.use(like).expect;
 
 describe("broker-ib", function() {
     this.timeout(120000);
@@ -50,7 +51,7 @@ describe("broker-ib", function() {
         fetch: {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }
     };
@@ -277,6 +278,33 @@ describe("broker-ib", function() {
             currency: 'USD',
             security_type: 'STK' } ]);
         await broker.close();
+    });
+    const rejectingClient = () => ({
+        async open() { return this; },
+        reqContractDetails,
+        reqId: cb => cb(1),
+        reqManagedAccts: () => Promise.resolve([ 'test' ]),
+        requestAliases: () => Promise.resolve([ { alias: 'test' } ]),
+        placeOrder: () => Promise.reject(Error("placeOrder should not be called")),
+        close: () => Promise.resolve()
+    });
+    it("should reject an order without a symbol", async() => {
+        const broker = await Broker(settings, rejectingClient());
+        try {
+            await broker({action: 'BUY', quant: 1, limit: 270, order_type: 'LMT', tif: 'DAY', market: 'NYSE'})
+              .should.be.rejectedWith(/Expected options.symbol to be set/);
+        } finally {
+            await broker.close();
+        }
+    });
+    it("should reject an order for an unknown market", async() => {
+        const broker = await Broker(settings, rejectingClient());
+        try {
+            await broker({action: 'BUY', quant: 1, limit: 270, order_type: 'LMT', tif: 'DAY', symbol: 'SPY', market: 'NOWHERE'})
+              .should.be.rejectedWith(/Expected options.market to be one of .*got "NOWHERE"/);
+        } finally {
+            await broker.close();
+        }
     });
     it("should submit attached order", async() => {
         const broker = await Broker(settings, {

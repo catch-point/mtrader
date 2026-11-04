@@ -118,9 +118,9 @@ module loads:
 ```mermaid
 flowchart LR
     subgraph wrapper["src/mtrader-X.js"]
-        cli["CLI<br/><small>require.main === module<br/>with arguments</small>"]
+        cli["CLI<br/><small>isMainModule(import.meta)<br/>with arguments</small>"]
         child["Child worker<br/><small>forked, no arguments,<br/>process.send present</small>"]
-        lib["Library<br/><small>require()'d, wrapped in share.js</small>"]
+        lib["Library<br/><small>imported, wrapped in share.js</small>"]
     end
     logic["src/X.js"]
     cli --> logic
@@ -128,8 +128,8 @@ flowchart LR
     lib --> logic
 ```
 
-- **CLI**: `mtrader X ...` runs `mtrader-X.js` as an executable subcommand and
-  prints the rows with `tabular.js`.
+- **CLI**: `mtrader X ...` runs `mtrader-X.js` in a child process, which prints
+  the rows with `tabular.js`.
 - **Child worker**: heavy layers (`quote`, `collect`, …) start child
   processes with `config.fork()`. A child answers requests over IPC through
   `promise-reply.js`, which provides promise-based request/response over

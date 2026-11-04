@@ -28,14 +28,13 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
+import _ from 'underscore';
 
 /**
  * Recursively merges object properties together into a new object
  */
-module.exports = function merge() {
+export default function merge() {
     const length = arguments.length;
     const obj = {};
     if (length < 1) return obj;

@@ -29,12 +29,12 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const _ = require('underscore');
-const Big = require('big.js');
-const moment = require('moment-timezone');
-const like = require('./should-be-like.js');
-const Adjustments = require('../src/adjustments-yahoo.js');
-const createTempDir = require('./create-temp-dir.js');
+import _ from 'underscore';
+import Big from 'big.js';
+import moment from 'moment-timezone';
+import like from './should-be-like.js';
+import Adjustments from '../src/adjustments-yahoo.js';
+import createTempDir from './create-temp-dir.js';
 
 describe("adjustments", function() {
     this.timeout(10000);

@@ -28,26 +28,25 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const util = require('util');
-const fs = require('graceful-fs');
-const path = require('path');
-const zlib = require('zlib');
-const _ = require('underscore');
-const csv = require('fast-csv');
-const assert = require('node:assert');
-const awriter = require('./atomic-write.js');
-const logger = require('./logger.js');
-const debounce = require('./debounce.js');
-const cache = require('./memoize-cache.js');
+import util from 'util';
+import fs from 'graceful-fs';
+import path from 'path';
+import zlib from 'zlib';
+import _ from 'underscore';
+import csv from 'fast-csv';
+import assert from 'node:assert';
+import awriter from './atomic-write.js';
+import logger from './logger.js';
+import debounce from './debounce.js';
+import cache from './memoize-cache.js';
 
 /**
  * Persistent store used by quote: a database per symbol under dirname,
  * holding named collections saved as gzipped CSV files with metadata,
  * written atomically and cached open in memory.
  */
-module.exports = _.extend(function(dirname) {
+export default _.extend(function(dirname) {
     const cachedDatabases = cache(openDatabase.bind(this, dirname));
     return {
         open(name, cb) {

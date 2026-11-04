@@ -29,19 +29,19 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const path = require('path');
-const _ = require('underscore');
-const merge = require('../src/merge.js');
-const common = require('../src/common-functions.js');
-const lookback = require('../src/lookback-functions.js');
-const Parser = require('../src/parser.js');
-const moment = require('moment-timezone');
-const expect = require('chai').expect;
-const like = require('./should-be-like.js');
-const createTempDir = require('./create-temp-dir.js');
-const config = require('../src/config.js');
-const Fetch = require('../src/fetch.js');
-const Quote = require('../src/quote.js');
+import path from 'path';
+import _ from 'underscore';
+import merge from '../src/merge.js';
+import common from '../src/common-functions.js';
+import lookback from '../src/lookback-functions.js';
+import Parser from '../src/parser.js';
+import moment from 'moment-timezone';
+import {expect} from 'chai';
+import like from './should-be-like.js';
+import createTempDir from './create-temp-dir.js';
+import config from '../src/config.js';
+import Fetch from '../src/fetch.js';
+import Quote from '../src/quote.js';
 
 describe("lookback-functions", function(){
     var about = 0.01;
@@ -71,7 +71,7 @@ describe("lookback-functions", function(){
         fetch = Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         quote = Quote(fetch);

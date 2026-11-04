@@ -28,19 +28,19 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const statistics = require('./statistics.js');
-const alea = require('seedrandom').alea;
-const version = require('./version.js');
-const Parser = require('./parser.js');
-const common = require('./common-functions.js');
-const lookback = require('./lookback-functions.js');
-const logger = require('./logger.js');
-const interrupt = require('./interrupt.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import statistics from './statistics.js';
+import seedrandom from 'seedrandom';
+import version from './version.js';
+import Parser from './parser.js';
+import common from './common-functions.js';
+import lookback from './lookback-functions.js';
+import logger from './logger.js';
+import interrupt from './interrupt.js';
+import assert from 'node:assert';
+const alea = seedrandom.alea;
 
 const MIN_POPULATION = 2;
 const MAX_POPULATION = 8;
@@ -49,7 +49,7 @@ const MAX_POPULATION = 8;
  * Given possible parameter_values, searches for better parameter values
  * using an evolution strategy with collect as the fitnenss test
  */
-module.exports = function(collect) {
+export default function(collect) {
     let promiseHelp;
     let prng = alea(+new Date);
     return _.extend(async function(options) {

@@ -29,12 +29,12 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const fs = require('fs');
-const path = require('path');
-const _ = require('underscore');
-const Cache = require('../src/disk-cache.js');
-const like = require('./should-be-like.js');
-const createTempDir = require('./create-temp-dir.js');
+import fs from 'fs';
+import path from 'path';
+import _ from 'underscore';
+import Cache from '../src/disk-cache.js';
+import like from './should-be-like.js';
+import createTempDir from './create-temp-dir.js';
 
 describe("cache", function() {
     var dir = createTempDir('cache');

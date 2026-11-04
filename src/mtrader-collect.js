@@ -30,39 +30,45 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const net = require('net');
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const commander = require('commander');
-const Big = require('big.js');
-const debounce = require('./debounce.js');
-const merge = require('./merge.js');
-const share = require('./share.js');
-const logger = require('./logger.js');
-const tabular = require('./tabular.js');
-const Parser = require('./parser.js');
-const replyTo = require('./promise-reply.js');
-const interrupt = require('./interrupt.js');
-const workerQueue = require('./worker-queue.js');
-const Remote = require('./remote-workers.js');
-const Cache = require('./disk-cache.js');
-const config = require('./config.js');
-const version = require('./version.js').version;
-const Fetch = require('./mtrader-fetch.js');
-const Quote = require('./mtrader-quote.js');
-const Broker = require('./mtrader-broker.js');
-const Model = require('./quote-model.js');
-const SlaveQuote = require('./quote.js');
-const Collect = require('./collect.js');
-const rolling = require('./rolling-functions.js');
-const Quoting = require('./quoting-functions.js');
-const formatDate = new require('./mtrader-date.js')();
-const readCallSave = require('./read-call-save.js');
+import net from 'net';
+import isMainModule from './is-main-module.js';
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import * as commander from 'commander';
+import Big from 'big.js';
+import debounce from './debounce.js';
+import merge from './merge.js';
+import share from './share.js';
+import logger from './logger.js';
+import tabular from './tabular.js';
+import Parser from './parser.js';
+import replyTo from './promise-reply.js';
+import interrupt from './interrupt.js';
+import workerQueue from './worker-queue.js';
+import Remote from './remote-workers.js';
+import Cache from './disk-cache.js';
+import config from './config.js';
+import Version from './version.js';
+import Fetch from './mtrader-fetch.js';
+import Quote from './mtrader-quote.js';
+import Broker from './mtrader-broker.js';
+import Model from './quote-model.js';
+import SlaveQuote from './quote.js';
+import Collect from './collect.js';
+import rolling from './rolling-functions.js';
+import Quoting from './quoting-functions.js';
+import MtraderDate from './mtrader-date.js';
+import readCallSave from './read-call-save.js';
+import os from 'os';
 
-const WORKER_COUNT = require('os').cpus().length;
+// the library interface, defined unless this module runs as a command or worker
+let exported;
+const version = Version.version;
+const formatDate = MtraderDate();
+const WORKER_COUNT = os.cpus().length;
+
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
@@ -146,7 +152,7 @@ function collect_help(info) {
     }));
 }
 
-if (require.main === module) {
+if (isMainModule(import.meta)) {
     const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length || !process.send) {
         const runInBand = ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand');
@@ -168,7 +174,7 @@ if (require.main === module) {
     const prog = usage(new commander.Command());
     const shared = share(settings => createSharedInstance(prog, settings.runInBand));
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
-    module.exports = function(settings = {}) {
+    exported = function(settings = {}) {
         return createInstance(shared, settings);
     };
 }
@@ -515,7 +521,7 @@ function createLocalWorkers(program, fetch, quote, collect, settings) {
     const count = config('runInBand') || ~process.argv.indexOf('-i') || ~process.argv.indexOf('--runInBand') ? 0 :
         _.isFinite(settings.workers) ? settings.workers : WORKER_COUNT;
     return _.range(count).map(() => {
-        return replyTo(config.fork(module.filename, program))
+        return replyTo(config.fork(import.meta.filename, program))
           .handle('fetch', payload => fetch(payload))
           .handle('quote', payload => quote(payload))
           .handle('collect', payload => collect(payload));
@@ -696,3 +702,5 @@ function help(app, cmd, usage) {
         sh.prompt();
     });
 }
+
+export default exported;

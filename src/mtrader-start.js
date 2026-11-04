@@ -30,31 +30,35 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const url = require('url');
-const querystring = require('querystring');
-const http = require('http');
-const https = require('https');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const ws = require('ws');
-const commander = require('commander');
-const merge = require('./merge.js');
-const logger = require('./logger.js');
-const remote = require('./remote-process.js');
-const replyTo = require('./promise-reply.js');
-const Config = require('./mtrader-config.js');
-const config = require('./config.js');
-const date = require('./mtrader-date.js');
-const shellError = require('./shell-error.js');
-const version = require('./version.js');
-const MTrader = require('./mtrader.js');
+import fs from 'graceful-fs';
+import isMainModule from './is-main-module.js';
+import path from 'path';
+import url from 'url';
+import querystring from 'querystring';
+import http from 'http';
+import https from 'https';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import {WebSocketServer} from 'ws';
+import * as commander from 'commander';
+import merge from './merge.js';
+import logger from './logger.js';
+import remote from './remote-process.js';
+import replyTo from './promise-reply.js';
+import Config from './mtrader-config.js';
+import config from './config.js';
+import date from './mtrader-date.js';
+import shellError from './shell-error.js';
+import version from './version.js';
+import MTrader from './mtrader.js';
+import os from 'os';
+
+// the library interface, defined unless this module runs as a command or worker
+let exported;
+const WORKER_COUNT = os.cpus().length;
 
 const DEFAULT_PATH = `/mtrader/${version.major_version}/remote`;
-const WORKER_COUNT = require('os').cpus().length;
 
 function usage(command) {
     return command.version(version.version)
@@ -72,7 +76,7 @@ function usage(command) {
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-if (require.main === module) {
+if (isMainModule(import.meta)) {
     if (!config('remote.listen'))
         throw Error("Service listen address is required to start service");
     const server = new listen({...config.options(), ...config('remote')});
@@ -85,7 +89,7 @@ if (require.main === module) {
         }, 10000).unref();
     });
 } else {
-    module.exports = function(settings = {}) {
+    exported = function(settings = {}) {
         return new listen({...settings, ...config('remote')});
     };
 }
@@ -96,7 +100,7 @@ function listen(settings) {
     const address = settings.listen;
     const timeout = settings.timeout;
     const addr = parseLocation(address, false);
-    const auth = addr.auth ? 'Basic ' + new Buffer(addr.auth).toString('base64') : undefined;
+    const auth = addr.auth ? 'Basic ' + Buffer.from(addr.auth).toString('base64') : undefined;
     const server = addr.protocol == 'https:' || addr.protocol == 'wss:' ? https.createServer({
         key: readFileSync(settings.key_pem),
         passphrase: readBase64FileSync(settings.passphrase_base64),
@@ -140,7 +144,7 @@ function listen(settings) {
         response.setHeader('Content-Length', Buffer.byteLength(msg));
         response.end(msg);
     });
-    const wsserver = new ws.Server({
+    const wsserver = new WebSocketServer({
         server: server, path: addr.path,
         clientTracking: true,
         perMessageDeflate: settings.perMessageDeflate!=null ? settings.perMessageDeflate : true,
@@ -262,3 +266,5 @@ function parseLocation(location, secure) {
     }
     return parsed;
 }
+
+export default exported;

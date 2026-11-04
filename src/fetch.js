@@ -28,16 +28,15 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const merge = require('./merge.js');
-const version = require('./version.js');
-const config = require('./config.js');
-const logger = require('./logger.js');
-const like = require('./like.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import merge from './merge.js';
+import version from './version.js';
+import config from './config.js';
+import logger from './logger.js';
+import like from './like.js';
+import assert from 'node:assert';
 
 /**
  * Fetch layer (bottom of the stack, see ARCHITECTURE.md). Builds an
@@ -46,7 +45,7 @@ const assert = require('node:assert');
  * lookup, contract, fundamental, adjustments and bar requests to it.
  * @returns a function that returns array of row objects based on given options
  */
-module.exports = function(settings = {}) {
+export default function(settings = {}) {
     let datasources;
     const markets = config('markets');
     const self = function(options) {
@@ -110,15 +109,12 @@ module.exports = function(settings = {}) {
  * hash of intervals -> market -> source
  */
 async function promiseDatasources(settings = {}) {
-    const yahoo = require('./fetch-yahoo.js');
-    const all_factories = [
-        {name: 'files', fn: require('./fetch-files.js')},
-        {name: 'ib', fn: require('./fetch-ib.js')},
-        {name: 'ivolatility', fn: require('./fetch-ivolatility.js')},
-        {name: 'iqfeed', fn: require('./fetch-iqfeed.js')},
-        {name: 'yahoo', fn: yahoo},
-        {name: 'remote', fn: require('./fetch-remote.js')}
-    ];
+    // imported here because fetch-files, fetch-ib, fetch-iqfeed and
+    // fetch-ivolatility import this module themselves
+    const load = async(name) => (await import(`./fetch-${name}.js`)).default;
+    const names = ['files', 'ib', 'ivolatility', 'iqfeed', 'yahoo', 'remote'];
+    const all_factories = await Promise.all(names.map(async(name) => ({name, fn: await load(name)})));
+    const yahoo = _.findWhere(all_factories, {name: 'yahoo'}).fn;
     const disabled = all_factories.reduce((disabled, factory) => {
         if (!settings[factory.name] || settings[factory.name].enabled) return disabled;
         else return Object.assign(disabled, {[factory.name]: {enabled: false}});

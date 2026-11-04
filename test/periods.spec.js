@@ -28,10 +28,10 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const expect = require('chai').expect;
-const periods = require('../src/periods.js');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import {expect} from 'chai';
+import periods from '../src/periods.js';
 
 describe("periods", function(){
     describe("stocks", function() {

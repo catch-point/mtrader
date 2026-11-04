@@ -22,7 +22,8 @@ service that other instances can send work to.
 
 ## Requirements
 
-- Node.js 22 or later, and npm.
+- Node.js 22.12 or later, and npm. mtrader is an ES module package, so load
+  it with `import` (or `require()` on Node versions that can load ES modules).
 - Yahoo! data needs only internet access and is enabled by default. The other
   data sources and brokers are off until you configure them:
 
@@ -60,7 +61,7 @@ and `sma20`.
 As a library:
 
 ```js
-const Mtrader = require('mtrader');
+import Mtrader from 'mtrader';
 const mtrader = new Mtrader();
 
 const bars = await mtrader.quote({

@@ -29,11 +29,12 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const like = require('./should-be-like.js');
-const config = require('../src/config.js');
-const yahoo = require('../src/fetch-yahoo.js');
+import util from 'node:util';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import like from './should-be-like.js';
+import config from '../src/config.js';
+import yahoo from '../src/fetch-yahoo.js';
 
 describe("fetch-yahoo", function() {
     this.timeout(10000);
@@ -277,7 +278,7 @@ describe("fetch-yahoo", function() {
             open_time: "09:30:00",
             security_tz: "America/New_York", tz: tz
         })
-         .then(d=>d.forEach(d=>console.log(require('util').inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
+         .then(d=>d.forEach(d=>console.log(util.inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
          .should.eventually.be.like([
             { ending: '2019-04-18T16:00:00-04:00', close: 153.48, adj_close: 152.53 },
             { ending: '2019-04-22T16:00:00-04:00', close: 154.51, adj_close: 153.55 },

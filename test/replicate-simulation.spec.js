@@ -29,23 +29,24 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const fs = require('fs');
-const path = require('path');
-const util = require('util');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const merge = require('../src/merge.js');
-const config = require('../src/config.js');
-const Fetch = require('../src/fetch.js');
-const Quote = require('../src/quote.js');
-const Collect = require('../src/collect.js');
-const Replicate = require('../src/replicate.js');
-const Broker = require('../src/broker-simulation.js');
-const beautify = require('js-beautify');
-const like = require('./should-be-like.js');
-const Snapshot = require('./snapshot.js');
-const createTempDir = require('./create-temp-dir.js');
-const expect = require('chai').use(like).expect;
+import fs from 'fs';
+import path from 'path';
+import util from 'util';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import merge from '../src/merge.js';
+import config from '../src/config.js';
+import Fetch from '../src/fetch.js';
+import Quote from '../src/quote.js';
+import Collect from '../src/collect.js';
+import Replicate from '../src/replicate.js';
+import Broker from '../src/broker-simulation.js';
+import beautify from 'js-beautify';
+import like from './should-be-like.js';
+import Snapshot from './snapshot.js';
+import createTempDir from './create-temp-dir.js';
+import * as chai from 'chai';
+const expect = chai.use(like).expect;
 
 describe("replicate-simulation", function() {
     this.timeout(60000);
@@ -56,7 +57,7 @@ describe("replicate-simulation", function() {
         fetch = Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         quote = new Quote(fetch);
@@ -67,7 +68,7 @@ describe("replicate-simulation", function() {
             fetch: {
                 files: {
                     enabled: true,
-                    dirname: path.resolve(__dirname, 'data')
+                    dirname: path.resolve(import.meta.dirname, 'data')
                 }
             }
         }, quote);
@@ -2864,6 +2865,6 @@ describe("replicate-simulation", function() {
 });
 
 function printEach(d) {
-    d.forEach(d=>console.log(require('util').inspect(d,{breakLength:Infinity})));
+    d.forEach(d=>console.log(util.inspect(d,{breakLength:Infinity})));
     return d;
 }

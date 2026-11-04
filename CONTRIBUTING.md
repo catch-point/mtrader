@@ -41,8 +41,11 @@ git-ignored and safe to delete.
 - Use `node:assert` (`assert.ok(condition, message)`) for argument validation inside `src/`,
   and `like.assert(value, pattern)` from `src/like.js` to check an options object
   against a pattern. `chai` is a test-only dependency.
-- Keep `src/` CommonJS (`require`), and prefer dependencies that still ship a
-  CommonJS build.
+- `src/`, `test/` and `scripts/` are ES modules (`"type": "module"`): use
+  `import`/`export`, `import.meta.dirname` instead of `__dirname`, and
+  `isMainModule(import.meta)` from `src/is-main-module.js` instead of
+  `require.main === module`. Import Node built-ins with the `node:` prefix in
+  new code.
 - Use `logger.js` (`trace`/`debug`/`log`/`warn`/`error`) rather than `console`.
 - Write files through `atomic-write.js`.
 - Use `big.js` for money and quantities in brokers and replication.

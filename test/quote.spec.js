@@ -29,16 +29,16 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const merge = require('../src/merge.js');
-const like = require('./should-be-like.js');
-const createTempDir = require('./create-temp-dir.js');
-const Storage = require('../src/storage.js');
-const config = require('../src/config.js');
-const Fetch = require('../src/fetch.js');
-const Quote = require('../src/quote.js');
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import merge from '../src/merge.js';
+import like from './should-be-like.js';
+import createTempDir from './create-temp-dir.js';
+import Storage from '../src/storage.js';
+import config from '../src/config.js';
+import Fetch from '../src/fetch.js';
+import Quote from '../src/quote.js';
 
 describe("quote", function() {
     this.timeout(30000);
@@ -51,7 +51,7 @@ describe("quote", function() {
         fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         quote = Quote(fetch);
@@ -155,7 +155,7 @@ describe("quote", function() {
         fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'partial')
+                dirname: path.resolve(import.meta.dirname, 'partial')
             }
         }));
         quote = Quote(fetch);
@@ -181,7 +181,7 @@ describe("quote", function() {
             fetch = new Fetch(merge(config('fetch'), {
                 files: {
                     enabled: true,
-                    dirname: path.resolve(__dirname, 'data')
+                    dirname: path.resolve(import.meta.dirname, 'data')
                 }
             }));
             quote = Quote(fetch);
@@ -266,7 +266,7 @@ describe("quote", function() {
         fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'partial')
+                dirname: path.resolve(import.meta.dirname, 'partial')
             }
         }));
         quote = Quote(fetch);
@@ -297,7 +297,7 @@ describe("quote", function() {
             fetch = new Fetch(merge(config('fetch'), {
                 files: {
                     enabled: true,
-                    dirname: path.resolve(__dirname, 'data')
+                    dirname: path.resolve(import.meta.dirname, 'data')
                 }
             }));
             quote = Quote(fetch);
@@ -734,7 +734,7 @@ describe("quote", function() {
         fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'partial')
+                dirname: path.resolve(import.meta.dirname, 'partial')
             }
         }));
         quote = Quote(fetch);
@@ -763,7 +763,7 @@ describe("quote", function() {
             fetch = new Fetch(merge(config('fetch'), {
                 files: {
                     enabled: true,
-                    dirname: path.resolve(__dirname, 'data')
+                    dirname: path.resolve(import.meta.dirname, 'data')
                 }
             }));
             quote = Quote(fetch);

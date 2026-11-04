@@ -28,16 +28,15 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const interrupt = require('./interrupt.js');
-const replyTo = require('./promise-reply.js');
-const remote = require('./remote-process.js');
-const workerQueue = require('./worker-queue.js');
-const logger = require('./logger.js');
-const config = require('./config.js');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import interrupt from './interrupt.js';
+import replyTo from './promise-reply.js';
+import remote from './remote-process.js';
+import workerQueue from './worker-queue.js';
+import logger from './logger.js';
+import config from './config.js';
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
@@ -45,7 +44,7 @@ process.setMaxListeners(process.getMaxListeners()+1);
  * Worker queue whose workers are remote mtrader services (collect.remote),
  * retrying a failed task on another worker when more than one is available.
  */
-module.exports = createInstance;
+export default createInstance;
 
 function createInstance(settings = {}) {
     let check = interrupt(true);

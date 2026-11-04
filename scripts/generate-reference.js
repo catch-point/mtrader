@@ -7,13 +7,13 @@
  * `functions` tables. Run with `npm run docs` after changing any option,
  * property or expression function so the reference never drifts from code.
  */
-'use strict';
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const _ = require('underscore');
-const config = require('../src/config.js');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import _ from 'underscore';
+import config from '../src/config.js';
+import Mtrader from '../src/mtrader.js';
 config('runInBand', true);
 config('offline', true);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mtrader-docs-'));
@@ -22,9 +22,8 @@ config('lib_dir', path.join(tmp, 'lib'));
 // enable a throwaway simulation so broker and replicate have something to describe
 config('broker.simulation.enabled', true);
 config('broker.simulation.simulation', 'docs');
-const Mtrader = require('../src/mtrader.js');
 
-const outDir = path.resolve(__dirname, '../docs/reference');
+const outDir = path.resolve(import.meta.dirname, '../docs/reference');
 
 const commands = ['fetch', 'quote', 'collect', 'optimize', 'bestsignals', 'strategize', 'broker', 'replicate'];
 
@@ -58,7 +57,7 @@ async function main() {
     } finally {
         await mtrader.close();
     }
-    write('functions.md', functionsDoc(libraries));
+    write('functions.md', await functionsDoc(libraries));
     write('README.md', indexDoc(written));
 }
 
@@ -99,11 +98,12 @@ function commandDoc(cmd, help) {
     ].filter(Boolean).join('\n')).join('\n');
 }
 
-function functionsDoc(libraries) {
+async function functionsDoc(libraries) {
+    const modules = await Promise.all(libraries.map(([name]) => import(`../src/${name}.js`)));
     return header("Expression functions") +
         "See [expressions](../expressions.md) for syntax, fields and operators.\n\n" +
-        libraries.map(([name, intro]) => {
-            const functions = require(`../src/${name}.js`).functions;
+        libraries.map(([name, intro], i) => {
+            const functions = modules[i].default.functions;
             return `## ${name}\n\n${intro}\n\n| Function | Description |\n|---|---|\n` +
                 _.keys(functions).sort().map(fname => {
                     const fn = functions[fname];

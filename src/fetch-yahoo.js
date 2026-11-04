@@ -28,18 +28,18 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const Big = require('big.js');
-const version = require('./version.js').toString();
-const config = require('./config.js');
-const yahooClient = require('./yahoo-client.js');
-const Adjustments = require('./adjustments-yahoo.js');
-const cache = require('./memoize-cache.js');
-const like = require('./like.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import Big from 'big.js';
+import Version from './version.js';
+import config from './config.js';
+import yahooClient from './yahoo-client.js';
+import Adjustments from './adjustments-yahoo.js';
+import cache from './memoize-cache.js';
+import like from './like.js';
+import assert from 'node:assert';
+const version = Version.toString();
 
 function help(settings = {}) {
     const commonOptions = {
@@ -153,7 +153,7 @@ function help(settings = {}) {
     ]);
 }
 
-module.exports = function(settings = {}) {
+export default function(settings = {}) {
     const helpInfo = help(settings);
     const markets = _.pick(config('markets'), settings.markets);
     const symbol = yahoo_symbol.bind(this, markets);

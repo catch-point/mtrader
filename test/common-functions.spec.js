@@ -29,10 +29,10 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const _ = require('underscore');
-const common = require('../src/common-functions.js');
-const Parser = require('../src/parser.js');
-const expect = require('chai').expect;
+import _ from 'underscore';
+import common from '../src/common-functions.js';
+import Parser from '../src/parser.js';
+import {expect} from 'chai';
 
 describe("common-functions", function(){
     describe("WORKDATE", function(){

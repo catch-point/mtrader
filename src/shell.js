@@ -28,10 +28,9 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const readline = require('node:readline');
-const EventEmitter = require('node:events');
+import readline from 'node:readline';
+import EventEmitter from 'node:events';
 
 const COLORS = {black: 30, red: 31, green: 32, yellow: 33, blue: 34, magenta: 35, cyan: 36, white: 37};
 
@@ -206,4 +205,4 @@ function unescape(value) {
     }
 }
 
-module.exports = Shell;
+export default Shell;

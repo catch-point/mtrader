@@ -29,17 +29,17 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const fs = require('fs');
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const merge = require('../src/merge.js');
-const config = require('../src/config.js');
-const Fetch = require('../src/fetch.js');
-const Quote = require('../src/quote.js');
-const Broker = require('../src/broker-simulation.js');
-const like = require('./should-be-like.js');
-const createTempDir = require('./create-temp-dir.js');
+import fs from 'fs';
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import merge from '../src/merge.js';
+import config from '../src/config.js';
+import Fetch from '../src/fetch.js';
+import Quote from '../src/quote.js';
+import Broker from '../src/broker-simulation.js';
+import like from './should-be-like.js';
+import createTempDir from './create-temp-dir.js';
 
 describe("broker-simulation", function() {
     this.timeout(60000);
@@ -50,7 +50,7 @@ describe("broker-simulation", function() {
         fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         quote = new Quote(fetch);
@@ -60,7 +60,7 @@ describe("broker-simulation", function() {
             fetch: {
                 files: {
                     enabled: true,
-                    dirname: path.resolve(__dirname, 'data')
+                    dirname: path.resolve(import.meta.dirname, 'data')
                 }
             }
         }, quote);

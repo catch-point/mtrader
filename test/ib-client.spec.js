@@ -29,11 +29,12 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const like = require('./should-be-like.js');
-const marketDataPermission = require('./market-data-permission.js');
-const IB = require('../src/ib-client.js');
+import util from 'node:util';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import like from './should-be-like.js';
+import marketDataPermission from './market-data-permission.js';
+import IB from '../src/ib-client.js';
 
 describe("ib-client", function() {
     this.timeout(60000);
@@ -401,7 +402,7 @@ describe("ib-client", function() {
             exchange: 'NYSE',
             currency: 'USD'
         }, 'ReportsFinSummary').should.eventually.have.property('FinancialSummary');
-        //.then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
+        //.then(d=>console.log(util.inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
     });
     it.skip("should requestFA Groups", function() {
         return client.requestGroups().should.eventually.be.an('array');
@@ -410,7 +411,7 @@ describe("ib-client", function() {
         return client.requestAliases().should.eventually.be.an('array');
     });
     it.skip("should reqOpenOrders", function() {
-        return client.reqOpenOrders().then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d).should.eventually.be.an('array');
+        return client.reqOpenOrders().then(d=>console.log(util.inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d).should.eventually.be.an('array');
     });
     it.skip("should placeOrder", async() => {
         const contract = {
@@ -428,7 +429,7 @@ describe("ib-client", function() {
             lmtPrice: 270,
             transmit: false
         };
-        const placed = await client.placeOrder(await client.reqId(), contract, order).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
-        await client.cancelOrder(placed.orderId).then(d=>console.log(require('util').inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
+        const placed = await client.placeOrder(await client.reqId(), contract, order).then(d=>console.log(util.inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
+        await client.cancelOrder(placed.orderId).then(d=>console.log(util.inspect(d,{depth:null,colors:true,maxArrayLength:10,breakLength:100}))||d);
     });
 });

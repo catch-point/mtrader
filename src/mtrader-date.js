@@ -30,13 +30,15 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const logger = require('./logger.js');
-const config = require('./config.js');
-const version = require('./version.js').version;
+import _ from 'underscore';
+import isMainModule from './is-main-module.js';
+import moment from 'moment-timezone';
+import logger from './logger.js';
+import config from './config.js';
+import * as commander from 'commander';
+import Version from './version.js';
+const version = Version.version;
 
 const months = _.once(function() {
     const date = moment('2010-01-01');
@@ -68,8 +70,8 @@ const days = _.once(function() {
     }, {});
 });
 
-if (require.main === module) {
-    const program = require('commander').program.version(version.toString())
+if (isMainModule(import.meta)) {
+    const program = commander.program.version(version.toString())
         .description("Date manipulation")
         .usage('<format> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -98,7 +100,7 @@ if (require.main === module) {
     }
 }
 
-module.exports = function() {
+export default function() {
     return Object.assign((format, options) => formatDate(format, options), {
         shell: shell,
         close: () => Promise.resolve()

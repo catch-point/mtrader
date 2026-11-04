@@ -28,26 +28,26 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const crypto = require('crypto');
-const EventEmitter = require('events');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const csv = require('fast-csv');
-const assert = require('node:assert');
-const awriter = require('./atomic-write.js');
-const major_version = require('./version.js').major_version;
-const config = require('./config.js');
-const debounce = require('./debounce.js');
-const logger = require('./logger.js');
+import fs from 'graceful-fs';
+import path from 'path';
+import crypto from 'crypto';
+import EventEmitter from 'events';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import csv from 'fast-csv';
+import assert from 'node:assert';
+import awriter from './atomic-write.js';
+import Version from './version.js';
+import config from './config.js';
+import debounce from './debounce.js';
+import logger from './logger.js';
+const major_version = Version.major_version;
 
 /**
  * Caches fn results to disk in baseDir
  */
-module.exports = function(baseDir, fn, poolSize, loadFactor) {
+export default function(baseDir, fn, poolSize, loadFactor) {
     const maxPoolSize = Math.ceil(poolSize / (loadFactor || 0.75));
     const cache = _.extend(new EventEmitter(), {
         added: 0,

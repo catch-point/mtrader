@@ -29,12 +29,12 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const fs = require('fs');
-const path = require('path');
-const _ = require('underscore');
-const expect = require('chai').expect;
-const Cache = require('../src/memoize-cache.js');
-const like = require('./should-be-like.js');
+import fs from 'fs';
+import path from 'path';
+import _ from 'underscore';
+import {expect} from 'chai';
+import Cache from '../src/memoize-cache.js';
+import like from './should-be-like.js';
 
 describe("memoize-cache", function() {
     it("don't close while inuse", async() => {

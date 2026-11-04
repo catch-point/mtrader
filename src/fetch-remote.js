@@ -28,17 +28,16 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const interrupt = require('./interrupt.js');
-const logger = require('./logger.js');
-const config = require('./config.js');
-const remote = require('./remote-process.js');
-const replyTo = require('./promise-reply.js');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import interrupt from './interrupt.js';
+import logger from './logger.js';
+import config from './config.js';
+import remote from './remote-process.js';
+import replyTo from './promise-reply.js';
 
-module.exports = function(settings = {}) {
+export default function(settings = {}) {
     let promiseFetch, closing;
     if (!settings.location) throw Error("No remote location configured");
     return Object.assign(options => fetch(options), {

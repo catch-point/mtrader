@@ -28,7 +28,6 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
 /**
  * If SIGINT or SIGTERM was triggered, betwen callings this function and calling
@@ -36,7 +35,7 @@
  * Every 100k calls to any of the returned functions will await to check if a
  * SIGINT/SIGTERM was called.
  */
-module.exports = function(returnValue) {
+export default function(returnValue) {
     const base = interrupted;
     if (arguments.length) return async() => {
         await delay();

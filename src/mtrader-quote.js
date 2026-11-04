@@ -30,29 +30,34 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const commander = require('commander');
-const share = require('./share.js');
-const logger = require('./logger.js');
-const tabular = require('./tabular.js');
-const interrupt = require('./interrupt.js');
-const workerQueue = require('./worker-queue.js');
-const Model = require('./quote-model.js');
-const Quote = require('./quote.js');
-const replyTo = require('./promise-reply.js');
-const config = require('./config.js');
-const assert = require('node:assert');
-const common = require('./common-functions.js');
-const lookback = require('./lookback-functions.js');
-const indicator = require('./indicator-functions.js');
-const version = require('./version.js').version;
-const Fetch = require('./mtrader-fetch.js');
+import path from 'path';
+import isMainModule from './is-main-module.js';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import * as commander from 'commander';
+import share from './share.js';
+import logger from './logger.js';
+import tabular from './tabular.js';
+import interrupt from './interrupt.js';
+import workerQueue from './worker-queue.js';
+import Model from './quote-model.js';
+import Quote from './quote.js';
+import replyTo from './promise-reply.js';
+import config from './config.js';
+import assert from 'node:assert';
+import common from './common-functions.js';
+import lookback from './lookback-functions.js';
+import indicator from './indicator-functions.js';
+import Version from './version.js';
+import Fetch from './mtrader-fetch.js';
+import os from 'os';
 
-const WORKER_COUNT = require('os').cpus().length;
+// the library interface, defined unless this module runs as a command or worker
+let exported;
+const version = Version.version;
+const WORKER_COUNT = os.cpus().length;
+
 
 function usage(command) {
     return command.version(version.toString())
@@ -89,7 +94,7 @@ function usage(command) {
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-if (require.main === module) {
+if (isMainModule(import.meta)) {
     const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const quote = createInstance(program);
@@ -124,7 +129,7 @@ if (require.main === module) {
     }
 } else {
     const program = usage(new commander.Command());
-    const shared = module.exports = share(() => createInstance(program));
+    const shared = exported = share(() => createInstance(program));
     process.on('SIGHUP', () => shared.instance && shared.instance.reload());
 }
 
@@ -220,7 +225,7 @@ function createWorkers(program, fetch, quote) {
         prime[_.sortedIndex(prime, WORKER_COUNT)] || WORKER_COUNT;
     if (size) logger.debug("Launching", size, "quote workers");
     return _.range(size).map(() => {
-        const worker = replyTo(config.fork(module.filename, program));
+        const worker = replyTo(config.fork(import.meta.filename, program));
         return worker.handle('fetch', payload => fetch(payload)).handle('quote', payload => quote(payload));
     });
 };
@@ -479,3 +484,5 @@ function help(app, cmd, usage) {
         sh.prompt();
     });
 }
+
+export default exported;

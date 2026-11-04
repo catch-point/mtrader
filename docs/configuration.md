@@ -23,7 +23,7 @@ reads one back.
 From the library:
 
 ```js
-const Mtrader = require('mtrader');
+import Mtrader from 'mtrader';
 Mtrader.config('prefix', '/srv/mtrader');   // change this process's configuration
 const mtrader = new Mtrader({offline: true}); // per-instance overrides
 ```

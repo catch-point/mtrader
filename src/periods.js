@@ -28,16 +28,15 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const like = require('./like.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import like from './like.js';
+import assert from 'node:assert';
 
-module.exports = function(options) {
+const Periods = function(options) {
     like.assert(options, {
-        interval: int => module.exports.values.includes(int),
+        interval: int => Periods.values.includes(int),
         open_time: /\d\d:\d\d(:00)?/,
         liquid_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
         trading_hours: /\d\d:\d\d(:00)? - \d\d:\d\d(:00)?/,
@@ -79,9 +78,9 @@ module.exports = function(options) {
     };
 };
 
-module.exports.sort = periods => _.sortBy(periods, period => {
-    if (_.isString(period) && !~module.exports.values.indexOf(period))
-        throw Error("Unknown interval: " + period + " must be one of " + module.exports.values.join(', '));
+Periods.sort = periods => _.sortBy(periods, period => {
+    if (_.isString(period) && !~Periods.values.indexOf(period))
+        throw Error("Unknown interval: " + period + " must be one of " + Periods.values.join(', '));
     return _.isString(period) ? createPeriods({
         interval: period,
         trading_hours: "04:00:00 - 20:00:00",
@@ -91,7 +90,7 @@ module.exports.sort = periods => _.sortBy(periods, period => {
     }).millis : period.millis;
 });
 
-module.exports.values = [
+Periods.values = [
     'm1', 'm2', 'm5', 'm10', 'm15', 'm20', 'm30',
     'm60', 'm120', 'm240',
     'day', 'week',
@@ -116,7 +115,7 @@ function createPeriods(options) {
     case 'quarter': return intervalInMonths('quarter', options);
     case 'year': return intervalInMonths('year', options);
     default:
-        throw Error(`Unknown interval: ${options.interval} must be one of ${module.exports.values.join(', ')}`);
+        throw Error(`Unknown interval: ${options.interval} must be one of ${Periods.values.join(', ')}`);
     }
 }
 
@@ -508,3 +507,5 @@ function parseTime(date, time) {
     const second = +time.substring(6, 8);
     return moment(date).millisecond(0).second(second).minute(minute).hour(hour);
 }
+
+export default Periods;

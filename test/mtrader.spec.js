@@ -29,14 +29,14 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const path = require('path');
-const _ = require('underscore');
-const config = require('../src/config.js');
+import path from 'path';
+import _ from 'underscore';
+import config from '../src/config.js';
+import Mtrader from '../src/mtrader.js';
+import readCallSave from '../src/read-call-save.js';
+import like from './should-be-like.js';
+import createTempDir from './create-temp-dir.js';
 config('runInBand', true);
-const Mtrader = require('../src/mtrader.js');
-const readCallSave = require('../src/read-call-save.js');
-const like = require('./should-be-like.js');
-const createTempDir = require('./create-temp-dir.js');
 
 describe("mtrader", function() {
     this.timeout(120000);

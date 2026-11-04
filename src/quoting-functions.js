@@ -28,20 +28,19 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const Big = require('big.js');
-const statistics = require('./statistics.js');
-const Parser = require('./parser.js');
-const common = require('./common-functions.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import Big from 'big.js';
+import statistics from './statistics.js';
+import Parser from './parser.js';
+import common from './common-functions.js';
+import assert from 'node:assert';
 
 /**
  * These functions operate of an array of securities at the same point in time.
  */
-module.exports = function(fetch, quote, dataset, options) {
+const Quoting = function(fetch, quote, dataset, options) {
     const cache_keys = ['interval', 'symbol', 'market', 'begin', 'end'];
     const assets = extractAssets(dataset || [], options);
     return _.memoize(function(expr, name, args, options) {
@@ -58,11 +57,11 @@ module.exports = function(fetch, quote, dataset, options) {
     });
 };
 
-module.exports.has = function(name) {
+Quoting.has = function(name) {
     return !!functions[name];
 };
 
-const functions = module.exports.functions = {
+const functions = Quoting.functions = {
     MAXCORREL: Object.assign(async(fetch, quote, assets, options, expr, duration, expression, criteria) => {
         const n = asPositiveInteger(duration, "MAXCORREL");
         const arg = (await new Parser({
@@ -273,3 +272,5 @@ async function parseCriteria(columnName, criteria, options) {
     } catch(e) {} // not an expression, must be a value
     return context => context[columnName] == criteria;
 }
+
+export default Quoting;

@@ -4,6 +4,40 @@ All notable changes to mtrader since 1.0. Entries before 16.2.0 were
 generated from the git history and are grouped by minor version; each lists
 the commit subjects included in that series, newest first.
 
+## 17.0.0 — 2026-11-04
+
+### Changed
+
+- **Breaking:** mtrader is now an ES module package (`"type": "module"`).
+  Load it with `import Mtrader from 'mtrader'`; `require('mtrader')` works only
+  on Node versions that can `require()` ES modules. Every module in `src/`,
+  `test/` and `scripts/` uses `import`/`export`.
+- **Breaking:** requires Node.js 22.12 or later.
+- Uses ib-tws-node 2.1.1 (ES modules, Node 22.12+, stricter enum validation
+  and checksummed TWS API downloads).
+- Upgraded to the ES module releases of `commander` 15, `d3-format` 3,
+  `chai` 6, `chai-as-promised` 8 and `mocha` 12.
+- Number formatting goes through `src/number-format.js`, which keeps
+  d3-format 1's hyphen-minus for negative numbers (d3-format 2 and later
+  default to the Unicode minus sign), so `TEXT()` output and symbols are
+  unchanged.
+- Data sources are imported on demand by `fetch.js`, which keeps the
+  `fetch.js` ↔ `fetch-*.js` import cycle out of module evaluation.
+
+### Fixed
+
+- `fetch-iqfeed.js` declared `isOptionExpired` twice. CommonJS silently used
+  the second declaration; the unused first one is removed.
+- `mtrader start` uses ws's `WebSocketServer` export, since the ES module
+  build of ws has no `ws.Server`, and `Buffer.from` in place of the
+  deprecated `new Buffer`. A new `mtrader-start` spec covers the service:
+  HTTP and wrong-path responses, version and status requests, a remote
+  fetch, and basic-auth credentials.
+- `broker-ib.js` reported an order it could not build a contract for with
+  `ReferenceError: contract is not defined` instead of
+  `Could not create contract from …`. New specs cover the contract
+  failures an order can reach: a missing symbol and an unknown market.
+
 ## 16.3.0 — 2026-11-04
 
 ### Changed

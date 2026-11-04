@@ -28,25 +28,25 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const fs = require('graceful-fs');
-const url = require('url');
-const http = require('http');
-const https = require('https');
-const path = require('path');
-const moment = require('moment-timezone');
-const merge = require('./merge.js');
-const config = require('./config.js');
-const logger = require('./logger.js');
-const assert = require('node:assert');
-const version = require('../package.json').version;
+import _ from 'underscore';
+import fs from 'graceful-fs';
+import url from 'url';
+import http from 'http';
+import https from 'https';
+import path from 'path';
+import moment from 'moment-timezone';
+import merge from './merge.js';
+import config from './config.js';
+import logger from './logger.js';
+import assert from 'node:assert';
+import Version from './version.js';
+const version = Version.version;
 
 /**
  * Aligns the working signals on collective2 with the signal rows from the collect result
  */
-module.exports = function(settings) {
+export default function(settings) {
     assert.ok(settings.systemid, `Expected settings.systemid to be set`);
     const systemid = settings.systemid;
     const agent = new https.Agent({

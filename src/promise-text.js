@@ -28,21 +28,22 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const http = require('http');
-const https = require('https');
-const URL = require('url').URL;
-const parse_url = require('url').parse;
-const _ = require('underscore');
-const logger = require('./logger.js');
-const version = require('./version.js');
-const merge = require('./merge.js');
+import http from 'http';
+import https from 'https';
+import url from 'url';
+import urlModule from 'url';
+import _ from 'underscore';
+import logger from './logger.js';
+import version from './version.js';
+import merge from './merge.js';
+const URL = url.URL;
+const parse_url = urlModule.parse;
 
 const default_headers = {'user-agent': 'mtrader/'+version, 'Accept': 'text/html,*/*'};
 process.setMaxListeners(process.getMaxListeners()+1);
 
-const promise_text = module.exports = function(url, redirect_counter) {
+const promise_text = function(url, redirect_counter) {
     const req = _.isString(url) ? {url: url, ...parse_url(url)} : url;
     const pending = _.clone(req);
     return pending.promise = new Promise(function(resolve, reject) {
@@ -151,3 +152,5 @@ function titleOf(html, status) {
     if (decoded.indexOf(status) >= 0) return decoded;
     else return decoded + ' ' + status;
 }
+
+export default promise_text;

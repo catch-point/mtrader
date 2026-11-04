@@ -30,17 +30,19 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const logger = require('./logger.js');
-const config = require('./config.js');
-const merge = require('./merge.js');
-const version = require('./version.js').version;
-const readCallSave = require('./read-call-save.js');
+import _ from 'underscore';
+import isMainModule from './is-main-module.js';
+import logger from './logger.js';
+import config from './config.js';
+import merge from './merge.js';
+import * as commander from 'commander';
+import Version from './version.js';
+import readCallSave from './read-call-save.js';
+const version = Version.version;
 
-if (require.main === module) {
-    const program = require('commander').program.version(version.toString())
+if (isMainModule(import.meta)) {
+    const program = commander.program.version(version.toString())
         .description("View or change stored options")
         .usage('<name> [value] [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -81,7 +83,7 @@ if (require.main === module) {
     }
 }
 
-module.exports = function() {
+export default function() {
     const instance = _.extend(function(name, value) {
         return config.apply(config, arguments);
     }, _.mapObject(_.pick(config,_.isFunction), fn => fn.bind(config)));

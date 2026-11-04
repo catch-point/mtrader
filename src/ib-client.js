@@ -28,25 +28,24 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const {XMLParser} = require('fast-xml-parser');
-const IB = require('ib-tws-node');
-const logger = require('./logger.js');
-const promiseThrottle = require('./throttle.js');
-const TimeLimit = require('./time-limit.js');
-const debounce = require('./debounce.js');
-const cache = require('./memoize-cache.js');
-const storage = require('./storage.js');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import {XMLParser} from 'fast-xml-parser';
+import IB from 'ib-tws-node';
+import logger from './logger.js';
+import promiseThrottle from './throttle.js';
+import TimeLimit from './time-limit.js';
+import debounce from './debounce.js';
+import cache from './memoize-cache.js';
+import storage from './storage.js';
 
 let sequence_counter = (Date.now() * process.pid) % 32768;
 function nextval() {
     return ++sequence_counter;
 }
 
-module.exports = async function(settings = {}) {
+export default async function(settings = {}) {
     const clientId = settings && _.isFinite(settings.clientId) ? settings.clientId : 0;
     const ib_tz = (settings||{}).tz || (moment.defaultZone||{}).name || moment.tz.guess();
     const timeout = settings && settings.timeout || 600000;

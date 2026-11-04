@@ -28,16 +28,15 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const version = require('./version.js');
-const logger = require('./logger.js');
-const config = require('./config.js');
-const Collective2 = require('./broker-collective2.js');
-const IB = require('./broker-ib.js');
-const Simulation = require('./broker-simulation.js');
-const Remote = require('./broker-remote.js');
+import _ from 'underscore';
+import version from './version.js';
+import logger from './logger.js';
+import config from './config.js';
+import Collective2 from './broker-collective2.js';
+import IB from './broker-ib.js';
+import Simulation from './broker-simulation.js';
+import Remote from './broker-remote.js';
 
 /**
  * Broker layer: exposes the first enabled broker-*.js adapter (ib,
@@ -46,7 +45,7 @@ const Remote = require('./broker-remote.js');
  * (balances, positions, orders, BUY/SELL/OCA/cancel, ...), filtering options
  * to those declared in the adapter's {info:'help'}.
  */
-module.exports = function(settings, quote) {
+export default function(settings, quote) {
     const Brokers = _.object(_.compact([
         (settings.ib||{}).enabled && ['ib', IB],
         (settings.collective2||{}).enabled && ['collective2', Collective2],

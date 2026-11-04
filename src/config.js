@@ -28,18 +28,17 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const fs = require('graceful-fs');
-const path = require('path');
-const process = require('process');
-const child_process = require('child_process');
-const moment = require('moment-timezone');
-const merge = require('./merge.js');
-const awriter = require('./atomic-write.js');
+import _ from 'underscore';
+import fs from 'graceful-fs';
+import path from 'path';
+import process from 'process';
+import child_process from 'child_process';
+import moment from 'moment-timezone';
+import merge from './merge.js';
+import awriter from './atomic-write.js';
+import {program} from 'commander';
 // the command line program shared by the src/mtrader-*.js executables
-const {program} = require('commander');
 
 const session = {};
 
@@ -65,25 +64,25 @@ process.argv.forEach((arg, i, args) => {
     }
 });
 
-module.exports = createInstance(session);
-module.exports.load();
+const config = createInstance(session);
+config.load();
 if (!moment.defaultZone) moment.tz.setDefault(moment.tz.guess());
 
 if (process.send) {
     process.on('message', msg => {
         if (msg.cmd == 'config' && msg.payload.loadFile) {
             if (_.isString(msg.payload.loadFile))
-                module.exports.load(msg.payload.loadFile);
+                config.load(msg.payload.loadFile);
         } else if (msg.cmd == 'config' && msg.payload.unset) {
-            module.exports.unset(msg.payload.name);
+            config.unset(msg.payload.name);
         } else if (msg.cmd == 'config' && _.isObject(msg.payload)) {
-            module.exports(msg.payload.name, msg.payload.value);
+            config(msg.payload.name, msg.payload.value);
         }
     });
 }
 
 process.on('SIGHUP', () => {
-    module.exports.load();
+    config.load();
 });
 
 function createInstance(session) {
@@ -103,7 +102,7 @@ function createInstance(session) {
     config.load = function(filename) {
         defaults = _.extend({
             prefix: opt('prefix', process.argv[1] ? path.resolve(process.argv[1], '../..') : '')
-        }, loadConfigFile(path.resolve(__dirname, '../etc/mtrader.json')));
+        }, loadConfigFile(path.resolve(import.meta.dirname, '../etc/mtrader.json')));
         stored = loadConfigFile(path.resolve(defaults.prefix, 'etc/mtrader.json'));
         if (stored.tz) moment.tz.setDefault(stored.tz);
         loadedFrom = filename || loadedFrom || opt('load');
@@ -347,3 +346,5 @@ function unset(obj, path) {
         return unset(obj[_.first(path)], _.rest(path));
     }
 }
+
+export default config;

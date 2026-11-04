@@ -29,16 +29,17 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const merge = require('../src/merge.js');
-const like = require('./should-be-like.js');
-const config = require('../src/config.js');
-const Fetch = require('../src/fetch.js');
-const Model = require('../src/quote-model.js');
-const Quote = require('../src/quote.js');
-const createTempDir = require('./create-temp-dir.js');
+import path from 'path';
+import util from 'node:util';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import merge from '../src/merge.js';
+import like from './should-be-like.js';
+import config from '../src/config.js';
+import Fetch from '../src/fetch.js';
+import Model from '../src/quote-model.js';
+import Quote from '../src/quote.js';
+import createTempDir from './create-temp-dir.js';
 
 describe("quote-model", function() {
     this.timeout(100000);
@@ -51,7 +52,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -115,7 +116,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -184,7 +185,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -245,7 +246,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         const model = new Model(fetch, {
@@ -339,7 +340,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -422,7 +423,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -509,7 +510,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -643,7 +644,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -755,7 +756,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -857,7 +858,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -948,7 +949,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -1014,7 +1015,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -1124,7 +1125,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data'),
+                dirname: path.resolve(import.meta.dirname, 'data'),
                 fetch: {
                     yahoo: {
                         enabled: true
@@ -1234,7 +1235,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         const model = new Model(fetch, {
@@ -1390,7 +1391,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         const model = new Model(fetch, {
@@ -1508,7 +1509,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         const model = new Model(fetch, {
@@ -1714,7 +1715,7 @@ describe("quote-model", function() {
         const fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         const model = new Model(fetch, {
@@ -1858,6 +1859,6 @@ describe("quote-model", function() {
 });
 
 function printEach(d) {
-    d.forEach(d=>console.log(require('util').inspect(d,{breakLength:Infinity})));
+    d.forEach(d=>console.log(util.inspect(d,{breakLength:Infinity})));
     return d;
 }

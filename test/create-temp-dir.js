@@ -29,10 +29,10 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const os = require('os');
-const fs = require('fs');
-const path = require('path');
-const _ = require('underscore');
+import os from 'os';
+import fs from 'fs';
+import path from 'path';
+import _ from 'underscore';
 
 let counter = 0;
 const tempDirs = [];
@@ -41,7 +41,7 @@ after(function() {
     tempDirs.forEach(deleteFolderRecursive);
 });
 
-module.exports = function(name) {
+export default function(name) {
     var tmp = path.resolve(os.tmpdir(), name + (Date.now()*1000 + counter++).toString(16));
     tempDirs.push(tmp);
     fs.mkdirSync(tmp);

@@ -28,16 +28,15 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const path = require('path');
-const process = require('process');
-const _ = require('underscore');
-const config = require('./config.js');
+import path from 'path';
+import process from 'process';
+import _ from 'underscore';
+import config from './config.js';
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-const relative = path.relative(process.cwd(), path.dirname(__filename));
+const relative = path.relative(process.cwd(), path.dirname(import.meta.filename));
 const quiet = process.argv.some(arg => /^--quiet$|^-\w*q/.test(arg));
 const verbosity = !relative || relative == 'src' || process.argv.some(arg => /^--verbose$|^-\w*v/.test(arg));
 const debugging = !relative || relative == 'src' || process.argv.some(arg => /^--debug$|^-\w*x/.test(arg));
@@ -63,7 +62,7 @@ const tty_colours = {
 
 const colours = process.stderr.isTTY ? tty_colours : _.mapObject(tty_colours, _.constant(''));
 
-const logger = module.exports = cfg('quiet', quiet) ? {
+const logger = cfg('quiet', quiet) ? {
     trace: nil,
     debug: nil,
     log: nil,
@@ -147,3 +146,5 @@ function logWithColour(colour, args) {
 function nil() {
     // silence
 }
+
+export default logger;

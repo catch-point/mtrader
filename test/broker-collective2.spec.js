@@ -29,18 +29,18 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const fs = require('fs');
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const merge = require('../src/merge.js');
-const config = require('../src/config.js');
-const Fetch = require('../src/fetch.js');
-const Quote = require('../src/quote.js');
-const Collect = require('../src/collect.js');
-const Broker = require('../src/broker-collective2.js');
-const like = require('./should-be-like.js');
-const createTempDir = require('./create-temp-dir.js');
+import fs from 'fs';
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import merge from '../src/merge.js';
+import config from '../src/config.js';
+import Fetch from '../src/fetch.js';
+import Quote from '../src/quote.js';
+import Collect from '../src/collect.js';
+import Broker from '../src/broker-collective2.js';
+import like from './should-be-like.js';
+import createTempDir from './create-temp-dir.js';
 
 describe("broker-collective2", function() {
     this.timeout(60000);
@@ -60,7 +60,7 @@ describe("broker-collective2", function() {
         fetch = new Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         quote = new Quote(fetch);
@@ -79,7 +79,7 @@ describe("broker-collective2", function() {
             fetch: {
                 files: {
                     enabled: true,
-                    dirname: path.resolve(__dirname, 'data')
+                    dirname: path.resolve(import.meta.dirname, 'data')
                 }
             }
         });

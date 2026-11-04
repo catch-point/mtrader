@@ -28,10 +28,9 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const logger = require('./logger.js');
+import _ from 'underscore';
+import logger from './logger.js';
 
 /**
  * Load-balancing task queue over a pool of workers (forked children or remote
@@ -39,7 +38,7 @@ const logger = require('./logger.js');
  * are created lazily with createWorkers and execTask(worker, ...args) runs a
  * task on the chosen worker.
  */
-module.exports = function(createWorkers, execTask) {
+export default function(createWorkers, execTask) {
     const queue = [];
     const workers = [];
     const stoppedWorkers = [];

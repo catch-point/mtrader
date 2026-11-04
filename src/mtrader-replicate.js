@@ -30,25 +30,29 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const commander = require('commander');
-const tabular = require('./tabular.js');
-const merge = require('./merge.js');
-const logger = require('./logger.js');
-const replyTo = require('./promise-reply.js');
-const config = require('./config.js');
-const Replicate = require('./replicate.js');
-const rolling = require('./rolling-functions.js');
-const readCallSave = require('./read-call-save.js');
-const Fetch = require('./mtrader-fetch.js');
-const Collect = require('./mtrader-collect.js');
-const Broker = require('./mtrader-broker.js');
+import _ from 'underscore';
+import isMainModule from './is-main-module.js';
+import moment from 'moment-timezone';
+import * as commander from 'commander';
+import tabular from './tabular.js';
+import merge from './merge.js';
+import logger from './logger.js';
+import replyTo from './promise-reply.js';
+import config from './config.js';
+import Replicate from './replicate.js';
+import rolling from './rolling-functions.js';
+import readCallSave from './read-call-save.js';
+import Fetch from './mtrader-fetch.js';
+import Collect from './mtrader-collect.js';
+import Broker from './mtrader-broker.js';
+import version from './version.js';
+
+// the library interface, defined unless this module runs as a command or worker
+let exported;
 
 function usage(command) {
-    return command.version(require('../package.json').version)
+    return command.version(version.version)
         .description("Changes workers orders to align with signal orders in result")
         .usage('<identifier> [options]')
         .option('-v, --verbose', "Include more information about what the system is doing")
@@ -95,7 +99,7 @@ function usage(command) {
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-if (require.main === module) {
+if (isMainModule(import.meta)) {
     const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const replicate = createInstance(program, config.options());
@@ -117,7 +121,7 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    module.exports = function(settings = {}) {
+    exported = function(settings = {}) {
         return createInstance(usage(new commander.Command()), settings);
     };
 }
@@ -235,3 +239,5 @@ function help(app, cmd, usage) {
         sh.prompt();
     });
 }
+
+export default exported;

@@ -28,18 +28,18 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const interrupt = require('./interrupt.js');
-const logger = require('./logger.js');
-const version = require('./version.js').toString();
-const config = require('./config.js');
-const remote = require('./remote-process.js');
-const replyTo = require('./promise-reply.js');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import interrupt from './interrupt.js';
+import logger from './logger.js';
+import Version from './version.js';
+import config from './config.js';
+import remote from './remote-process.js';
+import replyTo from './promise-reply.js';
+const version = Version.toString();
 
-module.exports = function(settings) {
+export default function(settings) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
     let promiseBroker, closing;

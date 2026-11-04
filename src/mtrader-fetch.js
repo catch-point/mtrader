@@ -30,18 +30,22 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const commander = require('commander');
-const share = require('./share.js');
-const logger = require('./logger.js');
-const tabular = require('./tabular.js');
-const Fetch = require('./fetch.js');
-const replyTo = require('./promise-reply.js');
-const config = require('./config.js');
-const version = require('./version.js').version;
+import _ from 'underscore';
+import isMainModule from './is-main-module.js';
+import moment from 'moment-timezone';
+import * as commander from 'commander';
+import share from './share.js';
+import logger from './logger.js';
+import tabular from './tabular.js';
+import Fetch from './fetch.js';
+import replyTo from './promise-reply.js';
+import config from './config.js';
+import Version from './version.js';
+
+// the library interface, defined unless this module runs as a command or worker
+let exported;
+const version = Version.version;
 
 const tz = (moment.defaultZone||{}).name || moment.tz.guess();
 
@@ -72,7 +76,7 @@ function usage(command) {
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
-if (require.main === module) {
+if (isMainModule(import.meta)) {
     const program = usage(commander.program).allowExcessArguments().parse(process.argv);
     if (program.args.length) {
         const interval = program.args.length > 1 ? program.args[0] : 'day';
@@ -117,7 +121,7 @@ if (require.main === module) {
         program.help();
     }
 } else {
-    const shared = module.exports = share(() => {
+    const shared = exported = share(() => {
         let fetch, closed;
         const program = usage(new commander.Command());
         const instance = function(options) {
@@ -335,3 +339,5 @@ function help(app, cmd, usage) {
         sh.prompt();
     });
 }
+
+export default exported;

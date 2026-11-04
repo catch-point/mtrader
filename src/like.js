@@ -28,17 +28,16 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const util = require('node:util');
-const assert = require('node:assert');
-const _ = require('underscore');
+import util from 'node:util';
+import assert from 'node:assert';
+import _ from 'underscore';
 
 /**
  * Called with chai, registers a `like` assertion (used by the tests); otherwise
  * returns a predicate testing whether a value is like the expected pattern.
  */
-module.exports = function() {
+const likeOrRegister = function() {
     if (arguments[0].Assertion) return register.apply(this, arguments);
     else return like.apply(this, arguments);
 };
@@ -47,7 +46,7 @@ module.exports = function() {
  * Throws an AssertionError unless actual is like the expected pattern, naming
  * the first property path that differs.
  */
-module.exports.assert = function(actual, expected, message) {
+likeOrRegister.assert = function(actual, expected, message) {
     const unexpected_path = [];
     if (like(expected)(actual, unexpected_path)) return;
     const act = unexpected_path.reduce((obj, prop) => obj[prop], actual);
@@ -118,3 +117,5 @@ function register(chai, utils) {
         );
     });
 }
+
+export default likeOrRegister;

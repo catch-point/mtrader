@@ -28,12 +28,11 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const util = require('util');
-const _ = require('underscore');
+import util from 'util';
+import _ from 'underscore';
 
-module.exports = Snapshot;
+export default Snapshot;
 
 function Snapshot(target, stateful) {
     if (typeof target == 'function') {

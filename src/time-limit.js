@@ -28,17 +28,16 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const util = require('util');
-const _ = require('underscore');
+import fs from 'graceful-fs';
+import path from 'path';
+import util from 'util';
+import _ from 'underscore';
 
 /**
  * Wraps a function and return a promise that will resolve within the time limit
  */
-module.exports = function(limit_ms) { // new TimeLimit
+export default function(limit_ms) { // new TimeLimit
     const interval = Math.min(limit_ms, 1000), active = [];
     let pulse_timeout, pulse_counter = 0;
     return Object.assign(function(fn, label_fn) { // wrap given function

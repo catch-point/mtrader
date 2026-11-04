@@ -28,21 +28,20 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const url = require('url');
-const http = require('http');
-const https = require('https');
-const querystring = require('querystring');
-const ws = require('ws');
-const EventEmitter = require('events');
-const _ = require('underscore');
-const assert = require('node:assert');
-const logger = require('./logger.js');
-const config = require('./config.js');
-const version = require('./version.js');
+import fs from 'graceful-fs';
+import path from 'path';
+import url from 'url';
+import http from 'http';
+import https from 'https';
+import querystring from 'querystring';
+import ws from 'ws';
+import EventEmitter from 'events';
+import _ from 'underscore';
+import assert from 'node:assert';
+import logger from './logger.js';
+import config from './config.js';
+import version from './version.js';
 
 const EOM = '\r\n\r\n';
 
@@ -53,7 +52,7 @@ const DEFAULT_PATH = `/mtrader/${version.major_version}/remote`;
  * looks like a forked child process, letting promise-reply.js and
  * worker-queue.js treat remote services and local workers the same.
  */
-const remote = module.exports = function(settings = {}, socket = null) {
+const remote = function(settings = {}, socket = null) {
     if (_.isEmpty(settings) && !socket) throw Error("No remote location given");
     if (typeof settings == 'string' || typeof settings == 'number')
         return remote({label: settings, location: settings}, socket);
@@ -208,3 +207,5 @@ function flattenObjectPaths(settings) {
         }, params);
     }, {});
 }
+
+export default remote;

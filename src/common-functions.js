@@ -28,18 +28,17 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const Big = require('big.js');
-const statistics = require('./statistics.js');
-const bs = require('black-scholes');
-const iv = require('implied-volatility');
-const d3 = require('d3-format');
-const periods = require('./periods.js');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import Big from 'big.js';
+import statistics from './statistics.js';
+import bs from 'black-scholes';
+import iv from 'implied-volatility';
+import d3 from './number-format.js';
+import periods from './periods.js';
 
-module.exports = function(name, args, options) {
+const common = function(name, args, options) {
     if (!functions[name]) return;
     const intervals = periods.sort(_.uniq(_.flatten(_.compact(_.pluck(args, 'intervals')), true)));
     const fn = functions[name].apply(this, [options || {}].concat(args));
@@ -51,11 +50,11 @@ module.exports = function(name, args, options) {
     });
 };
 
-module.exports.has = function(name) {
+common.has = function(name) {
     return !!functions[name];
 };
 
-const functions = module.exports.functions = {
+const functions = common.functions = {
     NOW: _.extend((opts, tz) => {
         const now = moment.tz(opts.now, opts.tz);
         const date = now.format();
@@ -788,3 +787,5 @@ function z(big, opts) {
     else if (big.lt(-Number.MAX_VALUE)) return -Number.MAX_VALUE;
     else return +big; // non-zero number
 }
+
+export default common;

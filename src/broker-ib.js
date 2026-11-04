@@ -28,23 +28,23 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const util = require('util');
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const d3 = require('d3-format');
-const Big = require('big.js');
-const merge = require('./merge.js');
-const logger = require('./logger.js');
-const version = require('./version.js').toString();
-const config = require('./config.js');
-const IB = require('./ib-gateway.js');
-const Fetch = require('./fetch.js');
-const assert = require('node:assert');
+import util from 'util';
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import d3 from './number-format.js';
+import Big from 'big.js';
+import merge from './merge.js';
+import logger from './logger.js';
+import Version from './version.js';
+import config from './config.js';
+import IB from './ib-gateway.js';
+import Fetch from './fetch.js';
+import assert from 'node:assert';
+const version = Version.toString();
 
-module.exports = async function(settings = {}, mock_ib_client = null) {
+export default async function(settings = {}, mock_ib_client = null) {
     if (settings.info=='help') return helpSettings();
     if (settings.info=='version') return [{version}];
     const markets = _.omit(_.mapObject(config('markets'), market => Object.assign(
@@ -1244,7 +1244,7 @@ async function toContract(markets, ib, options) {
     } else {
         assert.ok(options.symbol, `Expected options.symbol to be set`);
         assert.ok(Array.isArray(options.attached), `Expected options.attached to be an array`);
-        throw Error(`Could not create contract from ${util.inspect(contract, {breakLength:Infinity})}`);
+        throw Error(`Could not create contract from ${util.inspect(options, {breakLength:Infinity})}`);
     }
 }
 

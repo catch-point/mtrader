@@ -28,29 +28,29 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const zlib = require('zlib');
-const _ = require('underscore');
-const csv = require('fast-csv');
-const moment = require('moment-timezone');
-const Big = require('big.js');
-const MultivariateLinearRegression = require('ml-regression-multivariate-linear');
-const merge = require('./merge.js');
-const cache = require('./memoize-cache.js');
-const interrupt = require('./interrupt.js');
-const Parser = require('../src/parser.js');
-const common = require('./common-functions.js');
-const rolling = require('./rolling-functions.js');
-const Quoting = require('./quoting-functions.js');
-const config = require('./config.js');
-const logger = require('./logger.js');
-const version = require('./version.js').toString();
-const Periods = require('./periods.js');
-const storage = require('./storage.js');
-const assert = require('node:assert');
+import fs from 'graceful-fs';
+import path from 'path';
+import zlib from 'zlib';
+import _ from 'underscore';
+import csv from 'fast-csv';
+import moment from 'moment-timezone';
+import Big from 'big.js';
+import MultivariateLinearRegression from 'ml-regression-multivariate-linear';
+import merge from './merge.js';
+import cache from './memoize-cache.js';
+import interrupt from './interrupt.js';
+import Parser from '../src/parser.js';
+import common from './common-functions.js';
+import rolling from './rolling-functions.js';
+import Quoting from './quoting-functions.js';
+import config from './config.js';
+import logger from './logger.js';
+import Version from './version.js';
+import Periods from './periods.js';
+import storage from './storage.js';
+import assert from 'node:assert';
+const version = Version.toString();
 
 function help(assets, help) {
     const all_intervals = _.uniq(_.flatten(assets.map(asset => asset.intervals)));
@@ -119,9 +119,9 @@ function help(assets, help) {
     });
 }
 
-module.exports = function(fetch, quote, settings = {}) {
+const QuoteModel = function(fetch, quote, settings = {}) {
     if (_.isFunction(fetch) && !_.isFunction(quote) && _.isEmpty(settings))
-        return module.exports(fetch, fetch, quote);
+        return QuoteModel(fetch, fetch, quote);
     const cached_fetch = cacheFetch(fetch);
     const incl_settings = readConfig(settings, config.configDirname());
     const assets = incl_settings.assets || [];
@@ -723,3 +723,5 @@ function trim(result, options) {
         else return result.slice(0, last);
     });
 }
+
+export default QuoteModel;

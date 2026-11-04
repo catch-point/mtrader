@@ -28,22 +28,21 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const util = require('util');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const awriter = require('./atomic-write.js');
-const config = require('./config.js');
-const logger = require('./logger.js');
-const assert = require('node:assert');
+import fs from 'graceful-fs';
+import path from 'path';
+import util from 'util';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import awriter from './atomic-write.js';
+import config from './config.js';
+import logger from './logger.js';
+import assert from 'node:assert';
 
 /**
  * @returns a function that returns an object about the security in the given options
  */
-module.exports = function(fetch) {
+export default function(fetch) {
     const fetchOnline = fetchOptionsFactory(fetch, false, false);
     const fetchReadOnly = fetchOptionsFactory(fetch, false, true);
     const fetchOffline = fetchOptionsFactory(fetch, true, true);

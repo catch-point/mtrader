@@ -28,23 +28,22 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const path = require('path');
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const version = require('./version.js');
-const storage = require('./storage.js');
-const Lookup = require('./lookup.js');
-const Periods = require('./periods.js');
-const interrupt = require('./interrupt.js');
-const Parser = require('./parser.js');
-const common = require('../src/common-functions.js');
-const lookback = require('../src/lookback-functions.js');
-const indicator = require('../src/indicator-functions.js');
-const config = require('./config.js');
-const logger = require('./logger.js');
-const assert = require('node:assert');
+import path from 'path';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import version from './version.js';
+import storage from './storage.js';
+import Lookup from './lookup.js';
+import Periods from './periods.js';
+import interrupt from './interrupt.js';
+import Parser from './parser.js';
+import common from '../src/common-functions.js';
+import lookback from '../src/lookback-functions.js';
+import indicator from '../src/indicator-functions.js';
+import config from './config.js';
+import logger from './logger.js';
+import assert from 'node:assert';
 
 /**
  * Quote layer: evaluates columns/criteria expressions over one security's bars
@@ -52,7 +51,7 @@ const assert = require('node:assert');
  * persisting fetched bars and computed columns in storage.js under cache_dir.
  * @returns a function that returns array of row objects based on given options
  */
-module.exports = function(fetch, settings = {}) {
+export default function(fetch, settings = {}) {
     let promiseHelp;
     const lookup = Lookup(fetch);
     const cache_dir = config('cache_dir') || path.resolve(config('prefix'), config('default_cache_dir'));

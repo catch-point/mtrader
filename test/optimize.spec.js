@@ -29,16 +29,16 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const path = require('path');
-const _ = require('underscore');
-const merge = require('../src/merge.js');
-const config = require('../src/config.js');
-const Fetch = require('../src/fetch.js');
-const Quote = require('../src/quote.js');
-const Collect = require('../src/collect.js');
-const Optimize = require('../src/optimize.js');
-const like = require('./should-be-like.js');
-const createTempDir = require('./create-temp-dir.js');
+import path from 'path';
+import _ from 'underscore';
+import merge from '../src/merge.js';
+import config from '../src/config.js';
+import Fetch from '../src/fetch.js';
+import Quote from '../src/quote.js';
+import Collect from '../src/collect.js';
+import Optimize from '../src/optimize.js';
+import like from './should-be-like.js';
+import createTempDir from './create-temp-dir.js';
 
 describe("optimize", function() {
     this.timeout(60000);
@@ -48,7 +48,7 @@ describe("optimize", function() {
         fetch = Fetch(merge(config('fetch'), {
             files: {
                 enabled: true,
-                dirname: path.resolve(__dirname, 'data')
+                dirname: path.resolve(import.meta.dirname, 'data')
             }
         }));
         quote = new Quote(fetch);

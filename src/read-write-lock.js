@@ -28,7 +28,6 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
 /**
  * Maintains a pair of associated locks, one for read-only operations and one
@@ -36,7 +35,7 @@
  * The read lock may be held simultaneously by multiple callers, so long as
  * there are no writers. The write lock is exclusive.
  */
-module.exports = function() {
+export default function() {
     let write_lock = Promise.resolve();
     const read_locks = [];
     return Object.assign(new.target ? this : {}, {

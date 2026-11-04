@@ -29,15 +29,17 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const _ = require('underscore');
-const Big = require('big.js');
-const moment = require('moment-timezone');
-const d3 = require('d3-format');
-const config = require('../src/config.js');
-const like = require('./should-be-like.js');
-const marketDataPermission = require('./market-data-permission.js');
-const IB = require('../src/fetch-ib.js');
-const version = require('../src/version.js').toString();
+import util from 'node:util';
+import _ from 'underscore';
+import Big from 'big.js';
+import moment from 'moment-timezone';
+import d3 from '../src/number-format.js';
+import config from '../src/config.js';
+import like from './should-be-like.js';
+import marketDataPermission from './market-data-permission.js';
+import IB from '../src/fetch-ib.js';
+import Version from '../src/version.js';
+const version = Version.toString();
 
 describe("fetch-ib", function() {
     this.timeout(100000);
@@ -1086,7 +1088,7 @@ describe("fetch-ib", function() {
             open_time: "09:30:00",
             security_tz: "America/New_York", tz: tz
         })
-         .then(d=>d.forEach(d=>console.log(require('util').inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
+         .then(d=>d.forEach(d=>console.log(util.inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
          .should.eventually.be.like([
             { ending: '2019-04-18T16:00:00-04:00', close: 153.48, adj_close: 152.53 },
             { ending: '2019-04-22T16:00:00-04:00', close: 154.51, adj_close: 153.55 },
@@ -1096,6 +1098,6 @@ describe("fetch-ib", function() {
 });
 
 function printEach(d) {
-    d.forEach(d=>console.log(require('util').inspect(d,{breakLength:Infinity}),','));
+    d.forEach(d=>console.log(util.inspect(d,{breakLength:Infinity}),','));
     return d;
 }

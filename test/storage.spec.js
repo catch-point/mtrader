@@ -29,14 +29,14 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const fs = require('fs');
-const util = require('util');
-const path = require('path');
-const zlib = require('zlib');
-const _ = require('underscore');
-const storage = require('../src/storage.js');
-const like = require('./should-be-like.js');
-const createTempDir = require('./create-temp-dir.js');
+import fs from 'fs';
+import util from 'util';
+import path from 'path';
+import zlib from 'zlib';
+import _ from 'underscore';
+import storage from '../src/storage.js';
+import like from './should-be-like.js';
+import createTempDir from './create-temp-dir.js';
 
 const readFile = util.promisify(fs.readFile);
 const writeFile = util.promisify(fs.writeFile);

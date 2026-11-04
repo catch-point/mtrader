@@ -28,17 +28,16 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const fs = require('graceful-fs');
-const path = require('path');
-const util = require('util');
-const _ = require('underscore');
+import fs from 'graceful-fs';
+import path from 'path';
+import util from 'util';
+import _ from 'underscore';
 
 /**
  * Writes to temporary file followed by an atomic rename to target filename
  */
-module.exports = Object.assign(async function(fn, filename) {
+export default Object.assign(async function(fn, filename) {
     if (!filename) throw Error("No filename given");
     const part = partFor(filename);
     const dirname = await mkdirp(path.dirname(part));

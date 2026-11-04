@@ -28,21 +28,20 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const url = require('url');
-const moment = require('moment-timezone');
-const throttlePromise = require('./throttle.js');
-const promiseText = require('./promise-text.js');
-const logger = require('./logger.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import url from 'url';
+import moment from 'moment-timezone';
+import throttlePromise from './throttle.js';
+import promiseText from './promise-text.js';
+import logger from './logger.js';
+import assert from 'node:assert';
 
 const quote = "https://finance.yahoo.com/lookup?s={symbol}";
 const download = "https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?period1={period1}&period2={period2}&interval={interval}&events={events}&crumb={crumb}"
 const search = "https://query1.finance.yahoo.com/v1/finance/search";
 
-module.exports = function() {
+export default function() {
     const agent = promiseHistoryAgent();
     const throttled = throttlePromise(agent, 2);
     return {

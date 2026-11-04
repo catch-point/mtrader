@@ -28,19 +28,20 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
+import fs from 'node:fs';
+import _ from 'underscore';
 
-const pkg = require('../package.json');
-const resolved = require('../package.json')._resolved;
+const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const resolved = pkg._resolved;
+
 const gitHead = pkg.gitHead || resolved && ~resolved.indexOf('#') &&
     resolved.substring(resolved.indexOf('#') + 1);
 
 /**
  * Parses the module version into an object
  */
-module.exports = _.omit({
+export default _.omit({
     id: pkg._id,
     name: pkg.name,
     license: pkg.license,

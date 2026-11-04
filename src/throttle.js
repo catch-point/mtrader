@@ -28,14 +28,13 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
 /**
  * Limits the number of concurrent processing calls to limit
  */
-module.exports = function(fn, limit) {
+export default function(fn, limit) {
     const max = limit || 1;
     let currently = 0;
     const queue = [];

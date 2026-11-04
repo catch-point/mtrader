@@ -28,19 +28,19 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const net = require('net');
-const _ = require('underscore');
-const spawn = require('child_process').spawn;
-const moment = require('moment-timezone');
-const logger = require('./logger.js');
-const promiseThrottle = require('./throttle.js');
-const interrupt = require('./interrupt.js');
-const like = require('./like.js');
-const assert = require('node:assert');
+import net from 'net';
+import _ from 'underscore';
+import childProcess from 'child_process';
+import moment from 'moment-timezone';
+import logger from './logger.js';
+import promiseThrottle from './throttle.js';
+import interrupt from './interrupt.js';
+import like from './like.js';
+import assert from 'node:assert';
+const spawn = childProcess.spawn;
 
-module.exports = function(command, env, productId, productVersion) {
+export default function(command, env, productId, productVersion) {
     if (command) assert.ok(Array.isArray(command), `Expected command to be an array`);
     let adminPromise;
     const admin = function(){

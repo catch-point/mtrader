@@ -28,7 +28,6 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
@@ -38,7 +37,7 @@ process.setMaxListeners(process.getMaxListeners()+1);
  * function of the returned instance is called. Care should be taken to not call
  * closed more then the number of times the given factory function is called.
  */
-module.exports = function(factory, onclose) {
+export default function(factory, onclose) {
     let used = 0;
     const shared = function() {
         used++;

@@ -28,13 +28,12 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const v8 = require('v8');
-const process = require('process');
-const _ = require('underscore');
-const debounce = require('./debounce.js');
-const logger = require('./logger.js');
+import v8 from 'v8';
+import process from 'process';
+import _ from 'underscore';
+import debounce from './debounce.js';
+import logger from './logger.js';
 
 const heap_limit = v8 && v8.getHeapStatistics().total_available_size || 0;
 
@@ -47,7 +46,7 @@ const heap_limit = v8 && v8.getHeapStatistics().total_available_size || 0;
  * assumed to be a callback function and is not passed to the given func, but
  * called from the returned function and those results are returned from it.
  */
-module.exports = function(func, hashFn, poolSize, loadFactor) {
+export default function(func, hashFn, poolSize, loadFactor) {
     const size = _.isFinite(hashFn) ? hashFn : poolSize || 1;
     const maxPoolSize = Math.ceil(size / ((_.isFinite(hashFn) ? poolSize : loadFactor) || 0.75));
     const hash = _.isFunction(hashFn) ? hashFn : _.identity.bind(_);

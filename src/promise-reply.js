@@ -28,11 +28,11 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const logger = require('./logger.js');
-const {AssertionError} = require('node:assert');
+import _ from 'underscore';
+import logger from './logger.js';
+import nodeAssert from 'node:assert';
+const {AssertionError} = nodeAssert;
 
 process.setMaxListeners(process.getMaxListeners()+1);
 
@@ -42,7 +42,7 @@ process.setMaxListeners(process.getMaxListeners()+1);
  * the other side registers handle(cmd, fn); pending requests are rejected if
  * the connection is lost. This is how mtrader-*.js workers are driven.
  */
-module.exports = function(process) {
+export default function(process) {
     let seq = 0;
     const handlers = {};
     let quitting = false;

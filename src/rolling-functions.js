@@ -28,18 +28,17 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const Big = require('big.js');
-const Parser = require('./parser.js');
-const common = require('./common-functions.js');
-const logger = require('./logger.js');
+import _ from 'underscore';
+import Big from 'big.js';
+import Parser from './parser.js';
+import common from './common-functions.js';
+import logger from './logger.js';
 
 /**
  * These functions operate of an array of securities at the corresponding points in time.
  */
-module.exports = function(expr, name, args, options) {
+const rolling = function(expr, name, args, options) {
     if (functions[name]) {
         const columnName = new Parser({
             constant(value) {
@@ -56,11 +55,11 @@ module.exports = function(expr, name, args, options) {
     }
 };
 
-module.exports.has = function(name) {
+rolling.has = function(name) {
     return !!functions[name];
 };
 
-module.exports.getVariables = function(expr, options) {
+rolling.getVariables = function(expr, options) {
     const variables = [];
     const parser = new Parser({
         constant(value) {
@@ -71,7 +70,7 @@ module.exports.getVariables = function(expr, options) {
             return _.constant(0);
         },
         expression(expr, name, args) {
-            if (module.exports.has(name)) {
+            if (rolling.has(name)) {
                 let columnName;
                 args.forEach(arg => {
                     const value = arg && arg();
@@ -98,7 +97,7 @@ module.exports.getVariables = function(expr, options) {
     return variables;
 };
 
-const functions = module.exports.functions = {
+const functions = rolling.functions = {
     PREC: _.extend((options, name, columnExpr, defaultValue) => {
         return positions => {
             const last = _.last(positions);
@@ -390,3 +389,5 @@ function parseCriteria(columnName, criteria, positions, options) {
     } catch(e) {} // not an expression, must be a value
     return context => context[columnName] == criteria;
 }
+
+export default rolling;

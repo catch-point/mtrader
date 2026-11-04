@@ -39,7 +39,7 @@ const PERMISSION_DENIED = /No market data permissions|requires additional subscr
  * its outcome is shared by every test that uses the returned function. Other
  * probe errors do not skip, so the tests can report them.
  */
-module.exports = function(probe) {
+export default function(probe) {
     let permitted;
     return async function skipWithoutPermission(test) {
         permitted = permitted || Promise.resolve().then(probe).then(() => true, err => {

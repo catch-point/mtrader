@@ -28,12 +28,11 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const diff = require('diff');
+import _ from 'underscore';
+import * as diff from 'diff';
 
-module.exports = function(settings) {
+export default function(settings) {
     if (!settings.shell) throw Error('No shell provided');
     const shell = settings.shell;
     // Define empty error handler to avoid shell to throwing error when no event handler are defined

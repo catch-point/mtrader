@@ -28,23 +28,22 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const merge = require('./merge.js');
-const version = require('./version.js');
-const Parser = require('./parser.js');
-const common = require('./common-functions.js');
-const rolling = require('./rolling-functions.js');
-const logger = require('./logger.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import merge from './merge.js';
+import version from './version.js';
+import Parser from './parser.js';
+import common from './common-functions.js';
+import rolling from './rolling-functions.js';
+import logger from './logger.js';
+import assert from 'node:assert';
 
 /**
  * Given signals and possible parameter_values, returns the best signals
  * and their parameter values after optimizing each of them
  */
-module.exports = function(optimize) {
+export default function(optimize) {
     let promiseHelp;
     return Object.assign(async function(options) {
         if (!promiseHelp) promiseHelp = help(optimize);

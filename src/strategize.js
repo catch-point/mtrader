@@ -28,24 +28,24 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const alea = require('seedrandom').alea;
-const merge = require('./merge.js');
-const interrupt = require('./interrupt.js');
-const version = require('./version.js');
-const Parser = require('./parser.js');
-const common = require('./common-functions.js');
-const rolling = require('./rolling-functions.js');
-const logger = require('./logger.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import seedrandom from 'seedrandom';
+import merge from './merge.js';
+import interrupt from './interrupt.js';
+import version from './version.js';
+import Parser from './parser.js';
+import common from './common-functions.js';
+import rolling from './rolling-functions.js';
+import logger from './logger.js';
+import assert from 'node:assert';
+const alea = seedrandom.alea;
 
 /**
  * Iteratively improves a strategy by adding and substituting signals from given signalsets
  */
-module.exports = function(bestsignals) {
+export default function(bestsignals) {
     let promiseHelp;
     let prng = alea(+new Date);
     return _.extend(async function(options) {

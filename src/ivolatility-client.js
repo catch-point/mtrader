@@ -28,29 +28,29 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const util = require('util');
-const fs = require('graceful-fs');
-const path = require('path');
-const zlib = require('zlib');
-const url = require('url');
-const querystring = require('querystring');
-const https = require('https');
-const child_process = require('child_process');
-const _ = require('underscore');
-const csv = require('fast-csv');
-const moment = require('moment-timezone');
-const d3 = require('d3-format');
-const yauzl = require('yauzl');
-const logger = require('./logger.js');
-const interrupt = require('./interrupt.js');
-const awriter = require('./atomic-write.js');
-const cache = require('./memoize-cache.js');
-const storage = require('./storage.js');
-const assert = require('node:assert');
+import util from 'util';
+import isMainModule from './is-main-module.js';
+import fs from 'graceful-fs';
+import path from 'path';
+import zlib from 'zlib';
+import url from 'url';
+import querystring from 'querystring';
+import https from 'https';
+import child_process from 'child_process';
+import _ from 'underscore';
+import csv from 'fast-csv';
+import moment from 'moment-timezone';
+import d3 from './number-format.js';
+import yauzl from 'yauzl';
+import logger from './logger.js';
+import interrupt from './interrupt.js';
+import awriter from './atomic-write.js';
+import cache from './memoize-cache.js';
+import storage from './storage.js';
+import assert from 'node:assert';
 
-module.exports = function(cacheDir, downloadDir, auth_file, downloadType) {
+export default function(cacheDir, downloadDir, auth_file, downloadType) {
     const store = storage(cacheDir);
     const checkForUpdatesFn = checkForUpdates.bind(this, cacheDir, downloadDir, auth_file, downloadType);
     let checkTormorrow, processing;
@@ -164,7 +164,7 @@ function createDataSinkStore(cacheDir) {
     let logProgress = _.noop;
     const keyOf = datum => datum.expiration.substring(0, 2);
     const fork = key => {
-        const forked = child_process.fork(module.filename, [cacheDir]);
+        const forked = child_process.fork(import.meta.filename, [cacheDir]);
         forked.on('message', msg => {
             if (count) logProgress(count/total);
             if (abort) {
@@ -234,7 +234,7 @@ function createDataSinkStore(cacheDir) {
 }
 
 
-if (require.main === module && process.send) {
+if (isMainModule(import.meta) && process.send) {
     const cacheDir = process.argv[2];
     const sink = createInlineDataSinkStore(cacheDir);
     const ready = () => {

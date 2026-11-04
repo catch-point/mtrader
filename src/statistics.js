@@ -28,16 +28,15 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const ss = require('simple-statistics');
+import * as ss from 'simple-statistics';
 
 /**
  * The statistics used by the expression functions and optimizer, backed by
  * simple-statistics. Samples too small to measure give NaN rather than
  * throwing, and the normal quantile is infinite at 0 and 1.
  */
-module.exports = {
+export default {
     /** Sample standard deviation (n - 1 denominator) */
     std(values) {
         return values.length < 2 ? NaN : ss.sampleStandardDeviation(values);

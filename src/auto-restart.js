@@ -28,9 +28,8 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
+import _ from 'underscore';
 
 /**
  * Given a factory function and time limit, where the factory function
@@ -38,7 +37,7 @@ const _ = require('underscore');
  * object and recreates it (and calls again) when time limit is reached on a
  * async response.
  */
-module.exports = function(factory, limit_ms, label_fn) { // new AutoRestart factory
+export default function(factory, limit_ms, label_fn) { // new AutoRestart factory
     return function() { // new object wrapper instance
         const interval = Math.min(limit_ms, 1000), active = [];
         const factory_this = this, factory_args = Array.from(arguments);

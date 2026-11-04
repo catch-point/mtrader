@@ -10,11 +10,11 @@ factory that takes its settings section and returns `async fn(options)` plus
 1. **Create `src/fetch-foo.js`**:
 
    ```js
-   'use strict';
-   const _ = require('underscore');
-   const version = require('./version.js').toString();
+   import _ from 'underscore';
+   import Version from './version.js';
+   const version = Version.toString();
 
-   module.exports = function(settings = {}) {
+   export default function(settings = {}) {
        const helpInfo = help(settings);
        return Object.assign(async(options) => {
            if (options.info == 'help') return helpInfo;
@@ -50,8 +50,8 @@ factory that takes its settings section and returns `async fn(options)` plus
    Base the `help()` on `fetch-yahoo.js` or `fetch-ib.js`.
    **Anything not listed in help is never routed to your source.**
 
-2. **Register it** in `promiseDatasources()` in `src/fetch.js`:
-   `{name: 'foo', fn: require('./fetch-foo.js')}`.
+2. **Register it** in `promiseDatasources()` in `src/fetch.js` by adding
+   `'foo'` to the list of source names it imports (`./fetch-foo.js`).
 
 3. **Add defaults** to `etc/mtrader.json` under `fetch.foo` (`enabled: false`,
    `intervals`, `markets`). If symbols need translating, add

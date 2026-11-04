@@ -28,27 +28,26 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const Big = require('big.js');
-const moment = require('moment-timezone');
-const cache = require('./memoize-cache.js');
-const Parser = require('./parser.js');
-const interrupt = require('./interrupt.js');
-const version = require('./version.js');
-const common = require('./common-functions.js');
-const rolling = require('./rolling-functions.js');
-const Quoting = require('./quoting-functions.js');
-const logger = require('./logger.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import Big from 'big.js';
+import moment from 'moment-timezone';
+import cache from './memoize-cache.js';
+import Parser from './parser.js';
+import interrupt from './interrupt.js';
+import version from './version.js';
+import common from './common-functions.js';
+import rolling from './rolling-functions.js';
+import Quoting from './quoting-functions.js';
+import logger from './logger.js';
+import assert from 'node:assert';
 
 /**
  * Delegates most computations to quote.js and add some functions that can compare
  * securities and read previous retained values.
  * @returns a function that returns array of row objects based on given options.
  */
-module.exports = function(fetch, quote, collectFn) {
+export default function(fetch, quote, collectFn) {
     let promiseHelp, self;
     const cache_keys = ['interval', 'symbol', 'market', 'security_type', 'currency', 'now', 'offline', 'tz', 'begin', 'end'];
     const adjustments = cache(

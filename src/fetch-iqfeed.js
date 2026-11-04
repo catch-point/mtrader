@@ -28,23 +28,23 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const Big = require('big.js');
-const d3 = require('d3-format');
-const merge = require('./merge.js');
-const autoRestart = require('./auto-restart.js');
-const logger = require('./logger.js');
-const version = require('./version.js').toString();
-const config = require('./config.js');
-const Periods = require('./periods.js');
-const iqfeed = require('./iqfeed-client.js');
-const Fetch = require('./fetch.js');
-const cache = require('./memoize-cache.js');
-const like = require('./like.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import Big from 'big.js';
+import d3 from './number-format.js';
+import merge from './merge.js';
+import autoRestart from './auto-restart.js';
+import logger from './logger.js';
+import Version from './version.js';
+import config from './config.js';
+import Periods from './periods.js';
+import iqfeed from './iqfeed-client.js';
+import Fetch from './fetch.js';
+import cache from './memoize-cache.js';
+import like from './like.js';
+import assert from 'node:assert';
+const version = Version.toString();
 
 function help(settings = {}) {
     const commonOptions = {
@@ -158,7 +158,7 @@ function help(settings = {}) {
     ]);
 }
 
-module.exports = function(settings = {}) {
+export default function(settings = {}) {
     const self = async(options) => {
         if (self.closed) throw Error("IQFeed has closed");
         return sharedInstance(options, settings);
@@ -556,17 +556,6 @@ function isNotEquity(markets, options) {
             return source.security_types.indexOf('EQUITY') < 0;
         }
     }
-}
-
-function isOptionExpired(symbol) {
-    const m = symbol.match(/^(\w*)(\d\d)(\d\d)([A-X])(\d+(\.\d+)?)$/);
-    if (!m) return null;
-    const yy = m[2];
-    const day = m[3];
-    const mo = months[m[4]];
-    const expiration_date = yy < '80' ? `20${yy}-${mo}-${day}` : `19${yy}-${mo}-${day}`;
-    const exdate = moment(expiration_date).endOf('day');
-    return exdate.isValid() && exdate.isBefore();
 }
 
 const security_types_map = {

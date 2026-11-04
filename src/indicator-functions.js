@@ -28,13 +28,12 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const Big = require('big.js');
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import Big from 'big.js';
 
-module.exports = function(name, args) {
+const indicator = function(name, args) {
     if (name.indexOf('.') <= 0) return;
     const interval = name.substring(0, name.indexOf('.'));
     const lname = name.substring(name.indexOf('.')+1);
@@ -57,7 +56,7 @@ module.exports = function(name, args) {
     });
 };
 
-const functions = module.exports.functions = {
+const functions = indicator.functions = {
     /* Weighted On Blanance Volume */
     OBV(n) {
         return _.extend(bars => {
@@ -377,3 +376,5 @@ function z(big) {
     else if (!(big instanceof Big)) return big;
     else return +big; // non-zero number
 }
+
+export default indicator;

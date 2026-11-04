@@ -28,21 +28,21 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const Big = require('big.js');
-const moment = require('moment-timezone');
-const d3 = require('d3-format');
-const merge = require('./merge.js');
-const cache = require('./memoize-cache.js');
-const logger = require('./logger.js');
-const version = require('./version.js').toString();
-const config = require('./config.js');
-const Periods = require('./periods.js');
-const IB = require('./ib-gateway.js');
-const Fetch = require('./fetch.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import Big from 'big.js';
+import moment from 'moment-timezone';
+import d3 from './number-format.js';
+import merge from './merge.js';
+import cache from './memoize-cache.js';
+import logger from './logger.js';
+import Version from './version.js';
+import config from './config.js';
+import Periods from './periods.js';
+import IB from './ib-gateway.js';
+import Fetch from './fetch.js';
+import assert from 'node:assert';
+const version = Version.toString();
 
 function help(settings) {
     const commonOptions = {
@@ -183,7 +183,7 @@ function help(settings) {
     ]);
 }
 
-module.exports = async function(settings = {}) {
+export default async function(settings = {}) {
     const fetch = new Fetch(merge(config('fetch'), {ib:{enabled:false}}, settings.fetch));
     const adjustments = options => fetch({...options, interval: 'adjustments'});
     const fetch_ib = await createInstance(adjustments, settings);

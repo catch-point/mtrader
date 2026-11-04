@@ -28,11 +28,10 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-'use strict';
 
-const _ = require('underscore');
-const logger = require('./logger.js');
-const assert = require('node:assert');
+import _ from 'underscore';
+import logger from './logger.js';
+import assert from 'node:assert';
 
 /**
  * Given a hash of methods: constant(value), variable(name),
@@ -41,7 +40,7 @@ const assert = require('node:assert');
  * can return anything. The parameter args is an array of functions returned by
  * previous calls to one of the given methods.
  */
-module.exports = function(handlers) {
+export default function(handlers) {
     const subs = parseVariables(handlers && handlers.substitutions);
     const _handlers = {
         constant(value) {

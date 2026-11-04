@@ -29,18 +29,18 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const path = require('path');
-const _ = require('underscore');
-const merge = require('../src/merge.js');
-const Mtrader = require('../src/mtrader.js');
-const Collect = require('../src/mtrader-collect.js');
-const Broker = require('../src/broker-simulation.js');
-const config = require('../src/config.js');
-const Quote = require('../src/quote.js');
-const Fetch = require('../src/fetch.js');
-const readCallSave = require('../src/read-call-save.js');
-const like = require('./should-be-like.js');
-const createTempDir = require('./create-temp-dir.js');
+import path from 'path';
+import _ from 'underscore';
+import merge from '../src/merge.js';
+import Mtrader from '../src/mtrader.js';
+import Collect from '../src/mtrader-collect.js';
+import Broker from '../src/broker-simulation.js';
+import config from '../src/config.js';
+import Quote from '../src/quote.js';
+import Fetch from '../src/fetch.js';
+import readCallSave from '../src/read-call-save.js';
+import like from './should-be-like.js';
+import createTempDir from './create-temp-dir.js';
 
 describe("mtrader-collect", function() {
     this.timeout(1200000);
@@ -169,7 +169,7 @@ describe("mtrader-collect", function() {
             fetch = Fetch(merge(config('fetch'), {
                 files: {
                     enabled: true,
-                    dirname: path.resolve(__dirname, 'data')
+                    dirname: path.resolve(import.meta.dirname, 'data')
                 }
             }));
             quote = new Quote(fetch);
@@ -179,7 +179,7 @@ describe("mtrader-collect", function() {
                 fetch: {
                     files: {
                         enabled: true,
-                        dirname: path.resolve(__dirname, 'data')
+                        dirname: path.resolve(import.meta.dirname, 'data')
                     }
                 }
             }, quote);

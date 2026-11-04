@@ -29,10 +29,13 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const _ = require('underscore');
-const like = require('../src/like.js');
-const should = require('chai').use(like).use(require("chai-as-promised")).should();
-const utils = require('mocha').utils;
+import _ from 'underscore';
+import like from '../src/like.js';
+import * as chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+import mocha from 'mocha';
+const should = chai.use(like).use(chaiAsPromised).should();
+const utils = mocha.utils;
 utils.canonicalize = _.wrap(utils.canonicalize, function(fn, value) {
     // moment objects don't need dissecting
     if (_.isObject(value) && _.isFunction(value.toJSON)) return value.toJSON();
@@ -40,5 +43,5 @@ utils.canonicalize = _.wrap(utils.canonicalize, function(fn, value) {
     else return fn.apply(this, _.rest(arguments));
 });
 
-module.exports = like;
+export default like;
 

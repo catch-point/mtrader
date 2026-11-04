@@ -29,12 +29,15 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-const _ = require('underscore');
-const moment = require('moment-timezone');
-const d3 = require('d3-format');
-const config = require('../src/config.js');
-const like = require('./should-be-like.js');
-const iqfeed = require('../src/fetch-iqfeed.js');
+import util from 'node:util';
+import _ from 'underscore';
+import moment from 'moment-timezone';
+import d3 from '../src/number-format.js';
+import config from '../src/config.js';
+import like from './should-be-like.js';
+import iqfeed from '../src/fetch-iqfeed.js';
+import mtrader from '../src/mtrader.js';
+import FetchRemote from '../src/fetch-remote.js';
 
 describe("fetch-iqfeed", function() {
     this.timeout(30000);
@@ -893,12 +896,10 @@ describe("fetch-iqfeed", function() {
     });
     it.skip("should lookup many local futures symbols", function() {
         this.timeout(100000);
-        var config = require('../src/config.js');
         config('fetch.remote.location', "ws://localhost:8081");
         config('fetch.iqfeed.enabled', true);
-        var mtrader = require('../src/mtrader.js');
         var server = mtrader.listen('ws://localhost:8081');
-        var remote = require('../src/fetch-remote.js')();
+        var remote = FetchRemote();
         return Promise.all(_.flatten(_.range(10,19).map(year => ['H','M','U','Z'].map(mo => {
             return remote.lookup({
                 interval: 'lookup',
@@ -960,7 +961,7 @@ describe("fetch-iqfeed", function() {
             open_time: "09:30:00",
             security_tz: "America/New_York", tz: tz
         })
-         .then(d=>d.forEach(d=>console.log(require('util').inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
+         .then(d=>d.forEach(d=>console.log(util.inspect(_.pick(d,'ending','close','adj_close'),{breakLength:1000})))||d)
          .should.eventually.be.like([
             { ending: '2019-04-18T16:00:00-04:00', close: 153.48, adj_close: 152.53 },
             { ending: '2019-04-22T16:00:00-04:00', close: 154.51, adj_close: 153.55 },
