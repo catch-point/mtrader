@@ -84,7 +84,8 @@ Used by `mtrader start` and by any `*.remote` client connection.
 | `key_pem`, `cert_pem`, `ca_pem`, `crl_pem`, `dhparam_pem`, `passphrase_base64` | TLS material (file paths). |
 | `requestCert`, `rejectUnauthorized` | Turn on mutual-TLS client authentication. |
 | `ciphers`, `ecdhCurve`, `secureProtocol`, `secureOptions`, `honorCipherOrder` | TLS tuning, passed to Node. |
-| `handshakeTimeout`, `timeout`, `perMessageDeflate`, `agent` | WebSocket tuning. |
+| `handshakeTimeout`, `perMessageDeflate`, `agent` | WebSocket tuning. |
+| `timeout` | Keep-alive, in milliseconds (default 60000). A client pings a service after half of it with nothing received, and drops the connection if the other half passes without a reply. On a service, it is how long a client can be idle before the service pings it. |
 
 Clients name a service with `location`, for example in `fetch.remote.location` or
 `collect.remote[].location`.

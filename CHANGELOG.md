@@ -4,6 +4,20 @@ All notable changes to mtrader since 1.0. Entries before 16.2.0 were
 generated from the git history and are grouped by minor version; each lists
 the commit subjects included in that series, newest first.
 
+## 17.0.1 — 2026-11-04
+
+### Fixed
+
+- Connections to `mtrader start` services are kept alive. A client pings a
+  service after `remote.timeout`/2 milliseconds without receiving anything,
+  and drops the connection if the next `remote.timeout`/2 passes without a
+  pong or other traffic. `remote.timeout` defaults to 60000. The keep-alive
+  existed before but never ran without `remote.timeout`; when it did run, it
+  never saw pongs (it listened on the TCP socket and decremented an undefined
+  counter), so idle healthy connections were closed, and dead ones lingered
+  waiting for a closing handshake. A new `remote-process` spec simulates
+  healthy, dead and busy services.
+
 ## 17.0.0 — 2026-11-04
 
 ### Changed

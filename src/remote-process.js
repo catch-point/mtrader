@@ -48,6 +48,13 @@ const EOM = '\r\n\r\n';
 const DEFAULT_PATH = `/mtrader/${version.major_version}/remote`;
 
 /**
+ * Milliseconds a connection may go without receiving anything, including a
+ * reply to a keep-alive ping, before it is dropped; used when remote.timeout
+ * is not set.
+ */
+export const DEFAULT_TIMEOUT = 60000;
+
+/**
  * Wraps a (optionally mutual-TLS) WebSocket to an `mtrader start` service so it
  * looks like a forked child process, letting promise-reply.js and
  * worker-queue.js treat remote services and local workers the same.
@@ -89,21 +96,32 @@ const remote = function(settings = {}, socket = null) {
     }
     let buf = '';
     const label = settings.label;
-    const timeout = config('remote.timeout');
+    const timeout = config('remote.timeout') || DEFAULT_TIMEOUT;
     const emitter = new EventEmitter();
+    let awaitingPong = false;
     socket.on('open', () => {
-        if (timeout) {
-            // remove handshakeTimeout event handler
-            socket._socket.removeAllListeners('timeout');
-            socket._socket.setTimeout(timeout/2);
-            let pings = 0;
-            socket._socket.on('timeout', () => pings++ ? socket.close() : socket.ping());
-            socket._socket.on('pong', () => ping--);
-        }
+        // Keep-alive: after timeout/2 with nothing received, ping the service;
+        // if another timeout/2 passes without a pong or any other traffic, the
+        // connection is dead, so drop it rather than wait for a closing
+        // handshake that cannot arrive.
+        socket._socket.removeAllListeners('timeout'); // the handshakeTimeout handler
+        socket._socket.setTimeout(timeout/2);
+        socket._socket.on('timeout', () => {
+            if (awaitingPong) {
+                logger.log("No response from", label || 'remote', "in", timeout, "ms");
+                socket.terminate();
+            } else {
+                awaitingPong = true;
+                socket.ping();
+            }
+        });
         emitter.connecting = false;
         emitter.connected = true;
         emitter.emit('connect');
+    }).on('pong', () => {
+        awaitingPong = false;
     }).on('message', message => {
+        awaitingPong = false;
         try {
             const data = message.toString(); // ws 8 delivers a Buffer
             let chunks = data.split('\r\n\r\n');
